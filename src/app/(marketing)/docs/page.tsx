@@ -55,7 +55,7 @@ export default function DocsPage() {
         <section className="mx-auto w-full max-w-5xl px-4 pt-12 md:px-8 md:pt-16">
           <div className="mx-auto flex max-w-3xl flex-col items-center gap-5 text-center">
             <Badge variant="secondary">Dokumentasi</Badge>
-            <h1 className="text-balance text-4xl font-medium leading-tight tracking-tight md:text-5xl">
+            <h1 className="text-balance text-4xl font-display font-black uppercase leading-[0.95] tracking-tight md:text-5xl">
               Panduan SnapyOS untuk customer dan owner
             </h1>
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
@@ -83,7 +83,7 @@ export default function DocsPage() {
           <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div className="max-w-2xl">
               <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Alur sesi foto</p>
-              <h2 className="mt-2 text-3xl font-medium tracking-tight sm:text-4xl">Lima langkah dari layar ke HP</h2>
+              <h2 className="mt-2 text-3xl font-display font-black uppercase tracking-tight sm:text-4xl">Lima langkah dari layar ke HP</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
                 Ikuti urutan kiosk dari kiri ke kanan. Bayar dulu, timer sesi baru jalan setelah status paid.
               </p>
@@ -108,7 +108,7 @@ export default function DocsPage() {
 
         <section className="mx-auto w-full max-w-5xl px-4 md:px-8">
           <div className="max-w-3xl">
-            <h2 className="text-3xl font-medium tracking-tight sm:text-4xl">Pilih kategori panduan</h2>
+            <h2 className="text-3xl font-display font-black uppercase tracking-tight sm:text-4xl">Pilih kategori panduan</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
               Pilih kategori di sidebar, ganti mode grid atau list, lalu buka panduannya.
               Tiap kategori juga punya halaman sendiri dengan tombol Berikutnya antar kategori.
@@ -130,7 +130,7 @@ export default function DocsPage() {
           </div>
 
           <div className="mt-14 border-t border-ink pt-10">
-            <h3 className="text-2xl font-medium tracking-tight md:text-3xl">Daftar isi tiap kategori</h3>
+            <h3 className="text-2xl font-display font-black uppercase tracking-tight md:text-3xl">Daftar isi tiap kategori</h3>
             <div className="mt-6 grid gap-x-12 gap-y-8 md:grid-cols-2">
               {DOC_GROUPS.map((g) => (
                 <div key={g.slug}>

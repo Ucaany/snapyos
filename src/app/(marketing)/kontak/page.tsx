@@ -25,7 +25,7 @@ export default function ContactPage() {
         <section className="mx-auto w-full max-w-5xl px-4 pt-12 md:px-8 md:pt-16">
           <div className="mx-auto flex max-w-3xl flex-col items-center gap-5 text-center">
             <Badge variant="secondary">Kontak</Badge>
-            <h1 className="text-balance text-4xl font-medium leading-tight tracking-tight md:text-5xl">
+            <h1 className="text-balance text-4xl font-display font-black uppercase leading-[0.95] tracking-tight md:text-5xl">
               Bicarakan kebutuhan booth Anda
             </h1>
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
@@ -55,7 +55,7 @@ export default function ContactPage() {
               <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
                 Kirim pesan
               </p>
-              <h2 className="mt-2 text-3xl font-medium tracking-tight sm:text-4xl">Ceritakan booth Anda</h2>
+              <h2 className="mt-2 text-3xl font-display font-black uppercase tracking-tight sm:text-4xl">Ceritakan booth Anda</h2>
               <ContactForm />
             </div>
             <div className="flex flex-col gap-3">
@@ -63,7 +63,7 @@ export default function ContactPage() {
                 <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
                   Langsung
                 </p>
-                <h2 className="mt-2 text-xl font-medium tracking-tight md:text-2xl">Email tim</h2>
+                <h2 className="mt-2 text-xl font-display font-black uppercase tracking-tight md:text-2xl">Email tim</h2>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
                   <a
                     className="font-semibold text-ink underline underline-offset-4"
@@ -77,7 +77,7 @@ export default function ContactPage() {
                 <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
                   Mandiri
                 </p>
-                <h2 className="mt-2 text-xl font-medium tracking-tight md:text-2xl">Panduan dan perangkat</h2>
+                <h2 className="mt-2 text-xl font-display font-black uppercase tracking-tight md:text-2xl">Panduan dan perangkat</h2>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
                   Alur sesi foto, setup booth, QRIS, dan troubleshooting ada di satu halaman
                   dokumentasi.

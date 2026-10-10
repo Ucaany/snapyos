@@ -42,7 +42,7 @@ export default function AboutPage() {
         <section className="mx-auto w-full max-w-5xl px-4 pt-12 md:px-8 md:pt-16">
           <div className="mx-auto flex max-w-3xl flex-col items-center gap-5 text-center">
             <Badge variant="secondary">Tentang Kami</Badge>
-            <h1 className="text-balance text-4xl font-medium leading-tight tracking-tight md:text-5xl">
+            <h1 className="text-balance text-4xl font-display font-black uppercase leading-[0.95] tracking-tight md:text-5xl">
               Operasional photobox, lebih mudah dikelola
             </h1>
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
@@ -71,7 +71,7 @@ export default function AboutPage() {
           <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
             Fokus kami
           </p>
-          <h2 className="mt-2 text-3xl font-medium tracking-tight sm:text-4xl">
+          <h2 className="mt-2 text-3xl font-display font-black uppercase tracking-tight sm:text-4xl">
             Mengikuti kerja booth, bukan sebaliknya
           </h2>
           <ol className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -91,7 +91,7 @@ export default function AboutPage() {
               <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
                 Cara kami bekerja
               </p>
-              <h3 className="mt-2 text-xl font-medium tracking-tight md:text-2xl">Jelas dan dapat ditelusuri</h3>
+              <h3 className="mt-2 text-xl font-display font-black uppercase tracking-tight md:text-2xl">Jelas dan dapat ditelusuri</h3>
               <p className="mt-3 text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
                 Setiap transaksi tercatat dari checkout sampai settlement. Voucher
                 tervalidasi server, pembayaran QRIS terverifikasi provider, dan hasil
@@ -102,7 +102,7 @@ export default function AboutPage() {
               <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
                 Kontrol owner
               </p>
-              <h3 className="mt-2 text-xl font-medium tracking-tight md:text-2xl">Tetap di tangan pemilik</h3>
+              <h3 className="mt-2 text-xl font-display font-black uppercase tracking-tight md:text-2xl">Tetap di tangan pemilik</h3>
               <p className="mt-3 text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
                 Owner mengatur paket, frame, voucher, perangkat, dan kredensial
                 payment sendiri. Staff operasional memakai shell read-only tanpa

@@ -109,7 +109,7 @@ export function Pricing({
         <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-2">
           <div className="flex flex-col gap-6 rounded-none border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111] md:p-8">
             <div className="flex flex-col gap-2">
-              <h3 className="text-sm font-medium text-foreground">Pilih paket</h3>
+              <h3 className="font-mono text-xs font-bold uppercase tracking-[0.1em] text-foreground">Pilih paket</h3>
               <p className="text-xs text-muted-foreground">
                 Fitur menentukan paket; perangkat tambahan lewat add-on.
               </p>
@@ -151,7 +151,7 @@ export function Pricing({
 
             {addOns.length > 0 && (
               <div className="flex flex-col gap-2">
-                <h3 className="text-sm font-medium text-foreground">Modul add-on</h3>
+                <h3 className="font-mono text-xs font-bold uppercase tracking-[0.1em] text-foreground">Modul add-on</h3>
                 <div className="flex flex-col gap-2">
                   {addOns.map((addOn) => {
                     const enabled = selectedAddOns.has(addOn.code);

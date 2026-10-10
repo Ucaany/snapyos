@@ -20,7 +20,7 @@ export async function CallToAction() {
 
 			<div className="absolute top-0 left-1/2 -z-10 h-full border-l border-dashed" />
 
-			<h2 className="text-center text-3xl font-medium tracking-tight text-foreground sm:text-4xl">
+			<h2 className="text-center font-display text-3xl font-black uppercase leading-[0.95] tracking-tight text-foreground sm:text-4xl">
 				Mulai gratis hari ini
 			</h2>
 			<p className="mx-auto max-w-2xl text-balance text-center text-sm leading-6 text-muted-foreground md:text-base md:leading-7">

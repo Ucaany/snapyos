@@ -73,7 +73,7 @@ export function DocSectionBlock({ section, index, total }: { section: HelpSectio
         <span className="shrink-0 font-mono text-xs text-muted-foreground">
           {String(index + 1).padStart(2, "0")}/{String(total).padStart(2, "0")}
         </span>
-        <h4 className="text-xl font-medium tracking-tight md:text-2xl">{section.heading}</h4>
+        <h4 className="font-display text-xl font-black uppercase tracking-tight md:text-2xl">{section.heading}</h4>
       </div>
       {paragraphs.length > 0 && (
         <div className="mt-3 space-y-3">
@@ -120,7 +120,7 @@ export function DocArticleBlock({ article }: { article: HelpArticle }) {
         <Badge variant="secondary">{article.category}</Badge>
         {article.audience && <Badge variant="outline">{article.audience}</Badge>}
       </div>
-      <h3 className="mt-3 text-balance text-3xl font-medium tracking-tight sm:text-4xl">{article.title}</h3>
+      <h3 className="mt-3 text-balance font-display text-3xl font-black uppercase leading-[0.95] tracking-tight sm:text-4xl">{article.title}</h3>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base md:leading-7">{article.summary}</p>
       <p className="mt-3 text-xs text-muted-foreground">
         {article.estimate ? `${article.estimate} · ` : ""}
@@ -143,7 +143,7 @@ export function DocArticleBlock({ article }: { article: HelpArticle }) {
       </div>
       {article.troubleshooting && article.troubleshooting.length > 0 && (
         <div className="mt-10 border-t border-border/70 pt-8">
-          <h4 className="text-xl font-medium tracking-tight md:text-2xl">Troubleshooting</h4>
+          <h4 className="font-display text-xl font-black uppercase tracking-tight md:text-2xl">Troubleshooting</h4>
           <div className="mt-3 overflow-x-auto border-y border-border">
             <table className="w-full min-w-[560px] border-collapse text-left text-sm">
               <thead>

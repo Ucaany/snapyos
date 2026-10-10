@@ -67,7 +67,7 @@ export default async function DocsGroupPage({ params }: Props) {
           </Link>
           <div className="mt-6 flex max-w-3xl flex-col items-start gap-5">
             <Badge variant="secondary">Panduan {g.title}</Badge>
-            <h1 className="text-balance text-4xl font-medium leading-tight tracking-tight md:text-5xl">
+            <h1 className="text-balance text-4xl font-display font-black uppercase leading-[0.95] tracking-tight md:text-5xl">
               {g.title}: {g.desc}
             </h1>
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground md:text-base md:leading-7">

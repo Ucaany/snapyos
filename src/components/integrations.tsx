@@ -24,7 +24,7 @@ export function Integrations() {
 						<Badge variant="secondary" className="w-fit">
 							Gateway Pembayaran
 						</Badge>
-						<h2 className="text-3xl font-medium tracking-tight text-foreground sm:text-4xl">
+						<h2 className="font-display text-3xl font-black uppercase leading-[0.95] tracking-tight text-foreground sm:text-4xl">
 							Hubungkan gateway Anda sendiri
 						</h2>
 						<p className="text-sm text-muted-foreground md:text-base">
