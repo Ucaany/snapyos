@@ -20,7 +20,7 @@ const COMMON_ACTIONS = [
   { value: "admin.settings", label: "SETTINGS" },
   { value: "admin.gateway", label: "GATEWAY" },
   { value: "admin.template", label: "TEMPLATE" },
-  { value: "admin.withdrawal", label: "WITHDRAWAL" },
+  { value: "admin.audit_log", label: "AUDIT LOG" },
 ] as const;
 
 export default async function AdminAuditPage({

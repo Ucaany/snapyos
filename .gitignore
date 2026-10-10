@@ -50,3 +50,6 @@ tauri-kiosk/gen/
 
 # Supabase CLI temp state (regenerated on every `supabase` command)
 /supabase/
+
+# Audit harness lokal (Playwright E2E, bukan bagian app)
+/.audit/

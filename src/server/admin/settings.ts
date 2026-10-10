@@ -62,6 +62,9 @@ export async function updatePlatformSettings(input: AdminSettingsUpdateInput) {
   const supabase = createServerClient();
 
   for (const [key, value] of Object.entries(parsed)) {
+    // zod 4 mempertahankan key yang eksplisit `undefined`; skip agar tidak
+    // upsert value null ke kolom jsonb NOT NULL (form parsial, mis. gateway saja).
+    if (value === undefined) continue;
     const { error } = await supabase
       .from("platform_settings")
       .upsert({ key, value }, { onConflict: "key" });

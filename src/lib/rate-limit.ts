@@ -19,18 +19,15 @@ const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL?.trim();
 const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
 const hasUpstash = Boolean(UPSTASH_URL && UPSTASH_TOKEN);
 
-// Produksi tanpa Upstash = limiter per-instance (bypass lintas instance).
-// Ditegakkan keras: log sekali, dan key sensitif (auth/lockout) fail-closed.
+// Produksi tanpa Upstash = limiter in-memory per-instance (cukup untuk instance
+// tunggal; scale-out butuh counter shared). Fail-closed hanya bila backend shared
+// dikonfigurasi tapi error — lihat rateLimit()/registerFailure() di bawah.
 if (process.env.NODE_ENV === "production" && !hasUpstash) {
-  console.error(
-    "[rate-limit] FATAL: UPSTASH_REDIS_REST_URL/TOKEN tidak di-set di produksi — " +
-      "rate limit per-instance (bypass saat scale-out). Key sensitif fail-closed."
+  console.warn(
+    "[rate-limit] UPSTASH_REDIS_REST_URL/TOKEN tidak di-set di produksi — " +
+      "fallback in-memory per-instance (cukup untuk instance tunggal; set Upstash " +
+      "untuk counter shared lintas instance)."
   );
-}
-
-/** Key sensitif (login/lockout) tidak boleh fail-open saat store shared absen. */
-function isSensitiveKey(key: string): boolean {
-  return key.startsWith("login:") || key.startsWith("lockout:");
 }
 
 function sweep(now: number) {
@@ -103,10 +100,8 @@ export async function rateLimit(
   windowMs: number
 ): Promise<{ ok: boolean; retryAfterSec: number }> {
   if (!hasUpstash) {
-    // Produksi tanpa shared store: key sensitif fail-closed (jangan bocorkan limit).
-    if (process.env.NODE_ENV === "production" && isSensitiveKey(key)) {
-      return { ok: false, retryAfterSec: Math.max(1, Math.ceil(windowMs / 1000)) };
-    }
+    // Tanpa shared store: fallback in-memory (dev/test/instance tunggal).
+    // Fail-closed HANYA saat backend shared dikonfigurasi tapi error (di bawah).
     return inMemoryRateLimit(key, limit, windowMs);
   }
   try {
@@ -124,10 +119,6 @@ export async function rateLimit(
 
 /** Increment hitungan gagal (lockout per email — docs/09 §10). */
 export async function registerFailure(key: string, windowMs: number): Promise<number> {
-  if (!hasUpstash && process.env.NODE_ENV === "production" && isSensitiveKey(key)) {
-    // Store shared absen di produksi → jangan pecah counter ke per-instance memory.
-    return Number.MAX_SAFE_INTEGER;
-  }
   if (hasUpstash) {
     try {
       const { count } = await upstashIncr(key, windowMs);

@@ -49,7 +49,10 @@ export async function listAuditLogs(query: {
     .order("created_at", { ascending: false })
     .range((page - 1) * limit, page * limit - 1);
 
-  if (query.action) req = req.eq("action", query.action);
+  // Dropdown UI berlabel "Prefix aksi" (mis. `admin.user` mencakup
+  // admin.user.create/update/delete) → pencocokan prefix, bukan exact.
+  // Hanya `%` yang di-escape; `_` adalah bagian sah nama action (admin.audit_log).
+  if (query.action) req = req.like("action", `${query.action.replace(/%/g, "")}%`);
   if (query.search) {
     const like = `%${query.search.replace(/[%_]/g, "")}%`;
     req = req.or(`action.ilike.${like},target.ilike.${like}`);
