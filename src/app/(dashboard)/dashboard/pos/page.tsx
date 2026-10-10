@@ -121,10 +121,10 @@ export default async function PosManagementPage({
             <form
               method="get"
               action="/dashboard/pos"
-              className="flex items-end gap-2"
+              className="flex w-full flex-wrap items-end gap-2 sm:w-auto"
               aria-label="Filter tanggal laporan POS"
             >
-              <div className="flex flex-col gap-1">
+              <div className="flex min-w-[8.5rem] flex-1 flex-col gap-1">
                 <label htmlFor="pos-from" className="font-mono text-[10px] uppercase tracking-[0.12em]">
                   Dari
                 </label>
@@ -134,7 +134,7 @@ export default async function PosManagementPage({
                   defaultValue={query.from ?? ""}
                 />
               </div>
-              <div className="flex flex-col gap-1">
+              <div className="flex min-w-[8.5rem] flex-1 flex-col gap-1">
                 <label htmlFor="pos-to" className="font-mono text-[10px] uppercase tracking-[0.12em]">
                   Sampai
                 </label>
