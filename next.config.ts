@@ -1,0 +1,108 @@
+import type { NextConfig } from "next";
+
+const securityHeaders = [
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  // Kiosk butuh akses kamera; batasi hanya untuk origin sendiri.
+  { key: "Permissions-Policy", value: "camera=(self), microphone=()" },
+  {
+    key: "Strict-Transport-Security",
+    value: "max-age=63072000; includeSubDomains",
+  },
+  {
+    key: "Content-Security-Policy",
+    value: [
+      "default-src 'self'",
+      `script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""}`,
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: https: blob:",
+      "font-src 'self' data:",
+      "connect-src 'self' https: wss:",
+      "frame-src 'self' https://challenges.cloudflare.com",
+    ].join("; "),
+  },
+];
+
+const nextConfig: NextConfig = {
+  poweredByHeader: false,
+  reactStrictMode: true,
+  // Dev server Next 15+ menolak (403) request subresource dengan Origin
+  // tak dikenal — tunnel ngrok WAJIB didaftarkan agar chunk JS kiosk
+  // ter-load (tanpa ini hydration mati: tombol aktifasi tidak respons).
+  // Entri = hostname TANPA protokol (perbandingan string di Next),
+  // wildcard menutup URL ngrok yang berubah tiap sesi.
+  ...(process.env.NODE_ENV === "development"
+    ? {
+        allowedDevOrigins: [
+          "graph-headstand-copper.ngrok-free.dev",
+          "*.ngrok-free.dev",
+          "*.ngrok.io",
+        ],
+      }
+    : {}),
+  // Upload frame (maks 5 MB, docs/04 §4.10) + thumbnail builder via
+  // Server Action — default 1 MB terlalu kecil.
+  // pdfkit (receipt invoice) memakai require AFM font + fs di runtime Node —
+  // jangan di-bundle webpack. @node-rs/argon2 memuat binary .node native —
+  // jangan di-bundle agar Vercel resolve optionalDependency linux-x64 dengan benar.
+  serverExternalPackages: ["pdfkit", "@node-rs/argon2"],
+  // pdfkit membaca file AFM/ICC dari disk via fs.readFileSync relatif ke modul;
+  // Vercel file-tracing tidak otomatis menyalin node_modules/pdfkit/js/data/**
+  // → receipt 500 di production. Include eksplisit ke route receipt.
+  outputFileTracingIncludes: {
+    "/dashboard/subscription/invoice/[id]/receipt": [
+      "./node_modules/pdfkit/js/data/**/*",
+    ],
+  },
+  experimental: {
+    serverActions: {
+      // Fase 3: batas 8 MB ini MENAHAN upload server-action yang cap-nya lebih
+      // besar (VIDEO_MAX_BYTES=15 MB, PHOTO_MAX_BYTES=10 MB) — validasi ukuran
+      // tidak dihapus, tetapi request >8 MB ditolak Next SEBELUM action jalan.
+      // Foto finalize lewat API route (request.formData), bukan server action,
+      // jadi tidak terkena batas ini. Direct-to-R2 upload tetap Phase berikutnya
+      // bila video >8 MB via server action harus didukung (lihat docs/09 §9.6).
+      bodySizeLimit: "8mb",
+    },
+  },
+  // next/image whitelist untuk asset publik Supabase Storage (docs/09 §9).
+  // Signed URL/publik keluar dari `<project>.supabase.co/storage/v1/object/...`;
+  // wildcard '*.supabase.co' cover semua region. Bila di-self-host di
+  // subdomain custom, tambahkan pattern lain lewat env (mis. STORAGE_HOST).
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "*.supabase.co",
+        pathname: "/storage/v1/object/**",
+      },
+      {
+        protocol: "https",
+        hostname: "*.supabase.in",
+        pathname: "/storage/v1/object/**",
+      },
+      // R2 presigned GET (Fase 4 dual-storage read). `getSignedUrl` meng-hasilkan
+      // host S3 API: path-style `<accountId>.r2.cloudflarestorage.com/<bucket>/<key>`
+      // (forcePathStyle:true di `lib/r2/config.ts`) atau virtual-hosted
+      // `<bucket>.<accountId>.r2.cloudflarestorage.com`. Host TIDAK di-hardcode —
+      // account id dinamis dari env — jadi `**.` menutup base domain + semua
+      // kedalaman subdomain (kedua bentuk). TIDAK memakai `.r2.dev`/custom domain
+      // (itu hanya untuk bucket PUBLIK; object tetap private via signed URL).
+      {
+        protocol: "https",
+        hostname: "**.r2.cloudflarestorage.com",
+      },
+    ],
+  },
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: securityHeaders,
+      },
+    ];
+  },
+};
+
+export default nextConfig;

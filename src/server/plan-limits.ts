@@ -1,0 +1,81 @@
+/**
+ * Plan limits aktif business — docs/02 §2.3, docs/12 Phase 3.
+ * Enforcement server-side di setiap endpoint pembuatan resource.
+ */
+
+import "server-only";
+import { createServerClient } from "@/lib/supabase/server";
+import { effectiveSessions, isSubscriptionEffective } from "@/lib/subscription-math";
+import { DEFAULT_PLAN_LIMITS, type PlanLimits } from "@/lib/plan-limits";
+
+/** Limit plan dari subscription aktif terbaru (trial/active/past_due) + add-on sesi (docs/02 §2.9). */
+export async function getPlanLimits(businessId: string): Promise<PlanLimits> {
+  const supabase = createServerClient();
+  const { data } = await supabase
+    .from("subscriptions")
+    .select(
+      "id, status, trial_ends_at, current_period_end, plans ( max_outlets, max_photoboxes, max_concurrent_sessions, max_staff )"
+    )
+    .eq("business_id", businessId)
+    .in("status", ["trial", "active", "past_due"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const row = data as {
+    id: string;
+    status: string;
+    trial_ends_at: string | null;
+    current_period_end: string | null;
+    plans:
+      | {
+          max_outlets: number;
+          max_photoboxes: number;
+          max_concurrent_sessions: number;
+          max_staff: number;
+        }
+      | {
+          max_outlets: number;
+          max_photoboxes: number;
+          max_concurrent_sessions: number;
+          max_staff: number;
+        }[]
+      | null;
+  } | null;
+
+  // Date check: status string saja tidak cukup (AGENTS.md §Resolusi Konflik).
+  if (!row || !isSubscriptionEffective(row.status, row.trial_ends_at, row.current_period_end)) {
+    return DEFAULT_PLAN_LIMITS;
+  }
+
+  const plan = row.plans;
+  if (!plan || Array.isArray(plan)) return DEFAULT_PLAN_LIMITS;
+
+  let sessions = (plan.max_concurrent_sessions as number) ?? DEFAULT_PLAN_LIMITS.max_concurrent_sessions;
+  if (row.id) {
+    const { data: addOns } = await supabase
+      .from("subscription_add_ons")
+      .select("quantity, add_ons!inner(code, unit)")
+      .eq("subscription_id", row.id)
+      .eq("status", "active");
+    sessions = effectiveSessions(
+      sessions,
+      ((addOns ?? []) as unknown as {
+        quantity: number;
+        add_ons: { code: string; unit: string } | { code: string; unit: string }[];
+      }[])
+        .filter((a) => {
+          const addOn = Array.isArray(a.add_ons) ? a.add_ons[0] : a.add_ons;
+          return addOn?.code === "extra_session";
+        })
+        .map((a) => a.quantity)
+    );
+  }
+
+  return {
+    max_outlets: (plan.max_outlets as number) ?? DEFAULT_PLAN_LIMITS.max_outlets,
+    max_photoboxes: (plan.max_photoboxes as number) ?? DEFAULT_PLAN_LIMITS.max_photoboxes,
+    max_concurrent_sessions: sessions,
+    max_staff: (plan.max_staff as number) ?? DEFAULT_PLAN_LIMITS.max_staff,
+  };
+}

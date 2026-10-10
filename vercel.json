@@ -1,0 +1,29 @@
+{
+  "regions": ["sin1"],
+  "functions": {
+    "src/app/api/webhooks/**": {
+      "maxDuration": 30
+    },
+    "src/app/api/cron/**": {
+      "maxDuration": 60
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/retention",
+      "schedule": "0 20 * * *"
+    },
+    {
+      "path": "/api/cron/subscription-lifecycle",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/subscription-expiry-reminder",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/payment-recovery",
+      "schedule": "0 21 * * *"
+    }
+  ]
+}

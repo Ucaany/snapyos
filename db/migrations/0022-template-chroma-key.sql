@@ -1,0 +1,2 @@
+-- Template chroma-key output is stored as a transparent PNG in existing asset storage.
+-- Booth-level enablement lives in photoboxes.camera_settings JSONB; no new column needed.

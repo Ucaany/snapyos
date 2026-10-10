@@ -1,0 +1,127 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "../styles/tokens.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* SnapyOS uses a single aesthetic: Neo-Brutalism (tokens.css). The former
+   `.efferd-scope` (shadcn-neutral) and `.docs-scope` overrides were removed
+   (2026-10-07) — marketing/auth/docs now inherit the brutalist tokens. */
+
+/* CTA vertical marquee keyframes (not in tw-animate-css or tokens.css) */
+@keyframes marquee-vertical {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-50%);
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@theme inline {
+  --animate-marquee-vertical: marquee-vertical 30s linear infinite;
+  --animate-fade-in-up: fade-in-up 0.8s ease-out both;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    @apply font-sans;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-bg text-ink;
+  }
+  ::selection {
+    background: var(--color-accent);
+    color: var(--color-ink);
+  }
+}
+
+/* Global grain — fixed, pointer-events-none (never on scrolling containers) */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 120px 120px;
+}
+
+
+/* Print layout — docs/05 §5.15 (Chrome kiosk --kiosk-printing auto-print)
+   Fix: parent container must be display:block in print (was hidden=display:none
+   which prevented children from rendering even with visibility:visible).
+   Fix 2: sheets MUST stay in normal flow (position:absolute stacked ALL sheets
+   at 0,0 → overlap). Satu .print-sheet = satu halaman; break PER SHEET, bukan
+   per foto (fotostrip = N foto dalam satu lembar, docs/05 §5.15.3). */
+@media print {
+  /* Fallback FE default — hanya untuk jalur tanpa PrintLayoutRenderer.
+     PrintLayoutRenderer meng-override @page (size + margin) via style#snapyos-print-css
+     dan menyetel ulang --print-margin dari nilai yang sama (PRINT_DEFAULT_MARGIN_MM).
+     Default 8mm di sini harus tetap sinkron dengan konstanta itu. */
+  @page {
+    margin: 8mm;
+  }
+  /* Margin aktif cetak, diset oleh renderer; fallback 8mm. */
+  :root {
+    --print-margin: 8mm;
+  }
+  body:has(.print-sheet) *,
+  body:has(.print-root) * {
+    visibility: hidden;
+  }
+  .print-sheet,
+  .print-sheet *,
+  .print-root,
+  .print-root * {
+    visibility: visible;
+  }
+  .print-sheet {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .print-sheet + .print-sheet {
+    page-break-before: always;
+    break-before: page;
+  }
+  .print-photo {
+    width: 100%;
+    height: auto;
+    max-width: 100%;
+    /* Fit satu halaman: @page margin × 2. Tanpa ini, composite portrait
+       (cth. 2:3) meluber ke halaman berikutnya. Ikut --print-margin milik
+       renderer (fallback 8mm), bukan angka hardcoded. */
+    max-height: calc(100vh - (2 * var(--print-margin, 8mm)));
+    object-fit: contain;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

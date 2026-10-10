@@ -1,0 +1,160 @@
+/*
+ * SnapyOS — Neo-Brutalism design tokens (single source of truth).
+ * Ref: docs/11-design-system.md §11.3 + §11.11, docs/13-skill-anti-slop.md §13.4.
+ * Palette: Swiss Industrial Print (light) — off-white paper, carbon ink, one accent.
+ * Radius 0 (max 4px), hard offset shadows (no blur), no gradients, no glassmorphism.
+ */
+
+:root {
+  /* --- SnapyOS palette (§11.3) --- */
+  --color-bg: #fffdf5; /* off-white kertas (bukan pure white) */
+  --color-surface: #ffffff; /* kartu / container */
+  --color-ink: #111111; /* teks utama + border tebal (bukan #000) */
+  --color-accent: #ffd400; /* accent dominan (default) — CTA / active / highlight */
+  --color-accent-2: #ff5c8a; /* pink — accent alternatif */
+  --color-accent-3: #38d9a9; /* hijau — accent alternatif */
+  --color-accent-4: #4d6bff; /* biru — accent alternatif */
+  --color-accent-3-strong: #0b6b4f; /* hijau gelap — teks status berhasil di surface (6.5:1 AA) */
+
+  /* --- slot palette (TemplateBuilder sample colors — token-ized) --- */
+  --color-slot-1: #ffd400; /* kuning — mirror accent */
+  --color-slot-2: #38d9a9; /* hijau */
+  --color-slot-3: #ff5c8a; /* pink */
+  --color-slot-4: #4d6bff; /* biru */
+  --color-slot-5: #ff8a3d; /* oranye */
+  --color-slot-6: #9b8cff; /* ungu muda */
+  --color-slot-7: #5ce1e6; /* cyan */
+  --color-slot-8: #f28ca6; /* merah muda */
+
+  /* --- shadcn/ui semantic bridge → SnapyOS (single aesthetic, no dark mode) --- */
+  --background: var(--color-bg);
+  --foreground: var(--color-ink);
+  --card: var(--color-surface);
+  --card-foreground: var(--color-ink);
+  --popover: var(--color-surface);
+  --popover-foreground: var(--color-ink);
+  --primary: var(--color-accent);
+  --primary-foreground: var(--color-ink);
+  --secondary: var(--color-surface);
+  --secondary-foreground: var(--color-ink);
+  --muted: #f4f4f0;
+  --muted-foreground: #555555;
+  --accent: var(--color-accent);
+  --accent-foreground: var(--color-ink);
+  --destructive: #ff2a2a; /* hazard red — destructive only */
+  --destructive-foreground: #111111; /* ink — 5:1 di atas hazard red (white hanya 3.7:1) */
+  --border: var(--color-ink);
+  --input: var(--color-ink);
+  --ring: var(--color-ink);
+  --chart-1: #ffd400;
+  --chart-2: #ff5c8a;
+  --chart-3: #38d9a9;
+  --chart-4: #4d6bff;
+  --chart-5: #111111;
+  --sidebar: var(--color-bg);
+  --sidebar-foreground: var(--color-ink);
+  --sidebar-primary: var(--color-accent);
+  --sidebar-primary-foreground: var(--color-ink);
+  --sidebar-accent: var(--color-accent);
+  --sidebar-accent-foreground: var(--color-ink);
+  --sidebar-border: var(--color-ink);
+  --sidebar-ring: var(--color-ink);
+
+  /* --- radius: 0 default (maks 4px untuk elemen tertentu) --- */
+  --radius: 0px;
+
+  /* --- hard offset shadows (no blur) --- */
+  --shadow-hard: 4px 4px 0 0 #111111;
+  --shadow-hard-sm: 2px 2px 0 0 #111111;
+
+  /* --- easing: kurva massa utk interaksi press (bukan ease default) --- */
+  --ease-snap: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* --- motion (interaksi saja, bukan estetika): kurva spring "drop-stamp"
+     untuk transisi transform/opacity; tanpa linear/ease-in-out generic --- */
+  --ease-brutal: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* --- fonts (di-inject via next/font di layout.tsx) --- */
+  --font-display: var(--font-archivo-black), "Archivo Black", sans-serif;
+  --font-body: var(--font-plex-sans), "IBM Plex Sans", sans-serif;
+  --font-mono: var(--font-space-mono), "Space Mono", monospace;
+}
+
+@theme inline {
+  /* SnapyOS palette utilities: bg-bg, bg-surface, text-ink, bg-accent, ... */
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-ink: var(--color-ink);
+  --color-accent: var(--color-accent);
+  --color-accent-2: var(--color-accent-2);
+  --color-accent-3: var(--color-accent-3);
+  --color-accent-4: var(--color-accent-4);
+  --color-accent-3-strong: var(--color-accent-3-strong);
+
+  /* shadcn semantic color utilities: bg-background, text-foreground, bg-primary, ... */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-slot-1: var(--color-slot-1);
+  --color-slot-2: var(--color-slot-2);
+  --color-slot-3: var(--color-slot-3);
+  --color-slot-4: var(--color-slot-4);
+  --color-slot-5: var(--color-slot-5);
+  --color-slot-6: var(--color-slot-6);
+  --color-slot-7: var(--color-slot-7);
+  --color-slot-8: var(--color-slot-8);
+
+  /* radius scale (all derive from --radius = 0) */
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* hard shadows: shadow-hard, shadow-hard-sm */
+  --shadow-hard: var(--shadow-hard);
+  --shadow-hard-sm: var(--shadow-hard-sm);
+
+  /* easing: ease-snap */
+  --ease-snap: var(--ease-snap);
+
+  /* motion: ease-brutal (utility: ease-[var(--ease-brutal)]) */
+  --ease-brutal: var(--ease-brutal);
+
+  /* fonts: font-display, font-sans (body), font-mono */
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+  --font-heading: var(--font-display);
+  --font-mono: var(--font-mono);
+}

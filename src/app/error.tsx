@@ -1,0 +1,45 @@
+"use client";
+
+import Link from "next/link";
+
+export default function GlobalError({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  return (
+    <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-6 bg-bg p-6 text-center">
+      <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
+        {"/// SISTEM BERHENTI"}
+      </p>
+      <h1 className="font-display text-4xl uppercase tracking-tight">
+        Terjadi Kesalahan
+      </h1>
+      <p className="max-w-[50ch] font-mono text-sm leading-relaxed text-muted-foreground">
+        {error.message || "Ada yang tidak beres di sisi server. Coba muat ulang."}
+      </p>
+      {error.digest && (
+        <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+          REF {error.digest}
+        </p>
+      )}
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={reset}
+          className="border-2 border-ink bg-accent px-6 py-3 font-mono text-sm font-bold uppercase tracking-[0.08em] shadow-[4px_4px_0_0_#111111] transition-transform active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
+        >
+          Muat Ulang
+        </button>
+        <Link
+          href="/"
+          className="border-2 border-ink bg-surface px-6 py-3 font-mono text-sm font-bold uppercase tracking-[0.08em] shadow-[4px_4px_0_0_#111111] transition-transform active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
+        >
+          Ke Beranda
+        </Link>
+      </div>
+    </div>
+  );
+}

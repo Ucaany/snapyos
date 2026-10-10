@@ -1,0 +1,602 @@
+"use client";
+
+import { memo, useEffect, useRef, useState } from "react";
+import { Check, Plus, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { defaultBrandColors, slotColors } from "@/lib/brand-defaults";
+import {
+  FILTER_PRESETS,
+  type CapturePhoto,
+  type FinalPhoto,
+  type KioskOverlay,
+  type KioskVisualStyle,
+  type PhotoEdit,
+} from "@/lib/kiosk-types";
+import type { TemplateLayout } from "@/lib/template-layout";
+import { composeFrame } from "@/lib/compose-frame";
+import { canvasToBlob, defaultEdit, drawPhoto, renderPhotoBlob } from "@/components/kiosk/photo-render";
+import { StickerPicker } from "@/components/kiosk/StickerPicker";
+
+const TEXT_COLORS = [
+  defaultBrandColors.ink,
+  "white",
+  defaultBrandColors.accent,
+  slotColors[2],
+  slotColors[1],
+  slotColors[3],
+] as const;
+const POSITIONS = [
+  { id: "top", label: "Atas", y: 0.25 },
+  { id: "center", label: "Tengah", y: 0.5 },
+  { id: "bottom", label: "Bawah", y: 0.75 },
+];
+
+type Props = {
+  photos: CapturePhoto[];
+  finishing: boolean;
+  onFinish: (finalPhotos: FinalPhoto[]) => void;
+  /** Layout slot template terpilih — null = tanpa frame/tanpa slot (docs/15 §5.9). */
+  layout?: TemplateLayout | null;
+  frameUrl?: string | null;
+  /** Teks kustom owner (Branding & Kiosk) — kosong = default. */
+  titleText?: string;
+  hintText?: string;
+  /** Gaya visual kustom per layar — chrome header/panel mengikuti. */
+  kioskStyle?: KioskVisualStyle;
+  /** Izinkan customer zoom/pan foto (default true). */
+  allowZoomPan?: boolean;
+  finishRequested?: boolean;
+};
+
+let idSeq = 0;
+function nextId(): string {
+  idSeq += 1;
+  return `ov-${Date.now()}-${idSeq}`;
+}
+
+/** Signature nilai edit yang memengaruhi render (bukan identitas objek). */
+function editSignature(e: PhotoEdit): string {
+  const a = e.adjust;
+  const ov = e.overlays
+    .map((o) => `${o.id}:${o.kind}:${o.content}:${o.color}:${o.size}:${o.x}:${o.y}:${o.rotation}`)
+    .join("|");
+  return `${a.filter};${a.rotation};${a.zoom};${a.panX};${a.panY};${ov}`;
+}
+
+/** Photo Editor — docs/05 §5.9–5.11 (filter, zoom/pan, adjust, teks & stiker dasar). */
+function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = null, titleText, hintText, kioskStyle, allowZoomPan = true, finishRequested = false }: Props) {
+  const [edits, setEdits] = useState<PhotoEdit[]>(() => photos.map(() => defaultEdit()));
+  const [active, setActive] = useState(0);
+  // Filter GLOBAL — satu pilihan berlaku untuk seluruh foto (docs/05 §5.9).
+  const [filterId, setFilterId] = useState("original");
+  const [text, setText] = useState("");
+  const [selectedOverlay, setSelectedOverlay] = useState<string | null>(null);
+  const [finishError, setFinishError] = useState<string | null>(null);
+
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imgsRef = useRef<(HTMLImageElement | null)[]>([]);
+  const frameRef = useRef<HTMLImageElement | null>(null);
+  const [imgVersion, setImgVersion] = useState(0);
+  const [frameVersion, setFrameVersion] = useState(0);
+  const [frameError, setFrameError] = useState(false);
+  const dragging = useRef(false);
+  const lastPointer = useRef<{ x: number; y: number } | null>(null);
+  const autoFinished = useRef(false);
+  // Batch pan pointer: akumulasi delta di ref, flush SATU setState per frame
+  // (rAF) — bukan 2 patchAdjust per pointermove seperti sebelumnya.
+  const panAccum = useRef<{ x: number; y: number } | null>(null);
+  const panRaf = useRef<number | null>(null);
+  // Cache canvas offscreen per-slot: recomposite HANYA slot yang editnya
+  // berubah (drag slot aktif tak me-render ulang slot lain tiap frame).
+  const slotCacheRef = useRef<{ sig: string; canvas: HTMLCanvasElement }[]>([]);
+
+  const edit = edits[active] ?? defaultEdit();
+
+  /** Filter GLOBAL diterapkan ke semua foto — satu pilihan menimpa `adjust.filter`. */
+  function filteredEdit(e: PhotoEdit): PhotoEdit {
+    return { ...e, adjust: { ...e.adjust, filter: filterId } };
+  }
+
+  // load semua foto sekali (mode composite butuh semua slot terisi)
+  useEffect(() => {
+    let cancelled = false;
+    slotCacheRef.current = [];
+    const urls = photos.map((p) => URL.createObjectURL(p.blob));
+    imgsRef.current = photos.map(() => null);
+    void Promise.all(
+      urls.map(
+        (url, i) =>
+          new Promise<void>((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+              if (!cancelled) imgsRef.current[i] = img;
+              resolve();
+            };
+            img.onerror = () => resolve();
+            img.src = url;
+          })
+      )
+    ).then(() => {
+      if (!cancelled) setImgVersion((v) => v + 1);
+    });
+    return () => {
+      cancelled = true;
+      urls.forEach((u) => URL.revokeObjectURL(u));
+      if (panRaf.current !== null) cancelAnimationFrame(panRaf.current);
+    };
+  }, [photos]);
+
+  // load frame PNG (signed URL). crossOrigin WAJIB: tanpa ini canvas jadi
+  // tainted (gambar cross-origin) → toDataURL di finish() melempar
+  // SecurityError dan hasil cetak/foto final tidak pernah dihasilkan.
+  useEffect(() => {
+    if (!frameUrl) {
+      frameRef.current = null;
+      return;
+    }
+    let cancelled = false;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      if (!cancelled) {
+        setFrameError(false);
+        frameRef.current = img;
+        setFrameVersion((v) => v + 1);
+      }
+    };
+    img.onerror = () => {
+      if (!cancelled) setFrameError(true);
+    };
+    img.src = frameUrl;
+    return () => {
+      cancelled = true;
+    };
+  }, [frameUrl]);
+
+  /** Render per-foto untuk mode slot: filter/rotasi/overlay tetap jalan,
+   *  zoom/pan dialihkan ke transform slot (docs/15 §5.9). */
+  function slotBaseEdit(e: PhotoEdit): PhotoEdit {
+    return { ...e, adjust: { ...e.adjust, zoom: 1, panX: 0, panY: 0 } };
+  }
+
+  function renderSlotOffscreens(maxW: number): (HTMLCanvasElement | null)[] {
+    const cache = slotCacheRef.current;
+    return photos.map((_, i) => {
+      const img = imgsRef.current[i];
+      if (!img) return null;
+      const base = slotBaseEdit(filteredEdit(edits[i] ?? defaultEdit()));
+      // Signature: recomposite hanya bila edit/img/lebar berubah. Drag slot
+      // aktif → hanya slot itu invalid; slot lain dipakai ulang dari cache.
+      const sig = `${imgVersion}:${maxW}:${editSignature(base)}`;
+      const cached = cache[i];
+      if (cached && cached.sig === sig) return cached.canvas;
+      const off = document.createElement("canvas");
+      drawPhoto(off, img, base, maxW);
+      cache[i] = { sig, canvas: off };
+      return off;
+    });
+  }
+
+  // redraw preview when image or edits change
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    if (layout) {
+      composeFrame(
+        canvas,
+        layout,
+        frameRef.current,
+        renderSlotOffscreens(640),
+        edits.map((e) => ({ zoom: e.adjust.zoom, panX: e.adjust.panX, panY: e.adjust.panY })),
+        720
+      );
+      // highlight slot aktif (petunjuk zoom/pan berlaku per slot)
+      const ctx = canvas.getContext("2d");
+      const slots = [...layout.slots].sort((a, b) => a.z - b.z);
+      const slot = slots[active];
+      if (ctx && slot) {
+        const s = canvas.width / layout.canvas.width;
+        ctx.save();
+        ctx.translate((slot.x + slot.width / 2) * s, (slot.y + slot.height / 2) * s);
+        ctx.rotate((slot.rotation * Math.PI) / 180);
+        ctx.translate(-(slot.x + slot.width / 2) * s, -(slot.y + slot.height / 2) * s);
+        ctx.strokeStyle = defaultBrandColors.destructive;
+        ctx.lineWidth = 3;
+        ctx.setLineDash([12, 8]);
+        ctx.strokeRect(slot.x * s, slot.y * s, slot.width * s, slot.height * s);
+        ctx.restore();
+      }
+      return;
+    }
+    const img = imgsRef.current[active];
+    if (img) drawPhoto(canvas, img, filteredEdit(edit));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imgVersion, frameVersion, edit, edits, active, layout, filterId]);
+
+  function patchEdit(patch: (e: PhotoEdit) => PhotoEdit) {
+    setEdits((prev) => prev.map((e, i) => (i === active ? patch(e) : e)));
+  }
+
+  function patchAdjust<K extends keyof PhotoEdit["adjust"]>(
+    key: K,
+    value: PhotoEdit["adjust"][K]
+  ) {
+    patchEdit((e) => ({ ...e, adjust: { ...e.adjust, [key]: value } }));
+  }
+
+  function patchOverlay(id: string, patch: Partial<KioskOverlay>) {
+    patchEdit((e) => ({
+      ...e,
+      overlays: e.overlays.map((o) => (o.id === id ? { ...o, ...patch } : o)),
+    }));
+  }
+
+  function addOverlay(kind: "text" | "sticker", content: string, color = defaultBrandColors.ink) {
+    const overlay: KioskOverlay = {
+      id: nextId(),
+      kind,
+      content,
+      color,
+      size: kind === "text" ? 0.08 : 0.2,
+      x: 0.5,
+      y: 0.5,
+      rotation: 0,
+    };
+    patchEdit((e) => ({ ...e, overlays: [...e.overlays, overlay] }));
+    setSelectedOverlay(overlay.id);
+    setText("");
+  }
+
+  function removeOverlay(id: string) {
+    patchEdit((e) => ({ ...e, overlays: e.overlays.filter((o) => o.id !== id) }));
+    setSelectedOverlay(null);
+  }
+
+  /** Terapkan akumulasi pan sekali (satu setState, panX+panY bersamaan). */
+  function flushPan() {
+    panRaf.current = null;
+    const acc = panAccum.current;
+    const canvas = canvasRef.current;
+    if (!acc || !canvas) return;
+    panAccum.current = null;
+    if (layout) {
+      const factor = layout.canvas.width / canvas.width;
+      patchEdit((e) => ({
+        ...e,
+        adjust: { ...e.adjust, panX: e.adjust.panX + acc.x * factor, panY: e.adjust.panY + acc.y * factor },
+      }));
+      return;
+    }
+    const img = imgsRef.current[active];
+    if (!img) return;
+    const scaleX = (img.naturalWidth || 1) / canvas.width;
+    const scaleY = (img.naturalHeight || 1) / canvas.height;
+    patchEdit((e) => ({
+      ...e,
+      adjust: { ...e.adjust, panX: e.adjust.panX + acc.x * scaleX, panY: e.adjust.panY + acc.y * scaleY },
+    }));
+  }
+
+  function onPointerDown(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (!allowZoomPan || edit.adjust.zoom <= 1.01) return;
+    dragging.current = true;
+    lastPointer.current = { x: e.clientX, y: e.clientY };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+
+  function onPointerMove(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (!dragging.current || !allowZoomPan) return;
+    const previous = lastPointer.current;
+    if (!previous) return;
+    // Akumulasi delta; satu flush per frame (rAF), bukan per pointermove.
+    const dx = e.clientX - previous.x;
+    const dy = e.clientY - previous.y;
+    lastPointer.current = { x: e.clientX, y: e.clientY };
+    const acc = panAccum.current ?? { x: 0, y: 0 };
+    acc.x += dx;
+    acc.y += dy;
+    panAccum.current = acc;
+    if (panRaf.current === null) panRaf.current = requestAnimationFrame(flushPan);
+  }
+
+  function onPointerUp(e: React.PointerEvent<HTMLCanvasElement>) {
+    dragging.current = false;
+    lastPointer.current = null;
+    if (panRaf.current !== null) {
+      cancelAnimationFrame(panRaf.current);
+      panRaf.current = null;
+    }
+    // Flush sisa delta agar posisi akhir tak hilang saat pointer lepas.
+    if (panAccum.current) flushPan();
+    e.currentTarget.releasePointerCapture(e.pointerId);
+  }
+
+  async function finish() {
+    try {
+      if (frameUrl && (frameError || !frameRef.current)) {
+        setFinishError("Frame gagal dimuat. Periksa koneksi lalu coba lagi.");
+        return;
+      }
+      if (layout) {
+        // Satu composite resolusi penuh via engine yang sama dengan preview
+        // (docs/15 §15.4 — hasil identik builder/kiosk/print).
+        const canvas = document.createElement("canvas");
+        composeFrame(
+          canvas,
+          layout,
+          frameRef.current,
+          renderSlotOffscreens(Number.POSITIVE_INFINITY),
+          edits.map((e) => ({ zoom: e.adjust.zoom, panX: e.adjust.panX, panY: e.adjust.panY })),
+          Number.POSITIVE_INFINITY
+        );
+        onFinish([{ blob: await canvasToBlob(canvas) }]);
+        return;
+      }
+      const results: FinalPhoto[] = [];
+      for (let i = 0; i < photos.length; i++) {
+        const blob = await renderPhotoBlob(photos[i]!.blob, filteredEdit(edits[i] ?? defaultEdit()));
+        results.push({ blob });
+      }
+      onFinish(results);
+    } catch {
+      // toDataURL bisa gagal (canvas tainted/gambar gagal load) — jangan biarkan
+      // kiosk stuck diam tanpa pesan.
+      setFinishError("Gagal menyimpan hasil. Coba lagi atau hubungi petugas.");
+    }
+  }
+
+  useEffect(() => {
+    if (!finishRequested || autoFinished.current || imgsRef.current.some((img) => !img)) return;
+    if (frameUrl && !frameRef.current) return;
+    autoFinished.current = true;
+    void finish();
+    // finish hanya dipicu sekali setelah seluruh asset siap.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finishRequested, imgVersion, frameVersion, frameUrl]);
+
+  const sliderClass =
+    "h-2 w-full cursor-pointer appearance-none rounded-none border border-ink bg-bg accent-ink";
+
+  return (
+    <div
+      className="flex min-h-[100dvh] flex-1 flex-col overflow-y-auto bg-bg lg:overflow-hidden"
+      style={kioskStyle ? { backgroundColor: kioskStyle.bg } : undefined}
+    >
+      <header
+        className={`flex shrink-0 flex-wrap items-center justify-between gap-3 border-b-2 border-ink px-4 py-3 md:px-6 ${
+          kioskStyle?.align === "left"
+            ? ""
+            : kioskStyle?.align === "right"
+              ? "text-right"
+              : "flex-col text-center"
+        }`}
+        style={
+          kioskStyle
+            ? { backgroundColor: `color-mix(in srgb, ${kioskStyle.text} 8%, ${kioskStyle.bg})`, color: kioskStyle.text }
+            : undefined
+        }
+      >
+        <div
+          className={`flex flex-col gap-1 ${
+            kioskStyle?.align === "left"
+              ? "items-start"
+              : kioskStyle?.align === "right"
+                ? "items-end"
+                : "items-center"
+          }`}
+        >
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+            {"/// LANGKAH 03: EDIT FOTO"}
+          </p>
+          <h1
+            className="font-display text-xl uppercase leading-none tracking-tight md:text-2xl"
+            style={kioskStyle ? { fontSize: `${1.5 * kioskStyle.fontScale}rem`, fontFamily: kioskStyle.fontFamily } : undefined}
+          >
+            {titleText || "Edit foto"}
+          </h1>
+          {hintText && (
+            <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">{hintText}</p>
+          )}
+        </div>
+        {photos.length > 1 && (
+          <div className="flex gap-2">
+            {photos.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setActive(i)}
+                className={`h-11 w-11 border-2 border-ink font-mono text-xs font-bold md:h-11 md:w-11 md:text-sm ${
+                  i === active ? "bg-accent" : "bg-surface"
+                }`}
+                aria-label={`Foto ${i + 1}`}
+              >
+                {i + 1}
+              </button>
+            ))}
+          </div>
+        )}
+      </header>
+
+      <div className="grid min-h-[calc(100dvh-6rem)] flex-1 grid-cols-1 gap-4 p-4 md:grid-cols-[1fr_340px] md:gap-6 md:p-6 lg:overflow-hidden">
+        <div className="relative flex items-center justify-center overflow-hidden">
+          <canvas
+            ref={canvasRef}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            className="relative max-h-full max-w-full border-2 border-ink bg-ink shadow-[4px_4px_0_0_#111111]"
+            style={{ cursor: edit.adjust.zoom > 1.01 ? "grab" : "default", touchAction: "none" }}
+          />
+        </div>
+
+        <div className="flex flex-col gap-4 overflow-y-auto pr-1">
+          {/* Filters — GLOBAL: satu pilihan berlaku untuk semua foto */}
+          <div className="flex flex-col gap-2">
+            <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]" style={{ color: kioskStyle ? kioskStyle.text : undefined }}>Filter</p>
+            <div className="grid grid-cols-4 gap-2">
+              {FILTER_PRESETS.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setFilterId(f.id)}
+                  aria-pressed={filterId === f.id}
+                  className={`border-2 border-ink px-2 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.05em] ${
+                    filterId === f.id ? "bg-accent" : "bg-surface"
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Rotasi (tetap per foto) + zoom via drag/pinch di canvas */}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[10px] uppercase tracking-[0.1em]" style={{ color: kioskStyle ? kioskStyle.text : undefined }}>Putar</span>
+              {[0, 90, 180, 270].map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => patchAdjust("rotation", r)}
+                  className={`h-11 w-11 border-2 border-ink font-mono text-xs font-bold ${
+                    edit.adjust.rotation === r ? "bg-accent" : "bg-surface"
+                  }`}
+                >
+                  {r}°
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Stickers */}
+          <StickerPicker onPick={(char) => addOverlay("sticker", char)} />
+
+          {/* Text */}
+          <div className="flex flex-col gap-2">
+            <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]" style={{ color: kioskStyle ? kioskStyle.text : undefined }}>Teks</p>
+            <div className="flex gap-2">
+              <Input
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Tulis teks…"
+                maxLength={24}
+                className="h-9"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => text.trim() && addOverlay("text", text.trim(), defaultBrandColors.ink)}
+                aria-label="Tambah teks"
+              >
+                <Plus className="size-4" aria-hidden />
+              </Button>
+            </div>
+          </div>
+
+          {/* Selected overlay editor */}
+          {selectedOverlay && (
+            <div className="flex flex-col gap-3 border-2 border-ink bg-surface p-3">
+              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.15em]">
+                {`/// UBAH ${edit.overlays.find((o) => o.id === selectedOverlay)?.kind === "text" ? "TEKS" : "STIKER"}`}
+              </p>
+              {edit.overlays
+                .filter((o) => o.id === selectedOverlay)
+                .map((o) => (
+                  <div key={o.id} className="flex flex-col gap-3">
+                    {o.kind === "text" && (
+                      <div className="flex gap-1">
+                        {TEXT_COLORS.map((c) => (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() => patchOverlay(o.id, { color: c })}
+                            className="h-7 w-7 border-2 border-ink"
+                            style={{ background: c }}
+                            aria-label={`Warna ${c}`}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    <label className="flex flex-col gap-1">
+                      <span className="font-mono text-[10px] uppercase tracking-[0.1em]">
+                        Ukuran — {o.size.toFixed(2)}
+                      </span>
+                      <input
+                        type="range"
+                        min={0.03}
+                        max={0.4}
+                        step={0.01}
+                        value={o.size}
+                        onChange={(e) => patchOverlay(o.id, { size: Number(e.target.value) })}
+                        className={sliderClass}
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="font-mono text-[10px] uppercase tracking-[0.1em]">
+                        Rotasi — {o.rotation}°
+                      </span>
+                      <input
+                        type="range"
+                        min={-180}
+                        max={180}
+                        step={5}
+                        value={o.rotation}
+                        onChange={(e) => patchOverlay(o.id, { rotation: Number(e.target.value) })}
+                        className={sliderClass}
+                      />
+                    </label>
+                    <div className="flex gap-1">
+                      {POSITIONS.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => patchOverlay(o.id, { y: p.y })}
+                          className={`flex-1 border-2 border-ink px-2 py-1 font-mono text-[10px] font-bold uppercase ${
+                            Math.abs(o.y - p.y) < 0.01 ? "bg-accent" : "bg-surface"
+                          }`}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => removeOverlay(o.id)}
+                    >
+                      <Trash2 className="size-4" aria-hidden /> Hapus
+                    </Button>
+                  </div>
+                ))}
+            </div>
+          )}
+
+          {finishError && (
+            <p role="alert" className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink">
+              {finishError}
+            </p>
+          )}
+
+          {frameError && (
+            <Button type="button" variant="outline" onClick={() => window.location.reload()}>
+              Muat ulang frame
+            </Button>
+          )}
+
+          <Button size="lg" onClick={() => { setFinishError(null); void finish(); }} disabled={finishing} className="mt-auto bg-accent" style={kioskStyle ? { borderRadius: kioskStyle.radius } : undefined}>
+            <Check className="size-5" aria-hidden />
+            {finishing ? "Menyimpan…" : "Selesai"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** memo: props stabil dari KioskApp (useCallback) — hindari re-render tiap
+ *  poll config / perubahan state induk yang tak relevan dengan editor. */
+export const Editor = memo(EditorInner);

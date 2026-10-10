@@ -1,0 +1,28 @@
+import type { Metadata } from "next";
+
+import { SubscribeForm } from "@/components/subscribe-form";
+import { getPublicPlans, getPublicAddOns } from "@/server/catalog";
+
+export const metadata: Metadata = { title: "Berlangganan | SnapyOS" };
+
+export default async function SubscribePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ plan?: string; addons?: string }>;
+}) {
+  const params = await searchParams;
+  const [plans, addOns] = await Promise.all([getPublicPlans(), getPublicAddOns()]);
+
+  const planCode = params.plan ?? "";
+  const addOnCodes = (params.addons ?? "").split(",").filter(Boolean);
+
+  const plan = plans.find((p) => p.code === planCode) ?? null;
+  const selectedAddOns = addOns.filter((a) => addOnCodes.includes(a.code));
+  const planRequested = planCode !== "";
+
+  return (
+    <div>
+      <SubscribeForm plan={plan} addOns={selectedAddOns} planRequested={planRequested} />
+    </div>
+  );
+}
