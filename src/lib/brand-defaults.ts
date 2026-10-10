@@ -6,7 +6,7 @@ export const defaultBrandColors = {
   accent: "#ffd400",
   ink: "#111111",
   bg: "#fffdf5",
-  destructive: "#ff2a2a",
+  destructive: "#c81e1e",
   muted: "#eae8e3",
 } as const;
 

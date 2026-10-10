@@ -13,7 +13,7 @@
   --color-accent: #ffd400; /* accent dominan (default) — CTA / active / highlight */
   --color-accent-2: #ff5c8a; /* pink — accent alternatif */
   --color-accent-3: #38d9a9; /* hijau — accent alternatif */
-  --color-accent-4: #4d6bff; /* biru — accent alternatif */
+  --color-accent-4: #3a56e0; /* biru — accent alternatif (4.5:1 di surface utk teks putih) */
   --color-accent-3-strong: #0b6b4f; /* hijau gelap — teks status berhasil di surface (6.5:1 AA) */
 
   /* --- slot palette (TemplateBuilder sample colors — token-ized) --- */
@@ -41,8 +41,8 @@
   --muted-foreground: #555555;
   --accent: var(--color-accent);
   --accent-foreground: var(--color-ink);
-  --destructive: #ff2a2a; /* hazard red — destructive only */
-  --destructive-foreground: #111111; /* ink — 5:1 di atas hazard red (white hanya 3.7:1) */
+  --destructive: #c81e1e; /* hazard red — destructive only (5.6:1 teks di surface) */
+  --destructive-foreground: #ffffff; /* putih — 5.7:1 di atas hazard red */
   --border: var(--color-ink);
   --input: var(--color-ink);
   --ring: var(--color-ink);

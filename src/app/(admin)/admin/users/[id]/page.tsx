@@ -14,26 +14,13 @@ import { formatIDR } from "@/lib/dashboard-math";
 
 const dateFmt = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" });
 
-const TX_STATUS_STYLE: Record<string, string> = {
-  paid: "bg-accent-3 text-ink",
-  pending: "bg-accent text-ink",
-  failed: "bg-accent-2 text-ink",
-  cancelled: "bg-muted text-muted-foreground",
-  refunded: "bg-accent-4 text-ink",
-  expired: "bg-muted text-muted-foreground",
-};
-
 function MoneyCell({ amount, status }: { amount: number; status: string }) {
   return (
     <td className="px-4 py-2 font-mono text-xs tabular-nums">
       {formatIDR(amount)}
-      <span
-        className={`ml-2 inline-flex h-5 items-center border-2 border-ink px-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.08em] ${
-          TX_STATUS_STYLE[status] ?? "bg-muted text-muted-foreground"
-        }`}
-      >
-        {status}
-      </span>
+      {/* Satu sumber warna status: StatusBadge. Map duplikat di sini pernah
+          drift (refunded text-ink di atas accent-4 = 3.2:1, gagal AA). */}
+      <StatusBadge status={status} className="ml-2 h-5 px-1.5 text-[9px] tracking-[0.08em]" />
     </td>
   );
 }
