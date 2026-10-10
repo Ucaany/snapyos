@@ -1,29 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import {
-  Archivo_Black,
-  IBM_Plex_Sans,
-  Manrope,
-  Plus_Jakarta_Sans,
-  Space_Mono,
-} from "next/font/google";
+import { Archivo_Black, IBM_Plex_Sans, Space_Mono } from "next/font/google";
 import "./globals.css";
 import { PwaRegister } from "@/components/PwaRegister";
 
 const archivoBlack = Archivo_Black({
   variable: "--font-archivo-black",
   weight: "400",
-  subsets: ["latin"],
-});
-
-const manrope = Manrope({
-  variable: "--font-manrope",
-  weight: ["400", "500", "600", "700", "800"],
-  subsets: ["latin"],
-});
-
-const jakarta = Plus_Jakarta_Sans({
-  variable: "--font-jakarta",
-  weight: ["400", "500", "600", "700", "800"],
   subsets: ["latin"],
 });
 
@@ -74,7 +56,7 @@ export default function RootLayout({
   return (
     <html
       lang="id"
-      className={`${archivoBlack.variable} ${plexSans.variable} ${spaceMono.variable} ${manrope.variable} ${jakarta.variable} h-full antialiased`}
+      className={`${archivoBlack.variable} ${plexSans.variable} ${spaceMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning><PwaRegister />{children}</body>
     </html>
