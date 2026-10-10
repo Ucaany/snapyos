@@ -139,6 +139,23 @@ function PlanCardBlock({
   );
 }
 
+/**
+ * Copy per unit add-on — `session` menambah perangkat online, `storage`
+ * menambah kuota penyimpanan, `feature` membuka fitur (mis. POS).
+ * Sebelumnya semua kartu menulis copy sesi (salah untuk storage/POS).
+ */
+const ADD_ON_UNIT_COPY: Record<string, { detail: string; cta: string }> = {
+  session: { detail: "+1 perangkat online / unit · atur jumlah di layar konfirmasi", cta: "Tambah sesi" },
+  storage: { detail: "+1 paket storage / unit · atur jumlah di layar konfirmasi", cta: "Tambah storage" },
+  feature: { detail: "Membuka fitur ini · aktif selama berlangganan", cta: "Aktifkan" },
+};
+
+const ADD_ON_COPY_FALLBACK = { detail: "+1 perangkat online / unit · atur jumlah di layar konfirmasi", cta: "Tambah" };
+
+function addOnCopy(unit: string) {
+  return ADD_ON_UNIT_COPY[unit] ?? ADD_ON_COPY_FALLBACK;
+}
+
 function AddOnCardBlock({
   addOn,
   active,
@@ -170,7 +187,7 @@ function AddOnCardBlock({
       </CardHeader>
       <CardContent className="flex flex-1 flex-col gap-3">
         <p className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
-          +1 perangkat online / unit · atur jumlah di layar konfirmasi
+          {addOnCopy(addOn.unit).detail}
         </p>
         <div className="mt-auto flex flex-wrap gap-2">
           {trigger}
@@ -369,7 +386,7 @@ export function SubscriptionPanel({
             Add-ons
           </h2>
           <span className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            {"/// 04. TAMBAH SESI BERSAMAAN"}
+            {"/// 04. ADD-ON: SESI, STORAGE, FITUR"}
           </span>
         </div>
         {addOns.length === 0 ? (
@@ -398,7 +415,7 @@ export function SubscriptionPanel({
                     size="sm"
                     label={
                       <>
-                        <Plus className="size-4" aria-hidden /> Tambah sesi
+                        <Plus className="size-4" aria-hidden /> {addOnCopy(a.unit).cta}
                       </>
                     }
                   />
