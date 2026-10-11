@@ -9,7 +9,7 @@ import { getConsultWhatsApp } from "@/server/consult";
 export async function CallToAction() {
 	const consultNumber = await getConsultWhatsApp();
 	return (
-		<div className="relative mx-auto flex w-full max-w-3xl flex-col justify-between gap-y-4 border-y px-4 py-8">
+		<div className="relative mx-auto flex w-full max-w-3xl flex-col justify-between gap-y-4 overflow-x-clip border-y px-4 py-8">
 			<DecorIcon className="size-4" position="top-left" />
 			<DecorIcon className="size-4" position="top-right" />
 			<DecorIcon className="size-4" position="bottom-left" />
