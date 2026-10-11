@@ -10,6 +10,11 @@ import { formatIDR } from "@/lib/dashboard-math";
 /**
  * Admin - detail user + riwayat (business, invoice, transaksi, payment).
  * docs/10 §10.2. Link masuk dari /admin/users.
+ *
+ * Catatan: `notFound()` di sini mengembalikan HTTP 200 + UI 404 (bukan 404
+ * asli) karena `(admin)/loading.tsx` men-stream shell lebih dulu — perilaku
+ * Next.js terdokumentasi (docs `notFound` §"after streaming has started"),
+ * konsisten di seluruh halaman detail admin.
  */
 
 const dateFmt = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" });

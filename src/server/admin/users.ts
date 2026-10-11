@@ -43,26 +43,57 @@ const ADMIN_USER_COLUMNS = "id, email, email_verified, name, role, status, creat
 // Queries
 // ---------------------------------------------------------------------------
 
+export type AdminUserListResult = {
+  items: AdminUserWithBusiness[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
+/**
+ * True bila error PostgREST menandakan offset melewati jumlah baris
+ * (PGRST103 / HTTP 416 "Requested range not satisfiable"). Ini bukan kegagalan
+ * server — halaman kosong adalah hasil yang benar (mis. deep-link / bookmark).
+ */
+function isRangeNotSatisfiable(error: { code?: string; message?: string }): boolean {
+  if (String(error.code ?? "") === "PGRST103") return true;
+  return /requested range not satisfiable|range not satisfiable/i.test(String(error.message ?? ""));
+}
+
 export async function listUsers(query: {
   search?: string;
   page?: number;
   limit?: number;
-}): Promise<{ items: AdminUserWithBusiness[]; total: number }> {
+}): Promise<AdminUserListResult> {
   await requireAdmin();
   const page = Math.max(1, query.page ?? 1);
   const limit = Math.min(100, Math.max(1, query.limit ?? 20));
 
   const supabase = createServerClient();
+  const searchLike = query.search ? `%${query.search.replace(/[%_]/g, "")}%` : null;
   let req = supabase
     .from("users")
     .select(ADMIN_USER_COLUMNS, { count: "exact" })
     .order("created_at", { ascending: false })
     .range((page - 1) * limit, page * limit - 1);
-  if (query.search) {
-    const like = `%${query.search.replace(/[%_]/g, "")}%`;
-    req = req.or(`email.ilike.${like},name.ilike.${like}`);
+  if (searchLike) {
+    req = req.or(`email.ilike.${searchLike},name.ilike.${searchLike}`);
   }
-  const { data, error, count } = await req;
+  let { data, error, count } = await req;
+
+  // Halaman melampaui jumlah baris → offset tak terjangkau (PGRST103/416).
+  // Kembalikan daftar kosong + total sebenarnya, bukan 500.
+  if (error && isRangeNotSatisfiable(error)) {
+    data = [];
+    error = null;
+    let countReq = supabase.from("users").select("id", { count: "exact", head: true });
+    if (searchLike) {
+      countReq = countReq.or(`email.ilike.${searchLike},name.ilike.${searchLike}`);
+    }
+    const recount = await countReq;
+    count = recount.count ?? 0;
+  }
   if (error) throw new ApiError("INTERNAL", "Gagal memuat users");
 
   // Batch business owner (anti N+1) — satu query untuk seluruh halaman.
@@ -86,7 +117,8 @@ export async function listUsers(query: {
     ...r,
     businesses: businessesByOwner.get(r.id) ?? [],
   }));
-  return { items, total: count ?? 0 };
+  const total = count ?? 0;
+  return { items, total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) };
 }
 
 export async function getUser(userId: string): Promise<AdminUserRow> {
