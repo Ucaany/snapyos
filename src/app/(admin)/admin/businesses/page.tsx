@@ -2,25 +2,29 @@ import Link from "next/link";
 import { AdminActionButton } from "@/components/admin/AdminActionForm";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminPaginator } from "@/components/admin/AdminPaginator";
+import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { updateBusinessAction } from "@/server/admin-actions";
+import { deleteBusinessAction, updateBusinessAction } from "@/server/admin-actions";
 import { listBusinesses } from "@/server/admin";
 
 /**
- * Admin businesses - list + suspend/reactivate (docs/10 §10.2).
- * Business suspended → kiosk tidak bisa checkout/sesi baru (server-side,
- * dicek di resolveActiveDevice - docs/10 §10.5).
+ * Admin businesses - list + filter status + suspend/reactivate + hapus
+ * (docs/10 §10.2). Business suspended → kiosk tidak bisa checkout/sesi baru
+ * (server-side, dicek di resolveActiveDevice - docs/10 §10.5). Hapus menyapu
+ * storage lebih dulu lalu baris DB (CASCADE seluruh data tenant).
  */
 export default async function AdminBusinessesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; page?: string }>;
+  searchParams: Promise<{ search?: string; status?: string; page?: string }>;
 }) {
   const q = await searchParams;
   const page = Math.max(1, Number.parseInt(q.page ?? "1", 10) || 1);
-  const { items, total } = await listBusinesses({ search: q.search, page, limit: 20 });
+  const status =
+    q.status === "active" || q.status === "suspended" ? q.status : undefined;
+  const { items, total } = await listBusinesses({ search: q.search, status, page, limit: 20 });
 
   const dateFmt = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" });
   const totalPages = Math.max(1, Math.ceil(total / 20));
@@ -39,23 +43,51 @@ export default async function AdminBusinessesPage({
             {total} tenant · suspend memblokir sesi & checkout baru
           </p>
         </div>
-        <form method="GET" className="flex items-end gap-2" role="search">
+        <form method="GET" className="flex flex-wrap items-end gap-2" role="search">
           <div className="flex flex-col gap-1">
             <label htmlFor="biz-search" className="font-mono text-[10px] uppercase tracking-[0.12em]">
               Cari nama / slug
             </label>
             <Input id="biz-search" name="search" defaultValue={q.search ?? ""} className="w-56" placeholder="cth. klik-foto" />
           </div>
+          <BrutalistSelect
+            id="biz-status"
+            name="status"
+            label="Status"
+            defaultValue={status ?? ""}
+            options={[
+              { value: "", label: "SEMUA" },
+              { value: "active", label: "AKTIF" },
+              { value: "suspended", label: "SUSPEND" },
+            ]}
+          />
           <Button type="submit" size="sm" variant="secondary">
-            Cari
+            Terapkan
           </Button>
         </form>
       </header>
 
       {items.length === 0 ? (
         <AdminEmptyState heading="/// TIDAK ADA BISNIS">
-          Tidak ada bisnis yang cocok dengan pencarian{" "}
-          <span className="font-mono">{q.search ?? "-"}</span>.
+          {q.search || status ? (
+            <>
+              Tidak ada bisnis yang cocok dengan{" "}
+              {q.search ? (
+                <>
+                  pencarian <span className="font-mono">{q.search}</span>
+                </>
+              ) : null}
+              {q.search && status ? " dan " : null}
+              {status ? (
+                <>
+                  filter status <span className="font-mono">{status}</span>
+                </>
+              ) : null}
+              .
+            </>
+          ) : (
+            "Belum ada bisnis terdaftar di platform."
+          )}
         </AdminEmptyState>
       ) : (
         <div className="overflow-x-auto border-2 border-ink shadow-[4px_4px_0_0_#111111]">
@@ -125,17 +157,26 @@ export default async function AdminBusinessesPage({
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <AdminActionButton
-                      action={updateBusinessAction}
-                      hidden={{ businessId: b.id, status: b.status === "suspended" ? "active" : "suspended" }}
-                      submitLabel={b.status === "suspended" ? "Aktifkan" : "Suspend"}
-                      variant={b.status === "suspended" ? "secondary" : "destructive"}
-                      confirm={
-                        b.status === "suspended"
-                          ? undefined
-                          : "Suspend bisnis ini? Semua kiosk langsung diblokir dari checkout & sesi baru."
-                      }
-                    />
+                    <div className="flex flex-wrap items-start gap-2">
+                      <AdminActionButton
+                        action={updateBusinessAction}
+                        hidden={{ businessId: b.id, status: b.status === "suspended" ? "active" : "suspended" }}
+                        submitLabel={b.status === "suspended" ? "Aktifkan" : "Suspend"}
+                        variant={b.status === "suspended" ? "secondary" : "destructive"}
+                        confirm={
+                          b.status === "suspended"
+                            ? undefined
+                            : "Suspend bisnis ini? Semua kiosk langsung diblokir dari checkout & sesi baru."
+                        }
+                      />
+                      <AdminActionButton
+                        action={deleteBusinessAction}
+                        hidden={{ businessId: b.id }}
+                        submitLabel="Hapus"
+                        variant="destructive"
+                        confirm="Hapus bisnis ini permanen? Seluruh data tenant (outlet, photobox, sesi, transaksi, storage) ikut terhapus dan tidak bisa dikembalikan."
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -148,7 +189,7 @@ export default async function AdminBusinessesPage({
         basePath="/admin/businesses"
         page={page}
         totalPages={totalPages}
-        searchParams={{ search: q.search }}
+        searchParams={{ search: q.search, status }}
       />
     </div>
   );

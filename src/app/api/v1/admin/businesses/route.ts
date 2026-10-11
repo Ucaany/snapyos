@@ -3,13 +3,15 @@ import { listEnvelope } from "@/lib/api-errors";
 import { adminRawRoute, searchParamsToObject } from "@/lib/api-route";
 import { listBusinesses } from "@/server/admin";
 
-/** GET /api/v1/admin/businesses?search=&page=&limit= — docs/08 §8.15, docs/10 §10.2. */
+/** GET /api/v1/admin/businesses?search=&status=&page=&limit= — docs/08 §8.15, docs/10 §10.2. */
 export const GET = adminRawRoute(async ({ request }) => {
   const q = searchParamsToObject(request);
   const page = Number.parseInt(q.page ?? "1", 10);
   const limit = Number.parseInt(q.limit ?? "20", 10);
+  const status = q.status === "active" || q.status === "suspended" ? q.status : undefined;
   const { items, total } = await listBusinesses({
     search: q.search,
+    status,
     page: Number.isFinite(page) ? page : undefined,
     limit: Number.isFinite(limit) ? limit : undefined,
   });

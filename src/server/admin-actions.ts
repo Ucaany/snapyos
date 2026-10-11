@@ -21,6 +21,7 @@ import {
   createTemplateCategory,
   createUser,
   deleteAuditLogs,
+  deleteBusiness,
   deleteTemplateCategory,
   deleteUser,
   dismissFailure,
@@ -91,6 +92,16 @@ export async function updateBusinessAction(_prev: FormState, formData: FormData)
     await updateBusiness(str(formData, "businessId"), {
       status: str(formData, "status") === "suspended" ? "suspended" : "active",
     });
+    refresh("/admin/businesses", "/admin");
+    return {};
+  } catch (error) {
+    return toFormState(error);
+  }
+}
+
+export async function deleteBusinessAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  try {
+    await deleteBusiness(str(formData, "businessId"));
     refresh("/admin/businesses", "/admin");
     return {};
   } catch (error) {

@@ -38,6 +38,7 @@ export type AdminBusinessRow = {
 
 export async function listBusinesses(query: {
   search?: string;
+  status?: "active" | "suspended";
   page?: number;
   limit?: number;
 }): Promise<{ items: AdminBusinessRow[]; total: number }> {
@@ -54,6 +55,9 @@ export async function listBusinesses(query: {
     )
     .order("created_at", { ascending: false })
     .range((page - 1) * limit, page * limit - 1);
+  if (query.status) {
+    req = req.eq("status", query.status);
+  }
   if (query.search) {
     const like = `%${query.search.replace(/[%_]/g, "")}%`;
     req = req.or(`name.ilike.${like},slug.ilike.${like}`);
