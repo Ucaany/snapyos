@@ -39,7 +39,7 @@ function FormError({ error }: { error?: string }) {
   return (
     <div
       role="alert"
-      className="rounded-lg border border-destructive bg-destructive/10 px-3 py-2 text-xs leading-relaxed text-foreground"
+      className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs leading-relaxed text-foreground"
     >
       {error}
     </div>
@@ -118,6 +118,7 @@ export function AuthPage() {
                   id="email"
                   name="email"
                   type="email"
+                  aria-label="Email"
                   placeholder="your.email@example.com"
                   required
                   autoComplete="email"
@@ -139,10 +140,11 @@ export function AuthPage() {
                   <select
                     id="photobox_id"
                     name="photobox_id"
+                    aria-label="Booth"
                     required
                     disabled={pending || loadingBooths}
                     aria-invalid={Boolean(fieldErrors.photobox_id)}
-                    className="h-8 w-full flex-1 appearance-none rounded-lg border-0 bg-transparent px-2.5 py-1 text-base outline-none transition-colors focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                    className="h-8 w-full flex-1 appearance-none rounded-none border-0 bg-transparent px-2.5 py-1 text-base outline-none transition-colors focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                   >
                     <option value="">Pilih booth…</option>
                     {booths.map((booth) => (
@@ -164,6 +166,7 @@ export function AuthPage() {
                     id="pin"
                     name="pin"
                     type="password"
+                    aria-label="PIN booth"
                     inputMode="numeric"
                     autoComplete="current-password"
                     required
@@ -185,6 +188,7 @@ export function AuthPage() {
                     id="password"
                     name="password"
                     type="password"
+                    aria-label="Password"
                     autoComplete="current-password"
                     required
                     placeholder="Password"

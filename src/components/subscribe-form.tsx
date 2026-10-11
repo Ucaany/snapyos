@@ -121,6 +121,7 @@ export function SubscribeForm({
             <div className="space-y-2">
               <Input
                 name="name"
+                aria-label="Nama lengkap"
                 placeholder="Nama lengkap"
                 aria-invalid={Boolean(fieldErrors.name)}
                 className="h-10"
@@ -131,6 +132,7 @@ export function SubscribeForm({
             <div className="space-y-2">
               <Input
                 name="phone"
+                aria-label="Nomor WhatsApp"
                 placeholder="Nomor WhatsApp (+628…)"
                 type="tel"
                 inputMode="tel"
@@ -149,6 +151,7 @@ export function SubscribeForm({
             <div className="space-y-2">
               <Input
                 name="email"
+                aria-label="Email terdaftar"
                 placeholder="Email terdaftar"
                 type="email"
                 autoComplete="email"
@@ -161,6 +164,7 @@ export function SubscribeForm({
             <div className="space-y-2">
               <Input
                 name="location"
+                aria-label="Lokasi atau kota bisnis"
                 placeholder="Lokasi / kota bisnis"
                 aria-invalid={Boolean(fieldErrors.location)}
                 className="h-10"
@@ -171,6 +175,7 @@ export function SubscribeForm({
             <div className="space-y-2">
               <select
                 name="source"
+                aria-label="Darimana Anda tahu SnapyOS"
                 defaultValue=""
                 aria-invalid={Boolean(fieldErrors.source)}
                 className="h-10 w-full rounded-none border-2 border-ink bg-surface px-2.5 text-base outline-none transition-colors focus-visible:border-ink focus-visible:ring-3 focus-visible:ring-ink/30 md:text-sm"
@@ -190,6 +195,7 @@ export function SubscribeForm({
             <div className="space-y-2">
               <Input
                 name="booths"
+                aria-label="Jumlah booth"
                 placeholder="Jumlah booth"
                 type="number"
                 inputMode="numeric"

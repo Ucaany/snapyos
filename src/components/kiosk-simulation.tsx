@@ -211,7 +211,7 @@ export function KioskSimulation() {
                     onClick={() => goTo(i)}
                     disabled={i > stepIdx + 1 || (i < stepIdx && !paid)}
                     className={cn(
-                      "flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors",
+                      "flex w-full items-center gap-3 rounded-none border-2 border-ink px-3 py-2.5 text-left transition-colors",
                       active
                         ? "border-foreground bg-background text-foreground"
                         : done
@@ -222,7 +222,7 @@ export function KioskSimulation() {
                   >
                     <div
                       className={cn(
-                        "flex size-7 shrink-0 items-center justify-center rounded-full",
+                        "flex size-7 shrink-0 items-center justify-center rounded-none border-2 border-ink",
                         active
                           ? "bg-foreground text-background"
                           : done
@@ -252,7 +252,7 @@ export function KioskSimulation() {
                       key={p.id}
                       onClick={() => setSelectedPackage(p.id)}
                       className={cn(
-                        "flex items-center justify-between rounded-lg border px-3 py-2 text-sm transition-colors",
+                        "flex items-center justify-between rounded-none border-2 border-ink px-3 py-2 text-sm transition-colors",
                         selectedPackage === p.id
                           ? "border-foreground bg-foreground text-background"
                           : "border-border bg-background text-foreground hover:bg-muted",
@@ -276,7 +276,7 @@ export function KioskSimulation() {
                 <div className="flex flex-col items-center gap-3 rounded-none border-2 border-ink bg-surface p-4">
                   {!paid ? (
                     <>
-                      <div className="flex size-24 items-center justify-center rounded-lg bg-muted">
+                      <div className="flex size-24 items-center justify-center rounded-none border-2 border-ink bg-muted">
                         <QrCodeIcon className="size-12 text-foreground" />
                       </div>
                       <Button size="sm" onClick={simulatePayment} disabled={paying}>
@@ -312,7 +312,7 @@ export function KioskSimulation() {
                       key={f.id}
                       onClick={() => setSelectedFrame(f.id)}
                       className={cn(
-                        "flex min-h-20 flex-col items-center justify-center gap-2 rounded-lg border px-2 py-2 text-xs font-medium transition-colors",
+                        "flex min-h-20 flex-col items-center justify-center gap-2 rounded-none border-2 border-ink px-2 py-2 text-xs font-medium transition-colors",
                         selectedFrame === f.id
                           ? "border-foreground bg-foreground text-background"
                           : "border-border bg-background text-muted-foreground hover:bg-muted",
@@ -340,7 +340,7 @@ export function KioskSimulation() {
                       key={f.id}
                       onClick={() => setSelectedFilter(f.id)}
                       className={cn(
-                        "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+                        "flex items-center gap-1.5 rounded-none border-2 border-ink px-3 py-1.5 text-xs font-medium transition-colors",
                         selectedFilter === f.id
                           ? "border-foreground bg-foreground text-background"
                           : "border-border bg-background text-muted-foreground hover:bg-muted",
@@ -359,7 +359,7 @@ export function KioskSimulation() {
                 <button
                   onClick={() => setMirror((m) => !m)}
                   className={cn(
-                    "mt-2 flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+                    "mt-2 flex items-center gap-1.5 rounded-none border-2 border-ink px-3 py-1.5 text-xs font-medium transition-colors",
                     mirror
                       ? "border-foreground bg-foreground text-background"
                       : "border-border bg-background text-muted-foreground hover:bg-muted",
@@ -375,7 +375,7 @@ export function KioskSimulation() {
 
         {/* Right: camera / result */}
         <div className="min-w-0 space-y-4">
-          <div className="relative mx-auto aspect-[3/4] w-full max-w-[420px] overflow-hidden rounded-lg border border-border bg-muted">
+          <div className="relative mx-auto aspect-[3/4] w-full max-w-[420px] overflow-hidden rounded-none border-2 border-ink bg-muted">
             {stepIdx === 2 ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-background p-5 sm:p-6">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">

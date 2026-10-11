@@ -123,7 +123,7 @@ export function Pricing({
                     key={plan.code}
                     type="button"
                     onClick={() => setSelectedPlanCode(plan.code)}
-                    className={`flex items-center justify-between gap-3 rounded-lg border p-3 text-left transition-colors ${
+                    className={`flex items-center justify-between gap-3 rounded-none border-2 border-ink p-3 text-left transition-colors ${
                       active
                         ? "border-primary bg-primary/5"
                         : "border-border hover:bg-muted"
@@ -138,7 +138,7 @@ export function Pricing({
                       </span>
                     </div>
                     <span
-                      className={`flex size-5 items-center justify-center rounded-full border ${
+                      className={`flex size-5 items-center justify-center rounded-none border-2 border-ink ${
                         active ? "border-primary bg-primary" : "border-border"
                       }`}
                     >
@@ -158,17 +158,17 @@ export function Pricing({
                     return (
                       <div
                         key={addOn.code}
-                        className="flex items-center justify-between gap-4 rounded-lg p-2"
+                        className="flex items-center justify-between gap-4 rounded-none p-2"
                       >
                         <Button
                           type="button"
                           variant="ghost"
                           onClick={() => toggleAddOn(addOn.code)}
-                          className="h-auto flex-1 justify-start rounded-lg px-0 py-0 hover:bg-transparent"
+                          className="h-auto flex-1 justify-start rounded-none px-0 py-0 hover:bg-transparent"
                         >
                           <div className="flex items-center gap-3 text-left">
                             <div
-                              className={`flex size-8 items-center justify-center rounded-full transition-colors ${
+                              className={`flex size-8 items-center justify-center rounded-none border-2 border-ink transition-colors ${
                                 enabled
                                   ? "bg-primary text-primary-foreground"
                                   : "bg-muted text-muted-foreground"
@@ -188,6 +188,7 @@ export function Pricing({
                         </Button>
                         <Switch
                           checked={enabled}
+                          aria-label={`Aktifkan ${addOn.name}`}
                           onCheckedChange={() => toggleAddOn(addOn.code)}
                         />
                       </div>
@@ -239,7 +240,7 @@ export function Pricing({
               <p className="text-xs font-medium text-foreground">Selalu termasuk</p>
               <ul className="flex flex-col gap-2.5">
                 <li className="flex items-start gap-2.5">
-                  <div className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full bg-primary">
+                  <div className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-none bg-primary">
                     <CheckIcon className="size-2.5 text-primary-foreground" />
                   </div>
                   <span className="text-xs text-muted-foreground">
@@ -247,7 +248,7 @@ export function Pricing({
                   </span>
                 </li>
                 <li className="flex items-start gap-2.5">
-                  <div className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full bg-primary">
+                  <div className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-none bg-primary">
                     <CheckIcon className="size-2.5 text-primary-foreground" />
                   </div>
                   <span className="text-xs text-muted-foreground">
@@ -255,7 +256,7 @@ export function Pricing({
                   </span>
                 </li>
                 <li className="flex items-start gap-2.5">
-                  <div className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full bg-primary">
+                  <div className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-none bg-primary">
                     <CheckIcon className="size-2.5 text-primary-foreground" />
                   </div>
                   <span className="text-xs text-muted-foreground">
