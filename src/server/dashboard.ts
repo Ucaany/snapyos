@@ -19,7 +19,7 @@ import {
   shiftISO,
   startOfDayTz,
   todayISO,
-  dateFieldsSchema,
+  coerceDateFields,
   MAX_RANGE_DAYS,
   type DateRangeInput,
 } from "@/lib/dashboard-math";
@@ -35,7 +35,9 @@ export async function resolveRange(
   const membership = await getMembership(userId, businessId);
   if (!membership) throw new ApiError("NOT_FOUND", "Business tidak ditemukan");
 
-  const parsed = dateFieldsSchema.parse(query);
+  // Safe-parse: tanggal berformat salah (mis. ?from=abc) DIBUANG → jatuh ke
+  // default, bukan melempar ZodError yang menjatuhkan halaman via error boundary.
+  const parsed = coerceDateFields(query);
   const tz = membership.business.timezone || "Asia/Jakarta";
   const fallback = defaultRange(todayISO(tz));
   // Normalisasi SETELAH merge default: ?to= saja (atau ?from= masa depan)

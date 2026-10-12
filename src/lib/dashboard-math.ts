@@ -22,6 +22,24 @@ export const dateFieldsSchema = z.object({
 
 export type DateRangeFields = z.infer<typeof dateFieldsSchema>;
 
+/**
+ * Safe-parse untuk jalur render (URL bisa diketik/di-bookmark): tanggal yang
+ * formatnya salah DIBUANG (jadi undefined → jatuh ke default), bukan melempar
+ * error. ZodError dari `.parse()` di RSC akan menjatuhkan halaman via error
+ * boundary — perilaku yang tidak diinginkan untuk input URL bebas.
+ */
+export function coerceDateFields(query: {
+  from?: unknown;
+  to?: unknown;
+}): DateRangeFields {
+  const out: DateRangeFields = {};
+  const from = isoDate.safeParse(query.from);
+  if (from.success) out.from = from.data;
+  const to = isoDate.safeParse(query.to);
+  if (to.success) out.to = to.data;
+  return out;
+}
+
 export const dateRangeSchema = z
   .object({
     from: isoDate.optional(),

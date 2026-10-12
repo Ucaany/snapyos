@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { formatDate } from "../src/lib/dashboard-math.ts";
-import { dateFieldsSchema, dateRangeSchema } from "../src/lib/dashboard-math.ts";
+import { dateFieldsSchema, dateRangeSchema, coerceDateFields } from "../src/lib/dashboard-math.ts";
 
 // Transaksi 2026-01-01 00:30 WIB === 2025-12-31 17:30 UTC.
 const nightWib = "2025-12-31T17:30:00.000Z";
@@ -46,4 +46,26 @@ test("dateFieldsSchema: menolak format tanggal salah", () => {
 test("dateRangeSchema: tetap ketat menolak from > to (kontrak API)", () => {
   assert.equal(dateRangeSchema.safeParse({ from: "2026-10-10", to: "2026-10-01" }).success, false);
   assert.equal(dateRangeSchema.safeParse({ from: "2026-10-01", to: "2026-10-10" }).success, true);
+});
+
+// Regresi O2: URL tanggal berformat salah (?from=abc / ?from=2026-13-99) tidak
+// boleh melempar ZodError yang menjatuhkan RSC via error boundary. Jalur render
+// membuang field yang invalid → jatuh ke default.
+test("coerceDateFields: format salah dibuang jadi undefined (bukan throw)", () => {
+  assert.deepEqual(coerceDateFields({ from: "abc", to: "xyz" }), {});
+  assert.deepEqual(coerceDateFields({ from: "2026-13-99" }), {});
+  assert.deepEqual(coerceDateFields({ from: "10-10-2026" }), {});
+  assert.deepEqual(coerceDateFields({ from: "bukan-tanggal", to: "2026-10-12" }), { to: "2026-10-12" });
+});
+
+test("coerceDateFields: format valid diteruskan apa adanya", () => {
+  assert.deepEqual(coerceDateFields({ from: "2026-10-01", to: "2026-10-12" }), {
+    from: "2026-10-01",
+    to: "2026-10-12",
+  });
+});
+
+test("coerceDateFields: field kosong/absen → {} (fallback default range)", () => {
+  assert.deepEqual(coerceDateFields({}), {});
+  assert.deepEqual(coerceDateFields({ from: undefined, to: undefined }), {});
 });
