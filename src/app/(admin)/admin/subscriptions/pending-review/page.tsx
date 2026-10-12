@@ -176,8 +176,8 @@ export default async function AdminSubscriptionPendingReviewPage({
               </div>
 
               {/* Body - reason + intent snapshot */}
-              <div className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-                <div className="flex flex-col gap-2">
+              <div className="grid grid-cols-[minmax(0,1fr)] gap-4 p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                <div className="flex min-w-0 flex-col gap-2">
                   <p className="font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
                     [ REASON ]
                   </p>
@@ -206,7 +206,7 @@ export default async function AdminSubscriptionPendingReviewPage({
                   )}
                 </div>
 
-                <div className="flex flex-col gap-2">
+                <div className="flex min-w-0 flex-col gap-2">
                   <p className="font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
                     [ INTENT SNAPSHOT ]
                   </p>

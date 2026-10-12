@@ -80,6 +80,22 @@ function isStatus(v: string | undefined): v is IntentFailureStatus {
 }
 
 /**
+ * True bila error PostgREST menandakan offset melewati jumlah baris
+ * (PGRST103 / HTTP 416 "Requested range not satisfiable"). Ini bukan kegagalan
+ * server — halaman kosong adalah hasil yang benar (mis. deep-link / bookmark).
+ * Dijaga identik dengan src/server/admin/users.ts.
+ */
+function isRangeNotSatisfiable(error: {
+  code?: string;
+  message?: string;
+}): boolean {
+  if (String(error.code ?? "") === "PGRST103") return true;
+  return /requested range not satisfiable|range not satisfiable/i.test(
+    String(error.message ?? "")
+  );
+}
+
+/**
  * List failures with optional status filter (default: pending). Paginated.
  * N+1 avoided by relying on Supabase FK-join select strings.
  */
@@ -100,7 +116,7 @@ export async function listIntentFailures(query: {
   const limit = Math.min(100, Math.max(1, query.limit ?? 25));
 
   const supabase = createServerClient();
-  const {
+  let {
     data,
     error,
     count,
@@ -115,6 +131,18 @@ export async function listIntentFailures(query: {
     .eq("status", status)
     .order("created_at", { ascending: false })
     .range((page - 1) * limit, page * limit - 1);
+
+  // Halaman melampaui jumlah baris → offset tak terjangkau (PGRST103/416).
+  // Kembalikan daftar kosong + total sebenarnya, bukan 500.
+  if (error && isRangeNotSatisfiable(error)) {
+    data = [];
+    error = null;
+    const recount = await supabase
+      .from("subscription_intent_failures")
+      .select("id", { count: "exact", head: true })
+      .eq("status", status);
+    count = recount.count ?? 0;
+  }
   if (error) {
     throw new ApiError(
       "INTERNAL",
