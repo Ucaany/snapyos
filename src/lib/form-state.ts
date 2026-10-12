@@ -1,4 +1,4 @@
-import { ApiError } from "@/lib/api-errors";
+import { ApiError } from "./api-errors.ts";
 import type { FormState } from "@/server/auth-actions";
 
 /**
@@ -42,9 +42,25 @@ export function str(formData: FormData, key: string): string {
   return String(formData.get(key) ?? "").trim();
 }
 
+/**
+ * Integer dari form (IDR/limit). Membuang pemisah ribuan `1.500.000` → 1500000.
+ * JANGAN dipakai untuk field desimal (mis. platform_fee_percent 2.5) — pakai
+ * numDecimal(); pemisah titik di sini akan mengubah 2.5 → 25.
+ */
 export function num(formData: FormData, key: string): number {
   const raw = str(formData, key).replace(/[.\s]/g, "");
   const n = Number.parseInt(raw, 10);
+  return Number.isFinite(n) ? n : Number.NaN;
+}
+
+/**
+ * Desimal dari form (mis. platform_fee_percent ber-step 0.5).
+ * Normalisasi koma→titik, buang spasi; titik dipertahankan sebagai titik
+ * desimal. `2.5` → 2.5, `2,5` → 2.5, `2` → 2.
+ */
+export function numDecimal(formData: FormData, key: string): number {
+  const raw = str(formData, key).replace(/\s/g, "").replace(",", ".");
+  const n = Number.parseFloat(raw);
   return Number.isFinite(n) ? n : Number.NaN;
 }
 

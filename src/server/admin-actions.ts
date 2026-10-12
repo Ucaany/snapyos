@@ -7,7 +7,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { toFormState, str, num, bool, intOrNull, uuidList } from "@/lib/form-state";
+import { toFormState, str, num, numDecimal, bool, intOrNull, uuidList } from "@/lib/form-state";
 import type { FormState } from "@/server/auth-actions";
 import {
   activateManually,
@@ -124,12 +124,15 @@ export async function createPlanAction(_prev: FormState, formData: FormData): Pr
       code: str(formData, "code"),
       name: str(formData, "name"),
       price_monthly: num(formData, "price_monthly"),
+      price_yearly: str(formData, "price_yearly") ? num(formData, "price_yearly") : null,
+      billing_cycle: str(formData, "billing_cycle") === "yearly" ? "yearly" : "monthly",
+      max_businesses: str(formData, "max_businesses") ? num(formData, "max_businesses") : undefined,
       max_outlets: num(formData, "max_outlets"),
       max_photoboxes: num(formData, "max_photoboxes"),
       max_concurrent_sessions: num(formData, "max_concurrent_sessions"),
       max_staff: num(formData, "max_staff"),
       storage_limit_mb: num(formData, "storage_limit_mb"),
-      platform_fee_percent: num(formData, "platform_fee_percent"),
+      platform_fee_percent: numDecimal(formData, "platform_fee_percent"),
       platform_fee_flat: num(formData, "platform_fee_flat"),
       ...(flagKeys.length > 0 ? { features } : {}),
       is_active: formData.has("is_active")
@@ -158,6 +161,12 @@ export async function updatePlanAction(_prev: FormState, formData: FormData): Pr
     await updatePlan(str(formData, "planId"), {
       name: str(formData, "name") || undefined,
       price_monthly: str(formData, "price_monthly") ? num(formData, "price_monthly") : undefined,
+      price_yearly: str(formData, "price_yearly") ? num(formData, "price_yearly") : null,
+      billing_cycle: str(formData, "billing_cycle")
+        ? str(formData, "billing_cycle") === "yearly"
+          ? "yearly"
+          : "monthly"
+        : undefined,
       max_businesses: str(formData, "max_businesses") ? num(formData, "max_businesses") : undefined,
       max_outlets: str(formData, "max_outlets") ? num(formData, "max_outlets") : undefined,
       max_photoboxes: str(formData, "max_photoboxes") ? num(formData, "max_photoboxes") : undefined,
@@ -169,7 +178,7 @@ export async function updatePlanAction(_prev: FormState, formData: FormData): Pr
         ? num(formData, "storage_limit_mb")
         : undefined,
       platform_fee_percent: str(formData, "platform_fee_percent")
-        ? num(formData, "platform_fee_percent")
+        ? numDecimal(formData, "platform_fee_percent")
         : undefined,
       platform_fee_flat: str(formData, "platform_fee_flat") ? num(formData, "platform_fee_flat") : undefined,
       // Checkbox + hidden "false" (unchecked tetap terkirim) — H2 audit.
@@ -267,7 +276,7 @@ export async function updateSettingsAction(_prev: FormState, formData: FormData)
   try {
     await updatePlatformSettings({
       platform_fee_percent: str(formData, "platform_fee_percent")
-        ? num(formData, "platform_fee_percent")
+        ? numDecimal(formData, "platform_fee_percent")
         : undefined,
       platform_fee_flat: str(formData, "platform_fee_flat") ? num(formData, "platform_fee_flat") : undefined,
       default_retention_days: str(formData, "default_retention_days")

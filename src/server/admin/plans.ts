@@ -22,6 +22,8 @@ export type AdminPlanRow = {
   code: string;
   name: string;
   price_monthly: number;
+  price_yearly: number | null;
+  billing_cycle: "monthly" | "yearly";
   max_businesses: number;
   max_outlets: number;
   max_photoboxes: number;
@@ -35,7 +37,7 @@ export type AdminPlanRow = {
 };
 
 const PLAN_COLUMNS =
-  "id, code, name, price_monthly, max_businesses, max_outlets, max_photoboxes, max_concurrent_sessions, max_staff, storage_limit_mb, platform_fee_percent, platform_fee_flat, features, is_active";
+  "id, code, name, price_monthly, price_yearly, billing_cycle, max_businesses, max_outlets, max_photoboxes, max_concurrent_sessions, max_staff, storage_limit_mb, platform_fee_percent, platform_fee_flat, features, is_active";
 
 // ---------------------------------------------------------------------------
 // Queries
