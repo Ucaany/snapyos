@@ -14,7 +14,7 @@ import {
   cleanupSessionMedia,
   type SessionMedia,
 } from "../src/lib/retention.ts";
-import { staleTemplateKeys } from "../src/lib/template-cleanup.ts";
+import { staleTemplateKeys, storageKeysOnly } from "../src/lib/template-cleanup.ts";
 import { StorageResolver } from "../src/lib/r2/resolver.ts";
 
 // --- helpers ---------------------------------------------------------------
@@ -346,4 +346,23 @@ test("template deletion: thumbnail null/undefined diabaikan", () => {
     oldThumbnail: null,
   });
   assert.deepEqual(keys, ["biz/templates/frame.png"]);
+});
+
+test("storageKeysOnly: URL absolut dibuang, key storage dipertahankan", () => {
+  assert.deepEqual(
+    storageKeysOnly([
+      "global/templates/frame.png",
+      "https://cdn.snapyos.biz.id/templates/frame.png",
+      "http://example.com/x.jpg",
+      "global/templates/thumb.webp",
+    ]),
+    ["global/templates/frame.png", "global/templates/thumb.webp"]
+  );
+});
+
+test("storageKeysOnly: hanya URL eksternal → hasil kosong (tanpa probe storage)", () => {
+  assert.deepEqual(
+    storageKeysOnly(["https://cdn.snapyos.biz.id/a.png"]),
+    []
+  );
 });

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { ApiError, dataEnvelope } from "@/lib/api-errors";
 import { adminRawRoute, parseUuidParam } from "@/lib/api-route";
-import { setGlobalTemplateActive } from "@/server/admin";
+import { deleteGlobalTemplate, setGlobalTemplateActive } from "@/server/admin";
 
 /**
  * PATCH /api/v1/admin/templates/:id — toggle is_active template global.
@@ -16,4 +16,13 @@ export const PATCH = adminRawRoute<{ id: string }>(async ({ request, params }) =
     throw new ApiError("VALIDATION_ERROR", "Field `is_active` (boolean) wajib");
   }
   return NextResponse.json(dataEnvelope(await setGlobalTemplateActive(id, body.is_active)));
+});
+
+/**
+ * DELETE /api/v1/admin/templates/:id — hapus template global + blob storage.
+ * Cascade ke business_template_purchases; frame/thumbnail dibersihkan.
+ */
+export const DELETE = adminRawRoute<{ id: string }>(async ({ params }) => {
+  const id = parseUuidParam(params.id, "id");
+  return NextResponse.json(dataEnvelope(await deleteGlobalTemplate(id)));
 });

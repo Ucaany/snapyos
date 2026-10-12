@@ -22,6 +22,7 @@ import {
   createUser,
   deleteAuditLogs,
   deleteBusiness,
+  deleteGlobalTemplate,
   deleteTemplateCategory,
   deleteUser,
   dismissFailure,
@@ -324,6 +325,19 @@ export async function deleteCategoryAction(_prev: FormState, formData: FormData)
 export async function toggleTemplateAction(_prev: FormState, formData: FormData): Promise<FormState> {
   try {
     await setGlobalTemplateActive(str(formData, "templateId"), bool(formData, "active"));
+    refresh("/admin/templates");
+    return {};
+  } catch (error) {
+    return toFormState(error);
+  }
+}
+
+export async function deleteGlobalTemplateAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  try {
+    await deleteGlobalTemplate(str(formData, "templateId"));
     refresh("/admin/templates");
     return {};
   } catch (error) {

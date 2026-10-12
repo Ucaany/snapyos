@@ -11,6 +11,7 @@ import {
   createCategoryAction,
   createGlobalTemplateAction,
   deleteCategoryAction,
+  deleteGlobalTemplateAction,
   toggleTemplateAction,
   updateGlobalTemplateAction,
 } from "@/server/admin-actions";
@@ -269,6 +270,13 @@ export default async function AdminTemplatesPage() {
                       hidden={{ templateId: t.id, active: t.is_active ? "false" : "true" }}
                       submitLabel={t.is_active ? "Nonaktifkan" : "Aktifkan"}
                       variant={t.is_active ? "outline" : "secondary"}
+                    />
+                    <AdminActionButton
+                      action={deleteGlobalTemplateAction}
+                      hidden={{ templateId: t.id }}
+                      submitLabel="Hapus"
+                      variant="ghost"
+                      confirm={`Hapus template "${t.name}"? Riwayat pembelian tenant untuk template ini ikut terhapus.`}
                     />
                   </span>
                   <details className="w-full border-t-2 border-ink/10 pt-3">

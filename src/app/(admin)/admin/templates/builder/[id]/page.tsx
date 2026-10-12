@@ -48,7 +48,11 @@ export default async function AdminTemplateBuilderPage({
         title="Slot Frame Global"
         description="Tambah/atur slot foto pada frame global. Layout berlaku untuk seluruh tenant yang membeli template ini."
       />
-      <TemplateBuilder template={template} saveAction={saveGlobalTemplateBuilderAction} />
+      <TemplateBuilder
+        template={template}
+        saveAction={saveGlobalTemplateBuilderAction}
+        backHref="/admin/templates"
+      />
     </div>
   );
 }

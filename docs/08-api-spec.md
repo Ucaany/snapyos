@@ -169,7 +169,7 @@ Prefix `/api/v1/admin` (role `admin`, guard `requireAdmin()` = role='admin' ATAU
 - `GET/POST /api/v1/admin/promos` , `PATCH /promos/:id` (subscription promo, ditambahkan 2026-09-16; refine update parity create 2026-10-05)
 - `GET /api/v1/admin/subscriptions` , `PATCH /subscriptions/:id`
 - `POST /api/v1/admin/subscriptions/:id/add-ons` (attach add-on, reaktivasi row cancelled) + `DELETE /api/v1/admin/subscription-add-ons/:id` (cancel; body opsional `{ mode?: "deferred"|"immediate", manual_cancel_reason?: string }` — default deferred parity owner, immediate = darurat + reason wajib audit) — ditambahkan 2026-09-16
-- `GET/POST /api/v1/admin/templates` + `PATCH /admin/templates/:id` — ditambahkan 2026-09-16 (upload template global + toggle is_active; update nama/harga/premium via server action)
+- `GET/POST /api/v1/admin/templates` + `PATCH/DELETE /admin/templates/:id` — ditambahkan 2026-09-16 (upload template global + toggle is_active; update nama/harga/premium via server action; DELETE hapus template global + blob, cascade purchases 2026-10-12)
 - `GET/POST /api/v1/admin/template-categories` + `DELETE /admin/template-categories/:id` — ditambahkan 2026-09-16 (POST teruskan `price` 2026-10-05)
 - `GET /api/v1/admin/payments?status=&provider=&from=&to=` + summary
 - `GET /api/v1/admin/payments/pos-revenue?from=&to=` — POS revenue per tenant (ditambahkan 2026-09-16)

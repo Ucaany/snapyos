@@ -22,3 +22,11 @@ export function staleTemplateKeys(input: StaleTemplateInput): string[] {
   );
   return Array.from(new Set(filtered));
 }
+
+/**
+ * Saring key storage: buang URL absolut (CDN publik) yang bukan objek bucket.
+ * Frame global boleh diisi URL eksternal — jangan di-probe/hapus sebagai key.
+ */
+export function storageKeysOnly(keys: string[]): string[] {
+  return keys.filter((k) => !/^https?:\/\//i.test(k));
+}

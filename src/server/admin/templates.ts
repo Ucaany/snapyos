@@ -14,7 +14,7 @@ import { validateFrameFile } from "@/server/templates";
 import { LOGO_ALLOWED_TYPES } from "@/lib/upload-validation";
 import { SIGNED_URL_TTL_SECONDS } from "@/lib/constants";
 import { getStorage, resolveStorage, removeResolved } from "@/server/storage";
-import { staleTemplateKeys } from "@/lib/template-cleanup";
+import { staleTemplateKeys, storageKeysOnly } from "@/lib/template-cleanup";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -288,18 +288,18 @@ export async function getGlobalTemplate(templateId: string): Promise<AdminTempla
   const row = data as {
     id: string; name: string; category: string; file_url: string; layout: unknown; is_active: boolean;
   };
-  const provider = await resolveStorage("business-assets", row.file_url);
-  const { data: signed } = await provider.createSignedUrl(
-    "business-assets",
-    row.file_url,
-    SIGNED_URL_TTL_SECONDS
-  );
+  // file_url absolut (CDN publik) dipakai langsung; key storage di-sign.
+  const isExternal = /^https?:\/\//i.test(row.file_url);
+  const provider = isExternal ? null : await resolveStorage("business-assets", row.file_url);
+  const { data: signed } = provider
+    ? await provider.createSignedUrl("business-assets", row.file_url, SIGNED_URL_TTL_SECONDS)
+    : { data: null };
   return {
     id: row.id,
     name: row.name,
     category: row.category,
     file_url: row.file_url,
-    preview_url: signed?.signedUrl ?? null,
+    preview_url: isExternal ? row.file_url : signed?.signedUrl ?? null,
     layout: row.layout,
     is_active: row.is_active,
   };
@@ -413,7 +413,8 @@ export async function replaceGlobalTemplateFrame(
     oldThumbnail: oldRows.thumbnail_url,
     newKey: key,
   });
-  if (stale.length > 0) await removeResolved("business-assets", stale);
+  const storageStale = storageKeysOnly(stale);
+  if (storageStale.length > 0) await removeResolved("business-assets", storageStale);
 }
 
 /**
@@ -447,7 +448,8 @@ export async function deleteGlobalTemplate(templateId: string) {
     oldFile: r.file_url,
     oldThumbnail: r.thumbnail_url,
   });
-  if (keys.length > 0) await removeResolved("business-assets", keys);
+  const storageKeys = storageKeysOnly(keys);
+  if (storageKeys.length > 0) await removeResolved("business-assets", storageKeys);
 
   await audit(admin.id, "admin.template.delete", templateId, { name: (row as { name: string }).name });
   return { id: templateId };

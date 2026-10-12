@@ -112,10 +112,16 @@ type Props = {
   template: TemplateRow
   /** Aksi simpan — owner default; admin memakai saveGlobalTemplateBuilderAction. */
   saveAction?: (prev: FormState, formData: FormData) => Promise<FormState>
+  /** Tujuan tombol Kembali — owner default; admin memakai /admin/templates. */
+  backHref?: string
 }
 
 /** TemplateBuilder — drag/resize/rotate slot di atas frame PNG (docs/15 §15.3). */
-export function TemplateBuilder({ template, saveAction = saveTemplateBuilderAction }: Props) {
+export function TemplateBuilder({
+  template,
+  saveAction = saveTemplateBuilderAction,
+  backHref = "/dashboard/templates",
+}: Props) {
   const [layout, setLayout] = useState<TemplateLayout>(() => {
     const parsed = layoutSchema.safeParse(template.layout)
     return parsed.success ? parsed.data : emptyLayout("4x6-portrait")
@@ -141,7 +147,15 @@ export function TemplateBuilder({ template, saveAction = saveTemplateBuilderActi
   const [chromaTolerance, setChromaTolerance] = useState(70)
 
   const selected = layout.slots.find((s) => s.id === selectedId) ?? null
-  const samples = useMemo(() => Array.from({ length: MAX_SLOTS }, (_, i) => makeSample(i)), [])
+  // Sample canvas dibuat client-side SAJA (document tidak tersedia saat SSR).
+  // Lazy via ref: dibuat saat pertama dibutuhkan (draw/thumbnail), bukan saat render.
+  const samplesRef = useRef<HTMLCanvasElement[] | null>(null)
+  const getSamples = useCallback((): HTMLCanvasElement[] => {
+    if (!samplesRef.current) {
+      samplesRef.current = Array.from({ length: MAX_SLOTS }, (_, i) => makeSample(i))
+    }
+    return samplesRef.current
+  }, [])
 
   // load frame PNG (signed URL; crossOrigin agar canvas bisa diekspor)
   useEffect(() => {
@@ -178,7 +192,7 @@ export function TemplateBuilder({ template, saveAction = saveTemplateBuilderActi
     const canvas = canvasRef.current
     if (!canvas) return
     if (previewMode) {
-      composeFrame(canvas, layout, frameRef.current, samples, [], DISPLAY_MAX)
+      composeFrame(canvas, layout, frameRef.current, getSamples(), [], DISPLAY_MAX)
       return
     }
     const scale = Math.min(1, DISPLAY_MAX / layout.canvas.width)
@@ -259,7 +273,7 @@ export function TemplateBuilder({ template, saveAction = saveTemplateBuilderActi
         ctx.fill()
       }
     })
-  }, [layout, selectedId, previewMode, frameVersion, samples])
+  }, [layout, selectedId, previewMode, frameVersion, getSamples])
 
   const toDesign = useCallback(
     (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -494,7 +508,7 @@ export function TemplateBuilder({ template, saveAction = saveTemplateBuilderActi
   async function generateThumbnail(): Promise<File | null> {
     if (layout.slots.length === 0) return null
     const canvas = document.createElement("canvas")
-    composeFrame(canvas, roundedLayout, frameRef.current, samples, [], Number.POSITIVE_INFINITY)
+    composeFrame(canvas, roundedLayout, frameRef.current, getSamples(), [], Number.POSITIVE_INFINITY)
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"))
     if (!blob) return null
     return new File([blob], `thumbnail-${template.id}.png`, { type: "image/png" })
@@ -599,7 +613,7 @@ export function TemplateBuilder({ template, saveAction = saveTemplateBuilderActi
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 flex-col gap-2">
           <Link
-            href="/dashboard/templates"
+            href={backHref}
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-ink"
           >
             <ArrowLeft className="size-4" aria-hidden /> Kembali
