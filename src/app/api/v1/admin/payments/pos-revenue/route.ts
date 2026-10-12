@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { dataEnvelope } from "@/lib/api-errors";
 import { adminRawRoute, searchParamsToObject } from "@/lib/api-route";
+import { adminPaymentQuerySchema } from "@/lib/validators";
 import { adminPosRevenueSummary } from "@/server/admin";
 
 /**
@@ -8,13 +9,8 @@ import { adminPosRevenueSummary } from "@/server/admin";
  * POS revenue per tenant (docs/pos/05 §4).
  */
 export const GET = adminRawRoute(async ({ request }) => {
-  const q = searchParamsToObject(request);
+  const q = adminPaymentQuerySchema.parse(searchParamsToObject(request));
   return NextResponse.json(
-    dataEnvelope(
-      await adminPosRevenueSummary({
-        from: typeof q.from === "string" ? q.from : undefined,
-        to: typeof q.to === "string" ? q.to : undefined,
-      })
-    )
+    dataEnvelope(await adminPosRevenueSummary({ from: q.from, to: q.to }))
   );
 });

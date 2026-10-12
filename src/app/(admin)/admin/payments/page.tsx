@@ -5,6 +5,7 @@ import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatIDR } from "@/lib/dashboard-math";
+import { adminPaymentQuerySchema } from "@/lib/validators";
 import { getPaymentsSummary, listPayments, adminPosRevenueSummary } from "@/server/admin";
 
 /**
@@ -21,8 +22,12 @@ export default async function AdminPaymentsPage({
 }: {
   searchParams: Promise<{ status?: string; provider?: string; from?: string; to?: string; page?: string }>;
 }) {
-  const q = await searchParams;
-  const page = Math.max(1, Number.parseInt(q.page ?? "1", 10) || 1);
+  const raw = await searchParams;
+  // Validasi ketat: from/to harus YYYY-MM-DD. Nilai invalid JANGAN diteruskan
+  // ke Postgres (bikin 500). Fallback ke filter kosong bila parse gagal.
+  const parsed = adminPaymentQuerySchema.safeParse(raw);
+  const q = parsed.success ? parsed.data : {};
+  const page = q.page ?? 1;
   const [{ items, total }, summary, posRevenue] = await Promise.all([
     listPayments({ status: q.status, provider: q.provider, from: q.from, to: q.to, page, limit: 20 }),
     getPaymentsSummary({ from: q.from, to: q.to }),

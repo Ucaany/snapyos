@@ -555,7 +555,15 @@ export const EXPENSE_CATEGORIES = [
   "other",
 ] as const
 
-const isoDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format tanggal YYYY-MM-DD")
+const isoDay = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Format tanggal YYYY-MM-DD")
+  .refine((v) => {
+    // Tolak tanggal kalender invalid (mis. 2020-99-99): nilai ini bikin
+    // timestamp Postgres invalid lalu 500, jadi wajib divalidasi di boundary.
+    const d = new Date(`${v}T00:00:00.000Z`)
+    return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v
+  }, "Tanggal tidak valid")
 const isoDate = isoDay
 
 export const expenseCreateSchema = z.object({
@@ -967,6 +975,23 @@ export const adminSubscriptionUpdateSchema = z
   .refine((v) => v.status !== undefined || v.extend_days !== undefined || v.cancel, {
     message: "Minimal satu aksi diisi",
   })
+
+/**
+ * Filter payment monitoring admin (docs/10 §10.3): `from`/`to` wajib
+ * YYYY-MM-DD agar tidak menjadi timestamp Postgres yang invalid lalu 500.
+ */
+export const adminPaymentQuerySchema = stripEmptyStrings(
+  z.object({
+    status: z
+      .enum(["paid", "pending", "failed", "expired", "cancelled", "refunded"])
+      .optional(),
+    provider: z.enum(["pakasir", "midtrans", "tripay"]).optional(),
+    from: isoDate.optional(),
+    to: isoDate.optional(),
+    page: z.coerce.number().int().min(1).optional(),
+    limit: z.coerce.number().int().min(1).max(100).optional(),
+  })
+)
 
 /** Platform settings — key whitelist (docs/10 §10.4). */
 export const adminSettingsUpdateSchema = z
