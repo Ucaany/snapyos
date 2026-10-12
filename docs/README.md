@@ -12,6 +12,7 @@ SnapyOS Photobox Business Operating System.
 | Menyiapkan development | [`03-architecture.md`](./03-architecture.md) | Route, tenancy, data access, struktur kode |
 | Menjalankan local setup | [`../README.md`](../README.md) | Install, environment, script, cron |
 | Memahami status fitur | [`status.md`](./status.md) | Aktif, sebagian, backlog, arsip |
+| Peta fitur per dashboard | [`16-feature-map-audit.md`](./16-feature-map-audit.md) | Audit kode: admin, owner, staff, kiosk, POS, API, DB (2026-10-11) |
 | Memahami istilah | [`glossary.md`](./glossary.md) | Vocabulary canonical |
 
 ## Referensi API

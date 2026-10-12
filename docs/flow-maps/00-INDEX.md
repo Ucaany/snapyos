@@ -27,6 +27,11 @@ Dokumen ini adalah hasil audit lengkap struktur routing, API, server actions, da
 | 14  | `14-TEMPLATE-BUILDER-FLOW.md`                 | Template & Frame Builder upload + composite engine                      |
 | 15  | `15-SECURITY-RBAC-ENFORCEMENT.md`             | Security, RBAC matrix, tenant isolation, audit log                      |
 
+
+> **CATATAN AUDIT 2026-10-11**: berkas `04`–`15` pada tabel di atas **tidak ada** di direktori ini
+> (hanya `01`–`03` yang terpasang). Untuk pemetaan fitur lengkap per dashboard (admin, owner, staff,
+> kiosk, POS, result, marketing/auth, API, cron, DB) lihat [`../16-feature-map-audit.md`](../16-feature-map-audit.md).
+
 ---
 
 ## Cara Membaca
