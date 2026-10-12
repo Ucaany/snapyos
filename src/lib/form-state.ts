@@ -87,3 +87,44 @@ export function intOrNull(
   const n = Number(raw);
   return Number.isFinite(n) ? Math.trunc(n) : Number.NaN;
 }
+
+/**
+ * Bangun payload platform settings dari FormData — HANYA untuk key yang benar
+ * benar dikirim form. Halaman /admin/settings punya DUA form terpisah (global
+ * + gateway); tanpa guard keberadaan, submit form global akan membaca toggle
+ * gateway yang tidak hadir sebagai "false" dan menimpanya (dan sebaliknya).
+ *
+ * Murni (tanpa I/O) supaya bisa diuji; validasi tetap di adminSettingsUpdateSchema.
+ */
+export function buildSettingsPayload(
+  formData: FormData
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  const decimalKeys = new Set(["platform_fee_percent"]);
+  const integerKeys = new Set(["platform_fee_flat", "default_retention_days", "trial_days"]);
+  for (const key of decimalKeys) {
+    if (formData.has(key)) {
+      out[key] = str(formData, key) ? numDecimal(formData, key) : undefined;
+    }
+  }
+  for (const key of integerKeys) {
+    if (formData.has(key)) {
+      out[key] = str(formData, key) ? num(formData, key) : undefined;
+    }
+  }
+  if (formData.has("maintenance_mode")) {
+    out.maintenance_mode = formData.getAll("maintenance_mode").includes("true");
+  }
+  if (formData.has("maintenance_message")) {
+    out.maintenance_message = str(formData, "maintenance_message") || undefined;
+  }
+  if (formData.has("chroma_key_default_enabled")) {
+    out.chroma_key_default_enabled = formData.getAll("chroma_key_default_enabled").includes("true");
+  }
+  for (const key of ["gateway_pakasir_enabled", "gateway_midtrans_enabled", "gateway_tripay_enabled"]) {
+    if (formData.has(key)) {
+      out[key] = formData.getAll(key).includes("true");
+    }
+  }
+  return out;
+}

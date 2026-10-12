@@ -8,7 +8,6 @@ import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
 import { requireAdmin, audit } from "./guard";
-import { invalidateMaintenanceCache } from "@/lib/maintenance-cache";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -180,8 +179,7 @@ export async function setGatewayEnabled(provider: string, enabled: boolean) {
     .from("platform_settings")
     .upsert({ key, value: enabled }, { onConflict: "key" });
   if (error) throw new ApiError("INTERNAL", "Gagal mengubah status provider");
-  // Gate dibaca per-checkout; invalidate tidak wajib, tapi aman konsisten.
-  invalidateMaintenanceCache();
+  // Gate dibaca fresh per-checkout (resolveCredential) — tidak perlu invalidasi.
   await audit(admin.id, "admin.gateway.toggle", provider, { enabled });
   return { provider, enabled };
 }

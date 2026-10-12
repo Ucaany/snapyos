@@ -110,7 +110,7 @@ export default async function AdminSettingsPage() {
             <BrutalistCheckbox
               name="maintenance_mode"
               label="Maintenance mode"
-              description="Aktifkan untuk memblokir visitor non-admin (middleware 503). Butuh 30 detik cache TTL untuk propagasi."
+              description="Blokir visitor non-admin (middleware 503). Berlaku segera setelah disimpan."
               defaultChecked={Boolean(s.maintenance_mode)}
               wrapperClassName="col-span-1 md:col-span-3"
             />

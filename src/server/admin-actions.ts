@@ -7,7 +7,8 @@
 
 import { revalidatePath } from "next/cache";
 
-import { toFormState, str, num, numDecimal, bool, intOrNull, uuidList } from "@/lib/form-state";
+import { toFormState, str, num, numDecimal, bool, intOrNull, uuidList, buildSettingsPayload } from "@/lib/form-state";
+import type { AdminSettingsUpdateInput } from "@/lib/validators";
 import type { FormState } from "@/server/auth-actions";
 import {
   activateManually,
@@ -275,23 +276,11 @@ export async function cancelAddOnAction(_prev: FormState, formData: FormData): P
 
 export async function updateSettingsAction(_prev: FormState, formData: FormData): Promise<FormState> {
   try {
-    await updatePlatformSettings({
-      platform_fee_percent: str(formData, "platform_fee_percent")
-        ? numDecimal(formData, "platform_fee_percent")
-        : undefined,
-      platform_fee_flat: str(formData, "platform_fee_flat") ? num(formData, "platform_fee_flat") : undefined,
-      default_retention_days: str(formData, "default_retention_days")
-        ? num(formData, "default_retention_days")
-        : undefined,
-      trial_days: str(formData, "trial_days") ? num(formData, "trial_days") : undefined,
-      // Checkbox + hidden "false" (unchecked tetap terkirim) — H2 audit.
-      maintenance_mode: formData.getAll("maintenance_mode").includes("true"),
-      maintenance_message: str(formData, "maintenance_message") || undefined,
-      chroma_key_default_enabled: formData.getAll("chroma_key_default_enabled").includes("true"),
-      gateway_pakasir_enabled: formData.getAll("gateway_pakasir_enabled").includes("true"),
-      gateway_midtrans_enabled: formData.getAll("gateway_midtrans_enabled").includes("true"),
-      gateway_tripay_enabled: formData.getAll("gateway_tripay_enabled").includes("true"),
-    });
+    // Halaman punya DUA form terpisah (global + gateway); buildSettingsPayload
+    // hanya mengirim key yang ada di form ini supaya submit satu form tidak
+    // menimpa toggle form lain (lihat tests/admin-settings-form.test.ts).
+    const input = buildSettingsPayload(formData) as AdminSettingsUpdateInput;
+    await updatePlatformSettings(input);
     refresh("/admin/settings", "/admin");
     return {};
   } catch (error) {

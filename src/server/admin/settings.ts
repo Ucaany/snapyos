@@ -9,7 +9,6 @@ import {
   adminSettingsUpdateSchema,
   type AdminSettingsUpdateInput,
 } from "@/lib/validators";
-import { invalidateMaintenanceCache } from "@/lib/maintenance-cache";
 import { requireAdmin, audit } from "./guard";
 
 // ---------------------------------------------------------------------------
@@ -86,10 +85,6 @@ export async function updatePlatformSettings(input: AdminSettingsUpdateInput) {
     for (const booth of booths ?? []) {
       await supabase.from("photoboxes").update({ camera_settings: { ...((booth.camera_settings as Record<string, unknown> | null) ?? {}), chroma_key_enabled: parsed.chroma_key_default_enabled } }).eq("id", booth.id);
     }
-  }
-  // Invalidate middleware cache agar toggle maintenance_mode langsung efektif.
-  if (parsed.maintenance_mode !== undefined) {
-    invalidateMaintenanceCache();
   }
   await audit(admin.id, "admin.settings.update", "platform_settings", { ...parsed });
   return getPlatformSettings();

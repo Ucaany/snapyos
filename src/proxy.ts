@@ -14,8 +14,10 @@
  *        `/api/auth/*`, `/api/webhooks/*`, `/admin/*`, aset Next.
  *  - Jika maintenance_mode = false → tidak melakukan apa-apa.
  *
- * Cache maintenance flag TTL 30s (src/lib/maintenance-cache.ts) supaya tidak
- * query DB per request.
+ * Cache: tidak ada cache lintas-request. Flag dibaca langsung dari DB
+ * (src/lib/maintenance.ts) supaya toggle admin langsung efektif. Proxy tidak
+ * boleh bergantung pada shared module state dengan kode render (Next.js docs:
+ * proxy bisa jalan terpisah dari kode render).
  *
  * runtime: "nodejs" (config di bawah) — dibutuhkan karena `auth()` (NextAuth
  * v5) dan Supabase service client pakai native modules yang tidak kompatibel
@@ -24,7 +26,7 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
-import { isMaintenanceMode } from "@/lib/maintenance-cache";
+import { isMaintenanceMode } from "@/lib/maintenance";
 import { isAdminEmail } from "@/server/admin/guard";
 
 const ALWAYS_ALLOWED_PREFIXES = [
