@@ -118,7 +118,7 @@ export default async function DashboardPage({
             <MetricCard
               size="hero"
               accent
-               label="Pendapatan Bersih: Periode"
+              label="Pendapatan Bersih: Periode"
               value={formatIDR(summary.net)}
               sub={`${summary.paidTx} transaksi berhasil · ${periodLabel}`}
               className="md:col-span-8"

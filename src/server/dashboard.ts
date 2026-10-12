@@ -16,9 +16,10 @@ import {
   fillDailySeriesFromDays,
   rangeBoundariesTz,
   rangeDays,
+  shiftISO,
   startOfDayTz,
   todayISO,
-  dateRangeSchema,
+  dateFieldsSchema,
   MAX_RANGE_DAYS,
   type DateRangeInput,
 } from "@/lib/dashboard-math";
@@ -34,17 +35,20 @@ export async function resolveRange(
   const membership = await getMembership(userId, businessId);
   if (!membership) throw new ApiError("NOT_FOUND", "Business tidak ditemukan");
 
-  const parsed = dateRangeSchema.parse(query);
+  const parsed = dateFieldsSchema.parse(query);
   const tz = membership.business.timezone || "Asia/Jakarta";
   const fallback = defaultRange(todayISO(tz));
-  const from = parsed.from ?? fallback.from;
-  const to = parsed.to ?? fallback.to;
-  // Re-validasi SETELAH merge default: ?to= saja bisa menghasilkan from > to.
-  if (from > to) {
-    throw new ApiError("VALIDATION_ERROR", "'from' harus ≤ 'to'");
-  }
+  // Normalisasi SETELAH merge default: ?to= saja (atau ?from= masa depan)
+  // bisa menghasilkan from > to. URL adalah input yang bisa diketik/di-bookmark,
+  // jadi rentang terbalik di-SWAP (bukan melempar error boundary di RSC render —
+  // halaman harus tetap tampil). Server tetap scoped business_id + membership.
+  const rawFrom = parsed.from ?? fallback.from;
+  const rawTo = parsed.to ?? fallback.to;
+  let from = rawFrom <= rawTo ? rawFrom : rawTo;
+  const to = rawFrom <= rawTo ? rawTo : rawFrom;
+  // Rentang terlalu panjang di-clamp ke MAX_RANGE_DAYS terakhir (bukan error).
   if (rangeDays(from, to) > MAX_RANGE_DAYS) {
-    throw new ApiError("VALIDATION_ERROR", `Rentang maksimal ${MAX_RANGE_DAYS} hari`);
+    from = shiftISO(to, -(MAX_RANGE_DAYS - 1));
   }
   return { range: { from, to, timeZone: tz }, role: membership.role };
 }

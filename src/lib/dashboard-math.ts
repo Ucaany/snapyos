@@ -14,6 +14,14 @@ const isoDate = z
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Format tanggal harus YYYY-MM-DD")
   .refine((v) => !Number.isNaN(Date.parse(v + "T00:00:00Z")), "Tanggal tidak valid");
 
+/** Format tanggal saja (tanpa cek urutan) — untuk jalur render yang menormalkan rentang. */
+export const dateFieldsSchema = z.object({
+  from: isoDate.optional(),
+  to: isoDate.optional(),
+});
+
+export type DateRangeFields = z.infer<typeof dateFieldsSchema>;
+
 export const dateRangeSchema = z
   .object({
     from: isoDate.optional(),

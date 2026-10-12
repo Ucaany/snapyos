@@ -5,11 +5,11 @@ export default defineConfig({
   timeout: 180000,
   workers: 1,
   fullyParallel: false,
+  outputDir: "/tmp/snapy-o1/pw-output",
   use: {
     headless: false,
     viewport: { width: 1440, height: 900 },
     screenshot: "only-on-failure",
-    trace: "retain-on-failure",
     actionTimeout: 15000,
   },
   reporter: [["list"]],

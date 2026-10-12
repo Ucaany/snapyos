@@ -16,7 +16,7 @@ import {
   todayISO,
   formatTxNumber,
   type DateRangeInput,
-  dateRangeSchema,
+  dateFieldsSchema,
   rangeBoundariesTz,
 } from "@/lib/dashboard-math";
 import { resolveRange } from "@/server/dashboard";
@@ -124,7 +124,7 @@ export async function listTransactions(
 }> {
   await requireTxRead(userId, businessId);
   const parsed = transactionListQuerySchema.parse(query);
-  const dates = dateRangeSchema.parse(parsed);
+  const dates = dateFieldsSchema.parse(parsed);
   const { range } = await resolveRange(userId, businessId, dates);
 
   const { startMs, endMs } = rangeBoundariesTz(range.from, range.to, range.timeZone);

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { formatDate } from "../src/lib/dashboard-math.ts";
+import { dateFieldsSchema, dateRangeSchema } from "../src/lib/dashboard-math.ts";
 
 // Transaksi 2026-01-01 00:30 WIB === 2025-12-31 17:30 UTC.
 const nightWib = "2025-12-31T17:30:00.000Z";
@@ -27,4 +28,22 @@ test("formatDate: terima Date / number / string dengan hasil sama", () => {
   const c = formatDate(nightWib, "Asia/Jakarta");
   assert.equal(a, b);
   assert.equal(b, c);
+});
+
+// Regresi O1: URL rentang terbalik (?from>to / ?from= masa depan) tidak boleh
+// melempar error boundary. dateFieldsSchema = jalur render (tanpa cek urutan),
+// dateRangeSchema = jalur API ketat (tetap menolak).
+test("dateFieldsSchema: menerima rentang terbalik (jalur render menormalkan)", () => {
+  const parsed = dateFieldsSchema.parse({ from: "2026-10-10", to: "2026-10-01" });
+  assert.deepEqual(parsed, { from: "2026-10-10", to: "2026-10-01" });
+});
+
+test("dateFieldsSchema: menolak format tanggal salah", () => {
+  assert.equal(dateFieldsSchema.safeParse({ from: "10-10-2026" }).success, false);
+  assert.equal(dateFieldsSchema.safeParse({ from: "bukan-tanggal" }).success, false);
+});
+
+test("dateRangeSchema: tetap ketat menolak from > to (kontrak API)", () => {
+  assert.equal(dateRangeSchema.safeParse({ from: "2026-10-10", to: "2026-10-01" }).success, false);
+  assert.equal(dateRangeSchema.safeParse({ from: "2026-10-01", to: "2026-10-10" }).success, true);
 });
