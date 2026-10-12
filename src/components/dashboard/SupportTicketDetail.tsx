@@ -38,7 +38,7 @@ export function SupportTicketDetail({ ticket }: { ticket: SupportTicketDetail })
               {ticket.subject}
             </h2>
           </div>
-          <StatusBadge status={ticket.status} />
+          <StatusBadge status={ticket.status} label={STATUS_LABEL[ticket.status]} />
         </div>
         <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
           {ticket.description}

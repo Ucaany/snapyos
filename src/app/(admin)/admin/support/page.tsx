@@ -90,7 +90,7 @@ export default async function AdminSupportPage({
                     {t.category} · {t.area}
                   </td>
                   <td className="px-4 py-3">
-                    <StatusBadge status={t.status} />
+                    <StatusBadge status={t.status} label={STATUS_LABEL[t.status]} />
                   </td>
                   <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                     {dateFmt.format(new Date(t.created_at))}
@@ -99,12 +99,14 @@ export default async function AdminSupportPage({
                     <AdminActionForm
                       action={updateSupportTicketStatusAction}
                       hidden={{ ticketId: t.id }}
-                      submitLabel={`→ ${STATUS_LABEL[t.status === "open" ? "needs_action" : t.status === "needs_action" ? "resolved" : "open"]}`}
+                      submitLabel="SIMPAN"
+                      size="lg"
                       className="flex items-center gap-2"
                     >
                       <select
                         name="status"
                         defaultValue={t.status}
+                        aria-label={`Status tiket: ${t.subject}`}
                         className="h-9 rounded-none border-2 border-ink bg-bg px-2 font-mono text-xs uppercase"
                       >
                         {STATUS_OPTIONS.map((s) => (

@@ -202,6 +202,10 @@ export function KioskApp({
         checkout_session_id: checkoutSessionId,
         device_token: token,
       });
+      // Sesi sudah dibuat server — tarik konteks lengkap (package aktif) lewat
+      // verify agar layar pilih frame punya `selectedPackage`; tanpa ini render
+      // `step==="template" && selectedPackage` gagal → layar kosong pasca-bayar.
+      if (await resumeActiveSession(token)) return;
       setSession(data);
       setStep("template");
     } catch (e) {

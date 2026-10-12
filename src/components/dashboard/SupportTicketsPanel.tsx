@@ -131,7 +131,7 @@ export function SupportTicketsPanel({ tickets }: { tickets: SupportTicket[] }) {
                       {t.subject}
                     </h3>
                   </div>
-                  <StatusBadge status={t.status} />
+                  <StatusBadge status={t.status} label={STATUS_LABEL[t.status]} />
                 </div>
                 <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
                   {t.description}

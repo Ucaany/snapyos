@@ -42,6 +42,9 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
   const [current, setCurrent] = useState<CapturePhoto | null>(null);
   const currentUrl = useObjectUrl(current?.blob);
   const [flash, setFlash] = useState(false);
+  // stage di-ref: doCapture dipanggil dari setInterval yang dibuat saat stage
+  // masih "preview" — closure `stage` basi, guard selalu early-return.
+  const stageRef = useRef<Stage>("preview");
   const [mirror, setMirror] = useState(cameraSettings.mirror_preview !== false);
   const [cameraReady, setCameraReady] = useState(false);
   const [error, setError] = useState<{ message: string; action: string } | null>(null);
@@ -50,6 +53,10 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
   // Timer reconnect tertunda — dibatalkan saat unmount/sukses agar stream
   // tidak bocor dan retry kedua tidak menghancurkan sesi yang sudah hidup.
   const reconnectTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => {
+    stageRef.current = stage;
+  }, [stage]);
 
   const stopStream = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -212,7 +219,7 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
   async function doCapture() {
     // Guard: countdown terhenti (kamera reconnect di tengah hitung) → jangan
     // ambil frame dari stream yang baru/baru tersambung.
-    if (!videoRef.current || stage !== "countdown") return;
+    if (!videoRef.current || stageRef.current !== "countdown") return;
     try {
       const photo = await captureFrame(videoRef.current, cameraSettings.jpeg_quality || 0.92);
       setCurrent(photo);
