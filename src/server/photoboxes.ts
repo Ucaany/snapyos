@@ -145,6 +145,7 @@ export async function createPhotobox(
   const {
     chroma_key_enabled: chromaKeyEnabled,
     camera_settings: cameraSettings,
+    exit_pin: exitPin,
     ...photoboxColumns
   } = parsed;
   const slug = parsed.slug ?? slugify(parsed.name);
@@ -185,6 +186,7 @@ export async function createPhotobox(
       business_id: businessId,
       slug,
       ...photoboxColumns,
+      ...(exitPin !== undefined ? { exit_pin_hash: await hashDevicePin(exitPin) } : {}),
       camera_settings: {
         ...(cameraSettings ?? {}),
         chroma_key_enabled: chromaKeyEnabled ?? cameraSettings?.chroma_key_enabled ?? false,

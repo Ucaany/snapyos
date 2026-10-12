@@ -38,6 +38,10 @@ const eslintConfig = defineConfig([
     ".vercel/**",
     // Agent Manager worktrees: duplicate full copy of the repo (generated):
     ".kilo/worktrees/**",
+    // Local audit / Playwright E2E harness (bukan source app):
+    ".audit/**",
+    ".e2e-tmp/**",
+    "test-results/**",
     // macOS AppleDouble metadata:
     "**/._*",
   ]),

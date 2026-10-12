@@ -47,6 +47,8 @@ export function PhotoboxesTable({
   pwaKioskEnabled = false,
 }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createDone, setCreateDone] = useState(false);
 
   const limitReached = photoboxes.length >= maxPhotoboxes;
   const noOutlet = outlets.length === 0;
@@ -118,18 +120,30 @@ export function PhotoboxesTable({
           {`PHOTOBOX ${String(photoboxes.length).padStart(2, "0")}/${String(maxPhotoboxes).padStart(2, "0")} — PLAN LIMIT`}
         </p>
         {canWrite && !limitReached && !noOutlet && (
-          <Collapsible>
+          <Collapsible open={createOpen} onOpenChange={setCreateOpen}>
             <CollapsibleTrigger className="px-4" aria-label="Buka form photobox baru">
               <Plus className="size-4" aria-hidden />
               Photobox baru
               <ChevronDown className="size-4 transition-transform duration-100 [[data-panel-open]_&]:rotate-180" aria-hidden />
             </CollapsibleTrigger>
             <CollapsiblePanel className="mt-4">
-              <PhotoboxForm outlets={outlets} />
+              <PhotoboxForm
+                outlets={outlets}
+                onDone={() => {
+                  setCreateOpen(false);
+                  setCreateDone(true);
+                }}
+              />
             </CollapsiblePanel>
           </Collapsible>
         )}
       </div>
+
+      {canWrite && createDone && (
+        <p role="status" className="border-2 border-ink bg-accent-3 px-3 py-2 font-mono text-xs uppercase tracking-[0.05em] shadow-[4px_4px_0_0_#111111]">
+          {"[ OK ]"} Photobox tersimpan. URL perangkat siap dipakai di kiosk.
+        </p>
+      )}
 
       {canWrite && limitReached && !noOutlet && (
         <p className="border-2 border-ink bg-accent px-3 py-2 font-mono text-xs uppercase tracking-[0.05em]">

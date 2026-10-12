@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,15 @@ export function PhotoboxForm({ outlets, photobox, onDone }: Props) {
 
   const effectiveSlug = slugEdited ? slug : isEdit ? (photobox?.slug ?? "") : slugify(name);
   const uid = photobox?.id ?? "new";
+
+  // Tutup/reset panel setelah simpan sukses. useActionState tak punya status
+  // "sukses" eksplisit; transisi pending true→false tanpa state.error menandai
+  // simpan berhasil. Guard ref agar callback hanya sekali per submit.
+  const wasPending = useRef(false);
+  useEffect(() => {
+    if (wasPending.current && !pending && !state.error) onDone?.();
+    wasPending.current = pending;
+  }, [pending, state.error, onDone]);
 
   return (
     <form

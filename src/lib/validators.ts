@@ -382,6 +382,12 @@ export const photoboxCreateSchema = z.object({
   camera_settings: cameraSettingsSchema.optional(),
   print_settings: printSettingsSchema.optional(),
   session_settings: sessionSettingsSchema.optional(),
+  /** PIN keluar kiosk 4–8 digit — opsional saat create (hash di server). */
+  exit_pin: z
+    .string()
+    .trim()
+    .regex(/^\d{4,8}$/, "PIN keluar 4–8 digit angka")
+    .optional(),
   /** Saluran pembayaran per-booth; null/undefined = gateway + voucher. */
   payment_mode: photoboxPaymentMode.nullable().optional(),
 })

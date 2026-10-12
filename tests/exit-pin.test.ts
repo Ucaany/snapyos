@@ -9,7 +9,11 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 
 import { hashDevicePin, verifyDevicePin } from "../src/lib/device-token.ts"
-import { deviceExitSchema, photoboxUpdateSchema } from "../src/lib/validators.ts"
+import {
+  deviceExitSchema,
+  photoboxCreateSchema,
+  photoboxUpdateSchema,
+} from "../src/lib/validators.ts"
 
 // --- Schema keluar kiosk ---
 test("deviceExitSchema: token wajib, pin opsional 4–8 digit", () => {
@@ -40,6 +44,24 @@ test("photoboxUpdateSchema: exit_pin 4–8 digit, opsional", () => {
   assert.equal(photoboxUpdateSchema.safeParse({}).success, true) // kosong = tidak diubah
   assert.equal(photoboxUpdateSchema.safeParse({ exit_pin: "99" }).success, false)
   assert.equal(photoboxUpdateSchema.safeParse({ exit_pin: "abcd" }).success, false)
+})
+
+// --- Schema owner: set PIN saat CREATE (form create juga punya field PIN) ---
+test("photoboxCreateSchema: exit_pin dipertahankan (tidak di-strip), 4–8 digit", () => {
+  const base = {
+    name: "Booth 01",
+    slug: "booth-01",
+    outlet_id: "22222222-2222-4222-8222-222222222222",
+  }
+  // Regresi: sebelumnya `exit_pin` tak ada di create schema → Zod strip → PIN
+  // hilang tanpa error saat buat booth dari form create.
+  const withPin = photoboxCreateSchema.safeParse({ ...base, exit_pin: "4321" })
+  assert.equal(withPin.success, true)
+  assert.equal(withPin.success && withPin.data.exit_pin, "4321")
+
+  assert.equal(photoboxCreateSchema.safeParse(base).success, true) // tanpa PIN = ok
+  assert.equal(photoboxCreateSchema.safeParse({ ...base, exit_pin: "12" }).success, false)
+  assert.equal(photoboxCreateSchema.safeParse({ ...base, exit_pin: "abcd" }).success, false)
 })
 
 // --- Hash PIN (argon2id — encoded string per-call unik karena salt random) ---

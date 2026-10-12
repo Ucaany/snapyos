@@ -53,3 +53,5 @@ tauri-kiosk/gen/
 
 # Audit harness lokal (Playwright E2E, bukan bagian app)
 /.audit/
+/.e2e-tmp/
+/test-results/
