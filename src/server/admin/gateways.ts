@@ -45,6 +45,41 @@ const SETTINGS_KEY = {
   tripay: "gateway_tripay_enabled",
 } as const;
 
+/**
+ * True bila error PostgREST menandakan offset melewati jumlah baris
+ * (PGRST103 / HTTP 416 "Requested range not satisfiable"). Halaman kosong
+ * adalah hasil yang benar, bukan kegagalan server (deep-link / bookmark).
+ */
+function isRangeNotSatisfiable(error: { code?: string; message?: string }): boolean {
+  if (String(error.code ?? "") === "PGRST103") return true;
+  return /requested range not satisfiable|range not satisfiable/i.test(String(error.message ?? ""));
+}
+
+/** Susun status global per provider dari settings + hitungan credential. */
+function providerState(
+  settingsData: { key: string; value: unknown }[] | null,
+  providerCounts: number[],
+  activeRows: { provider: string; is_active: boolean }[] | null
+): AdminGatewayState["providers"] {
+  const settings = new Map<string, unknown>();
+  for (const row of settingsData ?? []) settings.set(row.key, row.value);
+  const providers = {} as AdminGatewayState["providers"];
+  GATEWAY_PROVIDERS.forEach((p, i) => {
+    const raw = settings.get(SETTINGS_KEY[p]);
+    providers[p] = {
+      enabled: raw === undefined ? true : raw === true,
+      credentialCount: providerCounts[i] ?? 0,
+      activeCount: 0,
+    };
+  });
+  for (const r of activeRows ?? []) {
+    if (r.provider in providers && r.is_active) {
+      providers[r.provider as GatewayProviderKey].activeCount++;
+    }
+  }
+  return providers;
+}
+
 // ---------------------------------------------------------------------------
 // Queries
 // ---------------------------------------------------------------------------
@@ -83,30 +118,22 @@ export async function getGatewayState(query: {
       )
     ),
   ]);
-  if (error) throw new ApiError("INTERNAL", "Gagal memuat payment gateway");
-
-  // Toggle global per provider (default true = enabled).
-  const settings = new Map<string, unknown>();
-  for (const row of (settingsRows.data ?? []) as { key: string; value: unknown }[]) {
-    settings.set(row.key, row.value);
-  }
-  const providers = {} as AdminGatewayState["providers"];
-  GATEWAY_PROVIDERS.forEach((p, i) => {
-    const raw = settings.get(SETTINGS_KEY[p]);
-    providers[p] = {
-      enabled: raw === undefined ? true : raw === true,
-      credentialCount: providerCounts[i] ?? 0,
-      activeCount: 0,
+  // Halaman melampaui jumlah baris → offset tak terjangkau (PGRST103/416).
+  // Anggap daftar kosong, bukan error boundary.
+  if (error && isRangeNotSatisfiable(error)) {
+    return {
+      providers: providerState(settingsRows.data, providerCounts, []),
+      credentials: [],
+      total: count ?? 0,
     };
-  });
+  }
+  if (error) throw new ApiError("INTERNAL", "Gagal memuat payment gateway");
 
   // activeCount per provider (dari full credential list, bukan halaman ter-filter).
   const { data: activeRows } = await supabase
     .from("payment_credentials")
     .select("provider, is_active");
-  for (const r of (activeRows ?? []) as { provider: string; is_active: boolean }[]) {
-    if (r.provider in providers && r.is_active) providers[r.provider as GatewayProviderKey].activeCount++;
-  }
+  const providers = providerState(settingsRows.data, providerCounts, activeRows);
 
   type Row = {
     id: string;
