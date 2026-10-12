@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,13 @@ type Props = {
 export function OutletEditForm({ outlet, onDone }: Props) {
   const [state, action, pending] = useActionState(updateOutletAction, initial);
   const wasPending = useRef(false);
+
+  // Controlled fields — Base UI Input/Select adalah FieldControl; memakai
+  // defaultValue memicu warning "uncontrolled FieldControl" saat revalidate
+  // me-render ulang baris setelah save sukses. State awal dari outlet.
+  const [name, setName] = useState(outlet.name);
+  const [address, setAddress] = useState(outlet.address ?? "");
+  const [status, setStatus] = useState(outlet.status);
 
   useEffect(() => {
     if (pending) {
@@ -48,7 +55,8 @@ export function OutletEditForm({ outlet, onDone }: Props) {
           <Input
             id={`edit-name-${outlet.id}`}
             name="name"
-            defaultValue={outlet.name}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             required
             disabled={pending}
             aria-invalid={Boolean(fieldError(state, "name"))}
@@ -61,7 +69,8 @@ export function OutletEditForm({ outlet, onDone }: Props) {
           <Input
             id={`edit-address-${outlet.id}`}
             name="address"
-            defaultValue={outlet.address ?? ""}
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
             disabled={pending}
           />
         </div>
@@ -78,7 +87,8 @@ export function OutletEditForm({ outlet, onDone }: Props) {
           <Select
             id={`edit-status-${outlet.id}`}
             name="status"
-            defaultValue={outlet.status}
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
             disabled={pending}
           >
             <option value="active">ACTIVE</option>
