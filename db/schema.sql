@@ -1039,6 +1039,9 @@ create table broadcast_recipients (
 create index idx_broadcast_recipients_campaign on broadcast_recipients (campaign_id, status);
 create index idx_broadcast_recipients_email on broadcast_recipients (email);
 create index idx_broadcast_recipients_kind on broadcast_recipients (kind);
+-- Satu penerima unik per kampanye (migration 0068) — basis upsert aman re-send.
+create unique index uq_broadcast_recipients_campaign_email
+  on broadcast_recipients (campaign_id, lower(email));
 
 -- Migration 0060 — Subscription lifecycle email otomatis (Resend).
 create table lifecycle_emails (

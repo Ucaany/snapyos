@@ -50,13 +50,27 @@ function bodyToHtml(body: string): string {
     .join("");
 }
 
+/**
+ * Template efektif: `template_key` eksplisit menang atas `kind`; "default"
+ * jatuh ke `kind`. Ini membuat pemilih Template benar-benar mengubah render
+ * (bukan sekadar metadata yang tersimpan).
+ */
+function resolveKind(
+  templateKey: BroadcastTemplateKey | undefined,
+  kind: BroadcastKind
+): BroadcastKind {
+  if (!templateKey || templateKey === "default") return kind;
+  return templateKey;
+}
+
 export function renderBroadcastHtml(input: {
   subject: string;
   body: string;
   recipientName: string;
   kind: BroadcastKind;
+  templateKey?: BroadcastTemplateKey;
 }): string {
-  const kind: BroadcastKind = input.kind ?? "announcement";
+  const kind: BroadcastKind = resolveKind(input.templateKey, input.kind ?? "announcement");
   const accent = KIND_ACCENT[kind] ?? "#111111";
   const tagline = BROADCAST_KIND_TAGLINE[kind];
   return `<!DOCTYPE html>
@@ -109,7 +123,13 @@ export function renderBroadcastHtml(input: {
 </html>`;
 }
 
-export function renderBroadcastText(input: { subject: string; body: string; kind: BroadcastKind }): string {
-  const tagline = BROADCAST_KIND_TAGLINE[input.kind ?? "announcement"];
+export function renderBroadcastText(input: {
+  subject: string;
+  body: string;
+  kind: BroadcastKind;
+  templateKey?: BroadcastTemplateKey;
+}): string {
+  const kind = resolveKind(input.templateKey, input.kind ?? "announcement");
+  const tagline = BROADCAST_KIND_TAGLINE[kind];
   return `SnapyOS® — ${tagline}\n${input.subject}\n\n${input.body}\n\nEmail otomatis, jangan balas.`;
 }

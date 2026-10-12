@@ -240,44 +240,78 @@ async function resolveAudience(audience: BroadcastAudience): Promise<Recipient[]
 // Send / Resend
 // ---------------------------------------------------------------------------
 
+/**
+ * Sinkronkan penerima tanpa menghapus riwayat. Penerima lama yang masih ada di
+ * audiens dipertahankan (id & resend_count tetap); hanya baris yang keluar dari
+ * audiens yang dibuang, lalu email baru ditambahkan.
+ */
 async function persistRecipients(campaignId: string, recipients: Recipient[]) {
-  if (recipients.length === 0) return;
   const supabase = createServerClient();
-  const rows = recipients.map((r) => ({
-    campaign_id: campaignId,
-    email: r.email,
-    kind: r.kind,
-    name: r.name,
-    user_id: r.user_id,
-    business_id: r.business_id,
-  }));
-  const { error } = await supabase.from("broadcast_recipients").insert(rows);
+  const byEmail = new Map<string, Recipient>();
+  for (const r of recipients) byEmail.set(r.email.toLowerCase(), r);
+  const wanted = [...byEmail.values()];
+  const wantedEmails = new Set(wanted.map((r) => r.email.toLowerCase()));
+
+  const { data: existing, error: readError } = await supabase
+    .from("broadcast_recipients")
+    .select("id, email")
+    .eq("campaign_id", campaignId);
+  if (readError) throw new ApiError("INTERNAL", "Gagal memuat penerima broadcast");
+  const existingEmails = new Set((existing ?? []).map((r) => r.email.toLowerCase()));
+
+  // Buang penerima yang tidak lagi masuk audiens.
+  const staleIds = (existing ?? [])
+    .filter((r) => !wantedEmails.has(r.email.toLowerCase()))
+    .map((r) => r.id);
+  if (staleIds.length > 0) {
+    await supabase.from("broadcast_recipients").delete().in("id", staleIds);
+  }
+
+  // Tambah hanya email yang belum ada.
+  const toInsert = wanted
+    .filter((r) => !existingEmails.has(r.email.toLowerCase()))
+    .map((r) => ({
+      campaign_id: campaignId,
+      email: r.email,
+      kind: r.kind,
+      name: r.name,
+      user_id: r.user_id,
+      business_id: r.business_id,
+    }));
+  if (toInsert.length === 0) return;
+  const { error } = await supabase.from("broadcast_recipients").insert(toInsert);
   if (error) throw new ApiError("INTERNAL", "Gagal menyiapkan penerima broadcast");
 }
 
 async function deliverCampaign(campaign: AdminBroadcastRow, onlyFailed: boolean) {
   const supabase = createServerClient();
 
-  let recipients: Recipient[];
-  let rows: { id: string; email: string; resend_count: number; sent_at: string | null }[];
+  type DeliveryRow = {
+    id: string;
+    email: string;
+    name: string | null;
+    resend_count: number;
+    sent_at: string | null;
+  };
+
+  let rows: DeliveryRow[];
 
   if (!onlyFailed) {
-    recipients = await resolveAudience(campaign.audience);
-    // Hapus penerima lama bila kirim ulang penuh (bukan resend partial).
-    await supabase.from("broadcast_recipients").delete().eq("campaign_id", campaign.id);
+    const recipients = await resolveAudience(campaign.audience);
+    // Sinkronkan audiens tanpa menghapus riwayat penerima yang masih berlaku.
     await persistRecipients(campaign.id, recipients);
     const { data } = await supabase
       .from("broadcast_recipients")
-      .select("id, email, resend_count, sent_at")
+      .select("id, email, name, resend_count, sent_at")
       .eq("campaign_id", campaign.id);
-    rows = (data ?? []) as { id: string; email: string; resend_count: number; sent_at: string | null }[];
+    rows = (data ?? []) as DeliveryRow[];
   } else {
     const { data } = await supabase
       .from("broadcast_recipients")
-      .select("id, email, resend_count, sent_at")
+      .select("id, email, name, resend_count, sent_at")
       .eq("campaign_id", campaign.id)
       .eq("status", "failed");
-    rows = (data ?? []) as { id: string; email: string; resend_count: number; sent_at: string | null }[];
+    rows = (data ?? []) as DeliveryRow[];
   }
 
   if (rows.length === 0) {
@@ -291,6 +325,7 @@ async function deliverCampaign(campaign: AdminBroadcastRow, onlyFailed: boolean)
   }
 
   const kind = campaign.kind ?? "announcement";
+  const templateKey = campaign.template_key;
   let sent = 0;
   let failed = 0;
 
@@ -298,10 +333,16 @@ async function deliverCampaign(campaign: AdminBroadcastRow, onlyFailed: boolean)
     const html = renderBroadcastHtml({
       subject: campaign.subject,
       body: campaign.body,
-      recipientName: row.email,
+      recipientName: row.name ?? row.email,
       kind,
+      templateKey,
     });
-    const text = renderBroadcastText({ subject: campaign.subject, body: campaign.body, kind });
+    const text = renderBroadcastText({
+      subject: campaign.subject,
+      body: campaign.body,
+      kind,
+      templateKey,
+    });
     const result = await sendEmailWithResend({ to: row.email, subject: campaign.subject, html, text });
     const now = new Date().toISOString();
     if (result.ok) {
@@ -346,6 +387,16 @@ export async function sendBroadcast(campaignId: string): Promise<{ sent: number;
   if (error || !data) throw new ApiError("NOT_FOUND", "Broadcast tidak ditemukan");
   const campaign = data as AdminBroadcastRow;
 
+  // Kirim penuh hanya untuk draft (atau sisa status "sending"). Kampanye yang
+  // sudah terminal (sent/partial/failed) tidak boleh di-relaunch penuh lewat
+  // tombol ini — itu menghapus riwayat & melewati batas resend.
+  if (campaign.status !== "draft" && campaign.status !== "sending") {
+    throw new ApiError(
+      "VALIDATION_ERROR",
+      "Broadcast sudah pernah dikirim. Gunakan Kirim Ulang untuk penerima yang gagal."
+    );
+  }
+
   await supabase
     .from("broadcast_campaigns")
     .update({ status: "sending" })
@@ -357,7 +408,7 @@ export async function sendBroadcast(campaignId: string): Promise<{ sent: number;
   } catch (err) {
     await supabase
       .from("broadcast_campaigns")
-      .update({ status: "failed" })
+      .update({ status: campaign.status })
       .eq("id", campaignId);
     throw err;
   }
@@ -388,6 +439,12 @@ export async function resendBroadcast(campaignId: string): Promise<{ sent: numbe
   if (error || !data) throw new ApiError("NOT_FOUND", "Broadcast tidak ditemukan");
   const campaign = data as AdminBroadcastRow;
 
+  if (campaign.status !== "partial" && campaign.status !== "failed") {
+    throw new ApiError(
+      "VALIDATION_ERROR",
+      "Kirim ulang hanya berlaku untuk broadcast yang sebagian/gagal terkirim."
+    );
+  }
   if (campaign.resend_count >= campaign.max_resend) {
     throw new ApiError(
       "VALIDATION_ERROR",
@@ -411,7 +468,17 @@ export async function resendBroadcast(campaignId: string): Promise<{ sent: numbe
     throw err;
   }
 
-  const status = result.failed === 0 ? "sent" : result.sent > 0 ? "partial" : "failed";
+  // Status akhir harus mencerminkan SELURUH penerima, bukan hanya subset yang
+  // di-resend (penerima lain mungkin masih "failed" dari percobaan sebelumnya).
+  const stats = await getBroadcastStats([campaignId]);
+  const s = stats[0];
+  const status: BroadcastStatus = !s
+    ? "failed"
+    : s.failed === 0
+      ? "sent"
+      : s.sent > 0
+        ? "partial"
+        : "failed";
   await supabase
     .from("broadcast_campaigns")
     .update({

@@ -39,7 +39,6 @@ const AUDIENCE_OPTIONS = [
 ] as const;
 
 function statusFor(status: string): string {
-  if (status === "partial") return "pending";
   return status;
 }
 
@@ -73,6 +72,8 @@ export default async function AdminBroadcastsPage() {
           <AdminActionForm
             action={createBroadcastAction}
             submitLabel="Simpan Draft"
+            pendingLabel="Menyimpan…"
+            submitClassName="min-h-11"
             className="grid grid-cols-1 gap-4 md:grid-cols-2"
           >
             <BrutalistSelect name="kind" label="Jenis Broadcast" defaultValue="announcement" options={KIND_OPTIONS} />
@@ -117,7 +118,10 @@ export default async function AdminBroadcastsPage() {
             const s = statsByCampaign.get(b.id);
             const sentText = s ? `${s.sent}/${s.total} terkirim` : "belum dikirim";
             const resendLeft = b.max_resend - b.resend_count;
-            const canResend = (b.status === "partial" || b.status === "failed") && resendLeft > 0;
+            const isTerminal = b.status === "partial" || b.status === "failed";
+            const canSend = b.status === "draft" || b.status === "sending";
+            const canResend = isTerminal && resendLeft > 0;
+            const resendExhausted = isTerminal && resendLeft <= 0;
             return (
               <details key={b.id} className="border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
                 <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-3 p-4">
@@ -143,12 +147,14 @@ export default async function AdminBroadcastsPage() {
                     {s && s.failed > 0 ? ` · GAGAL ${s.failed}` : ""}
                   </p>
 
-                  <div className="mt-4 flex flex-wrap gap-3 border-t-2 border-ink/10 pt-4">
-                    {(b.status === "draft" || b.status === "failed") && (
+                  <div className="mt-4 flex flex-wrap items-center gap-3 border-t-2 border-ink/10 pt-4">
+                    {canSend && (
                       <AdminActionForm
                         action={sendBroadcastAction}
                         hidden={{ campaignId: b.id }}
                         submitLabel="Kirim Sekarang"
+                        pendingLabel="Mengirim…"
+                        submitClassName="min-h-11"
                       />
                     )}
                     {canResend && (
@@ -156,8 +162,15 @@ export default async function AdminBroadcastsPage() {
                         action={resendBroadcastAction}
                         hidden={{ campaignId: b.id }}
                         submitLabel={`Kirim Ulang Gagal (${resendLeft} tersisa)`}
+                        pendingLabel="Mengirim ulang…"
                         variant="outline"
+                        submitClassName="min-h-11"
                       />
+                    )}
+                    {resendExhausted && (
+                      <p className="font-mono text-xs text-muted-foreground">
+                        Batas resend tercapai ({b.resend_count}/{b.max_resend})
+                      </p>
                     )}
                   </div>
 

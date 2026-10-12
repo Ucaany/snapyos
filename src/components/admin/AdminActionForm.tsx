@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import type { FormState } from "@/server/auth-actions";
 
 /**
@@ -19,6 +20,7 @@ export function AdminActionForm({
   size = "sm",
   confirm,
   className,
+  submitClassName,
   children,
 }: {
   action: (prev: FormState, formData: FormData) => Promise<FormState>;
@@ -29,6 +31,7 @@ export function AdminActionForm({
   size?: "default" | "sm" | "lg" | "icon" | "icon-sm";
   confirm?: string;
   className?: string;
+  submitClassName?: string;
   children?: React.ReactNode;
 }) {
   const [state, formAction] = useActionState(action, {});
@@ -61,7 +64,13 @@ export function AdminActionForm({
           </p>
         ) : null
       )}
-      <SubmitButton label={submitLabel} pendingLabel={pendingLabel} variant={variant} size={size} />
+      <SubmitButton
+        label={submitLabel}
+        pendingLabel={pendingLabel}
+        variant={variant}
+        size={size}
+        className={submitClassName}
+      />
     </form>
   );
 }
@@ -71,15 +80,23 @@ function SubmitButton({
   pendingLabel,
   variant,
   size,
+  className,
 }: {
   label: string;
   pendingLabel?: string;
   variant: "default" | "secondary" | "outline" | "destructive" | "ghost";
   size: "default" | "sm" | "lg" | "icon" | "icon-sm";
+  className?: string;
 }) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" variant={variant} size={size} disabled={pending} className="w-fit">
+    <Button
+      type="submit"
+      variant={variant}
+      size={size}
+      disabled={pending}
+      className={cn("w-fit", className)}
+    >
       {pending ? (pendingLabel ?? "Memproses…") : label}
     </Button>
   );

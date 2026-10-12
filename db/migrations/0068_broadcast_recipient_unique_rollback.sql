@@ -1,0 +1,2 @@
+-- 0068_broadcast_recipient_unique_rollback.sql
+drop index if exists uq_broadcast_recipients_campaign_email;

@@ -11,10 +11,12 @@ const STYLE: Record<string, string> = {
   active: "bg-accent-3",
   online: "bg-accent-3",
   confirmed: "bg-accent-3",
+  sent: "bg-accent-3",
   pending: "bg-accent",
   scheduled: "bg-accent",
   maintenance: "bg-accent",
   processing: "bg-accent",
+  partial: "bg-accent-4 text-bg",
   failed: "bg-accent-2 text-ink",
   cancelled: "bg-muted text-muted-foreground",
   expired: "bg-muted text-muted-foreground",
@@ -26,7 +28,15 @@ const STYLE: Record<string, string> = {
   resolved: "bg-muted text-muted-foreground",
 };
 
-export function StatusBadge({ status, className }: { status: string; className?: string }) {
+export function StatusBadge({
+  status,
+  label,
+  className,
+}: {
+  status: string;
+  label?: string;
+  className?: string;
+}) {
   return (
     <span
       className={cn(
@@ -35,7 +45,7 @@ export function StatusBadge({ status, className }: { status: string; className?:
         className
       )}
     >
-      {status}
+      {label ?? status}
     </span>
   );
 }
