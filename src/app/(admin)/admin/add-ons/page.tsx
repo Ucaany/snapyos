@@ -37,7 +37,7 @@ export default async function AdminAddOnsPage() {
           <AdminActionForm
             action={createAddOnAction}
             submitLabel="Buat Add-on"
-            className="grid grid-cols-2 gap-4 md:grid-cols-4"
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
           >
             <div className="flex flex-col gap-1">
               <label htmlFor="addon-code" className="font-mono text-[10px] uppercase tracking-[0.12em]">
@@ -94,12 +94,15 @@ export default async function AdminAddOnsPage() {
                   <StatusBadge status={a.is_active ? "active" : "inactive"} />
                 </span>
               </div>
-              <div className="mt-4 border-t-2 border-ink/10 pt-4">
+              <div
+                key={`${a.id}:${a.name}:${a.price_monthly}:${a.unit}:${a.storage_mb ?? ""}:${a.is_active}`}
+                className="mt-4 border-t-2 border-ink/10 pt-4"
+              >
                 <AdminActionForm
                   action={updateAddOnAction}
                   hidden={{ addOnId: a.id }}
                   submitLabel="Simpan"
-                  className="grid grid-cols-2 gap-4 md:grid-cols-4"
+                  className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
                 >
                   <div className="flex flex-col gap-1">
                     <label htmlFor={`name-${a.id}`} className="font-mono text-[10px] uppercase tracking-[0.12em]">
