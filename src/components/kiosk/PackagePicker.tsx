@@ -9,6 +9,10 @@ import { KioskVideoBackground } from "@/components/kiosk/KioskVideoBackground";
 type Props = {
   packages: PublicPackage[];
   onSelect: (pkg: PublicPackage) => void;
+  /** Kembali ke welcome — null = sembunyikan tombol Kembali (mis. kiosk tanpa guide). */
+  onBack?: (() => void) | null;
+  /** Matikan kartu selama resume-check / direct-session (tidak ada konteks loading lain). */
+  busy?: boolean;
   /** Gaya visual kustom (Branding & Kiosk) — warna/font/radius mengikuti. */
   kioskStyle?: KioskVisualStyle;
   titleText?: string;
@@ -20,43 +24,88 @@ type Props = {
 
 /** Choose Package — docs/05 §5.3 (package menentukan harga & jumlah foto).
  *  Flow natural: proporsional di semua layar, scroll hanya bila konten lebih tinggi. */
-export function PackagePicker({ packages, onSelect, kioskStyle, titleText, primaryColor, secondaryColor, videoUrl = null }: Props) {
+export function PackagePicker({
+  packages,
+  onSelect,
+  onBack = null,
+  busy = false,
+  kioskStyle,
+  titleText,
+  primaryColor,
+  secondaryColor,
+  videoUrl = null,
+}: Props) {
   const ks = kioskStyle;
   const primary = primaryColor || defaultBrandColors.accent;
   const secondary = secondaryColor || defaultBrandColors.ink;
   const alignClass =
     ks?.align === "left" ? "text-left" : ks?.align === "right" ? "text-right" : "text-center";
+  const buttonBase =
+    "min-h-14 border-2 px-6 py-3 font-mono text-sm font-bold uppercase tracking-[0.1em] transition-transform active:translate-y-[2px] disabled:cursor-not-allowed disabled:opacity-60";
   return (
     <div
       className="relative flex min-h-[100dvh] flex-1 flex-col gap-3 overflow-hidden bg-bg px-4 py-4 md:gap-4 md:px-6 md:py-5"
       style={ks ? { backgroundColor: ks.bg, color: ks.text, paddingLeft: ks.padding, paddingRight: ks.padding } : undefined}
     >
       <KioskVideoBackground videoUrl={videoUrl} />
-      <header className={`relative z-10 mx-auto w-full max-w-[1000px] shrink-0 ${alignClass}`}>
-        <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-          {"/// STEP 01 · PILIH PAKET"}
-        </p>
-        <h1
-          className="mt-1 font-display text-2xl uppercase leading-[0.95] tracking-tight md:text-4xl"
-          style={ks ? { fontFamily: ks.fontFamily, fontSize: `${1.5 * ks.fontScale}rem` } : undefined}
-        >
-          {titleText || "Pilih paket kamu"}
-        </h1>
+      <header className={`relative z-10 mx-auto flex w-full max-w-[1000px] shrink-0 items-start justify-between gap-3 ${alignClass}`}>
+        <div className="flex flex-col">
+          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
+            {"/// STEP 01 · PILIH PAKET"}
+          </p>
+          <h1
+            className="mt-1 font-display text-2xl uppercase leading-[0.95] tracking-tight md:text-4xl"
+            style={ks ? { fontFamily: ks.fontFamily, fontSize: `${1.5 * ks.fontScale}rem` } : undefined}
+          >
+            {titleText || "Pilih paket kamu"}
+          </h1>
+        </div>
+        {onBack ? (
+          <button
+            type="button"
+            onClick={onBack}
+            className={buttonBase}
+            style={{
+              borderColor: ks?.text ?? secondary,
+              color: ks?.text ?? secondary,
+              backgroundColor: "transparent",
+              borderRadius: ks?.radius ?? 0,
+            }}
+          >
+            Kembali
+          </button>
+        ) : null}
       </header>
 
       {packages.length === 0 ? (
-        <div className="mx-auto flex w-full max-w-[1000px] flex-1 flex-col items-start justify-center gap-3 border-2 border-dashed border-ink/40 bg-surface p-6">
+        <div className="mx-auto flex w-full max-w-[1000px] flex-1 flex-col items-start justify-center gap-4 border-2 border-dashed border-ink/40 bg-surface p-6">
           <p className="font-mono text-sm font-bold uppercase tracking-[0.15em]">
             {"/// BELUM ADA PAKET"}
           </p>
           <p className="max-w-[50ch] text-sm text-muted-foreground">
             Owner belum mengaktifkan paket untuk booth ini. Hubungi petugas.
           </p>
+          {onBack ? (
+            <button
+              type="button"
+              onClick={onBack}
+              className={buttonBase}
+              style={{
+                borderColor: secondary,
+                color: secondary,
+                backgroundColor: "transparent",
+                borderRadius: ks?.radius ?? 0,
+              }}
+            >
+              Hubungi Petugas
+            </button>
+          ) : null}
         </div>
       ) : (
         <div
           className="mx-auto grid w-full max-w-[1000px] flex-1 grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 md:content-center md:gap-6"
           role="list"
+          aria-busy={busy}
         >
           {packages.map((pkg, i) => (
             <button
@@ -64,7 +113,8 @@ export function PackagePicker({ packages, onSelect, kioskStyle, titleText, prima
               type="button"
               role="listitem"
               onClick={() => onSelect(pkg)}
-              className="group flex flex-col gap-3 border-2 p-4 text-left shadow-[4px_4px_0_0_#111111] transition-transform hover:-translate-y-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink active:translate-y-[2px]"
+              disabled={busy}
+              className="group flex flex-col gap-3 border-2 p-4 text-left shadow-[4px_4px_0_0_#111111] transition-transform hover:-translate-y-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink active:translate-y-[2px] disabled:pointer-events-none disabled:opacity-60"
               style={{
                 ...(ks ? { borderRadius: ks.radius } : {}),
                 backgroundColor: i === 0 ? primary : undefined,
@@ -100,7 +150,7 @@ export function PackagePicker({ packages, onSelect, kioskStyle, titleText, prima
                   borderColor: secondary,
                 }}
               >
-                Pilih
+                {busy ? "Memuat…" : "Pilih"}
               </span>
             </button>
           ))}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,10 +21,14 @@ export function ActivationScreen({ initialCode, onActivated }: Props) {
   const [code, setCode] = useState(initialCode ? sanitizeCode(initialCode) : "");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  // Guard sinkron anti double-submit: state `pending` belum ter-flush saat klik
+  // kedua di frame yang sama, jadi ref ini yang menahan duplicate request.
+  const inFlightRef = useRef(false);
 
   async function submit(value: string) {
     const trimmed = value.trim().toUpperCase();
-    if (trimmed.length !== 6 || pending) return;
+    if (trimmed.length !== 6 || inFlightRef.current) return;
+    inFlightRef.current = true;
     setPending(true);
     setError(null);
     try {
@@ -36,6 +40,7 @@ export function ActivationScreen({ initialCode, onActivated }: Props) {
     } catch (e) {
       setError(e instanceof KioskError ? e.message : "Terjadi kesalahan. Coba lagi.");
       setPending(false);
+      inFlightRef.current = false;
     }
   }
 
@@ -77,7 +82,10 @@ export function ActivationScreen({ initialCode, onActivated }: Props) {
           <Input
             id="activation-code"
             value={code}
-            onChange={(e) => setCode(sanitizeCode(e.target.value))}
+            onChange={(e) => {
+              setCode(sanitizeCode(e.target.value));
+              if (error) setError(null);
+            }}
             placeholder="ABCD23"
             maxLength={6}
             autoComplete="off"

@@ -443,5 +443,21 @@ export async function reportDevice(input: DeviceReportInput) {
     .eq("id", photobox.id);
   if (error) throw new ApiError("INTERNAL", "Gagal menyimpan status device");
 
+  // Mirror ke kontrak devices.* (docs/16 §K2): camera_config/printer_config/
+  // diagnostics wajib terisi — dashboard & diagnostik membaca kolom ini.
+  // last_heartbeat_at ditulis resolveActiveDevice (throttle 60s di atas).
+  const diagnostics: Record<string, unknown> = { last_report_at: new Date().toISOString() };
+  if (input.preferred_device_id !== undefined) diagnostics.preferred_device_id = input.preferred_device_id;
+  if (input.camera) diagnostics.camera = input.camera;
+  if (input.printer) diagnostics.printer = input.printer;
+  const deviceUpdate: Record<string, unknown> = { diagnostics };
+  if (input.camera) deviceUpdate.camera_config = input.camera;
+  if (input.printer) deviceUpdate.printer_config = input.printer;
+  const { error: deviceError } = await supabase
+    .from("devices")
+    .update(deviceUpdate)
+    .eq("id", deviceId);
+  if (deviceError) throw new ApiError("INTERNAL", "Gagal menyimpan status device");
+
   return { ok: true, device_id: deviceId };
 }

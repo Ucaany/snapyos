@@ -44,7 +44,10 @@ const PrintLayoutRenderer = dynamic(
 );
 
 const TOKEN_KEY = "snapyos_device_token";
-const SETUP_KEY = "snapyos_device_setup_done";
+// Flag setup disimpan PER PHOTOBOX — booth lain di browser yang sama tidak
+// mewarisi status setup (re-aktivasi photobox baru wajib lewat wizard).
+const SETUP_KEY_PREFIX = "snapyos_device_setup_done:";
+const setupKey = (slug: string) => `${SETUP_KEY_PREFIX}${slug}`;
 
 type Step =
   | "activation"
@@ -250,7 +253,7 @@ export function KioskApp({
               void handleCheckoutPaid(data.claimable_checkout_id, token);
               return;
             }
-            setStep(localStorage.getItem(SETUP_KEY) ? "welcome" : "setup");
+            setStep(localStorage.getItem(setupKey(data.photobox.slug)) ? "welcome" : "setup");
           })
           .catch(() => {
             // Race guard: hanya reset bila token tersimpan masih token lama
@@ -329,8 +332,15 @@ export function KioskApp({
   }
 
   function handleSetupDone() {
-    localStorage.setItem(SETUP_KEY, "1");
+    localStorage.setItem(setupKey(currentPhotobox.slug), "1");
     setStep("welcome");
+  }
+
+  /** Token ditolak server saat setup — buang token, kembali ke aktivasi. */
+  function handleSetupAuthError() {
+    localStorage.removeItem(TOKEN_KEY);
+    setDeviceToken(null);
+    setStep("activation");
   }
 
   /**
@@ -358,13 +368,20 @@ export function KioskApp({
 
   async function handlePackage(pkg: PublicPackage) {
     // Sesi aktif tertinggal (back/reload pasca-bayar) → resume, bukan checkout baru.
-    if (deviceToken && (await resumeActiveSession(deviceToken))) return;
-    if (devSkipPayment) {
-      await startDirectSession(pkg);
-      return;
+    if (busy) return;
+    setBusy(true);
+    setNotice(null);
+    try {
+      if (deviceToken && (await resumeActiveSession(deviceToken))) return;
+      if (devSkipPayment) {
+        await startDirectSession(pkg);
+        return;
+      }
+      setSelectedPackage(pkg);
+      setStep("checkout");
+    } finally {
+      setBusy(false);
     }
-    setSelectedPackage(pkg);
-    setStep("checkout");
   }
 
   // tokenOverride: boot path melewatkan token langsung karena setDeviceToken
@@ -578,7 +595,13 @@ export function KioskApp({
       {step === "activation" && (
         <ActivationScreen initialCode={initialCode} onActivated={handleActivated} />
       )}
-      {step === "setup" && deviceToken && <SetupWizard deviceToken={deviceToken} onDone={handleSetupDone} />}
+      {step === "setup" && deviceToken && (
+        <SetupWizard
+          deviceToken={deviceToken}
+          onDone={handleSetupDone}
+          onAuthError={handleSetupAuthError}
+        />
+      )}
       {step === "welcome" && (
         <WelcomeScreen
           business={liveConfig.business}
@@ -605,6 +628,8 @@ export function KioskApp({
           primaryColor={liveConfig.branding.primary_color}
           secondaryColor={liveConfig.branding.secondary_color}
           videoUrl={kioskBranding?.pages?.package?.video_url ?? null}
+          busy={busy}
+          onBack={() => setStep(hasGuide ? "guide" : "welcome")}
           onSelect={(pkg) => void handlePackage(pkg)}
         />
       )}

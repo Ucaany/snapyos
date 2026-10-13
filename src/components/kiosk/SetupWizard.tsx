@@ -5,17 +5,19 @@ import { Camera, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CAMERA_ERRORS, cameraErrorKind, resolutionLabel, resolutionWarning } from "@/lib/camera-errors";
 import { getDeviceProfile } from "@/lib/device-profile";
-import { apiPost } from "@/components/kiosk/api";
+import { apiPost, KioskError } from "@/components/kiosk/api";
 
 type Props = {
   deviceToken: string;
   onDone: () => void;
+  /** Token ditolak server (FORBIDDEN) saat report — paksa aktivasi ulang. */
+  onAuthError?: () => void;
 };
 
 type Stage = "camera" | "print";
 
 /** Setup Wizard sekali — docs/05 §5.0.1 (permission kamera + detection + print test). */
-export function SetupWizard({ deviceToken, onDone }: Props) {
+export function SetupWizard({ deviceToken, onDone, onAuthError }: Props) {
   const [stage, setStage] = useState<Stage>("camera");
 
   // camera state
@@ -60,6 +62,28 @@ export function SetupWizard({ deviceToken, onDone }: Props) {
     streamRef.current = null;
   }, []);
 
+  /** Laporkan payload ke server; FORBIDDEN → token mati, kembali aktivasi. */
+  const report = useCallback(
+    async (payload: Record<string, unknown>) => {
+      try {
+        await apiPost("/api/v1/public/devices/report", {
+          device_token: deviceToken,
+          ...payload,
+        });
+      } catch (e) {
+        // Error auth (token revoked/expired) BUKAN transien — jangan biarkan
+        // wizard "sukses" palsu; paksa aktivasi ulang.
+        if (e instanceof KioskError && e.code === "FORBIDDEN") {
+          onAuthError?.();
+          return;
+        }
+        // Error jaringan/validasi lain tidak menggagalkan wizard — device
+        // tetap bisa lanjut (report bersifat diagnostik).
+      }
+    },
+    [deviceToken, onAuthError]
+  );
+
   async function openStream(deviceId?: string) {
     const generation = ++streamGeneration.current;
     setCameraError(null);
@@ -102,6 +126,8 @@ export function SetupWizard({ deviceToken, onDone }: Props) {
       } else {
         setCameraError({ message: "Gagal membuka kamera. Coba lagi.", action: "COBA LAGI" });
       }
+      // Laporkan kegagalan kamera ke server — diagnostik booth (docs/16 §K2).
+      await report({ camera: { error: kind ?? "UNKNOWN" } });
     }
   }
 
@@ -119,18 +145,13 @@ export function SetupWizard({ deviceToken, onDone }: Props) {
       setCameraError({ message: "Kamera belum siap. Hubungkan kamera lalu coba lagi.", action: "COBA LAGI" });
       return;
     }
-    try {
-      await apiPost("/api/v1/public/devices/report", {
-        device_token: deviceToken,
-        preferred_device_id: selectedId || null,
-        camera: {
-          resolution: resLabel || undefined,
-          width: resWidth,
-        },
-      });
-    } catch {
-      // gagal report tidak menggagalkan wizard — device tetap bisa lanjut
-    }
+    await report({
+      preferred_device_id: selectedId || null,
+      camera: {
+        resolution: resLabel || undefined,
+        width: resWidth,
+      },
+    });
     stopStream();
     if (videoRef.current) videoRef.current.srcObject = null;
     setStage("print");
@@ -138,14 +159,9 @@ export function SetupWizard({ deviceToken, onDone }: Props) {
 
   async function confirmPrint(ok: boolean) {
     setPrintConfirmed(ok);
-    try {
-      await apiPost("/api/v1/public/devices/report", {
-        device_token: deviceToken,
-        printer: { confirmed: ok, last_test_at: new Date().toISOString() },
-      });
-    } catch {
-      // gagal report tidak menggagalkan wizard
-    }
+    await report({
+      printer: { confirmed: ok, last_test_at: new Date().toISOString() },
+    });
   }
 
   return (
@@ -223,7 +239,7 @@ export function SetupWizard({ deviceToken, onDone }: Props) {
           )}
         </div>
       ) : (
-          <div className="print-root flex w-full max-w-[560px] flex-col gap-6">
+        <div className="print-root flex w-full max-w-[560px] flex-col gap-6">
           {!profile.supportsPrint ? (
             <div className="flex flex-col gap-4">
               <div className="flex flex-col items-start gap-4 border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111]">
@@ -238,40 +254,58 @@ export function SetupWizard({ deviceToken, onDone }: Props) {
             </div>
           ) : (
             <>
-          <div className="flex flex-col items-start gap-4 border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111]">
-            <Printer className="size-8" aria-hidden />
-            <p className="max-w-[46ch] text-sm leading-relaxed text-muted-foreground">
-              Printer foto default OS harus sudah terpasang di perangkat kiosk
-              (ukuran kertas ikut setting owner: 4x6/A6). Cetak halaman uji,
-              lalu konfirmasi hasil fisik. Di tablet Android/iPad dialog print
-              sistem selalu muncul — pilih printer foto di dialog. Cetak senyap
-              tanpa dialog hanya di Chrome desktop flag --kiosk-printing.
-            </p>
-            <Button variant="outline" onClick={() => window.print()}>
-              Cetak halaman uji
-            </Button>
-          </div>
+              <div className="flex flex-col items-start gap-4 border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111]">
+                <Printer className="size-8" aria-hidden />
+                <p className="max-w-[46ch] text-sm leading-relaxed text-muted-foreground">
+                  Printer foto default OS harus sudah terpasang di perangkat kiosk
+                  (ukuran kertas ikut setting owner: 4x6/A6). Cetak halaman uji,
+                  lalu konfirmasi hasil fisik. Di tablet Android/iPad dialog print
+                  sistem selalu muncul — pilih printer foto di dialog. Cetak senyap
+                  tanpa dialog hanya di Chrome desktop flag --kiosk-printing.
+                </p>
+                <Button variant="outline" onClick={() => window.print()}>
+                  Cetak halaman uji
+                </Button>
+              </div>
 
-          <div className="flex flex-col gap-3">
-            <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-              Apakah test print berhasil?
-            </p>
-            <div className="flex gap-3">
-              <Button onClick={() => void confirmPrint(true)} className="bg-accent-3">
-                Ya, berhasil
-              </Button>
-              <Button variant="outline" onClick={() => void confirmPrint(false)}>
-                Tidak / ulangi
-              </Button>
-            </div>
-          </div>
+              <div className="flex flex-col gap-3">
+                <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
+                  Apakah test print berhasil?
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <Button onClick={() => void confirmPrint(true)} className="bg-accent-3">
+                    Ya, berhasil
+                  </Button>
+                  <Button variant="outline" onClick={() => void confirmPrint(false)}>
+                    Tidak / ulangi
+                  </Button>
+                </div>
+              </div>
 
-          {printConfirmed && (
-            <Button size="lg" onClick={onDone} className="bg-accent">
-              Selesai. Mulai
-            </Button>
-          )}
-          </>
+              {printConfirmed ? (
+                <Button size="lg" onClick={onDone} className="bg-accent">
+                  Selesai. Mulai
+                </Button>
+              ) : (
+                // Jalur keluar untuk booth tanpa printer berfungsi — tanpa ini
+                // wizard tidak pernah selesai dan welcome tidak pernah muncul.
+                <div className="flex flex-col gap-2 border-2 border-dashed border-ink p-4">
+                  <p className="font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
+                    Printer belum siap? Setup bisa dilewati — uji cetak tetap bisa diulang kapan pun dengan memasang ulang perangkat.
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      // Tandai printer belum terkonfirmasi di server, lalu selesai.
+                      void report({ printer: { confirmed: false, last_test_at: new Date().toISOString() } });
+                      onDone();
+                    }}
+                  >
+                    Lewati uji cetak
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
