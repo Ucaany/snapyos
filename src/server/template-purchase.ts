@@ -13,6 +13,10 @@ import { can } from "@/lib/rbac";
 import { getMembership } from "@/lib/tenant";
 import { invoiceNumber } from "@/lib/subscription-math";
 import { insertAudit } from "@/server/audit";
+import { signedUrlMap } from "@/server/storage";
+import { SIGNED_URL_TTL_SECONDS as SIGNED_URL_TTL } from "@/lib/constants";
+
+const BUCKET = "business-assets";
 
 export type PremiumTemplateRow = {
   id: string;
@@ -89,13 +93,20 @@ export async function listPremiumTemplates(
     is_active: boolean;
     template_categories: { name: string } | { name: string }[] | null;
   };
-  return ((templates ?? []) as unknown as Row[]).map((t) => ({
+  const rows = (templates ?? []) as unknown as Row[];
+  // Bucket private → signed URL (docs/09 §9). Tanpa ini, <Image src> memakai
+  // key mentah sebagai path relatif → 404 dan marketplace tampil tanpa preview.
+  const keys = Array.from(
+    new Set(rows.flatMap((t) => [t.thumbnail_url, t.file_url].filter((k): k is string => !!k)))
+  );
+  const urlByKey = await signedUrlMap(BUCKET, keys, SIGNED_URL_TTL);
+  return rows.map((t) => ({
     id: t.id,
     name: t.name,
     category_id: t.category_id,
     category_name: (Array.isArray(t.template_categories) ? t.template_categories[0] : t.template_categories)?.name ?? null,
-    file_url: t.file_url,
-    thumbnail_url: t.thumbnail_url,
+    file_url: urlByKey.get(t.file_url) ?? t.file_url,
+    thumbnail_url: t.thumbnail_url ? urlByKey.get(t.thumbnail_url) ?? null : null,
     price: t.price,
     is_active: t.is_active,
     purchased: ownedIds.has(t.id),

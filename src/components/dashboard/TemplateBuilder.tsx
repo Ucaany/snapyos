@@ -1,6 +1,6 @@
 "use client"
 
-import { useActionState, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useActionState, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react"
 import Link from "next/link"
 import { ArrowLeft, Eye, EyeOff, Plus, Trash2, WandSparkles } from "lucide-react"
 
@@ -41,6 +41,22 @@ const SAMPLE_COLORS = slotColors;
 
 function normAngle(deg: number): number {
   return ((((Math.round(deg) + 180) % 360) + 360) % 360) - 180
+}
+
+/** Fallback sinkron canvas → Blob (toDataURL tak pernah menggantung).
+ *  Dipakai bila `canvas.toBlob` tidak memanggil callback (quirk Chromium). */
+function dataUrlToBlob(canvas: HTMLCanvasElement): Blob | null {
+  try {
+    const dataUrl = canvas.toDataURL("image/png")
+    const comma = dataUrl.indexOf(",")
+    if (comma < 0) return null
+    const binary = atob(dataUrl.slice(comma + 1))
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+    return new Blob([bytes], { type: "image/png" })
+  } catch {
+    return null
+  }
 }
 
 /** Foto sample deterministik untuk preview (docs/15 §15.3). */
@@ -130,11 +146,11 @@ export function TemplateBuilder({
   const [previewMode, setPreviewMode] = useState(false)
   const [frameVersion, setFrameVersion] = useState(0)
   const [saveState, action, saving] = useActionState(saveAction, initial)
+  const [, startSaveTransition] = useTransition()
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const frameRef = useRef<HTMLImageElement | null>(null)
   const dragRef = useRef<Drag | null>(null)
-  const thumbInputRef = useRef<HTMLInputElement>(null)
   const chromaInputRef = useRef<HTMLInputElement>(null)
   const seqRef = useRef(layout.slots.length)
   const [chromaError, setChromaError] = useState<string | null>(null)
@@ -504,14 +520,36 @@ export function TemplateBuilder({
     [layout]
   )
 
-  /** Thumbnail otomatis dari preview slot terisi (docs/15 §15.3). */
+  /** Thumbnail otomatis dari preview slot terisi (docs/15 §15.3).
+   *  `toBlob` pada Chromium kadang TIDAK memanggil callback (canvas besar /
+   *  kondisi GPU) → save menggantung dan layout tak tersimpan. Guard: timeout
+   *  pendek + fallback sinkron `toDataURL` (selalu resolve). Thumbnail opsional;
+   *  layout tetap wajib tersimpan. */
   async function generateThumbnail(): Promise<File | null> {
     if (layout.slots.length === 0) return null
     const canvas = document.createElement("canvas")
     composeFrame(canvas, roundedLayout, frameRef.current, getSamples(), [], Number.POSITIVE_INFINITY)
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"))
-    if (!blob) return null
-    return new File([blob], `thumbnail-${template.id}.png`, { type: "image/png" })
+    const blob = await new Promise<Blob | null>((resolve) => {
+      let settled = false
+      const finish = (b: Blob | null) => {
+        if (settled) return
+        settled = true
+        resolve(b)
+      }
+      const timer = setTimeout(() => finish(null), 800)
+      const settle = (b: Blob | null) => {
+        clearTimeout(timer)
+        finish(b)
+      }
+      try {
+        canvas.toBlob((b) => settle(b), "image/png")
+      } catch {
+        settle(null)
+      }
+    })
+    const safeBlob = blob ?? dataUrlToBlob(canvas)
+    if (!safeBlob) return null
+    return new File([safeBlob], `thumbnail-${template.id}.png`, { type: "image/png" })
   }
 
   async function applyChromaKey(selectedColor: string) {
@@ -575,14 +613,11 @@ export function TemplateBuilder({
     void applyChromaKey(color)
   }
 
-  // Submit dua tahap: intercept → generate thumbnail → requestSubmit.
-  // (Flag mencegah intercept kedua kali.)
-  const submittingRef = useRef(false)
+  // Submit satu tahap: intercept → generate thumbnail → dispatch action via
+  // FormData (bukan requestSubmit dua-kali; pola itu balapan dengan handler
+  // React `useActionState` sehingga action kadang tak pernah jalan — layout
+  // gagal tersimpan). Dispatch imperatif deterministik.
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    if (submittingRef.current) {
-      submittingRef.current = false
-      return
-    }
     e.preventDefault()
     const form = e.currentTarget
     if (roundedLayout.slots.length === 0) {
@@ -591,18 +626,19 @@ export function TemplateBuilder({
       )
       if (!ok) return
     }
+    const formData = new FormData(form)
+    formData.set("layout", JSON.stringify(roundedLayout))
     try {
       const file = await generateThumbnail()
-      if (file && thumbInputRef.current) {
-        const dt = new DataTransfer()
-        dt.items.add(file)
-        thumbInputRef.current.files = dt.files
-      }
+      if (file) formData.set("thumbnail", file)
     } catch {
       // thumbnail gagal (mis. canvas tainted) — layout tetap tersimpan
     }
-    submittingRef.current = true
-    form.requestSubmit()
+    const chromaFile = chromaInputRef.current?.files?.[0]
+    if (chromaFile) formData.set("chroma_file", chromaFile)
+    startSaveTransition(() => {
+      void action(formData)
+    })
   }
 
   const num = (v: number) => Math.round(v)
@@ -916,20 +952,11 @@ export function TemplateBuilder({
           </div>
 
           <form
-            action={action}
             onSubmit={(e) => void onSubmit(e)}
             className="flex flex-col gap-3 rounded-none border-2 border-ink p-4 shadow-[4px_4px_0_#111]"
           >
             <input type="hidden" name="id" value={template.id} />
             <input type="hidden" name="layout" value={JSON.stringify(roundedLayout)} />
-            <input
-              ref={thumbInputRef}
-              type="file"
-              name="thumbnail"
-              hidden
-              tabIndex={-1}
-              aria-hidden
-            />
             <input ref={chromaInputRef} type="file" name="chroma_file" hidden tabIndex={-1} aria-hidden accept="image/png" />
             <p className="font-mono text-xs uppercase tracking-[0.1em]">Simpan</p>
             <p className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">

@@ -14,7 +14,7 @@ import {
   cleanupSessionMedia,
   type SessionMedia,
 } from "../src/lib/retention.ts";
-import { staleTemplateKeys, storageKeysOnly } from "../src/lib/template-cleanup.ts";
+import { staleTemplateKeys, staleThumbnailKeys, storageKeysOnly } from "../src/lib/template-cleanup.ts";
 import { StorageResolver } from "../src/lib/r2/resolver.ts";
 
 // --- helpers ---------------------------------------------------------------
@@ -346,6 +346,33 @@ test("template deletion: thumbnail null/undefined diabaikan", () => {
     oldThumbnail: null,
   });
   assert.deepEqual(keys, ["biz/templates/frame.png"]);
+});
+
+test("uploadThumbnail: thumbnail lama = frame (default upload) → frame TIDAK dihapus", () => {
+  const keys = staleThumbnailKeys({
+    oldThumbnail: "biz/templates/frame.png",
+    newThumbnail: "biz/templates/thumb-new.png",
+    currentFrame: "biz/templates/frame.png",
+  });
+  assert.deepEqual(keys, []);
+});
+
+test("uploadThumbnail: thumbnail lama beda dari frame → thumbnail lama dihapus", () => {
+  const keys = staleThumbnailKeys({
+    oldThumbnail: "biz/templates/thumb-old.png",
+    newThumbnail: "biz/templates/thumb-new.png",
+    currentFrame: "biz/templates/frame.png",
+  });
+  assert.deepEqual(keys, ["biz/templates/thumb-old.png"]);
+});
+
+test("uploadThumbnail: thumbnail baru tidak pernah dihapus", () => {
+  const keys = staleThumbnailKeys({
+    oldThumbnail: "biz/templates/thumb-new.png",
+    newThumbnail: "biz/templates/thumb-new.png",
+    currentFrame: "biz/templates/frame.png",
+  });
+  assert.deepEqual(keys, []);
 });
 
 test("storageKeysOnly: URL absolut dibuang, key storage dipertahankan", () => {

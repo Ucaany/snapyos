@@ -149,6 +149,16 @@ dipakai apa adanya (relatif bucket, **bukan** URL, tanpa prefix area).
 - **Usage accounting** (`storage-usage.ts`) menjumlahkan SEMUA provider
   terkonfigurasi (write + fallback, R2 bila dikonfigurasi).
 - Tidak ada bucket public; baca tetap hanya via signed URL.
+- **CORS bucket R2 (WAJIB).** Frame template & foto dirender oleh engine
+  composite (`composeFrame`) di canvas, jadi browser memuatnya dengan
+  `crossOrigin="anonymous"` (`TemplateBuilder`, kiosk `Editor`) agar canvas
+  tidak tainted dan `toBlob` bisa mengekspor hasil. Bucket R2 privat **tanpa
+  CORS** menolak load tersebut (`net::ERR_FAILED`) → frame tidak tampil,
+  preview & chroma-key mati, dan finalize kiosk gagal. Jalankan
+  `node scripts/configure-r2-cors.mjs` (idempoten) sekali per environment
+  setelah kredensial R2 diisi; script membaca origin dari `AUTH_URL` +
+  `SnapyOS_PUBLIC_BASE_URL` dan memasang policy `GET/HEAD` pada kedua bucket.
+  Supabase Storage sudah mengirim CORS permisif, jadi tidak perlu setelan ini.
 
 **Batasan (Phase berikutnya — direct-to-R2 upload):** upload server-action
 dibatasi `serverActions.bodySizeLimit = "8mb"` (Next), sedangkan

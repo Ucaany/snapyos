@@ -17,7 +17,7 @@ import {
   type TemplateUpdateInput,
 } from "@/lib/validators"
 import { slotCount, type TemplateLayout } from "@/lib/template-layout"
-import { staleTemplateKeys } from "@/lib/template-cleanup"
+import { staleTemplateKeys, staleThumbnailKeys } from "@/lib/template-cleanup"
 import { SIGNED_URL_TTL_SECONDS as SIGNED_URL_TTL } from "@/lib/constants"
 import {
   assertStorageAvailable,
@@ -276,13 +276,18 @@ export async function uploadTemplateThumbnail(
   const key = `${businessId}/templates/${Date.now()}-thumb-${Math.random().toString(36).slice(2, 8)}.${check.ext}`
   const supabase = createServerClient()
   // Thumbnail lama → dibersihkan setelah update sukses (anti orphan).
+  // PENTING: ambil `file_url` juga — pada template hasil upload, thumbnail_url
+  // default = file_url (frame). Tanpa pengecualian ini, mengganti thumbnail
+  // lewat builder akan MENGHAPUS frame (file_url) → frame 404 & hilang.
   const { data: existing } = await supabase
     .from("templates")
-    .select("thumbnail_url")
+    .select("file_url, thumbnail_url")
     .eq("id", templateId)
     .eq("business_id", businessId)
     .maybeSingle()
-  const oldThumb = (existing as { thumbnail_url?: string | null } | null)?.thumbnail_url ?? null
+  const row = existing as { file_url?: string | null; thumbnail_url?: string | null } | null
+  const oldThumb = row?.thumbnail_url ?? null
+  const currentFrame = row?.file_url ?? null
 
   const { error: uploadError } = await getStorage().upload(BUCKET, key, body, {
     contentType: file.type ?? "application/octet-stream",
@@ -298,9 +303,16 @@ export async function uploadTemplateThumbnail(
     .eq("business_id", businessId)
   if (error) throw new ApiError("INTERNAL", "Gagal menyimpan thumbnail")
 
-  if (oldThumb && oldThumb !== key) {
-    await removeResolved(BUCKET, [oldThumb])
-    await accountStorageSub(businessId, [oldThumb])
+  // Hapus thumbnail lama HANYA bila tidak lagi direferensikan (bukan key
+  // thumbnail baru, dan bukan frame yang masih dipakai).
+  const stale = staleThumbnailKeys({
+    oldThumbnail: oldThumb,
+    newThumbnail: key,
+    currentFrame,
+  })
+  if (stale.length > 0) {
+    await removeResolved(BUCKET, stale)
+    await accountStorageSub(businessId, stale)
   }
 }
 

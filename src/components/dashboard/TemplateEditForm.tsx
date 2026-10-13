@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,13 @@ export function TemplateEditForm({ template, onDone }: Props) {
   const [state, action, pending] = useActionState(updateTemplateAction, initial);
   const wasPending = useRef(false);
 
+  // Controlled fields — Base UI Input/Select adalah FieldControl; memakai
+  // defaultValue memicu warning "uncontrolled FieldControl" saat revalidatePath
+  // me-render ulang baris setelah save sukses. State awal dari template.
+  const [name, setName] = useState(template.name);
+  const [category, setCategory] = useState(template.category);
+  const [isActive, setIsActive] = useState(template.is_active);
+
   useEffect(() => {
     if (pending) {
       wasPending.current = true;
@@ -41,13 +48,13 @@ export function TemplateEditForm({ template, onDone }: Props) {
         <label htmlFor={`tpl-edit-name-${template.id}`} className={labelClass}>
           Nama *
         </label>
-        <Input id={`tpl-edit-name-${template.id}`} name="name" defaultValue={template.name} disabled={pending} />
+        <Input id={`tpl-edit-name-${template.id}`} name="name" value={name} onChange={(e) => setName(e.target.value)} disabled={pending} />
       </div>
       <div className="flex flex-col gap-2">
         <label htmlFor={`tpl-edit-cat-${template.id}`} className={labelClass}>
           Kategori
         </label>
-        <Select id={`tpl-edit-cat-${template.id}`} name="category" defaultValue={template.category} disabled={pending}>
+        <Select id={`tpl-edit-cat-${template.id}`} name="category" value={category} onChange={(e) => setCategory(e.target.value)} disabled={pending}>
           {TEMPLATE_CATEGORIES.map((c) => (
             <option key={c} value={c}>
               {c.toUpperCase()}
@@ -59,7 +66,8 @@ export function TemplateEditForm({ template, onDone }: Props) {
         <input
           type="checkbox"
           name="is_active"
-          defaultChecked={template.is_active}
+          checked={isActive}
+          onChange={(e) => setIsActive(e.target.checked)}
           disabled={pending}
           className="size-4 accent-[#111111]"
         />

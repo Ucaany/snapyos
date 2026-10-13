@@ -24,6 +24,24 @@ export function staleTemplateKeys(input: StaleTemplateInput): string[] {
 }
 
 /**
+ * Key thumbnail lama yang aman dihapus saat thumbnail diganti.
+ * Pengecualian WAJIB: `currentFrame` — pada template hasil upload, thumbnail
+ * default = frame (file_url) sama; menghapusnya akan menghilangkan frame.
+ * Juga mengecualikan thumbnail baru (`newThumbnail`).
+ */
+export function staleThumbnailKeys(input: {
+  oldThumbnail?: string | null;
+  newThumbnail: string;
+  /** file_url template — masih dipakai sebagai frame, jangan dihapus. */
+  currentFrame?: string | null;
+}): string[] {
+  return staleTemplateKeys({
+    oldThumbnail: input.oldThumbnail,
+    newKey: input.newThumbnail,
+  }).filter((k) => k !== input.currentFrame);
+}
+
+/**
  * Saring key storage: buang URL absolut (CDN publik) yang bukan objek bucket.
  * Frame global boleh diisi URL eksternal — jangan di-probe/hapus sebagai key.
  */
