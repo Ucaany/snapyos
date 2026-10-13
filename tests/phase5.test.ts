@@ -24,6 +24,7 @@ import {
   computePlatformFee,
   computeVoucherDiscount,
 } from "../src/lib/checkout-math.ts"
+import { buildCheckoutPayload, mergeCheckout } from "../src/lib/form-state.ts"
 import {
   checkoutCreateSchema,
   checkoutSettingsSchema,
@@ -252,4 +253,31 @@ test("checkoutSettingsSchema: offline_enabled boolean optional (docs/05 mode off
   assert.equal(checkoutSettingsSchema.safeParse({ offline_enabled: false }).success, true)
   assert.equal(checkoutSettingsSchema.safeParse({ offline_enabled: "true" }).success, false)
   assert.equal(transactionListQuerySchema.safeParse({ method: "offline" }).success, true)
+})
+
+test("buildCheckoutPayload: form QRIS tanpa toggle offline TIDAK mengirim offline_enabled", () => {
+  const fd = new FormData()
+  fd.set("qris_expiry_minutes", "7")
+  const payload = buildCheckoutPayload(fd)
+  assert.deepEqual(payload, { qris_expiry_minutes: 7 })
+  assert.equal("offline_enabled" in payload, false)
+})
+
+test("buildCheckoutPayload: toggle offline hadir → ikut dikirim", () => {
+  const fd = new FormData()
+  fd.set("qris_expiry_minutes", "5")
+  fd.set("offline_enabled", "on")
+  assert.deepEqual(buildCheckoutPayload(fd), { qris_expiry_minutes: 5, offline_enabled: true })
+})
+
+test("mergeCheckout: update parsial QRIS mempertahankan offline_enabled (anti-clobber)", () => {
+  const current = { offline_enabled: true, qris_expiry_minutes: 3 }
+  const merged = mergeCheckout(current, { qris_expiry_minutes: 7 })
+  assert.deepEqual(merged, { offline_enabled: true, qris_expiry_minutes: 7 })
+})
+
+test("mergeCheckout: patch eksplisit offline_enabled=false tetap menang", () => {
+  const current = { offline_enabled: true, qris_expiry_minutes: 3 }
+  const merged = mergeCheckout(current, { qris_expiry_minutes: 3, offline_enabled: false })
+  assert.equal(merged.offline_enabled, false)
 })

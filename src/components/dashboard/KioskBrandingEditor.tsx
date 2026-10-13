@@ -17,7 +17,13 @@ import type {
 } from "@/lib/kiosk-types";
 import { kioskVisualStyle } from "@/lib/kiosk-types";
 import type { FormState } from "@/server/auth-actions";
-import { saveBrandingKioskAction, uploadKioskVideoAction, uploadKioskPageVideoAction } from "@/server/branding-actions";
+import {
+  deleteKioskPageVideoAction,
+  deleteKioskVideoAction,
+  saveBrandingKioskAction,
+  uploadKioskVideoAction,
+  uploadKioskPageVideoAction,
+} from "@/server/branding-actions";
 import { savePhotoboxBrandingAction } from "@/server/booth-actions";
 
 const initial: FormState = {};
@@ -254,6 +260,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
   const [pageVideoPage, setPageVideoPage] = useState<KioskPageId>("capture");
   const [pageVideoPending, setPageVideoPending] = useState(false);
   const [pageVideoError, setPageVideoError] = useState<string | null>(null);
+  const [videoDeletePending, setVideoDeletePending] = useState(false);
   const [previewScreen, setPreviewScreen] = useState<(typeof PREVIEW_SCREENS)[number]["id"]>("welcome");
   const [activePage, setActivePage] = useState<KioskPageId>("welcome");
 
@@ -371,14 +378,19 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
     const result: Partial<Record<KioskPageId, KioskPageConfig>> = {};
     for (const id of PAGE_IDS) {
       const p = pageOverrides[id];
-      if (!p?.active) continue;
+      // video_key dikelola terpisah (upload/hapus) — selalu pertahankan nilai
+      // tersimpan agar save() tidak menghapus video promo per-layar.
+      const savedVideoKey = k.pages?.[id]?.video_key ?? null;
       const cfg: KioskPageConfig = {};
-      if (/^#[0-9a-fA-F]{6}$/.test(p.bg_color.trim())) cfg.bg_color = p.bg_color.trim();
-      if (/^#[0-9a-fA-F]{6}$/.test(p.text_color.trim())) cfg.text_color = p.text_color.trim();
-      if (p.font_scale !== 1) cfg.font_scale = p.font_scale;
-      if (p.button_radius !== 0) cfg.button_radius = p.button_radius;
-      if (p.padding !== 24) cfg.padding = p.padding;
-      if (p.align) cfg.align = p.align;
+      if (savedVideoKey !== null) cfg.video_key = savedVideoKey;
+      if (p?.active) {
+        if (/^#[0-9a-fA-F]{6}$/.test(p.bg_color.trim())) cfg.bg_color = p.bg_color.trim();
+        if (/^#[0-9a-fA-F]{6}$/.test(p.text_color.trim())) cfg.text_color = p.text_color.trim();
+        if (p.font_scale !== 1) cfg.font_scale = p.font_scale;
+        if (p.button_radius !== 0) cfg.button_radius = p.button_radius;
+        if (p.padding !== 24) cfg.padding = p.padding;
+        if (p.align) cfg.align = p.align;
+      }
       if (Object.keys(cfg).length > 0) result[id] = cfg;
     }
     return result;
@@ -396,7 +408,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
       align: align || undefined,
       pages: buildPagesConfig(),
     };
-    return kioskVisualStyle(liveKiosk, id);
+    return kioskVisualStyle(liveKiosk, id, { primary, secondary });
   }
 
   function reset() {
@@ -564,6 +576,27 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
     if (!res.ok) setPageVideoError(res.error ?? "Gagal mengunggah video per-layar.");
   }
 
+  async function handleDeleteVideo() {
+    if (!canWrite || videoDeletePending) return;
+    setVideoDeletePending(true);
+    const res = await deleteKioskVideoAction();
+    setVideoDeletePending(false);
+    setStatus(
+      res.ok
+        ? { kind: "success", message: "Video background dihapus." }
+        : { kind: "error", message: res.error ?? "Gagal menghapus video." }
+    );
+  }
+
+  async function handleDeletePageVideo() {
+    if (!canWrite || videoDeletePending) return;
+    setVideoDeletePending(true);
+    setPageVideoError(null);
+    const res = await deleteKioskPageVideoAction(pageVideoPage);
+    setVideoDeletePending(false);
+    if (!res.ok) setPageVideoError(res.error ?? "Gagal menghapus video per-layar.");
+  }
+
   function save() {
     setStatus({ kind: "saving" });
     setFieldErrors({});
@@ -607,6 +640,43 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
       });
       if (result.ok) {
         setStatus({ kind: "success", message: "Tersimpan: kiosk memakai konfigurasi terbaru." });
+        // Sinkronkan baseline Reset ke nilai yang baru saja disimpan (cegah
+        // Reset mengembalikan nilai basi sebelum save).
+        Object.assign(saved, {
+          title: title.trim(),
+          tagline: tagline.trim(),
+          button: button.trim(),
+          primary,
+          secondary,
+          bgColor,
+          textColor,
+          fontFamily,
+          align,
+          fontScale,
+          radius,
+          padding,
+          paymentTitle,
+          paymentHint,
+          captureTitle,
+          captureHint,
+          editorTitle,
+          editorHint,
+          resultTitle,
+          resultHint,
+          guideTitle,
+          guideButton,
+          packageTitle,
+          templateTitle,
+          welcomeLayout,
+          paymentAlign,
+          resultLayout,
+          showLogo,
+          showTagline,
+          guideSteps,
+          showMirrorToggle,
+          allowZoomPan,
+          pageOverrides,
+        });
       } else {
         setFieldErrors(result.fieldErrors ?? {});
         setStatus({ kind: "error", message: result.error ?? "Gagal menyimpan. Periksa field bertanda merah." });
@@ -629,9 +699,49 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
   // Payment memakai payment_align (bukan align global) — sama dengan CheckoutScreen.
   const payAlignClass = paymentAlign === "center" ? "items-center text-center" : "items-start text-left";
 
+  // Peta key editor → key fieldErrors dari Zod (brandingSchema + kioskBrandingSchema).
+  // Editor memakai id pendek ("primary","secondary","bg","text"); Zod memakai
+  // "primary_color","secondary_color" dan menaruh error kiosk (mis. kontras) di "kiosk".
+  const ERROR_KEY_ALIASES: Record<string, string[]> = {
+    primary: ["primary_color", "kiosk"],
+    secondary: ["secondary_color", "kiosk"],
+    bg: ["kiosk", "bg_color"],
+    text: ["kiosk", "text_color"],
+    font: ["kiosk"],
+    radius: ["kiosk"],
+    padding: ["kiosk"],
+  };
+
   function err(key: string) {
-    return fieldErrors[key]?.[0] ?? videoState.fieldErrors?.[key]?.[0];
+    const keys = ERROR_KEY_ALIASES[key] ?? [key];
+    for (const k of keys) {
+      const msg = fieldErrors[k]?.[0] ?? videoState.fieldErrors?.[k]?.[0];
+      if (msg) return msg;
+    }
+    return undefined;
   }
+
+  // Validasi kontras live (R-25) — cegah owner menyimpan pasangan warna tak terbaca.
+  const contrastRatio = (fg: string, bg: string): number | null => {
+    if (!/^#[0-9a-fA-F]{6}$/.test(fg) || !/^#[0-9a-fA-F]{6}$/.test(bg)) return null;
+    const lum = (hex: string) => {
+      const r = parseInt(hex.slice(1, 3), 16) / 255;
+      const g = parseInt(hex.slice(3, 5), 16) / 255;
+      const b = parseInt(hex.slice(5, 7), 16) / 255;
+      const f = (c: number) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+      return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+    };
+    const l1 = lum(fg);
+    const l2 = lum(bg);
+    const hi = Math.max(l1, l2);
+    const lo = Math.min(l1, l2);
+    return (hi + 0.05) / (lo + 0.05);
+  };
+  const liveContrast = contrastRatio(textColor, bgColor);
+  const contrastWarning =
+    liveContrast !== null && liveContrast < 4.5
+      ? `Kontras teks/background hanya ${liveContrast.toFixed(2)}:1 — minimal 4.5:1 (WCAG AA).`
+      : null;
 
   return (
     <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12">
@@ -702,6 +812,11 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
               </div>
             ))}
           </div>
+          {contrastWarning && (
+            <p role="alert" className="mt-3 border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink">
+              {contrastWarning}
+            </p>
+          )}
           <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             <div className={fieldClass}>
               <label htmlFor="kb-font-family" className={labelClass}>Font family</label>
@@ -1128,7 +1243,12 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
             {videoUrl && !videoPending && (
               <div className="flex flex-col gap-2">
                 <video src={videoUrl} muted loop playsInline autoPlay className="max-h-40 w-auto border-2 border-ink bg-bg" aria-label="Pratinjau video background kiosk" />
-                <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{"VIDEO AKTIF · LOOPING DI WELCOME SCREEN"}</p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{"VIDEO AKTIF · LOOPING DI WELCOME SCREEN"}</p>
+                  <Button type="button" variant="outline" size="sm" onClick={() => void handleDeleteVideo()} disabled={videoDeletePending || !canWrite}>
+                    <Trash2 className="size-3.5" aria-hidden /> Hapus video
+                  </Button>
+                </div>
               </div>
             )}
           </form>
@@ -1157,8 +1277,16 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
             </div>
             {pageVideoPending && <p role="status" className="font-mono text-xs">Mengunggah…</p>}
             {pageVideoError && <p role="alert" className="font-mono text-xs text-destructive">{pageVideoError}</p>}
+            {k.pages?.[pageVideoPage]?.video_url && (
+              <div className="flex flex-wrap items-center gap-3">
+                <video src={k.pages[pageVideoPage]?.video_url ?? undefined} muted loop playsInline className="max-h-32 w-auto border-2 border-ink bg-bg" aria-label={`Pratinjau video layar ${PAGE_LABELS[pageVideoPage]}`} />
+                <Button type="button" variant="outline" size="sm" onClick={() => void handleDeletePageVideo()} disabled={videoDeletePending || !canWrite}>
+                  <Trash2 className="size-3.5" aria-hidden /> Hapus video layar ini
+                </Button>
+              </div>
+            )}
             <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em] text-muted-foreground">
-              {"/// LAYAR KAMERA MENAMPILKAN VIDEO DI LATAR PANEL PREVIEW SAAT TAHAP PREVIEW."}
+              {"/// VIDEO LATAR DITAMPILKAN DI LAYAR YANG DIPILIH (WELCOME, TUTORIAL, PAKET, FRAME, PAYMENT, FOTO, RESULT)."}
             </p>
           </div>
         </section>
@@ -1221,8 +1349,8 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
         <div className="aspect-[4/3] overflow-hidden border-4 shadow-[8px_8px_0_0_#111111]" style={{ borderColor: sSafe }}>
           {previewScreen === "welcome" && (
             <div className="relative flex size-full flex-col overflow-hidden" style={{ backgroundColor: ps.bg, color: ps.text, padding: ps.padding }}>
-              {videoUrl && (
-                <video key={videoUrl} src={videoUrl} muted loop playsInline autoPlay className="absolute inset-0 size-full object-cover opacity-60" aria-hidden />
+              {(k.pages?.welcome?.video_url ?? videoUrl) && (
+                <video key={k.pages?.welcome?.video_url ?? videoUrl ?? ""} src={k.pages?.welcome?.video_url ?? videoUrl ?? undefined} muted loop playsInline autoPlay className="absolute inset-0 size-full object-cover opacity-60" aria-hidden />
               )}
               <div
                 className={`relative z-10 grid flex-1 items-center gap-4 text-center ${
@@ -1257,12 +1385,15 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
           )}
 
           {previewScreen === "guide" && (
-            <div className={`flex size-full flex-col justify-center gap-3 ${pvAlignClass}`} style={{ backgroundColor: ps.bg, color: ps.text, padding: Math.min(ps.padding, 24) }}>
-              <p className="font-mono text-[8px] uppercase tracking-[0.25em] opacity-60">{"/// PETUNJUK"}</p>
-              <h2 className="font-display uppercase leading-none tracking-tight" style={{ fontSize: `${1.4 * ps.fontScale}rem`, fontFamily: pvFont }}>
+            <div className={`relative flex size-full flex-col justify-center gap-3 overflow-hidden ${pvAlignClass}`} style={{ backgroundColor: ps.bg, color: ps.text, padding: Math.min(ps.padding, 24) }}>
+              {(k.pages?.guide?.video_url ?? null) && (
+                <video key={k.pages?.guide?.video_url ?? ""} src={k.pages?.guide?.video_url ?? undefined} muted loop playsInline autoPlay className="absolute inset-0 size-full object-cover opacity-50" aria-hidden />
+              )}
+              <p className="relative z-10 font-mono text-[8px] uppercase tracking-[0.25em] opacity-60">{"/// PETUNJUK"}</p>
+              <h2 className="relative z-10 font-display uppercase leading-none tracking-tight" style={{ fontSize: `${1.4 * ps.fontScale}rem`, fontFamily: pvFont }}>
                 {guideTitle || "Cara foto"}
               </h2>
-              <ol className="flex flex-col gap-1.5">
+              <ol className="relative z-10 flex flex-col gap-1.5">
                 {(guideSteps.length > 0 ? guideSteps : ["[LANGKAH 1]", "[LANGKAH 2]", "[LANGKAH 3]"]).slice(0, 3).map((step, i) => (
                   <li key={`${i}-${step}`} className="flex items-center gap-2 border-2 p-1.5 font-mono text-[8px] uppercase tracking-[0.05em]" style={{ borderColor: ps.text, borderRadius: ps.radius }}>
                     <span className="font-bold">{String(i + 1).padStart(2, "0")}</span>
@@ -1270,7 +1401,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                   </li>
                 ))}
               </ol>
-              <div className={`mt-1 flex gap-2 ${pvAlign === "center" ? "justify-center" : pvAlign === "right" ? "justify-end" : "justify-start"}`}>
+              <div className={`relative z-10 mt-1 flex gap-2 ${pvAlign === "center" ? "justify-center" : pvAlign === "right" ? "justify-end" : "justify-start"}`}>
                 <span className="border-2 px-3 py-1 font-mono text-[8px] font-bold uppercase" style={{ borderColor: ps.text, borderRadius: ps.radius }}>Kembali</span>
                 <span className="border-2 px-3 py-1 font-mono text-[8px] font-bold uppercase" style={{ backgroundColor: pSafe, borderColor: sSafe, color: sSafe, borderRadius: ps.radius }}>{guideButton || "Mulai"}</span>
               </div>

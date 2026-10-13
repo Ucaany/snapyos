@@ -21,12 +21,7 @@ export default async function PaymentGatewayPage() {
   const membership = await getMembership(user.id, active.business.id);
   if (membership?.role !== "owner") redirect("/dashboard/settings");
 
-  let credentials: Awaited<ReturnType<typeof listCredentials>> = [];
-  try {
-    credentials = await listCredentials(user.id, active.business.id);
-  } catch {
-    credentials = [];
-  }
+  const credentials = await listCredentials(user.id, active.business.id);
 
   return (
     <div className="flex flex-col gap-8 p-6 md:p-10">

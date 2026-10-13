@@ -9,7 +9,9 @@ import { extendIsoDays } from "@/lib/admin-math";
 import {
   adminSubscriptionAddOnSchema,
   adminSubscriptionAddOnCancelSchema,
+  adminSubscriptionAddOnUpdateSchema,
   adminSubscriptionUpdateSchema,
+  type AdminSubscriptionAddOnUpdateInput,
   type AdminSubscriptionUpdateInput,
 } from "@/lib/validators";
 import { decideAttach, planCancelAddOn } from "@/lib/admin-addon-ops";
@@ -39,44 +41,32 @@ export type AdminSubscriptionRow = {
 // Queries
 // ---------------------------------------------------------------------------
 
-export async function listSubscriptions(query: {
-  status?: string;
-  page?: number;
-  limit?: number;
-}): Promise<{ items: AdminSubscriptionRow[]; total: number }> {
-  await requireAdmin();
-  const page = Math.max(1, query.page ?? 1);
-  const limit = Math.min(100, Math.max(1, query.limit ?? 20));
+/** Kolom subscription yang dipilih (list + detail) — satu source of truth. */
+const SUBSCRIPTION_SELECT =
+  "id, business_id, status, trial_ends_at, current_period_start, current_period_end, cancel_at_period_end, businesses ( name ), plans ( name, code )";
 
+type SubscriptionBaseRow = {
+  id: string;
+  business_id: string;
+  status: string;
+  trial_ends_at: string | null;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+  businesses: { name: string } | { name: string }[] | null;
+  plans: { name: string; code: string } | { name: string; code: string }[] | null;
+};
+
+/**
+ * Enrich baris subscription mentah dengan add-ons aktif, add-on cancelled, dan
+ * invoice terakhir — 2 query batch (anti N+1), dipakai list + detail.
+ */
+async function enrichSubscriptionRows(
+  rows: SubscriptionBaseRow[]
+): Promise<AdminSubscriptionRow[]> {
   const supabase = createServerClient();
-  let req = supabase
-    .from("subscriptions")
-    .select(
-      "id, business_id, status, trial_ends_at, current_period_start, current_period_end, cancel_at_period_end, businesses ( name ), plans ( name, code )",
-      { count: "exact" }
-    )
-    .order("created_at", { ascending: false })
-    .range((page - 1) * limit, page * limit - 1);
-  if (query.status) req = req.eq("status", query.status);
-  const { data, error, count } = await req;
-  if (error) throw new ApiError("INTERNAL", "Gagal memuat subscriptions");
-
-  type Row = {
-    id: string;
-    business_id: string;
-    status: string;
-    trial_ends_at: string | null;
-    current_period_start: string | null;
-    current_period_end: string | null;
-    cancel_at_period_end: boolean;
-    businesses: { name: string } | { name: string }[] | null;
-    plans: { name: string; code: string } | { name: string; code: string }[] | null;
-  };
-  const rows = (data ?? []) as unknown as Row[];
-
-  // Batch semua status link seluruh halaman — 1 query (bukan 1 per baris, anti N+1).
-  // Partition active vs cancelled: cancelled = kandidat reaktivasi attach.
   const subIds = rows.map((r) => r.id);
+
   type Link = {
     subscription_id: string;
     id: string;
@@ -105,8 +95,6 @@ export async function listSubscriptions(query: {
     }
   }
 
-  // Batch invoice terakhir per subscription — 1 query (anti N+1), ordered by
-  // created_at desc lalu dedup manual (ambil invoice terbaru per sub).
   type InvoiceRow = {
     subscription_id: string;
     number: string;
@@ -129,12 +117,11 @@ export async function listSubscriptions(query: {
     }
   }
 
-  const items: AdminSubscriptionRow[] = [];
-  for (const row of rows) {
+  return rows.map((row) => {
     const business = Array.isArray(row.businesses) ? row.businesses[0] : row.businesses;
     const plan = Array.isArray(row.plans) ? row.plans[0] : row.plans;
     const inv = lastInvoiceBySub.get(row.id);
-    items.push({
+    return {
       id: row.id,
       business_id: row.business_id,
       business_name: business?.name ?? "-",
@@ -160,9 +147,46 @@ export async function listSubscriptions(query: {
             paid_at: inv.paid_at,
           }
         : null,
-    });
-  }
+    };
+  });
+}
+
+export async function listSubscriptions(query: {
+  status?: string;
+  page?: number;
+  limit?: number;
+}): Promise<{ items: AdminSubscriptionRow[]; total: number }> {
+  await requireAdmin();
+  const page = Math.max(1, query.page ?? 1);
+  const limit = Math.min(100, Math.max(1, query.limit ?? 20));
+
+  const supabase = createServerClient();
+  let req = supabase
+    .from("subscriptions")
+    .select(SUBSCRIPTION_SELECT, { count: "exact" })
+    .order("created_at", { ascending: false })
+    .range((page - 1) * limit, page * limit - 1);
+  if (query.status) req = req.eq("status", query.status);
+  const { data, error, count } = await req;
+  if (error) throw new ApiError("INTERNAL", "Gagal memuat subscriptions");
+
+  const rows = (data ?? []) as unknown as SubscriptionBaseRow[];
+  const items = await enrichSubscriptionRows(rows);
   return { items, total: count ?? 0 };
+}
+
+/** Detail satu subscription (docs/10 §10.2) — shape identik item list. */
+export async function getSubscription(subscriptionId: string): Promise<AdminSubscriptionRow> {
+  await requireAdmin();
+  const supabase = createServerClient();
+  const { data } = await supabase
+    .from("subscriptions")
+    .select(SUBSCRIPTION_SELECT)
+    .eq("id", subscriptionId)
+    .maybeSingle();
+  if (!data) throw new ApiError("NOT_FOUND", "Subscription tidak ditemukan");
+  const items = await enrichSubscriptionRows([data as unknown as SubscriptionBaseRow]);
+  return items[0]!;
 }
 
 export async function updateSubscription(
@@ -287,6 +311,40 @@ export async function attachSubscriptionAddOn(input: {
     sub.business_id
   );
   return { ...data, reactivated };
+}
+
+/** Update quantity add-on aktif (docs/10 §10.2) — hanya row status=active. */
+export async function updateSubscriptionAddOn(
+  linkId: string,
+  input: AdminSubscriptionAddOnUpdateInput
+) {
+  const admin = await requireAdmin();
+  const parsed = adminSubscriptionAddOnUpdateSchema.parse(input);
+  const supabase = createServerClient();
+
+  const { data, error } = await supabase
+    .from("subscription_add_ons")
+    .update({ quantity: parsed.quantity })
+    .eq("id", linkId)
+    .eq("status", "active")
+    .select("id, subscription_id, add_on_id, quantity")
+    .maybeSingle();
+  if (error) throw new ApiError("INTERNAL", "Gagal memperbarui add-on");
+  if (!data) throw new ApiError("NOT_FOUND", "Add-on aktif tidak ditemukan");
+
+  const { data: subBiz } = await supabase
+    .from("subscriptions")
+    .select("business_id")
+    .eq("id", data.subscription_id)
+    .maybeSingle();
+  await audit(
+    admin.id,
+    "admin.subscription.add_on.update",
+    linkId,
+    { subscription_id: data.subscription_id, add_on_id: data.add_on_id, quantity: parsed.quantity },
+    (subBiz as { business_id: string } | null)?.business_id ?? null
+  );
+  return data;
 }
 
 export async function cancelSubscriptionAddOn(

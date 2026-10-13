@@ -15,7 +15,9 @@ export function assertPaymentCredentialTenant(row: { business_id: string } | nul
 export type PaymentCredentialEnvironment = "sandbox" | "production";
 
 /** Maksimum credential aktif per business (lintas environment). */
-export const MAX_ACTIVE_PAYMENT_CREDENTIALS = 2;export type PaymentCredentialStored = {
+export const MAX_ACTIVE_PAYMENT_CREDENTIALS = 2;
+
+export type PaymentCredentialStored = {
   id: string;
   business_id: string;
   provider: GatewayProvider;

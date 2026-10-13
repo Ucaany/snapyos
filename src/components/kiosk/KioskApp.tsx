@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Lock, Maximize2, WifiOff, X } from "lucide-react";
-import type { CapturePhoto, FinalPhoto, PublicConfig, PublicPackage, PublicTemplate } from "@/lib/kiosk-types";
+import type { CapturePhoto, FinalPhoto, KioskPageId, PublicConfig, PublicPackage, PublicTemplate } from "@/lib/kiosk-types";
 import { kioskVisualStyle } from "@/lib/kiosk-types";
 import { printPlan } from "@/lib/print-layout";
 import { apiForm, apiPost, KioskError } from "@/components/kiosk/api";
@@ -519,6 +519,12 @@ export function KioskApp({
   const sessionSettings = currentPhotobox.session_settings;
   // Gaya visual per layar — global kiosk + override per-layar (kioskVisualStyle).
   const kioskBranding = liveConfig.branding.kiosk;
+  // Warna brand (primary/secondary) — diteruskan ke tombol CTA tiap layar.
+  const brandColors = {
+    primary: liveConfig.branding.primary_color,
+    secondary: liveConfig.branding.secondary_color,
+  };
+  const pageStyle = (page: KioskPageId) => kioskVisualStyle(kioskBranding, page, brandColors);
   // Panduan cara pakai (branding.kiosk.guide_steps) — kosong = dilewati.
   const guideSteps = kioskBranding?.guide_steps ?? [];
   const hasGuide = guideSteps.length > 0;
@@ -583,9 +589,10 @@ export function KioskApp({
       {step === "guide" && hasGuide && (
         <GuideScreen
           steps={guideSteps}
-          kioskStyle={kioskVisualStyle(kioskBranding, "welcome")}
+          kioskStyle={pageStyle("guide")}
           titleText={kioskBranding?.guide_title}
           buttonLabel={kioskBranding?.guide_button}
+          videoUrl={kioskBranding?.pages?.guide?.video_url ?? null}
           onStart={() => setStep("package")}
           onBack={() => setStep("welcome")}
         />
@@ -593,10 +600,11 @@ export function KioskApp({
       {step === "package" && (
         <PackagePicker
           packages={liveConfig.packages}
-          kioskStyle={kioskVisualStyle(kioskBranding, "package")}
+          kioskStyle={pageStyle("package")}
           titleText={kioskBranding?.package_title}
           primaryColor={liveConfig.branding.primary_color}
           secondaryColor={liveConfig.branding.secondary_color}
+          videoUrl={kioskBranding?.pages?.package?.video_url ?? null}
           onSelect={(pkg) => void handlePackage(pkg)}
         />
       )}
@@ -609,7 +617,7 @@ export function KioskApp({
           paymentTitle={liveConfig.branding.kiosk?.payment_title}
           paymentHint={liveConfig.branding.kiosk?.payment_hint}
           paymentAlign={liveConfig.branding.kiosk?.payment_align}
-          kioskStyle={kioskVisualStyle(kioskBranding, "payment")}
+          kioskStyle={pageStyle("payment")}
           onOffline={() => void startDirectSession(selectedPackage)}
           onPaid={(checkoutId) => void handleCheckoutPaid(checkoutId)}
           onBack={() => setStep("package")}
@@ -619,8 +627,9 @@ export function KioskApp({
         <TemplatePicker
           packageId={selectedPackage.id}
           businessSlug={businessSlug}
-          kioskStyle={kioskVisualStyle(kioskBranding, "template")}
+          kioskStyle={pageStyle("template")}
           titleText={kioskBranding?.template_title}
+          videoUrl={kioskBranding?.pages?.template?.video_url ?? null}
           onSelect={handleTemplate}
         />
       )}
@@ -631,7 +640,7 @@ export function KioskApp({
           maxRetakes={sessionSettings?.max_retakes ?? null}
           titleText={liveConfig.branding.kiosk?.capture_title}
           hintText={liveConfig.branding.kiosk?.capture_hint}
-          kioskStyle={kioskVisualStyle(kioskBranding, "capture")}
+          kioskStyle={pageStyle("capture")}
           showMirrorToggle={kioskBranding?.show_mirror_toggle !== false}
           videoUrl={kioskBranding?.pages?.capture?.video_url ?? null}
           onProgress={onProgressCapture}
@@ -647,7 +656,7 @@ export function KioskApp({
           frameUrl={selectedTemplate?.file_url ?? null}
           titleText={liveConfig.branding.kiosk?.editor_title}
           hintText={liveConfig.branding.kiosk?.editor_hint}
-          kioskStyle={kioskVisualStyle(kioskBranding, "edit")}
+          kioskStyle={pageStyle("edit")}
           allowZoomPan={kioskBranding?.allow_zoom_pan !== false}
           finishRequested={finishRequested}
         />
@@ -672,7 +681,8 @@ export function KioskApp({
           resultTitle={liveConfig.branding.kiosk?.result_title}
           resultHint={liveConfig.branding.kiosk?.result_hint}
           resultLayout={liveConfig.branding.kiosk?.result_layout}
-          kioskStyle={kioskVisualStyle(kioskBranding, "result")}
+          kioskStyle={pageStyle("result")}
+          videoUrl={kioskBranding?.pages?.result?.video_url ?? null}
           printed={printed}
           canPrint={
             currentPhotobox.print_settings.enabled !== false &&
@@ -698,7 +708,7 @@ export function KioskApp({
           onPointerLeave={touchExit.onPointerLeave}
           onPointerCancel={touchExit.onPointerCancel}
           onContextMenu={(e) => e.preventDefault()}
-          className="fixed bottom-3 left-3 z-40 flex size-10 items-center justify-center border-2 border-ink/20 bg-surface/60 text-muted-foreground opacity-40 active:opacity-100"
+          className="fixed bottom-3 left-3 z-40 flex size-11 items-center justify-center border-2 border-ink/20 bg-surface/60 text-muted-foreground opacity-40 active:opacity-100"
           style={{
             marginBottom: "env(safe-area-inset-bottom)",
             marginLeft: "env(safe-area-inset-left)",

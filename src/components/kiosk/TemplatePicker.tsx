@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Frame } from "lucide-react";
 import { apiGet } from "@/components/kiosk/api";
 import type { KioskVisualStyle, PublicTemplate } from "@/lib/kiosk-types";
+import { KioskVideoBackground } from "@/components/kiosk/KioskVideoBackground";
 
 type Props = {
   packageId: string;
@@ -12,11 +13,12 @@ type Props = {
   /** Gaya visual kustom (Branding & Kiosk) — warna/font/radius mengikuti. */
   kioskStyle?: KioskVisualStyle;
   titleText?: string;
+  videoUrl?: string | null;
 };
 
 /** Choose Template/Frame — docs/05 §5.4 + docs/15 §5.5 (post-paid, slot-filtered).
  *  2-part kiosk layout: left = context/branding, right = template grid (scroll). */
-export function TemplatePicker({ packageId, businessSlug, onSelect, kioskStyle, titleText }: Props) {
+export function TemplatePicker({ packageId, businessSlug, onSelect, kioskStyle, titleText, videoUrl = null }: Props) {
   const ks = kioskStyle;
   const [templates, setTemplates] = useState<PublicTemplate[]>([]);
   const [selected, setSelected] = useState<PublicTemplate | null | undefined>(undefined);
@@ -51,17 +53,23 @@ export function TemplatePicker({ packageId, businessSlug, onSelect, kioskStyle, 
 
   return (
     <div
-      className="flex min-h-[100dvh] flex-col overflow-y-auto bg-bg lg:flex-row lg:overflow-hidden"
+      className="relative flex min-h-[100dvh] flex-col overflow-y-auto bg-bg lg:flex-row lg:overflow-hidden"
       style={ks ? { backgroundColor: ks.bg, color: ks.text } : undefined}
     >
+      <KioskVideoBackground videoUrl={videoUrl} />
       {/* Left panel — context + instructions */}
-      <div className="flex shrink-0 flex-col justify-center gap-3 border-b-2 border-ink bg-surface p-6 lg:w-[42%] lg:border-b-0 lg:border-r-2 lg:p-10 lg:gap-5">
+      <div
+        className={`relative z-10 flex shrink-0 flex-col justify-center gap-3 border-b-2 border-ink p-6 lg:w-[42%] lg:border-b-0 lg:border-r-2 lg:p-10 lg:gap-5 ${
+          videoUrl ? "bg-transparent" : "bg-surface"
+        }`}
+        style={ks ? { paddingLeft: ks.padding, paddingRight: ks.padding } : undefined}
+      >
         <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
           {"/// STEP 02 · PILIH FRAME"}
         </p>
         <h1
           className="font-display text-3xl uppercase leading-[0.9] tracking-tight md:text-5xl lg:text-6xl"
-          style={ks ? { fontFamily: ks.fontFamily } : undefined}
+          style={ks ? { fontFamily: ks.fontFamily, fontSize: `${2 * ks.fontScale}rem` } : undefined}
         >
           {titleText || "Pilih frame"}
         </h1>

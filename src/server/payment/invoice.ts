@@ -253,8 +253,14 @@ export async function createInvoiceQris(
         target: invoice.id,
         meta: { amount: 0, checkout_free: true },
       })
-      // Plan/add-on tetap diaktifkan (payment-first) walau nominal 0.
-      await applyInvoiceIntent(businessId, invoice.id)
+      // Plan/add-on tetap diaktifkan (payment-first) walau nominal 0. Jangan
+      // lempar error ke client walau applyInvoiceIntent gagal (INTENT_EXCEPTION)
+      // — invoice sudah paid; intent di-apply ulang via polling (idempotent).
+      try {
+        await applyInvoiceIntent(businessId, invoice.id)
+      } catch {
+        // Recovery via getInvoicePaymentStatus (polling) akan apply ulang.
+      }
     }
     return {
       status: "paid",
@@ -302,6 +308,15 @@ export async function createInvoiceQris(
   const credential = await resolveCredential(businessId)
   const gateway = resolveGatewayFromCredential(credential)
 
+  // Validate callback URL BEFORE reserving a row — direct merchant tanpa
+  // callback terkonfigurasi aman harus gagal tanpa meninggalkan reservasi
+  // `creating` yang memblokir invoice (partial unique index) sampai stale.
+  const callbackUrl =
+    gateway.provider === "pakasir" ? "" : (paymentWebhookUrl(gateway.provider) ?? "")
+  if (gateway.provider !== "pakasir" && !callbackUrl) {
+    throw new ApiError("INTERNAL", "URL callback gateway belum dikonfigurasi aman")
+  }
+
   const paymentReference = randomUUID().replace(/-/g, "").slice(0, 12)
   const orderId = buildOrderId(paymentReference)
   const { data: reservation, error: reserveError } = await supabase
@@ -323,12 +338,6 @@ export async function createInvoiceQris(
       throw new ApiError("VALIDATION_ERROR", "QRIS sedang dibuat. Tunggu sebentar.")
     }
     throw new ApiError("INTERNAL", "Gagal menyiapkan QRIS invoice")
-  }
-
-  const callbackUrl =
-    gateway.provider === "pakasir" ? "" : (paymentWebhookUrl(gateway.provider) ?? "")
-  if (gateway.provider !== "pakasir" && !callbackUrl) {
-    throw new ApiError("INTERNAL", "URL callback gateway belum dikonfigurasi aman")
   }
 
   try {
@@ -471,6 +480,18 @@ export async function getInvoicePaymentStatus(
   const payment = await loadLatestInvoicePayment(invoiceId)
   if (!payment) return { status: "none" }
 
+  // Crash-window recovery: payment sudah paid (webhook settle) tapi invoice
+  // masih pending / intent belum diterapkan. markInvoicePaid flip invoice +
+  // apply intent (idempotent penuh) — tanpa ini invoice macet selamanya.
+  if (payment.status === "paid") {
+    try {
+      await markInvoicePaid(payment)
+    } catch {
+      // Retry polling berikutnya.
+    }
+    return { status: "paid" }
+  }
+
   const supabase = createServerClient()
   if (payment.status === "pending" || payment.status === "expired") {
     try {
@@ -607,10 +628,13 @@ export async function handleInvoiceWebhookEvent(
       paymentId: null,
       error: "Sudah paid (duplicate webhook)",
     })
-    // Recovery: pastikan intent (plan/add-on) benar-benar diterapkan —
-    // applyInvoiceIntent idempotent (klaim atomik intent.applied).
+    // Recovery: pastikan intent (plan/add-on) benar-benar diterapkan. Panggil
+    // markInvoicePaid (bukan applyInvoiceIntent) karena crash-window bisa
+    // menyisakan payment=paid + invoice=pending — applyInvoiceIntent no-op
+    // pada invoice pending, sedangkan markInvoicePaid flip invoice lalu apply
+    // intent (idempotent penuh).
     try {
-      await applyInvoiceIntent(payment.business_id, payment.invoice_id)
+      await markInvoicePaid(payment)
     } catch {
       // Retry webhook berikutnya akan mencoba lagi.
     }
@@ -796,7 +820,7 @@ export async function handleDirectInvoiceWebhook(
       error: "Sudah paid (duplicate webhook)",
     })
     try {
-      await applyInvoiceIntent(payment.business_id, payment.invoice_id)
+      await markInvoicePaid(payment)
     } catch {
       // Retry webhook berikutnya.
     }

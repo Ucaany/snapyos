@@ -15,9 +15,9 @@ import { hasFeature } from "@/server/feature-gate";
  * - Tanpa membership → /welcome (pemilih peran).
  * - Owner/manager di bisnis manapun → /dashboard (shell finansial).
  *
- * Shell brutalist dengan sidebar ramping (4 modul read-only: booth, outlet,
- * package, template). Topbar tanpa workspace switcher (staff cukup 1 bisnis
- * aktif).
+ * Shell brutalist dengan sidebar ramping (5 modul read-only: overview, booth,
+ * outlet, package, template). Topbar tanpa workspace switcher (staff cukup 1
+ * bisnis aktif).
  */
 export default async function StaffLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();

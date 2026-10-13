@@ -7,7 +7,7 @@
 
 import { revalidatePath } from "next/cache"
 
-import { str } from "@/lib/form-state"
+import { str, toFormState } from "@/lib/form-state"
 import { requireActiveBusiness } from "@/server/action-utils"
 import {
   cancelSubscription,
@@ -18,6 +18,7 @@ import {
 import { previewSubscriptionPromo } from "@/server/subscription-promo"
 import { createInvoiceQris, getInvoicePaymentStatus } from "@/server/payment/invoice"
 import type { InvoiceQrisResult } from "@/lib/payment-contracts"
+import type { FormState } from "@/server/auth-actions"
 
 function refresh() {
   revalidatePath("/dashboard/subscription")
@@ -59,37 +60,49 @@ export async function previewSubscriptionPromoAction(
   }
 }
 
-export async function cancelSubscriptionAction(_formData: FormData): Promise<void> {
+export async function cancelSubscriptionAction(
+  _prev: FormState,
+  _formData: FormData
+): Promise<FormState> {
   const ctx = await requireActiveBusiness()
-  if (!ctx) return
+  if (!ctx) return { error: "Sesi berakhir. Silakan login ulang." }
   try {
     await cancelSubscription(ctx.user.id, ctx.businessId)
-  } catch {
-    return
+  } catch (error) {
+    return toFormState(error, "Gagal membatalkan subscription. Coba lagi.")
   }
   refresh()
+  return {}
 }
 
-export async function resumeSubscriptionAction(_formData: FormData): Promise<void> {
+export async function resumeSubscriptionAction(
+  _prev: FormState,
+  _formData: FormData
+): Promise<FormState> {
   const ctx = await requireActiveBusiness()
-  if (!ctx) return
+  if (!ctx) return { error: "Sesi berakhir. Silakan login ulang." }
   try {
     await resumeSubscription(ctx.user.id, ctx.businessId)
-  } catch {
-    return
+  } catch (error) {
+    return toFormState(error, "Gagal melanjutkan langganan. Coba lagi.")
   }
   refresh()
+  return {}
 }
 
-export async function cancelAddOnAction(formData: FormData): Promise<void> {
+export async function cancelAddOnAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
   const ctx = await requireActiveBusiness()
-  if (!ctx) return
+  if (!ctx) return { error: "Sesi berakhir. Silakan login ulang." }
   try {
     await cancelAddOn(ctx.user.id, ctx.businessId, str(formData, "add_on_id"))
-  } catch {
-    return
+  } catch (error) {
+    return toFormState(error, "Gagal membatalkan add-on. Coba lagi.")
   }
   refresh()
+  return {}
 }
 
 export async function createInvoiceQrisAction(

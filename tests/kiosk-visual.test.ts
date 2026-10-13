@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { kioskVisualStyle, type KioskBrandingConfig } from "../src/lib/kiosk-types.ts";
+import { kioskVisualStyle, KIOSK_FONT_FAMILIES, type KioskBrandingConfig } from "../src/lib/kiosk-types.ts";
+import { brandingContrastIssues } from "../src/lib/validators.ts";
 
 test("kioskVisualStyle: tanpa page, global defaults", () => {
   const s = kioskVisualStyle(undefined);
@@ -101,4 +102,43 @@ test("kioskVisualStyle: align undefined bila tidak diset (default per layar)", (
   assert.equal(s.align, undefined);
   const partial = kioskVisualStyle({ pages: { payment: { bg_color: "#0000FF" } } }, "payment");
   assert.equal(partial.align, undefined);
+});
+
+test("kioskVisualStyle: font_family mono TIDAK diturunkan ke sans", () => {
+  const mono = kioskVisualStyle({ font_family: "mono" });
+  assert.equal(mono.fontFamily, KIOSK_FONT_FAMILIES.mono);
+  const display = kioskVisualStyle({ font_family: "display" });
+  assert.equal(display.fontFamily, KIOSK_FONT_FAMILIES.display);
+  const dflt = kioskVisualStyle(undefined);
+  assert.equal(dflt.fontFamily, KIOSK_FONT_FAMILIES.display);
+});
+
+test("kioskVisualStyle: accent/primary meneruskan warna brand", () => {
+  const s = kioskVisualStyle(undefined, undefined, { primary: "#ff00ff", secondary: "#00ff00" });
+  assert.equal(s.accent, "#ff00ff");
+  assert.equal(s.primary, "#00ff00");
+  // fallback default saat brand tidak diberikan
+  const d = kioskVisualStyle(undefined);
+  assert.ok(d.accent.length > 0);
+  assert.ok(d.primary.length > 0);
+});
+
+test("brandingContrastIssues: menandai pasangan kontras rendah (global + per-layar)", () => {
+  const issues = brandingContrastIssues({
+    kiosk: {
+      bg_color: "#ffffff",
+      text_color: "#eeeeee",
+      pages: { guide: { bg_color: "#ffffff", text_color: "#aaaaaa" } },
+    },
+  });
+  assert.ok(issues.length >= 2, `expected >=2 issues, got ${issues.length}`);
+  assert.ok(issues.some((i) => i.path.join(".") === "kiosk.text_color"));
+  assert.ok(issues.some((i) => i.path.join(".") === "kiosk.pages.guide.text_color"));
+});
+
+test("brandingContrastIssues: kontras cukup tidak menghasilkan issue", () => {
+  const issues = brandingContrastIssues({
+    kiosk: { bg_color: "#000000", text_color: "#ffffff", pages: { guide: { bg_color: "#004d00" } } },
+  });
+  assert.equal(issues.length, 0);
 });

@@ -1,3 +1,5 @@
+"use client";
+
 import { ChevronsUpDown } from "lucide-react";
 
 import { switchWorkspaceAction } from "@/server/business-actions";
@@ -31,6 +33,7 @@ export function WorkspaceSwitcher({
           id="workspace"
           name="businessId"
           defaultValue={activeId ?? businesses[0]!.id}
+          onChange={(e) => e.currentTarget.form?.requestSubmit()}
           className="h-11 w-full min-w-0 max-w-44 appearance-none truncate border-2 border-ink bg-surface pl-3 pr-8 font-mono text-xs uppercase tracking-[0.05em] text-ink outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink sm:h-9 sm:flex-none"
         >
           {businesses.map((b) => (
@@ -41,14 +44,6 @@ export function WorkspaceSwitcher({
         </select>
         <ChevronsUpDown className="pointer-events-none absolute right-2 size-4" />
       </div>
-      {businesses.length > 1 && (
-        <button
-          type="submit"
-          className="hidden shrink-0 border-2 border-ink bg-surface px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.1em] transition-colors hover:bg-accent active:translate-y-[2px] sm:block"
-        >
-          Ganti
-        </button>
-      )}
     </form>
   );
 }

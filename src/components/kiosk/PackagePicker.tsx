@@ -4,6 +4,7 @@ import { Camera, Download, Printer } from "lucide-react";
 import type { KioskVisualStyle, PublicPackage } from "@/lib/kiosk-types";
 import { formatIDR } from "@/lib/dashboard-math";
 import { defaultBrandColors } from "@/lib/brand-defaults";
+import { KioskVideoBackground } from "@/components/kiosk/KioskVideoBackground";
 
 type Props = {
   packages: PublicPackage[];
@@ -14,26 +15,30 @@ type Props = {
   /** Warna aksen kartu paket — mengikuti primary branding (bukan token accent tetap). */
   primaryColor?: string;
   secondaryColor?: string;
+  videoUrl?: string | null;
 };
 
 /** Choose Package — docs/05 §5.3 (package menentukan harga & jumlah foto).
  *  Flow natural: proporsional di semua layar, scroll hanya bila konten lebih tinggi. */
-export function PackagePicker({ packages, onSelect, kioskStyle, titleText, primaryColor, secondaryColor }: Props) {
+export function PackagePicker({ packages, onSelect, kioskStyle, titleText, primaryColor, secondaryColor, videoUrl = null }: Props) {
   const ks = kioskStyle;
   const primary = primaryColor || defaultBrandColors.accent;
   const secondary = secondaryColor || defaultBrandColors.ink;
+  const alignClass =
+    ks?.align === "left" ? "text-left" : ks?.align === "right" ? "text-right" : "text-center";
   return (
     <div
-      className="flex min-h-[100dvh] flex-1 flex-col gap-3 bg-bg px-4 py-4 md:gap-4 md:px-6 md:py-5"
-      style={ks ? { backgroundColor: ks.bg, color: ks.text } : undefined}
+      className="relative flex min-h-[100dvh] flex-1 flex-col gap-3 overflow-hidden bg-bg px-4 py-4 md:gap-4 md:px-6 md:py-5"
+      style={ks ? { backgroundColor: ks.bg, color: ks.text, paddingLeft: ks.padding, paddingRight: ks.padding } : undefined}
     >
-      <header className="mx-auto w-full max-w-[1000px] shrink-0">
+      <KioskVideoBackground videoUrl={videoUrl} />
+      <header className={`relative z-10 mx-auto w-full max-w-[1000px] shrink-0 ${alignClass}`}>
         <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
           {"/// STEP 01 · PILIH PAKET"}
         </p>
         <h1
           className="mt-1 font-display text-2xl uppercase leading-[0.95] tracking-tight md:text-4xl"
-          style={ks ? { fontFamily: ks.fontFamily } : undefined}
+          style={ks ? { fontFamily: ks.fontFamily, fontSize: `${1.5 * ks.fontScale}rem` } : undefined}
         >
           {titleText || "Pilih paket kamu"}
         </h1>

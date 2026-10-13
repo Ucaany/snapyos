@@ -462,10 +462,17 @@ export async function updatePhotoboxBranding(
   if (readErr) throw new ApiError("INTERNAL", "Gagal memuat branding booth");
   if (!current) throw new ApiError("NOT_FOUND", "Photobox tidak ditemukan");
 
-  // Reset ke inherit → kolom null. Sebaliknya deep-merge ke override lama.
+  // Reset ke inherit → kolom null. Sebaliknya deep-merge ke override lama
+  // (termasuk per-layar, agar update parsial tidak menghapus field halaman sama).
   const hasOverride = parsed && Object.keys(parsed).length > 0;
   const existing = current.branding ? brandingSchema.safeParse(current.branding) : null;
   const existingBranding = existing?.success ? existing.data : null;
+  const existingPages = (existingBranding?.kiosk?.pages ?? {}) as Record<string, Record<string, unknown>>;
+  const parsedPages = (parsed?.kiosk?.pages ?? {}) as Record<string, Record<string, unknown>>;
+  const mergedPages: Record<string, Record<string, unknown>> = { ...existingPages };
+  for (const key of Object.keys(parsedPages)) {
+    mergedPages[key] = { ...(existingPages[key] ?? {}), ...(parsedPages[key] ?? {}) };
+  }
   const merged = hasOverride
     ? brandingSchema.parse({
         ...(existingBranding ?? {}),
@@ -473,7 +480,7 @@ export async function updatePhotoboxBranding(
         kiosk: {
           ...(existingBranding?.kiosk ?? {}),
           ...(parsed?.kiosk ?? {}),
-          pages: { ...(existingBranding?.kiosk?.pages ?? {}), ...(parsed?.kiosk?.pages ?? {}) },
+          pages: mergedPages,
         },
       })
     : null;

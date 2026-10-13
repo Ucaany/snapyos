@@ -2,7 +2,7 @@ import "server-only";
 
 import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
-import { dateRangeSchema, todayISO, rangeBoundariesTz, type DateRangeInput } from "@/lib/dashboard-math";
+import { coerceDateFields, todayISO, rangeBoundariesTz, type DateRangeInput } from "@/lib/dashboard-math";
 import { requirePosAccess } from "@/server/pos-entitlement";
 import {
   buildPosRevenue,
@@ -22,12 +22,16 @@ import {
  */
 
 /**
- * docs/pos/05 §4 — zod-validated; batas UTC ms dari business tz (pola
- * resolveRange → rangeBoundariesTz). Kosong = semua riwayat (filter tidak
- * diterapkan) agar konsisten dengan label "Dari/Sampai" yang boleh kosong.
+ * docs/pos/05 §4 — batas UTC ms dari business tz (pola resolveRange →
+ * rangeBoundariesTz). Kosong = semua riwayat (filter tidak diterapkan) agar
+ * konsisten dengan label "Dari/Sampai" yang boleh kosong.
+ *
+ * Safe-parse (coerceDateFields): tanggal berformat salah / kosong DIBUANG →
+ * jatuh ke "semua riwayat", bukan melempar ZodError yang menjatuhkan halaman
+ * via error boundary (input URL bebas; sejalan dengan dashboard/metrics).
  */
 function resolveRange(query: DateRangeInput, tz: string) {
-  const parsed = dateRangeSchema.parse(query);
+  const parsed = coerceDateFields(query);
   if (!parsed.from && !parsed.to) {
     return { fromIso: null, toIso: null };
   }

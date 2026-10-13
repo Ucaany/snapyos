@@ -31,6 +31,21 @@ function elapsedMinutes(startISO: string, nowMs: number): number {
   return Math.max(0, Math.floor((nowMs - startedMs) / 60_000));
 }
 
+// Progres sesi terhadap jendela nyata (started_at → expires_at). Mengembalikan
+// null bila tidak ada expires_at valid, supaya bar tidak menampilkan angka palsu.
+function sessionProgressPct(
+  startISO: string,
+  expiresISO: string | null,
+  nowMs: number
+): number | null {
+  if (!expiresISO) return null;
+  const startMs = new Date(startISO).getTime();
+  const endMs = new Date(expiresISO).getTime();
+  if (Number.isNaN(startMs) || Number.isNaN(endMs) || endMs <= startMs) return null;
+  const elapsed = nowMs - startMs;
+  return Math.min(100, Math.max(0, Math.round((elapsed / (endMs - startMs)) * 100)));
+}
+
 // Komponen di-deklarasi inline karena ringkas & satu kali pakai (no over-abstraction).
 export default async function StaffDashboardPage() {
   const user = await requireUser();
@@ -60,7 +75,7 @@ export default async function StaffDashboardPage() {
         <div>
           <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
             {"/// STATION.CTL · "}
-            <span className="text-accent">{STATUS_LABEL[overview.boothCounts.online > 0 ? "online" : "offline"]}</span>
+            <span className="text-accent-3-strong">{STATUS_LABEL[overview.boothCounts.online > 0 ? "online" : "offline"]}</span>
           </p>
           <h1 className="mt-2 font-display text-4xl uppercase tracking-tight md:text-5xl">
             {overview.businessName}
@@ -150,7 +165,11 @@ export default async function StaffDashboardPage() {
           <ol className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {overview.activeSessions.map((s) => {
               const minutes = elapsedMinutes(s.started_at, nowMs);
-              const pct = Math.min(100, Math.round((minutes / 5) * 20));
+              const pct = sessionProgressPct(s.started_at, s.expires_at, nowMs);
+              const remainingMin =
+                s.expires_at !== null
+                  ? Math.max(0, Math.ceil((new Date(s.expires_at).getTime() - nowMs) / 60_000))
+                  : null;
               return (
                 <li
                   key={s.id}
@@ -175,15 +194,20 @@ export default async function StaffDashboardPage() {
                   </div>
                   <div className="mt-3 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
                     <span>MULAI {dateFmtTime.format(new Date(s.started_at))} WIB</span>
-                    <span className="text-ink">{minutes} MIN</span>
+                    <span className="text-ink">
+                      {minutes} MIN
+                      {remainingMin !== null ? ` · SISA ${remainingMin} MIN` : ""}
+                    </span>
                   </div>
-                  <div className="mt-2 h-2 border-2 border-ink bg-surface">
-                    <div
-                      className="h-full bg-accent"
-                      style={{ width: `${pct}%` }}
-                      aria-hidden
-                    />
-                  </div>
+                  {pct !== null && (
+                    <div className="mt-2 h-2 border-2 border-ink bg-surface">
+                      <div
+                        className="h-full bg-accent"
+                        style={{ width: `${pct}%` }}
+                        aria-hidden
+                      />
+                    </div>
+                  )}
                 </li>
               );
             })}

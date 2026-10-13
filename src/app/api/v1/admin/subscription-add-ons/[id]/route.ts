@@ -1,7 +1,19 @@
 import { NextResponse } from "next/server";
-import { dataEnvelope } from "@/lib/api-errors";
+import { ApiError, dataEnvelope } from "@/lib/api-errors";
 import { adminRawRoute, parseUuidParam } from "@/lib/api-route";
-import { cancelSubscriptionAddOn } from "@/server/admin";
+import { cancelSubscriptionAddOn, updateSubscriptionAddOn } from "@/server/admin";
+
+/**
+ * PATCH /api/v1/admin/subscription-add-ons/:id — update quantity add-on aktif
+ * (docs/10 §10.2). Body: { quantity: number (1–100) }.
+ */
+export const PATCH = adminRawRoute<{ id: string }>(async ({ request, params }) => {
+  const linkId = parseUuidParam(params.id, "id");
+  const body = await request.json().catch(() => {
+    throw new ApiError("VALIDATION_ERROR", "Body JSON wajib");
+  });
+  return NextResponse.json(dataEnvelope(await updateSubscriptionAddOn(linkId, body)));
+});
 
 /**
  * DELETE /api/v1/admin/subscription-add-ons/:id — cancel add-on

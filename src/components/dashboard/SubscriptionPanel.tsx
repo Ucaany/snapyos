@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Check, Download, Minus, Plus, QrCode, X } from "lucide-react";
+import { Check, Download, Minus, Plus, QrCode } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +14,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { SubscriptionCheckoutTrigger } from "@/components/dashboard/SubscriptionCheckoutTrigger";
+import {
+  CancelAddOnButton,
+  CancelSubscriptionForm,
+  ResumeSubscriptionForm,
+} from "@/components/dashboard/SubscriptionActions";
 import { formatIDR } from "@/lib/dashboard-math";
 import { usagePercent } from "@/lib/subscription-math";
 import type {
@@ -23,11 +28,6 @@ import type {
   PlanCard,
   SubscriptionOverview,
 } from "@/server/subscription";
-import {
-  cancelAddOnAction,
-  cancelSubscriptionAction,
-  resumeSubscriptionAction,
-} from "@/server/subscription-actions";
 
 type Props = {
   subscription: SubscriptionOverview["subscription"];
@@ -50,6 +50,16 @@ const PLAN_FEATURES: { key: string; label: string }[] = [
 function fmtDate(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+const INVOICE_STATUS_LABEL: Record<string, string> = {
+  pending: "Menunggu",
+  paid: "Lunas",
+  void: "Dibatalkan",
+};
+
+function invoiceStatusLabel(status: string): string {
+  return INVOICE_STATUS_LABEL[status] ?? status;
 }
 
 function UsageRow({ label, used, max, hint }: { label: string; used: number; max: number; hint?: string }) {
@@ -173,7 +183,7 @@ function AddOnCardBlock({
         <div className="flex items-center justify-between gap-3">
           <CardTitle>{addOn.name}</CardTitle>
           {active && (
-            <span className={`rounded-none border-2 border-ink px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.05em] text-ink ${active.cancelAtPeriodEnd ? "bg-destructive/20" : "bg-accent"}`}>
+            <span className={`rounded-none border-2 border-ink px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.05em] ${active.cancelAtPeriodEnd ? "bg-destructive text-destructive-foreground" : "bg-accent text-ink"}`}>
               ×{active.quantity} {active.cancelAtPeriodEnd ? "batal akhir periode" : "aktif"}
             </span>
           )}
@@ -189,20 +199,10 @@ function AddOnCardBlock({
         <p className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
           {addOnCopy(addOn.unit).detail}
         </p>
-        <div className="mt-auto flex flex-wrap gap-2">
+        <div className="mt-auto flex flex-wrap items-start gap-2">
           {trigger}
-          {active && !active.cancelAtPeriodEnd && (
-            <Button
-              type="submit"
-              form="cancel-add-on"
-              name="add_on_id"
-              value={addOn.id}
-              variant="outline"
-              size="sm"
-              disabled={!canWrite}
-            >
-              <Minus className="size-4" aria-hidden /> Batalkan
-            </Button>
+          {active && !active.cancelAtPeriodEnd && canWrite && (
+            <CancelAddOnButton addOnId={addOn.id} />
           )}
         </div>
       </CardContent>
@@ -290,17 +290,9 @@ export function SubscriptionPanel({
                   label="Aktifkan Kembali"
                 />
               ) : isCancelled ? (
-                <form action={resumeSubscriptionAction}>
-                  <Button type="submit">
-                    Lanjutkan langganan
-                  </Button>
-                </form>
+                <ResumeSubscriptionForm />
               ) : (
-                <form action={cancelSubscriptionAction}>
-                  <Button type="submit" variant="destructive">
-                    <X className="size-4" aria-hidden /> Batalkan di akhir periode
-                  </Button>
-                </form>
+                <CancelSubscriptionForm />
               )
             ) : null}
           </CardContent>
@@ -424,11 +416,6 @@ export function SubscriptionPanel({
             ))}
           </div>
         )}
-        {/* Host form tombol "Batalkan" (button form="cancel-add-on") — tidak
-            bisa nested di dalam form pembelian. */}
-        {addOns.length > 0 && (
-          <form id="cancel-add-on" action={cancelAddOnAction} className="sr-only" />
-        )}
       </section>
 
       <section aria-labelledby="sub-invoices-heading">
@@ -473,7 +460,7 @@ export function SubscriptionPanel({
                     <TableCell className="tabular-nums">{inv.number}</TableCell>
                     <TableCell>{inv.intent?.name ?? "—"}</TableCell>
                     <TableCell className="tabular-nums">{formatIDR(inv.amount)}</TableCell>
-                    <TableCell>{inv.status}</TableCell>
+                    <TableCell className="font-mono text-[11px] uppercase tracking-[0.05em]">{invoiceStatusLabel(inv.status)}</TableCell>
                     <TableCell>{fmtDate(inv.paidAt)}</TableCell>
                     <TableCell>
                       {inv.status === "pending" || inv.status === "void" ? (

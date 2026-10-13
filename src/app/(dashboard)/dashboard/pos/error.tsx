@@ -17,7 +17,7 @@ export default function PosError({
   return (
     <FeatureError
       title="GAGAL MEMUAT POS"
-      description="Katalog produk atau laporan POS tidak dapat dimuat. Pastikan booth dan add-on POS aktif untuk bisnis ini."
+      description="Katalog produk atau laporan POS tidak dapat dimuat saat ini. Coba muat ulang halaman; jika masih gagal, hubungi admin platform."
       error={error}
       reset={reset}
     />

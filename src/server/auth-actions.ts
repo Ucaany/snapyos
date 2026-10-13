@@ -5,10 +5,13 @@
  * Rate limit: login 5/menit/IP + lockout per email (docs/09 §10, docs/08 §8.18).
  */
 
+import { headers } from "next/headers";
 import { AuthError } from "next-auth";
-import { auth, signIn, signOut } from "@/lib/auth";
+import { signIn, signOut } from "@/lib/auth";
 import { toFormState } from "@/lib/form-state";
 import { loginSchema } from "@/lib/validators";
+import { rateLimit } from "@/lib/rate-limit";
+import { getClientIp } from "@/lib/request-ip";
 import { isAdminEmail } from "@/server/admin";
 import { listStaffLoginBooths } from "@/server/staff-pin";
 
@@ -81,15 +84,31 @@ export async function loginAction(
   return EMPTY;
 }
 
-/** Booth yang bisa dipilih staff saat login (dengan PIN ter-set). */
+/**
+ * Booth yang bisa dipilih staff saat login (dengan PIN ter-set).
+ *
+ * Dipanggil DARI halaman login pra-sesi (staff memilih booth sebelum
+ * terautentikasi), jadi tidak bisa auth-gated. Pengamanan pengganti:
+ * - Hanya mengembalikan booth milik email itu yang MEMILIKI PIN (`pin_hash`
+ *   non-null) — tidak ada enumerasi massal, disclosure setara pesan error login.
+ * - Rate-limit per IP (60/menit) + per email (10/menit) agar email tidak bisa
+ *   di-probe berulang; limit IP longgar karena satu staf wajar mengedit email
+ *   beberapa kali, sementara limit email menahan enumerasi satu target.
+ * - Bila sudah punya sesi, tetap divalidasi konsisten (tidak ada jalur bocor).
+ */
 export async function staffLoginBoothsAction(
   email: string
 ): Promise<{ photobox_id: string; name: string }[]> {
-  // Auth-gated: tanpa sesi login, jangan enumerate booth milik email sembarang.
-  const session = await auth();
-  if (!session?.user?.id) return [];
   const clean = email.trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) return [];
+
+  const hdrs = await headers();
+  const ip = getClientIp(hdrs);
+  const ipLimited = await rateLimit(`login:booths:ip:${ip}`, 60, 60_000);
+  if (!ipLimited.ok) return [];
+  const emailLimited = await rateLimit(`login:booths:email:${clean}`, 10, 60_000);
+  if (!emailLimited.ok) return [];
+
   return listStaffLoginBooths(clean);
 }
 

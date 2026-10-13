@@ -476,14 +476,14 @@
 
 **Route group**: `(staff)` → `/staff/*` · **Layout**: `src/app/(staff)/staff/layout.tsx`.
 **Guard layout**: `requireUser` → `/login`; `destinationFor` ≠ `/staff` → redirect (owner/manager → `/dashboard`).
-**Shell**: `StaffTopbar` (tanpa workspace switcher) + `StaffSidebar` (4 modul) + `CashPaymentNotifier` (bila fitur `cash_payment`).
+**Shell**: `StaffTopbar` (tanpa workspace switcher) + `StaffSidebar` (5 modul) + `CashPaymentNotifier` (bila fitur `cash_payment`).
 **Sidebar** (`src/components/staff/StaffSidebar.tsx`): Overview · Booth · Outlet · Package · Template.
 
 ### S1. Staff Overview
 - **Page**: `src/app/(staff)/staff/page.tsx` · eyebrow `/// STATION.CTL · <ONLINE/OFFLINE>`.
 - **Data**: `getStaffOverview` (`src/server/staff-overview.ts`).
 - **Guard internal**: bila `can(role,'transaction:read')` → redirect `/dashboard` (staff tidak lihat finansial).
-- **Komponen**: kartu status booth (online/offline/maintenance), sesi aktif + elapsed, link cepat ke 4 modul, jam live WIB.
+- **Komponen**: kartu status booth (online/offline/maintenance), sesi aktif + elapsed, link cepat ke 5 modul, jam live WIB.
 - **DB**: `businesses, outlets, packages, photoboxes, sessions, templates`.
 - **Catatan**: staff **tanpa** akses write, finansial, subscription, settings, admin.
 
@@ -833,9 +833,9 @@
 | `/api/v1/admin/promos` | GET, POST |
 | `/api/v1/admin/promos/[id]` | PATCH |
 | `/api/v1/admin/subscriptions` | GET |
-| `/api/v1/admin/subscriptions/[id]` | PATCH |
+| `/api/v1/admin/subscriptions/[id]` | GET, PATCH |
 | `/api/v1/admin/subscriptions/[id]/add-ons` | POST |
-| `/api/v1/admin/subscription-add-ons/[id]` | DELETE |
+| `/api/v1/admin/subscription-add-ons/[id]` | PATCH, DELETE |
 | `/api/v1/admin/template-categories` | GET, POST |
 | `/api/v1/admin/template-categories/[id]` | DELETE |
 | `/api/v1/admin/templates` | GET, POST |

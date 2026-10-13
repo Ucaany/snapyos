@@ -80,10 +80,10 @@ export default async function ReportsPage() {
             id="report-form"
             method="get"
             action={`/api/v1/business/${active.business.id}/reports`}
-            className="grid grid-cols-1 gap-5 md:grid-cols-4"
+            className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4"
             aria-label="Form report"
           >
-            <div className="flex flex-col gap-2 md:col-span-1">
+            <div className="flex flex-col gap-2">
               <label htmlFor="report-type" className={labelClass}>
                 Tipe *
               </label>
@@ -116,7 +116,7 @@ export default async function ReportsPage() {
                 <option value="xlsx">XLSX</option>
               </Select>
             </div>
-            <div className="md:col-span-4">
+            <div className="sm:col-span-2 xl:col-span-4">
               <button
                 type="submit"
                 className="h-11 border-2 border-ink bg-accent px-6 font-mono text-sm font-bold uppercase tracking-[0.08em] shadow-[4px_4px_0_0_#111111] transition-transform active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"

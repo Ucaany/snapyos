@@ -159,7 +159,15 @@ export function PosReportsPanel({ data, timeZone }: { data: PosReportsData; time
               <thead>
                 <tr className="border-b-2 border-ink bg-ink font-mono text-[10px] uppercase tracking-[0.12em] text-bg">
                   <th scope="col" className="px-4 py-3">
-                    {tab === "product" ? "Produk (snapshot)" : tab === "day" ? "Tanggal" : tab}
+                    {tab === "product"
+                      ? "Produk (snapshot)"
+                      : tab === "day"
+                        ? "Tanggal"
+                        : tab === "cashier"
+                          ? "Kasir"
+                          : tab === "outlet"
+                            ? "Outlet"
+                            : "Booth"}
                   </th>
                   {tab === "product" ? (
                     <th scope="col" className="px-4 py-3 text-right">Qty</th>

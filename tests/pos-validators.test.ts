@@ -58,10 +58,11 @@ test("posProductCreateSchema: valid + kategori default 'lainnya'", () => {
   assert.equal(parsed.category, "lainnya");
 });
 
-test("posProductCreateSchema: harga ≤ 0 / float / string ditolak", () => {
-  for (const price of [0, -1000, 1.5]) {
+test("posProductCreateSchema: harga di bawah Rp 1.000 ditolak (server = source of truth)", () => {
+  for (const price of [0, -1000, 1.5, 500, 999]) {
     assert.ok(!posProductCreateSchema.safeParse({ name: "X", price }).success);
   }
+  assert.ok(posProductCreateSchema.safeParse({ name: "X", price: 1000 }).success);
 });
 
 test("posProductCreateSchema: stock nullable, cost ≥ 0", () => {

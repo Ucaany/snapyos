@@ -128,3 +128,31 @@ export function buildSettingsPayload(
   }
   return out;
 }
+
+/**
+ * Bangun patch `checkout` dari FormData — HANYA key yang benar-benar dikirim form.
+ * `qris_expiry_minutes` selalu wajib; `offline_enabled` HANYA bila field hadir,
+ * supaya form QRIS (tanpa toggle offline) tidak menimpa toggle offline yang
+ * diatur di tempat lain menjadi `false` (bug clobber jsonb checkout).
+ * Murni (tanpa I/O) supaya bisa diuji; validasi range tetap di checkoutSettingsSchema.
+ */
+export function buildCheckoutPayload(
+  formData: FormData
+): { qris_expiry_minutes: number; offline_enabled?: boolean } {
+  const minutes = Number(str(formData, "qris_expiry_minutes"));
+  const out: { qris_expiry_minutes: number; offline_enabled?: boolean } = {
+    qris_expiry_minutes: minutes,
+  };
+  if (formData.has("offline_enabled")) {
+    out.offline_enabled = bool(formData, "offline_enabled");
+  }
+  return out;
+}
+
+/** Merge field-level objek `checkout` — update parsial tidak boleh wipe key lain. */
+export function mergeCheckout(
+  current: Record<string, unknown> | null | undefined,
+  patch: Record<string, unknown>
+): Record<string, unknown> {
+  return { ...(current ?? {}), ...patch };
+}

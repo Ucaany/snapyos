@@ -3,6 +3,7 @@
 import type { BrandingConfig, KioskBrandingConfig } from "@/lib/kiosk-types";
 import { kioskVisualStyle } from "@/lib/kiosk-types";
 import { defaultBrandColors } from "@/lib/brand-defaults";
+import { KioskVideoBackground } from "@/components/kiosk/KioskVideoBackground";
 
 type Props = {
   business: { name: string; logo_url: string | null };
@@ -32,7 +33,8 @@ export function WelcomeScreen({ business, branding, onStart }: Props) {
   const bg = vs.bg;
   const text = vs.text;
   const layout = k.welcome_layout ?? "split-left";
-  const videoUrl = k.video_url ?? null;
+  // Video: override per-layar (pages.welcome) menang atas video global.
+  const videoUrl = k.pages?.welcome?.video_url ?? k.video_url ?? null;
   // Perataan konten (full element): default tengah; page override ?? global.
   const contentAlign = vs.align ?? "center";
   const alignClass =
@@ -124,19 +126,7 @@ export function WelcomeScreen({ business, branding, onStart }: Props) {
     >
       {/* Video background attract loop — muted/autoplay/loop, overlay warna
           supaya teks tetap kontras; fallback = warna background. */}
-      {videoUrl && (
-        <video
-          key={videoUrl}
-          src={videoUrl}
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="auto"
-          className="absolute inset-0 size-full object-cover opacity-50"
-          aria-hidden
-        />
-      )}
+      <KioskVideoBackground videoUrl={videoUrl} />
       {body}
     </div>
   );

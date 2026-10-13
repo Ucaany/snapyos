@@ -49,7 +49,7 @@ export function Topbar({
               Panel Admin
             </Link>
           ) : null}
-          <div className="hidden text-right md:block">
+          <div className="hidden text-right lg:block">
             <p className="text-sm font-semibold leading-tight">{user.name ?? "Owner"}</p>
             <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
               {user.email}

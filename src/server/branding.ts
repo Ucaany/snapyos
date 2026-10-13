@@ -10,7 +10,7 @@ import { ApiError } from "@/lib/api-errors"
 import { can } from "@/lib/rbac"
 import { getMembership } from "@/lib/tenant"
 import { validateLogoFile, validateVideoFile } from "@/lib/upload-validation"
-import { brandingSchema, kioskPageIdSchema, type BrandingInput } from "@/lib/validators"
+import { brandingSchema, brandingContrastIssues, kioskPageIdSchema, type BrandingInput } from "@/lib/validators"
 import { SIGNED_URL_TTL_SECONDS as SIGNED_URL_TTL } from "@/lib/constants"
 import {
   assertStorageAvailable,
@@ -117,17 +117,39 @@ export async function updateBranding(
   if (!existing) throw new ApiError("NOT_FOUND", "Settings tidak ditemukan")
 
   const current = brandingSchema.catch({}).parse(existing.branding ?? {})
-  // Deep-merge: kiosk & pages adalah objek bersarang — update parsial tidak boleh
-  // wipe field lain di level mana pun (video_key, pages per-layar, dst.).
+  // Deep-merge sampai level per-layar: update parsial (mis. hanya video_key
+  // atau hanya bg_color) tidak boleh wipe field lain di halaman yang sama.
+  const currentPages = (current.kiosk?.pages ?? {}) as Record<string, Record<string, unknown>>
+  const parsedPages = (parsed.kiosk?.pages ?? {}) as Record<string, Record<string, unknown>>
+  const mergedPages: Record<string, Record<string, unknown>> = { ...currentPages }
+  for (const key of Object.keys(parsedPages)) {
+    mergedPages[key] = { ...(currentPages[key] ?? {}), ...(parsedPages[key] ?? {}) }
+  }
   const merged = brandingSchema.parse({
     ...current,
     ...parsed,
     kiosk: {
       ...(current.kiosk ?? {}),
       ...(parsed.kiosk ?? {}),
-      pages: { ...(current.kiosk?.pages ?? {}), ...(parsed.kiosk?.pages ?? {}) },
+      pages: mergedPages,
     },
   })
+
+  // Kontras divalidasi pada jalur TULIS saja (bukan read) agar data lama
+  // berkontras rendah tetap bisa dimuat; di sini kita tolak dengan pesan field.
+  const contrastIssues = brandingContrastIssues(
+    merged as { kiosk?: { bg_color?: string; text_color?: string; pages?: Record<string, { bg_color?: string; text_color?: string } | undefined> } }
+  )
+  if (contrastIssues.length > 0) {
+    const details: Record<string, string[]> = {}
+    for (const issue of contrastIssues) {
+      const key = issue.path.join(".")
+      ;(details[key] ??= []).push(issue.message)
+      // Sertakan juga key dangling (mis. "kiosk") agar editor bisa menampilkan.
+      ;(details[issue.path[0] ?? "kiosk"] ??= []).push(issue.message)
+    }
+    throw new ApiError("VALIDATION_ERROR", "Kontras warna belum memenuhi standar WCAG AA.", details)
+  }
 
   const { error } = await supabase
     .from("business_settings")

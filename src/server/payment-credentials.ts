@@ -51,7 +51,8 @@ function row(value: unknown): PaymentCredentialStored {
   return value as PaymentCredentialStored;
 }
 
-function gatewayCredential(stored: PaymentCredentialStored): GatewayCredential {  const metadata = { ...(stored.metadata ?? {}) };
+function gatewayCredential(stored: PaymentCredentialStored): GatewayCredential {
+  const metadata = { ...(stored.metadata ?? {}) };
   if (stored.provider === "tripay") {
     if (typeof metadata.private_key_encrypted !== "string") {
       throw new ApiError("VALIDATION_ERROR", "Credential Tripay tidak memiliki private key");
@@ -120,6 +121,7 @@ export async function createCredential(userId: string, businessId: string, input
 
 export async function updateCredential(userId: string, businessId: string, credentialId: string, input: PaymentCredentialUpdateInput) {
   await requireOwner(userId, businessId);
+  await requireFeature(businessId, "direct_payment");
   const parsed = paymentCredentialUpdateSchema.parse(input);
   const supabase = createServerClient();
   const { data: current } = await supabase
@@ -170,6 +172,7 @@ export async function updateCredential(userId: string, businessId: string, crede
 
 export async function deleteCredential(userId: string, businessId: string, credentialId: string) {
   await requireOwner(userId, businessId);
+  await requireFeature(businessId, "direct_payment");
   const { data, error } = await createServerClient()
     .from("payment_credentials")
     .delete()
@@ -183,6 +186,7 @@ export async function deleteCredential(userId: string, businessId: string, crede
 
 export async function testCredential(userId: string, businessId: string, credentialId: string) {
   await requireOwner(userId, businessId);
+  await requireFeature(businessId, "direct_payment");
   const { data } = await createServerClient()
     .from("payment_credentials")
     .select(CREDENTIAL_FIELDS)

@@ -152,3 +152,33 @@ test("reportQuerySchema: format pdf ditolak di level tipe enum", () => {
     false
   )
 })
+
+test("reportQuerySchema: rentang terbalik ditolak (from > to)", () => {
+  const parsed = reportQuerySchema.safeParse({
+    type: "revenue",
+    from: "2026-08-31",
+    to: "2026-08-01",
+    format: "csv",
+  })
+  assert.equal(parsed.success, false)
+})
+
+test("reportQuerySchema: rentang melebihi MAX_RANGE_DAYS ditolak", () => {
+  assert.equal(
+    reportQuerySchema.safeParse({
+      type: "daily",
+      from: "1900-01-01",
+      to: "2100-01-01",
+      format: "csv",
+    }).success,
+    false
+  )
+  assert.ok(
+    reportQuerySchema.safeParse({
+      type: "daily",
+      from: "2026-01-01",
+      to: "2026-12-31",
+      format: "csv",
+    }).success
+  )
+})

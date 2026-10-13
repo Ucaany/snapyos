@@ -65,7 +65,7 @@ export function StaffSidebar() {
         {STAFF_NAV.map(renderItem)}
         <div className="mt-4 border-2 border-dashed border-ink/30 bg-muted/40 p-3 font-mono text-[10px] uppercase leading-snug tracking-[0.06em] text-muted-foreground">
           <p className="text-ink/70">
-            <span className="text-accent">{"[ INFO ]"}</span> Akses read-only.
+            <span className="text-accent-3-strong">{"[ INFO ]"}</span> Akses read-only.
           </p>
           <p className="mt-1">
             Edit paket, template, &amp; booth dikontrol owner. Hubungi owner untuk perubahan.

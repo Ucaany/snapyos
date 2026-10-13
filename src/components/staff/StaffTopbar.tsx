@@ -17,7 +17,7 @@ export function StaffTopbar({
       <div className="flex h-16 w-full items-center gap-3 px-4 md:gap-4 md:px-6">
         <a
           href="/staff"
-          className="flex shrink-0 items-center gap-2 font-display text-base font-bold uppercase tracking-tight md:text-lg"
+          className="flex min-h-11 shrink-0 items-center gap-2 font-display text-base font-bold uppercase tracking-tight md:min-h-0 md:text-lg"
         >
           <img
             src="/avatar-snappy/4.svg"
@@ -43,7 +43,7 @@ export function StaffTopbar({
           <form action={logoutAction}>
             <button
               type="submit"
-              className="border-2 border-ink bg-surface px-2.5 py-2 font-mono text-[10px] uppercase tracking-[0.05em] text-ink transition-colors hover:bg-accent active:translate-y-[2px] md:px-3 md:text-xs"
+              className="flex min-h-11 items-center border-2 border-ink bg-surface px-2.5 py-2 font-mono text-[10px] uppercase tracking-[0.05em] text-ink transition-colors hover:bg-accent active:translate-y-[2px] md:min-h-0 md:px-3 md:text-xs"
             >
               Keluar
             </button>

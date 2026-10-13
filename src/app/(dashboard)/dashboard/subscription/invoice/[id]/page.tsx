@@ -9,8 +9,23 @@ import { PageHeader } from "@/components/ui/page-header"
 import { requireUser } from "@/lib/tenant"
 import { getInvoiceDetail } from "@/server/payment/invoice"
 
-export const metadata: Metadata = {
-  title: "Bayar Invoice — SnapyOS",
+/**
+ * Cek keberadaan invoice di fase metadata (SEBELUM body streaming oleh
+ * loading.tsx). `notFound()` di sini terjadi sebelum Suspense boundary
+ * commit → HTTP 404 asli + title yang benar, bukan 200 dengan title halaman.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}): Promise<Metadata> {
+  const { id } = await params
+  const user = await requireUser()
+  if (user) {
+    const invoice = await getInvoiceDetail(user.id, id)
+    if (!invoice) notFound()
+  }
+  return { title: "Bayar Invoice — SnapyOS" }
 }
 
 /** /dashboard/subscription/invoice/[id] — halaman pembayaran khusus (QRIS). */

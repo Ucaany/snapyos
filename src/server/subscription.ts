@@ -593,18 +593,27 @@ export async function cancelSubscription(userId: string, businessId: string) {
   await requireOwner(userId, businessId);
   const supabase = createServerClient();
 
-  const { data, error } = await supabase
+  // PostgREST menolak ORDER BY/LIMIT pada UPDATE (error 42703). Pilih baris
+  // subscription aktif terbaru via SELECT dulu, lalu UPDATE by id.
+  const { data: target } = await supabase
     .from("subscriptions")
-    .update({ cancel_at_period_end: true })
+    .select("id")
     .eq("business_id", businessId)
     .in("status", ["trial", "active", "past_due"])
     .eq("cancel_at_period_end", false)
     .order("created_at", { ascending: false })
     .limit(1)
+    .maybeSingle();
+  if (!target) throw new ApiError("VALIDATION_ERROR", "Subscription sudah dibatalkan");
+
+  const { data, error } = await supabase
+    .from("subscriptions")
+    .update({ cancel_at_period_end: true })
+    .eq("id", target.id)
     .select("id, current_period_end")
     .maybeSingle();
   if (error) throw new ApiError("INTERNAL", "Gagal membatalkan subscription");
-  if (!data) throw new ApiError("VALIDATION_ERROR", "Subscription sudah dibatalkan");
+  if (!data) throw new ApiError("NOT_FOUND", "Subscription tidak ditemukan");
 
   await insertAudit({
     actorId: userId,
@@ -621,18 +630,27 @@ export async function resumeSubscription(userId: string, businessId: string) {
   await requireOwner(userId, businessId);
   const supabase = createServerClient();
 
-  const { data, error } = await supabase
+  // Sama seperti cancelSubscription: SELECT dulu (ORDER BY aman di SELECT),
+  // lalu UPDATE by id agar tidak memicu 42703 pada UPDATE.
+  const { data: target } = await supabase
     .from("subscriptions")
-    .update({ cancel_at_period_end: false })
+    .select("id")
     .eq("business_id", businessId)
     .in("status", ["trial", "active", "past_due"])
     .eq("cancel_at_period_end", true)
     .order("created_at", { ascending: false })
     .limit(1)
+    .maybeSingle();
+  if (!target) throw new ApiError("VALIDATION_ERROR", "Tidak ada cancel terjadwal");
+
+  const { data, error } = await supabase
+    .from("subscriptions")
+    .update({ cancel_at_period_end: false })
+    .eq("id", target.id)
     .select("id")
     .maybeSingle();
   if (error) throw new ApiError("INTERNAL", "Gagal melanjutkan subscription");
-  if (!data) throw new ApiError("VALIDATION_ERROR", "Tidak ada cancel terjadwal");
+  if (!data) throw new ApiError("NOT_FOUND", "Subscription tidak ditemukan");
 
   await insertAudit({
     actorId: userId,

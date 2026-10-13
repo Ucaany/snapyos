@@ -57,8 +57,7 @@ export function OutletsTable({ outlets, canWrite, maxOutlets }: Props) {
               <span className="hidden font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground sm:inline">
                 Plan limit
               </span>
-            </div>
-            <CollapsibleTrigger className="h-10 px-4" aria-label="Buka form outlet baru">
+            </div>            <CollapsibleTrigger className="h-10 px-4" aria-label="Buka form outlet baru">
               <Plus aria-hidden />
               Outlet baru
               <ChevronDown className="transition-transform duration-100 [[data-panel-open]_&]:rotate-180" aria-hidden />
@@ -117,10 +116,12 @@ export function OutletsTable({ outlets, canWrite, maxOutlets }: Props) {
           </span>
           <span className="font-mono text-xs font-bold uppercase tracking-[0.1em]">
             {String(outlets.length).padStart(2, "0")}
-            <span className="text-muted-foreground">/{String(maxOutlets).padStart(2, "0")}</span>
+            {canWrite && (
+              <span className="text-muted-foreground">/{String(maxOutlets).padStart(2, "0")}</span>
+            )}
           </span>
           <span className="hidden font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground sm:inline">
-            Plan limit
+            {canWrite ? "Plan limit" : "Akses Anda"}
           </span>
         </div>
       )}
@@ -133,12 +134,21 @@ export function OutletsTable({ outlets, canWrite, maxOutlets }: Props) {
       )}
 
       {outlets.length === 0 ? (
-        <EmptyState
-          icon={Store}
-          eyebrow="Belum ada outlet"
-          title="Outlet adalah lokasi fisik bisnis photobox Anda (mall, kafe, kampus)."
-          body="Buat outlet pertama, lalu pasang photobox di dalamnya."
-        />
+        canWrite ? (
+          <EmptyState
+            icon={Store}
+            eyebrow="Belum ada outlet"
+            title="Outlet adalah lokasi fisik bisnis photobox Anda (mall, kafe, kampus)."
+            body="Buat outlet pertama, lalu pasang photobox di dalamnya."
+          />
+        ) : (
+          <EmptyState
+            icon={Store}
+            eyebrow="Belum ada outlet"
+            title="Belum ada outlet yang bisa Anda akses."
+            body="Minta owner memberi akses booth pada outlet ini lewat menu Staff, lalu muat ulang halaman."
+          />
+        )
       ) : (
         <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
           <table className="w-full min-w-[760px] border-collapse text-left">
@@ -165,7 +175,7 @@ export function OutletsTable({ outlets, canWrite, maxOutlets }: Props) {
                     </td>
                     <td className="px-4 py-4 font-mono text-xs text-muted-foreground">
                       <span className="text-ink">
-                        {[outlet.city, outlet.province].filter(Boolean).join(" · ") || "—"}
+                        {[outlet.city, outlet.province].filter(Boolean).join(" · ") || "-"}
                       </span>
                       {outlet.address && (
                         <span className="mt-1 block">{outlet.address}</span>

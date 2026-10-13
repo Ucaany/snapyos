@@ -12,6 +12,7 @@ import { ApiError } from "@/lib/api-errors";
 import { can } from "@/lib/rbac";
 import { getMembership } from "@/lib/tenant";
 import { listAssignedPhotoboxIds } from "@/server/staff";
+import { requireFeature } from "@/server/feature-gate";
 import { loadPaymentByReference } from "@/server/payment/checkout-shared";
 import { settleCashPayment } from "@/server/payment/qris";
 
@@ -84,6 +85,7 @@ export async function confirmCashPaymentByOperator(
   paymentReference: string
 ) {
   const membership = await assertCashConfirm(userId, businessId);
+  await requireFeature(businessId, "cash_payment");
   const payment = await loadPaymentByReference(businessId, paymentReference);
   if (payment.provider !== "cash") {
     throw new ApiError("PAYMENT_NOT_FOUND", "Permintaan tunai tidak ditemukan");

@@ -106,20 +106,29 @@ export type KioskVisualStyle = {
   padding: number
   /** Perataan konten layar (page override ?? global) — undefined = default layar. */
   align?: KioskPageAlign
+  /** Warna aksen brand (primary_color) — dipakai tombol CTA layar kiosk. */
+  accent: string
+  /** Warna teks/garis brand (secondary_color) — dipakai teks tombol CTA. */
+  primary: string
 }
 
 export function kioskVisualStyle(
   k: KioskBrandingConfig | undefined,
-  page?: KioskPageId
+  page?: KioskPageId,
+  brand?: { primary?: string | null; secondary?: string | null }
 ): KioskVisualStyle {
+  const accent = brand?.primary || defaultBrandColors.accent
+  const ink = brand?.secondary || defaultBrandColors.ink
   const global: KioskVisualStyle = {
     bg: k?.bg_color || defaultBrandColors.bg,
     text: k?.text_color || defaultBrandColors.ink,
-    fontFamily: KIOSK_FONT_FAMILIES[k?.font_family === "mono" ? "sans" : k?.font_family ?? "display"],
+    fontFamily: KIOSK_FONT_FAMILIES[k?.font_family ?? "display"],
     fontScale: k?.font_scale ?? 1,
     radius: k?.button_radius ?? 0,
     padding: k?.padding ?? 24,
     align: k?.align,
+    accent,
+    primary: ink,
   }
   if (!page) return global
   const p = k?.pages?.[page]
@@ -132,6 +141,8 @@ export function kioskVisualStyle(
     radius: p.button_radius ?? global.radius,
     padding: p.padding ?? global.padding,
     align: p.align ?? global.align,
+    accent: global.accent,
+    primary: global.primary,
   }
 }
 

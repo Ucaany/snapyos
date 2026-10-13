@@ -5,6 +5,7 @@
 
 import { z } from "zod"
 import { layoutSchema } from "./template-layout.ts"
+import { MAX_RANGE_DAYS, rangeDays } from "./dashboard-math.ts"
 
 // ---------------------------------------------------------------------------
 // Payment provider constants (Phase 1 — dipakai registry, adapter, validators).
@@ -173,12 +174,6 @@ function contrastRatio(foreground: string, background: string): number {
   return (lighter + 0.05) / (darker + 0.05)
 }
 
-function requireContrast(value: { bg_color?: string; text_color?: string }, ctx: z.RefinementCtx) {
-  if (value.bg_color && value.text_color && contrastRatio(value.text_color, value.bg_color) < 4.5) {
-    ctx.addIssue({ code: "custom", path: ["text_color"], message: "Kontras warna teks dan background minimal 4.5:1" })
-  }
-}
-
 /** Layout per layar kiosk — posisi/penempatan elemen (Branding & Kiosk). */
 export const WELCOME_LAYOUTS = ["split-left", "split-right", "center"] as const
 export const PAYMENT_ALIGNS = ["left", "center"] as const
@@ -212,7 +207,7 @@ const kioskPageSchema = z.object({
   align: z.enum(PAGE_ALIGNS).optional(),
   /** Storage key video promo layar ini (bucket business-assets). */
   video_key: z.string().trim().max(300).nullable().optional(),
-}).superRefine(requireContrast)
+})
 
 /** Kiosk customization jsonb — Branding & Kiosk page (single source of truth kiosk). */
 export const kioskBrandingSchema = z.object({
@@ -269,7 +264,7 @@ export const kioskBrandingSchema = z.object({
   show_mirror_toggle: z.boolean().optional(),
   /** Izinkan customer zoom/pan foto di editor (default true). */
   allow_zoom_pan: z.boolean().optional(),
-}).superRefine(requireContrast)
+})
 
 /** Branding jsonb — docs/04 §4.8 (Photobox Builder / branding + welcome). */
 export const brandingSchema = z.object({
@@ -282,6 +277,35 @@ export const brandingSchema = z.object({
   logo_key: z.string().trim().max(300).nullable().optional(),
   kiosk: kioskBrandingSchema.optional(),
 })
+
+/**
+ * Cek kontras tulis (WCAG AA 4.5:1) untuk branding: global kiosk + tiap override
+ * per-layar. Dipakai pada jalur TULIS saja (bukan baca) supaya data lama yang
+ * kontrasnya rendah tidak membuat seluruh branding gagal di-parse.
+ * Mengembalikan daftar issue `{ path, message }` siap dipetakan ke fieldErrors.
+ */
+export function brandingContrastIssues(input: {
+  kiosk?: {
+    bg_color?: string
+    text_color?: string
+    pages?: Record<string, { bg_color?: string; text_color?: string } | undefined>
+  }
+}): { path: string[]; message: string }[] {
+  const issues: { path: string[]; message: string }[] = []
+  const check = (bg?: string, text?: string, path: string[] = ["kiosk", "text_color"]) => {
+    if (bg && text && contrastRatio(text, bg) < 4.5) {
+      issues.push({ path, message: "Kontras warna teks dan background minimal 4.5:1" })
+    }
+  }
+  const k = input.kiosk
+  if (!k) return issues
+  check(k.bg_color, k.text_color)
+  for (const [page, cfg] of Object.entries(k.pages ?? {})) {
+    if (!cfg) continue
+    check(cfg.bg_color ?? k.bg_color, cfg.text_color ?? k.text_color, ["kiosk", "pages", page, "text_color"])
+  }
+  return issues
+}
 
 /** Checkout settings jsonb — expiry QRIS owner-configurable (default 3 menit, docs/06 §6.3). */
 export const checkoutSettingsSchema = z.object({
@@ -610,7 +634,7 @@ export const staffInviteSchema = z.object({
 const idrPrice = z
   .number()
   .int("Harga harus integer IDR")
-  .positive("Harga harus > 0")
+  .min(1000, "Harga minimal Rp 1.000")
   .max(2_000_000_000, "Harga terlalu besar")
 
 const posProductFields = {
@@ -710,22 +734,33 @@ export const listQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
 })
 
-export const reportQuerySchema = z.object({
-  type: z.enum([
-    "daily",
-    "weekly",
-    "monthly",
-    "revenue",
-    "transactions",
-    "outlet",
-    "photobox",
-    "expenses",
-    "voucher",
-  ]),
-  from: isoDate,
-  to: isoDate,
-  format: z.enum(["csv", "xlsx"]),
-})
+export const reportQuerySchema = z
+  .object({
+    type: z.enum([
+      "daily",
+      "weekly",
+      "monthly",
+      "revenue",
+      "transactions",
+      "outlet",
+      "photobox",
+      "expenses",
+      "voucher",
+    ]),
+    from: isoDate,
+    to: isoDate,
+    format: z.enum(["csv", "xlsx"]),
+  })
+  // Rentang terbalik / terlalu panjang bikin export senyap-kosong atau loop
+  // harian tanpa batas (OOM). Selaras dateRangeSchema + MAX_RANGE_DAYS.
+  .refine((v) => v.from <= v.to, {
+    message: "'from' harus ≤ 'to'",
+    path: ["from"],
+  })
+  .refine((v) => rangeDays(v.from, v.to) <= MAX_RANGE_DAYS, {
+    message: `Rentang maksimal ${MAX_RANGE_DAYS} hari`,
+    path: ["to"],
+  })
 
 /** Aktivasi device — docs/05 §5.0 API (kode sekali pakai). */
 export const deviceActivateSchema = z.object({
@@ -1042,6 +1077,12 @@ export const adminSubscriptionAddOnCancelSchema = z.object({
   manual_cancel_reason: z.string().trim().max(200, "Alasan maksimal 200 karakter").optional(),
 })
 
+export const adminSubscriptionAddOnUpdateSchema = z
+  .object({
+    quantity: z.number().int().min(1, "Quantity minimal 1").max(100),
+  })
+  .refine((v) => v.quantity !== undefined, { message: "Quantity wajib diisi" })
+
 /** Subscription promo (docs/10 §10.2, migration 0014). */
 const promoCode = z
   .string()
@@ -1121,6 +1162,7 @@ export type AdminUserUpdateInput = z.infer<typeof adminUserUpdateSchema>
 export type AdminUserCreateInput = z.infer<typeof adminUserCreateSchema>
 // Removed (Fase 5): AdminBusinessUpdateInput — zero konsumen eksternal.
 export type AdminSubscriptionUpdateInput = z.infer<typeof adminSubscriptionUpdateSchema>
+export type AdminSubscriptionAddOnUpdateInput = z.infer<typeof adminSubscriptionAddOnUpdateSchema>
 export type AdminSettingsUpdateInput = z.infer<typeof adminSettingsUpdateSchema>
 export type AdminGlobalTemplateCreateInput = z.infer<typeof adminGlobalTemplateCreateSchema>
 export type AdminPromoCreateInput = z.infer<typeof adminPromoCreateSchema>

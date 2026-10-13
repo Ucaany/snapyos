@@ -56,6 +56,7 @@ import {
   type BusinessSettingsUpdateInput,
   type BusinessUpdateInput,
 } from "@/lib/validators";
+import { mergeCheckout } from "@/lib/form-state";
 
 export type Business = Membership["business"];
 
@@ -313,9 +314,24 @@ export async function updateSettings(
   }
 
   const supabase = createServerClient();
+
+  // `checkout` adalah jsonb kolom — `.update({checkout})` mengganti seluruh objek,
+  // sehingga update parsial (mis. hanya qris_expiry_minutes) akan wipe key lain
+  // seperti offline_enabled. Merge field-level dulu (pola sama dengan updateBranding).
+  const patch: Record<string, unknown> = { ...parsed };
+  if (parsed.checkout !== undefined) {
+    const { data: existing } = await supabase
+      .from("business_settings")
+      .select("checkout")
+      .eq("business_id", businessId)
+      .maybeSingle();
+    const current = (existing as { checkout?: Record<string, unknown> } | null)?.checkout ?? {};
+    patch.checkout = mergeCheckout(current, parsed.checkout);
+  }
+
   const { data, error } = await supabase
     .from("business_settings")
-    .update(parsed)
+    .update(patch)
     .eq("business_id", businessId)
     .select("branding, camera, checkout, retention_days")
     .single();

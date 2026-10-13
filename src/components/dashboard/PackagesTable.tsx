@@ -82,12 +82,21 @@ export function PackagesTable({ packages, templates, outlets, photoboxes, canWri
       )}
 
       {packages.length === 0 ? (
-        <EmptyState
-          icon={Package}
-          eyebrow="BELUM ADA PAKET"
-          title="Paket menentukan harga dan jumlah foto/cetak yang dilihat customer di kiosk."
-          body="Contoh: BASIC Rp20.000 — 3 foto, 1 cetak, digital copy."
-        />
+        canWrite ? (
+          <EmptyState
+            icon={Package}
+            eyebrow="BELUM ADA PAKET"
+            title="Paket menentukan harga dan jumlah foto/cetak yang dilihat customer di kiosk."
+            body="Contoh: BASIC Rp20.000 - 3 foto, 1 cetak, digital copy."
+          />
+        ) : (
+          <EmptyState
+            icon={Package}
+            eyebrow="BELUM ADA PAKET"
+            title="Belum ada paket untuk booth yang Anda akses."
+            body="Minta owner menetapkan paket pada booth Anda lewat dashboard, lalu muat ulang halaman."
+          />
+        )
       ) : (
         <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
           <table className="w-full min-w-[860px] border-collapse text-left">
@@ -118,7 +127,7 @@ export function PackagesTable({ packages, templates, outlets, photoboxes, canWri
                     <td className="px-4 py-4 text-right font-mono text-sm font-bold">{formatIDR(pkg.price)}</td>
                     <td className="px-4 py-4 text-center font-mono text-sm">{pkg.photo_count}</td>
                     <td className="px-4 py-4 text-center font-mono text-sm">{pkg.print_count}</td>
-                    <td className="px-4 py-4 text-center font-mono text-xs uppercase">{pkg.digital_output ? "YA" : "\u2014"}</td>
+                    <td className="px-4 py-4 text-center font-mono text-xs uppercase">{pkg.digital_output ? "YA" : "-"}</td>
                     <td className="px-4 py-4 font-mono text-xs uppercase">{pkg.capture_mode}</td>
                     <td className="px-4 py-4 font-mono text-[11px] text-muted-foreground">
                       {`${pkg.template_count} tpl \u00b7 ${pkg.outlet_count} outlet \u00b7 ${pkg.photobox_count} booth`}

@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { Input } from "@/components/ui/input";
 import { LABEL_CLASS as labelClass, fieldError } from "@/lib/form-ui";
 import type { PosProductRow } from "@/server/pos-products";
@@ -6,6 +8,7 @@ import type { FormState } from "@/server/auth-actions";
 /**
  * CategoryInput — datalist autocomplete kategori POS.
  * Dipakai bersama oleh PosProductFields (create) dan PosProductEditForm.
+ * Controlled: menghindari peringatan Base UI FieldControl saat default berubah.
  */
 export function CategoryInput({
   id,
@@ -19,13 +22,15 @@ export function CategoryInput({
   disabled?: boolean;
 }) {
   const listId = `${id}-datalist`;
+  const [value, setValue] = useState(defaultValue ?? "lainnya");
   return (
     <>
       <Input
         id={id}
         name="category"
         list={listId}
-        defaultValue={defaultValue ?? "lainnya"}
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
         disabled={disabled}
         placeholder="cth. keychain"
       />
@@ -39,8 +44,9 @@ export function CategoryInput({
 }
 
 /**
- * Field-set produk POS untuk form create/edit. Stateless.
- * Field `description` tersedia di kedua mode untuk paritas.
+ * Field-set produk POS untuk form create/edit.
+ * Controlled input: nilai di-inisialisasi dari `product` lalu dikelola lokal,
+ * sehingga field Base UI tidak pernah menerima perubahan `defaultValue` setelah mount.
  */
 export function PosProductFields({
   product,
@@ -54,6 +60,13 @@ export function PosProductFields({
   pending: boolean;
 }) {
   const id = product?.id ?? "new";
+  const [name, setName] = useState(product?.name ?? "");
+  const [sku, setSku] = useState(product?.sku ?? "");
+  const [price, setPrice] = useState(product?.price != null ? String(product.price) : "");
+  const [cost, setCost] = useState(product?.cost != null ? String(product.cost) : "");
+  const [stock, setStock] = useState(product?.stock != null ? String(product.stock) : "");
+  const [description, setDescription] = useState(product?.description ?? "");
+  const [imageUrl, setImageUrl] = useState(product?.image_url ?? "");
   return (
     <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
       <div className="flex flex-col gap-2">
@@ -64,7 +77,8 @@ export function PosProductFields({
           id={`pos-product-name-${id}`}
           name="name"
           required
-          defaultValue={product?.name}
+          value={name}
+          onChange={(event) => setName(event.target.value)}
           placeholder="cth. Keychain Foto"
           disabled={pending}
           aria-invalid={Boolean(fieldError(state, "name"))}
@@ -82,7 +96,8 @@ export function PosProductFields({
         <Input
           id={`pos-product-sku-${id}`}
           name="sku"
-          defaultValue={product?.sku ?? ""}
+          value={sku}
+          onChange={(event) => setSku(event.target.value)}
           placeholder="cth. KC-001 (opsional)"
           disabled={pending}
         />
@@ -115,7 +130,8 @@ export function PosProductFields({
           step={1000}
           required
           inputMode="numeric"
-          defaultValue={product?.price}
+          value={price}
+          onChange={(event) => setPrice(event.target.value)}
           placeholder="15000"
           disabled={pending}
           aria-invalid={Boolean(fieldError(state, "price"))}
@@ -137,7 +153,8 @@ export function PosProductFields({
           min={0}
           step={1000}
           inputMode="numeric"
-          defaultValue={product?.cost ?? ""}
+          value={cost}
+          onChange={(event) => setCost(event.target.value)}
           placeholder="5000"
           disabled={pending}
         />
@@ -152,7 +169,8 @@ export function PosProductFields({
           type="number"
           min={0}
           inputMode="numeric"
-          defaultValue={product?.stock ?? ""}
+          value={stock}
+          onChange={(event) => setStock(event.target.value)}
           placeholder={product ? undefined : "\u2014"}
           disabled={pending}
         />
@@ -164,10 +182,31 @@ export function PosProductFields({
         <Input
           id={`pos-product-description-${id}`}
           name="description"
-          defaultValue={product?.description ?? ""}
-          placeholder="Opsional — tampil di kartu produk terminal"
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+          placeholder="Opsional: tampil di kartu produk terminal"
           disabled={pending}
         />
+      </div>
+      <div className="flex flex-col gap-2 md:col-span-2">
+        <label htmlFor={`pos-product-image-${id}`} className={labelClass}>
+          URL Gambar
+        </label>
+        <Input
+          id={`pos-product-image-${id}`}
+          name="image_url"
+          type="url"
+          value={imageUrl}
+          onChange={(event) => setImageUrl(event.target.value)}
+          placeholder="https://... (opsional, PNG/JPG/WebP)"
+          disabled={pending}
+          aria-invalid={Boolean(fieldError(state, "image_url"))}
+        />
+        {fieldError(state, "image_url") && (
+          <p role="alert" className="font-mono text-xs text-destructive">
+            {fieldError(state, "image_url")}
+          </p>
+        )}
       </div>
     </div>
   );

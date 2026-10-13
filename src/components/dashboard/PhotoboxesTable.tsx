@@ -99,7 +99,7 @@ export function PhotoboxesTable({
             Set ulang PIN keluar photobox
           </p>
           <p className="mt-1 font-mono text-xs leading-relaxed text-ink">
-            Hash PIN lama (sha256) sudah tidak diterima — sistem sekarang pakai
+            Hash PIN lama (sha256) sudah tidak diterima, sistem sekarang pakai
             argon2id. Buka tiap booth di bawah dan simpan PIN baru sebelum
             petugas mencoba keluar mode kiosk.
           </p>
@@ -117,7 +117,9 @@ export function PhotoboxesTable({
       )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
-          {`PHOTOBOX ${String(photoboxes.length).padStart(2, "0")}/${String(maxPhotoboxes).padStart(2, "0")} — PLAN LIMIT`}
+          {canWrite
+            ? `PHOTOBOX ${String(photoboxes.length).padStart(2, "0")}/${String(maxPhotoboxes).padStart(2, "0")} - PLAN LIMIT`
+            : `PHOTOBOX ${String(photoboxes.length).padStart(2, "0")} - AKSES ANDA`}
         </p>
         {canWrite && !limitReached && !noOutlet && (
           <Collapsible open={createOpen} onOpenChange={setCreateOpen}>
@@ -154,7 +156,7 @@ export function PhotoboxesTable({
 
       {canWrite && noOutlet && (
         <p className="border-2 border-dashed border-ink/40 bg-muted px-3 py-3 font-mono text-xs uppercase tracking-[0.05em]">
-          {"/// BUTUH OUTLET"} — photobox harus terpasang di dalam outlet.{" "}
+          {"/// BUTUH OUTLET"} - photobox harus terpasang di dalam outlet.{" "}
           <Link href="/dashboard/outlets" className="font-bold underline underline-offset-4">
             Buat outlet dahulu
           </Link>
@@ -163,12 +165,21 @@ export function PhotoboxesTable({
       )}
 
       {photoboxes.length === 0 ? (
-        <EmptyState
-          icon={Camera}
-          eyebrow="BELUM ADA PHOTOBOX"
-          title="Photobox adalah perangkat booth dengan URL kiosk sendiri."
-          body="Perangkat (kamera/printer/display) terdeteksi otomatis saat device pairing."
-        />
+        canWrite ? (
+          <EmptyState
+            icon={Camera}
+            eyebrow="BELUM ADA PHOTOBOX"
+            title="Photobox adalah perangkat booth dengan URL kiosk sendiri."
+            body="Perangkat (kamera/printer/display) terdeteksi otomatis saat device pairing."
+          />
+        ) : (
+          <EmptyState
+            icon={Camera}
+            eyebrow="BELUM ADA BOOTH"
+            title="Belum ada booth yang di-assign ke Anda."
+            body="Minta owner memberi akses booth ini lewat menu Staff, lalu muat ulang halaman."
+          />
+        )
       ) : (
         <div className="overflow-x-auto border-2 border-ink shadow-[4px_4px_0_0_#111111]">
           <table className="w-full min-w-[820px] border-collapse bg-surface text-left">
@@ -189,7 +200,7 @@ export function PhotoboxesTable({
                   <tr className="border-b-2 border-ink/10 font-mono text-xs">
                     <td className="px-4 py-3 font-bold uppercase tracking-[0.05em]">{box.name}</td>
                     <td className="px-4 py-3 text-muted-foreground">/p/{businessSlug}/{box.slug}</td>
-                    <td className="px-4 py-3">{box.outlet_name ?? "—"}</td>
+                    <td className="px-4 py-3">{box.outlet_name ?? "-"}</td>
                     <td className="px-4 py-3">
                       <span className={cn(
                         "inline-block border-2 border-ink px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]",
@@ -246,7 +257,7 @@ export function PhotoboxesTable({
                       </td>
                     )}
                   </tr>
-                  {editingId === box.id && (
+                  {editingId === box.id && canWrite && (
                     <tr className="border-b-2 border-ink/10 bg-muted">
                       <td colSpan={canWrite ? 6 : 5} className="px-4 py-4">
                         <PhotoboxForm

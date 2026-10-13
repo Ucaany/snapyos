@@ -74,6 +74,7 @@ export async function posUpdateProductAction(
       sku: str(formData, "sku"),
       category: str(formData, "category") || undefined,
       description: str(formData, "description"),
+      image_url: str(formData, "image_url"),
       price: str(formData, "price") === "" ? undefined : Number(str(formData, "price")) || 0,
       cost: intOrNull(formData, "cost"),
       stock: intOrNull(formData, "stock"),

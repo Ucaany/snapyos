@@ -50,8 +50,10 @@ export {
 export {
   type AdminSubscriptionRow,
   listSubscriptions,
+  getSubscription,
   updateSubscription,
   attachSubscriptionAddOn,
+  updateSubscriptionAddOn,
   cancelSubscriptionAddOn,
 } from "./subscriptions";
 export {

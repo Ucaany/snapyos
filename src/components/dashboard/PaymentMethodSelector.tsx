@@ -24,7 +24,7 @@ export function PaymentMethodSelector({ provider, selected, disabled }: Props) {
   return (
     <fieldset disabled={disabled} className="border-2 border-ink bg-muted p-3">
       <legend className="px-1 font-mono text-[10px] font-bold uppercase tracking-[0.14em]">
-        [ METODE TERSAVIA ]
+        [ METODE TERSEDIA ]
       </legend>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {methods.map((method) => (

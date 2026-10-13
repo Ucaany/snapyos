@@ -17,6 +17,7 @@ import {
 } from "../src/lib/admin-math.ts";
 import {
   adminSettingsUpdateSchema,
+  adminSubscriptionAddOnUpdateSchema,
   adminSubscriptionUpdateSchema,
   adminUserCreateSchema,
   adminUserUpdateSchema,
@@ -125,6 +126,14 @@ test("adminSubscriptionUpdateSchema: aksi tunggal atau kombinasi", () => {
   assert.equal(adminSubscriptionUpdateSchema.safeParse({}).success, false);
 });
 
+test("adminSubscriptionAddOnUpdateSchema: quantity 1–100 integer, wajib", () => {
+  assert.deepEqual(adminSubscriptionAddOnUpdateSchema.parse({ quantity: 3 }), { quantity: 3 });
+  assert.equal(adminSubscriptionAddOnUpdateSchema.safeParse({}).success, false);
+  assert.equal(adminSubscriptionAddOnUpdateSchema.safeParse({ quantity: 0 }).success, false);
+  assert.equal(adminSubscriptionAddOnUpdateSchema.safeParse({ quantity: 101 }).success, false);
+  assert.equal(adminSubscriptionAddOnUpdateSchema.safeParse({ quantity: 2.5 }).success, false);
+});
+
 // ---------------------------------------------------------------------------
 // M2 (security) — guard admin ada di LAPISAN ROUTE (adminRoute/adminRawRoute),
 // bukan bergantung pada callee kebetulan memanggil requireAdmin.
@@ -155,6 +164,22 @@ test("M2: semua route /api/v1/admin/* memakai adminRoute/adminRawRoute", async (
     if (!usesAdmin || usesApiRoute) bad.push(f.replace(process.cwd(), ""));
   }
   assert.deepEqual(bad, [], `route admin tanpa adminRoute/adminRawRoute: ${bad.join(", ")}`);
+});
+
+test("M2: GET subscriptions/:id & PATCH subscription-add-ons/:id tersedia (docs/10 §10.2)", async () => {
+  const subRoute = await readFile(
+    new URL("../src/app/api/v1/admin/subscriptions/[id]/route.ts", import.meta.url),
+    "utf8"
+  );
+  assert.match(subRoute, /export const GET = adminRawRoute/, "GET subscriptions/:id wajib ada");
+  assert.match(subRoute, /export const PATCH = adminRawRoute/, "PATCH subscriptions/:id wajib ada");
+
+  const linkRoute = await readFile(
+    new URL("../src/app/api/v1/admin/subscription-add-ons/[id]/route.ts", import.meta.url),
+    "utf8"
+  );
+  assert.match(linkRoute, /export const PATCH = adminRawRoute/, "PATCH subscription-add-ons/:id wajib ada");
+  assert.match(linkRoute, /export const DELETE = adminRawRoute/, "DELETE subscription-add-ons/:id wajib ada");
 });
 
 test("M2: adminRoute memanggil requireAdmin di lapisan route", async () => {

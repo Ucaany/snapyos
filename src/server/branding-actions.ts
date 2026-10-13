@@ -5,10 +5,10 @@
  */
 
 import { revalidatePath } from "next/cache";
-import { bool, str, toFormState } from "@/lib/form-state";
+import { buildCheckoutPayload, str, toFormState } from "@/lib/form-state";
 import { requireEffectiveSubscription } from "@/server/require-subscription";
 import { getActiveBusiness, requireUser } from "@/lib/tenant";
-import { getBranding, updateBranding, uploadLogo, uploadKioskVideo, uploadKioskPageVideo } from "@/server/branding";
+import { updateBranding, uploadLogo, uploadKioskVideo, uploadKioskPageVideo } from "@/server/branding";
 import { updateSettings } from "@/server/business";
 import { kioskPageIdSchema } from "@/lib/validators";
 import type { FormState } from "@/server/auth-actions";
@@ -149,7 +149,49 @@ export async function uploadKioskPageVideoAction(input: {
   return { ok: true };
 }
 
-/** Update retention hasil foto (hari) — owner-configurable, default 7 (docs/09 §9.8). */
+/** Hapus video background kiosk global (set video_key = null). */
+export async function deleteKioskVideoAction(): Promise<{ ok: boolean; error?: string }> {
+  const user = await requireUser();
+  if (!user) return { ok: false, error: "Sesi berakhir. Silakan login ulang." };
+  const active = await getActiveBusiness(user.id);
+  if (!active) return { ok: false, error: "Business tidak ditemukan" };
+  await requireEffectiveSubscription(active.business.id, "write");
+
+  try {
+    await updateBranding(user.id, active.business.id, { kiosk: { video_key: null } });
+  } catch (error) {
+    const mapped = toFormState(error, "Gagal menghapus video. Coba lagi.");
+    return { ok: false, error: mapped.error };
+  }
+
+  revalidatePath("/dashboard/branding");
+  return { ok: true };
+}
+
+/** Hapus video promo per-layar (set pages.<page>.video_key = null). */
+export async function deleteKioskPageVideoAction(page: string): Promise<{ ok: boolean; error?: string }> {
+  const user = await requireUser();
+  if (!user) return { ok: false, error: "Sesi berakhir. Silakan login ulang." };
+  const active = await getActiveBusiness(user.id);
+  if (!active) return { ok: false, error: "Business tidak ditemukan" };
+  await requireEffectiveSubscription(active.business.id, "write");
+
+  if (!kioskPageIdSchema.safeParse(page).success) {
+    return { ok: false, error: "Layar kiosk tidak dikenal." };
+  }
+
+  try {
+    await updateBranding(user.id, active.business.id, {
+      kiosk: { pages: { [page]: { video_key: null } } },
+    } as Parameters<typeof updateBranding>[2]);
+  } catch (error) {
+    const mapped = toFormState(error, "Gagal menghapus video per-layar. Coba lagi.");
+    return { ok: false, error: mapped.error };
+  }
+
+  revalidatePath("/dashboard/branding");
+  return { ok: true };
+}
 export async function updateRetentionSettingsAction(
   _prev: FormState,
   formData: FormData
@@ -190,12 +232,13 @@ export async function updateCheckoutSettingsAction(
   if (!Number.isInteger(minutes) || minutes < 1 || minutes > 60) {
     return { fieldErrors: { qris_expiry_minutes: ["Isi 1–60 menit"] } };
   }
-  const offlineEnabled = bool(formData, "offline_enabled");
+
+  // HANYA kirim offline_enabled bila field memang ada di form ini — kalau tidak,
+  // toggle offline (diatur di tempat lain) akan tertimpa jadi `false` setiap simpan.
+  const checkout = buildCheckoutPayload(formData);
 
   try {
-    await updateSettings(user.id, active.business.id, {
-      checkout: { qris_expiry_minutes: minutes, offline_enabled: offlineEnabled },
-    });
+    await updateSettings(user.id, active.business.id, { checkout });
   } catch (error) {
     return toFormState(error, "Gagal menyimpan pengaturan checkout. Coba lagi.");
   }

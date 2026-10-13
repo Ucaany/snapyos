@@ -58,7 +58,7 @@ export default async function PosManagementPage({
           title={`Aktifkan add-on POS untuk ${active.business.name}`}
           body={
             addOn
-              ? `Aktifkan lewat halaman subscription. Harga: ${formatIDR(addOn.priceMonthly)}/bulan per business (1 booth aktif).`
+              ? `Aktifkan lewat halaman subscription. Harga: ${formatIDR(addOn.priceMonthly)}/bulan untuk 1 booth aktif.`
               : "Hubungi admin platform untuk harga add-on POS."
           }
           cta={

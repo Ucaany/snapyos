@@ -26,12 +26,14 @@ export type ReportResult = {
 const isoDay = (v: string | null) => (v ? v.slice(0, 10) : "")
 
 async function requireReport(userId: string, businessId: string) {
-  await requireFeature(businessId, "reports")
+  // Membership dulu: businessId asing selalu 404 (bukan 403 FEATURE_DISABLED)
+  // agar tidak bocorkan status entitlement bisnis lain (docs/03 §3.5).
   const membership = await getMembership(userId, businessId)
   if (!membership) throw new ApiError("NOT_FOUND", "Business tidak ditemukan")
   if (!can(membership.role, "report:read")) {
     throw new ApiError("FORBIDDEN", "Anda tidak punya akses report")
   }
+  await requireFeature(businessId, "reports")
   return membership
 }
 

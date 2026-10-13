@@ -63,7 +63,14 @@ export function PaymentCredentialCard({ credential, onChanged }: Props) {
     }
   }
 
-  const testable = credential.environment === "sandbox" && canTestPaymentCredential(credential.provider);
+  const testSupported = canTestPaymentCredential(credential.provider);
+  const testable = credential.environment === "sandbox" && testSupported;
+  const testDisabledReason = !testSupported
+    ? "Tes koneksi belum tersedia untuk provider ini."
+    : credential.environment === "production"
+      ? "Tes koneksi hanya tersedia untuk credential sandbox."
+      : null;
+  const testLabel = credential.environment === "production" ? "Tes Production" : "Tes Sandbox";
 
   if (editing) {
     return (
@@ -166,6 +173,7 @@ export function PaymentCredentialCard({ credential, onChanged }: Props) {
           type="button"
           variant="secondary"
           disabled={pending || !testable}
+          title={testDisabledReason ?? undefined}
           onClick={() =>
             void run(
               () => testCredentialAction(credential.id),
@@ -173,7 +181,7 @@ export function PaymentCredentialCard({ credential, onChanged }: Props) {
             )
           }
         >
-          Tes Sandbox
+          {testLabel}
         </Button>
         <Button type="button" variant="outline" disabled={pending} onClick={() => setEditing(true)}>
           Ubah
@@ -207,9 +215,9 @@ export function PaymentCredentialCard({ credential, onChanged }: Props) {
         </Button>
       </div>
 
-      {!testable && credential.environment === "sandbox" && (
+      {!testable && testDisabledReason && (
         <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-          Tes koneksi hanya tersedia untuk credential sandbox.
+          {testDisabledReason}
         </p>
       )}
     </article>

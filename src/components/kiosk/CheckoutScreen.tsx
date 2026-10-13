@@ -54,7 +54,7 @@ export function CheckoutScreen({
   deviceToken,
   paymentTitle,
   paymentHint,
-  paymentAlign = "left",
+  paymentAlign,
   kioskStyle,
   offlineEnabled = false,
   onOffline,
@@ -205,17 +205,26 @@ export function CheckoutScreen({
       setBusy(false)
     }
   }
-  const style = kioskStyle ? { backgroundColor: kioskStyle.bg, color: kioskStyle.text } : undefined
-  const align = paymentAlign === "center" ? "items-center text-center" : "items-start text-left"
+  const style = kioskStyle
+    ? {
+        backgroundColor: kioskStyle.bg,
+        color: kioskStyle.text,
+        paddingLeft: kioskStyle.padding,
+        paddingRight: kioskStyle.padding,
+      }
+    : undefined
+  // Perataan: payment_align legacy menang bila diset; fallback ke align global.
+  const effectiveAlign = paymentAlign ?? (kioskStyle?.align === "left" || kioskStyle?.align === "right" ? "left" : "center")
+  const align = effectiveAlign === "center" ? "items-center text-center" : "items-start text-left"
   return (
-    <div className="flex min-h-[100dvh] flex-1 flex-col gap-4 bg-bg px-4 py-5" style={style}>
-      <header className={`mx-auto flex w-full max-w-[1000px] flex-col gap-1 ${align}`}>
+    <div className="relative flex min-h-[100dvh] flex-1 flex-col gap-4 overflow-hidden bg-bg px-4 py-5" style={style}>
+      <header className={`relative z-10 mx-auto flex w-full max-w-[1000px] flex-col gap-1 ${align}`}>
         <p className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-ink/70">
           [ CHECKOUT ]
         </p>
         <h1
           className="font-display text-3xl uppercase leading-[0.9] tracking-tight"
-          style={kioskStyle ? { fontFamily: kioskStyle.fontFamily } : undefined}
+          style={kioskStyle ? { fontFamily: kioskStyle.fontFamily, fontSize: `${1.875 * kioskStyle.fontScale}rem` } : undefined}
         >
           {paymentTitle || "Bayar sebelum foto"}
         </h1>

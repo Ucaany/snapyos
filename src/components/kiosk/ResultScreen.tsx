@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { defaultBrandColors } from "@/lib/brand-defaults";
 import type { KioskVisualStyle } from "@/lib/kiosk-types";
 import { useObjectUrl } from "@/components/kiosk/use-object-url";
+import { KioskVideoBackground } from "@/components/kiosk/KioskVideoBackground";
 
 type FinalPhoto = { blob: Blob };
 
@@ -28,6 +29,8 @@ type Props = {
   resultLayout?: "qr-right" | "qr-left" | "qr-below";
   /** Gaya visual kustom (Branding & Kiosk). */
   kioskStyle?: KioskVisualStyle;
+  /** Video promo latar layar result (opsional, pages.result.video_url). */
+  videoUrl?: string | null;
   onPrint: () => void;
   onReset: () => void;
 };
@@ -47,6 +50,7 @@ export function ResultScreen({
   resultHint,
   resultLayout = "qr-right",
   kioskStyle,
+  videoUrl = null,
   onPrint,
   onReset,
 }: Props) {
@@ -100,12 +104,15 @@ export function ResultScreen({
 
   return (
     <div
-      className={`flex min-h-[100dvh] overflow-y-auto bg-bg ${isBelow ? "flex-col" : "flex-col lg:flex-row lg:overflow-hidden"}`}
-      style={ks ? { backgroundColor: ks.bg, color: ks.text } : undefined}
+      className={`relative flex min-h-[100dvh] overflow-y-auto bg-bg ${isBelow ? "flex-col" : "flex-col lg:flex-row lg:overflow-hidden"}`}
+      style={ks ? { backgroundColor: ks.bg, color: ks.text, paddingLeft: ks.padding, paddingRight: ks.padding } : undefined}
     >
+      <KioskVideoBackground videoUrl={videoUrl} />
       {/* Left panel — photo/GIF preview */}
       <div
-        className={`flex flex-1 flex-col items-center justify-center gap-4 bg-surface p-4 lg:p-8 ${
+        className={`relative z-10 flex flex-1 flex-col items-center justify-center gap-4 p-4 lg:p-8 ${
+          videoUrl ? "bg-transparent" : "bg-surface"
+        } ${
           isBelow
             ? "border-b-2 border-ink overflow-y-auto"
             : "border-b-2 border-ink lg:border-b-0 lg:border-r-2"

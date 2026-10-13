@@ -30,6 +30,16 @@ type Props = {
 export function BusinessProfileEditor({ profile, canWrite }: Props) {
   const [state, formAction, pending] = useActionState(updateBusinessProfileAction, initial);
   const [touched, setTouched] = useState(false);
+  const [form, setForm] = useState({
+    name: profile.name,
+    owner_name: profile.owner_name ?? "",
+    whatsapp: profile.whatsapp ?? "",
+    contact_email: profile.contact_email ?? "",
+    address: profile.address ?? "",
+  });
+
+  const set = (key: keyof typeof form) => (value: string) =>
+    setForm((prev) => ({ ...prev, [key]: value }));
 
   return (
     <form action={formAction} onSubmit={() => setTouched(true)} noValidate className="contents">
@@ -51,7 +61,13 @@ export function BusinessProfileEditor({ profile, canWrite }: Props) {
             <label htmlFor="profile-name" className="font-mono text-xs uppercase tracking-[0.1em]">
               Nama Bisnis
             </label>
-            <Input id="profile-name" name="name" defaultValue={profile.name} disabled={pending || !canWrite} />
+            <Input
+              id="profile-name"
+              name="name"
+              value={form.name}
+              onChange={(e) => set("name")(e.target.value)}
+              disabled={pending || !canWrite}
+            />
             {state.fieldErrors?.["name"]?.[0] && (
               <p role="alert" className="font-mono text-xs text-destructive">
                 {state.fieldErrors["name"][0]}
@@ -63,7 +79,13 @@ export function BusinessProfileEditor({ profile, canWrite }: Props) {
             <label htmlFor="profile-owner" className="font-mono text-xs uppercase tracking-[0.1em]">
               Nama Pemilik (Owner)
             </label>
-            <Input id="profile-owner" name="owner_name" defaultValue={profile.owner_name ?? ""} disabled={pending || !canWrite} />
+            <Input
+              id="profile-owner"
+              name="owner_name"
+              value={form.owner_name}
+              onChange={(e) => set("owner_name")(e.target.value)}
+              disabled={pending || !canWrite}
+            />
             {state.fieldErrors?.["owner_name"]?.[0] && (
               <p role="alert" className="font-mono text-xs text-destructive">
                 {state.fieldErrors["owner_name"][0]}
@@ -80,7 +102,8 @@ export function BusinessProfileEditor({ profile, canWrite }: Props) {
               name="whatsapp"
               inputMode="tel"
               placeholder="0812xxxxxxxx"
-              defaultValue={profile.whatsapp ?? ""}
+              value={form.whatsapp}
+              onChange={(e) => set("whatsapp")(e.target.value)}
               disabled={pending || !canWrite}
             />
             {state.fieldErrors?.["whatsapp"]?.[0] && (
@@ -98,7 +121,8 @@ export function BusinessProfileEditor({ profile, canWrite }: Props) {
               id="profile-email"
               name="contact_email"
               type="email"
-              defaultValue={profile.contact_email ?? ""}
+              value={form.contact_email}
+              onChange={(e) => set("contact_email")(e.target.value)}
               disabled={pending || !canWrite}
             />
             {state.fieldErrors?.["contact_email"]?.[0] && (
@@ -116,7 +140,8 @@ export function BusinessProfileEditor({ profile, canWrite }: Props) {
               id="profile-address"
               name="address"
               rows={2}
-              defaultValue={profile.address ?? ""}
+              value={form.address}
+              onChange={(e) => set("address")(e.target.value)}
               disabled={pending || !canWrite}
               className="w-full rounded-none border-2 border-ink bg-surface px-3 py-2 text-base text-ink shadow-[2px_2px_0_0_#111111] outline-none placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
             />

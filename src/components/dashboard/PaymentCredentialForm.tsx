@@ -38,11 +38,13 @@ export function PaymentCredentialForm({ credential, onCancel, onSaved }: Props) 
   );
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPending(true);
     setError(null);
+    setFieldErrors({});
     const form = new FormData(event.currentTarget);
     const serverKey = String(form.get("server_key") ?? "").trim();
     const privateKey = String(form.get("private_key") ?? "").trim();
@@ -65,6 +67,7 @@ export function PaymentCredentialForm({ credential, onCancel, onSaved }: Props) 
       const result = await updateCredentialAction(credential!.id, input);
       if ("error" in result) {
         setError(result.error);
+        setFieldErrors(result.fieldErrors ?? {});
         setPending(false);
         return;
       }
@@ -79,6 +82,7 @@ export function PaymentCredentialForm({ credential, onCancel, onSaved }: Props) 
       });
       if ("error" in result) {
         setError(result.error);
+        setFieldErrors(result.fieldErrors ?? {});
         setPending(false);
         return;
       }
@@ -91,6 +95,13 @@ export function PaymentCredentialForm({ credential, onCancel, onSaved }: Props) 
     provider === "tripay" ? "Merchant Code" : provider === "pakasir" ? "Project Slug" : "Merchant ID";
   const secretLabel =
     provider === "tripay" ? "API Key" : provider === "pakasir" ? "API Key" : "Server Key";
+
+  const fieldError = (name: string) =>
+    fieldErrors[name]?.[0] ? (
+      <p role="alert" className="font-mono text-xs normal-case tracking-normal text-destructive">
+        {fieldErrors[name][0]}
+      </p>
+    ) : null;
 
   return (
     <form
@@ -144,6 +155,7 @@ export function PaymentCredentialForm({ credential, onCancel, onSaved }: Props) 
           placeholder={`${providerLabels[provider]} utama`}
           disabled={pending}
         />
+        {fieldError("label")}
       </label>
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -156,6 +168,7 @@ export function PaymentCredentialForm({ credential, onCancel, onSaved }: Props) 
             maxLength={160}
             disabled={pending}
           />
+          {fieldError("merchant_id")}
         </label>
         <label className="grid gap-1 font-mono text-xs uppercase tracking-[0.08em]">
           {secretLabel}
@@ -168,6 +181,7 @@ export function PaymentCredentialForm({ credential, onCancel, onSaved }: Props) 
             placeholder={editing ? "Kosongkan untuk mempertahankan key" : undefined}
             disabled={pending}
           />
+          {fieldError("server_key")}
         </label>
       </div>
 
@@ -180,6 +194,7 @@ export function PaymentCredentialForm({ credential, onCancel, onSaved }: Props) 
             maxLength={500}
             disabled={pending}
           />
+          {fieldError("client_key")}
         </label>
       )}
       {provider === "tripay" && (
@@ -194,6 +209,7 @@ export function PaymentCredentialForm({ credential, onCancel, onSaved }: Props) 
             placeholder={editing ? "Kosongkan untuk mempertahankan key" : undefined}
             disabled={pending}
           />
+          {fieldError("private_key")}
         </label>
       )}
       {provider === "pakasir" && (
@@ -208,6 +224,7 @@ export function PaymentCredentialForm({ credential, onCancel, onSaved }: Props) 
             placeholder={editing ? "Kosongkan untuk mempertahankan secret" : undefined}
             disabled={pending}
           />
+          {fieldError("webhook_secret")}
         </label>
       )}
 

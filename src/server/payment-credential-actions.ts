@@ -22,7 +22,9 @@ import type { GatewayProvider } from "@/server/payment/providers/types";
 
 const REVALIDATE = "/dashboard/payment";
 
-export type PaymentCredentialActionResult = { ok: true } | { error: string };
+export type PaymentCredentialActionResult =
+  | { ok: true }
+  | { error: string; fieldErrors?: Record<string, string[]> };
 
 export type CreateInput = {
   provider: GatewayProvider;
@@ -56,14 +58,19 @@ async function ownerContext(): Promise<{ userId: string; businessId: string } | 
   return { userId: user.id, businessId: active.business.id };
 }
 
-function fail(error: unknown): { error: string } {
+function fail(error: unknown): { error: string; fieldErrors?: Record<string, string[]> } {
   const state = toFormState(error, "Gagal mengelola payment gateway. Coba lagi.");
-  return { error: state.error ?? "Gagal mengelola payment gateway. Coba lagi." };
+  const fieldErrors = state.fieldErrors;
+  const hasFields = fieldErrors !== undefined && Object.keys(fieldErrors).length > 0;
+  return {
+    error: state.error ?? "Periksa kembali isian form. Coba lagi.",
+    ...(hasFields ? { fieldErrors } : {}),
+  };
 }
 
 export async function createCredentialAction(input: CreateInput): Promise<PaymentCredentialActionResult> {
   const ctx = await ownerContext();
-  if (!ctx) return { error: "Ala permis untuk mengelola payment gateway" };
+  if (!ctx) return { error: "Tidak punya izin untuk mengelola payment gateway" };
   try {
     await createCredentialServer(ctx.userId, ctx.businessId, input);
   } catch (error) {
@@ -78,7 +85,7 @@ export async function updateCredentialAction(
   input: UpdateInput
 ): Promise<PaymentCredentialActionResult> {
   const ctx = await ownerContext();
-  if (!ctx) return { error: "Ala permis untuk mengelola payment gateway" };
+  if (!ctx) return { error: "Tidak punya izin untuk mengelola payment gateway" };
   try {
     await updateCredentialServer(ctx.userId, ctx.businessId, credentialId, input);
   } catch (error) {
@@ -90,7 +97,7 @@ export async function updateCredentialAction(
 
 export async function deleteCredentialAction(credentialId: string): Promise<PaymentCredentialActionResult> {
   const ctx = await ownerContext();
-  if (!ctx) return { error: "Ala permis untuk mengelola payment gateway" };
+  if (!ctx) return { error: "Tidak punya izin untuk mengelola payment gateway" };
   try {
     await deleteCredentialServer(ctx.userId, ctx.businessId, credentialId);
   } catch (error) {
@@ -105,7 +112,7 @@ export async function toggleCredentialAction(
   isActive: boolean
 ): Promise<PaymentCredentialActionResult> {
   const ctx = await ownerContext();
-  if (!ctx) return { error: "Ala permis untuk mengelola payment gateway" };
+  if (!ctx) return { error: "Tidak punya izin untuk mengelola payment gateway" };
   try {
     await updateCredentialServer(ctx.userId, ctx.businessId, credentialId, { is_active: isActive });
   } catch (error) {
@@ -119,7 +126,7 @@ export async function testCredentialAction(credentialId: string): Promise<
   { ok: true; provider: string; environment: string } | { error: string }
 > {
   const ctx = await ownerContext();
-  if (!ctx) return { error: "Ala permis untuk mengelola payment gateway" };
+  if (!ctx) return { error: "Tidak punya izin untuk mengelola payment gateway" };
   try {
     const result = await testCredentialServer(ctx.userId, ctx.businessId, credentialId);
     return { ok: true, provider: result.provider, environment: result.environment };

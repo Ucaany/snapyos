@@ -1,24 +1,27 @@
 "use client";
 
 import type { KioskVisualStyle } from "@/lib/kiosk-types";
+import { KioskVideoBackground } from "@/components/kiosk/KioskVideoBackground";
 
 type Props = {
   steps: string[];
   kioskStyle: KioskVisualStyle;
   titleText?: string;
   buttonLabel?: string;
+  videoUrl?: string | null;
   onStart: () => void;
   onBack: () => void;
 };
 
 /** Guide Screen — docs/05 §5.1a (panduan cara foto, opsional per branding). */
-export function GuideScreen({ steps, kioskStyle, titleText, buttonLabel, onStart, onBack }: Props) {
+export function GuideScreen({ steps, kioskStyle, titleText, buttonLabel, videoUrl = null, onStart, onBack }: Props) {
   return (
     <main
-      className="flex min-h-[100dvh] flex-col items-center justify-center gap-8 p-6"
+      className="relative flex min-h-[100dvh] flex-col items-center justify-center gap-8 overflow-hidden p-6"
       style={{ backgroundColor: kioskStyle.bg, color: kioskStyle.text }}
     >
-      <div className="w-full max-w-2xl">
+      <KioskVideoBackground videoUrl={videoUrl} />
+      <div className="relative z-10 w-full max-w-2xl">
         <p className="font-mono text-xs uppercase tracking-[0.25em] opacity-60">
           {"/// PETUNJUK"}
         </p>
@@ -67,8 +70,8 @@ export function GuideScreen({ steps, kioskStyle, titleText, buttonLabel, onStart
             className="min-h-14 border-2 px-8 py-3 font-display text-lg font-bold uppercase tracking-tight shadow-[4px_4px_0_0_#111111] transition-transform active:translate-y-[2px] active:shadow-none"
             style={{
               borderColor: kioskStyle.text,
-              color: "#111111",
-              backgroundColor: "#ffd400",
+              color: kioskStyle.primary,
+              backgroundColor: kioskStyle.accent,
               borderRadius: kioskStyle.radius,
             }}
           >
