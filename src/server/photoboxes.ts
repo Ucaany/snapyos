@@ -5,7 +5,9 @@
  */
 
 import "server-only";
+import { updateTag } from "next/cache";
 import { createServerClient } from "@/lib/supabase/server";
+import { publicConfigCacheTag } from "@/server/public-config";
 import { ApiError } from "@/lib/api-errors";
 import { can } from "@/lib/rbac";
 import { getMembership } from "@/lib/tenant";
@@ -59,6 +61,16 @@ async function requireMembership(userId: string, businessId: string, permission:
     throw new ApiError("FORBIDDEN", "Anda tidak punya izin untuk aksi ini");
   }
   return membership;
+}
+
+/**
+ * Invalidate data-cache public config (kiosk runtime) setelah mutasi photobox.
+ * getPublicConfig di-cache 30s (public-config.ts); tanpa ini, perubahan
+ * print/camera/session settings baru tampil di kiosk setelah TTL lewat
+ * (bukan read-your-writes). updateTag = invalidasi segera (Next 16).
+ */
+function invalidatePublicConfig(businessId: string) {
+  updateTag(publicConfigCacheTag(businessId));
 }
 
 function assertSlug(slug: string) {
@@ -195,6 +207,7 @@ export async function createPhotobox(
     .select(COLUMNS)
     .single();
   if (error) throw new ApiError("INTERNAL", "Gagal membuat photobox");
+  invalidatePublicConfig(businessId);
   return data;
 }
 
@@ -295,6 +308,7 @@ export async function updatePhotobox(
     .maybeSingle();
   if (error) throw new ApiError("INTERNAL", "Gagal memperbarui photobox");
   if (!data) throw new ApiError("NOT_FOUND", "Photobox tidak ditemukan");
+  invalidatePublicConfig(businessId);
   return data;
 }
 
@@ -315,6 +329,7 @@ export async function deletePhotobox(
     .maybeSingle();
   if (error) throw new ApiError("INTERNAL", "Gagal menghapus photobox");
   if (!data) throw new ApiError("NOT_FOUND", "Photobox tidak ditemukan");
+  invalidatePublicConfig(businessId);
 }
 
 export type PhotoboxCameraConfig = {
@@ -384,6 +399,7 @@ export async function updatePhotoboxCameraConfig(
     .maybeSingle();
   if (error) throw new ApiError("INTERNAL", "Gagal menyimpan konfigurasi kamera");
   if (!data) throw new ApiError("NOT_FOUND", "Photobox tidak ditemukan");
+  invalidatePublicConfig(businessId);
   return (data.camera_settings as CameraSettings | null) ?? {};
 }
 
@@ -471,5 +487,6 @@ export async function updatePhotoboxBranding(
     .maybeSingle();
   if (error) throw new ApiError("INTERNAL", "Gagal menyimpan branding booth");
   if (!data) throw new ApiError("NOT_FOUND", "Photobox tidak ditemukan");
+  invalidatePublicConfig(businessId);
   return (data.branding as BrandingConfig | null) ?? null;
 }

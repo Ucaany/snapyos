@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 /**
  * Object URL stabil dari Blob — DOM memakai `blob:` (bukan base64 data URL
@@ -43,13 +43,27 @@ export function useObjectUrl(blob: Blob | null | undefined): string | null {
   return url;
 }
 
-/** Object URL untuk daftar Blob (mis. banyak lembar cetak). */
+/**
+ * Object URL untuk daftar Blob (mis. banyak lembar cetak).
+ *
+ * Acquire/rilis di dalam effect (bukan useMemo) agar StrictMode-safe. React
+ * StrictMode (dev) menjalankan effect mount→unmount→mount dalam frame yang
+ * sama; acquire-saat-render + rilis-saat-unmount membuat mount kedua memakai
+ * URL yang sudah di-revoke (net::ERR_FILE_NOT_FOUND). Dengan acquire di effect,
+ * tiap mount meng-acquire segar dan cleanup me-release pasangannya; setUrls
+ * sengaja di sini (satu render tambahan) — satu-satunya cara menjaga
+ * keseimbangan refCount tanpa URL revoked.
+ *
+ * Deps memakai identitas konten (`blobsKey` = index+size+type), bukan
+ * `blobs.join()` yang selalu "[object Blob]".
+ */
 export function useObjectUrls(blobs: Blob[]): (string | null)[] {
-  const key = blobs.join("|");
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const urls = useMemo(() => blobs.map((b) => acquire(b)), [key]);
+  const [urls, setUrls] = useState<(string | null)[]>([]);
+  const key = blobsKey(blobs);
   useEffect(() => {
-    // `blobs` pada render ini dipegang closure → rilis set yang benar.
+    const acquired = blobs.map((b) => acquire(b));
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- acquire terikat lifecycle effect (StrictMode-safe)
+    setUrls(acquired);
     const snapshot = blobs;
     return () => {
       for (const b of snapshot) release(b);
@@ -57,4 +71,9 @@ export function useObjectUrls(blobs: Blob[]): (string | null)[] {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
   return urls;
+}
+
+/** Identitas konten daftar blob (Blob tak punya nilai `toString` unik). */
+function blobsKey(blobs: Blob[]): string {
+  return blobs.map((b, i) => `${i}:${b.size}:${b.type}`).join("|");
 }

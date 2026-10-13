@@ -100,7 +100,7 @@ export function CameraTest({ photoboxId, photoboxName, cameraSettings, canWrite 
   async function handleCapture() {
     if (!videoRef.current) return;
     try {
-      const shot = await captureFrame(videoRef.current, cameraSettings.jpeg_quality || 0.92);
+      const shot = await captureFrame(videoRef.current, cameraSettings.jpeg_quality || 0.92, mirror);
       setCapture(shot);
       setFlash(true);
       setTimeout(() => setFlash(false), 180);

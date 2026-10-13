@@ -58,6 +58,24 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
     stageRef.current = stage;
   }, [stage]);
 
+  /**
+   * Callback ref video. Elemen <video> di-unmount saat stage="review"
+   * (diganti <img> hasil foto), lalu elemen BARU di-mount saat kembali ke
+   * "preview". Node baru tidak mewarisi srcObject → tanpa re-attach di sini,
+   * capture slot ke-2+ gagal ("Kamera belum siap"). Pasang kembali stream yang
+   * masih hidup di streamRef setiap kali node video (re)mount.
+   */
+  const setVideoEl = useCallback((el: HTMLVideoElement | null) => {
+    videoRef.current = el;
+    if (!el) return;
+    setCameraReady(false);
+    const stream = streamRef.current;
+    if (stream) {
+      el.srcObject = stream;
+      void el.play().catch(() => undefined);
+    }
+  }, []);
+
   const stopStream = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
@@ -221,7 +239,7 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
     // ambil frame dari stream yang baru/baru tersambung.
     if (!videoRef.current || stageRef.current !== "countdown") return;
     try {
-      const photo = await captureFrame(videoRef.current, cameraSettings.jpeg_quality || 0.92);
+      const photo = await captureFrame(videoRef.current, cameraSettings.jpeg_quality || 0.92, mirror);
       setCurrent(photo);
       setFlash(true);
       setTimeout(() => setFlash(false), 180);
@@ -279,7 +297,7 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
         ) : (
           <>
             <video
-              ref={videoRef}
+              ref={setVideoEl}
               autoPlay
               playsInline
               muted
