@@ -27,6 +27,23 @@ type Stage = "preview" | "review";
 type CamError = { message: string; action: string };
 type Capture = { blob: Blob };
 
+/** Reject jika promise tidak selesai dalam `ms` — cegah getUserMedia menggantung. */
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      }
+    );
+  });
+}
+
 /**
  * CameraTest — owner tool (docs/05 §5.5). 2-part brutalist layout:
  * kiri = preview/review (dark), kanan = controls + status (light).
@@ -60,26 +77,52 @@ export function CameraTest({ photoboxId, photoboxName, cameraSettings, canWrite 
       return;
     }
     stopStream();
-    try {
-      const ideal = cameraSettings.capture_width || 1920;
-      const idealH = cameraSettings.capture_height || 1080;
-      const deviceId = cameraSettings.preferred_device_id ?? undefined;
-      const constraints: MediaStreamConstraints = deviceId
-        ? { video: { deviceId: { exact: deviceId }, width: { ideal }, height: { ideal: idealH } } }
-        : { video: { width: { ideal }, height: { ideal: idealH } } };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play().catch(() => undefined);
+
+    const ideal = cameraSettings.capture_width || 1920;
+    const idealH = cameraSettings.capture_height || 1080;
+    const deviceId = cameraSettings.preferred_device_id ?? undefined;
+
+    // Fallback berjenjang: perangkat tersimpan bisa sudah dilepas/diganti, sehingga
+    // `deviceId: { exact }` gagal OverconstrainedError. Turunkan bertahap sampai
+    // kamera mana pun yang tersedia agar preview SELALU tampil (docs/05 §5.5.3).
+    const attempts: MediaStreamConstraints[] = [];
+    if (deviceId) {
+      attempts.push({ video: { deviceId: { exact: deviceId }, width: { ideal }, height: { ideal: idealH } } });
+      attempts.push({ video: { deviceId: { exact: deviceId } } });
+    }
+    attempts.push({ video: { width: { ideal }, height: { ideal: idealH } } });
+    attempts.push({ video: true });
+
+    let lastError: unknown = null;
+    for (const constraints of attempts) {
+      try {
+        // Timeout: prompt izin OS yang tidak dijawab membuat getUserMedia
+        // menggantung → layar hitam tanpa pesan. Batasi tiap attempt.
+        const stream = await withTimeout(
+          navigator.mediaDevices.getUserMedia(constraints),
+          15000,
+          "Kamera tidak merespons. Periksa izin kamera browser lalu coba lagi."
+        );
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play().catch(() => undefined);
+        }
+        return;
+      } catch (e) {
+        lastError = e;
       }
-    } catch (e) {
-      const kind = cameraErrorKind(e instanceof DOMException ? e.name : null);
-      if (kind) {
-        setError({ message: CAMERA_ERRORS[kind].message, action: CAMERA_ERRORS[kind].action });
-      } else {
-        setError({ message: "Gagal membuka kamera. Coba lagi.", action: "COBA LAGI" });
-      }
+    }
+
+    if (lastError instanceof Error && !(lastError instanceof DOMException)) {
+      setError({ message: lastError.message, action: "COBA LAGI" });
+      return;
+    }
+    const kind = cameraErrorKind(lastError instanceof DOMException ? lastError.name : null);
+    if (kind) {
+      setError({ message: CAMERA_ERRORS[kind].message, action: CAMERA_ERRORS[kind].action });
+    } else {
+      setError({ message: "Gagal membuka kamera. Coba lagi.", action: "COBA LAGI" });
     }
   }, [cameraSettings.capture_width, cameraSettings.capture_height, cameraSettings.preferred_device_id, stopStream]);
 
@@ -144,7 +187,11 @@ export function CameraTest({ photoboxId, photoboxName, cameraSettings, canWrite 
           playsInline
           muted
           onLoadedMetadata={(e) => setResW(e.currentTarget.videoWidth)}
-          className="max-h-full max-w-full object-contain"
+          onCanPlay={(e) => {
+            setResW(e.currentTarget.videoWidth);
+            void e.currentTarget.play().catch(() => undefined);
+          }}
+          className="absolute inset-0 z-0 h-full w-full object-contain"
           style={mirror ? { transform: "scaleX(-1)" } : undefined}
         />
 
@@ -153,14 +200,14 @@ export function CameraTest({ photoboxId, photoboxName, cameraSettings, canWrite 
           <img
             src={captureUrl}
             alt="Hasil uji foto"
-            className="absolute inset-0 max-h-full max-w-full object-contain"
+            className="absolute inset-0 z-0 h-full w-full object-contain"
           />
         )}
 
-        {flash && <div className="pointer-events-none absolute inset-0 bg-surface" />}
+        {flash && <div className="pointer-events-none absolute inset-0 z-20 bg-surface" />}
 
         {error && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-bg p-6 text-center">
+          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-bg p-6 text-center">
             <CircleAlert className="size-10" aria-hidden />
             <p className="max-w-[42ch] font-mono text-sm">{error.message}</p>
             <Button variant="outline" onClick={() => void openStream()}>
@@ -171,12 +218,12 @@ export function CameraTest({ photoboxId, photoboxName, cameraSettings, canWrite 
 
         {/* Corner telemetry */}
         {!error && (
-          <div className="pointer-events-none absolute left-3 top-3 flex flex-col gap-1">
-            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-bg/60">
+          <div className="pointer-events-none absolute left-3 top-3 z-10 flex flex-col items-start gap-1">
+            <span className="px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-bg/60 [text-shadow:0_1px_2px_rgba(0,0,0,0.9)]">
               {"/// PREVIEW"}
             </span>
             {resLabel && (
-              <span className="border border-bg/40 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-bg/80">
+              <span className="border border-bg/40 bg-ink/70 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-bg/90">
                 {resLabel}
               </span>
             )}
@@ -211,7 +258,7 @@ export function CameraTest({ photoboxId, photoboxName, cameraSettings, canWrite 
               onClick={() => void handleMirror(true)}
               disabled={!canWrite || saving}
               aria-pressed={mirror}
-              className={`border-r-2 border-ink py-2 font-mono text-[11px] font-bold uppercase tracking-[0.1em] transition-colors ${
+              className={`min-h-11 border-r-2 border-ink py-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.1em] transition-colors ${
                 mirror ? "bg-accent text-ink" : "bg-bg text-muted-foreground hover:bg-muted"
               }`}
             >
@@ -222,7 +269,7 @@ export function CameraTest({ photoboxId, photoboxName, cameraSettings, canWrite 
               onClick={() => void handleMirror(false)}
               disabled={!canWrite || saving}
               aria-pressed={!mirror}
-              className={`py-2 font-mono text-[11px] font-bold uppercase tracking-[0.1em] transition-colors ${
+              className={`min-h-11 py-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.1em] transition-colors ${
                 !mirror ? "bg-accent text-ink" : "bg-bg text-muted-foreground hover:bg-muted"
               }`}
             >

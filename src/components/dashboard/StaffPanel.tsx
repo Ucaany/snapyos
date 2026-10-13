@@ -103,6 +103,7 @@ function RoleForm({
       <form action={action} className="flex items-center gap-2">
         <input type="hidden" name="user_id" value={member.userId} />
         <select
+          key={member.role}
           name="role"
           defaultValue={member.role}
           disabled={pending || member.userId === currentUserId}
@@ -188,26 +189,35 @@ function PinField({
   booth: { id: string; name: string };
 }) {
   const [state, action, pending] = useActionState(setStaffPinAction, initial);
+  const pinError = fieldError(state, "pin");
   return (
-    <form action={action} className="mt-2 flex items-center gap-2">
-      <input type="hidden" name="user_id" value={member.userId} />
-      <input type="hidden" name="photobox_id" value={booth.id} />
-      <Input
-        name="pin"
-        type="password"
-        inputMode="numeric"
-        maxLength={6}
-        placeholder="PIN 4–6 digit"
-        autoComplete="off"
-        disabled={pending}
-        aria-label={`PIN login ${booth.name}`}
-        className="h-8 max-w-[120px] font-mono text-xs"
-      />
-      <Button type="submit" variant="outline" size="sm" disabled={pending}>
-        {pending ? "…" : "Set"}
-      </Button>
+    <div className="mt-2">
+      <form action={action} className="flex items-center gap-2">
+        <input type="hidden" name="user_id" value={member.userId} />
+        <input type="hidden" name="photobox_id" value={booth.id} />
+        <Input
+          name="pin"
+          type="password"
+          inputMode="numeric"
+          maxLength={6}
+          placeholder="PIN 4–6 digit"
+          autoComplete="off"
+          disabled={pending}
+          aria-label={`PIN login ${booth.name}`}
+          aria-invalid={Boolean(pinError)}
+          className="h-8 max-w-[120px] font-mono text-xs"
+        />
+        <Button type="submit" variant="outline" size="sm" disabled={pending}>
+          {pending ? "…" : "Set"}
+        </Button>
+      </form>
+      {pinError && (
+        <p role="alert" className="mt-1 font-mono text-[11px] leading-tight text-destructive">
+          {pinError}
+        </p>
+      )}
       <InlineActionError message={state.error} />
-    </form>
+    </div>
   );
 }
 
@@ -234,75 +244,77 @@ function BoothsEditor({
   }, [submitted, pending, state.error, onClose]);
 
   return (
-    <form action={action} onSubmit={() => setSubmitted(true)}>
-      <input type="hidden" name="user_id" value={member.userId} />
-      <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-        {`/// Akses booth — ${member.name ?? member.email ?? ""}`}
-      </p>
-      {photoboxes.length === 0 ? (
-        <p className="mt-3 font-mono text-xs text-muted-foreground">
-          Belum ada photobox di business ini. Buat photobox dahulu di menu
-          Photobox.
+    <div>
+      <form action={action} onSubmit={() => setSubmitted(true)}>
+        <input type="hidden" name="user_id" value={member.userId} />
+        <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
+          {`/// Akses booth — ${member.name ?? member.email ?? ""}`}
         </p>
-      ) : (
-        <fieldset className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
-          <legend className="sr-only">
-            Pilih photobox yang bisa diakses
-          </legend>
-          {photoboxes.map((booth) => (
-            <label
-              key={booth.id}
-              className="flex cursor-pointer items-center gap-3 border-2 border-ink bg-surface px-3 py-2.5"
-            >
-              <input
-                type="checkbox"
-                name="photobox_ids"
-                value={booth.id}
-                defaultChecked={member.booths.some((b) => b.id === booth.id)}
-                disabled={pending}
-                className="size-4 accent-ink"
-              />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-mono text-xs font-bold uppercase tracking-[0.05em]">
-                  {booth.name}
-                </span>
-                {booth.outletName && (
-                  <span className="block truncate font-mono text-[10px] uppercase text-muted-foreground">
-                    {booth.outletName}
-                  </span>
-                )}
-              </span>
-              <span
-                className={cn(
-                  "border-2 border-ink px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase",
-                  STATUS_STYLE[booth.status] ?? "bg-muted"
-                )}
+        {photoboxes.length === 0 ? (
+          <p className="mt-3 font-mono text-xs text-muted-foreground">
+            Belum ada photobox di business ini. Buat photobox dahulu di menu
+            Photobox.
+          </p>
+        ) : (
+          <fieldset className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
+            <legend className="sr-only">
+              Pilih photobox yang bisa diakses
+            </legend>
+            {photoboxes.map((booth) => (
+              <label
+                key={booth.id}
+                className="flex cursor-pointer items-center gap-3 border-2 border-ink bg-surface px-3 py-2.5"
               >
-                {booth.status}
-              </span>
-            </label>
-          ))}
-        </fieldset>
-      )}
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <Button type="submit" size="sm" disabled={pending}>
-          <Save aria-hidden />
-          {pending ? "Menyimpan…" : "Simpan akses"}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={onClose}
-          disabled={pending}
-        >
-          Batal
-        </Button>
-        <p className="font-mono text-[10px] uppercase tracking-[0.05em] text-muted-foreground">
-          Tanpa centang = tanpa akses booth.
-        </p>
-      </div>
-      <InlineActionError message={state.error} />
+                <input
+                  type="checkbox"
+                  name="photobox_ids"
+                  value={booth.id}
+                  defaultChecked={member.booths.some((b) => b.id === booth.id)}
+                  disabled={pending}
+                  className="size-4 accent-ink"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-mono text-xs font-bold uppercase tracking-[0.05em]">
+                    {booth.name}
+                  </span>
+                  {booth.outletName && (
+                    <span className="block truncate font-mono text-[10px] uppercase text-muted-foreground">
+                      {booth.outletName}
+                    </span>
+                  )}
+                </span>
+                <span
+                  className={cn(
+                    "border-2 border-ink px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase",
+                    STATUS_STYLE[booth.status] ?? "bg-muted"
+                  )}
+                >
+                  {booth.status}
+                </span>
+              </label>
+            ))}
+          </fieldset>
+        )}
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <Button type="submit" size="sm" disabled={pending}>
+            <Save aria-hidden />
+            {pending ? "Menyimpan…" : "Simpan akses"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onClose}
+            disabled={pending}
+          >
+            Batal
+          </Button>
+          <p className="font-mono text-[10px] uppercase tracking-[0.05em] text-muted-foreground">
+            Tanpa centang = tanpa akses booth.
+          </p>
+        </div>
+        <InlineActionError message={state.error} />
+      </form>
 
       {member.booths.length > 0 && (
         <div className="mt-5 border-t-2 border-ink/10 pt-4">
@@ -321,7 +333,7 @@ function BoothsEditor({
           </div>
         </div>
       )}
-    </form>
+    </div>
   );
 }
 

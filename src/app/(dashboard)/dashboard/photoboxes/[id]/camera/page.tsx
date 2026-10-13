@@ -7,6 +7,7 @@ import { CameraTest } from "@/components/dashboard/CameraTest";
 import { ApiError } from "@/lib/api-errors";
 import { can } from "@/lib/rbac";
 import { getActiveBusiness, requireUser } from "@/lib/tenant";
+import { parseUuidParam } from "@/lib/uuid-param";
 import { getPhotoboxCameraConfig } from "@/server/photoboxes";
 
 export const metadata: Metadata = {
@@ -32,9 +33,17 @@ export default async function CameraTestPage({ params }: Props) {
 
   const { id } = await params;
 
+  // Non-UUID → 404 (bukan 500 dari Postgres invalid uuid); docs/03 §3.5.
+  let photoboxId: string;
+  try {
+    photoboxId = parseUuidParam(id, "id");
+  } catch {
+    notFound();
+  }
+
   let config;
   try {
-    config = await getPhotoboxCameraConfig(user.id, active.business.id, id);
+    config = await getPhotoboxCameraConfig(user.id, active.business.id, photoboxId);
   } catch (error) {
     if (error instanceof ApiError && error.code === "NOT_FOUND") notFound();
     throw error;
@@ -45,7 +54,7 @@ export default async function CameraTestPage({ params }: Props) {
       <header className="flex flex-col gap-3">
         <Link
           href="/dashboard/photoboxes"
-          className="inline-flex w-fit items-center gap-2 font-mono text-xs uppercase tracking-[0.05em] text-muted-foreground hover:text-ink"
+          className="inline-flex min-h-11 w-fit items-center gap-2 py-2 font-mono text-xs uppercase tracking-[0.05em] text-muted-foreground hover:text-ink"
         >
           <ChevronLeft className="size-4" aria-hidden /> Kembali ke photobox
         </Link>
@@ -65,7 +74,7 @@ export default async function CameraTestPage({ params }: Props) {
         {canWrite && (
           <Link
             href="/dashboard/photoboxes"
-            className="inline-flex w-fit items-center gap-2 border-2 border-ink bg-accent px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.1em] shadow-[3px_3px_0_0_#111111] hover:shadow-[2px_2px_0_0_#111111]"
+            className="inline-flex min-h-11 w-fit items-center gap-2 border-2 border-ink bg-accent px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-[0.1em] shadow-[3px_3px_0_0_#111111] hover:shadow-[2px_2px_0_0_#111111]"
           >
             Atur kamera, printer & sesi
           </Link>

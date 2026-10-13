@@ -362,13 +362,14 @@ export async function setStaffPin(
   });
 
   const supabase = createServerClient();
-  const { data: assignment } = await supabase
+  const { data: assignment, error: assignmentError } = await supabase
     .from("member_photoboxes")
-    .select("id")
+    .select("photobox_id")
     .eq("business_id", businessId)
     .eq("user_id", parsed.user_id)
     .eq("photobox_id", parsed.photobox_id)
     .maybeSingle();
+  if (assignmentError) throw new ApiError("INTERNAL", "Gagal memuat akses booth");
   if (!assignment) throw new ApiError("NOT_FOUND", "Booth belum di-assign ke staff ini");
 
   const pinHash = pin ? await hashDevicePin(pin) : null;

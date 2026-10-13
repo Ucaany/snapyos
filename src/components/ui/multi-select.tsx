@@ -6,7 +6,11 @@ type Props = {
   id?: string;
   name: string;
   options: MultiSelectOption[];
-  defaults: string[];
+  /** Nilai awal (uncontrolled) — dipakai bila `value` tidak diberikan. */
+  defaults?: string[];
+  /** Nilai terkontrol. Bila diberikan, komponen bersifat controlled. */
+  value?: string[];
+  onChange?: (next: string[]) => void;
   disabled?: boolean;
   className?: string;
   ariaLabel?: string;
@@ -17,23 +21,33 @@ type Props = {
  * MultiSelect brutalist primitive.
  * Wraps native `<select multiple>` dengan tinggi terkontrol supaya semua opsi terlihat sekaligus.
  * Cocok untuk assignment package/outlet/photobox.
+ * Mendukung mode uncontrolled (`defaults`) dan controlled (`value` + `onChange`).
  */
 export function MultiSelect({
   id,
   name,
   options,
   defaults,
+  value,
+  onChange,
   disabled,
   className,
   ariaLabel,
   ariaInvalid,
 }: Props) {
+  const controlled = value !== undefined;
   return (
     <Select
       id={id}
       name={name}
       multiple
-      defaultValue={defaults}
+      {...(controlled
+        ? {
+            value,
+            onChange: (e) =>
+              onChange?.(Array.from(e.target.selectedOptions, (o) => o.value)),
+          }
+        : { defaultValue: defaults })}
       disabled={disabled}
       aria-label={ariaLabel ?? name}
       aria-invalid={ariaInvalid}
