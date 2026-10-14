@@ -122,13 +122,21 @@ export async function createPayment(
       .single()
     return paymentResponse(inserted(data, error), null)
   }
-  const gateway = credentialId
-    ? await resolveGatewayByCredential(credentialId)
-    : null
+  // Metode gateway SELALU dipilih dari credential milik business ini
+  // (resolveKioskPaymentMethod → credentialId non-null). Jadi credentialId null
+  // di sini = bug pemanggil, bukan alasan fallback.
+  if (!credentialId)
+    throw new ApiError("VALIDATION_ERROR", "Metode pembayaran tidak punya credential aktif")
+  // Credential tidak bisa dipakai (tidak ada / tidak bisa didekripsi karena key
+  // dirotasi / payload rusak) → GAGAL, jangan diam-diam pindah provider.
+  // Fallback lintas-provider akan menagih lewat merchant lain (mis. aggregator
+  // platform) padahal metode yang dipilih customer milik provider berbeda —
+  // dana bisa masuk ke akun yang salah. Owner harus perbaiki credential dulu.
+  const gateway = await resolveGatewayByCredential(credentialId)
   if (!gateway)
     throw new ApiError(
       "VALIDATION_ERROR",
-      "Gateway pembayaran belum terkonfigurasi. Configure credential merchant di Settings Payment."
+      "Credential pembayaran tidak dapat dipakai. Perbarui credential merchant di Settings Payment."
     )
   const resolvedCallbackUrl =
     gateway.provider === "pakasir" ? "" : paymentWebhookUrl(gateway.provider)

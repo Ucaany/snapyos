@@ -29,6 +29,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getR2BucketForArea, getR2Client, r2Key } from "@/lib/r2";
+import { isObjectNotFoundError } from "@/lib/r2/errors";
 import type {
   ListOptions,
   SignedUrlEntry,
@@ -98,8 +99,13 @@ export class R2StorageProvider implements StorageProvider {
             new HeadObjectCommand({ Bucket: this.bucket(bucket), Key: objectKey })
           );
           return { data: null, error: { message: "Object already exists" } };
-        } catch {
-          // HeadObject gagal (404/NotFound) = key belum ada → lanjut upload.
+        } catch (error) {
+          // HANYA 404/NotFound yang berarti "key belum ada". Error lain (403,
+          // 5xx, timeout, misconfig bucket) = tak diketahui; melanjutkan ke
+          // PutObject akan menimpa objek yang ada, merusak janji upsert:false.
+          if (!isObjectNotFoundError(error)) {
+            return { data: null, error: { message: messageFrom(error) } };
+          }
         }
       }
       await this.client.send(
@@ -139,10 +145,7 @@ export class R2StorageProvider implements StorageProvider {
       return true;
     } catch (error) {
       // 404/NotFound/NoSuchKey = objek tidak ada (bukan misconfig) → false.
-      const status = (error as { $metadata?: { httpStatusCode?: number } })?.$metadata
-        ?.httpStatusCode;
-      const code = (error as { name?: string })?.name;
-      if (status === 404 || code === "NotFound" || code === "NoSuchKey") return false;
+      if (isObjectNotFoundError(error)) return false;
       return null;
     }
   }

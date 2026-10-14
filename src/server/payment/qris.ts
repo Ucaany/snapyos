@@ -33,7 +33,11 @@ export async function getPaymentStatus(
   ) {
     try {
       const gateway = payment.credential_id
-        ? await resolveGatewayByCredential(payment.credential_id)
+        ? // Credential rusak (tak bisa didekripsi) → null → status tetap pending.
+          // JANGAN fallback ke aggregator/provider lain: pembayaran ini dicatat
+          // milik credential direct, settle lewat akun berbeda = dana salah.
+          // Owner harus memperbaiki credential; poll berikutnya akan recover.
+          await resolveGatewayByCredential(payment.credential_id)
         // OBSOLETESC (2026-09-18): aggregator env deactivated pentru kiosk;
         // branch hanya untuk legacy payment in-flight masih pending.
         : payment.provider === "pakasir"

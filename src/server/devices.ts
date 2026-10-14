@@ -94,7 +94,7 @@ export async function resolveActiveDevice(token: string) {
   const { data } = await supabase
     .from("devices")
     .select(
-      "id, business_id, photobox_id, status, last_seen_at, last_heartbeat_at, photoboxes ( id, business_id, slug, outlet_id, camera_settings, print_settings, session_settings, device_status, exit_pin_hash, exit_pin_failed_count, exit_pin_locked_until ), businesses ( slug )"
+      "id, business_id, photobox_id, status, last_seen_at, last_heartbeat_at, photoboxes ( id, business_id, slug, outlet_id, camera_settings, print_settings, session_settings, device_status, exit_pin_hash, exit_pin_failed_count, exit_pin_locked_until ), businesses ( slug, status )"
     )
     .eq("device_token_hash", hashDeviceToken(token))
     .maybeSingle();
@@ -108,8 +108,10 @@ export async function resolveActiveDevice(token: string) {
   if (row.status !== "active") {
     throw new ApiError("FORBIDDEN", "Device tidak aktif atau telah dicabut");
   }
-  // Business suspended (admin, docs/10 §10.5) — kiosk tidak bisa checkout/sesi baru.
-  if (business.status === "suspended") {
+  // Business non-aktif (admin, docs/10 §10.5) — kiosk tidak bisa checkout/sesi
+  // baru. Cek allowlist `active`, bukan blokir `suspended`, supaya status baru
+  // di schema ikut tertolak alih-alih lolos diam-diam.
+  if (business.status !== "active") {
     throw new ApiError("FORBIDDEN", "Bisnis sedang ditangguhkan");
   }
   // Throttle heartbeat: tulis last_seen_at + last_heartbeat_at hanya bila
