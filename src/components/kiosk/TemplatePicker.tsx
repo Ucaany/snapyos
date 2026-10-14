@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Frame } from "lucide-react";
 import { apiGet } from "@/components/kiosk/api";
 import type { KioskVisualStyle, PublicTemplate } from "@/lib/kiosk-types";
@@ -25,30 +25,39 @@ export function TemplatePicker({ packageId, businessSlug, onSelect, kioskStyle, 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
+  // AbortController dimiliki effect — unmount / ganti paket membatalkan request
+  // in-flight, bukan hanya timer (cegah set state setelah unmount / race paket).
+  const abortRef = useRef<AbortController | null>(null);
+
   const loadTemplates = useCallback(() => {
-    let alive = true;
+    if (abortRef.current) abortRef.current.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
     setLoading(true);
     setError(false);
     apiGet<PublicTemplate[]>(
-      `/api/v1/public/${businessSlug}/templates?package=${encodeURIComponent(packageId)}`
+      `/api/v1/public/${businessSlug}/templates?package=${encodeURIComponent(packageId)}`,
+      ac.signal
     )
       .then((data) => {
-        if (alive) setTemplates(data);
+        if (ac.signal.aborted) return;
+        setTemplates(data);
       })
       .catch(() => {
-        if (alive) setError(true);
+        if (ac.signal.aborted) return;
+        setError(true);
       })
       .finally(() => {
-        if (alive) setLoading(false);
+        if (!ac.signal.aborted) setLoading(false);
       });
-    return () => {
-      alive = false;
-    };
   }, [packageId, businessSlug]);
 
   useEffect(() => {
     const timer = setTimeout(loadTemplates, 0);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      abortRef.current?.abort();
+    };
   }, [loadTemplates]);
 
   return (

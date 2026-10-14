@@ -65,6 +65,8 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
   // Timer reconnect tertunda — dibatalkan saat unmount/sukses agar stream
   // tidak bocor dan retry kedua tidak menghancurkan sesi yang sudah hidup.
   const reconnectTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  // Timer flash — di-clear saat unmount agar tidak set state dari capture yang ditinggal.
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     stageRef.current = stage;
@@ -170,7 +172,7 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
         }
       }
     },
-    [cameraSettings.capture_width, cameraSettings.capture_height, cameraSettings.facingMode, stopStream]
+    [cameraSettings.capture_width, cameraSettings.capture_height, cameraSettings.facingMode, onTrackEnded, stopStream]
   );
 
   useEffect(() => {
@@ -183,6 +185,7 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
       clearReconnectTimers();
       stopStream();
       if (countdownRef.current) clearInterval(countdownRef.current);
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -232,18 +235,20 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
 
   function startCountdown() {
     if (!cameraReady) return;
-    setCount(cameraSettings.countdown_seconds || 3);
+    const seconds = Math.max(1, cameraSettings.countdown_seconds || 3);
+    let remaining = seconds;
+    stageRef.current = "countdown";
+    setCount(seconds);
     setStage("countdown");
     if (countdownRef.current) clearInterval(countdownRef.current);
     countdownRef.current = setInterval(() => {
-      setCount((c) => {
-        if (c <= 1) {
-          if (countdownRef.current) clearInterval(countdownRef.current);
-          void doCapture();
-          return 0;
-        }
-        return c - 1;
-      });
+      remaining -= 1;
+      setCount(remaining);
+      if (remaining <= 0) {
+        if (countdownRef.current) clearInterval(countdownRef.current);
+        countdownRef.current = null;
+        void doCapture();
+      }
     }, 1000);
   }
 
@@ -255,7 +260,8 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
       const photo = await captureFrame(videoRef.current, cameraSettings.jpeg_quality || 0.92, mirror);
       setCurrent(photo);
       setFlash(true);
-      setTimeout(() => setFlash(false), 180);
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+      flashTimerRef.current = setTimeout(() => setFlash(false), 180);
       setStage("review");
     } catch {
       setError({ message: "Gagal mengambil foto. Coba lagi.", action: "COBA LAGI" });

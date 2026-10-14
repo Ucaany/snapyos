@@ -46,6 +46,7 @@ export function StickerPicker({ onPick }: Props) {
 
     apiGet<EmojiItem[]>(url, ac.signal)
       .then((data) => {
+        if (ac.signal.aborted) return;
         setEmojis(data);
       })
       .catch(() => {

@@ -55,3 +55,13 @@ tauri-kiosk/gen/
 /.audit/
 /.e2e-tmp/
 /test-results/
+
+# Artefak tooling lokal (bukan bagian app; .claude/worktrees = salinan repo penuh)
+/.claude/
+/.playwright-mcp/
+/anti-slop/
+/.ngodingpakeai/
+
+# Screenshot evidence e2e — di-generate ulang tiap run, jangan di-commit.
+# Bukti terkurasi tetap disimpan manual (mis. k2-media-frame-evidence.png).
+/tests/e2e/*.png

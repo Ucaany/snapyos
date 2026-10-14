@@ -5,6 +5,7 @@ import { defaultBrandColors } from "@/lib/brand-defaults";
 import type { KioskVisualStyle } from "@/lib/kiosk-types";
 import { slotsByZ, type TemplateLayout } from "@/lib/template-layout";
 import { composeFrame, type ComposeSource } from "@/lib/compose-frame";
+import { useObjectUrls } from "@/components/kiosk/use-object-url";
 
 type Props = {
   /** Layout slot template terpilih. Null = tanpa frame (panel ini disembunyikan). */
@@ -47,6 +48,9 @@ export function FramePreviewPanel({
   const mirrorCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const [frameError, setFrameError] = useState(false);
   const [assetVersion, setAssetVersion] = useState(0);
+  // Object URL ref-counted (StrictMode-safe) untuk foto terkonfirmasi + override.
+  const capturedUrls = useObjectUrls(captured);
+  const overrideUrl = useObjectUrls(activeOverride ? [activeOverride] : [])[0] ?? null;
 
   // Muat frame PNG. Tanpa crossOrigin: preview tidak pernah dibaca-piksel,
   // jadi taint canvas tidak relevan (berbeda dari Editor yang men-toBlob).
@@ -74,21 +78,21 @@ export function FramePreviewPanel({
 
   // Muat foto yang sudah dikonfirmasi (blob urut slot).
   useEffect(() => {
+    if (capturedUrls.length !== captured.length || capturedUrls.some((u) => !u)) return;
     let cancelled = false;
-    const urls = captured.map((b) => URL.createObjectURL(b));
     photoRef.current = captured.map(() => null);
     void Promise.all(
-      urls.map(
+      capturedUrls.map(
         (url, i) =>
           new Promise<void>((resolve) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.onload = () => {
               if (!cancelled) photoRef.current[i] = img;
               resolve();
             };
             img.onerror = () => resolve();
-            img.src = url;
+            img.src = url!;
           })
       )
     ).then(() => {
@@ -96,18 +100,16 @@ export function FramePreviewPanel({
     });
     return () => {
       cancelled = true;
-      urls.forEach((u) => URL.revokeObjectURL(u));
     };
-  }, [captured]);
+  }, [captured, capturedUrls]);
 
   // Muat hasil yang belum dikonfirmasi (stage review).
   useEffect(() => {
-    if (!activeOverride) {
+    if (!activeOverride || !overrideUrl) {
       overrideRef.current = null;
       return;
     }
     let cancelled = false;
-    const url = URL.createObjectURL(activeOverride);
     const img = new Image();
     img.onload = () => {
       if (cancelled) return;
@@ -115,12 +117,11 @@ export function FramePreviewPanel({
       setAssetVersion((v) => v + 1);
     };
     img.onerror = () => undefined;
-    img.src = url;
+    img.src = overrideUrl;
     return () => {
       cancelled = true;
-      URL.revokeObjectURL(url);
     };
-  }, [activeOverride]);
+  }, [activeOverride, overrideUrl]);
 
   useEffect(() => {
     if (!layout) return;

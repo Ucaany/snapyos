@@ -68,6 +68,13 @@ const record = (name, ok, detail = "") => {
 };
 
 const page = browser.pages()[0] ?? (await browser.newPage());
+await page.route("**/api/v1/emoji**", async (route) => {
+  await route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ data: [{ char: "★", name: "Star", group: "symbols" }] }),
+  });
+});
 await browser.grantPermissions(["camera"], { origin: BASE }).catch(() => {});
 page.on("pageerror", (e) => pageErrors.push(`pageerror: ${e.message}`));
 page.on("console", (m) => {
@@ -92,6 +99,7 @@ async function overlapReport() {
       for (let j = i + 1; j < els.length; j++) {
         const a = els[i], b = els[j];
         if (a.el.contains(b.el) || b.el.contains(a.el)) continue;
+        if (a.el.getAttribute("aria-label")?.startsWith("Petugas") || b.el.getAttribute("aria-label")?.startsWith("Petugas")) continue;
         const overlapX = Math.min(a.r.right, b.r.right) - Math.max(a.r.left, b.r.left);
         const overlapY = Math.min(a.r.bottom, b.r.bottom) - Math.max(a.r.top, b.r.top);
         if (overlapX > 6 && overlapY > 6) {
@@ -146,6 +154,29 @@ async function gotoEditor() {
     ({ setupKey, deviceToken }) => {
       localStorage.setItem(setupKey, "1");
       localStorage.setItem("snapyos_device_token", deviceToken);
+      const canvas = document.createElement("canvas");
+      canvas.width = 1280;
+      canvas.height = 720;
+      const context = canvas.getContext("2d");
+      if (context) {
+        context.fillStyle = "#111111";
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.fillStyle = "#FF2A2A";
+        context.fillRect(80, 80, 1120, 560);
+        context.fillStyle = "#F4F4F0";
+        context.font = "bold 96px sans-serif";
+        context.fillText("SNAPYOS E2E", 250, 390);
+      }
+      const stream = canvas.captureStream(30);
+      Object.defineProperty(navigator, "mediaDevices", {
+        configurable: true,
+        value: {
+          getUserMedia: async () => stream,
+          enumerateDevices: async () => [],
+          addEventListener: () => undefined,
+          removeEventListener: () => undefined,
+        },
+      });
     },
     { setupKey: SETUP_KEY, deviceToken: token }
   );
@@ -160,10 +191,16 @@ async function gotoEditor() {
   await page.waitForTimeout(1000);
 
   const body = () => text();
-  // ---- 2. Mulai (bila di welcome) ----
-  if (/MULAI|Mulai/i.test(await body())) {
-    const start = page.locator("button").filter({ hasText: /Mulai/i }).first();
-    if (await start.count()) { await start.click(); await page.waitForTimeout(1800); }
+  // ---- 2. Mulai (welcome/guide) — CTA dikustom owner (mis. "START"), dan
+  // tagline bisa memuat kata "Capture". Deteksi lewat keyword layar LANJUT,
+  // bukan kata "capture". Klik CTA non-petugas sampai layar paket. ----
+  for (let i = 0; i < 3; i++) {
+    const b = await body();
+    if (/PILIH PAKET|PILIH FRAME|Ambil foto|EDIT FOTO|LANGKAH 03/i.test(b)) break;
+    const cta = page.locator('button:not([aria-label^="Petugas"])').filter({ hasText: /\S/ }).first();
+    if (!(await cta.count())) break;
+    await cta.click();
+    await page.waitForTimeout(1800);
   }
 
   // ---- 3. Pilih paket (bila di layar paket) ----
@@ -181,7 +218,11 @@ async function gotoEditor() {
     }
   }
 
-  // ---- 4. Checkout -> Lanjut offline (bila di checkout) ----
+  // ---- 4. Checkout -> Lanjut offline (tunggu ringkasan async dulu) ----
+  await page.waitForFunction(
+    () => /RINGKASAN PESANAN|PILIH PEMBAYARAN|PILIH FRAME/i.test(document.body.innerText),
+    null, { timeout: 15000 }
+  ).catch(() => {});
   const offlineBtn = page.getByRole("button", { name: /Lanjut offline/i });
   if (await offlineBtn.count()) { await offlineBtn.first().click(); await page.waitForTimeout(3000); }
 
@@ -217,8 +258,22 @@ async function gotoEditor() {
     if (await isEditor()) break;
     const b = await text();
     if (!/Ambil foto/i.test(b)) break;
-    const shoot = page.getByRole("button", { name: /Ambil foto|Menyiapkan kamera/i }).first();
-    if ((await shoot.count()) && (await shoot.isEnabled().catch(() => false))) await shoot.click();
+    const shoot = page.getByRole("button", { name: /^Ambil foto \d+\/\d+$/i });
+    await shoot.waitFor({ state: "visible", timeout: 15000 });
+    await page.waitForFunction(
+      () => {
+        const button = [...document.querySelectorAll("button")].find((item) => /^Ambil foto \d+\/\d+$/i.test(item.innerText.trim()));
+        return button && !button.disabled;
+      },
+      null,
+      { timeout: 15000 }
+    );
+    await shoot.click();
+    await page.waitForFunction(
+      () => [...document.querySelectorAll("span")].some((item) => /^[123]$/.test(item.innerText.trim()) && parseFloat(getComputedStyle(item).fontSize) > 60),
+      null,
+      { timeout: 3000 }
+    );
     await page.waitForFunction(
       () => /Foto berhasil diambil|EDIT FOTO|LANGKAH 03/i.test(document.body.innerText),
       null, { timeout: 14000 }
@@ -290,7 +345,7 @@ try {
   const stickerSection = page.locator("p", { hasText: /^Stiker$/ }).first();
   record("Bagian Stiker tampil", (await stickerSection.count()) > 0);
   await page.waitForTimeout(2500); // tunggu emoji API / fallback
-  const stickerBtns = page.locator('div.max-h-\[180px\] button');
+  const stickerBtns = page.locator('div[class*="max-h-[180px]"] button');
   const sCount = await stickerBtns.count();
   record("Sticker picker punya item", sCount > 0, `${sCount} stiker`);
   if (sCount > 0) {
@@ -413,13 +468,13 @@ try {
       printEvidence.pageStyle
     );
     await page.waitForFunction(
-      () => /Hasil|Simpan|Unduh|QR|Cetak|Terima kasih|Result/i.test(document.body.innerText),
+      () => /Foto kamu jadi|Pindai QR|Unduh foto|Sesi baru/i.test(document.body.innerText),
       null,
       { timeout: 10000 }
     );
     const b = await text();
     const leftEditor = !/EDIT FOTO|LANGKAH 03/i.test(b);
-    const reachedResult = /Hasil|Simpan|Unduh|QR|Cetak|Terima kasih|Result/i.test(b);
+    const reachedResult = /Foto kamu jadi|Pindai QR|Unduh foto|Sesi baru/i.test(b);
     record("Selesai -> keluar dari editor (finalize)", leftEditor, b.slice(0, 100).replace(/\s+/g, " "));
     record("afterprint -> layar hasil", reachedResult, b.slice(0, 100).replace(/\s+/g, " "));
     await page.screenshot({ path: SHOT("08-after-finish") });

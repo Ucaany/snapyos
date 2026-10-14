@@ -135,10 +135,6 @@ export function CheckoutScreen({
   })
   async function create(method: KioskPaymentMethod) {
     if (!amounts) return
-    if (method.kind === "voucher") {
-      setPhase("voucher")
-      return
-    }
     setBusy(true)
     setError(null)
     try {
@@ -318,6 +314,11 @@ export function CheckoutScreen({
             error={error}
             onSelect={(method) => {
               setError(null)
+              // Kartu voucher → layar input kode; metode lain → buat payment.
+              if (method.kind === "voucher") {
+                setPhase("voucher")
+                return
+              }
               void create(method)
             }}
             onBack={() => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Delete, Loader2, LockKeyhole } from "lucide-react";
 import { apiPost, KioskError } from "@/components/kiosk/api";
 
@@ -26,6 +26,37 @@ export function ExitPinDialog({ deviceToken, onSuccess, onCancel }: Props) {
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // Fokus awal ke dialog + Escape untuk batal + Tab terkurung di dalam dialog
+  // (R-32: modal keyboard-navigable, tidak bocor ke kontrol kiosk di belakang).
+  useEffect(() => {
+    const node = dialogRef.current;
+    node?.focus();
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onCancel();
+        return;
+      }
+      if (e.key !== "Tab" || !node) return;
+      const focusable = node.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0]!;
+      const last = focusable[focusable.length - 1]!;
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onCancel]);
 
   async function submit(value: string) {
     if (busy) return;
@@ -58,7 +89,11 @@ export function ExitPinDialog({ deviceToken, onSuccess, onCancel }: Props) {
       aria-label="Keluar mode kiosk"
       className="fixed inset-0 z-[70] flex items-center justify-center bg-ink/40 p-4"
     >
-      <div className="flex w-full max-w-[420px] flex-col gap-5 border-4 border-ink bg-bg p-6 shadow-[8px_8px_0_0_#111111]">
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        className="flex w-full max-w-[420px] flex-col gap-5 border-4 border-ink bg-bg p-6 shadow-[8px_8px_0_0_#111111] outline-none"
+      >
         <div className="flex items-center gap-3">
           <LockKeyhole className="size-6 shrink-0" aria-hidden />
           <div className="flex min-w-0 flex-col">

@@ -104,6 +104,8 @@ export function getDeviceProfile(): DeviceProfile {
     defaultOrientation: isPhone ? "portrait" : "landscape",
     // Kiosk tablet = kamera belakang (kualitas); phone selfie = kamera depan.
     defaultFacingMode: isPhone ? "user" : "environment",
-    supportsPrint: isTablet,
+    // Desktop/mini PC kiosk (docs/05) mencetak lewat printer OS dengan flag
+    // Chrome --kiosk-printing; hanya ponsel yang tidak mencetak langsung.
+    supportsPrint: isTablet || kind === "desktop",
   };
 }
