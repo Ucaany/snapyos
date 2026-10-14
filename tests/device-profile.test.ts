@@ -141,6 +141,9 @@ test("device profile: desktop → bukan sentuh, fullscreen (default true di desk
     const p = mod.getDeviceProfile()
     assert.equal(p.kind, "desktop")
     assert.equal(p.isTouch, false)
+    // Desktop/mini PC kiosk mencetak via printer OS (Chrome --kiosk-printing) —
+    // docs/05. Hanya ponsel yang tidak mencetak langsung.
+    assert.equal(p.supportsPrint, true)
   } finally {
     restore()
   }

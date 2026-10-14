@@ -215,7 +215,9 @@ function PrintLayoutRendererInner({ photos, plan, printSettings, onDone }: Props
   }
 
   function handleSkip() {
-    if (doneRef.current) return;
+    // Jangan biarkan customer melewati saat cetak sedang berjalan — kalau tidak,
+    // hasil bisa keluar setelah sesi sudah di-reset untuk customer berikutnya.
+    if (doneRef.current || state === "printing") return;
     doneRef.current = true;
     setState("done");
     onDone(false);

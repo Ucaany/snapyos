@@ -17,6 +17,8 @@
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "test:e2e:print": "node tests/e2e/setup-wizard-print.spec.mjs",
     "test:e2e:k2": "node tests/e2e/setup-wizard-flow.spec.mjs",
+    "test:e2e:full": "E2E_FULL=1 node tests/e2e/kiosk-full.spec.mjs",
+    "test:e2e:live": "node tests/e2e/kiosk-live.spec.mjs",
     "clean": "find . -name '._*' -not -path './node_modules/*' -delete",
     "predev": "npm run clean",
     "prebuild": "npm run clean"

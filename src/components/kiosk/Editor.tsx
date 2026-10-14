@@ -17,6 +17,7 @@ import type { TemplateLayout } from "@/lib/template-layout";
 import { composeFrame } from "@/lib/compose-frame";
 import { canvasToBlob, defaultEdit, drawPhoto, renderPhotoBlob } from "@/components/kiosk/photo-render";
 import { StickerPicker } from "@/components/kiosk/StickerPicker";
+import { useObjectUrls } from "@/components/kiosk/use-object-url";
 
 const TEXT_COLORS = [
   defaultBrandColors.ink,
@@ -75,6 +76,9 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
   const [finishError, setFinishError] = useState<string | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // Object URL ref-counted (StrictMode-safe) — createObjectURL manual di bawah
+  // StrictMode me-revoke URL yang masih dipakai render kedua → ERR_FILE_NOT_FOUND.
+  const photoUrls = useObjectUrls(photos.map((p) => p.blob));
   const imgsRef = useRef<(HTMLImageElement | null)[]>([]);
   const frameRef = useRef<HTMLImageElement | null>(null);
   const [imgVersion, setImgVersion] = useState(0);
@@ -102,12 +106,13 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
 
   // load semua foto sekali (mode composite butuh semua slot terisi)
   useEffect(() => {
+    // Tunggu URL ref-counted siap (state awal [] sebelum effect hook commit).
+    if (photoUrls.length !== photos.length || photoUrls.some((u) => !u)) return;
     let cancelled = false;
     slotCacheRef.current = [];
-    const urls = photos.map((p) => URL.createObjectURL(p.blob));
     imgsRef.current = photos.map(() => null);
     void Promise.all(
-      urls.map(
+      photoUrls.map(
         (url, i) =>
           new Promise<void>((resolve) => {
             const img = new Image();
@@ -116,7 +121,7 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
               resolve();
             };
             img.onerror = () => resolve();
-            img.src = url;
+            img.src = url!;
           })
       )
     ).then(() => {
@@ -124,10 +129,9 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
     });
     return () => {
       cancelled = true;
-      urls.forEach((u) => URL.revokeObjectURL(u));
       if (panRaf.current !== null) cancelAnimationFrame(panRaf.current);
     };
-  }, [photos]);
+  }, [photos, photoUrls]);
 
   // load frame PNG (signed URL). crossOrigin WAJIB: tanpa ini canvas jadi
   // tainted (gambar cross-origin) → toDataURL di finish() melempar

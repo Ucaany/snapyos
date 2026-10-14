@@ -29,6 +29,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getR2BucketForArea, getR2Client, r2Key } from "@/lib/r2";
+import { isObjectNotFoundError } from "@/lib/r2/errors";
 import type {
   ListOptions,
   SignedUrlEntry,
@@ -45,13 +46,6 @@ const PRESIGN_CONCURRENCY = 50;
 function messageFrom(error: unknown): string {
   if (error instanceof Error) return error.message;
   return String(error);
-}
-
-function isNotFoundError(error: unknown): boolean {
-  const status = (error as { $metadata?: { httpStatusCode?: number } })?.$metadata
-    ?.httpStatusCode;
-  const code = (error as { name?: string })?.name;
-  return status === 404 || code === "NotFound" || code === "NoSuchKey";
 }
 
 /** Jalankan task dengan konkurensi terbatas, urutan hasil dijaga. */
@@ -106,7 +100,12 @@ export class R2StorageProvider implements StorageProvider {
           );
           return { data: null, error: { message: "Object already exists" } };
         } catch (error) {
-          if (!isNotFoundError(error)) throw error;
+          // HANYA 404/NotFound yang berarti "key belum ada". Error lain (403,
+          // 5xx, timeout, misconfig bucket) = tak diketahui; melanjutkan ke
+          // PutObject akan menimpa objek yang ada, merusak janji upsert:false.
+          if (!isObjectNotFoundError(error)) {
+            return { data: null, error: { message: messageFrom(error) } };
+          }
         }
       }
       await this.client.send(
@@ -145,8 +144,8 @@ export class R2StorageProvider implements StorageProvider {
       );
       return true;
     } catch (error) {
-      // 404/NotFound/NoSuchKey = objek tidak ada, bukan misconfiguration.
-      if (isNotFoundError(error)) return false;
+      // 404/NotFound/NoSuchKey = objek tidak ada (bukan misconfig) → false.
+      if (isObjectNotFoundError(error)) return false;
       return null;
     }
   }

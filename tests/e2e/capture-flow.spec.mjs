@@ -155,11 +155,12 @@ try {
     record("Boot menemukan sesi tertinggal", true, body.slice(0, 60).replace(/\s+/g, " "));
   }
 
-  // ---- 2. Welcome → Mulai ----
-  if (/MULAI|Mulai/i.test(body)) {
-    const start = page.locator("button").filter({ hasText: /Mulai/i }).first();
-    if (await start.count()) {
-      await start.click();
+  // ---- 2. Welcome → Mulai (CTA dikustom owner, mis. "START") ----
+  const onWelcome = !/PILIH PAKET|PILIH FRAME|Ambil foto|EDIT FOTO/i.test(body);
+  if (onWelcome) {
+    const cta = page.locator('button:not([aria-label^="Petugas"])').filter({ hasText: /\S/ }).first();
+    if (await cta.count()) {
+      await cta.click();
       await page.waitForTimeout(1500);
       record("Welcome → Mulai", true);
     }

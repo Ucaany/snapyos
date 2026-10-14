@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { dataEnvelope } from "@/lib/api-errors"
-import { toErrorResponse } from "@/lib/api-route"
+import { parseUuidParam, toErrorResponse } from "@/lib/api-route"
 import { abortSession } from "@/server/kiosk-sessions"
 import { sessionAbortSchema } from "@/lib/validators"
 import { rateLimit, rateLimitByDevice } from "@/lib/rate-limit"
@@ -30,7 +30,10 @@ export async function POST(
   { params }: { params: Promise<{ businessSlug: string; id: string }> }
 ) {
   try {
-    const { businessSlug, id } = await params
+    const { businessSlug, id: idRaw } = await params
+    // businessSlug bukan UUID (slug string) — validasi via downstream lookup.
+    // session id WAJIB UUID: non-UUID → 404 sebelum menyentuh DB (paritas finalize).
+    const id = parseUuidParam(idRaw, "id")
     const input = parseDeviceToken(await request.json())
     const limited = await enforceAbortRateLimit(request, input.device_token)
     if (limited && !limited.ok) return rateLimited(limited.retryAfterSec)

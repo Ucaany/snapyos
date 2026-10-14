@@ -107,8 +107,13 @@ const key = await page.evaluate((k) => localStorage.getItem(k), PHOTOBOX_LS_KEY)
 console.log("SETUP_KEY:", key);
 assert.equal(key, "1", "SETUP_KEY per slug harus tertulis");
 
-// 6) Welcome muncul
-await page.waitForSelector("text=Selamat datang", { timeout: 5000 });
+// 6) Welcome muncul — layar setup hilang (judul welcome = nama bisnis, bisa
+// dikustom owner, jadi jangan andalkan teks tetap "Selamat datang").
+await page.waitForFunction(
+  () => !/SETUP PERANGKAT|SIAPKAN KAMERA/i.test(document.body.innerText),
+  null,
+  { timeout: 8000 }
+);
 console.log("step 3: welcome");
 
 assert.deepEqual(consoleErrors, [], "tidak boleh ada console error");
