@@ -264,19 +264,19 @@
 
 **Route group**: `(dashboard)` → `/dashboard/*` · **Layout**: `src/app/(dashboard)/layout.tsx`.
 **Guard layout**: `requireUser` → `/login`; `destinationFor` ≠ `/dashboard` → redirect; `getActiveBusiness`.
-**Shell**: `Topbar` (WorkspaceSwitcher + StorageIndicator + link admin bila admin) + `Sidebar` (4 grup) + `CollapsibleShell` + `CashPaymentNotifier` (bila `payment:confirm` + fitur `cash_payment`) + `InstallPWA`.
+**Shell**: `Topbar` (WorkspaceSwitcher + StorageIndicator + link admin bila admin) + `Sidebar` (5 grup) + `CollapsibleShell` + `CashPaymentNotifier` (bila `payment:confirm` + fitur `cash_payment`) + `InstallPWA`.
 **Sidebar** (`src/components/dashboard/Sidebar.tsx`): Utama (Dashboard, Analitik, Metrik) · Operasional (Photobox, Branding & Kiosk, Outlet, Template, Paket, Voucher, POS*, Unduh PWA*) · Keuangan (Transaksi, Keuangan, Payment Gateway, Laporan) · Pelanggan & Tim (Pelanggan, Tim) · Langganan & Akun (Langganan, Pengaturan, Tiket Bantuan, Dokumentasi). `*` = kondisional entitlement/fitur.
 
 ### O1. Dashboard Overview
 - **Page**: `src/app/(dashboard)/dashboard/page.tsx` · eyebrow `DASHBOARD: <ROLE>` · title = nama bisnis.
-- **Data**: `getDashboardSummary`, `getRevenueSeries`, `getOperationalMetrics` (`src/server/dashboard.ts`), `getTxInsights` (`src/server/analytics.ts`), `getBusiness` (`src/server/business.ts`).
+- **Data**: `getDashboardSummary`, `getRevenueSeries`, `getOperationalMetrics` (`src/server/dashboard.ts`), `getTxInsights` (`src/server/analytics.ts`), `getActiveSubscription` (`src/server/business.ts`).
 - **Komponen**: `DateRangeFilter`, `MetricCard` (hero+sm), `RevenueChart`, `TxInsightsPanel`, `EmptyState`.
 - **DB/RPC**: `transactions, sessions, customers, photoboxes` via RPC `dashboard_tx_summary`, `dashboard_daily_revenue`, `operational_metrics`, `tx_insights_summary`.
 - **Akses**: semua role dengan membership; insight finansial butuh `transaction:read`.
 
 ### O2. Analitik Pendapatan
 - **Page**: `/dashboard/analytics` · eyebrow `ANALITIK: PENDAPATAN` · guard `transaction:read`.
-- **Data**: `getRevenueBreakdown` (`revenue_breakdown` RPC), `getTxInsights`, `getRevenueSeries`.
+- **Data**: `getRevenueBreakdown` (`revenue_breakdown` RPC), `getRevenueSeries` (`src/server/dashboard.ts`).
 - **Komponen**: `DateRangeFilter`, `BreakdownChart`, `RevenueChart`, `EmptyState`.
 - **DB**: `transactions` (+bucket tanpa package = transaksi POS non-paket).
 - **Dampak**: breakdown per package/outlet/payment_method.
@@ -298,7 +298,7 @@
 
 ### O5. Transaksi
 - **Page**: `/dashboard/transactions` · eyebrow `TRANSAKSI: <total> TOTAL` · guard `transaction:read`.
-- **Data**: `listTransactions`, `getTransaction` (`src/server/transactions.ts`); `listOutlets`, `listPhotoboxes`, `listPackages`.
+- **Data**: `listTransactions` (`src/server/transactions.ts`); `listOutlets`, `listPhotoboxes`, `listPackages`.
 - **Actions**: `createManualTxAction` (`src/server/finance-actions.ts`) — **owner-only** (`transaction:manual-create`), non-withdrawable.
 - **Komponen**: `DateRangeFilter`, `TransactionsView`, `PreserveSearchParams`.
 - **Filter**: rentang tanggal, status, outlet, photobox, package.
@@ -306,16 +306,16 @@
 - **Dampak**: `transactions` = **source of truth** financial reporting; `payment_method` ∈ qris/cash/bank_transfer/other/offline/manual/voucher; `withdrawable` false untuk manual & offline.
 
 ### O6. Outlet
-- **Page**: `/dashboard/outlets` · eyebrow `OUTLET: <ROLE>` · guard `outlet:read`.
+- **Page**: `/dashboard/outlets` · eyebrow `OUTLET: <ROLE>` · guard server `outlet:read` (halaman tanpa gate baca eksplisit; write: `outlet:write`).
 - **Data**: `listOutlets` (`src/server/outlets.ts`), `getPlanLimits`.
 - **Actions**: `createOutletAction`, `updateOutletAction`, `deleteOutletAction` (`src/server/booth-actions.ts`).
 - **Komponen**: `OutletsTable`, `OutletEditForm`.
 - **Field**: name, address, city, province, status (active/inactive).
 - **DB**: `outlets, photoboxes`.
-- **Dampak**: limit `max_outlets` dari plan; delete CASCADE photoboxes.
+- **Dampak**: limit `max_outlets` dari plan; delete **ditolak** bila outlet masih berisi photobox (`VALIDATION_ERROR`); cascade DB tidak pernah terpicu dari aplikasi.
 
 ### O7. Photobox
-- **Page**: `/dashboard/photoboxes` · eyebrow `PHOTOBOX: <ROLE>` · guard `photobox:read`.
+- **Page**: `/dashboard/photoboxes` · eyebrow `PHOTOBOX: <ROLE>` · guard server `photobox:read` (halaman tanpa gate baca eksplisit; write: `photobox:write`).
 - **Data**: `listPhotoboxes` (`src/server/photoboxes.ts`), `listOutlets`, `getPlanLimits`, `hasFeature`.
 - **Actions**: `savePhotoboxAction`, `deletePhotoboxAction` (`src/server/booth-actions.ts`).
 - **Komponen**: `PhotoboxesTable`, `PhotoboxForm`, `DeviceDialog`, `DeleteConfirmForm`.
@@ -333,16 +333,16 @@
 - **Catatan**: tanpa kontrol kamera USB native — browser camera PWA saja.
 
 ### O9. Paket
-- **Page**: `/dashboard/packages` · eyebrow `PAKET: <ROLE>` · guard `package:read`.
+- **Page**: `/dashboard/packages` · eyebrow `PAKET: <ROLE>` · guard server `package:read` (halaman tanpa gate baca eksplisit; write: `package:write`).
 - **Data**: `listPackages` (`src/server/packages.ts`); `listTemplates`, `listOutlets`, `listPhotoboxes`.
 - **Actions**: `createPackageAction`, `updatePackageAction`, `deletePackageAction` (`src/server/catalog-actions.ts`).
-- **Komponen**: `PackagesTable`, `PackageForm`, `PackageFields`, `PackageEditForm`.
+- **Komponen**: `PackagesTable`, `PackageFields`, `PackageEditForm` (form create inline di `PackagesTable`).
 - **Field**: name, price, photo_count, print_count, digital_output, capture_mode (single/burst/photostrip), description, template_ids, outlet_ids, photobox_ids, is_active.
 - **DB**: `packages, package_templates, package_outlets, package_photoboxes, transactions`.
 - **Dampak**: menentukan kuota foto/print sesi kiosk + eligibility (outlet/booth) yang dibaca `public-config`.
 
 ### O10. Template & Frame
-- **Page**: `/dashboard/templates` (+ blok "Template Premium (Marketplace)") · guard `template:read`.
+- **Page**: `/dashboard/templates` (+ blok "Template Premium (Marketplace)") · guard server `template:read` (halaman tanpa gate baca eksplisit; write: `template:write`).
 - **Data**: `listTemplates`, `getTemplate` (`src/server/templates.ts`); `listPremiumTemplates`, `listPurchasedTemplates` (`src/server/template-purchase.ts`).
 - **Actions**: `uploadTemplateAction`, `updateTemplateAction`, `deleteTemplateAction`, `saveTemplateBuilderAction` (`src/server/catalog-actions.ts`); `purchaseTemplateAction` (`src/server/template-purchase-actions.ts`).
 - **Komponen**: `TemplatesGrid`, `TemplateEditForm`, `PremiumTemplatesGrid`, `TemplateBuilder`.
@@ -352,16 +352,16 @@
 
 ### O11. Template Builder (Slot Editor)
 - **Page**: `/dashboard/templates/builder/[id]` (+ admin mirror `/admin/templates/builder/[id]`).
-- **Komponen**: `src/components/dashboard/TemplateBuilder.tsx` (~955 baris) — drag/resize/rotate slot di atas frame PNG, z-order, clip-path, preview `composeFrame`, upload frame/thumbnail, chroma-key.
+- **Komponen**: `src/components/dashboard/TemplateBuilder.tsx` (~996 baris): drag/resize/rotate slot di atas frame PNG, z-order, clip-path, preview `composeFrame`, upload frame/thumbnail, chroma-key.
 - **Lib**: `src/lib/template-layout.ts` (`layoutSchema`, `slotCount`, `slotsByZ`), `src/lib/template-cleanup.ts`.
 - **DB**: `templates.layout` (jsonb).
 - **Catatan status**: god-component terdaftar sebagai known-issue (H7).
 
 ### O12. Voucher
-- **Page**: `/dashboard/vouchers` · eyebrow `VOUCHER: <ROLE>` · guard `voucher:read` (+`requireFeature('voucher')`).
+- **Page**: `/dashboard/vouchers` · eyebrow `VOUCHER: <ROLE>` · guard server `voucher:read` (+`requireFeature('voucher')`); halaman tanpa gate baca eksplisit, write: `voucher:write`.
 - **Data**: `listVouchers`, `getVoucherAnalyticsBatch` (`src/server/vouchers.ts`); `listPackages`, `listOutlets`.
 - **Actions**: `createVoucherAction`, `updateVoucherAction`, `deleteVoucherAction` (`src/server/catalog-actions.ts`).
-- **Komponen**: `VouchersTable`, `VoucherForm`, `VoucherFields`, `VoucherEditForm`.
+- **Komponen**: `VouchersTable`, `VoucherFields`, `VoucherEditForm` (form create inline di `VouchersTable`).
 - **Field**: code, type (percentage/fixed), amount, min_transaction, max_discount, usage_limit, usage_per_customer, start/end date, package_ids, outlet_ids, is_active.
 - **DB**: `vouchers, voucher_packages, voucher_outlets, voucher_usages`.
 - **Dampak**: validasi server-side saat checkout kiosk (`validateVoucherForCheckout`); usage dicatat di `voucher_usages` (unique per payment/transaction).
@@ -392,7 +392,7 @@
 - **DB**: `transactions, expenses, voucher_usages`.
 
 ### O16. Pengaturan (Settings)
-- **Page**: `/dashboard/settings` · guard `business:update` untuk write.
+- **Page**: `/dashboard/settings` · guard `business:update` untuk write (owner + manager).
 - **Komponen**: `BusinessProfileEditor`, `CheckoutSettingsEditor`, `RetentionSettingsEditor`, `StorageUsageCard`.
 - **Actions**: `updateBusinessProfileAction` (`src/server/business-actions.ts`); `updateRetentionSettingsAction`, `updateCheckoutSettingsAction` (`src/server/branding-actions.ts`).
 - **Field**: name, owner_name, whatsapp, contact_email, address; `qris_expiry_minutes`; `retention_days` (1–3 hari); storage usage.
@@ -400,13 +400,14 @@
 - **Dampak**: retention → cron retention; QRIS expiry → checkout kiosk; storage penuh → CTA upgrade.
 
 ### O17. Branding & Kiosk
-- **Page**: `/dashboard/branding` · guard `business:update`.
+- **Page**: `/dashboard/branding` · guard `business:update` (owner + manager).
 - **Data**: `getBranding` (`src/server/branding.ts`); `listPhotoboxes`.
-- **Actions**: `updateBrandingAction`, `uploadLogoAction`, `saveBrandingKioskAction`, `uploadKioskVideoAction`, `uploadKioskPageVideoAction` (`src/server/branding-actions.ts`); `savePhotoboxBrandingAction` (`src/server/booth-actions.ts`).
-- **Komponen**: `KioskBrandingEditor` (~1.419 baris, god-component known-issue).
+- **Actions**: `saveBrandingKioskAction`, `uploadLogoAction`, `deleteLogoAction`, `uploadKioskVideoAction`, `deleteKioskVideoAction`, `uploadKioskPageVideoAction`, `deleteKioskPageVideoAction` (`src/server/branding-actions.ts`); `savePhotoboxBrandingAction` (`src/server/booth-actions.ts`).
+- **Komponen**: `KioskBrandingEditor` (~1.550 baris, god-component known-issue).
 - **Field**: welcome_title/tagline/button, primary/secondary color, logo, font_family/scale, button_radius, padding, align, welcome_layout, payment_align/result_layout, judul+hint tiap layar (welcome/guide/package/payment/template/capture/editor/result), guide_steps, video per layar, `show_mirror_toggle`, `allow_zoom_pan`; override per booth.
 - **DB**: `business_settings.branding, photoboxes.branding`.
 - **Dampak**: dibaca `getPublicConfig` → `PublicConfig.branding` → `kioskVisualStyle` di seluruh layar kiosk. **Single source of truth** kustomisasi kiosk.
+- **Catatan**: `updateBrandingAction` (dipakai form branding lama di `/dashboard/settings`) sudah tidak punya pemanggil di UI; jangan dihapus tanpa memeriksa ulang; `saveBrandingKioskAction` adalah jalur aktif.
 
 ### O18. Payment Gateway (Credential Owner)
 - **Page**: `/dashboard/payment` · guard owner (credential).
@@ -418,10 +419,10 @@
 - **Dampak**: kredensial ini → `listKioskPaymentMethods` → metode bayar kiosk; webhook diverifikasi per credential. Dana langsung ke rekening owner (direct merchant). `requireFeature('direct_payment')`.
 
 ### O19. POS Management (Add-on)
-- **Page**: `/dashboard/pos` · guard `pos:read` + entitlement.
+- **Page**: `/dashboard/pos` · guard `pos:read` + entitlement (halaman tanpa gate baca eksplisit; aksi bergerbang `pos:manage`/`pos:sell`).
 - **Data**: `listPosProducts`, `listPosCategories`, `listPosBooths` (`src/server/pos-products.ts`); `posRevenueReport`, `posBreakdownReport`, `posVsKioskSplit` (`src/server/pos-reports.ts`); `getPosAddOnInfo`, `hasPosEntitlement`.
 - **Actions**: `posCreateProductAction`, `posUpdateProductAction`, `posDeactivateProductAction`, `posToggleBoothAction` (`src/server/pos-actions.ts`).
-- **Komponen**: `PosProductsTable`, `PosProductForm`, `PosProductFields`, `PosProductEditForm`, `PosBoothsTable`, `PosReportsPanel`, `PosReportsDayChartInner`.
+- **Komponen**: `PosProductsTable`, `PosProductFields`, `PosProductEditForm`, `PosBoothsTable`, `PosReportsPanel`, `PosReportsDayChartInner`.
 - **Field produk**: category, name, sku, price, cost, stock (null=tanpa tracking), description, image, is_active.
 - **DB**: `pos_products, pos_orders, pos_order_items, photoboxes, transactions`.
 - **Tanpa entitlement**: halaman aktivasi (harga dari `getPosAddOnInfo`, bukan hardcode).
@@ -432,7 +433,7 @@
 - **DB**: tidak ada. **Dampak**: memudahkan owner memasang kiosk di tablet.
 
 ### O21. Langganan (Subscription)
-- **Page**: `/dashboard/subscription` · guard `subscription:read` (write: `subscription:write`).
+- **Page**: `/dashboard/subscription` · guard **owner-only**: role lain melihat kartu "Hanya owner"; detail invoice non-owner → not-found. Server: `requireOwner` + `subscription:write`.
 - **Data**: `getSubscriptionOverview` (`src/server/subscription.ts`).
 - **Actions**: `confirmSubscriptionCheckoutAction`, `previewSubscriptionPromoAction`, `cancelSubscriptionAction`, `resumeSubscriptionAction`, `cancelAddOnAction`, `createInvoiceQrisAction`, `invoicePaymentStatusAction` (`src/server/subscription-actions.ts`).
 - **Komponen**: `SubscriptionPanel`, `SubscriptionCheckout`, `SubscriptionCheckoutTrigger`.
@@ -455,6 +456,7 @@
 - **Komponen**: `SupportTicketsPanel`, `SupportTicketDetail`.
 - **Field**: subject, category, area, description, reply body.
 - **DB**: `support_tickets, support_ticket_replies, businesses, users`.
+- **Akses**: semua anggota boleh membuat/membalas tiketnya sendiri; **daftar & detail lintas-anggota hanya owner**; non-owner hanya melihat tiket yang ia buat (sisanya 404).
 - **Dampak**: muncul di `/admin/support`; admin ubah status → owner lihat.
 
 ### O24. Topbar & Workspace
@@ -688,7 +690,7 @@
 - **Gate tunggal**: `hasPosEntitlement` + `requirePosAccess` (`src/server/pos-entitlement.ts`) — dipanggil baris pertama semua action POS.
 - **Kriteria**: subscription efektif (`isSubscriptionEffective`) + add-on `code='pos'` aktif.
 - **DB**: `subscriptions, subscription_add_ons, add_ons`.
-- **Kode error**: `POS_BOOTH_DISABLED`, `POS_NOT_ENTITLED` (via `ApiError`).
+- **Kode error**: `POS_BOOTH_DISABLED`, `POS_NOT_SUBSCRIBED` (via `ApiError`).
 
 ---
 
@@ -960,7 +962,7 @@
 | T10 | Rate limit fail-closed di production saat backend error | `src/lib/rate-limit.ts` | Upstash mati → request ditolak (aman) |
 | T11 | Storage dual-provider (R2 write / resolve read) | `src/server/storage/index.ts` | Key identik antar provider → resolusi via `head()` |
 | T12 | `bookings`/`events`/`event_templates`/`stickers` ada di schema tanpa UI | `db/schema.sql` | Backlog (booking, event mode, sticker) |
-| T13 | God-components terdaftar known-issue | `KioskBrandingEditor` 1.419, `TemplateBuilder` 955, `KioskApp` 749 baris | Refactor kandidat |
+| T13 | God-components terdaftar known-issue | `KioskBrandingEditor` 1.642, `TemplateBuilder` 996, `KioskApp` 749 baris | Refactor kandidat |
 | T14 | `docs/flow-maps/` hanya memuat 01–03; 04–15 belum ada | `docs/flow-maps/00-INDEX.md` | Referensi flow kiosk/POS/payment berbasis dokumen ini |
 
 ### 15.3 Fitur tanpa UI (backlog kode)

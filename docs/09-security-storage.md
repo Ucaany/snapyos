@@ -49,12 +49,18 @@ TIDAK SESUAI / tak terdokumentasi:
 | Reports                         |  ✅   |   ✅    |       ❌       |  ✅   |
 | Staff mgmt                      |  ✅   |   ❌    |       ❌       |  ✅   |
 | Subscription / Billing          |  ✅   |   ❌    |       ❌       |  ✅   |
-| Settings                        |  ✅   |   ❌    |       ❌       |  ✅   |
+| Settings / Branding             |  ✅   |   ✅    |       ❌       |  ✅   |
 | Platform admin                  |  ❌   |   ❌    |       ❌       |  ✅   |
 
 `⚠️` = subset terbatas (misal STAFF hanya melihat transaksi outlet sendiri, tanpa net profit).
 
 Implementasi: helper `authorize(businessId, permission)` di server; return `403 FORBIDDEN` jika tidak memenuhi. Jangan hanya `if` di UI.
+
+Catatan capability per modul (nama permission nyata di `src/lib/rbac.ts`):
+
+- **Settings/Branding** (profil bisnis, durasi QRIS, mode offline, retensi foto, branding & kiosk) bergerbang `business:update`, yang dipegang **owner + manager**. Manager memang boleh menulis di sini: pengaturan ini operasional harian, bukan kontrol finansial atau kepemilikan. `staff` tidak.
+- **Subscription/Billing** bergerbang `subscription:read` (lihat) dan `subscription:write` (ubah/cancel/bayar). Halaman `/dashboard/subscription` membatasi ke owner; manager/staff yang mengetik URL-nya mendapat kartu "Hanya owner", dan detail invoice mengembalikan not-found. `manager` memegang `subscription:read` hanya untuk keperluan internal (mis. `getActiveSubscription` di server), bukan untuk membuka halaman.
+- **Finance** bergerbang `finance:read`; mencatat pengeluaran (`expense:write`) dan transaksi manual (`transaction:manual-create`) **owner-only**; uang manual non-withdrawable.
 
 ## 9.3 Tenant Isolation
 

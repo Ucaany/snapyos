@@ -176,7 +176,10 @@ export async function getSubscriptionOverview(
   userId: string,
   businessId: string
 ): Promise<SubscriptionOverview> {
-  await requireMember(userId, businessId);
+  // Langganan & tagihan = owner-only (docs/09 §9.2). `subscription:read`
+  // juga diberikan ke manager (dipakai pembelian template premium), jadi
+  // gate di sini memakai `subscription:write` yang owner-only.
+  await requireOwner(userId, businessId);
   const supabase = createServerClient();
 
   const [subRes, planRes, invRes, addOnRes, outletsRes, boxesRes, staffRes, devicesRes] =

@@ -150,6 +150,9 @@ export async function getInvoiceDetail(
   if (!row) return null
   const membership = await getMembership(userId, row.business_id)
   if (!membership) return null
+  // Invoice/langganan = owner-only (docs/09 §9.2), konsisten dengan
+  // getSubscriptionOverview. Manager/staff → tidak ditemukan (bukan 403).
+  if (!can(membership.role, "subscription:write")) return null
 
   return {
     id: row.id,

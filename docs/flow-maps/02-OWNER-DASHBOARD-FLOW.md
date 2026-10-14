@@ -530,7 +530,7 @@ Edit package → multi-select outlets/photoboxes
 **File Locations**:
 - Page: `src/app/(dashboard)/dashboard/packages/page.tsx`
 - Server: `src/server/catalog-actions.ts`
-- Components: `src/components/packages/PackageForm.tsx`, `src/components/packages/PackageTable.tsx`
+- Components: `src/components/dashboard/PackagesTable.tsx`, `src/components/dashboard/PackageFields.tsx`, `src/components/dashboard/PackageEditForm.tsx`
 
 **Acceptance**: (AC 7) owner membuat package; package muncul di customer app (filtered by outlet/photobox); template assign constraint di-enforce.
 
@@ -801,7 +801,7 @@ Webhook paid → runPaidSideEffects → voucher_usages insert
 
 **File Locations**:
 - Server: `src/server/vouchers.ts`
-- Components: `src/components/vouchers/VoucherForm.tsx`, `src/components/vouchers/VoucherTable.tsx`
+- Components: `src/components/dashboard/VouchersTable.tsx`, `src/components/dashboard/VoucherFields.tsx`, `src/components/dashboard/VoucherEditForm.tsx`
 
 **Acceptance**: (AC 9, 42) owner membuat voucher; voucher tervalidasi server-side saat dipakai; owner melihat voucher usage.
 

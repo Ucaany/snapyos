@@ -16,13 +16,16 @@ import type {
   KioskPageId,
 } from "@/lib/kiosk-types";
 import { kioskVisualStyle } from "@/lib/kiosk-types";
+import { LOGO_MAX_BYTES } from "@/lib/upload-validation";
 import type { FormState } from "@/server/auth-actions";
 import {
   deleteKioskPageVideoAction,
   deleteKioskVideoAction,
+  deleteLogoAction,
   saveBrandingKioskAction,
   uploadKioskVideoAction,
   uploadKioskPageVideoAction,
+  uploadLogoAction,
 } from "@/server/branding-actions";
 import { savePhotoboxBrandingAction } from "@/server/booth-actions";
 
@@ -240,6 +243,12 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
   const [resultLayout, setResultLayout] = useState(k.result_layout ?? "qr-right");
   const [showLogo, setShowLogo] = useState(k.show_logo !== false);
   const [showTagline, setShowTagline] = useState(k.show_tagline !== false);
+  // Logo kiosk: baca langsung dari props (seperti video) agar preview ikut
+  // ter-refresh setelah upload sukses, tanpa state yang bisa basi.
+  const logoUrl = branding?.logo_url ?? null;
+  const [logoPending, setLogoPending] = useState(false);
+  const [logoError, setLogoError] = useState<string | null>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   // Tutorial / guide steps (custom, reorderable).
   const [guideSteps, setGuideSteps] = useState<string[]>(k.guide_steps ?? []);
   const [newStep, setNewStep] = useState("");
@@ -515,15 +524,22 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
           },
         }
       : null;
-    const res = await savePhotoboxBrandingAction({
-      photoboxId: activeBoothId,
-      branding: payload as Record<string, unknown> | null,
-    });
-    if (res.ok) {
-      setBoothUsesOverride(useOverride);
-      setBoothStatus({ kind: "success", message: useOverride ? "Booth memakai override tersimpan." : "Booth kembali mewarisi konfigurasi global." });
-    } else {
-      setBoothStatus({ kind: "error", message: res.error ?? "Gagal menyimpan override booth." });
+    // Action bisa MELEMPAR (mis. subscription expired) sebelum sempat
+    // mengembalikan {ok:false}; tanpa catch, status "saving" menggantung
+    // dan tombol terkunci selamanya tanpa pesan.
+    try {
+      const res = await savePhotoboxBrandingAction({
+        photoboxId: activeBoothId,
+        branding: payload as Record<string, unknown> | null,
+      });
+      if (res.ok) {
+        setBoothUsesOverride(useOverride);
+        setBoothStatus({ kind: "success", message: useOverride ? "Booth memakai override tersimpan." : "Booth kembali mewarisi konfigurasi global." });
+      } else {
+        setBoothStatus({ kind: "error", message: res.error ?? "Gagal menyimpan override booth." });
+      }
+    } catch {
+      setBoothStatus({ kind: "error", message: "Gagal menyimpan override booth. Coba lagi." });
     }
   }
 
@@ -560,6 +576,40 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
     };
   }
 
+  async function handleLogoChange(file: File | null) {
+    if (!file) return;
+    setLogoError(null);
+    if (file.size > LOGO_MAX_BYTES) {
+      setLogoError("Ukuran logo maksimal 2 MB.");
+      return;
+    }
+    setLogoPending(true);
+    try {
+      const res = await uploadLogoAction({ logo: file });
+      if (!res.ok) setLogoError(res.error ?? "Gagal mengunggah logo.");
+    } catch {
+      setLogoError("Gagal mengunggah logo. Coba lagi.");
+    } finally {
+      setLogoPending(false);
+      // Reset input agar memilih file yang sama lagi tetap memicu onChange.
+      if (logoInputRef.current) logoInputRef.current.value = "";
+    }
+  }
+
+  async function handleDeleteLogo() {
+    if (!canWrite || logoPending) return;
+    setLogoPending(true);
+    setLogoError(null);
+    try {
+      const res = await deleteLogoAction();
+      if (!res.ok) setLogoError(res.error ?? "Gagal menghapus logo.");
+    } catch {
+      setLogoError("Gagal menghapus logo. Coba lagi.");
+    } finally {
+      setLogoPending(false);
+    }
+  }
+
   async function handlePageVideoChange(file: File | null) {
     if (!file) return;
     setPageVideoError(null);
@@ -568,33 +618,48 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
       return;
     }
     setPageVideoPending(true);
-    const res = await uploadKioskPageVideoAction({
-      page: pageVideoPage,
-      video: file,
-    });
-    setPageVideoPending(false);
-    if (!res.ok) setPageVideoError(res.error ?? "Gagal mengunggah video per-layar.");
+    try {
+      const res = await uploadKioskPageVideoAction({
+        page: pageVideoPage,
+        video: file,
+      });
+      if (!res.ok) setPageVideoError(res.error ?? "Gagal mengunggah video per-layar.");
+    } catch {
+      setPageVideoError("Gagal mengunggah video per-layar. Coba lagi.");
+    } finally {
+      setPageVideoPending(false);
+    }
   }
 
   async function handleDeleteVideo() {
     if (!canWrite || videoDeletePending) return;
     setVideoDeletePending(true);
-    const res = await deleteKioskVideoAction();
-    setVideoDeletePending(false);
-    setStatus(
-      res.ok
-        ? { kind: "success", message: "Video background dihapus." }
-        : { kind: "error", message: res.error ?? "Gagal menghapus video." }
-    );
+    try {
+      const res = await deleteKioskVideoAction();
+      setStatus(
+        res.ok
+          ? { kind: "success", message: "Video background dihapus." }
+          : { kind: "error", message: res.error ?? "Gagal menghapus video." }
+      );
+    } catch {
+      setStatus({ kind: "error", message: "Gagal menghapus video. Coba lagi." });
+    } finally {
+      setVideoDeletePending(false);
+    }
   }
 
   async function handleDeletePageVideo() {
     if (!canWrite || videoDeletePending) return;
     setVideoDeletePending(true);
     setPageVideoError(null);
-    const res = await deleteKioskPageVideoAction(pageVideoPage);
-    setVideoDeletePending(false);
-    if (!res.ok) setPageVideoError(res.error ?? "Gagal menghapus video per-layar.");
+    try {
+      const res = await deleteKioskPageVideoAction(pageVideoPage);
+      if (!res.ok) setPageVideoError(res.error ?? "Gagal menghapus video per-layar.");
+    } catch {
+      setPageVideoError("Gagal menghapus video per-layar. Coba lagi.");
+    } finally {
+      setVideoDeletePending(false);
+    }
   }
 
   function save() {
@@ -776,6 +841,33 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                 <input type="checkbox" checked={showTagline} onChange={(e) => setShowTagline(e.target.checked)} disabled={pending || !canWrite} className="size-4 accent-ink" />
                 Tampilkan tagline
               </label>
+            </div>
+            <div className="flex flex-col gap-3 border-t-2 border-ink/20 pt-5">
+              <label htmlFor="kb-logo" className={labelClass}>Logo kiosk</label>
+              <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em] text-muted-foreground">
+                {"/// PNG, JPG, ATAU WEBP · MAKSIMAL 2 MB"}
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <input
+                  ref={logoInputRef}
+                  id="kb-logo"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  disabled={logoPending || !canWrite}
+                  onChange={(e) => void handleLogoChange(e.target.files?.[0] ?? null)}
+                  className="border-2 border-ink bg-bg p-2 font-mono text-xs"
+                />
+                {logoUrl && (
+                  <Button type="button" variant="outline" size="sm" onClick={() => void handleDeleteLogo()} disabled={logoPending || !canWrite}>
+                    <Trash2 className="size-3.5" aria-hidden /> Hapus logo
+                  </Button>
+                )}
+              </div>
+              {logoPending && <p role="status" className="font-mono text-xs">Mengunggah…</p>}
+              {logoError && <p role="alert" className="font-mono text-xs text-destructive">{logoError}</p>}
+              {logoUrl && !logoPending && (
+                <Image src={logoUrl} alt={`Logo ${businessName}`} width={160} height={48} className="max-h-12 w-auto object-contain border-2 border-ink bg-bg p-2" unoptimized />
+              )}
             </div>
           </div>
         </section>

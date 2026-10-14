@@ -82,7 +82,7 @@ ALTER TABLE templates ADD COLUMN layout jsonb NOT NULL DEFAULT '{}';
 - Max slot per template: **8**.
 - `slot_count = layout.slots.length` (layout kosong = 0).
 - **Assign template → package DITOLAK kecuali `slot_count == packages.photo_count`.** Constraint dicek di endpoint assign maupun saat `PATCH packages` mengubah `photo_count`.
-- Upload PNG: validasi tipe & max size mengikuti §4.10 `04-owner-dashboard.md`; PNG **tanpa alpha channel** → warning (bukan error): "Frame ini tidak punya area transparan — foto tidak akan terlihat."
+- Upload PNG: validasi tipe & max size mengikuti §4.10 `04-owner-dashboard.md`. Warning "PNG tanpa alpha channel" **belum diimplementasikan**; kandidat, bukan perilaku saat ini.
 
 ### Deliberate simplifications (ponytail)
 
@@ -108,7 +108,7 @@ Builder canvas:
 [ SIMPAN DRAFT ] (is_active=false) / [ PUBLISH ] (is_active=true)
 ```
 
-**Komponen:** `TemplateBuilder` (canvas), `SlotShape` (hitbox + handles), `SlotPropertiesPanel`, `TemplatePreview`.
+**Komponen:** `TemplateBuilder` (`src/components/dashboard/TemplateBuilder.tsx`): satu komponen, hitbox/handles/panel properti/preview dirakit inline di dalamnya (belum dipecah jadi `SlotShape`/`SlotPropertiesPanel`/`TemplatePreview`).
 
 **Aturan builder:**
 

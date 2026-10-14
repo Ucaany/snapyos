@@ -11,7 +11,9 @@ export const metadata: Metadata = {
   title: "Bantuan | SnapyOS",
 };
 
-/** /dashboard/support — tiket bantuan owner: submit + pantau status (docs/04 §4.20). */
+/** /dashboard/support: tiket bantuan, submit + pantau status (docs/04 §4.20).
+ *  Semua role boleh membuat tiket; owner melihat seluruh tiket business,
+ *  anggota lain hanya tiket miliknya (scoping di listSupportTickets). */
 export default async function SupportPage() {
   const user = await requireUser();
   if (!user) redirect("/login");

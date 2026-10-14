@@ -22,7 +22,15 @@ const inputClass =
   "h-11 w-full rounded-none border-2 border-ink bg-surface px-3 font-mono text-sm shadow-[2px_2px_0_0_#111111] outline-none focus-visible:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink md:w-auto";
 
 const STATUS_OPTIONS = ["paid", "pending", "failed", "cancelled", "refunded"];
-const METHOD_OPTIONS = ["qris", "cash", "bank_transfer", "other"];
+const METHOD_OPTIONS = [
+  "qris",
+  "cash",
+  "bank_transfer",
+  "other",
+  "offline",
+  "manual",
+  "voucher",
+];
 const SOURCE_OPTIONS = ["pos", "kiosk"];
 
 /** Query params /dashboard/transactions — mirror `transactionListQuerySchema`

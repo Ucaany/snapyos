@@ -8,6 +8,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
 import { can } from "@/lib/rbac";
 import { getMembership } from "@/lib/tenant";
+import { likePattern } from "@/lib/postgrest-search";
 import { listQuerySchema } from "@/lib/validators";
 
 async function requireMembership(userId: string, businessId: string) {
@@ -48,7 +49,7 @@ export async function listCustomers(
     .order("created_at", { ascending: false })
     .range((parsed.page - 1) * parsed.limit, parsed.page * parsed.limit - 1);
   if (parsed.q) {
-    const like = `%${parsed.q.replace(/[%_]/g, (m) => "\\" + m)}%`;
+    const like = likePattern(parsed.q);
     req = req.or(`name.ilike.${like},phone.ilike.${like},email.ilike.${like}`);
   }
   const { data, count, error } = await req;
@@ -127,7 +128,7 @@ export async function getCustomer(
   if (error) throw new ApiError("INTERNAL", "Gagal memuat customer");
   if (!customer) throw new ApiError("NOT_FOUND", "Customer tidak ditemukan");
 
-  const [tx, sessions] = await Promise.all([
+  const [tx, sessions, agg] = await Promise.all([
     supabase
       .from("transactions")
       .select("id, number, final_amount, status, paid_at, created_at")
@@ -142,18 +143,23 @@ export async function getCustomer(
       .eq("customer_id", customerId)
       .order("created_at", { ascending: false })
       .limit(20),
+    supabase.rpc("customer_spending", {
+      p_business: businessId,
+      p_customer_ids: [customerId],
+    }),
   ]);
-  if (tx.error || sessions.error) throw new ApiError("INTERNAL", "Gagal memuat riwayat customer");
+  if (tx.error || sessions.error || agg.error) {
+    throw new ApiError("INTERNAL", "Gagal memuat riwayat customer");
+  }
 
-  const paid = ((tx.data ?? []) as { final_amount: number; status: string; paid_at: string | null }[])
-    .filter((r) => r.status === "paid");
-  const totalSpending = paid.reduce((s, r) => s + r.final_amount, 0);
-  const lastActive =
-    paid
-      .map((r) => r.paid_at)
-      .filter((d): d is string => Boolean(d))
-      .sort()
-      .pop() ?? null;
+  // Agregat dari RPC yang sama dengan list (paid-only, tanpa limit): hitungan
+  // di detail tidak boleh berbeda dari angka di tabel, dan tidak boleh
+  // terpotong `.limit(20)` daftar riwayat.
+  const spending = ((agg.data ?? []) as {
+    total_spending: number | string;
+    tx_count: number | string;
+    last_active: string | null;
+  }[])[0];
 
   return {
     id: customer.id,
@@ -161,9 +167,9 @@ export async function getCustomer(
     phone: customer.phone,
     email: customer.email,
     created_at: customer.created_at,
-    totalSpending,
-    transactionCount: tx.data?.length ?? 0,
-    lastActive,
+    totalSpending: Number(spending?.total_spending ?? 0),
+    transactionCount: Number(spending?.tx_count ?? 0),
+    lastActive: spending?.last_active ?? null,
     transactions: ((tx.data ?? []) as {
       id: string; number: string; final_amount: number; status: string;
       paid_at: string | null; created_at: string;

@@ -5,6 +5,10 @@
  *
  * Pola: mirip requirePosAccess (src/server/pos-entitlement.ts).
  * Dipakai baris pertama server action/fungsi yang perlu di-gate.
+ *
+ * Catatan `pwa_kiosk`: belum di-seed di plan mana pun (`db/schema.sql`),
+ * jadi halaman `/dashboard/pwa` praktis tidak terjangkau sampai ada plan
+ * yang menyalakannya. Fail-closed sesuai `isFeatureEnabled`.
  */
 
 import "server-only";

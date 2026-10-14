@@ -80,19 +80,19 @@ export async function updateOutletAction(
   return { error: undefined };
 }
 
-export async function deleteOutletAction(formData: FormData): Promise<void> {
+export async function deleteOutletAction(formData: FormData): Promise<FormState> {
   const ctx = await requireActiveBusiness();
   const id = String(formData.get("id") ?? "");
-  if (!ctx || !id) return;
+  if (!ctx) return { error: "Sesi berakhir. Silakan login ulang." };
+  if (!id) return { error: "Data tidak valid." };
   try {
     await requireEffectiveSubscription(ctx.businessId, "write");
     await deleteOutlet(ctx.user.id, ctx.businessId, id);
-  } catch {
-    // ponytail: void form action tak bisa menampilkan error; gagal ditelan
-    // agar tidak jadi unhandled rejection.
-    return;
+  } catch (error) {
+    return toFormState(error, "Gagal menghapus outlet. Coba lagi.");
   }
   revalidatePath("/dashboard/outlets");
+  return { error: undefined };
 }
 
 // --- PHOTOBOXES ---
@@ -218,19 +218,19 @@ export async function savePhotoboxAction(
     : createPhotoboxAction(prev, normalized);
 }
 
-export async function deletePhotoboxAction(formData: FormData): Promise<void> {
+export async function deletePhotoboxAction(formData: FormData): Promise<FormState> {
   const ctx = await requireActiveBusiness();
   const id = String(formData.get("id") ?? "");
-  if (!ctx || !id) return;
+  if (!ctx) return { error: "Sesi berakhir. Silakan login ulang." };
+  if (!id) return { error: "Data tidak valid." };
   try {
     await requireEffectiveSubscription(ctx.businessId, "write");
     await deletePhotobox(ctx.user.id, ctx.businessId, id);
-  } catch {
-    // ponytail: void form action tak bisa menampilkan error; gagal ditelan
-    // agar tidak jadi unhandled rejection.
-    return;
+  } catch (error) {
+    return toFormState(error, "Gagal menghapus photobox. Coba lagi.");
   }
   revalidatePath("/dashboard/photoboxes");
+  return { error: undefined };
 }
 
 // --- CAMERA TEST (owner) — docs/05 §5.5 ---

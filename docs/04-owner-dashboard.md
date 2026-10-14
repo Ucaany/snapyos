@@ -169,7 +169,7 @@ Avg Transaction Rp21.612
 
 **Validation:** amount > 0 integer; kategori valid; tanggal valid.
 
-**Permission:** OWNER, MANAGER (STAFF read-only jika diizinkan).
+**Permission:** lihat ringkasan OWNER + MANAGER (`finance:read`); **input/ubah/hapus expense OWNER saja** (`expense:write`); uang yang dicatat manual tidak withdrawable. STAFF tanpa akses.
 
 **Acceptance:** (AC 39–40) owner melihat expenses & estimated profit.
 

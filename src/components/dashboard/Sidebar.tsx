@@ -31,7 +31,8 @@ import { isNavActive } from "@/lib/nav-active"
 
 /**
  * Sidebar navigasi — docs/04 §4 (list modul) + docs/11 §11.6.
- * 16 item: 14 modul PRD + entry Analytics & Metrics (docs/04 §4.2–4.3).
+ * 5 grup, 19 item tetap; POS & Unduh PWA menyusul saat entitlement/fitur aktif
+ * (docs/04 §4.2–4.3).
  * Desktop/tablet (md+): dikelompokkan per kategori (bukan 1 kolom panjang
  * menyatu) — docs/11 §11.9. Mobile: strip horizontal scroll, tanpa header.
  */

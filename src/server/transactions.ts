@@ -20,6 +20,7 @@ import {
   rangeBoundariesTz,
 } from "@/lib/dashboard-math";
 import { resolveRange } from "@/server/dashboard";
+import { likePattern } from "@/lib/postgrest-search";
 import {
   manualTransactionSchema,
   transactionListQuerySchema,
@@ -150,7 +151,7 @@ export async function listTransactions(
   if (parsed.source === "kiosk") req = req.is("pos_order_id", null);
 
   if (parsed.q) {
-    const like = `%${parsed.q.replace(/[%_]/g, (m) => "\\" + m)}%`;
+    const like = likePattern(parsed.q);
     const { data: matched } = await supabase
       .from("customers")
       .select("id")

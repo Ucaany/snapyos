@@ -778,26 +778,35 @@ const stripEmptyStrings = <T extends z.ZodType>(schema: T) =>
     schema
   )
 
+/**
+ * Query string berasal dari URL yang bisa diketik/di-bookmark, jadi nilai rusak
+ * (mis. `?page=abc`, `?status=foo`) DIBUANG lewat `.catch()`, bukan melempar
+ * ZodError yang menjatuhkan halaman via error boundary. Pola sama dengan
+ * `coerceDateFields` di `@/lib/dashboard-math`.
+ */
 export const transactionListQuerySchema = stripEmptyStrings(
   z.object({
-    status: txStatusEnum.optional(),
-    outlet: uuid.optional(),
-    photobox: uuid.optional(),
-    package: uuid.optional(),
-    method: z.enum(["qris", "cash", "bank_transfer", "other", "offline", "manual"]).optional(),
-    source: z.enum(["pos", "kiosk"]).optional(), // docs/pos/05 — filter sumber
-    from: isoDate.optional(),
-    to: isoDate.optional(),
-    q: z.string().trim().max(120).optional(),
-    page: z.coerce.number().int().min(1).optional().default(1),
-    limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+    status: txStatusEnum.optional().catch(undefined),
+    outlet: uuid.optional().catch(undefined),
+    photobox: uuid.optional().catch(undefined),
+    package: uuid.optional().catch(undefined),
+    method: z
+      .enum(["qris", "cash", "bank_transfer", "other", "offline", "manual", "voucher"])
+      .optional()
+      .catch(undefined),
+    source: z.enum(["pos", "kiosk"]).optional().catch(undefined), // docs/pos/05, filter sumber
+    from: isoDate.optional().catch(undefined),
+    to: isoDate.optional().catch(undefined),
+    q: z.string().trim().max(120).optional().catch(undefined),
+    page: z.coerce.number().int().min(1).optional().catch(1).default(1),
+    limit: z.coerce.number().int().min(1).max(100).optional().catch(20).default(20),
   })
 )
 
 export const listQuerySchema = z.object({
-  q: z.string().trim().max(120).optional(),
-  page: z.coerce.number().int().min(1).optional().default(1),
-  limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+  q: z.string().trim().max(120).optional().catch(undefined),
+  page: z.coerce.number().int().min(1).optional().catch(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).optional().catch(20).default(20),
 })
 
 export const reportQuerySchema = z

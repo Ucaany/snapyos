@@ -87,19 +87,19 @@ export async function updatePackageAction(
   return { error: undefined };
 }
 
-export async function deletePackageAction(formData: FormData): Promise<void> {
+export async function deletePackageAction(formData: FormData): Promise<FormState> {
   const ctx = await requireActiveBusiness();
   const id = String(formData.get("id") ?? "");
-  if (!ctx || !id) return;
+  if (!ctx) return { error: "Sesi berakhir. Silakan login ulang." };
+  if (!id) return { error: "Data tidak valid." };
   try {
     await requireEffectiveSubscription(ctx.businessId, "write");
     await deletePackage(ctx.user.id, ctx.businessId, id);
-  } catch {
-    // ponytail: void form action tak bisa menampilkan error; gagal ditelan
-    // agar tidak jadi unhandled rejection.
-    return;
+  } catch (error) {
+    return toFormState(error, "Gagal menghapus paket. Coba lagi.");
   }
   revalidatePath("/dashboard/packages");
+  return { error: undefined };
 }
 
 // --- TEMPLATES (docs/04 §4.10) ---
@@ -158,19 +158,19 @@ export async function updateTemplateAction(
   return { error: undefined };
 }
 
-export async function deleteTemplateAction(formData: FormData): Promise<void> {
+export async function deleteTemplateAction(formData: FormData): Promise<FormState> {
   const ctx = await requireActiveBusiness();
   const id = String(formData.get("id") ?? "");
-  if (!ctx || !id) return;
+  if (!ctx) return { error: "Sesi berakhir. Silakan login ulang." };
+  if (!id) return { error: "Data tidak valid." };
   try {
     await requireEffectiveSubscription(ctx.businessId, "write");
     await deleteTemplate(ctx.user.id, ctx.businessId, id);
-  } catch {
-    // ponytail: void form action tak bisa menampilkan error; gagal ditelan
-    // agar tidak jadi unhandled rejection.
-    return;
+  } catch (error) {
+    return toFormState(error, "Gagal menghapus template. Coba lagi.");
   }
   revalidatePath("/dashboard/templates");
+  return { error: undefined };
 }
 
 // --- TEMPLATE BUILDER (docs/15 §15.3) ---
@@ -280,17 +280,17 @@ export async function updateVoucherAction(
   return { error: undefined };
 }
 
-export async function deleteVoucherAction(formData: FormData): Promise<void> {
+export async function deleteVoucherAction(formData: FormData): Promise<FormState> {
   const ctx = await requireActiveBusiness();
   const id = String(formData.get("id") ?? "");
-  if (!ctx || !id) return;
+  if (!ctx) return { error: "Sesi berakhir. Silakan login ulang." };
+  if (!id) return { error: "Data tidak valid." };
   try {
     await requireEffectiveSubscription(ctx.businessId, "write");
     await deleteVoucher(ctx.user.id, ctx.businessId, id);
-  } catch {
-    // ponytail: void form action tak bisa menampilkan error; gagal ditelan
-    // agar tidak jadi unhandled rejection.
-    return;
+  } catch (error) {
+    return toFormState(error, "Gagal menghapus voucher. Coba lagi.");
   }
   revalidatePath("/dashboard/vouchers");
+  return { error: undefined };
 }

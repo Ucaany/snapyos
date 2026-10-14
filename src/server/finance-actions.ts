@@ -66,19 +66,19 @@ export async function updateExpenseAction(
   return { error: undefined };
 }
 
-export async function deleteExpenseAction(formData: FormData): Promise<void> {
+export async function deleteExpenseAction(formData: FormData): Promise<FormState> {
   const ctx = await requireActiveBusiness();
   const id = String(formData.get("id") ?? "");
-  if (!ctx || !id) return;
+  if (!ctx) return { error: "Sesi berakhir. Silakan login ulang." };
+  if (!id) return { error: "Data tidak valid." };
   try {
     await requireEffectiveSubscription(ctx.businessId, "write");
     await deleteExpense(ctx.user.id, ctx.businessId, id);
-  } catch {
-    // ponytail: void form action tak bisa menampilkan error; gagal ditelan
-    // agar tidak jadi unhandled rejection.
-    return;
+  } catch (error) {
+    return toFormState(error, "Gagal menghapus pengeluaran. Coba lagi.");
   }
   revalidatePath("/dashboard/finance");
+  return { error: undefined };
 }
 
 // --- TRANSAKSI MANUAL (docs/04 §4.5) ---

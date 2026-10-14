@@ -39,9 +39,10 @@ export function WilayahPicker({ idPrefix, province, city, disabled }: Props) {
   const [wilayah, setWilayah] = useState<Wilayah | null>(() => wilayahCache);
   const [failed, setFailed] = useState(false);
 
-  // Pilihan user; null = belum disentuh (pakai nilai awal dari props).
-  const [pickedProvinceId, setPickedProvinceId] = useState<string | null>(null);
-  const [pickedProvinceName, setPickedProvinceName] = useState<string | null>(null);
+  // Pilihan user. `undefined` = belum disentuh (pakai nilai awal dari props);
+  // `null` = sengaja dikosongkan, harus tetap kosong, bukan snap-back ke nilai awal.
+  const [pickedProvinceId, setPickedProvinceId] = useState<string | null | undefined>(undefined);
+  const [pickedProvinceName, setPickedProvinceName] = useState<string | null | undefined>(undefined);
   const [cityName, setCityName] = useState(city ?? "");
 
   // Muat data wilayah sekali (init lazy dari cache modul).
@@ -65,8 +66,8 @@ export function WilayahPicker({ idPrefix, province, city, disabled }: Props) {
     wilayah && province
       ? (wilayah.provinces.find((p) => p.name.toLowerCase() === province.toLowerCase())?.id ?? null)
       : null;
-  const provinceId = pickedProvinceId ?? initialProvinceId ?? "";
-  const provinceName = pickedProvinceName ?? province ?? "";
+  const provinceId = pickedProvinceId === undefined ? (initialProvinceId ?? "") : (pickedProvinceId ?? "");
+  const provinceName = pickedProvinceName === undefined ? (province ?? "") : (pickedProvinceName ?? "");
 
   const regencies = wilayah?.provinces.find((p) => p.id === provinceId)?.regencies ?? null;
 
@@ -123,8 +124,9 @@ export function WilayahPicker({ idPrefix, province, city, disabled }: Props) {
           onChange={(e) => {
             const id = e.target.value;
             const match = wilayah?.provinces.find((p) => p.id === id);
+            // Kosong = dikosongkan sengaja (`null`), bukan "belum disentuh".
             setPickedProvinceId(id || null);
-            setPickedProvinceName(match?.name ?? "");
+            setPickedProvinceName(match?.name ?? null);
             setCityName("");
           }}
           aria-label="Pilih provinsi"

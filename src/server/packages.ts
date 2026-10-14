@@ -152,7 +152,13 @@ async function assertTemplatesMatchPhotoCount(
   }
 }
 
-/** Sinkron m2m: replace penuh (hapus semua → insert baru). */
+/**
+ * Sinkron m2m: selisihkan (diff) terhadap isi yang ada: insert dulu, baru
+ * hapus yang tidak lagi dipakai. Urutan "delete semua → insert" sebelumnya
+ * non-transaksional: bila insert gagal, package ditinggal TANPA assignment
+ * sama sekali (eligibility kiosk hilang diam-diam). Dengan diff, kegagalan
+ * insert tidak pernah mengosongkan himpunan yang sudah benar.
+ */
 async function syncM2M(
   businessId: string,
   packageId: string,
@@ -161,13 +167,34 @@ async function syncM2M(
   ids: string[]
 ) {
   const supabase = createServerClient();
-  const del = await supabase.from(table).delete().eq("package_id", packageId);
-  if (del.error) throw new ApiError("INTERNAL", "Gagal sinkronisasi assignment");
-  if (ids.length > 0) {
+  const { data: current, error: readErr } = await supabase
+    .from(table)
+    .select(column)
+    .eq("package_id", packageId);
+  if (readErr) throw new ApiError("INTERNAL", "Gagal sinkronisasi assignment");
+
+  const next = new Set(ids);
+  const prev = new Set(
+    (current ?? [])
+      .map((r) => (r as Record<string, string | undefined>)[column])
+      .filter((id): id is string => typeof id === "string")
+  );
+  const toAdd = ids.filter((id) => !prev.has(id));
+  const toRemove = [...prev].filter((id) => !next.has(id));
+
+  if (toAdd.length > 0) {
     const ins = await supabase
       .from(table)
-      .insert(ids.map((id) => ({ package_id: packageId, [column]: id })));
+      .insert(toAdd.map((id) => ({ package_id: packageId, [column]: id })));
     if (ins.error) throw new ApiError("INTERNAL", "Gagal sinkronisasi assignment");
+  }
+  if (toRemove.length > 0) {
+    const del = await supabase
+      .from(table)
+      .delete()
+      .eq("package_id", packageId)
+      .in(column, toRemove);
+    if (del.error) throw new ApiError("INTERNAL", "Gagal sinkronisasi assignment");
   }
 }
 

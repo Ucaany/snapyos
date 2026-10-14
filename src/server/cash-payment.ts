@@ -38,6 +38,10 @@ export async function listPendingCashPayments(
   businessId: string
 ): Promise<PendingCashPayment[]> {
   const membership = await assertCashConfirm(userId, businessId);
+  // Sama dengan jalur konfirmasi: tunai hanya untuk plan yang mengaktifkan
+  // fitur cash_payment (docs/02 §2.7). Tanpa gate ini endpoint list tetap
+  // membocorkan data saat fitur dimatikan.
+  await requireFeature(businessId, "cash_payment");
   const restrictTo =
     membership.role === "staff"
       ? await listAssignedPhotoboxIds(userId, businessId)

@@ -271,11 +271,22 @@ export async function deleteVoucher(
   await requireMembership(userId, businessId, "voucher:write");
   const supabase = createServerClient();
 
+  // Pastikan voucher memang milik business ini SEBELUM apa pun; kalau tidak,
+  // jawabannya NOT_FOUND (bukan pesan "sudah terpakai" milik voucher tenant lain).
+  const { data: owned } = await supabase
+    .from("vouchers")
+    .select("id")
+    .eq("id", voucherId)
+    .eq("business_id", businessId)
+    .maybeSingle();
+  if (!owned) throw new ApiError("NOT_FOUND", "Voucher tidak ditemukan");
+
   // Guard: voucher yang sudah terpakai tidak dihapus (FK restrict di usages).
   const { count } = await supabase
     .from("voucher_usages")
     .select("id", { count: "exact", head: true })
-    .eq("voucher_id", voucherId);
+    .eq("voucher_id", voucherId)
+    .eq("business_id", businessId);
   if ((count ?? 0) > 0) {
     throw new ApiError(
       "VALIDATION_ERROR",

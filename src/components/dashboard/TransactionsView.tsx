@@ -47,6 +47,7 @@ const METHOD_LABEL: Record<string, string> = {
   other: "LAINNYA",
   offline: "OFFLINE",
   manual: "MANUAL",
+  voucher: "VOUCHER",
 };
 
 /** TransactionsView — tabel + form catat manual (docs/04 §4.5). */

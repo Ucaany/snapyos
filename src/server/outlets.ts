@@ -15,11 +15,6 @@ import {
   type OutletCreateInput,
   type OutletUpdateInput,
 } from "@/lib/validators";
-import {
-  avgTransactionInteger,
-  dateRangeSchema,
-  rangeBoundariesTz,
-} from "@/lib/dashboard-math";
 
 export type OutletRow = {
   id: string;
@@ -68,8 +63,12 @@ export async function listOutlets(
     province: row.province,
     status: row.status,
     created_at: row.created_at,
-    photobox_count:
-      row.photoboxes && !Array.isArray(row.photoboxes)
+    // PostgREST mengembalikan embed to-many `photoboxes ( count )` sebagai
+    // ARRAY (`[{ count: N }]`), pola sama dengan `vouchers.ts`. Guard
+    // sebelumnya terbalik sehingga setiap outlet melaporkan 0.
+    photobox_count: Array.isArray(row.photoboxes)
+      ? row.photoboxes.reduce((sum, b) => sum + Number(b?.count ?? 0), 0)
+      : row.photoboxes
         ? Number(row.photoboxes.count ?? 0)
         : 0,
   }));

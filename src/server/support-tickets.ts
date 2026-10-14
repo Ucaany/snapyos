@@ -43,11 +43,15 @@ export async function listSupportTickets(): Promise<SupportTicket[]> {
   if (!ctx) throw new ApiError("UNAUTHORIZED", "Sesi berakhir. Silakan masuk kembali.");
 
   const supabase = createServerClient();
-  const { data, error } = await supabase
+  // Owner melihat seluruh tiket business; anggota lain hanya tiket yang
+  // mereka buat sendiri (semua role boleh membuat tiket).
+  let req = supabase
     .from("support_tickets")
     .select("id, subject, category, area, description, status, resolved_at, created_at, updated_at")
     .eq("business_id", ctx.businessId)
     .order("created_at", { ascending: false });
+  if (ctx.role !== "owner") req = req.eq("created_by", ctx.user.id);
+  const { data, error } = await req;
 
   if (error && isMissingRelation(error)) return [];
   if (error) throw new ApiError("INTERNAL", "Gagal memuat tiket bantuan");
@@ -66,13 +70,17 @@ export async function getSupportTicket(ticketId: string): Promise<SupportTicketD
   const { data, error } = await supabase
     .from("support_tickets")
     .select(
-      "id, subject, category, area, description, status, resolved_at, created_at, updated_at, support_ticket_replies ( id, body, created_at, users ( name ) )"
+      "id, created_by, subject, category, area, description, status, resolved_at, created_at, updated_at, support_ticket_replies ( id, body, created_at, users ( name ) )"
     )
     .eq("id", ticketId)
     .eq("business_id", ctx.businessId)
     .maybeSingle();
 
   if (error) throw new ApiError("INTERNAL", "Gagal memuat tiket");
+  // Owner melihat semua tiket business; anggota lain hanya tiket miliknya.
+  if (data && ctx.role !== "owner" && (data as { created_by?: string }).created_by !== ctx.user.id) {
+    throw new ApiError("NOT_FOUND", "Tiket tidak ditemukan");
+  }
   if (!data) throw new ApiError("NOT_FOUND", "Tiket tidak ditemukan");
 
   type Row = SupportTicket & {
@@ -142,11 +150,15 @@ export async function replySupportTicket(ticketId: string, body: string): Promis
   const supabase = createServerClient();
   const { error: ownedErr, data: owned } = await supabase
     .from("support_tickets")
-    .select("id")
+    .select("id, created_by")
     .eq("id", ticketId)
     .eq("business_id", ctx.businessId)
     .maybeSingle();
   if (ownedErr || !owned) throw new ApiError("NOT_FOUND", "Tiket tidak ditemukan");
+  // Anggota non-owner hanya boleh membalas tiket miliknya sendiri.
+  if (ctx.role !== "owner" && (owned as { created_by: string }).created_by !== ctx.user.id) {
+    throw new ApiError("NOT_FOUND", "Tiket tidak ditemukan");
+  }
 
   const { error } = await supabase.from("support_ticket_replies").insert({
     ticket_id: ticketId,

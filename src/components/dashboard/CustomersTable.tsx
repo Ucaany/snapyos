@@ -20,7 +20,6 @@ type Props = {
   timeZone?: string;
 };
 
-const detailCache = new Map<string, CustomerDetail>();
 
 /** CustomersTable — list + detail on-demand via API (docs/04 §4.12). */
 export function CustomersTable({ customers, businessId, page, totalPages, prevHref, nextHref, timeZone }: Props) {
@@ -31,6 +30,10 @@ export function CustomersTable({ customers, businessId, page, totalPages, prevHr
 
   const openIdRef = useRef<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  // Cache detail per-mount (bukan scope modul), ikut mati saat komponen
+  // unmount, jadi tidak menumpuk lintas sesi/navigasi. Dibatasi 20 entri:
+  // lebih dari itu buang yang paling lama diakses.
+  const detailCache = useRef(new Map<string, CustomerDetail>());
 
   // Sinkron `openIdRef` dengan state supaya handler fetch bisa cek
   // nilai terbaru tanpa terkena stale closure.
@@ -58,7 +61,7 @@ export function CustomersTable({ customers, businessId, page, totalPages, prevHr
     setDetail(null);
     setError(null);
 
-    const cached = detailCache.get(id);
+    const cached = detailCache.current.get(id);
     if (cached) {
       setDetail(cached);
       return;
@@ -74,7 +77,9 @@ export function CustomersTable({ customers, businessId, page, totalPages, prevHr
       });
       if (!res.ok) throw new Error("gagal");
       const json = (await res.json()) as { data: CustomerDetail };
-      detailCache.set(id, json.data);
+      const cache = detailCache.current;
+      cache.set(id, json.data);
+      if (cache.size > 20) cache.delete(cache.keys().next().value as string);
       // Guard: pastikan user masih membuka baris yang sama (bukan closure lama).
       if (openIdRef.current === id) setDetail(json.data);
     } catch (err) {

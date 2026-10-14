@@ -185,7 +185,6 @@ function buildTable(
 
   if (type === "transactions") {
     return {
-      filename: "",
       headers: [
         "Nomor",
         "Tanggal",
@@ -219,7 +218,6 @@ function buildTable(
 
   if (type === "expenses") {
     return {
-      filename: "",
       headers: ["Tanggal", "Kategori", "Outlet", "Nominal", "Catatan"],
       rows: data.expenseRows.map((r) => [
         r.expense_date,
@@ -244,7 +242,6 @@ function buildTable(
       agg.set(v.voucher_id, cur)
     }
     return {
-      filename: "",
       headers: ["Kode", "Total Pemakaian", "Total Diskon"],
       rows: [...agg.values()].map((v) => [v.code, v.usage, v.discount]),
     }
@@ -283,7 +280,6 @@ function buildTable(
   if (type === "outlet" || type === "photobox") {
     const label = type === "outlet" ? "Outlet" : "Photobox"
     return {
-      filename: "",
       headers: [label, "Transaksi Paid", "Net Revenue"],
       rows: [...agg.entries()]
         .sort((a, b) => b[1].net - a[1].net)
@@ -307,7 +303,6 @@ function buildTable(
           .sort((a, b) => a[0].localeCompare(b[0]))
           .map(([k, v]) => [k, v.count, v.net])
   return {
-    filename: "",
     headers: ["Periode", "Transaksi Paid", "Net Revenue"],
     rows,
   }

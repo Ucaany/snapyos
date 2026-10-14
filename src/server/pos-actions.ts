@@ -87,19 +87,19 @@ export async function posUpdateProductAction(
   return { error: undefined };
 }
 
-export async function posDeactivateProductAction(formData: FormData): Promise<void> {
+export async function posDeactivateProductAction(formData: FormData): Promise<FormState> {
   const ctx = await requireActiveBusiness();
   const id = String(formData.get("id") ?? "");
-  if (!ctx || !id) return;
+  if (!ctx) return { error: "Sesi berakhir. Silakan login ulang." };
+  if (!id) return { error: "Data tidak valid." };
   try {
     await requireEffectiveSubscription(ctx.businessId, "write");
     await deactivatePosProduct(ctx.user.id, ctx.businessId, id);
-  } catch {
-    // ponytail: void form action tak bisa menampilkan error; gagal ditelan
-    // agar tidak jadi unhandled rejection.
-    return;
+  } catch (error) {
+    return toFormState(error, "Gagal menonaktifkan produk. Coba lagi.");
   }
   revalidatePath("/dashboard/pos");
+  return { error: undefined };
 }
 
 // --- TOGGLE BOOTH (owner/manager — pos:manage) ---
@@ -113,8 +113,8 @@ export async function posToggleBoothAction(formData: FormData): Promise<void> {
     await requireEffectiveSubscription(ctx.businessId, "write");
     await setPosBoothEnabled(ctx.user.id, ctx.businessId, photoboxId, enabled);
   } catch {
-    // ponytail: void form action tak bisa menampilkan error; gagal ditelan
-    // agar tidak jadi unhandled rejection.
+    // Toggle booth: kegagalan tidak ditampilkan (bukan alur hapus),
+    // ditelan agar tidak jadi unhandled rejection.
     return;
   }
   revalidatePath("/dashboard/pos");

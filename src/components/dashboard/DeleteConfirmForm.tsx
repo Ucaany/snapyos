@@ -1,17 +1,19 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import type { FormState } from "@/server/auth-actions";
 
-type ServerAction = (formData: FormData) => Promise<void> | void;
+/** Aksi boleh mengembalikan FormState (berisi pesan error) atau void. */
+type ServerAction = (formData: FormData) => Promise<FormState | void> | FormState | void;
 
 type Props = {
-  /** Server action (fire-and-forget) yang menerima FormData. */
+  /** Server action yang menerima FormData; FormState-nya dibaca untuk pesan error. */
   action: ServerAction;
-  /** ID entity yang akan dihapus/dinonaktifkan (hidden input `name="id"`). */
+  /** ID entity yang akan dihapus/dinonaktifkan (dikirim sebagai field `id`). */
   id: string;
   /** Judul dialog konfirmasi. */
   title: string;
@@ -34,8 +36,9 @@ type Props = {
 };
 
 /**
- * Tombol destructive terbungkus ConfirmDialog + form server action.
- * Trigger `<button type="button">` membuka dialog; form submit hanya terjadi setelah konfirmasi.
+ * Tombol destructive terbungkus ConfirmDialog.
+ * Trigger `<button type="button">` membuka dialog; action hanya dipanggil
+ * setelah user mengonfirmasi, dan pesan error-nya ditampilkan di dialog.
  */
 export function DeleteConfirmForm({
   action,
@@ -51,16 +54,21 @@ export function DeleteConfirmForm({
   extraFields,
 }: Props) {
   const [open, setOpen] = useState(false);
-  const formRef = useRef<HTMLFormElement>(null);
+
+  // Bangun FormData yang sama seperti submit form, lalu panggil action
+  // langsung, hasilnya (FormState) bisa diperiksa sebelum dialog ditutup.
+  function collectFormData(): FormData {
+    const fd = new FormData();
+    fd.set("id", id);
+    if (extraFields) {
+      for (const [key, value] of Object.entries(extraFields)) fd.set(key, value);
+    }
+    return fd;
+  }
 
   return (
     <>
-      <form ref={formRef} action={action} className="inline-flex">
-        <input type="hidden" name="id" value={id} />
-        {extraFields &&
-          Object.entries(extraFields).map(([key, value]) => (
-            <input key={key} type="hidden" name={key} value={value} />
-          ))}
+      <form className="inline-flex">
         <Button
           type="button"
           variant={variant === "destructive" ? "destructive" : "secondary"}
@@ -81,8 +89,15 @@ export function DeleteConfirmForm({
         description={description}
         confirmLabel={confirmLabel}
         variant={variant}
-        onConfirm={() => {
-          formRef.current?.requestSubmit();
+        onConfirm={async () => {
+          // Panggil action langsung agar bisa membaca FormState hasilnya.
+          const state = await action(collectFormData());
+          if (state?.error) return state.error;
+          if (state?.fieldErrors) {
+            const first = Object.values(state.fieldErrors)[0]?.[0];
+            if (first) return first;
+          }
+          return undefined;
         }}
       />
     </>

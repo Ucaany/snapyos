@@ -41,29 +41,46 @@ export async function updateBrandingAction(
   return { error: undefined };
 }
 
-export async function uploadLogoAction(
-  _prev: FormState,
-  formData: FormData
-): Promise<FormState> {
+/** Upload logo kiosk, dipanggil dari editor Branding & Kiosk. */
+export async function uploadLogoAction(input: {
+  logo: { name?: string | null; type?: string | null; size?: number | null; arrayBuffer(): Promise<ArrayBuffer> };
+}): Promise<{ ok: boolean; error?: string }> {
   const user = await requireUser();
-  if (!user) return { error: "Sesi berakhir. Silakan login ulang." };
+  if (!user) return { ok: false, error: "Sesi berakhir. Silakan login ulang." };
   const active = await getActiveBusiness(user.id);
-  if (!active) return { error: "Business tidak ditemukan" };
+  if (!active) return { ok: false, error: "Business tidak ditemukan" };
   await requireEffectiveSubscription(active.business.id, "write");
 
-  const file = formData.get("logo");
-  if (!(file instanceof File) || file.size === 0) {
-    return { fieldErrors: { logo: ["Pilih file logo terlebih dahulu"] } };
-  }
+  if (!input.logo) return { ok: false, error: "Pilih file logo terlebih dahulu." };
 
   try {
-    await uploadLogo(user.id, active.business.id, file);
+    await uploadLogo(user.id, active.business.id, input.logo);
   } catch (error) {
-    return toFormState(error, "Gagal mengunggah logo. Coba lagi.");
+    const mapped = toFormState(error, "Gagal mengunggah logo. Coba lagi.");
+    return { ok: false, error: mapped.error ?? mapped.fieldErrors?.logo?.[0] };
   }
 
-  revalidatePath("/dashboard/settings");
-  return { error: undefined };
+  revalidatePath("/dashboard/branding");
+  return { ok: true };
+}
+
+/** Hapus logo kiosk (set logo_key = null), logo kembali kosong. */
+export async function deleteLogoAction(): Promise<{ ok: boolean; error?: string }> {
+  const user = await requireUser();
+  if (!user) return { ok: false, error: "Sesi berakhir. Silakan login ulang." };
+  const active = await getActiveBusiness(user.id);
+  if (!active) return { ok: false, error: "Business tidak ditemukan" };
+  await requireEffectiveSubscription(active.business.id, "write");
+
+  try {
+    await updateBranding(user.id, active.business.id, { logo_key: null });
+  } catch (error) {
+    const mapped = toFormState(error, "Gagal menghapus logo. Coba lagi.");
+    return { ok: false, error: mapped.error };
+  }
+
+  revalidatePath("/dashboard/branding");
+  return { ok: true };
 }
 
 /** Update branding + kiosk customization — Branding & Kiosk page (SSoT kiosk). */

@@ -29,14 +29,23 @@ export function ConfirmDialog({
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: "default" | "destructive";
-  onConfirm: () => Promise<void> | void;
+  /** Boleh mengembalikan pesan error: dialog TETAP terbuka dan pesan ditampilkan. */
+  onConfirm: () => Promise<string | void> | string | void;
 }) {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleConfirm() {
     setLoading(true);
+    setError(null);
     try {
-      await onConfirm();
+      const message = await onConfirm();
+      // Aksi bisa menolak (mis. entity masih dipakai): tampilkan alasannya
+      // alih-alih menutup dialog seolah berhasil.
+      if (typeof message === "string" && message) {
+        setError(message);
+        return;
+      }
       onOpenChange(false);
     } finally {
       setLoading(false);
@@ -48,6 +57,11 @@ export function ConfirmDialog({
       <DialogContent className="max-w-md" showClose={false}>
         <DialogTitle>{title}</DialogTitle>
         <DialogDescription>{description}</DialogDescription>
+        {error && (
+          <p role="alert" className="text-sm font-bold text-destructive">
+            {error}
+          </p>
+        )}
         <DialogFooter>
           <DialogClose
             render={

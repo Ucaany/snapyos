@@ -20,7 +20,6 @@ export function toCSV(headers: string[], rows: (string | number | null)[][]): st
 }
 
 export type ReportTable = {
-  filename: string;
   headers: string[];
   rows: (string | number | null)[][];
 };

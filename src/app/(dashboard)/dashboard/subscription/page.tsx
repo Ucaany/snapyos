@@ -20,6 +20,22 @@ export default async function SubscriptionPage() {
   const active = await getActiveBusiness(user.id);
   if (!active) redirect("/dashboard");
 
+  // Langganan & tagihan = owner-only (docs/09 §9.2), sama dengan gate server.
+  if (!can(active.role, "subscription:write")) {
+    return (
+      <div className="p-6 md:p-10">
+        <Card className="border-destructive">
+          <CardHeader>
+            <CardTitle>Hanya owner</CardTitle>
+            <CardDescription>
+              Langganan, add-on, dan tagihan hanya dapat dikelola owner business.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
   const canWrite = can(active.role, "subscription:write");
 
   const overview = await getSubscriptionOverview(user.id, active.business.id);
