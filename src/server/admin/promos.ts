@@ -10,6 +10,7 @@ import { requireAdmin, audit } from "./guard";
 import {
   adminPromoCreateSchema,
   adminPromoUpdateSchema,
+  promoInvariantError,
   type AdminPromoCreateInput,
   type AdminPromoUpdateInput,
 } from "@/lib/validators";
@@ -87,6 +88,25 @@ export async function updatePromo(
   const admin = await requireAdmin();
   const parsed = adminPromoUpdateSchema.parse(input);
   const supabase = createServerClient();
+
+  // Validasi invariant terhadap row tersimpan: patch parsial tidak boleh
+  // menghasilkan persentase > 100 hanya karena `type` tidak ikut dikirim.
+  const { data: current } = await supabase
+    .from("subscription_promos")
+    .select("type, amount, start_date, end_date")
+    .eq("id", promoId)
+    .maybeSingle();
+  if (!current) throw new ApiError("NOT_FOUND", "Promo tidak ditemukan");
+  const issues = promoInvariantError(
+    current as { type: string; amount: number; start_date: string | null; end_date: string | null },
+    parsed
+  );
+  if (issues.length > 0) {
+    throw new ApiError("VALIDATION_ERROR", issues[0]!.message, {
+      [issues[0]!.path[0] ?? "amount"]: [issues[0]!.message],
+    });
+  }
+
   const { data, error } = await supabase
     .from("subscription_promos")
     .update(parsed)

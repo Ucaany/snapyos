@@ -9,8 +9,7 @@ import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
 import { getMembership } from "@/lib/tenant";
-import { planLimitError } from "@/lib/plan-limits";
-import { getPlanLimits } from "@/server/plan-limits";
+import { isPlanLimitError, requirePlanLimits } from "@/server/plan-limits";
 import { startOfDayTz, todayISO } from "@/lib/dashboard-math";
 import { buildStaffDirectory, type StaffDirectoryRow } from "@/lib/staff-directory";
 import {
@@ -255,26 +254,27 @@ export async function inviteStaff(
     });
   }
 
-  // Plan limit max_staff — dihitung server-side (docs/02 §2.3).
-  const { count } = await supabase
-    .from("business_members")
-    .select("id", { count: "exact", head: true })
-    .eq("business_id", businessId);
-  const limits = await getPlanLimits(businessId);
-  if (planLimitError(count ?? 0, limits.max_staff)) {
-    throw new ApiError(
-      "PLAN_LIMIT_REACHED",
-      `Plan Anda dibatasi ${limits.max_staff} staff (termasuk owner). Upgrade untuk menambah.`
-    );
-  }
+  const limits = await requirePlanLimits(businessId);
 
-  const { data, error } = await supabase
-    .from("business_members")
-    .insert({ business_id: businessId, user_id: target.id, role: parsed.role })
-    .select("id")
-    .single();
-  if (error) throw new ApiError("INTERNAL", "Gagal menambahkan staff");
-  return { id: data.id, userId: target.id, email: target.email, role: parsed.role };
+  // Kuota + insert atomik (0069) — owner tidak dihitung (plan boleh max_staff 0).
+  const { data, error } = await supabase.rpc("add_business_member_with_quota", {
+    p_business_id: businessId,
+    p_max_staff: limits.max_staff,
+    p_user_id: target.id,
+    p_role: parsed.role,
+  });
+  if (error) {
+    if (isPlanLimitError(error)) {
+      throw new ApiError(
+        "PLAN_LIMIT_REACHED",
+        `Plan Anda dibatasi ${limits.max_staff} anggota manager/staff. Upgrade untuk menambah.`
+      );
+    }
+    throw new ApiError("INTERNAL", "Gagal menambahkan staff");
+  }
+  const inserted = data as { id: string } | null;
+  if (!inserted) throw new ApiError("INTERNAL", "Gagal menambahkan staff");
+  return { id: inserted.id, userId: target.id, email: target.email, role: parsed.role };
 }
 
 export async function updateStaffRole(

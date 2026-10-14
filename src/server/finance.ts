@@ -7,7 +7,7 @@
 import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
-import { can } from "@/lib/rbac";
+import { can, type Permission } from "@/lib/rbac";
 import { getMembership } from "@/lib/tenant";
 import { insertAudit } from "@/server/audit";
 import { resolveRange } from "@/server/dashboard";
@@ -31,7 +31,8 @@ async function requireFinance(userId: string, businessId: string, write = false)
   await requireFeature(businessId, "finance");
   const membership = await getMembership(userId, businessId);
   if (!membership) throw new ApiError("NOT_FOUND", "Business tidak ditemukan");
-  if (!can(membership.role, write ? "expense:write" : "finance:read")) {
+  const permission: Permission = write ? "expense:write" : "finance:read";
+  if (!can(membership.role, permission)) {
     throw new ApiError("FORBIDDEN", "Anda tidak punya akses finance");
   }
   return membership;

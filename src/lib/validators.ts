@@ -7,6 +7,9 @@ import { z } from "zod"
 import { layoutSchema } from "./template-layout.ts"
 import { MAX_RANGE_DAYS, rangeDays } from "./dashboard-math.ts"
 
+/** UUID PostgreSQL canonical: shape hex, tanpa pembatasan version/variant RFC. */
+const uuid = z.string().guid()
+
 // ---------------------------------------------------------------------------
 // Payment provider constants (Phase 1 — dipakai registry, adapter, validators).
 // Schema CRUD credential ada di Phase 2; cukup konstanta di sini.
@@ -111,12 +114,12 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Password wajib diisi").optional(),
   // Staff login: PIN 4–6 digit + booth (password kosong untuk jalur ini).
   pin: z.string().trim().regex(/^\d{4,6}$/, "PIN 4–6 digit").optional(),
-  photobox_id: z.string().guid().optional(),
+  photobox_id: uuid.optional(),
 })
 
 export const staffPinSchema = z.object({
-  user_id: z.string().guid(),
-  photobox_id: z.string().guid(),
+  user_id: uuid,
+  photobox_id: uuid,
   // Kosong = hapus PIN (set null); non-kosong wajib 4–6 digit.
   pin: z.string().trim().refine((v) => v === "" || /^\d{4,6}$/.test(v), "PIN 4–6 digit"),
 })
@@ -397,7 +400,7 @@ export const photoboxCreateSchema = z.object({
     .max(48, "Slug maksimal 48 karakter")
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug hanya boleh huruf kecil, angka, dan tanda hubung")
     .optional(),
-  outlet_id: z.string().uuid("Outlet wajib dipilih"),
+  outlet_id: uuid.refine((value) => value.length > 0, "Outlet wajib dipilih"),
   status: photoboxStatus.optional(),
   camera: z.string().trim().max(120).optional(),
   printer: z.string().trim().max(120).optional(),
@@ -452,7 +455,8 @@ export const photoboxUpdateSchema = z.object({
  * (mis. `44444444-4444-4444-4444-...`) ditolak dan checkout kiosk gagal
  * VALIDATION_ERROR. Sama dengan guard `parseUuidParam` (src/lib/uuid-param.ts).
  */
-const uuid = z.string().guid()
+export const postgresUuid = uuid
+
 
 // --- Owner Platform — docs/04 §4.2–4.13, schema contract docs/08 §8.19 ---
 
@@ -572,6 +576,68 @@ export const voucherUpdateSchema = voucherBaseSchema
     { message: "min_transaction tidak boleh melebihi max_discount", path: ["min_transaction"] }
   )
 
+/**
+ * Invariant diskon yang bergantung pada type: persentase maksimal 100.
+ * Dipakai pada create DAN update parsial setelah merge dengan row tersimpan,
+ * supaya `{ amount: 500 }` tanpa `type` tidak bisa lolos pada voucher
+ * percentage yang sudah ada.
+ */
+export function discountAmountError(
+  type: string | null | undefined,
+  amount: number | null | undefined
+): string | null {
+  if (amount === undefined || amount === null) return null;
+  if (!Number.isInteger(amount) || amount <= 0) return "Nilai diskon harus > 0";
+  if (type === "percentage" && amount > 100) return "Diskon persen maksimal 100";
+  return null;
+}
+
+export function voucherInvariantError(
+  current: {
+    type: string;
+    amount: number;
+    start_date: string | null;
+    end_date: string | null;
+    min_transaction: number;
+    max_discount: number | null;
+  },
+  patch: Partial<{
+    type: string;
+    amount: number;
+    start_date: string | null;
+    end_date: string | null;
+    min_transaction: number;
+    max_discount: number | null;
+  }>
+): { path: string[]; message: string }[] {
+  const merged = { ...current, ...patch };
+  const issues: { path: string[]; message: string }[] = [];
+
+  const amountError = discountAmountError(merged.type, merged.amount);
+  if (amountError) issues.push({ path: ["amount"], message: amountError });
+
+  if (
+    merged.start_date &&
+    merged.end_date &&
+    Date.parse(merged.start_date) > Date.parse(merged.end_date)
+  ) {
+    issues.push({ path: ["start_date"], message: "start_date harus ≤ end_date" });
+  }
+
+  if (
+    merged.max_discount !== null &&
+    merged.max_discount !== undefined &&
+    merged.min_transaction > merged.max_discount
+  ) {
+    issues.push({
+      path: ["min_transaction"],
+      message: "min_transaction tidak boleh melebihi max_discount",
+    });
+  }
+
+  return issues;
+}
+
 export const EXPENSE_CATEGORIES = [
   "rent",
   "electricity",
@@ -613,8 +679,8 @@ export const expenseUpdateSchema = z.object({
 })
 
 export const manualTransactionSchema = z.object({
-  outlet_id: z.string().uuid("Outlet wajib dipilih"),
-  photobox_id: z.string().uuid("Photobox wajib dipilih"),
+  outlet_id: uuid.refine((value) => value.length > 0, "Outlet wajib dipilih"),
+  photobox_id: uuid.refine((value) => value.length > 0, "Photobox wajib dipilih"),
   package_id: uuid.nullable().optional(),
   // Pencatatan manual owner SELALU 'manual' (non-withdrawable) — bukan
   // 'cash'/'bank_transfer' generik. Backend = source of truth.
@@ -1111,6 +1177,33 @@ export const adminPromoCreateSchema = z
     path: ["end_date"],
     message: "Tanggal berakhir harus >= tanggal mulai",
   })
+
+/** Invariant promo setelah merge dengan row tersimpan (type-aware amount). */
+export function promoInvariantError(
+  current: { type: string; amount: number; start_date: string | null; end_date: string | null },
+  patch: Partial<{
+    type: string;
+    amount: number;
+    start_date: string | null;
+    end_date: string | null;
+  }>
+): { path: string[]; message: string }[] {
+  const merged = { ...current, ...patch };
+  const issues: { path: string[]; message: string }[] = [];
+  if (!Number.isInteger(merged.amount) || merged.amount <= 0) {
+    issues.push({ path: ["amount"], message: "Nilai diskon harus > 0" });
+  } else if (merged.type === "percentage" && merged.amount > 100) {
+    issues.push({ path: ["amount"], message: "Persentase 1–100" });
+  }
+  if (
+    merged.start_date &&
+    merged.end_date &&
+    Date.parse(merged.end_date) < Date.parse(merged.start_date)
+  ) {
+    issues.push({ path: ["end_date"], message: "Tanggal berakhir harus >= tanggal mulai" });
+  }
+  return issues;
+}
 
 export const adminPromoUpdateSchema = z
   .object({

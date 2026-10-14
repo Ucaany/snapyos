@@ -9,10 +9,9 @@ import { updateTag } from "next/cache";
 import { createServerClient } from "@/lib/supabase/server";
 import { publicConfigCacheTag } from "@/server/public-config";
 import { ApiError } from "@/lib/api-errors";
-import { can } from "@/lib/rbac";
+import { can, type Permission } from "@/lib/rbac";
 import { getMembership } from "@/lib/tenant";
-import { planLimitError } from "@/lib/plan-limits";
-import { getPlanLimits } from "@/server/plan-limits";
+import { isPlanLimitError, requirePlanLimits } from "@/server/plan-limits";
 import { hashDevicePin } from "@/lib/device-token";
 import type { CameraSettings, PrintSettings, SessionSettings } from "@/lib/kiosk-types";
 import type { BrandingConfig } from "@/lib/kiosk-types";
@@ -54,7 +53,7 @@ export type PhotoboxRow = {
 const COLUMNS =
   "id, slug, name, status, camera, printer, display, outlet_id, device_status, exit_pin_hash, camera_settings, print_settings, session_settings, branding, payment_mode, created_at";
 
-async function requireMembership(userId: string, businessId: string, permission: string) {
+async function requireMembership(userId: string, businessId: string, permission: Permission) {
   const membership = await getMembership(userId, businessId);
   if (!membership) throw new ApiError("NOT_FOUND", "Business tidak ditemukan");
   if (!can(membership.role, permission)) {
@@ -165,19 +164,7 @@ export async function createPhotobox(
   await assertOutletOwned(businessId, parsed.outlet_id);
 
   const supabase = createServerClient();
-
-  // Plan limit max_photoboxes — dihitung server-side (docs/02 §2.3).
-  const { count } = await supabase
-    .from("photoboxes")
-    .select("id", { count: "exact", head: true })
-    .eq("business_id", businessId);
-  const limits = await getPlanLimits(businessId);
-  if (planLimitError(count ?? 0, limits.max_photoboxes)) {
-    throw new ApiError(
-      "PLAN_LIMIT_REACHED",
-      `Plan Anda dibatasi ${limits.max_photoboxes} photobox. Upgrade untuk menambah.`
-    );
-  }
+  const limits = await requirePlanLimits(businessId);
 
   // Slug unik per business (unique constraint business_id + slug).
   const { data: dupe } = await supabase
@@ -192,21 +179,37 @@ export async function createPhotobox(
     });
   }
 
-  const { data, error } = await supabase
-    .from("photoboxes")
-    .insert({
-      business_id: businessId,
+  // Kuota + insert atomik (0069) — cegah race count-then-insert.
+  const { data, error } = await supabase.rpc("create_photobox_with_quota", {
+    p_business_id: businessId,
+    p_max_photoboxes: limits.max_photoboxes,
+    p_payload: {
+      outlet_id: parsed.outlet_id,
       slug,
-      ...photoboxColumns,
-      ...(exitPin !== undefined ? { exit_pin_hash: await hashDevicePin(exitPin) } : {}),
+      name: photoboxColumns.name,
+      status: photoboxColumns.status ?? null,
+      camera: photoboxColumns.camera ?? null,
+      printer: photoboxColumns.printer ?? null,
+      display: photoboxColumns.display ?? null,
+      payment_mode: photoboxColumns.payment_mode ?? null,
+      exit_pin_hash: exitPin !== undefined ? await hashDevicePin(exitPin) : null,
       camera_settings: {
         ...(cameraSettings ?? {}),
         chroma_key_enabled: chromaKeyEnabled ?? cameraSettings?.chroma_key_enabled ?? false,
       },
-    })
-    .select(COLUMNS)
-    .single();
-  if (error) throw new ApiError("INTERNAL", "Gagal membuat photobox");
+      print_settings: photoboxColumns.print_settings ?? null,
+      session_settings: photoboxColumns.session_settings ?? null,
+    },
+  });
+  if (error) {
+    if (isPlanLimitError(error)) {
+      throw new ApiError(
+        "PLAN_LIMIT_REACHED",
+        `Plan Anda dibatasi ${limits.max_photoboxes} photobox. Upgrade untuk menambah.`
+      );
+    }
+    throw new ApiError("INTERNAL", "Gagal membuat photobox");
+  }
   invalidatePublicConfig(businessId);
   return data;
 }

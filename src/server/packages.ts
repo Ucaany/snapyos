@@ -6,7 +6,7 @@
 import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
-import { can } from "@/lib/rbac";
+import { can, type Permission } from "@/lib/rbac";
 import { getMembership } from "@/lib/tenant";
 import {
   packageCreateSchema,
@@ -82,7 +82,7 @@ function mapRow(row: {
   };
 }
 
-async function requireMembership(userId: string, businessId: string, permission: string) {
+async function requireMembership(userId: string, businessId: string, permission: Permission) {
   const membership = await getMembership(userId, businessId);
   if (!membership) throw new ApiError("NOT_FOUND", "Business tidak ditemukan");
   if (!can(membership.role, permission)) {

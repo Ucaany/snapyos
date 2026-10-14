@@ -6,10 +6,9 @@
 import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
-import { can } from "@/lib/rbac";
+import { can, type Permission } from "@/lib/rbac";
 import { getMembership } from "@/lib/tenant";
-import { planLimitError } from "@/lib/plan-limits";
-import { getPlanLimits } from "@/server/plan-limits";
+import { requirePlanLimits, isPlanLimitError } from "@/server/plan-limits";
 import {
   outletCreateSchema,
   outletUpdateSchema,
@@ -35,7 +34,7 @@ export type OutletRow = {
 
 const OUTLET_COLUMNS = "id, name, address, city, province, status, created_at";
 
-async function requireMembership(userId: string, businessId: string, permission: string) {
+async function requireMembership(userId: string, businessId: string, permission: Permission) {
   const membership = await getMembership(userId, businessId);
   if (!membership) throw new ApiError("NOT_FOUND", "Business tidak ditemukan");
   if (!can(membership.role, permission)) {
@@ -85,26 +84,27 @@ export async function createOutlet(
   await requireMembership(userId, businessId, "outlet:write");
 
   const supabase = createServerClient();
+  const limits = await requirePlanLimits(businessId);
 
-  // Plan limit max_outlets — dihitung server-side (docs/02 §2.3).
-  const { count } = await supabase
-    .from("outlets")
-    .select("id", { count: "exact", head: true })
-    .eq("business_id", businessId);
-  const limits = await getPlanLimits(businessId);
-  if (planLimitError(count ?? 0, limits.max_outlets)) {
-    throw new ApiError(
-      "PLAN_LIMIT_REACHED",
-      `Plan Anda dibatasi ${limits.max_outlets} outlet. Upgrade untuk menambah.`
-    );
+  // Kuota + insert atomik (0069) — cegah race count-then-insert.
+  const { data, error } = await supabase.rpc("create_outlet_with_quota", {
+    p_business_id: businessId,
+    p_max_outlets: limits.max_outlets,
+    p_name: parsed.name,
+    p_address: parsed.address ?? null,
+    p_city: parsed.city ?? null,
+    p_province: parsed.province ?? null,
+    p_status: parsed.status ?? "active",
+  });
+  if (error) {
+    if (isPlanLimitError(error)) {
+      throw new ApiError(
+        "PLAN_LIMIT_REACHED",
+        `Plan Anda dibatasi ${limits.max_outlets} outlet. Upgrade untuk menambah.`
+      );
+    }
+    throw new ApiError("INTERNAL", "Gagal membuat outlet");
   }
-
-  const { data, error } = await supabase
-    .from("outlets")
-    .insert({ business_id: businessId, ...parsed })
-    .select(OUTLET_COLUMNS)
-    .single();
-  if (error) throw new ApiError("INTERNAL", "Gagal membuat outlet");
   return data;
 }
 
