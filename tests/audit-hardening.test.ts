@@ -83,3 +83,71 @@ test("abort session route memvalidasi id sebagai UUID (paritas finalize)", async
     "abort wajib parseUuidParam sebelum query DB"
   );
 });
+
+// --- Endpoint baca harus bebas efek samping tulis ---
+
+test("devices.ts: tak ada DELETE di jalur baca (listDevices / generateActivation)", async () => {
+  const s = await src("src/server/devices.ts");
+  // Handler GET dulu menghapus baris non-aktif, efek samping destruktif pada
+  // endpoint baca. Purge pindah ke cron /api/cron/device-cleanup.
+  const readPath = s.slice(
+    s.indexOf("export async function generateActivation"),
+    s.indexOf("export async function revokeDevice")
+  );
+  assert.ok(
+    !/\.delete\(\)/.test(readPath),
+    "generateActivation/listDevices tidak boleh menghapus baris; purge milik cron"
+  );
+  // Purge dicabut dari GET, jadi filter status eksplisit wajib ada di query
+  // listDevices sendiri, kalau tidak baris non-aktif ikut terbaca. Dicek pada
+  // potongan fungsi listDevices, bukan seluruh file, sebab generateActivation
+  // juga memuat string serupa (assertion file-wide lolos palsu di kode lama).
+  const listPath = s.slice(
+    s.indexOf("export async function listDevices"),
+    s.indexOf("export async function revokeDevice")
+  );
+  assert.ok(
+    listPath.includes('.eq("status", "active")'),
+    "listDevices wajib memfilter status aktif eksplisit"
+  );
+});
+
+test("cron device-cleanup: fail-closed + batch berplafon", async () => {
+  const s = await src("src/app/api/cron/device-cleanup/route.ts");
+  assert.ok(s.includes("bearerMatches("), "cleanup wajib Bearer CRON_SECRET");
+  assert.ok(
+    s.includes("CRON_SECRET not configured"),
+    "cleanup wajib fail-closed saat CRON_SECRET kosong di production"
+  );
+  assert.ok(s.includes("MAX_ROUNDS"), "cleanup wajib punya plafon ronde batch");
+});
+
+// --- Gate lifecycle mutasi ---
+
+test("purchaseTemplateAction: lewat gate lifecycle (paritas write-action)", async () => {
+  const s = await src("src/server/template-purchase-actions.ts");
+  assert.ok(
+    s.includes("requireEffectiveSubscription("),
+    "beli template = mutasi; wajib gate lifecycle tunggal seperti aksi tulis lain"
+  );
+});
+
+// --- Ekspor report berplafon baris ---
+
+test("reports.ts: tiap query ekspor dibatasi + overflow ditolak jelas", async () => {
+  const s = await src("src/server/reports.ts");
+  assert.ok(
+    s.includes("EXPORT_ROW_LIMIT"),
+    "ekspor wajib punya plafon baris, sebab rentang 366 hari masih bisa ratusan ribu baris"
+  );
+  const limits = s.match(/\.limit\(EXPORT_ROW_LIMIT \+ 1\)/g) ?? [];
+  assert.equal(
+    limits.length,
+    3,
+    "ketiga sumber (transactions/expenses/voucher_usages) wajib dibatasi"
+  );
+  assert.ok(
+    s.includes('"VALIDATION_ERROR"') && s.includes("melebihi batas ekspor"),
+    "overflow harus ditolak VALIDATION_ERROR, bukan diekspor terpotong"
+  );
+});

@@ -25,6 +25,15 @@ export type ReportResult = {
 
 const isoDay = (v: string | null) => (v ? v.slice(0, 10) : "")
 
+/**
+ * Plafon baris per sumber data saat ekspor. Rentang sudah dibatasi 366 hari
+ * (reportQuerySchema), tapi tenant volume tinggi masih bisa menarik ratusan
+ * ribu baris dalam rentang itu, sehingga memori & payload fungsi membengkak
+ * tanpa batas. Ambil limit+1 baris: kelebihan satu itu sinyal overflow, bukan
+ * data yang ikut diekspor.
+ */
+const EXPORT_ROW_LIMIT = 50_000
+
 async function requireReport(userId: string, businessId: string) {
   // Membership dulu: businessId asing selalu 404 (bukan 403 FEATURE_DISABLED)
   // agar tidak bocorkan status entitlement bisnis lain (docs/03 §3.5).
@@ -61,23 +70,39 @@ export async function generateReport(
       .eq("business_id", businessId)
       .gte("created_at", fromIso)
       .lt("created_at", toIso)
-      .order("created_at", { ascending: true }),
+      .order("created_at", { ascending: true })
+      .limit(EXPORT_ROW_LIMIT + 1),
     supabase
       .from("expenses")
       .select("expense_date, category, amount, note, outlets ( name )")
       .eq("business_id", businessId)
       .gte("expense_date", parsed.from)
       .lte("expense_date", parsed.to)
-      .order("expense_date", { ascending: true }),
+      .order("expense_date", { ascending: true })
+      .limit(EXPORT_ROW_LIMIT + 1),
     supabase
       .from("voucher_usages")
       .select("voucher_id, discount_amount, used_at, vouchers ( code )")
       .eq("business_id", businessId)
       .gte("used_at", fromIso)
-      .lt("used_at", toIso),
+      .lt("used_at", toIso)
+      .limit(EXPORT_ROW_LIMIT + 1),
   ])
   if (tx.error || expenses.error || vouchers.error) {
     throw new ApiError("INTERNAL", "Gagal memuat data report")
+  }
+
+  // Overflow: salah satu sumber melewati plafon, tolak utuh, jangan ekspor
+  // berkas yang tampak lengkap padahal terpotong diam-diam.
+  if (
+    (tx.data?.length ?? 0) > EXPORT_ROW_LIMIT ||
+    (expenses.data?.length ?? 0) > EXPORT_ROW_LIMIT ||
+    (vouchers.data?.length ?? 0) > EXPORT_ROW_LIMIT
+  ) {
+    throw new ApiError(
+      "VALIDATION_ERROR",
+      `Data melebihi batas ekspor ${EXPORT_ROW_LIMIT.toLocaleString("id-ID")} baris. Persempit rentang tanggal, lalu ekspor bertahap.`
+    )
   }
 
   type Name = { name: string } | { name: string }[] | null

@@ -8,6 +8,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireActiveBusiness } from "@/server/action-utils";
+import { requireEffectiveSubscription } from "@/server/require-subscription";
 import { purchaseTemplate } from "@/server/template-purchase";
 
 export async function purchaseTemplateAction(
@@ -16,6 +17,9 @@ export async function purchaseTemplateAction(
   const ctx = await requireActiveBusiness();
   if (!ctx) return { error: "Sesi berakhir. Silakan login ulang." };
   try {
+    // Gate lifecycle tunggal (docs/02 §2.4), paritas dengan write-action lain
+    // (staff/booth/catalog): bisnis kedaluwarsa tidak boleh membuat invoice baru.
+    await requireEffectiveSubscription(ctx.businessId, "write");
     const { invoiceId } = await purchaseTemplate(ctx.user.id, ctx.businessId, templateId);
     revalidatePath("/dashboard/templates");
     revalidatePath("/dashboard");

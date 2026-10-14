@@ -133,7 +133,8 @@ export async function resolveActiveDevice(token: string) {
 /**
  * Generate kode aktivasi sekali pakai (expire ~5 menit) untuk satu photobox.
  * Saat device aktif sudah terhubung: tolak (tidak bisa add lagi).
- * Riwayat device non-aktif dihapus permanen sebelum buat kode baru.
+ * Handler ini murni baca + insert kode; pembersihan device non-aktif
+ * dijalankan cron /api/cron/device-cleanup, bukan di jalur GET ini.
  */
 export async function generateActivation(userId: string, businessId: string, photoboxId: string) {
   await requireOwner(userId, businessId);
@@ -154,8 +155,6 @@ export async function generateActivation(userId: string, businessId: string, pho
     );
   }
 
-  await supabase.from("devices").delete().eq("photobox_id", photobox.id).neq("status", "active");
-
   const code = generateActivationCode(ACTIVATION_CODE_LENGTH);
   const expiresAt = activationExpiresAt();
 
@@ -175,20 +174,20 @@ export async function generateActivation(userId: string, businessId: string, pho
 }
 
 /**
- * Daftar device per business.
- * Riwayat non-aktif dihapus permanen setiap panggilan (riwayat terhapus).
- * Hanya device aktif yang dikembalikan — maks 3 terakhir per photobox.
+ * Daftar device per business, read-only (efek samping pembersihan dipindah
+ * ke cron /api/cron/device-cleanup). Filter status eksplisit: tanpa itu baris
+ * non-aktif ikut terbaca sejak purge tidak lagi jalan di jalur GET.
+ * Maks 3 device terakhir per photobox.
  */
 export async function listDevices(userId: string, businessId: string): Promise<DeviceRow[]> {
   await requireOwner(userId, businessId);
   const supabase = createServerClient();
 
-  await supabase.from("devices").delete().eq("business_id", businessId).neq("status", "active");
-
   const { data, error } = await supabase
     .from("devices")
     .select("id, photobox_id, name, status, last_seen_at, created_at, photoboxes ( name )")
     .eq("business_id", businessId)
+    .eq("status", "active")
     .order("created_at", { ascending: false });
   if (error) throw new ApiError("INTERNAL", "Gagal memuat perangkat");
 
