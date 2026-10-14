@@ -61,7 +61,7 @@ function editSignature(e: PhotoEdit): string {
   const ov = e.overlays
     .map((o) => `${o.id}:${o.kind}:${o.content}:${o.color}:${o.size}:${o.x}:${o.y}:${o.rotation}`)
     .join("|");
-  return `${a.filter};${a.rotation};${a.zoom};${a.panX};${a.panY};${ov}`;
+  return `${a.filter};${a.rotation};${a.zoom};${a.panX};${a.panY};${a.brightness};${a.contrast};${a.saturation};${a.blur};${a.grain};${a.vignette};${ov}`;
 }
 
 /** Photo Editor — docs/05 §5.9–5.11 (filter, zoom/pan, adjust, teks & stiker dasar). */
@@ -81,7 +81,9 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
   const [frameVersion, setFrameVersion] = useState(0);
   const [frameError, setFrameError] = useState(false);
   const dragging = useRef(false);
+  const overlayDragging = useRef(false);
   const lastPointer = useRef<{ x: number; y: number } | null>(null);
+  const lastOverlayPointer = useRef<{ x: number; y: number } | null>(null);
   const autoFinished = useRef(false);
   // Batch pan pointer: akumulasi delta di ref, flush SATU setState per frame
   // (rAF) — bukan 2 patchAdjust per pointermove seperti sebelumnya.
@@ -278,7 +280,35 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
     }));
   }
 
+  function canvasPoint(e: React.PointerEvent<HTMLCanvasElement>) {
+    const canvas = e.currentTarget;
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: ((e.clientX - rect.left) / Math.max(1, rect.width)) * canvas.width,
+      y: ((e.clientY - rect.top) / Math.max(1, rect.height)) * canvas.height,
+    };
+  }
+
+  function hitOverlay(e: React.PointerEvent<HTMLCanvasElement>): KioskOverlay | null {
+    const point = canvasPoint(e);
+    const width = e.currentTarget.width;
+    const height = e.currentTarget.height;
+    const candidates = [...edit.overlays].reverse();
+    return candidates.find((o) => {
+      const radius = Math.max(o.size * height * 0.75, 24);
+      return Math.hypot(point.x - o.x * width, point.y - o.y * height) <= radius;
+    }) ?? null;
+  }
+
   function onPointerDown(e: React.PointerEvent<HTMLCanvasElement>) {
+    const overlay = hitOverlay(e);
+    if (overlay) {
+      overlayDragging.current = true;
+      lastOverlayPointer.current = canvasPoint(e);
+      setSelectedOverlay(overlay.id);
+      e.currentTarget.setPointerCapture(e.pointerId);
+      return;
+    }
     if (!allowZoomPan || edit.adjust.zoom <= 1.01) return;
     dragging.current = true;
     lastPointer.current = { x: e.clientX, y: e.clientY };
@@ -286,6 +316,22 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
   }
 
   function onPointerMove(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (overlayDragging.current) {
+      const previous = lastOverlayPointer.current;
+      if (!previous) return;
+      const point = canvasPoint(e);
+      const canvas = e.currentTarget;
+      const dx = (point.x - previous.x) / Math.max(1, canvas.width);
+      const dy = (point.y - previous.y) / Math.max(1, canvas.height);
+      lastOverlayPointer.current = point;
+      if (selectedOverlay) {
+        patchOverlay(selectedOverlay, {
+          x: Math.min(1, Math.max(0, (edit.overlays.find((o) => o.id === selectedOverlay)?.x ?? 0.5) + dx)),
+          y: Math.min(1, Math.max(0, (edit.overlays.find((o) => o.id === selectedOverlay)?.y ?? 0.5) + dy)),
+        });
+      }
+      return;
+    }
     if (!dragging.current || !allowZoomPan) return;
     const previous = lastPointer.current;
     if (!previous) return;
@@ -301,6 +347,8 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
   }
 
   function onPointerUp(e: React.PointerEvent<HTMLCanvasElement>) {
+    overlayDragging.current = false;
+    lastOverlayPointer.current = null;
     dragging.current = false;
     lastPointer.current = null;
     if (panRaf.current !== null) {
@@ -309,7 +357,7 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
     }
     // Flush sisa delta agar posisi akhir tak hilang saat pointer lepas.
     if (panAccum.current) flushPan();
-    e.currentTarget.releasePointerCapture(e.pointerId);
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
   }
 
   async function finish() {
@@ -356,7 +404,7 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
   }, [finishRequested, imgVersion, frameVersion, frameUrl]);
 
   const sliderClass =
-    "h-2 w-full cursor-pointer appearance-none rounded-none border border-ink bg-bg accent-ink";
+    "min-h-11 w-full cursor-pointer appearance-none rounded-none border border-ink bg-bg accent-ink";
 
   return (
     <div
@@ -441,7 +489,7 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
                   type="button"
                   onClick={() => setFilterId(f.id)}
                   aria-pressed={filterId === f.id}
-                  className={`border-2 border-ink px-2 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.05em] ${
+                  className={`min-h-11 border-2 border-ink px-2 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.05em] ${
                     filterId === f.id ? "bg-accent" : "bg-surface"
                   }`}
                 >
@@ -470,6 +518,51 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
             </div>
           </div>
 
+          {/* Adjustments — exported with the same canvas renderer as preview. */}
+          <div className="flex flex-col gap-3">
+            <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]" style={{ color: kioskStyle ? kioskStyle.text : undefined }}>
+              Penyesuaian
+            </p>
+            <label className="flex flex-col gap-1">
+              <span className="font-mono text-[10px] uppercase tracking-[0.1em]">Zoom — {edit.adjust.zoom.toFixed(2)}×</span>
+              <input
+                type="range"
+                min={1}
+                max={3}
+                step={0.05}
+                value={edit.adjust.zoom}
+                disabled={!allowZoomPan}
+                onChange={(e) => patchAdjust("zoom", Number(e.target.value))}
+                className={sliderClass}
+                aria-label="Zoom foto"
+              />
+            </label>
+            {([
+              ["brightness", "Kecerahan", 0.5, 1.5, 0.01],
+              ["contrast", "Kontras", 0.5, 1.5, 0.01],
+              ["saturation", "Saturasi", 0, 2, 0.01],
+              ["blur", "Blur", 0, 12, 0.5],
+              ["grain", "Grain", 0, 1, 0.05],
+              ["vignette", "Vignette", 0, 1, 0.05],
+            ] as const).map(([key, label, min, max, step]) => (
+              <label key={key} className="flex flex-col gap-1">
+                <span className="font-mono text-[10px] uppercase tracking-[0.1em]">
+                  {label} — {Number(edit.adjust[key]).toFixed(key === "blur" ? 1 : 2)}
+                </span>
+                <input
+                  type="range"
+                  min={min}
+                  max={max}
+                  step={step}
+                  value={edit.adjust[key]}
+                  onChange={(e) => patchAdjust(key, Number(e.target.value))}
+                  className={sliderClass}
+                  aria-label={label}
+                />
+              </label>
+            ))}
+          </div>
+
           {/* Stickers */}
           <StickerPicker onPick={(char) => addOverlay("sticker", char)} />
 
@@ -488,6 +581,7 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
                 type="button"
                 variant="outline"
                 size="icon"
+                className="min-h-11 min-w-11"
                 onClick={() => text.trim() && addOverlay("text", text.trim(), defaultBrandColors.ink)}
                 aria-label="Tambah teks"
               >

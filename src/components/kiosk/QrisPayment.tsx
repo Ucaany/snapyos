@@ -9,6 +9,7 @@ export type PendingPayment = {
   qr_string: string | null
   qr_image: string | null
   qr_url: string | null
+  amount: number
   total_amount: number
   expires_at: string | null
   checkout_session_id: string
@@ -32,21 +33,27 @@ export function QrisPayment({
 }) {
   const time = `${String(Math.floor(left / 60)).padStart(2, "0")}:${String(left % 60).padStart(2, "0")}`
   return (
-    <div className="mx-auto grid w-full max-w-[1000px] flex-1 grid-cols-1 gap-4 md:grid-cols-2 md:content-center">
-      <section className="flex flex-col justify-center gap-3 border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111]">
+    <div className="mx-auto grid w-full max-w-[1000px] flex-1 grid-cols-1 content-center gap-3 pb-14 md:grid-cols-2 md:content-center md:gap-4 md:pb-0">
+      <section className="flex flex-col justify-center gap-3 border-2 border-ink bg-surface p-4 shadow-[4px_4px_0_0_#111111] md:p-5">
         <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em]">[ SCAN QRIS ]</p>
         {qrSrc ? (
           <img
             src={qrSrc}
             alt="Kode QR pembayaran"
-            className="max-h-[42vh] w-auto max-w-full border-2 border-ink bg-surface p-3"
+            className="mx-auto max-h-[30vh] w-auto max-w-full border-2 border-ink bg-surface p-3 md:max-h-[42vh]"
           />
         ) : (
           <p className="border-2 border-ink p-5 font-mono text-xs uppercase">QR tidak tersedia</p>
         )}
         <p className="font-mono text-3xl font-bold">{formatIDR(payment.total_amount)}</p>
+        {payment.total_amount > payment.amount && (
+          <p className="font-mono text-[10px] uppercase tracking-[0.05em]">
+            Termasuk kode unik {formatIDR(payment.total_amount - payment.amount)}. Transfer tepat
+            sesuai nominal.
+          </p>
+        )}
       </section>
-      <section className="flex flex-col justify-center gap-4 border-2 border-ink bg-accent p-5 shadow-[4px_4px_0_0_#111111]">
+      <section className="flex flex-col justify-center gap-3 border-2 border-ink bg-accent p-4 shadow-[4px_4px_0_0_#111111] md:gap-4 md:p-5">
         <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em]">[ STATUS ]</p>
         <p className="font-mono text-sm font-bold uppercase" aria-live="polite">
           <span
@@ -61,7 +68,7 @@ export function QrisPayment({
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex w-fit items-center gap-2 border-2 border-ink bg-bg px-4 py-2 font-mono text-xs font-bold uppercase shadow-[3px_3px_0_0_#111111] active:translate-y-[2px]"
+          className="inline-flex min-h-11 w-fit items-center gap-2 border-2 border-ink bg-bg px-4 py-2 font-mono text-xs font-bold uppercase shadow-[3px_3px_0_0_#111111] active:translate-y-[2px]"
         >
           <ArrowLeft className="size-4" />
           Kembali

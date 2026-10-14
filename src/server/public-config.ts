@@ -283,6 +283,11 @@ export async function listPublicPackages(
  * package.photo_count (template legacy slot_count 0 tetap lolos) dan
  * file_url/thumbnail_url dikirim sebagai signed URL (bucket private).
  */
+function frameProxyUrl(url: string): string {
+  if (!/^https?:\/\//i.test(url)) return url;
+  return `/api/v1/public/frame?url=${encodeURIComponent(url)}`;
+}
+
 export async function listPublicTemplates(businessId: string, packageId?: string): Promise<PublicTemplate[]> {
   const supabase = createServerClient();
   const query = supabase
@@ -361,7 +366,7 @@ export async function listPublicTemplates(businessId: string, packageId?: string
     id: t.id,
     name: t.name,
     category: t.category,
-    file_url: urlByKey.get(t.file_url) ?? t.file_url,
+    file_url: frameProxyUrl(urlByKey.get(t.file_url) ?? t.file_url),
     thumbnail_url: t.thumbnail_url ? (urlByKey.get(t.thumbnail_url) ?? null) : null,
     layout: (slotCount(t.layout) > 0 ? t.layout : null) as TemplateLayout | null,
     slot_count: slotCount(t.layout),

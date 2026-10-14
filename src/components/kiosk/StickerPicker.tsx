@@ -99,7 +99,7 @@ export function StickerPicker({ onPick }: Props) {
             <p className="px-1 py-1 font-mono text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
               Emoji dasar (API offline)
             </p>
-            <div className="grid grid-cols-8 gap-0.5">
+            <div className="grid grid-cols-6 gap-0.5 sm:grid-cols-8">
               {FALLBACK_EMOJIS.map((e, i) => (
                 <button
                   key={`${e.char}-${i}`}
@@ -119,7 +119,7 @@ export function StickerPicker({ onPick }: Props) {
             Tidak ada emoji ditemukan.
           </p>
         ) : (
-          <div className="grid grid-cols-8 gap-0.5">
+          <div className="grid grid-cols-6 gap-0.5 sm:grid-cols-8">
             {emojis.map((e, i) => (
               <button
                 key={`${e.char}-${i}`}

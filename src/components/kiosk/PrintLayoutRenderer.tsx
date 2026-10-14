@@ -55,6 +55,7 @@ function PrintLayoutRendererInner({ photos, plan, printSettings, onDone }: Props
   // Guard re-entrancy: "Cetak" dobel-cepat tidak boleh memicu window.print()/listener/onDone dua kali.
   const printingRef = useRef(false);
   const printFnRef = useRef<(() => void) | null>(null);
+  const printCleanupRef = useRef<(() => void) | null>(null);
 
   const auto = shouldAutoPrint(printSettings);
   const copies = printCopies(printSettings);
@@ -94,38 +95,46 @@ function PrintLayoutRendererInner({ photos, plan, printSettings, onDone }: Props
     document.head.appendChild(style);
 
     function cleanup() {
+      printCleanupRef.current?.();
+      printCleanupRef.current = null;
+      printFnRef.current = null;
       style.remove();
     }
 
     function doPrint() {
       if (cancelled || doneRef.current || printingRef.current) return;
-      // Kunci sejak sekarang sampai effect re-run; cegah double-print saat tombol ditekan cepat.
       printingRef.current = true;
       setState("printing");
 
-      const handleAfterPrint = () => {
+      let settled = false;
+      let timeout: ReturnType<typeof setTimeout> | null = null;
+      const finish = (success: boolean) => {
+        if (settled || cancelled || doneRef.current) return;
+        settled = true;
+        if (timeout) clearTimeout(timeout);
         window.removeEventListener("afterprint", handleAfterPrint);
-        if (cancelled || doneRef.current) return;
-        doneRef.current = true;
-        setState("done");
-        setTimeout(() => onDone(true), 300);
+        doneRef.current = success;
+        setState(success ? "done" : "error");
+        if (success) {
+          setTimeout(() => onDone(true), 300);
+        } else {
+          setErrorMsg("Dialog cetak tidak selesai. Coba lagi atau lanjut tanpa cetak.");
+        }
       };
+      const handleAfterPrint = () => finish(true);
       window.addEventListener("afterprint", handleAfterPrint);
-
-      const timeout = setTimeout(() => {
-        if (cancelled || doneRef.current) return;
+      timeout = setTimeout(() => finish(false), 15_000);
+      printCleanupRef.current = () => {
+        if (timeout) clearTimeout(timeout);
         window.removeEventListener("afterprint", handleAfterPrint);
-        doneRef.current = true;
-        setState("done");
-        onDone(true);
-      }, 15_000);
+        settled = true;
+      };
 
       try {
         window.print();
       } catch {
-        clearTimeout(timeout);
-        window.removeEventListener("afterprint", handleAfterPrint);
-        throw new Error("Print dialog gagal dibuka.");
+        finish(false);
+        setErrorMsg("Dialog cetak gagal dibuka.");
       }
     }
     printFnRef.current = doPrint;

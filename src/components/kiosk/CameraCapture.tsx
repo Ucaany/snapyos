@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Camera, FlipHorizontal2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CAMERA_ERRORS, cameraErrorKind } from "@/lib/camera-errors";
@@ -8,7 +8,9 @@ import { captureFrame } from "@/lib/camera-capture";
 import { resolveFacingMode } from "@/lib/camera-provider";
 import { getDeviceProfile } from "@/lib/device-profile";
 import type { CameraSettings, CapturePhoto, KioskVisualStyle } from "@/lib/kiosk-types";
+import type { TemplateLayout } from "@/lib/template-layout";
 import { useObjectUrl } from "@/components/kiosk/use-object-url";
+import { FramePreviewPanel } from "@/components/kiosk/FramePreviewPanel";
 
 type Props = {
   cameraSettings: CameraSettings;
@@ -23,6 +25,10 @@ type Props = {
   showMirrorToggle?: boolean;
   /** Video promo background layar kamera (loop, muted) — null = tanpa video. */
   videoUrl?: string | null;
+  /** Layout slot template terpilih — null = tanpa frame (tanpa preview frame). */
+  layout?: TemplateLayout | null;
+  /** PNG frame transparan template terpilih — dipakai preview frame langsung. */
+  frameUrl?: string | null;
   onProgress?: (photos: CapturePhoto[], retakeCount: number) => void;
   onComplete: (photos: CapturePhoto[], retakeCount: number) => void;
 };
@@ -31,16 +37,22 @@ type Stage = "preview" | "countdown" | "review";
 
 /** Camera runtime — docs/05 §5.5–5.8 (countdown + capture + review/retake).
  *  2-part kiosk layout: left = camera preview, right = controls/progress. */
-function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, titleText, hintText, kioskStyle, showMirrorToggle = true, videoUrl = null, onProgress, onComplete }: Props) {
+function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, titleText, hintText, kioskStyle, showMirrorToggle = true, videoUrl = null, layout = null, frameUrl = null, onProgress, onComplete }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [stage, setStage] = useState<Stage>("preview");
   const [slot, setSlot] = useState(0);
   const [photos, setPhotos] = useState<CapturePhoto[]>([]);
+  // Elemen <video> dibagikan ke preview frame; node <video> berganti saat
+  // stage review -> preview, jadi simpan node-nya di state (bukan hanya ref).
+  const [videoEl, setVideoElState] = useState<HTMLVideoElement | null>(null);
   const [retakeCount, setRetakeCount] = useState(0);
   const [count, setCount] = useState(3);
   const [current, setCurrent] = useState<CapturePhoto | null>(null);
   const currentUrl = useObjectUrl(current?.blob);
+  /** Blob foto yang sudah dikonfirmasi — stabil agar efek load preview tak
+   *  re-run tiap render (array baru = object URL dibuat ulang terus). */
+  const capturedBlobs = useMemo(() => photos.map((p) => p.blob), [photos]);
   const [flash, setFlash] = useState(false);
   // stage di-ref: doCapture dipanggil dari setInterval yang dibuat saat stage
   // masih "preview" — closure `stage` basi, guard selalu early-return.
@@ -67,6 +79,7 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
    */
   const setVideoEl = useCallback((el: HTMLVideoElement | null) => {
     videoRef.current = el;
+    setVideoElState(el);
     if (!el) return;
     setCameraReady(false);
     const stream = streamRef.current;
@@ -347,7 +360,7 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
           area kamera tetap gelap agar kontras preview/retake). bg-ink fallback
           dipakai saat kioskStyle tidak ada (inline style menang bila ada). */}
       <div
-        className={`flex shrink-0 flex-col gap-5 border-t-2 border-bg bg-ink p-6 lg:w-[34%] lg:border-l-2 lg:border-t-0 lg:justify-center lg:p-8 ${
+        className={`flex shrink-0 flex-col gap-5 border-t-2 border-bg bg-ink p-6 lg:w-[38%] lg:border-l-2 lg:border-t-0 lg:justify-center lg:p-8 ${
           kioskStyle
             ? kioskStyle.align === "left"
               ? "items-start text-left"
@@ -383,6 +396,20 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
           </p>
         </div>
 
+        {/* Preview frame langsung: slot terisi = hasil foto, slot aktif = kamera. */}
+        {layout && (
+          <FramePreviewPanel
+            layout={layout}
+            frameUrl={frameUrl}
+            captured={capturedBlobs}
+            activeSlot={slot}
+            videoEl={stage === "review" ? null : videoEl}
+            activeOverride={stage === "review" && current ? current.blob : null}
+            mirror={mirror}
+            kioskStyle={kioskStyle}
+          />
+        )}
+
         {stage === "preview" && !error && (
           <div className="flex w-full flex-col gap-3">
             <Button
@@ -396,7 +423,7 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
               {cameraReady ? `Ambil foto ${slot + 1}/${photoCount}` : "Menyiapkan kamera"}
             </Button>
             {showMirrorToggle && (
-              <Button type="button" variant="outline" aria-pressed={mirror} onClick={() => setMirror((value) => !value)}>
+              <Button type="button" variant="outline" aria-pressed={mirror} onClick={() => setMirror((value) => !value)} className="min-h-11">
                 <FlipHorizontal2 className="size-5" aria-hidden /> Mirror {mirror ? "aktif" : "nonaktif"}
               </Button>
             )}

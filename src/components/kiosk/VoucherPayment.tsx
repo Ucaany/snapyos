@@ -1,16 +1,18 @@
 "use client"
-import { Tag } from "lucide-react"
+import { ArrowLeft, Tag } from "lucide-react"
 import { OnScreenKeyboard } from "./OnScreenKeyboard"
 export function VoucherPayment({
   code,
   onCode,
   onApply,
+  onBack,
   busy,
   error,
 }: {
   code: string
   onCode(value: string): void
   onApply(): void
+  onBack(): void
   busy: boolean
   error: string | null
 }) {
@@ -38,14 +40,25 @@ export function VoucherPayment({
           {error}
         </p>
       )}
-      <button
-        type="button"
-        onClick={onApply}
-        disabled={busy || !code.trim()}
-        className="w-fit border-2 border-ink bg-surface px-5 py-3 font-display text-lg uppercase shadow-[4px_4px_0_0_#111111] active:translate-y-[2px] disabled:opacity-50"
-      >
-        {busy ? "Memeriksa" : "Gunakan voucher"}
-      </button>
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={onApply}
+          disabled={busy || !code.trim()}
+          className="w-fit border-2 border-ink bg-surface px-5 py-3 font-display text-lg uppercase shadow-[4px_4px_0_0_#111111] active:translate-y-[2px] disabled:opacity-50"
+        >
+          {busy ? "Memeriksa" : "Gunakan voucher"}
+        </button>
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={busy}
+          className="inline-flex min-h-11 w-fit items-center gap-2 border-2 border-ink bg-bg px-4 py-3 font-mono text-xs font-bold uppercase shadow-[3px_3px_0_0_#111111] active:translate-y-[2px] disabled:opacity-50"
+        >
+          <ArrowLeft className="size-4" />
+          Kembali
+        </button>
+      </div>
     </div>
   )
 }

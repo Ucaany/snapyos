@@ -1,5 +1,5 @@
 "use client"
-import { Banknote, QrCode, Tag } from "lucide-react"
+import { ArrowLeft, Banknote, QrCode, Tag } from "lucide-react"
 import type { KioskPaymentMethod } from "@/lib/kiosk-types"
 const icon = { qris: QrCode, va: Banknote, redirect: QrCode, voucher: Tag, cash: Banknote }
 export function PaymentMethodPicker({
@@ -7,11 +7,13 @@ export function PaymentMethodPicker({
   disabled,
   error,
   onSelect,
+  onBack,
 }: {
   methods: KioskPaymentMethod[]
   disabled?: boolean
   error?: string | null
   onSelect(method: KioskPaymentMethod): void
+  onBack?(): void
 }) {
   return (
     <section className="mx-auto flex w-full max-w-[1000px] flex-1 flex-col justify-center gap-4">
@@ -51,6 +53,17 @@ export function PaymentMethodPicker({
           )
         })}
       </div>
+      {onBack && (
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={disabled}
+          className="inline-flex min-h-11 w-fit items-center gap-2 border-2 border-ink bg-bg px-4 py-2 font-mono text-xs font-bold uppercase shadow-[3px_3px_0_0_#111111] transition-transform active:translate-y-[2px] disabled:opacity-50 disabled:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+        >
+          <ArrowLeft className="size-4" />
+          Kembali
+        </button>
+      )}
     </section>
   )
 }

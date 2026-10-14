@@ -53,3 +53,8 @@ test("printPlan existing tidak regresi (copies tidak ubah mapping lembar)", () =
     photoIndexes: [0, 1],
   })
 })
+
+test("printPlan: jumlah foto kosong tidak membuat sheet palsu", () => {
+  assert.deepEqual(printPlan(2, 0, "single"), { kind: "digital", sheets: 0 })
+  assert.deepEqual(printPlan(2, 0, "photostrip"), { kind: "digital", sheets: 0 })
+})

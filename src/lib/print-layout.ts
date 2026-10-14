@@ -66,7 +66,8 @@ export function printPlan(
   const prints = Number.isInteger(printCount) ? Math.max(0, printCount) : 0;
   if (prints === 0) return { kind: "digital", sheets: 0 };
 
-  const photos = Number.isInteger(photoCount) ? Math.max(1, photoCount) : 1;
+  if (!Number.isInteger(photoCount) || photoCount <= 0) return { kind: "digital", sheets: 0 };
+  const photos = photoCount;
   const isStrip = (layout ?? "") === "strip" || captureMode === "photostrip";
   if (isStrip) return { kind: "strip", sheets: prints, photosPerStrip: photos };
 

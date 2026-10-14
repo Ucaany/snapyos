@@ -253,6 +253,12 @@ export type EditorAdjust = {
   panX: number
   panY: number
   rotation: number
+  brightness: number
+  contrast: number
+  saturation: number
+  blur: number
+  grain: number
+  vignette: number
 }
 
 /** Overlay teks/stiker (editor) — posisi normalized 0..1, size = fraksi tinggi foto. */

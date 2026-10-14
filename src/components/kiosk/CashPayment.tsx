@@ -1,7 +1,16 @@
 "use client"
-import { Banknote } from "lucide-react"
+import { ArrowLeft, Banknote } from "lucide-react"
 import { formatIDR } from "@/lib/dashboard-math"
-export function CashPayment({ amount }: { amount: number }) {
+export function CashPayment({
+  amount,
+  left,
+  onCancel,
+}: {
+  amount: number
+  left: number
+  onCancel(): void
+}) {
+  const time = `${String(Math.floor(left / 60)).padStart(2, "0")}:${String(left % 60).padStart(2, "0")}`
   return (
     <div
       className="mx-auto flex w-full max-w-[700px] flex-1 flex-col justify-center gap-4 border-2 border-ink bg-accent-2 p-6 shadow-[4px_4px_0_0_#111111]"
@@ -14,9 +23,20 @@ export function CashPayment({ amount }: { amount: number }) {
         Bayarkan <strong>{formatIDR(amount)}</strong> kepada petugas. Sesi foto dibuka setelah
         petugas mengonfirmasi pembayaran.
       </p>
-      <p className="font-mono text-xs font-bold uppercase">
+      <p className="font-mono text-sm font-bold uppercase" aria-live="polite">
         Menunggu konfirmasi operator. Jangan tutup layar.
       </p>
+      {left > 0 && (
+        <p className="font-mono text-sm font-bold uppercase">Berakhir {time}</p>
+      )}
+      <button
+        type="button"
+        onClick={onCancel}
+        className="inline-flex min-h-11 w-fit items-center gap-2 border-2 border-ink bg-bg px-4 py-2 font-mono text-xs font-bold uppercase shadow-[3px_3px_0_0_#111111] active:translate-y-[2px]"
+      >
+        <ArrowLeft className="size-4" />
+        Batalkan
+      </button>
     </div>
   )
 }

@@ -46,7 +46,8 @@ type Props = {
   onBack(): void
 }
 const button =
-  "border-2 border-ink bg-bg px-4 py-2 font-mono text-xs font-bold uppercase shadow-[3px_3px_0_0_#111111] transition-transform active:translate-y-[2px] disabled:opacity-50 disabled:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+  "inline-flex min-h-11 items-center justify-center border-2 border-ink bg-bg px-4 py-2 font-mono text-xs font-bold uppercase shadow-[3px_3px_0_0_#111111] transition-transform active:translate-y-[2px] disabled:opacity-50 disabled:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+const backButton = `w-fit gap-2 ${button}`
 
 export function CheckoutScreen({
   businessSlug,
@@ -205,6 +206,18 @@ export function CheckoutScreen({
       setBusy(false)
     }
   }
+  /**
+   * Kembali dari layar pembayaran ke pemilih metode. Payment pending lama
+   * tidak perlu di-void di sini: `POST /payments/create` sudah meng-expire
+   * payment pending sebelumnya saat metode baru dipilih (satu QR hidup/checkout).
+   */
+  function backToMethods() {
+    stopTimers()
+    setPayment(null)
+    setQrSrc(null)
+    setError(null)
+    setPhase("method-picker")
+  }
   const style = kioskStyle
     ? {
         backgroundColor: kioskStyle.bg,
@@ -217,7 +230,7 @@ export function CheckoutScreen({
   const effectiveAlign = paymentAlign ?? (kioskStyle?.align === "left" || kioskStyle?.align === "right" ? "left" : "center")
   const align = effectiveAlign === "center" ? "items-center text-center" : "items-start text-left"
   return (
-    <div className="relative flex min-h-[100dvh] flex-1 flex-col gap-4 overflow-hidden bg-bg px-4 py-5" style={style}>
+    <div className="relative flex min-h-[100dvh] flex-1 flex-col gap-4 overflow-hidden bg-bg px-4 pt-5 pb-16" style={style}>
       <header className={`relative z-10 mx-auto flex w-full max-w-[1000px] flex-col gap-1 ${align}`}>
         <p className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-ink/70">
           [ CHECKOUT ]
@@ -285,11 +298,17 @@ export function CheckoutScreen({
           >
             Pilih pembayaran
           </button>
-          {offlineEnabled && onOffline && (
-            <button type="button" onClick={onOffline} className={`${button} w-fit`}>
-              Lanjut offline
+          <div className="flex flex-wrap gap-3">
+            {offlineEnabled && onOffline && (
+              <button type="button" onClick={onOffline} className={`${button} w-fit`}>
+                Lanjut offline
+              </button>
+            )}
+            <button type="button" onClick={onBack} className={backButton}>
+              <ArrowLeft className="size-4" />
+              Kembali
             </button>
-          )}
+          </div>
         </section>
       )}
       {phase === "method-picker" && amounts && (
@@ -301,6 +320,10 @@ export function CheckoutScreen({
               setError(null)
               void create(method)
             }}
+            onBack={() => {
+              setError(null)
+              setPhase("summary")
+            }}
           />
       )}
       {phase === "voucher" && (
@@ -308,24 +331,38 @@ export function CheckoutScreen({
           code={voucherCode}
           onCode={setVoucherCode}
           onApply={() => void applyVoucher()}
+          onBack={() => {
+            setError(null)
+            setPhase("method-picker")
+          }}
           busy={busy}
           error={error}
         />
       )}
-      {phase === "cash-waiting" && payment && <CashPayment amount={payment.total_amount} />}
+      {phase === "cash-waiting" && payment && (
+        <CashPayment
+          amount={payment.total_amount}
+          left={left}
+          onCancel={() => {
+            stopTimers()
+            setPayment(null)
+            setError(null)
+            setPhase("method-picker")
+          }}
+        />
+      )}
       {phase === "qris" && payment && (
         <QrisPayment
           payment={payment}
           qrSrc={qrSrc}
           left={left}
           online={online}
-          onBack={() => {
-            stopTimers()
-            onBack()
-          }}
+          onBack={backToMethods}
         />
       )}
-      {phase === "va" && payment && <VaPayment payment={payment} left={left} />}
+      {phase === "va" && payment && (
+        <VaPayment payment={payment} left={left} onBack={backToMethods} />
+      )}
       {phase === "redirect" && payment && (
         <div className="mx-auto flex w-full max-w-[700px] flex-1 flex-col justify-center gap-4 border-2 border-ink bg-accent p-6 shadow-[4px_4px_0_0_#111111]">
           <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
@@ -344,6 +381,10 @@ export function CheckoutScreen({
           ) : (
             <p>Link pembayaran tidak tersedia.</p>
           )}
+          <button type="button" onClick={backToMethods} className={backButton}>
+            <ArrowLeft className="size-4" />
+            Kembali
+          </button>
         </div>
       )}
       {phase === "expired" && (

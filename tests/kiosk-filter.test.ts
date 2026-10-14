@@ -31,17 +31,39 @@ test("defaultEdit: filter default original + tanpa adjust slider lama", () => {
   assert.equal(edit.adjust.filter, "original");
   assert.equal(edit.adjust.zoom, 1);
   assert.equal(edit.adjust.rotation, 0);
-  // Field adjust per-foto (brightness/contrast/saturation/blur/grain/vignette)
-  // dihapus — filter sekarang global, bukan adjust satu per satu.
   const adjustKeys = Object.keys(edit.adjust).sort();
-  assert.deepEqual(adjustKeys, ["filter", "panX", "panY", "rotation", "zoom"]);
+  assert.deepEqual(adjustKeys, [
+    "blur",
+    "brightness",
+    "contrast",
+    "filter",
+    "grain",
+    "panX",
+    "panY",
+    "rotation",
+    "saturation",
+    "vignette",
+    "zoom",
+  ]);
   assert.deepEqual(edit.overlays, []);
 });
 
 /** Cermin defaultEdit() di photo-render.ts (tanpa impor runtime @/ agar testable). */
 function defaultEditShape(): PhotoEdit {
   return {
-    adjust: { filter: "original", zoom: 1, panX: 0, panY: 0, rotation: 0 },
+    adjust: {
+      filter: "original",
+      zoom: 1,
+      panX: 0,
+      panY: 0,
+      rotation: 0,
+      brightness: 1,
+      contrast: 1,
+      saturation: 1,
+      blur: 0,
+      grain: 0,
+      vignette: 0,
+    },
     overlays: [],
   };
 }
@@ -54,14 +76,20 @@ test("EditorAdjust: tidak ada lagi field adjust satu per satu", () => {
     panX: 0,
     panY: 0,
     rotation: 0,
+    brightness: 1,
+    contrast: 1,
+    saturation: 1,
+    blur: 0,
+    grain: 0,
+    vignette: 0,
   };
   assert.equal(valid.filter, "bw");
-  assert.ok(!("brightness" in valid));
-  assert.ok(!("contrast" in valid));
-  assert.ok(!("saturation" in valid));
-  assert.ok(!("blur" in valid));
-  assert.ok(!("grain" in valid));
-  assert.ok(!("vignette" in valid));
+  assert.equal(valid.brightness, 1);
+  assert.equal(valid.contrast, 1);
+  assert.equal(valid.saturation, 1);
+  assert.equal(valid.blur, 0);
+  assert.equal(valid.grain, 0);
+  assert.equal(valid.vignette, 0);
 });
 
 test("PhotoEdit: overlay & adjust terpisah (filter global via filteredEdit)", () => {

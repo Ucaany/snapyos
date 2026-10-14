@@ -86,10 +86,10 @@ export function TemplatePicker({ packageId, businessSlug, onSelect, kioskStyle, 
       {/* Right panel — template grid (scrollable) */}
       <div className="flex flex-1 flex-col overflow-y-auto p-4 lg:p-8 lg:items-center">
         <div className="flex w-full max-w-[720px] flex-col gap-5">
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:gap-4" role="list">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:gap-4">
           <button
             type="button"
-            role="listitem"
+            aria-pressed={selected === null}
             onClick={() => setSelected(null)}
             className="flex aspect-[3/4] flex-col items-center justify-center gap-3 border-2 border-ink bg-surface p-3 shadow-[4px_4px_0_0_#111111] transition-transform hover:-translate-y-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink active:translate-y-[2px]"
             style={ks ? { borderRadius: ks.radius } : undefined}
@@ -129,7 +129,7 @@ export function TemplatePicker({ packageId, businessSlug, onSelect, kioskStyle, 
               <button
                 key={t.id}
                 type="button"
-                role="listitem"
+                aria-pressed={selected?.id === t.id}
                 onClick={() => setSelected(t)}
                 className="group relative aspect-[3/4] overflow-hidden border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111] transition-transform hover:-translate-y-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink active:translate-y-[2px]"
                 style={ks ? { borderRadius: ks.radius } : undefined}
@@ -148,7 +148,7 @@ export function TemplatePicker({ packageId, businessSlug, onSelect, kioskStyle, 
                 <span className="absolute inset-x-0 bottom-0 border-t-2 border-ink bg-bg px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.1em]">
                    {t.name}
                 </span>
-                {selected?.id === t.id && <span className="absolute inset-0 border-4 border-accent" aria-label="Frame dipilih" />}
+                {selected?.id === t.id && <span className="absolute inset-0 border-4 border-accent" aria-hidden />}
               </button>
             ))
           )}

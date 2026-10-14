@@ -14,10 +14,13 @@ import {
 } from "@/lib/template-layout"
 import { defaultBrandColors } from "./brand-defaults";
 
-export type ComposeSource = HTMLImageElement | HTMLCanvasElement
+/** Sumber gambar engine ini: foto jadi, offscreen canvas, atau frame <video>
+ *  hidup (preview frame saat sesi foto — slot aktif menampilkan kamera). */
+export type ComposeSource = HTMLImageElement | HTMLCanvasElement | HTMLVideoElement
 
 function sourceSize(src: ComposeSource): { w: number; h: number } {
   if (src instanceof HTMLCanvasElement) return { w: src.width, h: src.height }
+  if (src instanceof HTMLVideoElement) return { w: src.videoWidth || 1, h: src.videoHeight || 1 }
   return { w: src.naturalWidth || 1, h: src.naturalHeight || 1 }
 }
 
@@ -52,7 +55,10 @@ export function composeFrame(
   frameImg: ComposeSource | null,
   photos: (ComposeSource | null)[],
   transforms: { zoom?: number; panX?: number; panY?: number }[] = [],
-  maxW = Number.POSITIVE_INFINITY
+  maxW = Number.POSITIVE_INFINITY,
+  /** Slot kosong: "cross" = penanda diagnostik builder (default),
+   *  "blank" = isian redup tanpa silang (preview sesi foto customer). */
+  emptySlot: "cross" | "blank" = "cross"
 ): void {
   const scale = Math.min(1, maxW / layout.canvas.width)
   canvas.width = Math.max(1, Math.round(layout.canvas.width * scale))
@@ -79,17 +85,19 @@ export function composeFrame(
       const p = slotPlacement(slot, imgW, imgH, transforms[i] ?? {})
       ctx.drawImage(src, p.x * scale, p.y * scale, p.drawW * scale, p.drawH * scale)
     } else {
-      // Slot kosong (preview builder tanpa foto): isi silang diagnostik.
+      // Slot kosong: isi redup (preview builder memakai silang diagnostik).
       ctx.fillStyle = defaultBrandColors.muted
       ctx.fillRect(slot.x * scale, slot.y * scale, slot.width * scale, slot.height * scale)
-      ctx.strokeStyle = defaultBrandColors.ink
-      ctx.lineWidth = 1
-      ctx.beginPath()
-      ctx.moveTo(slot.x * scale, slot.y * scale)
-      ctx.lineTo((slot.x + slot.width) * scale, (slot.y + slot.height) * scale)
-      ctx.moveTo((slot.x + slot.width) * scale, slot.y * scale)
-      ctx.lineTo(slot.x * scale, (slot.y + slot.height) * scale)
-      ctx.stroke()
+      if (emptySlot === "cross") {
+        ctx.strokeStyle = defaultBrandColors.ink
+        ctx.lineWidth = 1
+        ctx.beginPath()
+        ctx.moveTo(slot.x * scale, slot.y * scale)
+        ctx.lineTo((slot.x + slot.width) * scale, (slot.y + slot.height) * scale)
+        ctx.moveTo((slot.x + slot.width) * scale, slot.y * scale)
+        ctx.lineTo(slot.x * scale, (slot.y + slot.height) * scale)
+        ctx.stroke()
+      }
     }
     ctx.restore()
   })

@@ -1,8 +1,16 @@
 "use client"
-import { Copy } from "lucide-react"
+import { ArrowLeft, Copy } from "lucide-react"
 import { formatIDR } from "@/lib/dashboard-math"
 import type { PendingPayment } from "./QrisPayment"
-export function VaPayment({ payment, left }: { payment: PendingPayment; left: number }) {
+export function VaPayment({
+  payment,
+  left,
+  onBack,
+}: {
+  payment: PendingPayment
+  left: number
+  onBack(): void
+}) {
   const copy = () => {
     if (payment.va_number) void navigator.clipboard.writeText(payment.va_number)
   }
@@ -29,6 +37,14 @@ export function VaPayment({ payment, left }: { payment: PendingPayment; left: nu
         Selesaikan transfer dalam {String(Math.floor(left / 60)).padStart(2, "0")}:
         {String(left % 60).padStart(2, "0")}
       </p>
+      <button
+        type="button"
+        onClick={onBack}
+        className="inline-flex min-h-11 w-fit items-center gap-2 border-2 border-ink bg-bg px-4 py-2 font-mono text-xs font-bold uppercase shadow-[3px_3px_0_0_#111111] active:translate-y-[2px]"
+      >
+        <ArrowLeft className="size-4" />
+        Kembali
+      </button>
     </div>
   )
 }

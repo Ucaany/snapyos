@@ -55,7 +55,7 @@ async function run() {
   const { writeFileSync } = await import("node:fs");
   writeFileSync(htmlPath, HTML, "utf-8");
 
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({ headless: process.env.HEADED !== "1" });
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
 

@@ -10,6 +10,8 @@ import { useEffect, useMemo, useState } from "react";
 
 /** Cache per-blob → { url, refs }. WeakMap agar blob yang dilepas bisa di-GC. */
 const registry = new WeakMap<Blob, { url: string; refs: number }>();
+const blobIds = new WeakMap<Blob, number>();
+let nextBlobId = 1;
 
 function acquire(blob: Blob): string {
   const existing = registry.get(blob);
@@ -54,12 +56,12 @@ export function useObjectUrl(blob: Blob | null | undefined): string | null {
  * sengaja di sini (satu render tambahan) — satu-satunya cara menjaga
  * keseimbangan refCount tanpa URL revoked.
  *
- * Deps memakai identitas konten (`blobsKey` = index+size+type), bukan
- * `blobs.join()` yang selalu "[object Blob]".
+ * Deps memakai identitas Blob, bukan ukuran dan MIME yang dapat sama untuk
+ * dua hasil foto berbeda.
  */
 export function useObjectUrls(blobs: Blob[]): (string | null)[] {
   const [urls, setUrls] = useState<(string | null)[]>([]);
-  const key = blobsKey(blobs);
+  const key = blobs.map(blobId).join("|");
   useEffect(() => {
     const acquired = blobs.map((b) => acquire(b));
     // eslint-disable-next-line react-hooks/set-state-in-effect -- acquire terikat lifecycle effect (StrictMode-safe)
@@ -73,7 +75,10 @@ export function useObjectUrls(blobs: Blob[]): (string | null)[] {
   return urls;
 }
 
-/** Identitas konten daftar blob (Blob tak punya nilai `toString` unik). */
-function blobsKey(blobs: Blob[]): string {
-  return blobs.map((b, i) => `${i}:${b.size}:${b.type}`).join("|");
+function blobId(blob: Blob): number {
+  const existing = blobIds.get(blob);
+  if (existing) return existing;
+  const id = nextBlobId++;
+  blobIds.set(blob, id);
+  return id;
 }

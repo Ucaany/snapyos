@@ -668,6 +668,8 @@ export function KioskApp({
           kioskStyle={pageStyle("capture")}
           showMirrorToggle={kioskBranding?.show_mirror_toggle !== false}
           videoUrl={kioskBranding?.pages?.capture?.video_url ?? null}
+          layout={selectedTemplate?.layout ?? null}
+          frameUrl={selectedTemplate?.file_url ?? null}
           onProgress={onProgressCapture}
           onComplete={handleCaptured}
         />
@@ -733,7 +735,9 @@ export function KioskApp({
           onPointerLeave={touchExit.onPointerLeave}
           onPointerCancel={touchExit.onPointerCancel}
           onContextMenu={(e) => e.preventDefault()}
-          className="fixed bottom-3 left-3 z-40 flex size-11 items-center justify-center border-2 border-ink/20 bg-surface/60 text-muted-foreground opacity-40 active:opacity-100"
+          className={`fixed z-40 flex size-11 items-center justify-center border-2 border-ink/20 bg-surface/60 text-muted-foreground opacity-40 active:opacity-100 ${
+            step === "editor" ? "right-3 top-3 lg:right-4 lg:top-4" : "bottom-3 left-3 lg:bottom-4 lg:left-4"
+          }`}
           style={{
             marginBottom: "env(safe-area-inset-bottom)",
             marginLeft: "env(safe-area-inset-left)",
