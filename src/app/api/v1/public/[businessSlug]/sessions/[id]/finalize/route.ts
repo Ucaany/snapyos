@@ -2,7 +2,97 @@ import { NextResponse } from "next/server";
 import { dataEnvelope } from "@/lib/api-errors";
 import { parseUuidParam, toErrorResponse } from "@/lib/api-route";
 import { finalizeSession } from "@/server/kiosk-sessions";
+import { rateLimit, rateLimitByDevice } from "@/lib/rate-limit";
+import { getClientIp } from "@/lib/request-ip";
+import {
+  FINALIZE_MAX_REQUEST_BYTES,
+  validateFinalizeRequest,
+  validatePhotoFile,
+} from "@/lib/upload-validation";
 import { sessionFinalizeSchema } from "@/lib/validators";
+
+const MAX_MULTIPART_BYTES = FINALIZE_MAX_REQUEST_BYTES;
+
+function rateLimited(retryAfterSec: number) {
+  return NextResponse.json(
+    { error: { code: "RATE_LIMITED", message: "Terlalu banyak permintaan. Coba lagi nanti.", details: { retry_after: retryAfterSec } } },
+    { status: 429, headers: { "retry-after": String(retryAfterSec) } }
+  );
+}
+
+function requestTooLarge() {
+  return NextResponse.json(
+    { error: { code: "VALIDATION_ERROR", message: "Ukuran total foto melebihi batas 50 MB", details: {} } },
+    { status: 422 }
+  );
+}
+
+function uploadInvalid(message: string) {
+  return NextResponse.json(
+    { error: { code: "VALIDATION_ERROR", message, details: {} } },
+    { status: 422 }
+  );
+}
+
+function toPhotoFile(file: PhotoFile): PhotoFile {
+  return file;
+}
+
+function declaredBodyBytes(request: Request): number | null {
+  const value = request.headers.get("content-length");
+  if (!value) return null;
+  const bytes = Number(value);
+  return Number.isSafeInteger(bytes) ? bytes : null;
+}
+
+function sumFileBytes(files: readonly PhotoFile[]): number {
+  return files.reduce((total, file) => total + Math.max(0, file.size ?? 0), 0);
+}
+
+function validateFiles(files: readonly PhotoFile[]): string | null {
+  const totalBytes = sumFileBytes(files);
+  const aggregateError = validateFinalizeRequest(totalBytes, files.length);
+  if (aggregateError) return aggregateError;
+  for (const file of files) {
+    if (!file.name || file.type !== "image/jpeg" || (file.size ?? 0) > 10 * 1024 * 1024) {
+      return "Foto tidak valid atau melebihi batas 10 MB";
+    }
+  }
+  return null;
+}
+
+async function readValidatedPhotos(files: readonly PhotoFile[]): Promise<PhotoFile[]> {
+  const validated: PhotoFile[] = [];
+  for (const file of files) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const result = validatePhotoFile(file, bytes);
+    if (!result.ok) throw new Error(result.error);
+    validated.push(toPhotoFile(file));
+  }
+  return validated;
+}
+
+function parsePhotos(form: FormData): PhotoFile[] {
+  return form.getAll("photos").filter((value): value is File => value instanceof File);
+}
+
+function parseMetadata(form: FormData) {
+  const deviceToken = String(form.get("device_token") ?? "");
+  const retakeRaw = String(form.get("retake_count") ?? "");
+  const templateRaw = String(form.get("template_id") ?? "");
+  return sessionFinalizeSchema.parse({
+    device_token: deviceToken,
+    retake_count: retakeRaw === "" ? undefined : Number(retakeRaw),
+    template_id: templateRaw === "" ? null : templateRaw,
+  });
+}
+
+async function enforceRateLimit(request: Request, deviceToken?: string) {
+  const ip = getClientIp(request.headers);
+  const ipLimit = await rateLimit("session-finalize:" + ip, 10, 60_000);
+  if (!ipLimit.ok) return ipLimit;
+  return rateLimitByDevice("session-finalize", deviceToken, 10, 60_000);
+}
 
 type Params = { params: Promise<{ businessSlug: string; id: string }> };
 
@@ -17,26 +107,28 @@ type PhotoFile = {
 export async function POST(request: Request, { params }: Params) {
   try {
     const { businessSlug, id: idRaw } = await params;
-    // businessSlug bukan UUID (slug string) — validasi via downstream lookup.
-    // session id WAJIB UUID: non-UUID → 404 (defense-in-depth sebelum query DB).
     const id = parseUuidParam(idRaw, "id");
+    const declared = declaredBodyBytes(request);
+    if (declared !== null && declared > MAX_MULTIPART_BYTES) return requestTooLarge();
 
     const form = await request.formData();
-    const deviceToken = String(form.get("device_token") ?? "");
-    const retakeRaw = String(form.get("retake_count") ?? "");
-    const templateRaw = String(form.get("template_id") ?? "");
+    const input = parseMetadata(form);
+    const limited = await enforceRateLimit(request, input.device_token);
+    if (limited && !limited.ok) return rateLimited(limited.retryAfterSec);
 
-    const input = sessionFinalizeSchema.parse({
-      device_token: deviceToken,
-      retake_count: retakeRaw === "" ? undefined : Number(retakeRaw),
-      template_id: templateRaw === "" ? null : templateRaw,
-    });
+    const photos = parsePhotos(form);
+    const filesError = validateFiles(photos);
+    if (filesError) return uploadInvalid(filesError);
+    let validatedPhotos: PhotoFile[];
+    try {
+      validatedPhotos = await readValidatedPhotos(photos);
+    } catch (error) {
+      return uploadInvalid(error instanceof Error ? error.message : "Foto tidak valid");
+    }
 
-    const photos: PhotoFile[] = form
-      .getAll("photos")
-      .filter((f): f is File => f instanceof File);
-
-    return NextResponse.json(dataEnvelope(await finalizeSession(businessSlug, id, input, photos)));
+    return NextResponse.json(
+      dataEnvelope(await finalizeSession(businessSlug, id, input, validatedPhotos))
+    );
   } catch (error) {
     return toErrorResponse(error);
   }

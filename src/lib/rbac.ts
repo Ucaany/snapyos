@@ -6,6 +6,39 @@
 
 export type BusinessRole = "owner" | "manager" | "staff";
 
+/**
+ * Permission yang dipakai runtime. Owner-only dicantumkan eksplisit supaya
+ * typo di caller gagal di compile-time, bukan lolos lewat wildcard `*`.
+ */
+export type Permission =
+  | "business:read"
+  | "business:update"
+  | "outlet:read"
+  | "outlet:write"
+  | "photobox:read"
+  | "photobox:write"
+  | "transaction:read"
+  | "transaction:write"
+  | "transaction:manual-create"
+  | "payment:confirm"
+  | "finance:read"
+  | "expense:read"
+  | "expense:write"
+  | "package:read"
+  | "package:write"
+  | "template:read"
+  | "template:write"
+  | "voucher:read"
+  | "voucher:write"
+  | "customer:read"
+  | "staff:read"
+  | "report:read"
+  | "subscription:read"
+  | "subscription:write"
+  | "pos:manage"
+  | "pos:sell"
+  | "pos:read";
+
 export const PERMISSIONS: Record<BusinessRole, readonly string[]> = {
   // Wildcard = semua permission incl. yang owner-only di bawah.
   // String owner-only dicantumkan eksplisit agar typo-test
@@ -59,7 +92,16 @@ export const PERMISSIONS: Record<BusinessRole, readonly string[]> = {
   ],
 };
 
-export function can(role: BusinessRole, permission: string): boolean {
+export function can(role: BusinessRole, permission: Permission): boolean {
+  return canUnchecked(role, permission);
+}
+
+/**
+ * Variant tanpa tipe permission — HANYA untuk invariant wildcard owner
+ * (owner boleh apa pun, termasuk permission yang belum terdaftar).
+ * Kode fitur wajib memakai `can()` dengan `Permission` agar typo gagal compile.
+ */
+export function canUnchecked(role: BusinessRole, permission: string): boolean {
   const perms = PERMISSIONS[role];
   return perms.includes("*") || perms.includes(permission);
 }

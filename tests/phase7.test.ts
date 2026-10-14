@@ -16,7 +16,7 @@ import {
   profitInteger,
 } from "../src/lib/dashboard-math.ts"
 import { csvCell, reportFilename, toCSV } from "../src/lib/report-csv.ts"
-import { can } from "../src/lib/rbac.ts"
+import { can, canUnchecked } from "../src/lib/rbac.ts"
 import { reportQuerySchema, voucherCreateSchema } from "../src/lib/validators.ts"
 
 // --- Finance math (docs/04 §4.4) ---
@@ -106,7 +106,7 @@ test("RBAC: staff tidak melihat finansial", () => {
 })
 
 test("RBAC: owner wildcard", () => {
-  assert.ok(can("owner", "anything:at:all"))
+  assert.ok(canUnchecked("owner", "anything:at:all"))
 })
 
 // --- Voucher validasi (docs/04 §4.11) ---

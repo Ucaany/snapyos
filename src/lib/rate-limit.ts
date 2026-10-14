@@ -4,7 +4,7 @@
  *
  * - Bila `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` di-set → pakai
  *   Upstash (counter shared lintas instance; aman untuk scale-out).
- * - Bila tidak → fallback in-memory (dev/test/instance tunggal).
+ * - Bila tidak → fallback in-memory hanya untuk dev/test; production fail-closed.
  * - Non-production: bila Upstash error → fail-open (jangan blokir dev).
  *   Production: bila Upstash error → fail-closed (tolak; jangan bocorkan limit).
  */
@@ -19,16 +19,8 @@ const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL?.trim();
 const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
 const hasUpstash = Boolean(UPSTASH_URL && UPSTASH_TOKEN);
 
-// Produksi tanpa Upstash = limiter in-memory per-instance (cukup untuk instance
-// tunggal; scale-out butuh counter shared). Fail-closed hanya bila backend shared
-// dikonfigurasi tapi error — lihat rateLimit()/registerFailure() di bawah.
-if (process.env.NODE_ENV === "production" && !hasUpstash) {
-  console.warn(
-    "[rate-limit] UPSTASH_REDIS_REST_URL/TOKEN tidak di-set di produksi — " +
-      "fallback in-memory per-instance (cukup untuk instance tunggal; set Upstash " +
-      "untuk counter shared lintas instance)."
-  );
-}
+const productionWithoutSharedStore =
+  process.env.NODE_ENV === "production" && !hasUpstash;
 
 function sweep(now: number) {
   // TTL berbasis waktu: sapu tiap 60 detik ATAU saat size besar, bukan hanya size.
@@ -100,8 +92,9 @@ export async function rateLimit(
   windowMs: number
 ): Promise<{ ok: boolean; retryAfterSec: number }> {
   if (!hasUpstash) {
-    // Tanpa shared store: fallback in-memory (dev/test/instance tunggal).
-    // Fail-closed HANYA saat backend shared dikonfigurasi tapi error (di bawah).
+    if (productionWithoutSharedStore) {
+      return { ok: false, retryAfterSec: Math.max(1, Math.ceil(windowMs / 1000)) };
+    }
     return inMemoryRateLimit(key, limit, windowMs);
   }
   try {
@@ -119,6 +112,7 @@ export async function rateLimit(
 
 /** Increment hitungan gagal (lockout per email — docs/09 §10). */
 export async function registerFailure(key: string, windowMs: number): Promise<number> {
+  if (productionWithoutSharedStore) return Number.MAX_SAFE_INTEGER;
   if (hasUpstash) {
     try {
       const { count } = await upstashIncr(key, windowMs);

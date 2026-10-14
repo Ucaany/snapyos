@@ -163,7 +163,12 @@ async function createPhotoboxAction(
   // CAPTCHA (Turnstile) — hanya saat CREATE (bukan edit). Fail-closed di prod.
   const token = String(formData.get("cf-turnstile-response") ?? "");
   const ip = getClientIp(await headers());
-  if (!(await verifyTurnstile(token, ip))) {
+  if (
+    !(await verifyTurnstile(token, {
+      remoteIp: ip,
+      expectedAction: "create-photobox",
+    }))
+  ) {
     return { error: "Verifikasi keamanan gagal. Muat ulang halaman lalu coba lagi." };
   }
 

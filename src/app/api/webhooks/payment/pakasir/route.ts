@@ -3,6 +3,7 @@ import { ApiError } from "@/lib/api-errors";
 import { handlePakasirWebhook, pakasirWebhookSecretResolution } from "@/server/payment/checkout";
 import { verifyPakasirWebhookSecret, resolvePakasirExpectedSecret } from "@/server/payment/pakasir-utils";
 import { rateLimit } from "@/lib/rate-limit";
+import { redactSensitive } from "@/lib/error-redaction";
 import { getClientIp } from "@/lib/request-ip";
 
 /** Batas ukuran body webhook — payload gateway jauh di bawah ini. */
@@ -74,7 +75,7 @@ export async function POST(request: Request) {
     if (error instanceof ApiError) {
       return NextResponse.json({ received: false }, { status: 200 });
     }
-    console.error("[webhook pakasir] unexpected error:", error);
+    console.error("[webhook pakasir] unexpected error:", redactSensitive(error));
     return NextResponse.json({ error: "internal" }, { status: 500 });
   }
 }

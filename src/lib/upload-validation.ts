@@ -5,6 +5,10 @@
 
 export const LOGO_MAX_BYTES = 2 * 1024 * 1024; // 2 MB
 
+export type PhotoValidation =
+  | { ok: true; ext: string }
+  | { ok: false; error: string };
+
 /** Allowlist tipe → ekstensi final (rename server-side, docs/09 §9.6). */
 export const LOGO_ALLOWED_TYPES: Record<string, string> = {
   "image/png": "png",
@@ -22,13 +26,41 @@ export type LogoValidation =
  * SVG sengaja TIDAK dideteksi: SVG dihapus dari allowlist logo (audit keamanan) —
  * SVG dapat memuat skrip sehingga berisiko XSS bila disajikan inline.
  */
+function hasPngSignature(bytes: Uint8Array): boolean {
+  return bytes.length >= 8 &&
+    bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47 &&
+    bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a;
+}
+
+function hasJpegStructure(bytes: Uint8Array): boolean {
+  if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return false;
+  let offset = 2;
+  while (offset + 1 < bytes.length) {
+    if (bytes[offset] !== 0xff) return false;
+    while (offset < bytes.length && bytes[offset] === 0xff) offset += 1;
+    if (offset >= bytes.length) return false;
+    const marker = bytes[offset++];
+    if (marker === undefined) return false;
+    if (marker === 0xd9) return true;
+    if (marker === 0xda) {
+      const end = bytes.length - 1;
+      return bytes[end - 1] === 0xff && bytes[end] === 0xd9;
+    }
+    if (marker === 0xd8 || (marker >= 0xd0 && marker <= 0xd7)) continue;
+    if (offset + 1 >= bytes.length) return false;
+    const first = bytes[offset];
+    const second = bytes[offset + 1];
+    if (first === undefined || second === undefined) return false;
+    const length = (first << 8) | second;
+    if (length < 2 || offset + length > bytes.length) return false;
+    offset += length;
+  }
+  return false;
+}
+
 export function sniffImageType(bytes: Uint8Array): string | null {
-  if (bytes.length >= 3 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e) {
-    return "image/png";
-  }
-  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
-    return "image/jpeg";
-  }
+  if (hasPngSignature(bytes)) return "image/png";
+  if (hasJpegStructure(bytes)) return "image/jpeg";
   if (
     bytes.length >= 12 &&
     bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
@@ -37,6 +69,81 @@ export function sniffImageType(bytes: Uint8Array): string | null {
     return "image/webp";
   }
   return null;
+}
+
+export const FINALIZE_MAX_REQUEST_BYTES = 50 * 1024 * 1024;
+export const FINALIZE_MAX_PHOTOS = 50;
+
+export function validateFinalizeRequest(totalBytes: number, photoCount: number): string | null {
+  if (!Number.isSafeInteger(totalBytes) || totalBytes < 0 || totalBytes > FINALIZE_MAX_REQUEST_BYTES) {
+    return "Ukuran total foto melebihi batas 50 MB";
+  }
+  if (!Number.isSafeInteger(photoCount) || photoCount < 1 || photoCount > FINALIZE_MAX_PHOTOS) {
+    return "Jumlah foto tidak valid";
+  }
+  return null;
+}
+
+export function validateJpegBytes(bytes: Uint8Array): boolean {
+  return hasJpegStructure(bytes);
+}
+
+export function validateJpegDimensions(bytes: Uint8Array, maxPixels = 20_000_000): boolean {
+  if (!hasJpegStructure(bytes)) return false;
+  let offset = 2;
+  while (offset + 1 < bytes.length) {
+    if (bytes[offset] !== 0xff) return false;
+    while (offset < bytes.length && bytes[offset] === 0xff) offset += 1;
+    const marker = bytes[offset++];
+    if (marker === undefined || marker === 0xda || marker === 0xd9) return true;
+    if (marker >= 0xc0 && marker <= 0xc3) {
+      if (offset + 7 >= bytes.length) return false;
+      const heightHigh = bytes[offset + 3];
+      const heightLow = bytes[offset + 4];
+      const widthHigh = bytes[offset + 5];
+      const widthLow = bytes[offset + 6];
+      if (
+        heightHigh === undefined || heightLow === undefined ||
+        widthHigh === undefined || widthLow === undefined
+      ) return false;
+      const height = (heightHigh << 8) | heightLow;
+      const width = (widthHigh << 8) | widthLow;
+      return width > 0 && height > 0 && width * height <= maxPixels;
+    }
+    if (marker === 0xd8 || (marker >= 0xd0 && marker <= 0xd7)) continue;
+    if (offset + 1 >= bytes.length) return false;
+    const first = bytes[offset];
+    const second = bytes[offset + 1];
+    if (first === undefined || second === undefined) return false;
+    const length = (first << 8) | second;
+    if (length < 2 || offset + length > bytes.length) return false;
+    offset += length;
+  }
+  return false;
+}
+
+export function validatePhotoPayload(bytes: Uint8Array): boolean {
+  return validateJpegBytes(bytes) && validateJpegDimensions(bytes);
+}
+
+export function validatePhotoFile(
+  file: {
+    name?: string | null;
+    type?: string | null;
+    size?: number | null;
+  },
+  bytes?: Uint8Array | null
+): PhotoValidation {
+  const type = (file.type ?? "").toLowerCase();
+  const size = file.size ?? 0;
+  if (!file.name) return { ok: false, error: "Foto tidak terbaca" };
+  if (type !== "image/jpeg") return { ok: false, error: "Foto harus berformat JPEG" };
+  if (size <= 0) return { ok: false, error: "Foto kosong" };
+  if (size > PHOTO_MAX_BYTES) return { ok: false, error: "Ukuran foto maksimal 10 MB" };
+  if (bytes && !validatePhotoPayload(bytes)) {
+    return { ok: false, error: "Konten foto tidak valid (bukan JPEG utuh)" };
+  }
+  return { ok: true, ext: "jpg" };
 }
 
 /**
@@ -116,32 +223,4 @@ export function validateVideoFile(
     return { ok: false, error: "Konten video tidak cocok dengan tipe yang diklaim" };
   }
   return { ok: true, ext: VIDEO_ALLOWED_TYPES[type] };
-}
-
-export type PhotoValidation =
-  | { ok: true; ext: string }
-  | { ok: false; error: string };
-
-/**
- * Validasi foto finalize: hanya image/jpeg, ≤ cap, nama wajib ada.
- * Jika `bytes` diberikan, magic byte wajib benar-benar JPEG.
- */
-export function validatePhotoFile(
-  file: {
-    name?: string | null;
-    type?: string | null;
-    size?: number | null;
-  },
-  bytes?: Uint8Array | null
-): PhotoValidation {
-  const type = (file.type ?? "").toLowerCase();
-  const size = file.size ?? 0;
-  if (!file.name) return { ok: false, error: "Foto tidak terbaca" };
-  if (type !== "image/jpeg") return { ok: false, error: "Foto harus berformat JPEG" };
-  if (size <= 0) return { ok: false, error: "Foto kosong" };
-  if (size > PHOTO_MAX_BYTES) return { ok: false, error: "Ukuran foto maksimal 10 MB" };
-  if (bytes && sniffImageType(bytes) !== "image/jpeg") {
-    return { ok: false, error: "Konten foto tidak valid (bukan JPEG)" };
-  }
-  return { ok: true, ext: "jpg" };
 }

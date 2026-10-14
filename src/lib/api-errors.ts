@@ -22,7 +22,7 @@ export const API_ERRORS = {
   PAYMENT_EXPIRED: 409,
   PAYMENT_NOT_FOUND: 404,
   // Subscription lifecycle — docs/02 §2.4.
-  SUBSCRIPTION_EXPIRED: 403,
+  SUBSCRIPTION_EXPIRED: 410,
   // POS add-on — docs/pos/01 §7.
   POS_NOT_SUBSCRIBED: 403,
   INSUFFICIENT_STOCK: 409,

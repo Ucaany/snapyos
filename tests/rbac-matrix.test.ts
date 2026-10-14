@@ -10,7 +10,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { PERMISSIONS, can, type BusinessRole } from "../src/lib/rbac.ts";
+import { PERMISSIONS, can, canUnchecked, type BusinessRole, type Permission } from "../src/lib/rbac.ts";
 
 const OWNER_ONLY = [
   "expense:write",
@@ -66,7 +66,7 @@ test("owner: wildcard mengizinkan seluruh permission (existing + owner-only)", (
     "arbitrary:string",
   ]);
   for (const p of universe) {
-    assert.ok(can("owner", p), `owner harus dapat "${p}"`);
+    assert.ok(canUnchecked("owner", p), `owner harus dapat "${p}"`);
   }
 });
 
@@ -89,7 +89,7 @@ test("staff: read-only + POS sell/read = allowed", () => {
 });
 
 test("staff: TIDAK boleh mutasi (write/manage), finance, atau owner-only", () => {
-  const denyForStaff = [
+  const denyForStaff: Permission[] = [
     "outlet:write",
     "photobox:write",
     "package:write",

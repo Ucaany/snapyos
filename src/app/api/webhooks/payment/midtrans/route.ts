@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { handleMidtransWebhook } from "@/server/payment/checkout";
 import { rateLimit } from "@/lib/rate-limit";
+import { redactSensitive } from "@/lib/error-redaction";
 import { getClientIp } from "@/lib/request-ip";
 
 /** Batas ukuran body webhook — payload gateway jauh di bawah ini. */
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error("[webhook midtrans] unexpected error:", error);
+    console.error("[webhook midtrans] unexpected error:", redactSensitive(error));
     return NextResponse.json({ received: false }, { status: 500 });
   }
 }

@@ -17,13 +17,16 @@ import {
 } from "../src/lib/validators.ts"
 
 const SECRET = "TURNSTILE_SECRET_KEY"
+const HOSTNAMES = "TURNSTILE_ALLOWED_HOSTNAMES"
 const NODE_ENV = "NODE_ENV"
 const env = process.env as Record<string, string | undefined>
-const saved = { secret: env[SECRET], nodeEnv: env[NODE_ENV] }
+const saved = { secret: env[SECRET], hostnames: env[HOSTNAMES], nodeEnv: env[NODE_ENV] }
 
 function restore() {
   if (saved.secret === undefined) delete env[SECRET]
   else env[SECRET] = saved.secret
+  if (saved.hostnames === undefined) delete env[HOSTNAMES]
+  else env[HOSTNAMES] = saved.hostnames
   if (saved.nodeEnv === undefined) delete env[NODE_ENV]
   else env[NODE_ENV] = saved.nodeEnv
 }
@@ -48,6 +51,36 @@ test("verifyTurnstile: secret ada + token kosong → gagal tanpa panggil Cloudfl
   assert.equal(await verifyTurnstile(null), false)
   assert.equal(await verifyTurnstile(undefined), false)
   restore()
+})
+
+test("verifyTurnstile: action dan hostname wajib cocok", async () => {
+  const originalFetch = globalThis.fetch
+  env[SECRET] = "dummy-secret"
+  env[HOSTNAMES] = "app.example.test"
+  env[NODE_ENV] = "production"
+  globalThis.fetch = async () =>
+    new Response(
+      JSON.stringify({ success: true, action: "login", hostname: "app.example.test" }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    )
+  try {
+    assert.equal(
+      await verifyTurnstile("token", { expectedAction: "login" }),
+      true
+    )
+    assert.equal(
+      await verifyTurnstile("token", { expectedAction: "create-photobox" }),
+      false
+    )
+    env[HOSTNAMES] = "other.example.test"
+    assert.equal(
+      await verifyTurnstile("token", { expectedAction: "login" }),
+      false
+    )
+  } finally {
+    globalThis.fetch = originalFetch
+    restore()
+  }
 })
 
 test("schema kiosk: TANPA captcha_token (kiosk customer bebas captcha)", () => {

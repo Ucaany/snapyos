@@ -1,10 +1,7 @@
 /**
- * Regresi P0 — produksi TANPA Upstash harus tetap jalan (fallback in-memory),
- * BUKAN fail-closed yang memblokir SEMUA login.
- *
- * Bug lama: `rateLimit("login:ip:…")` di produksi tanpa Upstash selalu
- * `{ ok: false }` → `authorize()` return null → login mati total.
- * Sesuai docs/09 § dan docs/08 §8.18: kosong = fallback in-memory.
+ * Regresi P0: produksi TANPA Upstash harus fail-closed.
+ * Limiter in-memory hanya aman untuk proses tunggal di development/test;
+ * deployment scale-out wajib memakai counter bersama.
  *
  * Dijalankan di child process dengan NODE_ENV=production (module membaca env
  * saat import) dan Upstash sengaja dikosongkan.
@@ -24,7 +21,7 @@ const r = await rateLimit("login:ip:203.0.113.9", 5, 60_000);
 console.log(JSON.stringify({ ok: r.ok, failCount: await registerFailure("login:fail:a@b.c", 60_000) }));
 `;
 
-test("produksi tanpa Upstash: login key lolos (fallback in-memory, bukan fail-closed)", () => {
+test("produksi tanpa Upstash: limiter fail-closed", () => {
   const out = execFileSync(
     process.execPath,
     ["--experimental-strip-types", "--input-type=module", "-e", PROBE],
@@ -40,6 +37,10 @@ test("produksi tanpa Upstash: login key lolos (fallback in-memory, bukan fail-cl
     }
   ).trim();
   const { ok, failCount } = JSON.parse(out) as { ok: boolean; failCount: number };
-  assert.equal(ok, true, "login key harus lolos di produksi tanpa Upstash");
-  assert.ok(failCount >= 1 && failCount < Number.MAX_SAFE_INTEGER, "registerFailure harus in-memory, bukan MAX_SAFE_INTEGER");
+  assert.equal(ok, false, "login key harus ditolak bila shared store production tidak tersedia");
+  assert.equal(
+    failCount,
+    Number.MAX_SAFE_INTEGER,
+    "registerFailure harus mengunci login saat shared store production tidak tersedia"
+  );
 });

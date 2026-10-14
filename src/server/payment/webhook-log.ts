@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createServerClient } from "@/lib/supabase/server";
-import { redactWebhookPayload } from "@/lib/webhook-redaction";
+import { redactWebhookPayload } from "@/lib/error-redaction";
 
 /**
  * Log webhook payment (idempotent) — dipakai checkout kiosk (payments) dan

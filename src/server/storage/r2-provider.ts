@@ -47,6 +47,13 @@ function messageFrom(error: unknown): string {
   return String(error);
 }
 
+function isNotFoundError(error: unknown): boolean {
+  const status = (error as { $metadata?: { httpStatusCode?: number } })?.$metadata
+    ?.httpStatusCode;
+  const code = (error as { name?: string })?.name;
+  return status === 404 || code === "NotFound" || code === "NoSuchKey";
+}
+
 /** Jalankan task dengan konkurensi terbatas, urutan hasil dijaga. */
 async function mapWithConcurrency<T, R>(
   items: T[],
@@ -98,8 +105,8 @@ export class R2StorageProvider implements StorageProvider {
             new HeadObjectCommand({ Bucket: this.bucket(bucket), Key: objectKey })
           );
           return { data: null, error: { message: "Object already exists" } };
-        } catch {
-          // HeadObject gagal (404/NotFound) = key belum ada → lanjut upload.
+        } catch (error) {
+          if (!isNotFoundError(error)) throw error;
         }
       }
       await this.client.send(
@@ -138,11 +145,8 @@ export class R2StorageProvider implements StorageProvider {
       );
       return true;
     } catch (error) {
-      // 404/NotFound/NoSuchKey = objek tidak ada (bukan misconfig) → false.
-      const status = (error as { $metadata?: { httpStatusCode?: number } })?.$metadata
-        ?.httpStatusCode;
-      const code = (error as { name?: string })?.name;
-      if (status === 404 || code === "NotFound" || code === "NoSuchKey") return false;
+      // 404/NotFound/NoSuchKey = objek tidak ada, bukan misconfiguration.
+      if (isNotFoundError(error)) return false;
       return null;
     }
   }
