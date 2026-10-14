@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { logoutAction } from "@/server/auth-actions";
 
 /**
@@ -15,10 +17,11 @@ export function StaffTopbar({
   return (
     <header className="sticky top-0 z-20 border-b-2 border-ink bg-bg">
       <div className="flex h-16 w-full items-center gap-3 px-4 md:gap-4 md:px-6">
-        <a
+        <Link
           href="/staff"
           className="flex min-h-11 shrink-0 items-center gap-2 font-display text-base font-bold uppercase tracking-tight md:min-h-0 md:text-lg"
         >
+          {/* eslint-disable-next-line @next/next/no-img-element -- SVG statis 1 file, tidak butuh optimizer next/image */}
           <img
             src="/avatar-snappy/4.svg"
             alt="Logo SnapyOS"
@@ -28,7 +31,7 @@ export function StaffTopbar({
           <span className="border-2 border-ink bg-accent px-1.5 py-0.5 text-[10px] leading-none tracking-[0.18em]">
             STAFF
           </span>
-        </a>
+        </Link>
         <p className="hidden truncate font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground md:block">
           {"// "}
           {businessName ?? "Tanpa bisnis"}

@@ -111,12 +111,21 @@ export function TemplatesGrid({ templates, canWrite }: Props) {
       )}
 
       {templates.length === 0 ? (
-        <EmptyState
-          icon={ImageIcon}
-          eyebrow="BELUM ADA TEMPLATE"
+        canWrite ? (
+          <EmptyState
+            icon={ImageIcon}
+            eyebrow="BELUM ADA TEMPLATE"
             title="Desain frame di Canva/Figma/Photoshop, ekspor PNG transparan, lalu unggah di sini."
-          body="Assign ke paket agar bisa dipilih customer."
-        />
+            body="Assign ke paket agar bisa dipilih customer."
+          />
+        ) : (
+          <EmptyState
+            icon={ImageIcon}
+            eyebrow="BELUM ADA TEMPLATE"
+            title="Belum ada frame yang tersedia untuk Anda."
+            body="Minta owner mengunggah frame dan meng-assign-nya ke paket booth Anda, lalu muat ulang halaman."
+          />
+        )
       ) : (
         <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3" aria-label="Daftar template">
           {templates.map((tpl) => (
@@ -169,6 +178,7 @@ export function TemplatesGrid({ templates, canWrite }: Props) {
                           variant="outline"
                           size="icon-sm"
                           aria-label={`Ubah template ${tpl.name}`}
+                          aria-expanded={editingId === tpl.id}
                           onClick={() => setEditingId(editingId === tpl.id ? null : tpl.id)}
                         >
                           <Pencil aria-hidden />

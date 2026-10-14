@@ -92,8 +92,8 @@
 ### 1.3 Tenant & Sesi
 
 - `src/lib/tenant.ts` — `requireUser`, `getUserMemberships`, `getActiveBusiness` (cookie `snapyos_active_business`), `getMembership` (React `cache`).
-- `src/lib/auth.ts` — Auth.js v5 credential (email+password argon2 / email+PIN+booth), JWT + revocation tabel `auth_sessions`, Turnstile CAPTCHA di `authorize()`.
-- `src/server/staff-pin.ts` — `listStaffLoginBooths`, `verifyStaffPin`.
+- `src/lib/auth.ts` - Auth.js v5 credential (email+password argon2 / email+PIN), JWT + revocation tabel `auth_sessions`, Turnstile CAPTCHA di `authorize()`.
+- `src/server/staff-pin.ts` - `verifyStaffPin` (tanpa enumerasi booth).
 
 ### 1.4 Gerbang Langganan & Fitur
 
@@ -486,7 +486,7 @@
 - **Page**: `src/app/(staff)/staff/page.tsx` · eyebrow `/// STATION.CTL · <ONLINE/OFFLINE>`.
 - **Data**: `getStaffOverview` (`src/server/staff-overview.ts`).
 - **Guard internal**: bila `can(role,'transaction:read')` → redirect `/dashboard` (staff tidak lihat finansial).
-- **Komponen**: kartu status booth (online/offline/maintenance), sesi aktif + elapsed, link cepat ke 5 modul, jam live WIB.
+- **Komponen**: kartu status booth (online/offline/maintenance), sesi aktif + elapsed, link cepat ke 5 modul, jam live zona bisnis (`StationClock` + `LiveSessionMeta`; tick 15 dtk, label WIB/WITA/WIT ikut `businesses.timezone`).
 - **DB**: `businesses, outlets, packages, photoboxes, sessions, templates`.
 - **Catatan**: staff **tanpa** akses write, finansial, subscription, settings, admin.
 
@@ -506,16 +506,16 @@
 - **DB**: `packages, package_templates, package_outlets, package_photoboxes`.
 
 ### S5. Template (Read-Only)
-- **Page**: `/staff/templates` · **Data**: `listTemplates`.
-- **Komponen**: `TemplatesGrid` (read-only).
+- **Page**: `/staff/templates` · **Data**: `listTemplates` (hanya `is_active`, frame yang benar-benar bisa dipilih customer).
+- **Komponen**: `TemplatesGrid` (read-only; empty state khusus tanpa ajakan upload/assign).
 - **DB**: `templates`.
 
-### S6. Login PIN Staff (Booth-Scoped)
-- **Jalur**: `loginAction` (`src/server/auth-actions.ts`) menerima `email + pin + photobox_id`.
-- **Verifikasi**: `verifyStaffPin` (`src/server/staff-pin.ts`) → `member_photoboxes.pin_hash` (argon2id).
-- **Action**: `staffLoginBoothsAction` (auth-gated) → `listStaffLoginBooths`.
+### S6. Login PIN Staff (Per Booth, Tanpa Enumerasi)
+- **Jalur**: `loginAction` (`src/server/auth-actions.ts`) menerima `email + pin` (tanpa `photobox_id`).
+- **Verifikasi**: `verifyStaffPin(email, pin)` (`src/server/staff-pin.ts`) → `member_photoboxes.pin_hash` (argon2id), maks `MAX_PIN_CANDIDATES` hash per percobaan.
+- **Lockout**: `login:pin:<email>` 5 gagal / 15 menit (di atas limit IP 5/menit).
 - **DB**: `member_photoboxes, photoboxes, users`.
-- **Dampak**: PIN berlaku per (staff × booth); booth tanpa PIN tidak muncul.
+- **Dampak**: PIN tetap berlaku per (staff × booth) di DB, tapi halaman login tidak pernah menerima/mengembalikan daftar booth, jadi tidak ada enumerasi booth pra-sesi. Shell staff menentukan business dari membership.
 
 ### S7. Konfirmasi Tunai (Staff sebagai Kasir Kiosk)
 - **Komponen**: `CashPaymentNotifier` di layout staff.
@@ -735,7 +735,7 @@
 ### A. Login `/login`
 - **Page**: `src/app/(auth)/login/page.tsx` → `AuthPage` (`src/components/auth-block.tsx` → `AuthUI`/`AuthForm`).
 - **Action**: `loginAction` (`src/server/auth-actions.ts`).
-- **Mekanisme**: Auth.js v5 `signIn("credentials")`; rate limit + verifikasi di `authorize()` (`src/lib/auth.ts`) = single source of truth; Turnstile CAPTCHA; dua mode (email+password, email+PIN+booth).
+- **Mekanisme**: Auth.js v5 `signIn("credentials")`; rate limit + verifikasi di `authorize()` (`src/lib/auth.ts`) = single source of truth; Turnstile CAPTCHA; dua mode (email+password, email+PIN).
 - **Redirect**: `isAdminEmail` → `/admin`, else `/dashboard` (destination dihitung ulang di layout).
 - **DB**: `users, auth_sessions, business_members, member_photoboxes, devices`.
 - **API**: `GET/POST /api/auth/[...nextauth]`, `POST /api/auth/logout`.

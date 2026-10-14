@@ -13,25 +13,19 @@ export const MAX_PIN_CANDIDATES = 10;
 
 /**
  * Verifikasi PIN login staff TANPA mengungkap daftar booth ke browser.
- * `photoboxId` opsional: bila klien lama masih mengirimnya, verifikasi hanya
- * assignment itu; bila tidak, semua assignment PIN milik email dicoba (dibatasi
- * MAX_PIN_CANDIDATES) sehingga halaman login tidak perlu enumerasi booth.
+ * Semua assignment PIN milik email dicoba (dibatasi MAX_PIN_CANDIDATES)
+ * sehingga halaman login tidak perlu enumerasi booth dan PIN tetap berlaku
+ * per (staff × booth) di DB.
  */
-export async function verifyStaffPin(
-  email: string,
-  pin: string,
-  photoboxId?: string | null
-): Promise<boolean> {
+export async function verifyStaffPin(email: string, pin: string): Promise<boolean> {
   const supabase = createServerClient();
-  let query = supabase
+  const { data } = await supabase
     .from("member_photoboxes")
     .select("pin_hash, users!inner ( email )")
     .eq("users.email", email)
     .not("pin_hash", "is", null)
     .limit(MAX_PIN_CANDIDATES);
-  if (photoboxId) query = query.eq("photobox_id", photoboxId);
 
-  const { data } = await query;
   const hashes = ((data ?? []) as { pin_hash: string | null }[])
     .map((row) => row.pin_hash)
     .filter((hash): hash is string => Boolean(hash));

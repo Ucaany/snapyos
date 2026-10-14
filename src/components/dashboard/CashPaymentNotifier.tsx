@@ -124,7 +124,7 @@ export function CashPaymentNotifier({ businessId }: { businessId: string }) {
                   {item.photobox_name}
                 </p>
                 <p className="truncate font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
-                  {item.outlet_name ?? "—"}
+                  {item.outlet_name ?? "-"}
                 </p>
               </div>
               <strong className="shrink-0 font-mono text-sm">{formatIDR(item.amount)}</strong>

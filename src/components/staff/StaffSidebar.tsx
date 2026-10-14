@@ -14,13 +14,13 @@ import { isNavActive } from "@/lib/nav-active"
  * flat px-3 py-2, active border-2 + bg-accent, mobile strip horizontal.
  */
 
-export type StaffNavItem = {
+type StaffNavItem = {
   label: string
   href: string
   icon: LucideIcon
 }
 
-export const STAFF_NAV: StaffNavItem[] = [
+const STAFF_NAV: StaffNavItem[] = [
   { label: "Overview", href: "/staff", icon: Gauge },
   { label: "Booth", href: "/staff/photoboxes", icon: Camera },
   { label: "Outlet", href: "/staff/outlets", icon: Store },

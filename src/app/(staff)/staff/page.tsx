@@ -3,8 +3,10 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Camera, ImageIcon, Package, Store } from "lucide-react";
 
+import { LiveSessionMeta, StationClock } from "@/components/staff/StaffLiveClock";
 import { destinationFor } from "@/lib/destination";
 import { can } from "@/lib/rbac";
+import { clockParts } from "@/lib/staff-live";
 import { getActiveBusiness, getUserMemberships, requireUser } from "@/lib/tenant";
 import { getStaffOverview, type BoothStatus } from "@/server/staff-overview";
 
@@ -17,34 +19,6 @@ const STATUS_LABEL: Record<BoothStatus, string> = {
   offline: "OFFLINE",
   maintenance: "MAINT",
 };
-
-const dateFmtTime = new Intl.DateTimeFormat("id-ID", {
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-  timeZone: "Asia/Jakarta",
-});
-
-function elapsedMinutes(startISO: string, nowMs: number): number {
-  const startedMs = new Date(startISO).getTime();
-  if (Number.isNaN(startedMs)) return 0;
-  return Math.max(0, Math.floor((nowMs - startedMs) / 60_000));
-}
-
-// Progres sesi terhadap jendela nyata (started_at → expires_at). Mengembalikan
-// null bila tidak ada expires_at valid, supaya bar tidak menampilkan angka palsu.
-function sessionProgressPct(
-  startISO: string,
-  expiresISO: string | null,
-  nowMs: number
-): number | null {
-  if (!expiresISO) return null;
-  const startMs = new Date(startISO).getTime();
-  const endMs = new Date(expiresISO).getTime();
-  if (Number.isNaN(startMs) || Number.isNaN(endMs) || endMs <= startMs) return null;
-  const elapsed = nowMs - startMs;
-  return Math.min(100, Math.max(0, Math.round((elapsed / (endMs - startMs)) * 100)));
-}
 
 // Komponen di-deklarasi inline karena ringkas & satu kali pakai (no over-abstraction).
 export default async function StaffDashboardPage() {
@@ -86,14 +60,7 @@ export default async function StaffDashboardPage() {
             TZ {overview.timeZone} · /p/{overview.businessSlug}
           </p>
         </div>
-        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-          <span className="size-2 bg-accent shadow-[0_0_0_2px_#111111]" aria-hidden />
-          <span className="text-ink">LIVE</span>
-          <span aria-hidden>·</span>
-          <time dateTime={new Date(nowMs).toISOString()}>
-            {dateFmtTime.format(new Date(nowMs))} WIB
-          </time>
-        </div>
+        <StationClock initialMs={nowMs} timeZone={overview.timeZone} />
       </header>
 
       {/* Bar 1, Telemetri Booth (3 sel grid tipis ala brutalist blueprint) */}
@@ -164,12 +131,7 @@ export default async function StaffDashboardPage() {
         ) : (
           <ol className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {overview.activeSessions.map((s) => {
-              const minutes = elapsedMinutes(s.started_at, nowMs);
-              const pct = sessionProgressPct(s.started_at, s.expires_at, nowMs);
-              const remainingMin =
-                s.expires_at !== null
-                  ? Math.max(0, Math.ceil((new Date(s.expires_at).getTime() - nowMs) / 60_000))
-                  : null;
+              const started = clockParts(s.started_at, overview.timeZone);
               return (
                 <li
                   key={s.id}
@@ -192,22 +154,12 @@ export default async function StaffDashboardPage() {
                       ● LIVE
                     </span>
                   </div>
-                  <div className="mt-3 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-                    <span>MULAI {dateFmtTime.format(new Date(s.started_at))} WIB</span>
-                    <span className="text-ink">
-                      {minutes} MIN
-                      {remainingMin !== null ? ` · SISA ${remainingMin} MIN` : ""}
-                    </span>
-                  </div>
-                  {pct !== null && (
-                    <div className="mt-2 h-2 border-2 border-ink bg-surface">
-                      <div
-                        className="h-full bg-accent"
-                        style={{ width: `${pct}%` }}
-                        aria-hidden
-                      />
-                    </div>
-                  )}
+                  <LiveSessionMeta
+                    startedAt={s.started_at}
+                    expiresAt={s.expires_at}
+                    startedLabel={`${started.time} ${started.zone}`}
+                    initialMs={nowMs}
+                  />
                 </li>
               );
             })}
@@ -352,7 +304,7 @@ function EmptyBooth({ href, label }: { href: string; label: string }) {
       </p>
       <Link
         href={href}
-        className="border-2 border-ink bg-surface px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.05em] text-ink shadow-[2px_2px_0_0_#111111] hover:bg-accent active:translate-y-[1px] active:shadow-none"
+        className="inline-flex min-h-11 items-center border-2 border-ink bg-surface px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.05em] text-ink shadow-[2px_2px_0_0_#111111] hover:bg-accent active:translate-y-[1px] active:shadow-none"
       >
         Buka halaman booth →
       </Link>

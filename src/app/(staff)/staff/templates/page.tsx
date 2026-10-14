@@ -18,9 +18,10 @@ export default async function StaffTemplatesPage() {
   const active = await getActiveBusiness(user.id);
   if (!active) redirect("/staff");
 
-  const templates = await listTemplates(user.id, active.business.id, {
-    includeInactive: true,
-  });
+  // Hanya frame aktif: shell staff menampilkan apa yang dilihat customer di
+  // kiosk (`listPublicTemplates` juga `is_active = true`), dan frame nonaktif
+  // tidak bisa diaktifkan dari sini (read-only) sehingga hanya membingungkan.
+  const templates = await listTemplates(user.id, active.business.id);
 
   return (
     <div className="flex flex-col gap-8 p-6 md:p-10">

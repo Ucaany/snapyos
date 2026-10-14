@@ -63,7 +63,7 @@ export function FeatureError({ title, description, error, reset }: FeatureErrorP
         </p>
         <p className="text-sm leading-relaxed text-muted-foreground">{description}</p>
         <p className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
-          {error.digest ? `REF ${error.digest}` : "REF —"}
+          {error.digest ? `REF ${error.digest}` : "REF -"}
         </p>
         <Button type="button" onClick={reset}>
           <RotateCcw aria-hidden />

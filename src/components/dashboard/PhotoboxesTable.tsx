@@ -259,7 +259,8 @@ export function PhotoboxesTable({
                   </tr>
                   {editingId === box.id && canWrite && (
                     <tr className="border-b-2 border-ink/10 bg-muted">
-                      <td colSpan={canWrite ? 6 : 5} className="px-4 py-4">
+                      {/* Baris ini hanya render saat canWrite, jadi kolomnya pasti 6. */}
+                      <td colSpan={6} className="px-4 py-4">
                         <PhotoboxForm
                           outlets={outlets}
                           photobox={box}

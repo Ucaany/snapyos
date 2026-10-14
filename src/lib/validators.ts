@@ -112,9 +112,9 @@ export const registerSchema = z.object({
 export const loginSchema = z.object({
   email: z.string().trim().toLowerCase().email("Format email tidak valid"),
   password: z.string().min(1, "Password wajib diisi").optional(),
-  // Staff login: PIN 4–6 digit + booth (password kosong untuk jalur ini).
+  // Staff login: PIN 4–6 digit (password kosong untuk jalur ini). Booth tidak
+  // dipilih pra-sesi: PIN diverifikasi terhadap assignment milik email.
   pin: z.string().trim().regex(/^\d{4,6}$/, "PIN 4–6 digit").optional(),
-  photobox_id: uuid.optional(),
 })
 
 export const staffPinSchema = z.object({

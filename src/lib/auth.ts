@@ -92,7 +92,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "Email" },
         password: { label: "Password" },
         pin: { label: "PIN" },
-        photobox_id: { label: "Booth" },
         captcha_token: { label: "Captcha" },
       },
       authorize: async (credentials, request) => {
@@ -101,7 +100,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           .toLowerCase();
         const password = String(credentials?.password ?? "");
         const pin = String(credentials?.pin ?? "");
-        const photoboxId = String(credentials?.photobox_id ?? "");
         const captchaToken = String(credentials?.captcha_token ?? "");
         if (!email) return null;
 
@@ -161,7 +159,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             await registerFailure(failKey, 15 * 60_000);
             return null;
           }
-          const ok = await verifyStaffPin(email, pin, photoboxId || null);
+          const ok = await verifyStaffPin(email, pin);
           if (!ok) {
             await registerFailure(failKey, 15 * 60_000);
             return null;

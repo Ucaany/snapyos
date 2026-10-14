@@ -126,10 +126,13 @@ export async function getStaffOverview(userId: string, businessId: string): Prom
         .from("packages")
         .select("id", { count: "exact", head: true })
         .eq("business_id", businessId),
+      // Kartu overview berlabel "Frame aktif" dan halaman /staff/templates
+      // read-only hanya menampilkan `is_active`, jadi hitungannya disamakan.
       supabase
         .from("templates")
         .select("id", { count: "exact", head: true })
-        .eq("business_id", businessId),
+        .eq("business_id", businessId)
+        .eq("is_active", true),
     ]);
 
   type PhotoboxListRow = {
@@ -170,7 +173,7 @@ export async function getStaffOverview(userId: string, businessId: string): Prom
     return {
       id: row.id,
       photobox_id: row.photobox_id,
-      photobox_name: photobox?.name ?? "—",
+      photobox_name: photobox?.name ?? "-",
       outlet_name: outletName,
       package_name: Array.isArray(row.packages)
         ? row.packages[0]?.name ?? null
