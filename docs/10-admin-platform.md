@@ -22,7 +22,7 @@ BELUM: —
   - Normalize style `admin/withdrawals/page.tsx`.
 - **Fase 2A** — Drop tabel `reports` (0 query, migration 0038).
 - **Fase 2B** — Bangun UI + REST `/admin/promos` untuk `subscription_promos`.
-- **Fase 2C** — Next.js Proxy `src/proxy.ts` + halaman `/maintenance` (503) untuk enforce `platform_settings.maintenance_mode`. Cache TTL 30s.
+- **Fase 2C** — Next.js Proxy `src/proxy.ts` + halaman `/maintenance` (503) untuk enforce `platform_settings.maintenance_mode`. Flag dibaca fresh per request (fail-closed saat DB error).
 - **Fase 2D** — Migration 0039: `templates.category_id` FK ke `template_categories`. Drop CHECK enum; kolom `category` text kept as display fallback (deprecated).
 - **Fase 2E** — REST endpoint baru: `DELETE /admin/users/:id`, `POST /admin/subscriptions/:id/add-ons`, `DELETE /admin/subscription-add-ons/:id`, `GET /admin/payments/pos-revenue`, `GET/POST /admin/templates` + `:id`, `GET/POST /admin/template-categories` + `DELETE :id`, `GET/POST /admin/promos` + `PATCH :id`.
 - **Fase 3** — Bug fix:
@@ -125,11 +125,14 @@ Contoh key di `platform_settings`:
 }
 ```
 
-**`maintenance_mode` enforcement (audit 2026-09-16):**
+**`maintenance_mode` enforcement (audit 2026-09-16, diperbarui audit lintas-potong):**
 Proxy `src/proxy.ts` (Next 16 rename dari `middleware`, Node runtime)
-mengecek flag via cache TTL 30s (`src/lib/maintenance-cache.ts`). Saat
+membaca flag langsung dari DB setiap request (`src/lib/maintenance.ts`,
+`getMaintenanceState()`), tanpa cache lintas-request. Saat
 `true`: non-admin diblokir — browser rewrite ke `/maintenance` (503),
 API `/api/*` return JSON `MAINTENANCE_MODE` (503, `Retry-After: 60`).
+Saat pembacaan flag gagal (DB error), proxy fail-closed: 503 untuk trafik
+non-allowlist, sementara jalur operasional tetap lolos.
 Allowlist selalu lolos: `/admin/*`, `/login`, `/api/health`, `/api/auth/*`,
 `/api/webhooks/*` (settlement in-flight jangan diblokir).
 

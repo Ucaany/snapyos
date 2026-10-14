@@ -8,40 +8,37 @@ import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
 import { verifyDevicePin } from "@/lib/device-token";
 
-/** Booth (dengan PIN ter-set) yang bisa dipilih staff saat login — shell /staff. */
-export async function listStaffLoginBooths(email: string): Promise<
-  { photobox_id: string; name: string }[]
-> {
-  const supabase = createServerClient();
-  const { data } = await supabase
-    .from("member_photoboxes")
-    .select("photobox_id, pin_hash, photoboxes ( name ), users!inner ( email )")
-    .eq("users.email", email)
-    .not("pin_hash", "is", null);
-  return ((data ?? []) as {
-    photobox_id: string;
-    photoboxes: { name: string } | { name: string }[] | null;
-  }[]).flatMap((row) => {
-    const booth = Array.isArray(row.photoboxes) ? row.photoboxes[0] : row.photoboxes;
-    if (!booth) return [];
-    return [{ photobox_id: row.photobox_id, name: booth.name }];
-  });
-}
+/** Batas hash PIN yang diverifikasi per percobaan login (anti CPU-exhaustion). */
+export const MAX_PIN_CANDIDATES = 10;
 
-/** Verifikasi PIN login staff terhadap (member × booth). True = cocok. */
+/**
+ * Verifikasi PIN login staff TANPA mengungkap daftar booth ke browser.
+ * `photoboxId` opsional: bila klien lama masih mengirimnya, verifikasi hanya
+ * assignment itu; bila tidak, semua assignment PIN milik email dicoba (dibatasi
+ * MAX_PIN_CANDIDATES) sehingga halaman login tidak perlu enumerasi booth.
+ */
 export async function verifyStaffPin(
   email: string,
-  photoboxId: string,
-  pin: string
+  pin: string,
+  photoboxId?: string | null
 ): Promise<boolean> {
   const supabase = createServerClient();
-  const { data } = await supabase
+  let query = supabase
     .from("member_photoboxes")
     .select("pin_hash, users!inner ( email )")
     .eq("users.email", email)
-    .eq("photobox_id", photoboxId)
-    .maybeSingle();
-  const hash = (data as { pin_hash?: string | null } | null)?.pin_hash;
-  if (!hash) return false;
-  return verifyDevicePin(pin, hash);
+    .not("pin_hash", "is", null)
+    .limit(MAX_PIN_CANDIDATES);
+  if (photoboxId) query = query.eq("photobox_id", photoboxId);
+
+  const { data } = await query;
+  const hashes = ((data ?? []) as { pin_hash: string | null }[])
+    .map((row) => row.pin_hash)
+    .filter((hash): hash is string => Boolean(hash));
+  if (hashes.length === 0) return false;
+
+  for (const hash of hashes) {
+    if (await verifyDevicePin(pin, hash)) return true;
+  }
+  return false;
 }

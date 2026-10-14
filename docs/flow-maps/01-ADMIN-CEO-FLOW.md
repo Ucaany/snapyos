@@ -379,7 +379,7 @@
 **Features**:
 - Update platform settings global
 - **Maintenance mode enforcement** (audit 2026-09-16):
-  - Proxy `src/proxy.ts` (Next 16, Node runtime) check flag via cache TTL 30s (`src/lib/maintenance-cache.ts`)
+  - Proxy `src/proxy.ts` (Next 16, Node runtime) membaca flag fresh per request (`src/lib/maintenance.ts`); DB error → fail-closed 503
   - Saat `true`: non-admin diblokir
     - Browser → rewrite ke `/maintenance` (503)
     - API `/api/*` → JSON `MAINTENANCE_MODE` (503, `Retry-After: 60`)
@@ -389,7 +389,7 @@
 **Security**:
 - Admin guard
 - Audit log setiap perubahan settings
-- Cache invalidation maintenance mode (30s TTL)
+- Maintenance mode dibaca fresh per request (tanpa cache lintas-request; DB error fail-closed 503)
 
 ---
 

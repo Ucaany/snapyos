@@ -9,14 +9,16 @@
  * efektif. Query ini kecil (primary-key lookup) dan hanya dijalankan di jalur
  * yang tidak di-allowlist.
  *
- * Toleran DB error → fail-open (false) supaya site tidak blank karena infra.
+ * Error DB dibedakan dari status disabled agar proxy dapat fail-closed 503.
  */
 
 import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
 
-/** True bila platform sedang maintenance (dibaca fresh dari platform_settings). */
-export async function isMaintenanceMode(): Promise<boolean> {
+export type MaintenanceState = "enabled" | "disabled" | "unavailable";
+
+/** Status maintenance dibaca fresh dari platform_settings untuk setiap request. */
+export async function getMaintenanceState(): Promise<MaintenanceState> {
   try {
     const supabase = createServerClient();
     const { data, error } = await supabase
@@ -24,10 +26,10 @@ export async function isMaintenanceMode(): Promise<boolean> {
       .select("value")
       .eq("key", "maintenance_mode")
       .maybeSingle();
-    if (error) return false;
-    const v = (data as { value?: unknown } | null)?.value;
-    return v === true;
+    if (error) return "unavailable";
+    const value = (data as { value?: unknown } | null)?.value;
+    return value === true ? "enabled" : "disabled";
   } catch {
-    return false;
+    return "unavailable";
   }
 }

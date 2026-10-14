@@ -8,7 +8,7 @@ import { CollapsibleShell } from "@/components/layout/CollapsibleShell";
 import { destinationFor } from "@/lib/destination";
 import { can } from "@/lib/rbac";
 import { getSidebarCollapsed } from "@/lib/sidebar-collapse-server";
-import { getActiveBusiness, getUserMemberships, requireUser } from "@/lib/tenant";
+import { getActiveBusinessForRoles, getUserMemberships, requireUser } from "@/lib/tenant";
 import { getAdminUser } from "@/server/admin";
 import { hasFeature } from "@/server/feature-gate";
 import { hasPosEntitlement } from "@/server/pos-entitlement";
@@ -32,7 +32,10 @@ export default async function DashboardLayout({
   const dest = destinationFor(memberships);
   if (dest !== "/dashboard") redirect(dest);
 
-  const active = await getActiveBusiness(user.id);
+  const dashboardMemberships = memberships.filter((membership) =>
+    membership.role === "owner" || membership.role === "manager"
+  );
+  const active = await getActiveBusinessForRoles(user.id, ["owner", "manager"]);
 
   // Nav POS hanya jika role berhak + entitlement aktif (R10 — UX, bukan pengaman).
   const showPos = Boolean(
@@ -53,7 +56,7 @@ export default async function DashboardLayout({
     <div className="flex min-h-[100dvh] flex-col">
       <Topbar
         user={{ name: user.name, email: user.email }}
-        businesses={memberships.map((m) => ({ id: m.business.id, name: m.business.name }))}
+        businesses={dashboardMemberships.map((m) => ({ id: m.business.id, name: m.business.name }))}
         activeBusiness={active ? { id: active.business.id, name: active.business.name } : null}
         isAdmin={isAdmin}
       />

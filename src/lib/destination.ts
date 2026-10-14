@@ -1,8 +1,5 @@
-import "server-only";
+export type DestinationMembership = { role: "owner" | "manager" | "staff" };
 
-import { redirect } from "next/navigation";
-
-import type { Membership } from "@/lib/tenant";
 
 /**
  * Post-auth destination (docs/04 §4 onboarding, role-based dashboard).
@@ -10,18 +7,24 @@ import type { Membership } from "@/lib/tenant";
  * - Tanpa membership → /welcome (pemilih: buat bisnis atau tunggu undangan staff)
  * - Hanya role `staff` di semua membership → /staff (operational shell)
  * - Memiliki owner/manager pada membership manapun → /dashboard
- * - Admin platform tetap di-handle di layer auth-action (→ /admin).
+ * - Admin platform diputuskan caller via isAdminUser() → /admin (kontrak sama
+ *   dengan requireAdmin/proxy: role DB `admin` ATAU email di ADMIN_EMAILS).
  */
-export function destinationFor(memberships: readonly Membership[]): string {
+export function destinationFor(memberships: readonly DestinationMembership[]): string {
   if (memberships.length === 0) return "/welcome";
   const onlyStaff = memberships.every((m) => m.role === "staff");
   if (onlyStaff) return "/staff";
   return "/dashboard";
 }
 
-/** Convenience: redirect langsung bila destination sudah final. */
-export async function redirectForDestination(
-  memberships: readonly Membership[]
-): Promise<never> {
-  redirect(destinationFor(memberships));
+/**
+ * Tujuan pasca-login. `isAdmin` dihitung caller dengan `isAdminUser()` supaya
+ * routing, guard, dan proxy memakai satu kontrak admin yang sama.
+ */
+export function destinationForUser(
+  memberships: readonly DestinationMembership[],
+  options: { isAdmin: boolean }
+): string {
+  if (options.isAdmin) return "/admin";
+  return destinationFor(memberships);
 }

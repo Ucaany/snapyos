@@ -6,6 +6,7 @@ import { randomBytes } from "crypto";
 
 import { createServerClient } from "@/lib/supabase/server";
 import { rateLimit, registerFailure, resetLimit } from "@/lib/rate-limit";
+import { redactSensitive } from "@/lib/error-redaction";
 import { getClientIp } from "@/lib/request-ip";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { SESSION_MAX_AGE_SECONDS as SESSION_MAX_AGE } from "@/lib/constants";
@@ -108,7 +109,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // dibelokkan tanpa menyentuh DB/argon2. Fail-closed di production tanpa
         // secret; dilewati di dev (lihat src/lib/turnstile.ts).
         const ip = getClientIp((request as Request | undefined)?.headers);
-        if (!(await verifyTurnstile(captchaToken, ip))) return null;
+        if (
+          !(await verifyTurnstile(captchaToken, {
+            remoteIp: ip,
+            expectedAction: "login",
+          }))
+        ) {
+          return null;
+        }
 
         // Rate-limit single source of truth untuk SEMUA jalur login
         // (server action maupun POST mentah /api/auth/callback/credentials).
@@ -141,18 +149,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
-        // Staff login via PIN + booth, bukan password (0043). Jalur dipicu
-        // kredensial pin+photobox_id (form staff); owner/manager tetap password.
-        if (pin && photoboxId) {
-          // Lockout per-(email × booth): 5 gagal / 15 menit. Defense-in-depth
-          // di atas IP yang (dulu) spoofable; kini bermakna berkat fix #7.
-          const pinKey = `login:pin:${email}:${photoboxId}`;
+        // Staff login via PIN, bukan password (0043). Booth TIDAK lagi dipilih
+        // pra-sesi (dulu membocorkan ID/nama booth per email anonim): PIN
+        // diverifikasi terhadap assignment milik email, lalu shell staff
+        // menentukan business dari membership.
+        if (pin) {
+          // Lockout per email: 5 gagal / 15 menit (di atas limit IP).
+          const pinKey = `login:pin:${email}`;
           const pinFails = await registerFailure(pinKey, 15 * 60_000);
           if (pinFails > 5) {
             await registerFailure(failKey, 15 * 60_000);
             return null;
           }
-          const ok = await verifyStaffPin(email, photoboxId, pin);
+          const ok = await verifyStaffPin(email, pin, photoboxId || null);
           if (!ok) {
             await registerFailure(failKey, 15 * 60_000);
             return null;
@@ -214,8 +223,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         return { ...token, uid: user.id, sid };
       }
 
-      // Revocation check — baris hilang/expired → klaim dibuang → logged out.
-      // Join users sekaligus ambil role → 1 round-trip (bukan 2: sesi + role).
+      // Token lama yang memiliki identitas tanpa session id tidak boleh melewati
+      // revocation DB. Deployment perubahan ini sengaja mewajibkan login ulang.
+      if (token.uid && !token.sid) return {};
+
+      // Revocation check: baris hilang/expired membuat klaim dibuang.
+      // Join users sekaligus ambil role agar pemeriksaan tetap satu round-trip.
       if (token.sid) {
         const { data: row, error: rowError } = await fetchSessionRow(supabase, token.sid);
         if (rowError) {
@@ -263,15 +276,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
   events: {
-    // Logout → hapus baris sesi (revocation bersih; gagal hapus tidak blokir logout).
+    // Logout tetap menghapus cookie Auth.js, tetapi kegagalan revocation DB wajib
+    // terlihat agar token yang tersalin tidak diam-diam hidup sampai kedaluwarsa.
     signOut: async (message) => {
       const token = (message as { token?: JWT }).token;
       if (!token?.sid) return;
       try {
         const supabase = createServerClient();
-        await supabase.from("auth_sessions").delete().eq("session_token", token.sid);
-      } catch {
-        // baris akan kadaluarsa via expires — aman diabaikan
+        const { error } = await supabase
+          .from("auth_sessions")
+          .delete()
+          .eq("session_token", token.sid);
+        if (error) {
+          console.error("[auth] gagal mencabut sesi DB:", redactSensitive(error));
+        }
+      } catch (error) {
+        console.error("[auth] gagal mencabut sesi DB:", redactSensitive(error));
       }
     },
   },

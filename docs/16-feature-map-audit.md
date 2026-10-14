@@ -76,7 +76,8 @@
 - `src/proxy.ts` — **proxy Next 16 (dulu middleware)**, Node runtime, enforce `platform_settings.maintenance_mode`:
   - Non-admin → rewrite `/maintenance` (503 browser) / JSON 503 (`/api/*`).
   - Admin lolos. Allowlist: `/maintenance`, `/login`, `/api/health`, `/api/auth`, `/api/webhooks`, `/admin/*`, `/_next`, favicon.
-  - Cache flag TTL 30s (`src/lib/maintenance-cache.ts`).
+  - Flag dibaca fresh per request (`src/lib/maintenance.ts`); DB error → fail-closed 503.
+  - Admin dengan `users.role = 'admin'` atau email di `ADMIN_EMAILS` sama-sama lolos; resolver tujuan pasca-login memakai kontrak yang sama.
 - `next.config.ts` — security headers (CSP, HSTS, X-Frame-Options, Permissions-Policy camera self), `allowedDevOrigins` ngrok, `serverExternalPackages: pdfkit, @node-rs/argon2`, `outputFileTracingIncludes` pdfkit untuk route receipt.
 - `src/app/robots.ts` — disallow `/dashboard /admin /staff /pos /api /p /r /onboarding /welcome /login /register`.
 - `src/app/sitemap.ts` — 8 path marketing. `src/app/manifest.ts` — PWA kiosk (standalone/fullscreen).

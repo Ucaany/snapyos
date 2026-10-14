@@ -72,7 +72,9 @@ export async function switchWorkspaceAction(formData: FormData): Promise<void> {
   if (!user || !businessId) redirect("/login");
 
   const membership = await getMembership(user.id, businessId);
-  if (!membership) redirect("/dashboard");
+  if (!membership || (membership.role !== "owner" && membership.role !== "manager")) {
+    redirect("/dashboard");
+  }
 
   const store = await cookies();
   store.set(ACTIVE_BUSINESS_COOKIE, businessId, {

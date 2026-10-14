@@ -3,7 +3,7 @@
  * Barrel re-export: backward compat untuk `import { ... } from "@/server/admin"`.
  */
 
-export { isAdminEmail, requireAdmin, getAdminUser } from "./guard";
+export { adminEmails, isAdminEmail, isAdminUser, requireAdmin, getAdminUser } from "./guard";
 export {
   type AdminOverview,
   getAdminOverviewGuarded,

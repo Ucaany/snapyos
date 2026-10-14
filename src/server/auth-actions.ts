@@ -5,15 +5,10 @@
  * Rate limit: login 5/menit/IP + lockout per email (docs/09 §10, docs/08 §8.18).
  */
 
-import { headers } from "next/headers";
 import { AuthError } from "next-auth";
 import { signIn, signOut } from "@/lib/auth";
 import { toFormState } from "@/lib/form-state";
 import { loginSchema } from "@/lib/validators";
-import { rateLimit } from "@/lib/rate-limit";
-import { getClientIp } from "@/lib/request-ip";
-import { isAdminEmail } from "@/server/admin";
-import { listStaffLoginBooths } from "@/server/staff-pin";
 
 export type FormState = {
   error?: string;
@@ -40,7 +35,6 @@ export async function loginAction(
     email: formData.get("email"),
     password: formData.get("password") || undefined,
     pin: formData.get("pin") || undefined,
-    photobox_id: formData.get("photobox_id") || undefined,
   });
   if (!parsed.success) {
     return toFormState(parsed.error);
@@ -53,22 +47,18 @@ export async function loginAction(
   // Rate-limit + verifikasi (password atau PIN) HANYA di authorize()
   // (src/lib/auth.ts) — single source of truth untuk semua jalur login.
   // Action ini tidak menghitung ulang agar satu request tidak double-count,
-  // dan tidak me-verify argon2 dua kali. Redirect dihitung dari lookup role
-  // ringan (tanpa hash) + allowlist email admin.
-  const isPinLogin = Boolean(parsed.data.pin && parsed.data.photobox_id);
-  // Redirect dihitung dari allowlist statis admin SAJA — tanpa pre-query role
-  // DB (query role sebelum signIn bocor via timing: role ter-enumerasi pada
-  // failure). isAdminEmail = allowlist env, bukan lookup DB → aman.
-  const redirectTo = isAdminEmail(parsed.data.email) ? "/admin" : "/dashboard";
+  // dan tidak me-verify argon2 dua kali. Setelah session terbentuk, /login
+  // menentukan tujuan dari role session + membership. Dengan begitu role admin
+  // dari DB dan allowlist email memakai resolver yang sama tanpa pre-query user.
+  const isPinLogin = Boolean(parsed.data.pin);
 
   try {
     await signIn("credentials", {
       email: parsed.data.email,
       password: parsed.data.password ?? "",
       pin: parsed.data.pin ?? "",
-      photobox_id: parsed.data.photobox_id ?? "",
       captcha_token: captchaToken,
-      redirectTo,
+      redirectTo: "/login",
     });
   } catch (error) {
     // NEXT_REDIRECT (sukses) bukan AuthError → dilempar ulang.
@@ -82,34 +72,6 @@ export async function loginAction(
     throw error;
   }
   return EMPTY;
-}
-
-/**
- * Booth yang bisa dipilih staff saat login (dengan PIN ter-set).
- *
- * Dipanggil DARI halaman login pra-sesi (staff memilih booth sebelum
- * terautentikasi), jadi tidak bisa auth-gated. Pengamanan pengganti:
- * - Hanya mengembalikan booth milik email itu yang MEMILIKI PIN (`pin_hash`
- *   non-null) — tidak ada enumerasi massal, disclosure setara pesan error login.
- * - Rate-limit per IP (60/menit) + per email (10/menit) agar email tidak bisa
- *   di-probe berulang; limit IP longgar karena satu staf wajar mengedit email
- *   beberapa kali, sementara limit email menahan enumerasi satu target.
- * - Bila sudah punya sesi, tetap divalidasi konsisten (tidak ada jalur bocor).
- */
-export async function staffLoginBoothsAction(
-  email: string
-): Promise<{ photobox_id: string; name: string }[]> {
-  const clean = email.trim().toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) return [];
-
-  const hdrs = await headers();
-  const ip = getClientIp(hdrs);
-  const ipLimited = await rateLimit(`login:booths:ip:${ip}`, 60, 60_000);
-  if (!ipLimited.ok) return [];
-  const emailLimited = await rateLimit(`login:booths:email:${clean}`, 10, 60_000);
-  if (!emailLimited.ok) return [];
-
-  return listStaffLoginBooths(clean);
 }
 
 export async function logoutAction(): Promise<void> {

@@ -8,20 +8,34 @@ import { ApiError } from "@/lib/api-errors";
 import { requireUser, type AppUser } from "@/lib/tenant";
 import { insertAudit } from "@/server/audit";
 
-export function isAdminEmail(email: string | null | undefined): boolean {
-  if (!email) return false;
-  const allow = (process.env.ADMIN_EMAILS ?? "")
+export function adminEmails(): string[] {
+  return (process.env.ADMIN_EMAILS ?? "")
     .split(",")
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
-  return allow.includes(email.toLowerCase());
+}
+
+export function isAdminEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  return adminEmails().includes(email.toLowerCase());
+}
+
+/**
+ * Kontrak admin platform: role DB `admin` ATAU email di allowlist.
+ * Dipakai routing pasca-login dan proxy agar keduanya identik.
+ */
+export function isAdminUser(
+  user: { role?: string | null; email?: string | null } | null | undefined
+): boolean {
+  if (!user) return false;
+  return user.role === "admin" || isAdminEmail(user.email ?? null);
 }
 
 /** Admin API: throw UNAUTHORIZED/FORBIDDEN. */
 export async function requireAdmin(): Promise<AppUser> {
   const user = await requireUser();
   if (!user) throw new ApiError("UNAUTHORIZED", "Silakan login");
-  if (user.role !== "admin" && !isAdminEmail(user.email)) {
+  if (!isAdminUser(user)) {
     throw new ApiError("FORBIDDEN", "Akses khusus admin platform");
   }
   return user;
@@ -31,7 +45,7 @@ export async function requireAdmin(): Promise<AppUser> {
 export async function getAdminUser(): Promise<AppUser | null> {
   const user = await requireUser();
   if (!user) return null;
-  return user.role === "admin" || isAdminEmail(user.email) ? user : null;
+  return isAdminUser(user) ? user : null;
 }
 
 export async function audit(

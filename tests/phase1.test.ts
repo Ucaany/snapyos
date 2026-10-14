@@ -7,7 +7,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { slugify, isValidSlug, RESERVED_SLUGS } from "../src/lib/slug.ts";
-import { can } from "../src/lib/rbac.ts";
+import { destinationFor, destinationForUser } from "../src/lib/destination.ts";
+import { can, canUnchecked } from "../src/lib/rbac.ts";
 import { rateLimit, registerFailure, resetLimit } from "../src/lib/rate-limit.ts";
 import { API_ERRORS, ApiError, listEnvelope } from "../src/lib/api-errors.ts";
 import {
@@ -97,9 +98,43 @@ test("businessCreateSchema menerima slug opsional yang valid", () => {
   assert.equal(businessCreateSchema.safeParse({ name: "K" }).success, false);
 });
 
+// --- Routing pasca-login ---
+const membership = (role: "owner" | "manager" | "staff") => ({ role });
+const userMembership = (role: "owner" | "manager" | "staff") => membership(role);
+
+test("destinationFor membedakan no-membership, staff-only, dan owner/manager", () => {
+  assert.equal(destinationFor([]), "/welcome");
+  assert.equal(destinationFor([membership("staff")]), "/staff");
+  assert.equal(
+    destinationFor([
+      membership("staff"),
+      membership("manager"),
+    ]),
+    "/dashboard"
+  );
+});
+
+test("destinationForUser: admin menang, non-admin mengikuti membership", () => {
+  assert.equal(destinationForUser([], { isAdmin: true }), "/admin");
+  assert.equal(destinationForUser([userMembership("owner")], { isAdmin: false }), "/dashboard");
+  assert.equal(destinationForUser([], { isAdmin: false }), "/welcome");
+});
+
+test("kontrak admin dipakai konsisten oleh guard, login, dan proxy", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const root = new URL("../", import.meta.url);
+  const guard = await readFile(new URL("src/server/admin/guard.ts", root), "utf8");
+  const login = await readFile(new URL("src/app/(auth)/login/page.tsx", root), "utf8");
+  const proxy = await readFile(new URL("src/proxy.ts", root), "utf8");
+  assert.match(guard, /export function isAdminUser/);
+  assert.match(guard, /role === "admin" \|\| isAdminEmail\(user\.email \?\? null\)/);
+  assert.match(login, /isAdminUser\(user\)/);
+  assert.match(proxy, /isAdminUser\(user\)/);
+});
+
 // --- RBAC (docs/09) ---
 test("RBAC matrix: owner full, manager operasional, staff terbatas", () => {
-  assert.equal(can("owner", "anything:at:all"), true);
+  assert.equal(canUnchecked("owner", "anything:at:all"), true);
   assert.equal(can("manager", "business:update"), true);
   assert.equal(can("manager", "finance:read"), true);
   assert.equal(can("staff", "finance:read"), false);
@@ -128,6 +163,7 @@ test("registerFailure menghitung lockout dan resetLimit membersihkan", async () 
 test("ApiError memetakan kode ke HTTP status yang benar", () => {
   assert.equal(new ApiError("UNAUTHORIZED", "x").status, 401);
   assert.equal(new ApiError("SESSION_EXPIRED", "x").status, 410);
+  assert.equal(new ApiError("SUBSCRIPTION_EXPIRED", "x").status, 410);
   assert.equal(new ApiError("PLAN_LIMIT_REACHED", "x").status, 422);
   assert.equal(new ApiError("RATE_LIMITED", "x").status, 429);
   assert.deepEqual(new ApiError("NOT_FOUND", "Business tidak ada").toBody(), {

@@ -26,8 +26,8 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
-import { isMaintenanceMode } from "@/lib/maintenance";
-import { isAdminEmail } from "@/server/admin/guard";
+import { getMaintenanceState } from "@/lib/maintenance";
+import { isAdminUser } from "@/server/admin/guard";
 
 const ALWAYS_ALLOWED_PREFIXES = [
   "/maintenance",
@@ -57,17 +57,23 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const maintenance = await isMaintenanceMode();
-  if (!maintenance) return NextResponse.next();
+  const maintenance = await getMaintenanceState();
+  if (maintenance === "disabled") return NextResponse.next();
 
-  // Cek session — admin lolos, non-admin diblokir.
-  const session = await auth();
-  const user = session?.user as
-    | { role?: string | null; email?: string | null }
-    | undefined;
-  const admin =
-    !!user && (user.role === "admin" || isAdminEmail(user.email ?? null));
-  if (admin) return NextResponse.next();
+  // Admin lolos saat maintenance aktif. Saat status DB tidak tersedia, jalur
+  // non-allowlist tetap 503 karena session check juga bergantung pada DB.
+  if (maintenance === "enabled") {
+    const session = await auth();
+    const user = session?.user as
+      | { role?: string | null; email?: string | null }
+      | undefined;
+    if (isAdminUser(user)) return NextResponse.next();
+  }
+
+  const message =
+    maintenance === "unavailable"
+      ? "Status platform sementara tidak tersedia"
+      : "Platform sedang perawatan sistem";
 
   // Block: JSON untuk API, rewrite untuk browser.
   if (pathname.startsWith("/api/")) {
@@ -75,7 +81,7 @@ export async function proxy(request: NextRequest) {
       {
         error: {
           code: "MAINTENANCE_MODE",
-          message: "Platform sedang perawatan sistem",
+          message,
           details: {},
         },
       },

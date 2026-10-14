@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useActionState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -18,13 +18,8 @@ import { AuthDivider } from "@/components/auth-divider";
 import { DecorIcon } from "@/components/decor-icon";
 import { TurnstileWidget } from "@/components/turnstile-widget";
 
-import {
-  loginAction,
-  staffLoginBoothsAction,
-  type FormState,
-} from "@/server/auth-actions";
+import { loginAction, type FormState } from "@/server/auth-actions";
 
-type LoginBooth = { photobox_id: string; name: string };
 type FieldErrors = Record<string, string[]>;
 
 const initial: FormState = {};
@@ -50,31 +45,13 @@ export function AuthPage() {
   const [state, formAction, pending] = useActionState(loginAction, initial);
   const fieldErrors = (state.fieldErrors ?? {}) as FieldErrors;
 
-  const [booths, setBooths] = useState<LoginBooth[]>([]);
   const [pinMode, setPinMode] = useState(false);
-  const [loadingBooths, setLoadingBooths] = useState(false);
   const [captchaVerified, setCaptchaVerified] = useState(false);
   const [captchaToken, setCaptchaToken] = useState("");
-  const emailRef = useRef<HTMLInputElement>(null);
 
   const captchaSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
   // Tanpa site key (dev) → tidak ada gate CAPTCHA.
   const captchaBlocked = Boolean(captchaSiteKey) && !captchaVerified;
-
-  async function refreshBooths() {
-    const email = emailRef.current?.value ?? "";
-    setLoadingBooths(true);
-    try {
-      const list = await staffLoginBoothsAction(email);
-      setBooths(list);
-      setPinMode(list.length > 0);
-    } catch {
-      setBooths([]);
-      setPinMode(false);
-    } finally {
-      setLoadingBooths(false);
-    }
-  }
 
   return (
     <div className="relative flex h-screen w-full items-center justify-center overflow-hidden px-6 md:px-8">
@@ -124,8 +101,6 @@ export function AuthPage() {
                   autoComplete="email"
                   aria-invalid={Boolean(fieldErrors.email)}
                   disabled={pending}
-                  ref={emailRef}
-                  onBlur={() => void refreshBooths()}
                 />
               </InputGroup>
               {fieldErrors.email && <FieldError errors={fieldErrors.email} />}
@@ -137,40 +112,15 @@ export function AuthPage() {
                   <InputGroupAddon align="inline-start">
                     <KeyRoundIcon />
                   </InputGroupAddon>
-                  <select
-                    id="photobox_id"
-                    name="photobox_id"
-                    aria-label="Booth"
-                    required
-                    disabled={pending || loadingBooths}
-                    aria-invalid={Boolean(fieldErrors.photobox_id)}
-                    className="h-8 w-full flex-1 appearance-none rounded-none border-0 bg-transparent px-2.5 py-1 text-base outline-none transition-colors focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                  >
-                    <option value="">Pilih booth…</option>
-                    {booths.map((booth) => (
-                      <option key={booth.photobox_id} value={booth.photobox_id}>
-                        {booth.name}
-                      </option>
-                    ))}
-                  </select>
-                </InputGroup>
-                {fieldErrors.photobox_id && (
-                  <FieldError errors={fieldErrors.photobox_id} />
-                )}
-
-                <InputGroup>
-                  <InputGroupAddon align="inline-start">
-                    <KeyRoundIcon />
-                  </InputGroupAddon>
                   <InputGroupInput
                     id="pin"
                     name="pin"
                     type="password"
-                    aria-label="PIN booth"
+                    aria-label="PIN staff"
                     inputMode="numeric"
                     autoComplete="current-password"
                     required
-                    placeholder="PIN booth (4–6 digit)"
+                    placeholder="PIN staff (4–6 digit)"
                     maxLength={6}
                     aria-invalid={Boolean(fieldErrors.pin)}
                     disabled={pending}
@@ -201,6 +151,15 @@ export function AuthPage() {
                 )}
               </div>
             )}
+
+            <button
+              type="button"
+              onClick={() => setPinMode((mode) => !mode)}
+              aria-pressed={pinMode}
+              className="flex min-h-11 w-full items-center text-left font-mono text-xs uppercase tracking-[0.05em] text-muted-foreground underline underline-offset-4 transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+            >
+              {pinMode ? "Masuk dengan password" : "Masuk dengan PIN staff"}
+            </button>
 
             <FormError error={state.error} />
 
