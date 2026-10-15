@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
-import { dataEnvelope } from "@/lib/api-errors";
+import { ApiError, dataEnvelope } from "@/lib/api-errors";
 import { parseUuidParam, toErrorResponse } from "@/lib/api-route";
 import { finalizeSession } from "@/server/kiosk-sessions";
 import { rateLimit, rateLimitByDevice } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/request-ip";
 import {
   FINALIZE_MAX_REQUEST_BYTES,
+  FINALIZE_TOO_LARGE_MESSAGE,
+  isFinalizeRequestTooLarge,
   validateFinalizeRequest,
   validatePhotoFile,
 } from "@/lib/upload-validation";
@@ -20,11 +22,11 @@ function rateLimited(retryAfterSec: number) {
   );
 }
 
+/** Body kebesaran = 413 (bukan 422 input invalid), konsisten dengan route
+ *  frame/webhook di scope kiosk. Pesan tetap sama untuk customer. */
 function requestTooLarge() {
-  return NextResponse.json(
-    { error: { code: "VALIDATION_ERROR", message: "Ukuran total foto melebihi batas 50 MB", details: {} } },
-    { status: 422 }
-  );
+  const error = new ApiError("PAYLOAD_TOO_LARGE", FINALIZE_TOO_LARGE_MESSAGE);
+  return NextResponse.json(error.toBody(), { status: error.status });
 }
 
 function uploadInvalid(message: string) {
@@ -59,16 +61,30 @@ function sumFileBytes(files: readonly PhotoFile[]): number {
   return files.reduce((total, file) => total + Math.max(0, file.size ?? 0), 0);
 }
 
-function validateFiles(files: readonly PhotoFile[]): string | null {
+/** Hasil validasi batch: `tooLarge` memisahkan body kebesaran (413) dari
+ *  foto tidak valid (422) — dua kondisi berbeda tidak boleh satu status. */
+type FilesValidation = { ok: true } | { ok: false; tooLarge: boolean; message: string };
+
+function validateFiles(files: readonly PhotoFile[]): FilesValidation {
   const totalBytes = sumFileBytes(files);
+  // Total byte dari file yang benar-benar terkirim: multipart bisa tanpa
+  // Content-Length (chunked), jadi jalur ini tetap perlu.
+  if (isFinalizeRequestTooLarge(totalBytes)) {
+    return { ok: false, tooLarge: true, message: FINALIZE_TOO_LARGE_MESSAGE };
+  }
   const aggregateError = validateFinalizeRequest(totalBytes, files.length);
-  if (aggregateError) return aggregateError;
+  if (aggregateError) return { ok: false, tooLarge: false, message: aggregateError };
   for (const file of files) {
     if (!file.name || file.type !== "image/jpeg" || (file.size ?? 0) > 10 * 1024 * 1024) {
-      return "Foto tidak valid atau melebihi batas 10 MB";
+      return { ok: false, tooLarge: false, message: "Foto tidak valid atau melebihi batas 10 MB" };
     }
   }
-  return null;
+  return { ok: true };
+}
+
+/** Satu tempat pemetaan hasil validasi → respons: body kebesaran selalu 413. */
+function filesInvalid(result: Extract<FilesValidation, { ok: false }>) {
+  return result.tooLarge ? requestTooLarge() : uploadInvalid(result.message);
 }
 
 async function readValidatedPhotos(files: readonly PhotoFile[]): Promise<PhotoFile[]> {
@@ -136,7 +152,7 @@ export async function POST(request: Request, { params }: Params) {
 
     const photos = parsePhotos(form);
     const filesError = validateFiles(photos);
-    if (filesError) return uploadInvalid(filesError);
+    if (!filesError.ok) return filesInvalid(filesError);
     let validatedPhotos: PhotoFile[];
     try {
       validatedPhotos = await readValidatedPhotos(photos);

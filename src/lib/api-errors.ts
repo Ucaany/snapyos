@@ -31,6 +31,8 @@ export const API_ERRORS = {
   POS_BOOTH_DISABLED: 409,
   POS_BOOTH_ALREADY_ACTIVE: 409,
   RATE_LIMITED: 429,
+  // Body request kebesaran (finalize kiosk > 50 MB) — docs/08 §8.2.
+  PAYLOAD_TOO_LARGE: 413,
   // CAPTCHA/Turnstile gagal atau kedaluwarsa (docs/08 §8.18).
   CAPTCHA_FAILED: 403,
   // Exit PIN kiosk terkunci (docs/05 §5.0) — throttle 5 gagal → 5 menit lock.

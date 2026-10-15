@@ -74,9 +74,21 @@ export function sniffImageType(bytes: Uint8Array): string | null {
 export const FINALIZE_MAX_REQUEST_BYTES = 50 * 1024 * 1024;
 export const FINALIZE_MAX_PHOTOS = 50;
 
+/** Pesan satu-satunya untuk body kebesaran — dipakai jalur Content-Length
+ *  dan jalur total byte agar customer melihat teks yang sama persis. */
+export const FINALIZE_TOO_LARGE_MESSAGE = "Ukuran total foto melebihi batas 50 MB";
+
+/** Body kebesaran dipisah dari cek jumlah foto supaya pemanggil bisa
+ *  memetakan 413 vs 422 secara struktural, bukan dengan mencocokkan teks. */
+export function isFinalizeRequestTooLarge(totalBytes: number): boolean {
+  return (
+    !Number.isSafeInteger(totalBytes) || totalBytes < 0 || totalBytes > FINALIZE_MAX_REQUEST_BYTES
+  );
+}
+
 export function validateFinalizeRequest(totalBytes: number, photoCount: number): string | null {
-  if (!Number.isSafeInteger(totalBytes) || totalBytes < 0 || totalBytes > FINALIZE_MAX_REQUEST_BYTES) {
-    return "Ukuran total foto melebihi batas 50 MB";
+  if (isFinalizeRequestTooLarge(totalBytes)) {
+    return FINALIZE_TOO_LARGE_MESSAGE;
   }
   if (!Number.isSafeInteger(photoCount) || photoCount < 1 || photoCount > FINALIZE_MAX_PHOTOS) {
     return "Jumlah foto tidak valid";

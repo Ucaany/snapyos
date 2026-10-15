@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  FINALIZE_TOO_LARGE_MESSAGE,
   sniffImageType,
   validateFinalizeRequest,
   validateJpegDimensions,
@@ -126,7 +127,9 @@ test("validateJpegDimensions: dimensi wajar lolos, dekompresi ekstrem ditolak", 
 
 test("validateFinalizeRequest: batas jumlah foto dan total byte", () => {
   assert.equal(validateFinalizeRequest(10 * 1024 * 1024, 3), null);
-  assert.notEqual(validateFinalizeRequest(60 * 1024 * 1024, 3), null);
-  assert.notEqual(validateFinalizeRequest(1024, 0), null);
-  assert.notEqual(validateFinalizeRequest(1024, 51), null);
+  assert.equal(validateFinalizeRequest(60 * 1024 * 1024, 3), FINALIZE_TOO_LARGE_MESSAGE);
+  // Jumlah foto salah tidak boleh memakai pesan kebesaran: route memetakan
+  // kedua kondisi ini ke status berbeda (413 vs 422).
+  assert.equal(validateFinalizeRequest(1024, 0), "Jumlah foto tidak valid");
+  assert.equal(validateFinalizeRequest(1024, 51), "Jumlah foto tidak valid");
 });

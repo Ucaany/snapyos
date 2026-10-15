@@ -52,6 +52,7 @@ Error:
 | `PAYMENT_EXPIRED`           | 409  | payment expired                                      |
 | `PAYMENT_NOT_FOUND`         | 404  |                                                      |
 | `RATE_LIMITED`              | 429  |                                                      |
+| `PAYLOAD_TOO_LARGE`         | 413  | body request melebihi batas ukuran                   |
 | `INTERNAL`                  | 500  |                                                      |
 
 ## 8.3 Auth
