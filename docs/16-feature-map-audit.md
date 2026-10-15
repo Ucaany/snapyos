@@ -534,7 +534,7 @@
 ## 5. KIOSK CUSTOMER (Photobox Publik)
 
 **Route**: `/p/[businessSlug]/[photoboxSlug]` (`?code=<6-char>` untuk pairing ulang) · **Page**: `src/app/p/[businessSlug]/[photoboxSlug]/page.tsx`.
-**Komponen root**: `KioskErrorBoundary` → `KioskApp` (`src/components/kiosk/KioskApp.tsx`, ~749 baris).
+**Komponen root**: `KioskErrorBoundary` → `KioskApp` (`src/components/kiosk/KioskApp.tsx`, ~813 baris).
 **Config awal**: `getPublicConfig(businessSlug, photoboxSlug)` (`src/server/public-config.ts`).
 **Bootstrap dev/offline**: `devSkipPayment` (`DEV_SKIP_PAYMENT=true`), `offlineEnabled` (`business_settings.checkout.offline_enabled`).
 
@@ -551,7 +551,7 @@
 - **Komponen**: `SetupWizard` — pilih kamera (`enumerateDevices` + `getUserMedia`), tes kamera, konfirmasi printer.
 - **API**: `POST /api/v1/public/devices/report` (laporan diagnostik/status).
 - **DB**: `devices.camera_config, printer_config, diagnostics, last_heartbeat_at`.
-- **Dampak**: menandai `snapyos_device_setup_done`; tanpa ini welcome tidak muncul.
+- **Dampak**: menandai `snapyos_device_setup_done:<photoboxSlug>` (per booth — browser yang sama tidak mewarisi status setup booth lain); tanpa ini welcome tidak muncul.
 
 ### K3. Boot & Resume Sesi
 - **API**: `POST /api/v1/public/devices/verify` (device token → config + `active_session` + `claimable_checkout_id`).
@@ -585,7 +585,7 @@
 - **DB**: `checkout_sessions, payments, payment_credentials, voucher_usages, business_settings`.
 - **Reservasi**: payment `creating` + partial unique index satu payment aktif per checkout; expiry QRIS dari `business_settings.checkout.qris_expiry_minutes`.
 - **Metode**: `qris` (Pakasir/Midtrans/Tripay), `va`, `redirect`, `voucher`, `cash`; difilter `payment_mode` booth (gateway/voucher/null).
-- **Mode offline**: tombol "tanpa QRIS" bila `offline_enabled` → `startDirectSession` (transaksi `payment_method='offline'`, non-withdrawable).
+- **Mode offline**: tombol "Lanjut offline" di ringkasan pesanan bila `offline_enabled` → `startDirectSession` (transaksi `payment_method='offline'`, non-withdrawable). Server yang memutuskan (dev gate / `offline_enabled`), klien tidak dipercaya.
 
 ### K8. Template Picker (Frame)
 - **Komponen**: `TemplatePicker`.
@@ -599,7 +599,7 @@
 - **Lib**: `src/lib/camera-capture.ts`, `camera-provider.ts`, `camera-errors.ts`, `photo-render.ts`.
 - **API**: `POST /api/v1/public/devices/report` (status).
 - **DB**: tidak langsung; hasil disimpan di state sampai finalize.
-- **Batasan**: `camera_settings` (deviceId, mirror, countdown, resolution); kuota foto = `package.photo_count`; `max_retakes` dari session_settings.
+- **Batasan**: `camera_settings` (deviceId, mirror, countdown, resolution); kuota capture = `slot_count` template (fallback `package.photo_count` bila template legacy, docs/15 §5.6); finalize menolak `photos.length > package.photo_count`; `max_retakes` opsional dari `session_settings` (tidak diset = retake tak terbatas, docs/05 §5.5.2).
 
 ### K10. Editor (Edit Foto)
 - **Komponen**: `Editor` (dynamic import) + `StickerPicker`.
@@ -962,7 +962,7 @@
 | T10 | Rate limit fail-closed di production saat backend error | `src/lib/rate-limit.ts` | Upstash mati → request ditolak (aman) |
 | T11 | Storage dual-provider (R2 write / resolve read) | `src/server/storage/index.ts` | Key identik antar provider → resolusi via `head()` |
 | T12 | `bookings`/`events`/`event_templates`/`stickers` ada di schema tanpa UI | `db/schema.sql` | Backlog (booking, event mode, sticker) |
-| T13 | God-components terdaftar known-issue | `KioskBrandingEditor` 1.642, `TemplateBuilder` 996, `KioskApp` 749 baris | Refactor kandidat |
+| T13 | God-components terdaftar known-issue | `KioskBrandingEditor` 1.642, `TemplateBuilder` 996, `KioskApp` 813 baris | Refactor kandidat |
 | T14 | `docs/flow-maps/` hanya memuat 01–03; 04–15 belum ada | `docs/flow-maps/00-INDEX.md` | Referensi flow kiosk/POS/payment berbasis dokumen ini |
 
 ### 15.3 Fitur tanpa UI (backlog kode)

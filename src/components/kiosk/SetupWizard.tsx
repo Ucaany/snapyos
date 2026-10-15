@@ -44,15 +44,15 @@ export function SetupWizard({ deviceToken, onDone, onAuthError }: Props) {
       case "phone-android":
       case "phone-ios":
         return {
-          hint: "Ponsel mode selfie — kamera depan dipakai otomatis. Pasang ponsel pada dudukan/stand.",
+          hint: "Ponsel mode selfie: kamera depan dipakai otomatis. Pasang ponsel pada dudukan/stand.",
         };
       case "ipad":
         return {
-          hint: "iPad — gunakan kamera belakang untuk kualitas terbaik. Pastikan sudah dipasang ke layar utama (Add to Home Screen).",
+          hint: "iPad: gunakan kamera belakang untuk kualitas terbaik. Pastikan sudah dipasang ke layar utama (Add to Home Screen).",
         };
       default:
         return {
-          hint: "Tablet mode — kamera internal dipakai otomatis, tanpa kabel USB.",
+          hint: "Tablet mode: kamera internal dipakai otomatis, tanpa kabel USB.",
         };
     }
   })();
@@ -183,8 +183,22 @@ export function SetupWizard({ deviceToken, onDone, onAuthError }: Props) {
       {stage === "camera" ? (
         <div className="flex w-full max-w-[760px] flex-col gap-6">
           {!supported ? (
-            <div className="border-2 border-ink bg-destructive/10 p-6 font-mono text-sm">
-              Browser tidak mendukung kamera. Gunakan Chrome terbaru di perangkat kiosk.
+            // Tanpa jalur keluar, wizard berhenti di sini selamanya dan welcome
+            // tidak pernah muncul. Laporkan ke server untuk diagnostik, lalu
+            // biarkan lanjut — error kamera yang sesungguhnya tampil di layar
+            // capture dengan tombol ulang + ajakan panggil petugas.
+            <div className="flex flex-col gap-4 border-2 border-ink bg-destructive/10 p-6 font-mono text-sm">
+              <p>Browser tidak mendukung kamera. Gunakan Chrome terbaru di perangkat kiosk.</p>
+              <Button
+                variant="outline"
+                className="w-fit"
+                onClick={() => {
+                  void report({ camera: { error: "UNSUPPORTED" } });
+                  onDone();
+                }}
+              >
+                Lanjut tanpa setup kamera
+              </Button>
             </div>
           ) : (
             <>
@@ -228,7 +242,7 @@ export function SetupWizard({ deviceToken, onDone, onAuthError }: Props) {
 
               <div className="flex flex-wrap items-center gap-3 border-2 border-ink bg-surface px-4 py-3 font-mono text-xs uppercase tracking-[0.08em]">
                 <span className="font-bold">Resolusi:</span>
-                <span className={resWarning ? "text-destructive" : "text-ink"}>{resLabel || "—"}</span>
+                <span className={resWarning ? "text-destructive" : "text-ink"}>{resLabel || "-"}</span>
                 {resWarning && <span className="text-muted-foreground">· {resWarning}</span>}
               </div>
 
@@ -260,7 +274,7 @@ export function SetupWizard({ deviceToken, onDone, onAuthError }: Props) {
                   Printer foto default OS harus sudah terpasang di perangkat kiosk
                   (ukuran kertas ikut setting owner: 4x6/A6). Cetak halaman uji,
                   lalu konfirmasi hasil fisik. Di tablet Android/iPad dialog print
-                  sistem selalu muncul — pilih printer foto di dialog. Cetak senyap
+                  sistem selalu muncul, pilih printer foto di dialog. Cetak senyap
                   tanpa dialog hanya di Chrome desktop flag --kiosk-printing.
                 </p>
                 <Button variant="outline" onClick={() => window.print()}>
@@ -291,7 +305,7 @@ export function SetupWizard({ deviceToken, onDone, onAuthError }: Props) {
                 // wizard tidak pernah selesai dan welcome tidak pernah muncul.
                 <div className="flex flex-col gap-2 border-2 border-dashed border-ink p-4">
                   <p className="font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
-                    Printer belum siap? Setup bisa dilewati — uji cetak tetap bisa diulang kapan pun dengan memasang ulang perangkat.
+                    Printer belum siap? Setup bisa dilewati. Uji cetak tetap bisa diulang kapan pun dengan memasang ulang perangkat.
                   </p>
                   <Button
                     variant="outline"

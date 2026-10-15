@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { Check, Download, Loader2, Printer, RefreshCcw, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { defaultBrandColors } from "@/lib/brand-defaults";
 import type { KioskVisualStyle } from "@/lib/kiosk-types";
-import { useObjectUrl } from "@/components/kiosk/use-object-url";
+import { useObjectUrl, useObjectUrls } from "@/components/kiosk/use-object-url";
 import { KioskVideoBackground } from "@/components/kiosk/KioskVideoBackground";
 
 type FinalPhoto = { blob: Blob };
@@ -54,48 +54,75 @@ export function ResultScreen({
   onPrint,
   onReset,
 }: Props) {
-  const [qr, setQr] = useState<string>("");
-  const [qrLoading, setQrLoading] = useState(true);
+  // QR disimpan bersama token yang menghasilkannya. Tanpa pasangan itu, QR milik
+  // sesi sebelumnya sempat tampil di layar sesi baru; dan menandai "sedang dimuat"
+  // lewat state terpisah memaksa setState di badan efek (render berantai).
+  const [qr, setQr] = useState<{ token: string; url?: string } | null>(null);
   const [gifError, setGifError] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
+  const downloadTimer = useRef<number | null>(null);
   const qrDark = kioskStyle?.text ?? defaultBrandColors.ink;
   const qrLight = kioskStyle?.bg ?? defaultBrandColors.bg;
+  // QR hanya bermakna bila sesi sudah tersinkron: halaman /r/[token] hanya
+  // merender sesi berstatus completed. Menampilkan QR saat pendingSync/syncFailed
+  // mengirim customer ke link yang masih 404.
+  const qrUsable = Boolean(resultToken) && !pendingSync && !syncFailed;
 
   useEffect(() => {
+    if (!qrUsable || !resultToken) return;
     let cancelled = false;
-    if (!resultToken) {
-      return;
-    }
     const target = `${window.location.origin}/r/${resultToken}`;
     QRCode.toDataURL(target, { width: 280, margin: 2, color: { dark: qrDark, light: qrLight } })
       .then((url) => {
-        if (!cancelled) {
-          setQr(url);
-          setQrLoading(false);
-        }
+        if (!cancelled) setQr({ token: resultToken, url });
       })
       .catch(() => {
-        if (!cancelled) setQrLoading(false);
+        // Gagal render QR = ikon peringatan (cabang terakhir render), bukan
+        // spinner abadi. Simpan token tanpa url supaya state ikut token ini.
+        if (!cancelled) setQr({ token: resultToken });
       });
     return () => {
       cancelled = true;
     };
-  }, [resultToken, qrDark, qrLight]);
+  }, [qrUsable, resultToken, qrDark, qrLight]);
+
+  // Turunan, bukan state: belum ada entri untuk token ini = masih dimuat.
+  const qrForToken = qr?.token === resultToken ? qr.url : undefined;
+  const qrLoading = qrUsable && qr?.token !== resultToken;
 
   const previewPhoto = useObjectUrl(finalPhotos[0]?.blob ?? null);
+  const photoUrls = useObjectUrls(finalPhotos.map((p) => p.blob));
   const hasGif = Boolean(gifUrl) && !gifError;
 
-  function downloadPhoto() {
-    if (!previewPhoto) return;
+  useEffect(() => {
+    return () => {
+      if (downloadTimer.current !== null) window.clearTimeout(downloadTimer.current);
+    };
+  }, []);
+
+  /** Unduh SEMUA foto final (bukan hanya yang pertama) — grid hasil berisi N
+   *  foto, jadi tombol unduh tidak boleh diam-diam menyimpan satu saja. */
+  function downloadAll() {
+    const urls = photoUrls.filter((u): u is string => Boolean(u));
+    if (urls.length === 0) return;
     setDownloading(true);
-    const a = document.createElement("a");
-    a.href = previewPhoto;
-    a.download = `snapyos-${Date.now()}.jpg`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => setDownloading(false), 500);
+    urls.forEach((url, i) => {
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `snapyos-${Date.now()}-${i + 1}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    });
+    // Kembalikan label tombol setelah unduhan terakhir dimulai. Timer disimpan
+    // agar dibatalkan saat unmount — setState pada komponen yang sudah lepas
+    // memicu warning dan membocorkan timer di kiosk yang berjalan lama.
+    if (downloadTimer.current !== null) window.clearTimeout(downloadTimer.current);
+    downloadTimer.current = window.setTimeout(() => {
+      downloadTimer.current = null;
+      setDownloading(false);
+    }, 600);
   }
 
   const isBelow = resultLayout === "qr-below";
@@ -205,17 +232,19 @@ export function ResultScreen({
             </p>
           )}
 
-          {!resultToken ? (
+          {!qrUsable ? (
             <div className="max-w-[28ch] border-2 border-ink bg-accent-2/10 p-4 text-center font-mono text-xs font-bold uppercase tracking-[0.08em]">
-              Hasil tersimpan di perangkat. Hubungkan kiosk ke internet untuk sinkronisasi.
+              {syncFailed
+                ? "Hasil online tidak tersedia. Hubungi petugas untuk salinan foto."
+                : "Hasil tersimpan di perangkat. QR aktif setelah sinkronisasi selesai."}
             </div>
           ) : qrLoading ? (
             <div className="flex h-[200px] w-[200px] items-center justify-center border-2 border-ink bg-muted">
               <Loader2 className="size-8 animate-spin text-muted-foreground" aria-hidden />
             </div>
-          ) : qr ? (
+          ) : qrForToken ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={qr} alt="QR code menuju hasil foto" className="h-[200px] w-[200px] border-2 border-ink md:h-[240px] md:w-[240px]" />
+            <img src={qrForToken} alt="QR code menuju hasil foto" className="h-[200px] w-[200px] border-2 border-ink md:h-[240px] md:w-[240px]" />
           ) : (
             <div className="flex h-[200px] w-[200px] items-center justify-center border-2 border-dashed border-destructive bg-muted">
               <TriangleAlert className="size-8 text-destructive" aria-hidden />
@@ -224,21 +253,34 @@ export function ResultScreen({
         </div>
 
         <div className="flex w-full max-w-[280px] flex-col gap-3">
-          {canPrint && !printed && (
-            <Button size="lg" onClick={onPrint} className="bg-accent" style={kioskStyle ? { borderRadius: kioskStyle.radius } : undefined}>
-              <Printer className="size-5" aria-hidden /> Print
+          {canPrint && (
+            // Setelah cetak pertama, tombol tetap ada sebagai cetak ulang
+            // (docs/05 §5.15.5) — kertas macet / hasil pudar tidak boleh
+            // memaksa customer mengulang seluruh sesi.
+            <Button
+              size="lg"
+              variant={printed ? "outline" : "default"}
+              onClick={onPrint}
+              className={printed ? undefined : "bg-accent"}
+              style={kioskStyle ? { borderRadius: kioskStyle.radius } : undefined}
+            >
+              <Printer className="size-5" aria-hidden /> {printed ? "Cetak ulang" : "Cetak"}
             </Button>
           )}
-          {previewPhoto && (
+          {photoUrls.length > 0 && (
             <Button
               size="lg"
               variant="outline"
-              onClick={downloadPhoto}
+              onClick={downloadAll}
               disabled={downloading}
               style={kioskStyle ? { borderRadius: kioskStyle.radius } : undefined}
             >
               <Download className="size-5" aria-hidden />
-              {downloading ? "Mengunduh…" : "Download"}
+              {downloading
+                ? "Mengunduh…"
+                : photoUrls.length > 1
+                  ? `Unduh ${photoUrls.length} foto`
+                  : "Unduh foto"}
             </Button>
           )}
           <Button size="lg" onClick={onReset} className="bg-accent-3" style={kioskStyle ? { borderRadius: kioskStyle.radius } : undefined}>

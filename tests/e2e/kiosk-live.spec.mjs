@@ -118,7 +118,7 @@ async function toPackageScreen() {
 }
 
 async function pickPackage() {
-  const cards = page.locator('button[role="listitem"]');
+  const cards = page.locator('button:has-text("PKG-")');
   const n = await cards.count();
   for (let i = 0; i < n; i++) {
     if (/strip klasik/i.test(await cards.nth(i).innerText())) { await cards.nth(i).click(); return; }
@@ -157,8 +157,11 @@ try {
   await page.screenshot({ path: SHOT("1-qris") });
 
   // Ambil order_id pembayaran terbaru booth ini (status creating/pending).
+  // `final_amount` (nominal DASAR) wajib ikut: simulate Pakasir mencocokkan
+  // amount dasar, sedangkan `total_amount` sudah termasuk kode unik → tanpa
+  // kolom ini simulasinya menjawab "Transaksi tidak ditemukan".
   const { data: pay } = await sb.from("payments")
-    .select("order_id, status, total_amount")
+    .select("order_id, status, final_amount, total_amount")
     .eq("photobox_id", PHOTOBOX_ID)
     .in("status", ["creating", "pending"])
     .order("created_at", { ascending: false })

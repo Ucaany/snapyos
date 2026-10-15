@@ -77,13 +77,30 @@ export function QrisPayment({
     </div>
   )
 }
-export function PaidNotice() {
+export function PaidNotice({ onRetry, busy }: { onRetry?(): void; busy?: boolean } = {}) {
   return (
-    <div className="mx-auto flex min-h-[50dvh] w-full max-w-[1000px] flex-1 flex-col items-center justify-center gap-4 border-2 border-ink bg-accent p-6 shadow-[4px_4px_0_0_#111111]">
+    <div className="mx-auto flex min-h-[50dvh] w-full max-w-[1000px] flex-1 flex-col items-center justify-center gap-4 border-2 border-ink bg-accent p-6 text-center shadow-[4px_4px_0_0_#111111]">
       <Loader2 className="size-8 animate-spin" />
       <p className="font-mono text-sm font-bold uppercase">
-            Pembayaran berhasil. Membuka sesi foto
+        {busy ? "Pembayaran berhasil. Membuka sesi foto" : "Pembayaran berhasil."}
       </p>
+      {/* Uang customer sudah masuk di titik ini. Layar yang hanya berputar
+          selamanya berarti mereka membayar tanpa mendapat sesi foto — jadi
+          kegagalan membuka sesi harus punya tombol ulang, bukan jalan buntu. */}
+      {!busy && onRetry && (
+        <>
+          <p className="max-w-[44ch] font-mono text-xs uppercase tracking-[0.1em]">
+            Sesi foto belum terbuka. Tekan tombol di bawah untuk mencoba lagi.
+          </p>
+          <button
+            type="button"
+            onClick={onRetry}
+            className="inline-flex min-h-11 items-center justify-center border-2 border-ink bg-bg px-5 py-3 font-mono text-xs font-bold uppercase shadow-[3px_3px_0_0_#111111] active:translate-y-[2px]"
+          >
+            Buka sesi foto
+          </button>
+        </>
+      )}
     </div>
   )
 }

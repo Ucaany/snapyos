@@ -193,10 +193,16 @@ export function KioskApp({
     [resumeFromVerify]
   );
 
-  async function handleCheckoutPaid(checkoutSessionId: string, tokenOverride?: string) {
+  /**
+   * Buka sesi dari checkout yang sudah paid. Mengembalikan false bila sesi
+   * tidak terbuka — layar checkout memakainya untuk menawarkan tombol ulang,
+   * bukan berputar selamanya di atas uang yang sudah dibayar customer.
+   */
+  async function handleCheckoutPaid(checkoutSessionId: string, tokenOverride?: string): Promise<boolean> {
     const token = tokenOverride ?? deviceToken;
-    if (!token) return;
-    if (session || paidHandledRef.current === checkoutSessionId) return;
+    if (!token) return false;
+    if (session) return true;
+    if (paidHandledRef.current === checkoutSessionId) return false;
     paidHandledRef.current = checkoutSessionId;
     setBusy(true);
     setNotice(null);
@@ -208,13 +214,15 @@ export function KioskApp({
       // Sesi sudah dibuat server — tarik konteks lengkap (package aktif) lewat
       // verify agar layar pilih frame punya `selectedPackage`; tanpa ini render
       // `step==="template" && selectedPackage` gagal → layar kosong pasca-bayar.
-      if (await resumeActiveSession(token)) return;
+      if (await resumeActiveSession(token)) return true;
       setSession(data);
       setStep("template");
+      return true;
     } catch (e) {
       paidHandledRef.current = null;
-      if (await resumeActiveSession(token)) return;
+      if (await resumeActiveSession(token)) return true;
       setNotice(e instanceof KioskError ? e.message : "Gagal membuka sesi foto.");
+      return false;
     } finally {
       setBusy(false);
     }
@@ -255,13 +263,27 @@ export function KioskApp({
             }
             setStep(localStorage.getItem(setupKey(data.photobox.slug)) ? "welcome" : "setup");
           })
-          .catch(() => {
-            // Race guard: hanya reset bila token tersimpan masih token lama
-            // yang gagal diverifikasi — bukan token baru dari aktivasi yang
-            // berhasil di tengah verify in-flight.
+          .catch((e: unknown) => {
+            // Race guard: hanya sentuh token bila token tersimpan masih token
+            // lama yang gagal diverifikasi — bukan token baru dari aktivasi
+            // yang berhasil di tengah verify in-flight.
             if (localStorage.getItem(TOKEN_KEY) !== token) return;
-            localStorage.removeItem(TOKEN_KEY);
-            setDeviceToken(null);
+            // Hanya penolakan otentikasi yang membuang token. Error jaringan,
+            // timeout, rate limit, atau 5xx TIDAK boleh memaksa pairing ulang:
+            // booth yang wifi-nya sempat putus akan tampak seperti belum pernah
+            // dipasang, dan petugas kehilangan sesi hanya karena gangguan sesaat.
+            const rejected = e instanceof KioskError && e.code === "FORBIDDEN";
+            if (rejected) {
+              localStorage.removeItem(TOKEN_KEY);
+              setDeviceToken(null);
+              setStep("activation");
+              return;
+            }
+            setNotice(
+              e instanceof KioskError
+                ? e.message
+                : "Gagal memverifikasi perangkat. Periksa koneksi booth."
+            );
             setStep("activation");
           })
       : Promise.resolve().then(() => setStep("activation")));
@@ -644,7 +666,7 @@ export function KioskApp({
           paymentAlign={liveConfig.branding.kiosk?.payment_align}
           kioskStyle={pageStyle("payment")}
           onOffline={() => void startDirectSession(selectedPackage)}
-          onPaid={(checkoutId) => void handleCheckoutPaid(checkoutId)}
+          onPaid={(checkoutId) => handleCheckoutPaid(checkoutId)}
           onBack={() => setStep("package")}
         />
       )}
@@ -728,15 +750,18 @@ export function KioskApp({
       {step !== "activation" && !exitPrompt && (
         <button
           type="button"
-          aria-label="Petugas — tahan 3 detik untuk keluar kiosk"
-          title="Petugas — tahan 3 detik"
+          aria-label="Petugas: tahan 3 detik untuk keluar kiosk"
+          title="Petugas: tahan 3 detik"
           onPointerDown={touchExit.onPointerDown}
           onPointerUp={touchExit.onPointerUp}
           onPointerLeave={touchExit.onPointerLeave}
           onPointerCancel={touchExit.onPointerCancel}
           onContextMenu={(e) => e.preventDefault()}
+          // Editor: panel kontrol menutup sudut kiri-bawah, jadi tombol pindah
+          // ke kanan-atas — tapi DI BAWAH SessionTimer (fixed right-4 top-4),
+          // bukan menimpanya; kalau bertumpuk, hitungan waktu sesi tertutup.
           className={`fixed z-40 flex size-11 items-center justify-center border-2 border-ink/20 bg-surface/60 text-muted-foreground opacity-40 active:opacity-100 ${
-            step === "editor" ? "right-3 top-3 lg:right-4 lg:top-4" : "bottom-3 left-3 lg:bottom-4 lg:left-4"
+            step === "editor" ? "right-3 top-16 lg:right-4 lg:top-16" : "bottom-3 left-3 lg:bottom-4 lg:left-4"
           }`}
           style={{
             marginBottom: "env(safe-area-inset-bottom)",
@@ -770,7 +795,7 @@ export function KioskApp({
             onClick={() => setExitPrompt(true)}
             className="border-2 border-ink bg-surface px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground shadow-[3px_3px_0_0_#111111] transition-transform active:translate-y-[2px]"
           >
-            Petugas — keluar kiosk
+            Petugas: keluar kiosk
           </button>
         </div>
       )}

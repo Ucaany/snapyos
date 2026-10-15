@@ -108,7 +108,7 @@ export function ExitPinDialog({ deviceToken, onSuccess, onCancel }: Props) {
 
         <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-muted-foreground">
           Masukkan PIN keluar yang diatur owner. Sesi foto yang sedang berjalan
-          tidak terputus — kembali ke kiosk untuk melanjutkan.
+          tidak terputus, kembali ke kiosk untuk melanjutkan.
         </p>
 
         {/* Indikator digit PIN — nilai asli tidak ditampilkan */}

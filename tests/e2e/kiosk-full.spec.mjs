@@ -144,7 +144,7 @@ async function toPackageScreen(token) {
 
 /** Pilih paket Strip Klasik (punya frame ber-slot). */
 async function pickPackage() {
-  const cards = page.locator('button[role="listitem"]');
+  const cards = page.locator('button:has-text("PKG-")');
   const n = await cards.count();
   for (let i = 0; i < n; i++) {
     if (/strip klasik/i.test(await cards.nth(i).innerText())) { await cards.nth(i).click(); return; }

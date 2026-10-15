@@ -59,7 +59,11 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
   const stageRef = useRef<Stage>("preview");
   const [mirror, setMirror] = useState(cameraSettings.mirror_preview !== false);
   const [cameraReady, setCameraReady] = useState(false);
-  const [error, setError] = useState<{ message: string; action: string } | null>(null);
+  // `action` = label tombol; `onAction` = yang benar-benar dijalankan. Tanpa
+  // pemisahan ini, error batas retake (satu-satunya jalur keluar dari review)
+  // menampilkan "LANJUTKAN" tapi tombolnya membuka ulang kamera — customer
+  // terjebak tanpa cara melanjutkan sesi.
+  const [error, setError] = useState<{ message: string; action: string; onAction?: () => void } | null>(null);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const streamGeneration = useRef(0);
   // Timer reconnect tertunda — dibatalkan saat unmount/sukses agar stream
@@ -216,7 +220,9 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
     const handleDeviceChange = () => reconnectRef.current();
     navigator.mediaDevices?.addEventListener("devicechange", handleDeviceChange);
     return () => navigator.mediaDevices?.removeEventListener("devicechange", handleDeviceChange);
-  });
+    // Tanpa daftar deps, listener dicopot-dipasang tiap render — di sesi foto
+    // yang progress-nya berubah terus, itu ribuan pasang-copot per menit.
+  }, [openStream, cameraSettings.preferred_device_id]);
 
   // Watchdog: track mati di tengah sesi (USB goyang, power save) → reconnect
   // otomatis tanpa menunggu event devicechange (yang kadang tak ter-pause).
@@ -271,7 +277,14 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
 
   function retake() {
     if (maxRetakes !== null && retakeCount >= maxRetakes) {
-      setError({ message: "Batas retake sudah tercapai.", action: "LANJUTKAN" });
+      setError({
+        message: "Batas retake sudah tercapai. Foto ini yang dipakai.",
+        action: "LANJUTKAN",
+        onAction: () => {
+          setError(null);
+          continueNext();
+        },
+      });
       return;
     }
     const nextRetakes = retakeCount + 1;
@@ -340,7 +353,13 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
             <p className="max-w-[42ch] font-mono text-sm">{error.message}</p>
             <Button
               variant="outline"
-              onClick={() => void openStream(cameraSettings.preferred_device_id ?? undefined)}
+              onClick={() => {
+                if (error.onAction) {
+                  error.onAction();
+                  return;
+                }
+                void openStream(cameraSettings.preferred_device_id ?? undefined);
+              }}
             >
               {error.action}
             </Button>

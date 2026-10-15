@@ -171,7 +171,7 @@ try {
   body = await text();
   if (/Strip Klasik|Single Basic|Paket Duo|PILIH PAKET/i.test(body) && !/PILIH FRAME/i.test(body)) {
     await page.screenshot({ path: SHOT("03-packages") });
-    const cards = page.locator('button[role="listitem"]');
+    const cards = page.locator('button:has-text("PKG-")');
     const n = await cards.count();
     let picked = false;
     for (let i = 0; i < n; i++) {

@@ -63,6 +63,10 @@ function PrintLayoutRendererInner({ photos, plan, printSettings, onDone }: Props
   // Satu blob URL per foto final (blob:), di-revoke saat daftar berubah/unmount.
   // Menghindari base64 data URL di DOM print.
   const objectUrls = useObjectUrls(photos.map((p) => p.blob));
+  // useObjectUrls membuat URL di dalam effect → commit pertama mengembalikan [].
+  // Gerbang kesiapan: tanpa ini pipeline print berjalan atas <img> tanpa src
+  // (naturalWidth 0) dan menandai gagal sebelum blob sempat dimuat.
+  const urlsReady = objectUrls.length === photos.length && objectUrls.every(Boolean);
   const urlByBlob = new Map<Blob, string>();
   photos.forEach((p, i) => {
     const u = objectUrls[i];
@@ -77,6 +81,9 @@ function PrintLayoutRendererInner({ photos, plan, printSettings, onDone }: Props
       onDone(false);
       return;
     }
+    // URL blob belum ada di commit pertama — jalankan pipeline hanya setelah
+    // setiap <img> punya src. Efek re-run saat urlsReady berubah.
+    if (!urlsReady) return;
 
     let cancelled = false;
     doneRef.current = false;
@@ -149,12 +156,15 @@ function PrintLayoutRendererInner({ photos, plan, printSettings, onDone }: Props
           throw new Error("Tidak ada gambar untuk dicetak.");
         }
 
-        // copies 1–20 menggandakan node <img> (dataURL sama). Browser satu cache
-        // per src, jadi cukup tunggu SATU waitForImg per dataUrl unik — jauh lebih
-        // ringan di tablet dibanding menunggu setiap salinan.
+        // copies 1–20 menggandakan node <img> (blob URL sama). Browser satu cache
+        // per src, jadi cukup tunggu SATU waitForImg per src unik — jauh lebih
+        // ringan di tablet dibanding menunggu setiap salinan. <img> tanpa src
+        // (blob belum siap) tidak boleh berbagi kunci "" — kalau berbagi, satu
+        // gambar yang termuat membuat yang lain lolos gate di bawah.
         const uniqueImgs = new Map<string, HTMLImageElement>();
-        for (const img of allImgs) {
-          if (!uniqueImgs.has(img.src)) uniqueImgs.set(img.src, img);
+        for (const [i, img] of allImgs.entries()) {
+          const key = img.src || `__missing__:${i}`;
+          if (!uniqueImgs.has(key)) uniqueImgs.set(key, img);
         }
 
         await Promise.all(Array.from(uniqueImgs.values(), (img) => waitForImg(img)));
@@ -188,7 +198,7 @@ function PrintLayoutRendererInner({ photos, plan, printSettings, onDone }: Props
     };
     // printSettings diobjekkan per render — destructure ke primitif agar stabil.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [retryKey, auto, copies, page.widthMm, page.heightMm, page.marginMm, marginMm]);
+  }, [retryKey, auto, copies, page.widthMm, page.heightMm, page.marginMm, marginMm, urlsReady]);
 
   if (plan.kind === "digital") {
     return null;

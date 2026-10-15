@@ -34,8 +34,18 @@ function uploadInvalid(message: string) {
   );
 }
 
-function toPhotoFile(file: PhotoFile): PhotoFile {
-  return file;
+/**
+ * Bungkus file dengan buffer yang sudah dibaca route ini. `finalizeSession`
+ * memanggil `file.arrayBuffer()` lagi untuk tiap foto; tanpa cache, body 50 MB
+ * disalin dua kali penuh (sekali validasi, sekali upload) di tablet kiosk.
+ */
+function withCachedBuffer(file: PhotoFile, bytes: Uint8Array): PhotoFile {
+  return {
+    name: file.name,
+    type: file.type,
+    size: file.size,
+    arrayBuffer: async () => bytes.buffer as ArrayBuffer,
+  };
 }
 
 function declaredBodyBytes(request: Request): number | null {
@@ -67,7 +77,7 @@ async function readValidatedPhotos(files: readonly PhotoFile[]): Promise<PhotoFi
     const bytes = new Uint8Array(await file.arrayBuffer());
     const result = validatePhotoFile(file, bytes);
     if (!result.ok) throw new Error(result.error);
-    validated.push(toPhotoFile(file));
+    validated.push(withCachedBuffer(file, bytes));
   }
   return validated;
 }
@@ -87,10 +97,14 @@ function parseMetadata(form: FormData) {
   });
 }
 
-async function enforceRateLimit(request: Request, deviceToken?: string) {
-  const ip = getClientIp(request.headers);
-  const ipLimit = await rateLimit("session-finalize:" + ip, 10, 60_000);
-  if (!ipLimit.ok) return ipLimit;
+/** Limit per IP — dipanggil SEBELUM body diparse (murah, tanpa baca body).
+ *  Body 50 MB yang di-parse dulu baru ditolak = kerja gratis untuk penyerang. */
+async function enforceIpRateLimit(request: Request) {
+  return rateLimit("session-finalize:" + getClientIp(request.headers), 10, 60_000);
+}
+
+/** Lapis kedua per device (booth) — butuh `device_token` dari body. */
+async function enforceDeviceRateLimit(deviceToken: string) {
   return rateLimitByDevice("session-finalize", deviceToken, 10, 60_000);
 }
 
@@ -111,10 +125,14 @@ export async function POST(request: Request, { params }: Params) {
     const declared = declaredBodyBytes(request);
     if (declared !== null && declared > MAX_MULTIPART_BYTES) return requestTooLarge();
 
+    // IP lebih dulu, sebelum multipart 50 MB diparse.
+    const ipLimit = await enforceIpRateLimit(request);
+    if (!ipLimit.ok) return rateLimited(ipLimit.retryAfterSec);
+
     const form = await request.formData();
     const input = parseMetadata(form);
-    const limited = await enforceRateLimit(request, input.device_token);
-    if (limited && !limited.ok) return rateLimited(limited.retryAfterSec);
+    const deviceLimit = await enforceDeviceRateLimit(input.device_token);
+    if (deviceLimit && !deviceLimit.ok) return rateLimited(deviceLimit.retryAfterSec);
 
     const photos = parsePhotos(form);
     const filesError = validateFiles(photos);

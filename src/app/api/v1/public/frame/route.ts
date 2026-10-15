@@ -1,35 +1,20 @@
 import { NextResponse } from "next/server";
 
+import { isAllowedFrameTarget, type FrameProxyEnv } from "@/lib/frame-proxy";
 import { sniffImageType } from "@/lib/upload-validation";
 
 const MAX_FRAME_BYTES = 8 * 1024 * 1024;
 const ALLOWED_FRAME_MIME = ["image/png", "image/jpeg", "image/webp"] as const;
 
-function allowedOrigins(): Set<string> {
-  const origins = new Set<string>();
-  const supabaseUrl = process.env.SUPABASE_URL?.trim();
-  const r2Endpoint = process.env.R2_ENDPOINT?.trim();
-  const accountId = process.env.R2_ACCOUNT_ID?.trim();
-  for (const value of [supabaseUrl, r2Endpoint]) {
-    if (!value) continue;
-    try {
-      origins.add(new URL(value).origin);
-    } catch {
-      continue;
-    }
-  }
-  if (accountId) origins.add(`https://${accountId}.r2.cloudflarestorage.com`);
-  return origins;
-}
-
-/** Path objek storage yang boleh diproksikan (frame template di business-assets). */
-function isAllowedStoragePath(pathname: string): boolean {
-  return pathname.includes("/storage/v1/object/") || pathname.includes("/business-assets/");
-}
-
-function isAllowedProtocol(protocol: string): boolean {
-  if (protocol === "https:") return true;
-  return protocol === "http:" && process.env.NODE_ENV !== "production";
+function frameEnv(): FrameProxyEnv {
+  return {
+    SUPABASE_URL: process.env.SUPABASE_URL,
+    R2_ENDPOINT: process.env.R2_ENDPOINT,
+    R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID,
+    R2_BUCKET_BUSINESS_ASSETS: process.env.R2_BUCKET_BUSINESS_ASSETS,
+    R2_BUCKET: process.env.R2_BUCKET,
+    NODE_ENV: process.env.NODE_ENV,
+  };
 }
 
 export async function GET(request: Request) {
@@ -43,13 +28,7 @@ export async function GET(request: Request) {
     return new NextResponse("Invalid frame URL", { status: 400 });
   }
 
-  if (
-    !allowedOrigins().has(target.origin) ||
-    !isAllowedProtocol(target.protocol) ||
-    target.username ||
-    target.password ||
-    !isAllowedStoragePath(target.pathname)
-  ) {
+  if (!isAllowedFrameTarget(target, frameEnv())) {
     return new NextResponse("Frame URL is not allowed", { status: 400 });
   }
 

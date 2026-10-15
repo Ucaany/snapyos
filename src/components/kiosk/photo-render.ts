@@ -114,21 +114,41 @@ export function drawPhoto(
   for (const o of edit.overlays) drawOverlay(ctx, o, cw, ch);
 }
 
-/** Render blob foto + editan → Blob JPEG (resolusi penuh). Menghindari
- *  base64 sepenuhnya (tak ada toDataURL → tak ada data URL besar di memori). */
-export async function renderPhotoBlob(blob: Blob, edit: PhotoEdit): Promise<Blob> {
+/**
+ * Gambar frame PNG penuh di atas isi canvas (template legacy tanpa slot,
+ * docs/15 §15.1: frame selalu DI ATAS foto). No-op bila frame belum termuat —
+ * pemanggil sudah memvalidasinya sebelum render.
+ */
+export function drawFrameOverlay(
+  canvas: HTMLCanvasElement,
+  frame: HTMLImageElement | null
+): void {
+  if (!frame) return;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  ctx.drawImage(frame, 0, 0, canvas.width, canvas.height);
+}
+
+/** Foto + editan, lalu frame legacy digambar penuh di atasnya (full-canvas,
+ *  docs/05 §5.9). Dipakai jalur final template tanpa slot. */
+export async function renderFramedPhotoBlob(
+  blob: Blob,
+  edit: PhotoEdit,
+  frame: HTMLImageElement | null
+): Promise<Blob> {
   const url = URL.createObjectURL(blob);
   try {
     const img = await loadImage(url);
     const canvas = document.createElement("canvas");
     drawPhoto(canvas, img, edit, Number.POSITIVE_INFINITY);
+    drawFrameOverlay(canvas, frame);
     return await canvasToBlob(canvas);
   } finally {
     URL.revokeObjectURL(url);
   }
 }
 
-/** Canvas → Blob JPEG (fallback ke data URL bila toBlob tak tersedia). */
+/** Canvas → Blob JPEG. */
 export function canvasToBlob(canvas: HTMLCanvasElement, quality = 0.92): Promise<Blob> {
   return new Promise((resolve, reject) => {
     canvas.toBlob(

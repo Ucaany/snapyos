@@ -1,5 +1,5 @@
 "use client"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import QRCode from "qrcode"
 import { ArrowLeft, Loader2, WifiOff } from "lucide-react"
 import type { KioskPaymentMethod, KioskVisualStyle, PublicPackage } from "@/lib/kiosk-types"
@@ -42,7 +42,8 @@ type Props = {
   kioskStyle?: KioskVisualStyle
   offlineEnabled?: boolean
   onOffline?(): void
-  onPaid(checkoutId: string): void
+  /** Membuka sesi dari checkout paid. false = gagal; layar menawarkan ulang. */
+  onPaid(checkoutId: string): Promise<boolean>
   onBack(): void
 }
 const button =
@@ -69,6 +70,24 @@ export function CheckoutScreen({
   const [voucherCode, setVoucherCode] = useState("")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Checkout id dari payment yang sudah paid — tombol coba lagi di layar "paid"
+  // memanggil ulang onPaid dengan id yang sama (idempoten, lihat KioskApp).
+  const [paidCheckoutId, setPaidCheckoutId] = useState<string | null>(null)
+  const [paidFailed, setPaidFailed] = useState(false)
+  // Kunci tombol bayar selama `details.retry_after` (docs/06 §6.3) — tanpa ini
+  // customer yang menekan berulang saat 429 hanya menambah beban dan berisiko
+  // double pay begitu limit lewat.
+  const [lockLeft, setLockLeft] = useState(0)
+  // Guard ref, bukan state: dua tap cepat dalam satu render masih membaca
+  // `busy` lama (state baru terlihat setelah re-render), jadi state saja tidak
+  // menahan POST /payments/create kedua.
+  const creatingRef = useRef(false)
+  // Hitung mundur kunci rate-limit; 0 = tombol bayar aktif.
+  useEffect(() => {
+    if (lockLeft <= 0) return
+    const t = setInterval(() => setLockLeft((v) => (v <= 1 ? 0 : v - 1)), 1000)
+    return () => clearInterval(t)
+  }, [lockLeft])
   const load = useCallback(async () => {
     setPhase("loading")
     setError(null)
@@ -105,14 +124,25 @@ export function CheckoutScreen({
     }, 0)
     return () => clearTimeout(timer)
   }, [payment])
+  /** Buka sesi dari checkout yang sudah paid. Gagal = tawarkan ulang, bukan
+   *  layar berputar selamanya (uang customer sudah masuk di titik ini). */
+  const openPaidSession = useCallback(
+    async (checkoutId: string) => {
+      setPaidFailed(false)
+      const ok = await onPaid(checkoutId)
+      if (!ok) setPaidFailed(true)
+    },
+    [onPaid]
+  )
   const check = useCallback(
     async (current: PendingPayment) => {
       const status = await apiGet<StatusData>(
         `/api/v1/public/${businessSlug}/payments/${current.payment_reference}/status?device_token=${encodeURIComponent(deviceToken)}`
       )
       if (status.status === "paid") {
+        setPaidCheckoutId(status.checkout_session_id)
         setPhase("paid")
-        onPaid(status.checkout_session_id)
+        void openPaidSession(status.checkout_session_id)
         return "paid" as const
       }
       if (status.status === "expired") {
@@ -121,7 +151,7 @@ export function CheckoutScreen({
       }
       return "pending" as const
     },
-    [businessSlug, deviceToken, onPaid]
+    [businessSlug, deviceToken, openPaidSession]
   )
   const poll = useCallback(
     () => (payment ? check(payment) : Promise.resolve("pending" as const)),
@@ -134,7 +164,8 @@ export function CheckoutScreen({
     onExpired: () => setPhase("expired"),
   })
   async function create(method: KioskPaymentMethod) {
-    if (!amounts) return
+    if (!amounts || creatingRef.current) return
+    creatingRef.current = true
     setBusy(true)
     setError(null)
     try {
@@ -147,8 +178,9 @@ export function CheckoutScreen({
         }
       )
       if (result.status === "paid") {
+        setPaidCheckoutId(result.checkout_session_id)
         setPhase("paid")
-        onPaid(result.checkout_session_id)
+        void openPaidSession(result.checkout_session_id)
         return
       }
       setPayment(result)
@@ -162,9 +194,13 @@ export function CheckoutScreen({
               : "qris"
       )
     } catch (cause) {
+      if (cause instanceof KioskError && cause.code === "RATE_LIMITED" && cause.retryAfter > 0) {
+        setLockLeft(cause.retryAfter)
+      }
       setError(cause instanceof KioskError ? cause.message : "Gagal membuat payment.")
       setPhase("method-picker")
     } finally {
+      creatingRef.current = false
       setBusy(false)
     }
   }
@@ -203,9 +239,15 @@ export function CheckoutScreen({
     }
   }
   /**
-   * Kembali dari layar pembayaran ke pemilih metode. Payment pending lama
-   * tidak perlu di-void di sini: `POST /payments/create` sudah meng-expire
-   * payment pending sebelumnya saat metode baru dipilih (satu QR hidup/checkout).
+   * Kembali dari layar pembayaran ke pemilih metode.
+   *
+   * Payment pending lama TIDAK di-void di sini: tidak ada endpoint void dari
+   * kiosk, dan `POST /payments/create` justru MENOLAK payment baru selama satu
+   * payment masih menunggu (`PAYMENT_ALREADY_PROCESSED`) — itu yang menahan
+   * double pay selama QR lama masih bisa dipindai. Yang menghanguskan checkout
+   * lama hanya `POST /checkout`, jadi jalur "ganti metode" yang sungguhan
+   * adalah kembali ke halaman package (docs/06 §6.3). Kembali ke pemilih metode
+   * tetap benar saat payment sudah kedaluwarsa.
    */
   function backToMethods() {
     stopTimers()
@@ -310,7 +352,8 @@ export function CheckoutScreen({
       {phase === "method-picker" && amounts && (
           <PaymentMethodPicker
             methods={amounts.payment_methods}
-            disabled={busy}
+            disabled={busy || lockLeft > 0}
+            lockLeft={lockLeft}
             error={error}
             onSelect={(method) => {
               setError(null)
@@ -398,7 +441,16 @@ export function CheckoutScreen({
           </button>
         </div>
       )}
-      {phase === "paid" && <PaidNotice />}
+      {phase === "paid" && (
+        <PaidNotice
+          busy={!paidFailed}
+          onRetry={
+            paidCheckoutId
+              ? () => void openPaidSession(paidCheckoutId)
+              : undefined
+          }
+        />
+      )}
     </div>
   )
 }

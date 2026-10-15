@@ -5,12 +5,15 @@ const icon = { qris: QrCode, va: Banknote, redirect: QrCode, voucher: Tag, cash:
 export function PaymentMethodPicker({
   methods,
   disabled,
+  lockLeft = 0,
   error,
   onSelect,
   onBack,
 }: {
   methods: KioskPaymentMethod[]
   disabled?: boolean
+  /** Sisa detik kunci RATE_LIMITED (docs/06 §6.3) — 0 = tidak terkunci. */
+  lockLeft?: number
   error?: string | null
   onSelect(method: KioskPaymentMethod): void
   onBack?(): void
@@ -31,6 +34,22 @@ export function PaymentMethodPicker({
           className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink"
         >
           {error}
+        </p>
+      )}
+      {lockLeft > 0 && (
+        <p role="status" className="font-mono text-xs font-bold uppercase tracking-[0.08em]">
+          {`Tombol bayar terbuka lagi dalam ${lockLeft} detik.`}
+        </p>
+      )}
+      {methods.length === 0 && (
+        // Owner belum mengaktifkan credential gateway apa pun, atau mode
+        // photobox memfilter semuanya. Grid kosong tanpa pesan = customer
+        // menatap layar buntu tanpa tahu harus apa.
+        <p
+          role="status"
+          className="border-2 border-ink bg-accent-2/20 px-4 py-3 font-mono text-xs font-bold uppercase tracking-[0.08em]"
+        >
+          Belum ada metode pembayaran aktif di booth ini. Hubungi petugas.
         </p>
       )}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

@@ -12,9 +12,17 @@ export async function POST(request: Request) {
     const ip = getClientIp(request.headers);
     const rl = await rateLimit(`activate:${ip}`, 10, 60_000);
     if (!rl.ok) {
+      // Kontrak 429 wajib membawa `details.retry_after` (docs/08 §8.18) — sama
+      // dengan verify/create; tanpa itu klien tidak tahu harus menunggu berapa.
       return NextResponse.json(
-        { error: { code: "RATE_LIMITED", message: "Terlalu banyak percobaan. Coba lagi nanti.", details: {} } },
-        { status: 429 }
+        {
+          error: {
+            code: "RATE_LIMITED",
+            message: "Terlalu banyak percobaan. Coba lagi nanti.",
+            details: { retry_after: rl.retryAfterSec },
+          },
+        },
+        { status: 429, headers: { "retry-after": String(rl.retryAfterSec) } }
       );
     }
 

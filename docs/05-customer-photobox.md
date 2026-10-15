@@ -400,7 +400,7 @@ Menyediakan:
 
 **Kustomisasi owner (terbatas):** Owner **hanya** bisa mengubah **background** halaman result (via `business_settings.branding` — mis. warna latar / pola / gambar). **Posisi, tata letak, dan komponen tidak bisa diubah** — struktur halaman tetap sama untuk semua business, demi konsistensi brand & pengalaman.
 
-**Rule:** `result_token` di-issue saat payment `paid`; akses divalidasi server-side; expiration mengikuti retention policy (default 7 hari). Halaman wajib Neo-Brutalism (lihat `11-design-system.md`).
+**Rule:** `result_token` di-issue saat payment `paid`; akses divalidasi server-side; expiration mengikuti retention policy (default **3 hari**, rentang 1–3 hari; lihat catatan konflik retensi di §Ringkasan atas). Halaman wajib Neo-Brutalism (lihat `11-design-system.md`).
 
 **Acceptance:** (AC 31–33, 61) setelah payment sukses & finalize, customer mendapat print otomatis + QR ke halaman online dengan GIF & foto berframe.
 
@@ -416,9 +416,9 @@ SCAN TO GET YOUR PHOTO
 [ QR CODE ]
 ```
 
-QR mengarah ke secure online result page (GIF + foto berframe, §5.13). Result memiliki **expiration policy configurable** (per business/subscription, default misal 7 hari).
+QR mengarah ke secure online result page (GIF + foto berframe, §5.13). Result memiliki **expiration policy configurable** (per business/subscription, default 3 hari, rentang 1–3 hari).
 
-**Technical:** QR mengarah ke route `/r/[token]` (halaman publik, §5.13). Akses divalidasi server-side via `result_token`; expired mengikuti retention policy (default 7 hari) → halaman menampilkan pesan "link kedaluwarsa".
+**Technical:** QR mengarah ke route `/r/[token]` (halaman publik, §5.13). Akses divalidasi server-side via `result_token`; expired mengikuti retention policy (default 3 hari, rentang 1–3 hari) → halaman menampilkan pesan "link kedaluwarsa".
 
 **Acceptance:** (AC 33) customer mendapat QR photo; link expire sesuai kebijakan.
 

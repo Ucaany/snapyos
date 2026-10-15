@@ -205,7 +205,7 @@ async function gotoEditor() {
 
   // ---- 3. Pilih paket (bila di layar paket) ----
   if (/PILIH PAKET|Paket/i.test(await body()) && !/PILIH FRAME/i.test(await body())) {
-    const cards = page.locator('button[role="listitem"]');
+    const cards = page.locator('button:has-text("PKG-")');
     const n = await cards.count();
     if (n > 0) {
       let picked = false;
@@ -236,7 +236,8 @@ async function gotoEditor() {
     await page.waitForTimeout(800);
     await page.screenshot({ path: SHOT("01-template") });
     if (FRAME_MODE) {
-      const frameBtns = page.locator('button[role="listitem"]').filter({ hasNotText: /Tanpa frame/i });
+      // Kartu frame = tombol berisi thumbnail; "Tanpa frame" tidak punya <img>.
+      const frameBtns = page.locator("button:has(img)").filter({ hasNotText: /Tanpa frame/i });
       if (await frameBtns.count()) { await frameBtns.first().click(); record("Pilih template ber-frame", true); }
       else { const nf = page.locator('button:has-text("Tanpa frame")').first(); if (await nf.count()) await nf.click(); }
     } else {

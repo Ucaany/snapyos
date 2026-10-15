@@ -15,7 +15,13 @@ import {
 } from "@/lib/kiosk-types";
 import type { TemplateLayout } from "@/lib/template-layout";
 import { composeFrame } from "@/lib/compose-frame";
-import { canvasToBlob, defaultEdit, drawPhoto, renderPhotoBlob } from "@/components/kiosk/photo-render";
+import {
+  canvasToBlob,
+  defaultEdit,
+  drawFrameOverlay,
+  drawPhoto,
+  renderFramedPhotoBlob,
+} from "@/components/kiosk/photo-render";
 import { StickerPicker } from "@/components/kiosk/StickerPicker";
 import { useObjectUrls } from "@/components/kiosk/use-object-url";
 
@@ -134,8 +140,8 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
   }, [photos, photoUrls]);
 
   // load frame PNG (signed URL). crossOrigin WAJIB: tanpa ini canvas jadi
-  // tainted (gambar cross-origin) → toDataURL di finish() melempar
-  // SecurityError dan hasil cetak/foto final tidak pernah dihasilkan.
+  // tainted (gambar cross-origin) → export blob di finish() gagal dan hasil
+  // cetak/foto final tidak pernah dihasilkan.
   useEffect(() => {
     if (!frameUrl) {
       frameRef.current = null;
@@ -216,7 +222,12 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
       return;
     }
     const img = imgsRef.current[active];
-    if (img) drawPhoto(canvas, img, filteredEdit(edit));
+    if (img) {
+      drawPhoto(canvas, img, filteredEdit(edit));
+      // Template legacy (tanpa slot) = frame full-canvas DI ATAS foto — preview
+      // harus menampilkan hal yang sama dengan hasil final (docs/05 §5.9).
+      drawFrameOverlay(canvas, frameRef.current);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imgVersion, frameVersion, edit, edits, active, layout, filterId]);
 
@@ -385,15 +396,22 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
         onFinish([{ blob: await canvasToBlob(canvas) }]);
         return;
       }
+      // Template legacy (tanpa slot): tiap foto dirender penuh, lalu frame PNG
+      // digambar di atasnya. Tanpa frameRef di sini hasil final kehilangan
+      // frame padahal preview menampilkannya (docs/05 §5.9).
       const results: FinalPhoto[] = [];
       for (let i = 0; i < photos.length; i++) {
-        const blob = await renderPhotoBlob(photos[i]!.blob, filteredEdit(edits[i] ?? defaultEdit()));
+        const blob = await renderFramedPhotoBlob(
+          photos[i]!.blob,
+          filteredEdit(edits[i] ?? defaultEdit()),
+          frameRef.current
+        );
         results.push({ blob });
       }
       onFinish(results);
     } catch {
-      // toDataURL bisa gagal (canvas tainted/gambar gagal load) — jangan biarkan
-      // kiosk stuck diam tanpa pesan.
+      // Render canvas bisa gagal (gambar gagal load) — jangan biarkan kiosk
+      // stuck diam tanpa pesan.
       setFinishError("Gagal menyimpan hasil. Coba lagi atau hubungi petugas.");
     }
   }
@@ -528,7 +546,7 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
               Penyesuaian
             </p>
             <label className="flex flex-col gap-1">
-              <span className="font-mono text-[10px] uppercase tracking-[0.1em]">Zoom — {edit.adjust.zoom.toFixed(2)}×</span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.1em]">Zoom · {edit.adjust.zoom.toFixed(2)}×</span>
               <input
                 type="range"
                 min={1}
@@ -551,7 +569,7 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
             ] as const).map(([key, label, min, max, step]) => (
               <label key={key} className="flex flex-col gap-1">
                 <span className="font-mono text-[10px] uppercase tracking-[0.1em]">
-                  {label} — {Number(edit.adjust[key]).toFixed(key === "blur" ? 1 : 2)}
+                  {label} · {Number(edit.adjust[key]).toFixed(key === "blur" ? 1 : 2)}
                 </span>
                 <input
                   type="range"
@@ -620,7 +638,7 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
                     )}
                     <label className="flex flex-col gap-1">
                       <span className="font-mono text-[10px] uppercase tracking-[0.1em]">
-                        Ukuran — {o.size.toFixed(2)}
+                        Ukuran · {o.size.toFixed(2)}
                       </span>
                       <input
                         type="range"
@@ -634,7 +652,7 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
                     </label>
                     <label className="flex flex-col gap-1">
                       <span className="font-mono text-[10px] uppercase tracking-[0.1em]">
-                        Rotasi — {o.rotation}°
+                        Rotasi · {o.rotation}°
                       </span>
                       <input
                         type="range"

@@ -45,7 +45,7 @@ export function SessionTimer({ expiresAt, warningSeconds, onExpired }: Props) {
       aria-live={warning ? "polite" : "off"}
     >
       <span className="text-[10px] uppercase tracking-[0.2em]">
-        {warning ? "Sisa — SEGERA" : "Sisa"}
+        {warning ? "Sisa · SEGERA" : "Sisa"}
       </span>
       {fmt(left)}
     </div>

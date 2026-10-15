@@ -104,7 +104,12 @@ try {
     record("Layar welcome tampil", true);
 
     // ---- 3. Mulai -> paket / (resume) template / checkout ----
-    const startBtn = page.locator("button").filter({ hasText: /Mulai/i }).first();
+    // Label CTA bisa diubah owner (branding.welcome_button, default "Mulai"):
+    // jangan asumsi teks default, ambil tombol aksi pertama di luar header.
+    const startBtn = page
+      .locator("button:not([aria-label^='Petugas'])")
+      .filter({ hasText: /\S/ })
+      .first();
     await startBtn.click();
     await page.waitForTimeout(1500);
     await page.screenshot({ path: "tests/e2e/k8-03-after-start.png" });
@@ -120,7 +125,7 @@ try {
     } else if (onPackage) {
       record("Layar pilih paket tampil", true);
       await page.screenshot({ path: "tests/e2e/k8-02-packages.png" });
-      const pkgCards = page.locator('button[role="listitem"]');
+      const pkgCards = page.locator('button:has-text("PKG-")');
       const pkgTotal = await pkgCards.count();
       console.log("[diag] package cards:", pkgTotal);
       let clickedPkg = false;

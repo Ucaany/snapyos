@@ -46,6 +46,9 @@ export function FramePreviewPanel({
   const photoRef = useRef<(HTMLImageElement | null)[]>([]);
   const overrideRef = useRef<HTMLImageElement | null>(null);
   const mirrorCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  // Konteks offscreen dipakai ulang; getContext("2d") tiap frame = lookup baru
+  // 60x/detik hanya untuk menggambar ulang canvas yang sama.
+  const mirrorCtxRef = useRef<CanvasRenderingContext2D | null>(null);
   const [frameError, setFrameError] = useState(false);
   const [assetVersion, setAssetVersion] = useState(0);
   // Object URL ref-counted (StrictMode-safe) untuk foto terkonfirmasi + override.
@@ -150,7 +153,7 @@ export function FramePreviewPanel({
           off.width = vw;
           off.height = vh;
         }
-        const octx = off.getContext("2d");
+        const octx = mirrorCtxRef.current ?? (mirrorCtxRef.current = off.getContext("2d"));
         if (octx) {
           octx.save();
           octx.translate(vw, 0);
@@ -212,7 +215,7 @@ export function FramePreviewPanel({
         className="font-mono text-[10px] uppercase tracking-[0.12em]"
         style={{ opacity: 0.55, color: kioskStyle ? kioskStyle.text : undefined }}
       >
-        {`Slot ${activeSlot + 1} / ${slotTotal} — ${captured.length} terisi`}
+        {`Slot ${activeSlot + 1} / ${slotTotal} · ${captured.length} terisi`}
       </p>
     </div>
   );

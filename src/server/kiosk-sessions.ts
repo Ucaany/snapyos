@@ -32,7 +32,7 @@ import {
   accountStorageAdd,
   accountStorageSub,
 } from "@/server/storage-usage"
-import { getStorage, signedUrlMap } from "@/server/storage"
+import { getStorage, signedUrlMap, removeResolvedOutcome } from "@/server/storage"
 
 const GENERATED_BUCKET = "generated-photos" as const
 const DEFAULT_RETENTION_DAYS = 3
@@ -362,12 +362,41 @@ export async function abortSession(
   if (session.photobox_id !== device.photobox.id) {
     throw new ApiError("FORBIDDEN", "Device tidak cocok dengan sesi ini")
   }
-  await supabase
+  const { data: aborted } = await supabase
     .from("sessions")
     .update({ status: "expired", finalized_at: new Date().toISOString() })
     .eq("id", session.id)
     .eq("status", "active")
+    .select("id")
+    .maybeSingle()
+  // Hanya jalur yang benar-benar membatalkan sesi yang boleh membersihkan objek.
+  // Sesi yang sudah 'completed' (finalize menang balapan) tidak boleh disentuh:
+  // hasilnya sudah ditampilkan customer.
+  if (aborted) await discardSessionMedia(device.businessId, session)
   return { ok: true as const }
+}
+
+/**
+ * Buang semua objek hasil sesi yang ditinggalkan jalur abort (foto parsial dari
+ * finalize yang gagal, atau GIF yatim) — storage + ledger. Key deterministik
+ * `photo-00..photo-NN` (N = kuota paket) + `result.gif`; key absen = no-op, jadi
+ * aman dipanggil walau tak ada objek. Best-effort: kegagalan hanya di-log.
+ */
+async function discardSessionMedia(businessId: string, session: SessionRow): Promise<void> {
+  const supabase = createServerClient()
+  const { data: pkgRow } = await supabase
+    .from("packages")
+    .select("photo_count")
+    .eq("id", session.package_id)
+    .eq("business_id", businessId)
+    .maybeSingle()
+  const slots = Math.max(0, (pkgRow as { photo_count: number } | null)?.photo_count ?? 0)
+  const uploadKey = `${businessId}/sessions/${session.id}`
+  const keys = [
+    ...Array.from({ length: slots }, (_, i) => `${uploadKey}/photo-${String(i).padStart(2, "0")}.jpg`),
+    `${uploadKey}/result.gif`,
+  ]
+  await discardUploadedObjects(businessId, keys)
 }
 
 export async function finalizeSession(
@@ -452,20 +481,18 @@ export async function finalizeSession(
   await assertStorageAvailable(device.businessId, photoBytes)
 
   const uploadKey = `${device.businessId}/sessions/${sessionId}`
-
-  // Retry-safe: percobaan finalize sebelumnya bisa gagal parsial setelah
-  // sebagian rows photos ter-insert → hapus dulu agar insert ulang tidak
-  // menabrak duplikat dan hasil retry identik.
-  await supabase.from("photos").delete().eq("session_id", session.id)
-
-  // Resync akuntansi: key foto/GIF deterministik di-upsert pada retry. Hapus
-  // ledger key lama dulu agar accountStorageAdd di bawah mencatat ukuran AKTUAL
-  // (idempotent per key; key absen = no-op).
-  const retryKeys = [
-    ...photos.map((_, i) => `${uploadKey}/photo-${String(i).padStart(2, "0")}.jpg`),
-    `${uploadKey}/result.gif`,
-  ]
-  await accountStorageSub(device.businessId, retryKeys)
+  // Semua key yang mungkin pernah dibuat percobaan finalize mana pun untuk sesi
+  // ini: `photo-00..photo-NN` (N = kuota paket) + GIF. Dipakai untuk resync
+  // akuntansi — idempotent per key, key absen = no-op — sehingga retry yang
+  // mengirim foto LEBIH SEDIKIT dari percobaan sebelumnya tetap membebaskan
+  // ledger key sisa (tanpa ini counter storage membengkak permanen).
+  const maxSlots = Math.max(typeof photoCount === "number" ? photoCount : 0, photos.length)
+  const photoKeys = Array.from(
+    { length: maxSlots },
+    (_, i) => `${uploadKey}/photo-${String(i).padStart(2, "0")}.jpg`
+  )
+  const gifKey = `${uploadKey}/result.gif`
+  await accountStorageSub(device.businessId, [...photoKeys, gifKey])
 
   // Baca + validasi semua buffer sekali (GIF membutuhkan seluruh frame). Validasi
   // SEBELUM upload apa pun agar body invalid tidak meninggalkan objek parsial.
@@ -479,9 +506,11 @@ export async function finalizeSession(
 
   // Upload paralel dengan konkurensi terbatas (I/O-bound; 4 cukup untuk tablet
   // kiosk tanpa membanjiri koneksi booth). Urutan key tetap deterministik.
+  // Upload key deterministik + idempotent: pemanggil konkuren yang nanti kalah
+  // klaim pun meng-upload byte yang sama, jadi ledger tetap konvergen.
   const UPLOAD_CONCURRENCY = 4
   await mapWithConcurrency(bodies, UPLOAD_CONCURRENCY, async (body, i) => {
-    const key = `${uploadKey}/photo-${String(i).padStart(2, "0")}.jpg`
+    const key = photoKeys[i]!
     const { error: upErr } = await getStorage().upload(GENERATED_BUCKET, key, body, {
       contentType: "image/jpeg",
       upsert: true,
@@ -491,22 +520,8 @@ export async function finalizeSession(
     return key
   })
 
-  // Batch insert rows photos — satu round-trip PostgREST, bukan N.
-  if (bodies.length > 0) {
-    const rows = bodies.map((_, i) => ({
-      session_id: session.id,
-      business_id: device.businessId,
-      template_id: parsed.template_id ?? null,
-      file_key: `${uploadKey}/photo-${String(i).padStart(2, "0")}.jpg`,
-      order_index: i,
-    }))
-    const { error: photoErr } = await supabase.from("photos").insert(rows)
-    if (photoErr) throw new ApiError("INTERNAL", "Gagal menyimpan foto")
-  }
-
   // GIF slideshow server-side (docs/05 §5.13) — di-decode frame-by-frame
   // (puncak memori O(satu frame), bukan O(semua frame)).
-  const gifKey = `${uploadKey}/result.gif`
   const gif = generateSlideshowGif(bodies)
   const { error: gifErr } = await getStorage().upload(GENERATED_BUCKET, gifKey, gif, {
     contentType: "image/gif",
@@ -515,11 +530,16 @@ export async function finalizeSession(
   if (gifErr) throw new ApiError("INTERNAL", "Gagal mengunggah GIF")
   await accountStorageAdd(device.businessId, GENERATED_BUCKET, gifKey, gif.length)
 
+  // KLAIM EKSKLUSIF sebelum menyentuh tabel `photos`. Dulu rows di-insert lebih
+  // dulu lalu status di-CAS: dua finalize bersamaan (retry HTTP ganda) sama-sama
+  // lolos insert → foto ganda di hasil & cetak, plus baris DB permanen. Sekarang
+  // CAS 'active' → 'completed' jadi gerbangnya: tepat satu pemanggil menang
+  // (predicate dievaluasi ulang setelah row lock), yang kalah reload dan
+  // mengembalikan hasil existing tanpa pernah menulis `photos`. GIF sudah
+  // di-upload di atas (key deterministik) agar klaim sekaligus menyimpan
+  // `result_gif_key`.
   const completedAt = new Date().toISOString()
-  // Atomic transition: hanya menang bila masih 'active'. Bila baris sudah
-  // di-complete pemanggil konkuren (double-finalize race), `.eq("status",
-  // "active")` mengembalikan 0 baris → reload dan kembalikan hasil existing.
-  const { data: updated } = await supabase
+  const { data: claimed } = await supabase
     .from("sessions")
     .update({
       status: "completed",
@@ -532,8 +552,8 @@ export async function finalizeSession(
     .eq("status", "active")
     .select("*")
     .maybeSingle()
-  const updatedRow = (updated ?? null) as unknown as SessionRow | null
-  if (!updatedRow) {
+  const claimedRow = (claimed ?? null) as unknown as SessionRow | null
+  if (!claimedRow) {
     const reloaded = await loadSession(device.businessId, session.id)
     if (reloaded.status === "completed") {
       return await buildResult(device.businessId, reloaded)
@@ -541,7 +561,59 @@ export async function finalizeSession(
     throw new ApiError("INTERNAL", "Gagal memfinalisasi sesi")
   }
 
-  return await buildResult(device.businessId, updatedRow)
+  // Pemenang klaim = satu-satunya penulis baris `photos`. Delete dulu agar retry
+  // yang mengirim lebih sedikit foto tidak meninggalkan baris sisa; aman karena
+  // tidak ada finalize lain yang bisa mencapai titik ini.
+  await supabase.from("photos").delete().eq("session_id", session.id)
+  if (bodies.length > 0) {
+    const rows = bodies.map((_, i) => ({
+      session_id: session.id,
+      business_id: device.businessId,
+      template_id: parsed.template_id ?? null,
+      file_key: photoKeys[i]!,
+      order_index: i,
+    }))
+    const { error: photoErr } = await supabase.from("photos").insert(rows)
+    if (photoErr) {
+      // Sesi tidak boleh tertinggal 'completed' tanpa baris foto: retry akan
+      // melihat completed dan mengembalikan hasil kosong. Lepas klaim agar
+      // retry bisa mengulang, dan buang objek yang sudah ter-upload agar tidak
+      // jadi orphan (retry meng-upload ulang byte yang sama).
+      await releaseFinalizeClaim(device.businessId, session.id)
+      await discardUploadedObjects(device.businessId, [...photoKeys.slice(0, bodies.length), gifKey])
+      throw new ApiError("INTERNAL", "Gagal menyimpan foto")
+    }
+  }
+
+  return await buildResult(device.businessId, claimedRow)
+}
+
+/**
+ * Lepas klaim finalize (status 'completed' → 'active') bila penulisan baris foto
+ * gagal, supaya sesi tetap bisa di-finalize ulang. Best-effort: kegagalan di sini
+ * di-log (sesi tetap 'completed' dan retry akan mengembalikan hasil kosong —
+ * lebih buruk, tapi tidak boleh menutupi error aslinya).
+ */
+async function releaseFinalizeClaim(businessId: string, sessionId: string): Promise<void> {
+  const supabase = createServerClient()
+  const { error } = await supabase
+    .from("sessions")
+    .update({ status: "active", completed_at: null, finalized_at: null, result_gif_key: null })
+    .eq("id", sessionId)
+    .eq("business_id", businessId)
+    .eq("status", "completed")
+  if (error) {
+    console.error(`[kiosk-sessions] gagal melepas klaim finalize sesi ${sessionId}:`, error.message)
+  }
+}
+
+/** Buang objek hasil upload finalize yang gagal — storage + ledger, best-effort. */
+async function discardUploadedObjects(businessId: string, keys: string[]): Promise<void> {
+  const { ok, failures } = await removeResolvedOutcome(GENERATED_BUCKET, keys)
+  if (failures.length > 0) {
+    console.error(`[kiosk-sessions] ${failures.length} objek finalize gagal tidak dapat dibuang`)
+  }
+  if (ok.length > 0) await accountStorageSub(businessId, ok)
 }
 
 async function buildResult(businessId: string, session: Pick<SessionRow, "id" | "result_gif_key">) {
@@ -596,8 +668,14 @@ export async function getResult(resultToken: string) {
   if (!row || !session || Array.isArray(session)) {
     throw new ApiError("NOT_FOUND", "Link tidak valid atau kedaluwarsa")
   }
+  // Hanya sesi yang benar-benar selesai yang punya hasil. Tanpa gerbang ini
+  // link hasil yang dibagikan sebelum sesi finalize (atau sesi yang di-expire)
+  // merender halaman "Foto kamu siap!" dengan grid kosong.
+  if (session.status !== "completed") {
+    throw new ApiError("NOT_FOUND", "Link tidak valid atau kedaluwarsa")
+  }
 
-  // Retention policy (docs/09 §9.8, default 7 hari).
+  // Retention policy (docs/09 §9.8, default 3 hari — migrasi 0034).
   const { data: settings } = await supabase
     .from("business_settings")
     .select("retention_days")

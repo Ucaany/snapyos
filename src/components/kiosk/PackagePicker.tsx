@@ -97,21 +97,19 @@ export function PackagePicker({
                 borderRadius: ks?.radius ?? 0,
               }}
             >
-              Hubungi Petugas
+              Kembali
             </button>
           ) : null}
         </div>
       ) : (
         <div
           className="mx-auto grid w-full max-w-[1000px] flex-1 grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 md:content-center md:gap-6"
-          role="list"
           aria-busy={busy}
         >
           {packages.map((pkg, i) => (
             <button
               key={pkg.id}
               type="button"
-              role="listitem"
               onClick={() => onSelect(pkg)}
               disabled={busy}
               className="group flex flex-col gap-3 border-2 p-4 text-left shadow-[4px_4px_0_0_#111111] transition-transform hover:-translate-y-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink active:translate-y-[2px] disabled:pointer-events-none disabled:opacity-60"
@@ -127,6 +125,14 @@ export function PackagePicker({
               <h2 className="font-display text-xl uppercase leading-none tracking-tight md:text-2xl">
                 {pkg.name}
               </h2>
+              {/* Deskripsi diisi owner di dashboard ("5 foto + 2 cetak + digital").
+                  Sebelumnya field ini dikirim server tapi tidak pernah dirender,
+                  jadi teks yang diketik owner tidak sampai ke customer. */}
+              {pkg.description && (
+                <p className="font-mono text-[10px] uppercase tracking-[0.05em] text-ink/70">
+                  {pkg.description}
+                </p>
+              )}
               <p className="font-mono text-2xl font-bold md:text-3xl">{formatIDR(pkg.price)}</p>
               <ul className="flex flex-col gap-1 font-mono text-[10px] uppercase tracking-[0.05em]">
                 <li className="flex items-center gap-2">

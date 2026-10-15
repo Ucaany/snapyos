@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { getResult } from "@/server/kiosk-sessions";
 
 export const metadata: Metadata = {
-  title: "Hasil Foto — SnapyOS",
+  title: "Hasil Foto · SnapyOS",
 };
 
 type Props = { params: Promise<{ token: string }> };
