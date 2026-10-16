@@ -21,6 +21,7 @@ import {
   adminSubscriptionUpdateSchema,
   adminUserCreateSchema,
   adminUserUpdateSchema,
+  businessSettingsUpdateSchema,
 } from "../src/lib/validators.ts";
 
 // --- MRR (docs/10 §10.1) ---
@@ -116,6 +117,37 @@ test("adminSettingsUpdateSchema: whitelist + uang integer", () => {
   assert.equal(adminSettingsUpdateSchema.safeParse({}).success, false);
 });
 
+test("adminSettingsUpdateSchema: default_retention_days dibatasi 1–3 (privasi), bukan 365", () => {
+  // Jalur admin menulis ke SEMUA tenant → nilai >3 harus DITOLAK, bukan di-clamp.
+  for (const days of [30, 365]) {
+    assert.equal(
+      adminSettingsUpdateSchema.safeParse({ default_retention_days: days }).success,
+      false,
+      `${days} hari harus ditolak`
+    );
+  }
+  assert.equal(adminSettingsUpdateSchema.safeParse({ default_retention_days: 0 }).success, false);
+  assert.equal(adminSettingsUpdateSchema.safeParse({ default_retention_days: 2.5 }).success, false);
+  // Batas yang sah tetap lolos.
+  for (const days of [1, 2, 3]) {
+    assert.deepEqual(adminSettingsUpdateSchema.parse({ default_retention_days: days }), {
+      default_retention_days: days,
+    });
+  }
+});
+
+test("adminSettingsUpdateSchema: batas retention SAMA dengan jalur tenant (satu sumber)", () => {
+  // Kedua jalur memakai RETENTION_MIN/MAX_DAYS; kalau salah satu melonggar,
+  // nilai yang diterima jalur admin di sini akan beda dari jalur tenant.
+  for (const days of [0, 1, 2, 3, 4, 30, 365]) {
+    assert.equal(
+      adminSettingsUpdateSchema.safeParse({ default_retention_days: days }).success,
+      businessSettingsUpdateSchema.safeParse({ retention_days: days }).success,
+      `jalur admin & tenant harus sepakat untuk ${days} hari`
+    );
+  }
+});
+
 test("adminSubscriptionUpdateSchema: aksi tunggal atau kombinasi", () => {
   assert.deepEqual(adminSubscriptionUpdateSchema.parse({ extend_days: 30 }), { extend_days: 30 });
   assert.deepEqual(adminSubscriptionUpdateSchema.parse({ cancel: true }), { cancel: true });
@@ -189,4 +221,21 @@ test("M2: adminRoute memanggil requireAdmin di lapisan route", async () => {
   // apiRoute tanpa auth telah dihapus (dead code) — guard admin tidak boleh
   // bergantung pada wrapper tanpa guard.
   assert.doesNotMatch(src, /export function apiRoute/, "apiRoute tanpa auth sudah dihapus");
+});
+
+// --- Guard tulis lintas-tenant (audit retention admin) -----------------------
+// `src/server/admin/settings.ts` menyentuh `server-only`, jadi tak bisa
+// di-import di node:test; pola sama dengan blok M2 di atas (baca sumber sebagai teks).
+test("updatePlatformSettings: tulis default_retention_days dijaga rentang 1–3", async () => {
+  const src = await readFile(
+    new URL("../src/server/admin/settings.ts", import.meta.url),
+    "utf8"
+  );
+  // Nilai di luar rentang privasi ditolak (VALIDATION_ERROR), bukan ditulis apa adanya.
+  assert.match(
+    src,
+    /RETENTION_MIN_DAYS[\s\S]*?RETENTION_MAX_DAYS[\s\S]*?VALIDATION_ERROR/,
+    "write lintas-tenant harus menolak nilai di luar 1–3 dengan VALIDATION_ERROR"
+  );
+  assert.match(src, /from "@\/lib\/retention"/, "batas retention wajib dari satu sumber @/lib/retention");
 });

@@ -79,10 +79,13 @@ export default async function AdminSettingsPage() {
                 id="s-retention"
                 name="default_retention_days"
                 type="number"
+                min={1}
+                max={3}
+                step={1}
                 defaultValue={s.default_retention_days ?? 3}
               />
               <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                Diterapkan ke semua tenant; owner bisa override di Settings.
+                Rentang 1–3 hari (kebijakan privasi); diterapkan ke semua tenant.
               </p>
             </div>
             <div className="flex flex-col gap-1">

@@ -16,7 +16,7 @@ function globalFormData(overrides: Record<string, string | boolean> = {}) {
   const fd = new FormData();
   fd.set("platform_fee_percent", "2.5");
   fd.set("platform_fee_flat", "1000");
-  fd.set("default_retention_days", "7");
+  fd.set("default_retention_days", "3");
   fd.set("trial_days", "14");
   fd.set("maintenance_message", "Halo");
   fd.set("maintenance_mode", "false");

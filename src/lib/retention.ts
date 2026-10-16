@@ -10,6 +10,15 @@
 
 export const DEFAULT_RETENTION_DAYS = 3;
 
+/**
+ * Rentang privasi retention: SATU sumber untuk jalur tenant
+ * (`businessSettingsUpdateSchema.retention_days`) dan jalur admin
+ * (`adminSettingsUpdateSchema.default_retention_days`, diterapkan ke SEMUA
+ * tenant). Menaruhnya di sini mencegah kedua jalur itu melonggar sendiri-sendiri.
+ */
+export const RETENTION_MIN_DAYS = 1;
+export const RETENTION_MAX_DAYS = 3;
+
 /** Batas ISO: semua hasil dengan finalized_at < cutoff wajib dibersihkan. */
 export function retentionCutoff(retentionDays: number, nowMs: number): string {
   const days =

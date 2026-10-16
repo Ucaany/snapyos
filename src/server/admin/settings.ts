@@ -9,6 +9,7 @@ import {
   adminSettingsUpdateSchema,
   type AdminSettingsUpdateInput,
 } from "@/lib/validators";
+import { RETENTION_MAX_DAYS, RETENTION_MIN_DAYS } from "@/lib/retention";
 import { requireAdmin, audit } from "./guard";
 
 // ---------------------------------------------------------------------------
@@ -58,6 +59,24 @@ export async function getPlatformSettings(): Promise<PlatformSettings> {
 export async function updatePlatformSettings(input: AdminSettingsUpdateInput) {
   const admin = await requireAdmin();
   const parsed = adminSettingsUpdateSchema.parse(input);
+
+  // Guard di titik tulis lintas-tenant, SEBELUM upsert apa pun: nilai default
+  // retention di luar rentang privasi 1–3 ditolak (VALIDATION_ERROR), TIDAK
+  // di-clamp diam-diam. Schema sudah membatasinya; cek ini menjaga bila kelak
+  // ada pemanggil yang melewati schema, dan menolak lebih awal agar tidak ada
+  // tulisan parsial ke platform_settings.
+  if (
+    parsed.default_retention_days !== undefined &&
+    (parsed.default_retention_days < RETENTION_MIN_DAYS ||
+      parsed.default_retention_days > RETENTION_MAX_DAYS)
+  ) {
+    throw new ApiError(
+      "VALIDATION_ERROR",
+      `Default retention harus ${RETENTION_MIN_DAYS}–${RETENTION_MAX_DAYS} hari`,
+      { default_retention_days: parsed.default_retention_days }
+    );
+  }
+
   const supabase = createServerClient();
 
   for (const [key, value] of Object.entries(parsed)) {
@@ -69,7 +88,7 @@ export async function updatePlatformSettings(input: AdminSettingsUpdateInput) {
       .upsert({ key, value }, { onConflict: "key" });
     if (error) throw new ApiError("INTERNAL", `Gagal menyimpan setting ${key}`);
   }
-  // Default retention CEO diterapkan ke SEMUA tenant (mis. 7 → 3 hari) —
+  // Default retention CEO diterapkan ke SEMUA tenant (mis. 3 hari);
   // owner masih bisa override per business dari /dashboard/settings.
   if (parsed.default_retention_days !== undefined) {
     const { error } = await supabase

@@ -6,6 +6,7 @@
 import { z } from "zod"
 import { layoutSchema } from "./template-layout.ts"
 import { MAX_RANGE_DAYS, rangeDays } from "./dashboard-math.ts"
+import { RETENTION_MAX_DAYS, RETENTION_MIN_DAYS } from "./retention.ts"
 
 /** UUID PostgreSQL canonical: shape hex, tanpa pembatasan version/variant RFC. */
 const uuid = z.string().guid()
@@ -329,7 +330,12 @@ export const checkoutSettingsSchema = z.object({
 export const businessSettingsUpdateSchema = z.object({
   branding: brandingSchema.optional(),
   /** Retensi hasil foto 1–3 hari (kebijakan privasi ketat). */
-  retention_days: z.number().int().min(1).max(3).optional(),
+  retention_days: z
+    .number()
+    .int()
+    .min(RETENTION_MIN_DAYS)
+    .max(RETENTION_MAX_DAYS)
+    .optional(),
   checkout: checkoutSettingsSchema.optional(),
 })
 
@@ -1118,7 +1124,15 @@ export const adminSettingsUpdateSchema = z
   .object({
     platform_fee_percent: z.number().min(0).max(100).optional(),
     platform_fee_flat: priceIdr.optional(),
-    default_retention_days: z.number().int().min(1).max(365).optional(),
+    // Default retention DITERAPKAN ke SEMUA tenant (lihat src/server/admin/settings.ts),
+    // jadi batasnya WAJIB sama dengan jaminan privasi jalur tenant: 1–3 hari,
+    // bukan 365. Rentang dari satu sumber agar kedua jalur tak bisa melonggar sendiri.
+    default_retention_days: z
+      .number()
+      .int()
+      .min(RETENTION_MIN_DAYS, "Retensi minimal 1 hari")
+      .max(RETENTION_MAX_DAYS, "Retensi maksimal 3 hari (kebijakan privasi)")
+      .optional(),
     trial_days: z.number().int().min(0).max(365).optional(),
     maintenance_mode: z.boolean().optional(),
     maintenance_message: z.string().trim().max(300, "Pesan maksimal 300 karakter").optional(),
