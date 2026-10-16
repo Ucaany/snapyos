@@ -13,7 +13,11 @@ export async function logPaymentWebhook(input: {
   eventId: string;
   eventType: string | null;
   payload: unknown;
-  signatureValid: boolean;
+  /**
+   * true/false = provider memakai signature (Midtrans/Tripay). null = provider
+   * tanpa signature (Pakasir): "tidak berlaku", bukan "valid".
+   */
+  signatureValid: boolean | null;
   status: "received" | "processed" | "ignored" | "error";
   paymentId: string | null;
   error?: string;
@@ -59,7 +63,8 @@ export async function claimWebhookEvent(input: {
   eventId: string;
   eventType: string | null;
   payload: unknown;
-  signatureValid: boolean;
+  /** Lihat logPaymentWebhook: null = provider tanpa signature (Pakasir). */
+  signatureValid: boolean | null;
   paymentId: string | null;
 }): Promise<"claimed" | "duplicate" | "retryable"> {
   const supabase = createServerClient();
@@ -74,7 +79,10 @@ export async function claimWebhookEvent(input: {
     error: null,
   });
   if (!error) return "claimed";
-  if (error.code !== "23505") throw new Error("Gagal menyimpan webhook payment");
+  if (error.code !== "23505") {
+    console.error("[webhook-log] gagal mengklaim event:", error.message);
+    throw new Error(`Gagal menyimpan webhook payment: ${error.message}`);
+  }
   const { data } = await supabase
     .from("payment_webhooks")
     .select("status")
@@ -96,5 +104,8 @@ export async function promoteWebhookEvent(input: {
     .from("payment_webhooks")
     .update({ status: input.status, error: input.error ?? null, payment_id: input.paymentId })
     .eq("event_id", input.eventId);
-  if (error) throw new Error("Gagal memperbarui webhook payment");
+  if (error) {
+    console.error("[webhook-log] gagal mempromosikan event:", error.message);
+    throw new Error(`Gagal memperbarui webhook payment: ${error.message}`);
+  }
 }

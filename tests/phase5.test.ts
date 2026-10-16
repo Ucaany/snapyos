@@ -10,7 +10,6 @@ import assert from "node:assert/strict"
 
 import {
   buildOrderId,
-  normalizeCreateResult,
   parseProviderAmount,
   parseProviderDateTime,
 } from "../src/lib/qris-helpers.ts"
@@ -70,34 +69,7 @@ test("buildOrderId + mapProviderStatus", () => {
   assert.equal(mapProviderStatus("??"), null)
 })
 
-// --- normalisasi response POST /qris/create (sample dokumentasi) ---
-test("normalizeCreateResult: sample response provider", () => {
-  const result = normalizeCreateResult({
-    order_id: "INV-123",
-    amount_uniq: "16.00",
-    amount: "1000.00",
-    total_amount: "1016.00",
-    status: "PENDING",
-    qris_url: "https://app.pakasir.com/storage/qris/qris_INV-123.png",
-    expired_at: "2026-08-19 10:34:11",
-    signature: "ohRISdH4ABDvOlDTUCBTEnBndwUYK0177659",
-    qris_image: "data:image/png;base64,iVBORw0KGgoAAAA...",
-  })
-  assert.ok(result)
-  assert.equal(result.order_id, "INV-123")
-  assert.equal(result.amount, 1000)
-  assert.equal(result.amount_uniq, 16)
-  assert.equal(result.total_amount, 1016)
-  assert.equal(result.status, "PENDING")
-  assert.ok(result.qris_image?.startsWith("data:image"))
-  assert.ok(result.expired_at)
-
-  // Field wajib hilang → null.
-  assert.equal(normalizeCreateResult({ order_id: "X", amount: "1.00" }), null)
-  assert.equal(normalizeCreateResult({}), null)
-})
-
-test("normalizeCreateResult: response Pakasir v2 dan waktu ISO", () => {
+test("normalizeCreateResult (Pakasir v2): total_payment + qr_string", () => {
   const result = normalizePakasirCreateResult({
     txn_id: "vwiqpcriq",
     order_id: "SnapyOS-ABC123",

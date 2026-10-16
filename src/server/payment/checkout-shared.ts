@@ -42,7 +42,6 @@ export type PaymentRow = {
   order_id: string;
   amount_uniq: number | null;
   total_amount: number | null;
-  provider_signature: string | null;
   provider: string;
   payment_reference: string;
   status: string;
@@ -51,7 +50,6 @@ export type PaymentRow = {
   expires_at: string | null;
   credential_id: string | null;  // Direct Merchant credential (0027); null = aggregator
   provider_ref: string | null;   // Pakasir v2 txn_id (status lookup)
-  payment_mode?: "gateway" | "cash" | "voucher";
 };
 
 export type DeviceCtx = {

@@ -417,9 +417,9 @@ Owner mengatur booth mana yang bisa diakses staff; PK `(user_id, photobox_id)`.
 | voucher_id | uuid → vouchers.id | nullable |
 | final_amount | integer | nominal yang diminta ke provider |
 | order_id | text unique | ID dikirim ke provider |
-| amount_uniq | integer | kode unik dari provider |
+| amount_uniq | integer | kode unik dari provider (informasional; gate amount memakai `final_amount`/`total_amount`) |
 | total_amount | integer | nominal dibayar pembeli (final + uniq) |
-| provider_signature | text | signature dari create, dipakai validasi webhook |
+| provider_signature | text | signature dari create provider (dipakai `invoice_payments`; jalur kiosk tidak memakainya, Pakasir tanpa signature) |
 | provider | text | `pakasir`/`midtrans`/`tripay` |
 | payment_reference | text | unique ref dari provider |
 | status | text | `creating`/`pending`/`paid`/`failed`/`expired`/`cancelled`/`refunded`; `creating` adalah reservation singkat sebelum QR provider dibuat |
@@ -439,8 +439,8 @@ Owner mengatur booth mana yang bisa diakses staff; PK `(user_id, photobox_id)`.
 | event_id | text unique | idempotency key |
 | event_type | text | |
 | payload | jsonb | payload diagnostik ter-redaksi; field secret tidak dipersist plaintext |
-| signature_valid | boolean | |
-| status | text | `received`/`processed`/`ignored`/`error` (H3: `received` non-authoritative sebelum verify, dipromosikan `processed` setelah settle — migrasi 0066) |
+| signature_valid | boolean | `true`/`false` = provider bersignature (Midtrans/Tripay); `null` = provider tanpa signature (Pakasir) |
+| status | text | `received`/`processed`/`ignored`/`error` (H3: `received` non-authoritative sebelum verify, dipromosikan `processed` setelah settle (migrasi 0066); default kolom `received` sejak migrasi 0070) |
 | payment_id | uuid → payments.id | nullable |
 | error | text | nullable |
 | received_at | timestamptz | |

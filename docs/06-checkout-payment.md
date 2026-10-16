@@ -244,26 +244,30 @@ Nominal yang diterima webhook diverifikasi terhadap nilai yang tercatat di
 `payments` (`src/lib/direct-webhook.ts`):
 
 - `final_amount` = nominal yang diminta ke customer (dihitung ulang backend).
-- `total_amount` = `final_amount` + fee. Pakasir menyimpan `total_payment`
-  (`amount + fee`) sebagai `total_amount`; **Tripay menambahkan admin fee** ke
-  nominal yang dibayar customer, sehingga `amount` webhook Tripay bisa == `total_amount`.
-- **Aturan:** `amount` webhook diterima **hanya bila == `final_amount` ATAU
+- `total_amount` = `final_amount` + fee provider. Pakasir v2 mengembalikan
+  `total_payment` (`amount + fee`) saat create; **Tripay menambahkan admin fee**
+  ke nominal yang dibayar customer, sehingga `total_amount` callback Tripay
+  (`total_amount`) bisa > `amount` yang diminta.
+- **Aturan:** nominal webhook diterima **hanya bila == `final_amount` ATAU
   == `total_amount`** (bila `total_amount` tercatat; jika null, fallback ke
-  `final_amount`). Selebihnya, termasuk `amount` null → **reject `amount_mismatch`**
-  (fail-closed). Tidak ada penerimaan rentang/ambang.
+  `final_amount`). Selebihnya, termasuk nominal null pada jalur direct →
+  **reject `amount_mismatch`** (fail-closed). Tidak ada penerimaan rentang/ambang.
+- Field yang dibaca berbeda per provider: Midtrans `gross_amount`, Tripay
+  `total_amount` (fallback `amount`), Pakasir `amount`.
 - Settlement tetap di-gate **server-to-server re-verify** (`verifyPakasirPaid` /
   status provider) — signature + amount body saja tidak cukup.
 - **Uang selalu integer IDR**; tidak ada perubahan logika uang tanpa keputusan eksplisit.
 
-**Payload callback Pakasir (sample):**
+**Payload callback Pakasir v2 (sample):**
 
 ```json
 {
   "order_id": "SnapyOS-abc123",
-  "txn_id": "TXN-...",
+  "txn_id": "vwiqpcriq",
   "status": "completed",
   "amount": 31500,
-  "payment_date": "2026-08-16 21:48:01"
+  "is_sandbox": false,
+  "completed_at": "2026-08-16T21:48:01.678Z"
 }
 ```
 
@@ -274,16 +278,17 @@ Nominal yang diterima webhook diverifikasi terhadap nilai yang tercatat di
 | `order_id`     | string          | harus cocok `payments.order_id`                                                        |
 | `txn_id`       | string?         | id transaksi provider (opsional)                                                       |
 | `status`       | string          | v2: `pending` / `completed` / `canceled` (kanonikalisasi toleran `SUCCESS`/`PAID`)     |
-| `amount`       | integer         | nominal transaksi (opsional; wajib cocok `final_amount` bila dikirim)                  |
-| `payment_date` | string datetime | waktu bayar (format provider, opsional)                                                |
+| `amount`       | integer         | nominal DASAR (opsional; wajib cocok `final_amount` atau `total_amount` bila dikirim)   |
+| `completed_at` | string ISO-8601 | waktu bayar v2 (opsional)                                                               |
+| `payment_date` | string datetime | waktu bayar v1/legacy (opsional; dipakai bila `completed_at` absen)                     |
 
 Webhook harus:
 
 - Verifikasi header `X-Secret` (fail-closed 401; secret per-credential untuk order tenant)
 - Verifikasi server-to-server: `GET /api/v2/transaction-status/{project}/{txn_id}` ke Pakasir (WAJIB untuk event `paid`; signature null tidak cukup)
-- Freshness: tolak bila `payment_date` di luar jendela ±24 jam (anti replay/clock-skew, H2)
+- Freshness: tolak bila `completed_at` (fallback `payment_date`) di luar jendela ±24 jam (anti replay/clock-skew, H2)
 - Validate `order_id` → `payments.order_id` (reference cocok)
-- Validate amount (cocok dengan `payments.final_amount`)
+- Validate amount (cocok dengan `payments.final_amount` atau `payments.total_amount`)
 - Validate business (dari payment yang ditemukan)
 - Update payment status
 - Create transaction confirmation (`transactions` row)
@@ -299,9 +304,9 @@ Webhook harus:
 Route global: `POST /api/webhooks/payment/midtrans`, `POST /api/webhooks/payment/tripay`, dan Pakasir aggregator (`POST /api/webhooks/payment/pakasir`).
 
 - Midtrans: validasi JSON `order_id`, `status_code`, `gross_amount`, `signature_key`, `transaction_status`; verifikasi SHA512(`order_id + status_code + gross_amount + server_key`). Hanya `capture`/`settlement` dengan `fraud_status='accept'` menjadi paid.
-- Tripay: baca raw text sebelum parse JSON; validasi `merchant_ref`, `status`, `amount`; verifikasi `X-Callback-Signature` sebagai HMAC-SHA256 raw body memakai private key.
+- Tripay: baca raw text sebelum parse JSON; validasi `merchant_ref`, `status`, `total_amount` (fallback `amount`); verifikasi `X-Callback-Signature` sebagai HMAC-SHA256 raw body memakai private key.
 - Lookup hanya memakai Midtrans `order_id` atau Tripay `merchant_ref` terhadap `payments.order_id`. `business_id`, provider, credential ID, payment ID dari webhook tidak dipercaya.
-- Setelah payment ditemukan, server hanya memakai `payments.credential_id`. Credential null, credential hilang, atau provider route tidak cocok ditolak. Nominal provider harus sama dengan `payments.final_amount`.
+- Setelah payment ditemukan, server hanya memakai `payments.credential_id`. Credential null, credential hilang, atau provider route tidak cocok ditolak. Nominal provider harus sama dengan `payments.final_amount` atau `payments.total_amount`.
 - Event provider-prefixed di-klaim ke `payment_webhooks.event_id` (status `received`) sebelum verifikasi/re-verify, lalu dipromosikan `processed` setelah transisi sukses (H3). Replay sukses tanpa transaction, ledger, balance credit, atau audit tambahan; event gagal-verify tetap bisa di-redeliver.
 - Direct merchant memakai `transitionPaymentToPaid()` dan `runPaidSideEffects()`: transaction `payment_method='gateway'`, tanpa `creditBalance`, platform fee menjadi receivable idempotent. `credential_id IS NULL` tetap aggregator mode Pakasir.
 - Respons webhook aman: hanya acknowledgement. Payload, secret, credential, tenant, dan error internal tidak dikembalikan; payload log meredaksi field secret.
@@ -357,7 +362,6 @@ Business logic **tidak** tightly coupled ke implementasi provider. Provider dipi
 | `PAKASIR_API_KEY`      | API key akun Pakasir SnapyOS (invoice subscription)              |
 | `PAKASIR_PROJECT_SLUG` | Project slug Pakasir SnapyOS                                     |
 | `PAKASIR_WEBHOOK_SECRET` | Webhook secret v2 (Detail Proyek Pakasir)                   |
-| `PAKASIR_WEBHOOK_URL`  | URL webhook yang didaftarkan ke Pakasir                       |
 | `PAKASIR_BASE_URL`     | Base URL API Pakasir (default: `https://app.pakasir.com`)     |
 
 Credential direct merchant (Pakasir/Midtrans/Tripay per business) disimpan di
@@ -443,12 +447,14 @@ mengelola credential di `/dashboard/payment` (server actions
    `order_id`/`merchant_ref` → validasi amount → `transitionPaymentToPaid()` +
    `runPaidSideEffects()` (transaction `payment_method='gateway'`, platform fee receivable).
 4. Setiap event tercatat di `payment_webhooks` (`event_id` unik, idempotent); payload
-   diredaksi (`webhook-redaction.ts`). Log bisa dipantau admin di `/admin/payments`.
+   diredaksi (`src/lib/error-redaction.ts`). Log bisa dipantau admin di `/admin/payments`.
 
 **Tanpa credential aktif:** kiosk hanya menawarkan voucher + tunai (fallback aggregator
 Pakasir dihapus 2026-09-18). Voucher 100% = payment `paid` sintetik tanpa gateway;
 tunai = payment `pending` menunggu operator (server-gated, non-withdrawable).
 
 **Env (invoice subscription aggregator saja):** `PAKASIR_API_KEY`,
-`PAKASIR_PROJECT_SLUG`, `PAKASIR_WEBHOOK_URL`, `PAKASIR_BASE_URL`. Credential
+`PAKASIR_PROJECT_SLUG`, `PAKASIR_WEBHOOK_SECRET`, `PAKASIR_BASE_URL`.
+URL webhook yang dikirim ke provider dibangun dari `SnapyOS_PUBLIC_BASE_URL`
+(`paymentWebhookUrl()`), bukan env terpisah. Credential
 direct merchant disimpan per business, bukan env.

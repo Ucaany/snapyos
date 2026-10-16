@@ -51,11 +51,16 @@ export async function expireStaleCheckoutsForPhotobox(photoboxId: string) {
     const expired = row.expires_at && Date.now() >= new Date(row.expires_at).getTime()
     if (expired) continue // sudah stale — di-void batch di bawah.
     try {
-      // Phase 1: resolve gateway per credential/business (B3 fix — hardcode pakasirProvider dihapus).
+      // Gateway mengikuti credential yang JAHIT payment. Credential hilang/tak
+      // bisa didekripsi → JANGAN pindah ke credential lain milik business yang
+      // sama: status akan dibaca dari akun merchant berbeda dan payment bisa
+      // di-settle padahal uangnya masuk ke akun lain (fail-closed, sama dengan
+      // registry.ts/payment-create.ts/qris.ts). Keluar tanpa void: payment
+      // mungkin masih hidup di provider, biar webhook/recovery yang memutuskan.
       const gateway = row.credential_id
-        ? ((await resolveGatewayByCredential(row.credential_id)) ??
-          (await resolveGateway(row.business_id)))
+        ? await resolveGatewayByCredential(row.credential_id)
         : await resolveGateway(row.business_id)
+      if (!gateway) return
       const providerStatus = await gateway.getStatus(row.order_id, row.final_amount, row.provider_ref)
       if (providerStatus === "paid" && (await transitionPaymentToPaid(row.id))) {
         const checkout = await loadCheckout(row.business_id, row.checkout_session_id)

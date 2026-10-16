@@ -797,7 +797,14 @@ export async function handleDirectInvoiceWebhook(
     })
     return { ok: false, reason: "invalid_signature" }
   }
-  if (amount === null || amount !== payment.amount) {
+  // Nominal callback direct (Midtrans/Tripay) bisa memuat admin fee provider:
+  // terima amount == amount (nominal dasar) ATAU == total_amount (bila tercatat).
+  // Aturan sama dengan jalur kiosk (src/lib/direct-webhook.ts): fail-closed,
+  // tanpa rentang/ambang, amount null tetap ditolak.
+  if (
+    amount === null ||
+    (amount !== payment.amount && amount !== (payment.total_amount ?? payment.amount))
+  ) {
     await logPaymentWebhook({
       provider: payment.provider,
       eventId,

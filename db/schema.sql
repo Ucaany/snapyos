@@ -778,7 +778,7 @@ create table payment_webhooks (
   event_type text,
   payload jsonb,
   signature_valid boolean,
-  status text not null default 'processed'
+  status text not null default 'received'
     check (status in ('received', 'processed', 'ignored', 'error')),
   payment_id uuid references payments (id) on delete set null,
   error text,

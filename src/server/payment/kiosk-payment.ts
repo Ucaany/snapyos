@@ -20,7 +20,9 @@ const TRIPAY_REDIRECT = new Set(["ALFAMART", "INDOMARET"])
 
 export function paymentMethodId(provider: KioskGatewayProvider, method: string): string {
   return `${provider}:${method}`
-}export function paymentDisplay(
+}
+
+export function paymentDisplay(
   provider: KioskGatewayProvider,
   method: string
 ): KioskPaymentDisplay {

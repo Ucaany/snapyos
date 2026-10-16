@@ -9,6 +9,7 @@
 import { timingSafeEqual } from "node:crypto"
 import { z } from "zod"
 import type { GatewayStatus } from "./providers/types"
+import { parseProviderAmount } from "../../lib/qris-helpers.ts"
 export { parseProviderDateTime } from "../../lib/qris-helpers.ts"
 
 export const pakasirWebhookSchema = z.object({
@@ -86,13 +87,46 @@ export function isVerifiedPakasirPayment(
 }
 
 /**
+ * Timestamp kejadian webhook Pakasir: v2 mengirim `completed_at` (ISO-8601 Z),
+ * v1 mengirim `payment_date`. Dipakai untuk freshness H2 dan event id.
+ */
+export function pakasirEventTimestamp(event: {
+  completed_at?: string | null
+  payment_date?: string | null
+}): string | null {
+  return event.completed_at ?? event.payment_date ?? null
+}
+
+/**
+ * Gate nominal webhook Pakasir kiosk (murni, fail-closed).
+ *
+ * Pakasir v2 mengirim nominal DASAR (`amount`) di body webhook maupun
+ * transaction-status; hanya `create-transaction` yang mengembalikan `fee` dan
+ * `total_payment`. Karena `payments.total_amount` menyimpan base + fee, gate
+ * harus menerima salah satu dari dua nilai yang tercatat:
+ * - `final_amount`  → nominal dasar yang diminta ke customer
+ * - `total_amount`  → nominal dasar + fee (bila provider mengirim totalnya)
+ * Field absen = lewat (S2S tetap gate utama); ada tapi tak bisa diparse atau
+ * bukan salah satu nilai itu = tolak. Tanpa rentang/ambang.
+ */
+export function pakasirKioskAmountValid(
+  eventAmount: unknown,
+  payment: { final_amount: number; total_amount: number | null }
+): boolean {
+  if (eventAmount === undefined || eventAmount === null) return true
+  const parsed = parseProviderAmount(eventAmount)
+  if (parsed === null) return false
+  return parsed === payment.final_amount || parsed === (payment.total_amount ?? payment.final_amount)
+}
+
+/**
  * Verifikasi status paid server-to-server dengan gateway yang JAHIT payment:
  * - payment.credential_id (direct merchant owner) → byCredential(id) → verifikasi
  *   di project owner. Credential dihapus sebelum webhook → false (fail-closed;
  *   query project platform = verifikasi project yang salah → risiko settle false).
  * - credential_id null (legacy aggregator, backward compat) → aggregator() (env var platform).
- *   OBSOLETESC (2026-09-18): kiosk tidak lagi produce payment aggregator; branch
- *   dipertahankan fail-closed untuk legacy payment in-flight.
+ *   Sejak 2026-09-18 kiosk tidak lagi membuat payment lewat aggregator; cabang ini
+ *   dipertahankan fail-closed untuk payment legacy in-flight saja.
  */
 export async function verifyPakasirPaid(
   payment: { credential_id: string | null; order_id: string; final_amount: number; provider_ref?: string | null },

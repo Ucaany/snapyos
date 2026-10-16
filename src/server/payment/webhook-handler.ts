@@ -11,7 +11,7 @@ import {
   midtransWebhookSchema,
   parseMidtransAmount,
 } from "@/server/payment/midtrans-utils"
-import { tripayEventId, tripayWebhookSchema, parseTripayAmount } from "@/server/payment/tripay-utils"
+import { tripayEventId, tripayWebhookSchema, tripayWebhookAmount } from "@/server/payment/tripay-utils"
 import { createServerClient } from "@/lib/supabase/server"
 import {
   pakasirWebhookSchema,
@@ -20,8 +20,10 @@ import {
   webhookEventId as pakasirWebhookEventId,
   isWebhookEventFresh,
   parseProviderDateTime,
+  pakasirEventTimestamp,
+  pakasirKioskAmountValid,
 } from "@/server/payment/pakasir-utils"
-import { pakasirProvider } from "@/server/payment/pakasir"
+import { pakasirAggregatorGateway } from "@/server/payment/pakasir"
 import { parseProviderAmount } from "@/lib/qris-helpers"
 import { decrypt } from "@/server/payment/providers/encrypt"
 import { resolveGatewayByCredential } from "@/server/payment/providers/registry"
@@ -190,7 +192,7 @@ export async function handleTripayWebhook(rawBody: string, signature: string | n
       event.status,
       status === "PAID",
       status === "EXPIRED",
-      parseTripayAmount(event.amount),
+      tripayWebhookAmount(event),
       event
     )
     if (result) return result
@@ -202,7 +204,7 @@ export async function handleTripayWebhook(rawBody: string, signature: string | n
       orderId: event.merchant_ref,
       eventId: tripayEventId(event),
       eventType: event.status,
-      amount: parseTripayAmount(event.amount),
+      amount: tripayWebhookAmount(event),
       payload: event,
       signaturePayload: rawBody,
       signature,
@@ -270,7 +272,7 @@ export async function handlePakasirWebhook(rawPayload: unknown) {
       eventId: `invalid-${randomUUID()}`,
       eventType: null,
       payload: rawPayload,
-      signatureValid: false,
+      signatureValid: null,
       status: "error",
       paymentId: null,
       error: "Payload tidak valid",
@@ -295,7 +297,7 @@ export async function handlePakasirWebhook(rawPayload: unknown) {
         order_id: event.order_id,
         status: event.status,
         amount: event.amount != null ? parseProviderAmount(event.amount) : null,
-        payment_date: event.payment_date ?? null,
+        payment_date: pakasirEventTimestamp(event),
         signature: null, // Pakasir webhook tanpa signature; status diverifikasi server-to-server.
       },
       rawPayload
@@ -305,7 +307,7 @@ export async function handlePakasirWebhook(rawPayload: unknown) {
       eventId: pakasirWebhookEventId(event.order_id, event.status),
       eventType: event.status,
       payload: rawPayload,
-      signatureValid: false,
+      signatureValid: null,
       status: "ignored",
       paymentId: null,
       error: "order_id tidak dikenal",
@@ -313,23 +315,14 @@ export async function handlePakasirWebhook(rawPayload: unknown) {
     return { ok: false, reason: "unknown_order" as const }
   }
 
-  // Validasi amount jika dikirim provider. Pakasir bisa mengirim amount yang
-  // sudah termasuk unique_code (total_amount), jadi cocokkan terhadap
-  // total_amount bila ada, kalau tidak final_amount. Fail-closed: amount ada
-  // tapi tak bisa diparse / tak cocok → amount_mismatch.
-  const amountValid = (() => {
-    if (event.amount === undefined || event.amount === null) return true
-    const parsed = parseProviderAmount(event.amount)
-    if (parsed === null) return false
-    const expected = payment.total_amount ?? payment.final_amount
-    return parsed === expected
-  })()
-  if (!amountValid) {
+  // Validasi amount bila provider mengirimnya (lihat pakasirKioskAmountValid:
+  // v2 mengirim nominal DASAR, jadi final_amount ikut diterima).
+  if (!pakasirKioskAmountValid(event.amount, payment)) {
     await logPaymentWebhook({
       eventId: pakasirWebhookEventId(event.order_id, event.status),
       eventType: event.status,
       payload: rawPayload,
-      signatureValid: false,
+      signatureValid: null,
       status: "error",
       paymentId: payment.id,
       error: "amount tidak cocok",
@@ -337,13 +330,14 @@ export async function handlePakasirWebhook(rawPayload: unknown) {
     return { ok: false, reason: "amount_mismatch" as const }
   }
 
-  // H2 — freshness (anti replay/clock-skew): payment_date di luar jendela → tolak.
-  if (!isWebhookEventFresh(event.payment_date, new Date(), parseProviderDateTime)) {
+  // H2 freshness (anti replay/clock-skew): timestamp kejadian di luar jendela
+  // → tolak. v2 mengirim `completed_at`, v1 `payment_date`.
+  if (!isWebhookEventFresh(pakasirEventTimestamp(event), new Date(), parseProviderDateTime)) {
     await logPaymentWebhook({
       eventId: `${pakasirWebhookEventId(event.order_id, event.status)}:stale`,
       eventType: event.status,
       payload: rawPayload,
-      signatureValid: false,
+      signatureValid: null,
       status: "error",
       paymentId: payment.id,
       error: "Webhook di luar jendela freshness",
@@ -359,7 +353,7 @@ export async function handlePakasirWebhook(rawPayload: unknown) {
     try {
       verified = await verifyPakasirPaid(payment, {
         byCredential: resolveGatewayByCredential,
-        aggregator: () => pakasirProvider,
+        aggregator: () => pakasirAggregatorGateway,
       })
     } catch (error) {
       console.error(
@@ -370,7 +364,7 @@ export async function handlePakasirWebhook(rawPayload: unknown) {
         eventId: `${pakasirWebhookEventId(event.order_id, event.status)}:unverified_error`,
         eventType: event.status,
         payload: rawPayload,
-        signatureValid: false,
+        signatureValid: null,
         status: "error",
         paymentId: payment.id,
         error: "Verifikasi status provider error",
@@ -382,7 +376,7 @@ export async function handlePakasirWebhook(rawPayload: unknown) {
         eventId: pakasirWebhookEventId(event.order_id, event.status),
         eventType: event.status,
         payload: rawPayload,
-        signatureValid: false,
+        signatureValid: null,
         status: "error",
         paymentId: payment.id,
         error: "Status paid tidak terverifikasi di Pakasir",
@@ -397,7 +391,8 @@ export async function handlePakasirWebhook(rawPayload: unknown) {
       eventId: pakasirWebhookEventId(event.order_id, event.status),
       eventType: event.status,
       payload: rawPayload,
-      signatureValid: true,
+      // Pakasir tidak memakai signature → null ("tidak berlaku"), bukan true.
+      signatureValid: null,
       status: "ignored",
       paymentId: payment.id,
       error: "Sudah paid (duplicate webhook)",
@@ -411,7 +406,8 @@ export async function handlePakasirWebhook(rawPayload: unknown) {
     eventId: pakasirWebhookEventId(event.order_id, event.status),
     eventType: event.status,
     payload: rawPayload,
-    signatureValid: true,
+    // Pakasir tidak memakai signature → null ("tidak berlaku"), bukan true.
+    signatureValid: null,
     paymentId: payment.id,
   })
   if (claimed === "duplicate") {

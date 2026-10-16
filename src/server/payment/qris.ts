@@ -38,8 +38,8 @@ export async function getPaymentStatus(
           // milik credential direct, settle lewat akun berbeda = dana salah.
           // Owner harus memperbaiki credential; poll berikutnya akan recover.
           await resolveGatewayByCredential(payment.credential_id)
-        // OBSOLETESC (2026-09-18): aggregator env deactivated pentru kiosk;
-        // branch hanya untuk legacy payment in-flight masih pending.
+        // Aggregator env sudah tidak dipakai kiosk sejak 2026-09-18; cabang ini
+        // hanya untuk payment legacy in-flight yang masih pending.
         : payment.provider === "pakasir"
           ? resolveGatewayFromCredential(null)
           : null

@@ -107,7 +107,7 @@
 
 - `src/lib/api-route.ts` — `adminRoute`, `adminRawRoute`, `authRoute`, `authRawRoute`, `parseUuidParam`, `searchParamsToObject`, `toErrorResponse`.
 - `src/lib/api-errors.ts` — envelope sukses `{data}` / error `{error:{code,message,details}}`. Kode termasuk `SESSION_EXPIRED` (410), `RATE_LIMITED`, `SUBSCRIPTION_EXPIRED`, `FEATURE_DISABLED`, `POS_BOOTH_DISABLED`.
-- `src/lib/error-redaction.ts` + `webhook-redaction.ts` — sanitasi log (secret → `[REDACTED]`, email → `***@domain`).
+- `src/lib/error-redaction.ts`: sanitasi log (secret → `[REDACTED]`, email → `***@domain`).
 
 ### 1.6 Rate Limit & Keamanan Input
 
@@ -777,20 +777,20 @@
 - **createPayment**: `src/server/payment/payment-create.ts` (voucher-only via RPC `create_voucher_payment_atomically`).
 - **Settlement**: `transitionPaymentToPaid` → RPC `settle_paid_payment_atomically` (`src/server/payment/settlement.ts`) → `runPaidSideEffects` (transaksi + voucher usage + session).
 - **Polling**: `getPaymentStatus` (`src/server/payment/qris.ts`) + `useQrisPolling` (3s).
-- **Cash**: `confirmCashPayment`/`settleCashPayment` (operator) — `src/server/payment/qris.ts`, `cash-payment.ts`.
+- **Cash**: `confirmCashPayment`/`settleCashPayment` (operator) di `src/server/payment/qris.ts`, `src/server/cash-payment.ts` + `src/server/cash-payment-actions.ts`.
 - **Recovery**: cron `payment-recovery` (`src/server/payment/settlement-recovery.ts`) — paid-but-unsettled (idempotent), expire checkout basi.
 
 ### 10.2 Webhook Provider
 - **Route**: `/api/webhooks/payment/{pakasir,midtrans,tripay}` (`POST`).
 - **Handler**: `handleMidtransWebhook` (SHA-512 signature), `handleTripayWebhook` (HMAC-SHA256 callback signature), `handlePakasirWebhook` (wajib server-to-server status check).
 - **Server**: `src/server/payment/webhook-handler.ts`, `webhook-log.ts`, `src/lib/direct-webhook.ts`.
-- **Aturan**: payload tidak dipercaya untuk tenant/credential/payment ID — lookup via provider reference tersimpan, validasi amount/order, provider match, transition idempotent (state-aware `received`→`processed`, `payment_webhooks.event_id` unik).
+- **Aturan**: payload tidak dipercaya untuk tenant/credential/payment ID; lookup via provider reference tersimpan, validasi nominal/order (`final_amount` atau `total_amount`; Tripay mengirim `total_amount`), provider match, transition idempotent (state-aware `received`→`processed`, `payment_webhooks.event_id` unik).
 - **DB**: `payment_webhooks, payments, checkout_sessions, payment_credentials, invoice_payments, transactions`.
 - **Invoice cabang**: webhook Pakasir bercabang saat `order_id` invoice (subscription) → `handleInvoiceWebhookEvent` / `handleDirectInvoiceWebhook` (`src/server/payment/invoice.ts`).
 
-### 10.3 Invoice Subscription (Pakasir Aggregator)
-- **Alur**: owner buat invoice → `createInvoiceQris` → `invoice_payments` (QRIS) → webhook paid → `applyInvoiceIntent` → plan/add-on/template aktif.
-- **Env**: `PAKASIR_API_KEY`, `PAKASIR_PROJECT_SLUG`, `PAKASIR_WEBHOOK_URL` (dana → SnapyOS).
+### 10.3 Invoice Subscription (credential owner, fallback Pakasir aggregator)
+- **Alur**: owner buat invoice → `createInvoiceQris` → `invoice_payments` (QRIS) → webhook paid → `applyInvoiceIntent` → plan/add-on/template aktif. Gateway diutamakan dari credential per-business (migrasi 0047); aggregator env dipakai bila tidak ada credential aktif.
+- **Env**: `PAKASIR_API_KEY`, `PAKASIR_PROJECT_SLUG`, `PAKASIR_WEBHOOK_SECRET` (dana → SnapyOS; URL webhook dibangun dari `SnapyOS_PUBLIC_BASE_URL`).
 - **Fallback**: gagal → `subscription_intent_failures` → admin `/admin/subscriptions/pending-review`.
 - **Promo**: `previewSubscriptionPromo`/`consumeSubscriptionPromo`/`releaseSubscriptionPromo` (`src/server/subscription-promo.ts`).
 - **DB**: `invoices, invoice_payments, subscription_promos, subscription_intent_failures`.

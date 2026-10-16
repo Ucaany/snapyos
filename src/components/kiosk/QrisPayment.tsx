@@ -4,7 +4,7 @@
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { formatIDR } from "@/lib/dashboard-math"
 export type PendingPayment = {
-  status: "pending" | "paid"
+  status: "pending" | "paid" | "expired"
   payment_reference: string
   qr_string: string | null
   qr_image: string | null

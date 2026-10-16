@@ -122,12 +122,12 @@ export async function processDirectWebhook(
   if (!gateway.verifyWebhook(input.signaturePayload, input.signature)) {
     return reject(input, deps, payment, "invalid_signature", "signature tidak valid");
   }
-  // Tripay menambahkan admin fee sehingga amount webhook bisa melebihi
-  // final_amount (nominal yang diminta ke customer): total_amount = final_amount
-  // + admin fee provider. Terima amount == final_amount ATAU == total_amount
-  // (bila tercatat). Fail-closed selain itu: amount null / nilai lain → reject.
-  // Sengaja TIDAK menerima rentang/ambang — hanya dua nilai eksak yang sah
-  // (fail-closed; jangan longgarkan tanpa keputusan eksplisit, lihat docs/06 §6.7).
+  // Nominal callback direct bisa memuat admin fee provider: Tripay mengirim
+  // `total_amount` (final_amount + fee), Midtrans mengirim `gross_amount`.
+  // Terima nominal == final_amount ATAU == total_amount (bila tercatat).
+  // Fail-closed selain itu: null / nilai lain → reject. Sengaja TIDAK menerima
+  // rentang/ambang, hanya dua nilai eksak yang sah (jangan longgarkan tanpa
+  // keputusan eksplisit, lihat docs/06 §6.7.1).
   if (
     input.amount === null ||
     (input.amount !== payment.final_amount &&

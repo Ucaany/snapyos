@@ -190,9 +190,9 @@ Configurable per business (`business_settings.retention_days`, default 3 hari, m
 - Validasi webhook **tidak** mengandalkan stored-signature matching sebagai gate tunggal. Handler memvalidasi dengan:
   (a) Parse payload — ekstrak `order_id`, `amount`, `status`, dan field relevan lainnya.
   (b) Verifikasi header `X-Secret` (Pakasir webhook secret v2, timing-safe) — fail-closed 401. Secret per-credential tenant; fallback ke `PAKASIR_WEBHOOK_SECRET` global **hanya** untuk order non-tenant (aggregator/invoice platform). Order tenant TANPA secret per-credential → 401 (tanpa fallback global).
-  (c) Verifikasi jumlah — cocokkan `amount` dari payload dengan nilai di DB (`payments.final_amount` / `invoice_payments.amount`).
+  (c) Verifikasi jumlah: cocokkan nominal dari payload dengan nilai di DB (`payments.final_amount` atau `payments.total_amount`; `invoice_payments.amount` atau `total_amount`). Field nominal per provider: Midtrans `gross_amount`, Tripay `total_amount` (fallback `amount`), Pakasir `amount`.
   (d) Untuk event `paid`: WAJIB **server-to-server status check** ke provider sebelum settlement. Signature webhook (Midtrans/Tripay, timing-safe HMAC) valid pun tetap di-re-verify. `provider_signature` null (Pakasir) **TIDAK** auto-pass.
-- **Freshness (H2):** tolak webhook dengan `payment_date` di luar jendela ±24 jam (`isWebhookEventFresh`) — anti replay/clock-skew.
+- **Freshness (H2):** tolak webhook dengan timestamp kejadian di luar jendela ±24 jam (`isWebhookEventFresh`), anti replay/clock-skew. Pakasir v2 mengirim `completed_at` (ISO-8601); `payment_date` hanya legacy v1.
 - **Idempotency state-aware (H3):** event dicatat `received` (non-authoritative) sebelum re-verify, dipromosikan `processed` HANYA setelah settlement sukses. Baris `received`/`error` TIDAK memblokir redelivery; `processed`/`ignored` memblokir (anti double-settle). Recovery polling (`qris.ts`, `invoice.ts`) tetap jaring terakhir.
 - Log seluruh event (`payment_webhooks`) untuk audit.
 
@@ -213,7 +213,6 @@ AUTH_SECRET / AUTH_URL
 PAKASIR_API_KEY
 PAKASIR_PROJECT_SLUG
 PAKASIR_WEBHOOK_SECRET
-PAKASIR_WEBHOOK_URL
 PAKASIR_BASE_URL          # https://app.pakasir.com (default)
 # Payment encryption (direct merchant)
 PAYMENT_ENCRYPTION_KEY

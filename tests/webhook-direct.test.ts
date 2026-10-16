@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { test } from "node:test";
 import { processDirectWebhook, type DirectWebhookDependencies, type DirectWebhookInput } from "../src/lib/direct-webhook.ts";
-import { redactWebhookPayload } from "../src/lib/webhook-redaction.ts";
+import { redactWebhookPayload } from "../src/lib/error-redaction.ts";
 import { computeMidtransSignature, createMidtransGateway } from "../src/server/payment/providers/midtrans.ts";
 import { computeTripaySignature, createTripayGateway } from "../src/server/payment/providers/tripay.ts";
 import { createPakasirGateway } from "../src/server/payment/providers/pakasir.ts";
