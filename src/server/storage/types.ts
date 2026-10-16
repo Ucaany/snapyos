@@ -38,6 +38,17 @@ export type ListOptions = {
 export type SignedUrlEntry = { path: string; signedUrl: string | null };
 
 /**
+ * Opsi presign tambahan. `download` = nama file unduhan: URL yang dibuka
+ * browser merespons `Content-Disposition: attachment` dengan nama itu.
+ * Diperlukan untuk tombol unduh di halaman result — atribut `download` pada
+ * `<a>` cross-origin DIABAIKAN browser, jadi disposition harus dibawa oleh
+ * URL signed itu sendiri (docs/05 §5.13).
+ */
+export type SignedUrlOptions = {
+  download?: string;
+};
+
+/**
  * Interface minimal — hanya method yang benar-benar dipakai business logic.
  * JANGAN tambah method sampai ada pemanggil nyata (YAGNI).
  */
@@ -59,12 +70,14 @@ export interface StorageProvider {
   createSignedUrl(
     bucket: StorageBucket,
     key: string,
-    ttlSeconds: number
+    ttlSeconds: number,
+    options?: SignedUrlOptions
   ): Promise<StorageResult<{ signedUrl: string }>>;
   createSignedUrls(
     bucket: StorageBucket,
     keys: string[],
-    ttlSeconds: number
+    ttlSeconds: number,
+    options?: SignedUrlOptions
   ): Promise<StorageResult<SignedUrlEntry[]>>;
   /** Non-rekursif, urut nama asc — sama seperti Supabase `.list()`. */
   list(

@@ -647,10 +647,11 @@
 ## 6. HASIL ONLINE (Result Page)
 
 **Route**: `/r/[token]` · **Page**: `src/app/r/[token]/page.tsx` · **Data**: `getResult(resultToken)` (`src/server/kiosk-sessions.ts`).
-**API padanan**: `GET /api/v1/public/results/:resultToken` (rate limit IP).
-**Isi**: nama bisnis, judul "Foto kamu siap!", GIF slideshow (`result_gif_key`), foto berframe (signed URL), unduh.
-**DB**: `sessions, photos, businesses, templates`.
-**Dampak**: token publik (`checkout_sessions.result_token` / `sessions`); media dibersihkan cron retention setelah `retention_days` → link kedaluwarsa.
+**API padanan**: `GET /api/v1/public/results/:resultToken` (rate limit IP 60/60s).
+**Isi**: nama bisnis, judul "Foto kamu siap!", GIF slideshow (`result_gif_key`), foto berframe (signed URL), unduh — tombol unduh memakai signed URL `Content-Disposition: attachment` (`gif_download_url`, `photos[].download_url`) karena atribut `download` pada `<a>` cross-origin diabaikan browser.
+**DB**: `checkout_sessions (result_token), sessions, photos, businesses, business_settings (retention_days)`. (Dokumen sebelumnya menulis `templates` — salah; `photos.template_id` tidak pernah dibaca di jalur ini.)
+**Dampak**: token publik (`checkout_sessions.result_token`); media dibersihkan cron retention setelah `retention_days` → link kedaluwarsa (404). Error transien (DB/storage down) → error boundary, bukan 404.
+**Gap backlog (disengaja, docs/05 §5.13)**: UNDUH SEMUA (ZIP), logo owner di header, background kustom owner — belum diimplementasi.
 
 ---
 

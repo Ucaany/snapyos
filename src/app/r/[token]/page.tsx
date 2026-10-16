@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import { notFound } from "next/navigation";
+import { ApiError } from "@/lib/api-errors";
 import { getResult } from "@/server/kiosk-sessions";
 
 export const metadata: Metadata = {
@@ -13,13 +13,21 @@ type Props = { params: Promise<{ token: string }> };
 export default async function ResultPage({ params }: Props) {
   const { token } = await params;
 
-  let result: Awaited<ReturnType<typeof getResult>> | null = null;
+  // Hanya NOT_FOUND (token salah / link kedaluwarsa) yang jadi 404. Gangguan
+  // sesaat (DB/storage down) dilempar ke error boundary — idiom yang sama
+  // dengan /p/[businessSlug]: link yang sebenarnya valid tidak boleh salah
+  // dilaporkan sebagai "kedaluwarsa" (docs/05 §5.13, retention docs/09 §9.8).
+  let result: Awaited<ReturnType<typeof getResult>>;
   try {
     result = await getResult(token);
-  } catch {
-    result = null;
+  } catch (cause) {
+    if (cause instanceof ApiError && cause.code === "NOT_FOUND") notFound();
+    throw cause;
   }
-  if (!result) notFound();
+
+  // Signed URL sudah final (TTL 1 jam, tak perlu optimasi/resize server) —
+  // `<img>` langsung, idiom yang sama dengan ResultScreen kiosk.
+  const photos = result.photos.filter((p) => p.url);
 
   return (
     <div className="min-h-[100dvh] bg-bg">
@@ -43,19 +51,19 @@ export default async function ResultPage({ params }: Props) {
               GIF Slideshow
             </p>
             <div className="border-2 border-ink bg-surface p-3 shadow-[4px_4px_0_0_#111111]">
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={result.gif_url}
                 alt="GIF slideshow hasil foto"
-                width={840}
-                height={840}
+                width={480}
+                height={480}
                 className="h-auto w-full"
-                unoptimized
               />
             </div>
             <a
-              href={result.gif_url}
+              href={result.gif_download_url ?? result.gif_url}
               download="snapyos-slideshow.gif"
-              className="inline-flex w-fit items-center justify-center border-2 border-ink bg-accent px-5 py-3 font-mono text-sm font-bold uppercase tracking-tight shadow-[4px_4px_0_0_#111111] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#111111] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
+              className="inline-flex w-fit items-center justify-center border-2 border-ink bg-accent px-5 py-3 font-mono text-sm font-bold uppercase tracking-tight shadow-[4px_4px_0_0_#111111] outline-none hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#111111] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
             >
               Unduh GIF
             </a>
@@ -69,28 +77,34 @@ export default async function ResultPage({ params }: Props) {
         <section className="flex flex-col gap-4">
           <p className="font-mono text-xs font-bold uppercase tracking-[0.2em]">Foto Berframe</p>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3">
-            {result.photos
-              .filter((p) => p.url)
-              .map((p, i) => (
-                <figure key={p.id} className="flex flex-col gap-2 border-2 border-ink bg-surface p-2 shadow-[4px_4px_0_0_#111111]">
-                  <Image
-                    src={p.url ?? ""}
-                    alt={`Foto ${i + 1}`}
-                    width={720}
-                    height={1080}
-                    className="h-auto w-full"
-                    unoptimized
-                  />
-                  <a
-                    href={p.url ?? "#"}
-                    download={`snapyos-${i + 1}.jpg`}
-                    className="inline-flex items-center justify-center border-2 border-ink bg-surface px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.1em] hover:bg-accent"
-                  >
-                    Unduh
-                  </a>
-                </figure>
-              ))}
+            {photos.map((p, i) => (
+              <figure
+                key={p.id}
+                className="flex flex-col gap-2 border-2 border-ink bg-surface p-2 shadow-[4px_4px_0_0_#111111]"
+              >
+                {/* Rasio foto bervariasi per template canvas (2:3, 1:1, dst.),
+                    bukan 2:3 seragam — biarkan rasio asli via aspect-ratio auto. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={p.url ?? ""}
+                  alt={`Foto ${i + 1}`}
+                  className="h-auto w-full"
+                />
+                <a
+                  href={p.download_url ?? p.url ?? "#"}
+                  download={`snapyos-${i + 1}.jpg`}
+                  className="inline-flex items-center justify-center border-2 border-ink bg-surface px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.1em] outline-none hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+                >
+                  Unduh
+                </a>
+              </figure>
+            ))}
           </div>
+          {photos.length === 0 && (
+            <p className="border-2 border-dashed border-ink/40 bg-muted px-4 py-3 font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
+              Foto belum tersedia
+            </p>
+          )}
         </section>
       </main>
     </div>

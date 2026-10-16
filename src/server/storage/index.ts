@@ -131,11 +131,17 @@ async function resolveStorageMany(
 /**
  * Batch signed URL lintas-provider: resolusi tiap key, kelompokkan per provider,
  * satu `createSignedUrls` per provider. Map key→signedUrl (null bila gagal).
+ *
+ * `downloadBy` (opsional) memaksa URL menjadi unduhan (Content-Disposition
+ * attachment) dengan nama per-key — dipakai tombol unduh halaman result,
+ * karena atribut `download` pada `<a>` cross-origin diabaikan browser.
+ * Tanpa `downloadBy`, URL biasa (inline preview) — perilaku call-site lama.
  */
 export async function signedUrlMap(
   bucket: StorageBucket,
   keys: string[],
-  ttlSeconds: number
+  ttlSeconds: number,
+  downloadBy?: (key: string) => string
 ): Promise<Map<string, string>> {
   const unique = Array.from(new Set(keys));
   const out = new Map<string, string>();
@@ -151,6 +157,25 @@ export async function signedUrlMap(
   }
   await Promise.all(
     Array.from(groups.entries()).map(async ([provider, groupKeys]) => {
+      if (downloadBy) {
+        // Nama unduhan beda per key → tak bisa satu panggilan batch; presign
+        // per-key (paralel, tetap satu provider per grup).
+        const single = await Promise.all(
+          groupKeys.map(async (key) => {
+            const { data } = await provider.createSignedUrl(
+              bucket,
+              key,
+              ttlSeconds,
+              { download: downloadBy(key) }
+            );
+            return [key, data?.signedUrl ?? null] as const;
+          })
+        );
+        for (const [key, url] of single) {
+          if (url) out.set(key, url);
+        }
+        return;
+      }
       const { data } = await provider.createSignedUrls(bucket, groupKeys, ttlSeconds);
       for (const entry of data ?? []) {
         if (entry.path && entry.signedUrl) out.set(entry.path, entry.signedUrl);

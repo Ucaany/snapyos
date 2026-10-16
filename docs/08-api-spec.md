@@ -144,7 +144,7 @@ Error:
 - `GET /api/v1/public/:businessSlug/payments/:paymentRef/status` — status payment (recover saat reload)
 - `POST /api/v1/public/:businessSlug/sessions` — mulai sesi (**syarat: checkout_session paid**) (`{ checkout_session_id, device_token }`) → `{ session_id, expires_at }`; semua endpoint sesi cek `expires_at` → `SESSION_EXPIRED`. Development-only: ketika `DEV_SKIP_PAYMENT` aktif, server juga menerima `{ package_id, device_token }` untuk checkout paid sintetis; jalur ini tidak aktif di production.
 - `POST /api/v1/public/:businessSlug/sessions/:id/finalize` — selesai (trigger auto-print + generate result & GIF)
-- `GET /api/v1/public/results/:resultToken` — akses result online (unduh GIF slideshow + foto berframe); diakses dari halaman publik `/r/[token]`
+- `GET /api/v1/public/results/:resultToken` — akses result online (unduh GIF slideshow + foto berframe; `gif_url`/`photos[].url` untuk preview + `gif_download_url`/`photos[].download_url` untuk unduh); diakses dari halaman publik `/r/[token]`
 
 ## 8.15 Webhook
 

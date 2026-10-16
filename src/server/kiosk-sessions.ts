@@ -110,6 +110,24 @@ async function signedUrls(keys: string[]): Promise<Map<string, string>> {
   return signedUrlMap(GENERATED_BUCKET, keys, SIGNED_URL_TTL)
 }
 
+/**
+ * Nama file unduhan untuk key hasil sesi — basename key (photo-00.jpg,
+ * result.gif) supaya file pelanggan tidak saling menimpa dan terbaca jelas.
+ */
+function downloadName(key: string): string {
+  const base = key.slice(key.lastIndexOf("/") + 1)
+  return `snapyos-${base}`
+}
+
+/**
+ * Batch signed URL unduhan (Content-Disposition attachment, nama per-key).
+ * Tombol unduh halaman result memakai URL ini: atribut `download` pada `<a>`
+ * cross-origin diabaikan browser (docs/05 §5.13).
+ */
+async function downloadUrls(keys: string[]): Promise<Map<string, string>> {
+  return signedUrlMap(GENERATED_BUCKET, keys, SIGNED_URL_TTL, downloadName)
+}
+
 async function loadSession(businessId: string, sessionId: string): Promise<SessionRow> {
   const supabase = createServerClient()
   const { data } = await supabase
@@ -704,11 +722,15 @@ export async function getResult(resultToken: string) {
     ...(session.result_gif_key ? [session.result_gif_key] : []),
     ...photoRows.map((p) => p.file_key),
   ]
-  const urlMap = await signedUrls(keys)
+  const [urlMap, dlMap] = await Promise.all([signedUrls(keys), downloadUrls(keys)])
   const gifUrl = session.result_gif_key ? (urlMap.get(session.result_gif_key) ?? null) : null
+  const gifDownloadUrl = session.result_gif_key
+    ? (dlMap.get(session.result_gif_key) ?? null)
+    : null
   const photoItems = photoRows.map((p) => ({
     id: p.id,
     url: urlMap.get(p.file_key) ?? null,
+    download_url: dlMap.get(p.file_key) ?? null,
     order_index: p.order_index,
   }))
 
@@ -716,6 +738,7 @@ export async function getResult(resultToken: string) {
     business: { name: business?.name ?? null },
     status: session.status,
     gif_url: gifUrl,
+    gif_download_url: gifDownloadUrl,
     photos: photoItems,
   }
 }

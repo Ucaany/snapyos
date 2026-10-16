@@ -33,6 +33,7 @@ import { isObjectNotFoundError } from "@/lib/r2/errors";
 import type {
   ListOptions,
   SignedUrlEntry,
+  SignedUrlOptions,
   StorageBucket,
   StorageListEntry,
   StorageProvider,
@@ -153,12 +154,13 @@ export class R2StorageProvider implements StorageProvider {
   async createSignedUrl(
     bucket: StorageBucket,
     key: string,
-    ttlSeconds: number
+    ttlSeconds: number,
+    options?: SignedUrlOptions
   ): Promise<StorageResult<{ signedUrl: string }>> {
     try {
       const signedUrl = await getSignedUrl(
         this.client,
-        new GetObjectCommand({ Bucket: this.bucket(bucket), Key: r2Key(bucket, key) }),
+        new GetObjectCommand(this.getCommandInput(bucket, key, options?.download)),
         { expiresIn: ttlSeconds }
       );
       return { data: { signedUrl }, error: null };
@@ -170,13 +172,14 @@ export class R2StorageProvider implements StorageProvider {
   async createSignedUrls(
     bucket: StorageBucket,
     keys: string[],
-    ttlSeconds: number
+    ttlSeconds: number,
+    options?: SignedUrlOptions
   ): Promise<StorageResult<SignedUrlEntry[]>> {
     try {
       const entries = await mapWithConcurrency(keys, PRESIGN_CONCURRENCY, async (key) => {
         const signedUrl = await getSignedUrl(
           this.client,
-          new GetObjectCommand({ Bucket: this.bucket(bucket), Key: r2Key(bucket, key) }),
+          new GetObjectCommand(this.getCommandInput(bucket, key, options?.download)),
           { expiresIn: ttlSeconds }
         );
         return { path: key, signedUrl };
@@ -185,6 +188,22 @@ export class R2StorageProvider implements StorageProvider {
     } catch (error) {
       return { data: null, error: { message: messageFrom(error) } };
     }
+  }
+
+  /** Input GetObject presign — `download` → Content-Disposition attachment. */
+  private getCommandInput(
+    bucket: StorageBucket,
+    key: string,
+    download?: string
+  ): { Bucket: string; Key: string; ResponseContentDisposition?: string } {
+    const input: { Bucket: string; Key: string; ResponseContentDisposition?: string } = {
+      Bucket: this.bucket(bucket),
+      Key: r2Key(bucket, key),
+    };
+    if (download !== undefined) {
+      input.ResponseContentDisposition = `attachment; filename="${download.replace(/[\\"]/g, "")}"`;
+    }
+    return input;
   }
 
   async list(

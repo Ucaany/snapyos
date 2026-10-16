@@ -383,22 +383,23 @@ SCAN TO GET YOUR PHOTOS:
 
 **UI (layout):**
 ```
-[ Header: branding owner — logo + nama business ]
+[ Header: nama business (BACKLOG: logo owner) ]
 YOUR PHOTOS ARE READY!
 [ PREVIEW GIF animasi slideshow — autoplay loop ]
 [ GRID thumbnail foto berframe (1..N) ]
-[ UNDUH GIF ]   [ UNDUH SEMUA (ZIP) ]   [ unduh per foto ]
+[ UNDUH GIF ]   [ unduh per foto ]   (BACKLOG: [ UNDUH SEMUA (ZIP) ])
 ( Slot future: [ KIRIM KE EMAIL ] — OUT OF SCOPE sekarang )
 ```
 
 Menyediakan:
 - **Unduh GIF animasi slideshow** — semua foto berframe bergantian otomatis; digenerate **server-side saat finalize**; storage key di `sessions.result_gif_key`. Preview GIF autoplay loop di atas halaman.
-- **Unduh foto berframe** (statis, per foto — hasil edit + frame pilihan customer), tampil sebagai grid thumbnail, bisa diunduh per foto atau **unduh semua**.
+- **Unduh foto berframe** (statis, per foto — hasil edit + frame pilihan customer), tampil sebagai grid thumbnail, bisa diunduh per foto. **BACKLOG: unduh semua (ZIP)** — belum diimplementasi (lihat blok Status Implementasi).
+- Tombol unduh bekerja lintas origin: URL unduh membawa `Content-Disposition: attachment` (`gif_download_url`, `photos[].download_url` dari `getResult`) — atribut `download` pada `<a>` cross-origin diabaikan browser.
 - (Slot future: kirim ke email — **OUT OF SCOPE sekarang, jangan diproses**.)
 
 **Design system & konsistensi:** Halaman result memakai **design system yang sama** dengan halaman lain (landing, dashboard, checkout) — Full Neo-Brutalism, komponen & token dari `11-design-system.md`, **konsisten** di seluruh aplikasi. Layout **tetap/standar, tidak bisa diubah**.
 
-**Kustomisasi owner (terbatas):** Owner **hanya** bisa mengubah **background** halaman result (via `business_settings.branding` — mis. warna latar / pola / gambar). **Posisi, tata letak, dan komponen tidak bisa diubah** — struktur halaman tetap sama untuk semua business, demi konsistensi brand & pengalaman.
+**Kustomisasi owner (terbatas):** Owner **hanya** bisa mengubah **background** halaman result (via `business_settings.branding` — mis. warna latar / pola / gambar). **Posisi, tata letak, dan komponen tidak bisa diubah** — struktur halaman tetap sama untuk semua business, demi konsistensi brand & pengalaman. **BACKLOG: background kustom belum diimplementasi** (lihat blok Status Implementasi) — halaman saat ini memakai background standar design system.
 
 **Rule:** `result_token` di-issue saat payment `paid`; akses divalidasi server-side; expiration mengikuti retention policy (default **3 hari**, rentang 1–3 hari; lihat catatan konflik retensi di §Ringkasan atas). Halaman wajib Neo-Brutalism (lihat `11-design-system.md`).
 
