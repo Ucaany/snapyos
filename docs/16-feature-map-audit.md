@@ -737,7 +737,7 @@
 - **Page**: `src/app/(auth)/login/page.tsx` → `AuthPage` (`src/components/auth-block.tsx`, satu komponen client; tidak ada `AuthUI`/`AuthForm` terpisah).
 - **Action**: `loginAction` (`src/server/auth-actions.ts`).
 - **Mekanisme**: Auth.js v5 `signIn("credentials")`; rate limit + verifikasi di `authorize()` (`src/lib/auth.ts`) = single source of truth; Turnstile CAPTCHA; dua mode (email+password, email+PIN).
-- **Redirect**: `destinationForUser` (`src/lib/destination.ts`) — admin → `/admin`, tanpa membership → `/welcome`, staff-only → `/staff`, selain itu → `/dashboard`.
+- **Redirect**: `destinationForUser` (`src/lib/destination.ts`): admin → `/admin`, tanpa membership → `/welcome`, staff-only → `/staff`, selain itu → `/dashboard`.
 - **DB**: `users, auth_sessions, business_members, member_photoboxes` (auth tidak menyentuh `devices`).
 - **API**: `GET/POST /api/auth/[...nextauth]`, `POST /api/auth/logout`.
 
@@ -758,7 +758,7 @@
 - **Page**: `src/app/onboarding/create-business/page.tsx` + `CreateBusinessForm`.
 - **Action**: `createBusinessAction` (`src/server/business-actions.ts`).
 - **Field**: nama bisnis, slug (opsional; auto dari nama). Field profil (owner_name, whatsapp, contact_email, address) dan timezone diisi belakangan dari `/dashboard/settings`, bukan di onboarding.
-- **Server**: `createBusiness` (`src/server/business.ts`) — insert lanjutan (membership owner, settings, trial) diperiksa; gagal di tengah → business di-rollback, bukan meninggalkan tenant yatim.
+- **Server**: `createBusiness` (`src/server/business.ts`): insert lanjutan (membership owner, settings, trial) diperiksa; gagal di tengah → business di-rollback, bukan meninggalkan tenant yatim.
 - **DB**: `businesses, business_members, business_settings, subscriptions, plans, platform_settings`.
 - **Dampak**: membuat tenant + membership owner + subscription trial (`trial_days` dari platform_settings).
 

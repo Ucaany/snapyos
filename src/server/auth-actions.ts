@@ -1,10 +1,10 @@
 "use server";
 
 /**
- * Server actions auth — login/logout (docs/12 Phase 1 UI).
+ * Server actions auth: login/logout (docs/12 Phase 1 UI).
  * Rate limit: login 5/menit/IP + lockout per email (docs/09 §10, docs/08 §8.18).
  * Pendaftaran mandiri ditutup: /register = halaman konsultasi, akun dibuat
- * admin via /admin/users — tidak ada action register di sini.
+ * admin via /admin/users; tidak ada action register di sini.
  */
 
 import { AuthError } from "next-auth";

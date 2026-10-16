@@ -135,7 +135,7 @@ export async function registerFailure(key: string, windowMs: number): Promise<nu
 }
 
 /**
- * Baca hitungan gagal TANPA menambahnya — untuk menegakkan lockout sebagai
+ * Baca hitungan gagal TANPA menambahnya, untuk menegakkan lockout sebagai
  * gate sebelum verifikasi (percobaan ke-N tidak menyentuh DB/argon2 sama
  * sekali). Production tanpa shared store fail-closed (selaras registerFailure):
  * kembalikan nilai di atas ambang lockout supaya login ditolak, bukan dibiarkan.

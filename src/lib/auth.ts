@@ -148,7 +148,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
         // Email tak dikenal / user suspended hanya membuang satu kuota lockout
-        // (dihitung di cabang verifikasi di bawah) — tidak ada counter terpisah
+        // (dihitung di cabang verifikasi di bawah); tidak ada counter terpisah
         // supaya percobaan gagal tidak dihitung dua kali.
         if (!user) return null;
         // User suspended (admin, docs/10 §10.2) tidak boleh login.
@@ -160,7 +160,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // menentukan business dari membership.
         if (pin) {
           // Lockout PIN per email (bukan per booth, karena booth tidak dipilih
-          // pra-sesi) — gate sebelum verify supaya argon2 tidak dibakar.
+          // pra-sesi); gate sebelum verify supaya argon2 tidak dibakar.
           const pinKey = `login:pin:${email}`;
           if ((await failureCount(pinKey)) >= MAX_EMAIL_FAILURES) {
             await registerFailure(failKey, EMAIL_FAILURE_WINDOW_MS);
