@@ -25,7 +25,7 @@ export default async function CreateBusinessPage() {
             variant="outline"
             size="sm"
             nativeButton={false}
-            className="rounded-none border-2 border-ink bg-surface font-mono text-[11px] uppercase tracking-[0.16em] text-ink shadow-[2px_2px_0_0_#111111] hover:bg-muted active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+            className="min-h-11 rounded-none border-2 border-ink bg-surface font-mono text-[11px] uppercase tracking-[0.16em] text-ink shadow-[2px_2px_0_0_#111111] hover:bg-muted active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
             render={<Link href="/welcome" />}
           >
             {"<< Kembali"}
@@ -38,7 +38,7 @@ export default async function CreateBusinessPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="rounded-none font-mono text-[11px] uppercase tracking-[0.16em] text-ink hover:bg-muted"
+                className="min-h-11 rounded-none font-mono text-[11px] uppercase tracking-[0.16em] text-ink hover:bg-muted"
               >
                 Keluar
               </Button>

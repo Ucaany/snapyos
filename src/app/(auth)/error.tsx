@@ -18,7 +18,7 @@ export default function AuthError({
         Error
       </h1>
       <p className="max-w-[50ch] font-mono text-sm leading-relaxed text-muted-foreground">
-        {error.message || "Terjadi kesalahan saat autentikasi. Silakan coba lagi."}
+        Terjadi kesalahan saat autentikasi. Silakan coba lagi.
       </p>
       {error.digest && (
         <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">

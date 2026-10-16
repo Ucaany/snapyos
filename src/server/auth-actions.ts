@@ -1,8 +1,10 @@
 "use server";
 
 /**
- * Server actions auth — register/login/logout (docs/12 Phase 1 UI).
+ * Server actions auth — login/logout (docs/12 Phase 1 UI).
  * Rate limit: login 5/menit/IP + lockout per email (docs/09 §10, docs/08 §8.18).
+ * Pendaftaran mandiri ditutup: /register = halaman konsultasi, akun dibuat
+ * admin via /admin/users — tidak ada action register di sini.
  */
 
 import { AuthError } from "next-auth";
@@ -16,16 +18,6 @@ export type FormState = {
 };
 
 const EMPTY: FormState = {};
-
-export async function registerAction(
-  _prev: FormState,
-  _formData: FormData
-): Promise<FormState> {
-  // Pendaftaran mandiri DITUTUP — akun hanya dibuat admin CEO via /admin/users.
-  return {
-    error: "Pendaftaran mandiri ditutup. Hubungi admin platform untuk pembuatan akun.",
-  };
-}
 
 export async function loginAction(
   _prev: FormState,
@@ -64,9 +56,7 @@ export async function loginAction(
     // NEXT_REDIRECT (sukses) bukan AuthError → dilempar ulang.
     if (error instanceof AuthError) {
       return {
-        error: isPinLogin
-          ? "PIN atau booth salah."
-          : "Email atau password salah.",
+        error: isPinLogin ? "PIN salah." : "Email atau password salah.",
       };
     }
     throw error;

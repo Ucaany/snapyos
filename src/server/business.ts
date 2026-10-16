@@ -144,13 +144,40 @@ export async function createBusiness(userId: string, input: BusinessCreateInput)
     slug = await uniqueSlug(base);
   }
 
-  await supabase.from("business_members").insert({
+  // Baris lanjutan (membership owner, settings, trial) WAJIB berhasil. Sebelum
+  // ini error-nya diabaikan, sehingga kegagalan di tengah meninggalkan tenant
+  // yatim (business tanpa owner) sementara action tetap redirect ke /dashboard.
+  // Semua tabel anak memakai `on delete cascade` ke businesses, jadi rollback
+  // cukup menghapus baris business bila salah satu insert gagal.
+  async function rollbackBusiness() {
+    const { error } = await supabase.from("businesses").delete().eq("id", business.id);
+    if (error) {
+      console.error(
+        "[business] rollback business gagal:",
+        business.id,
+        error.code,
+        error.message
+      );
+    }
+  }
+
+  const { error: memberError } = await supabase.from("business_members").insert({
     business_id: business.id,
     user_id: userId,
     role: "owner",
   });
+  if (memberError) {
+    await rollbackBusiness();
+    throw new ApiError("INTERNAL", "Gagal membuat business");
+  }
 
-  await supabase.from("business_settings").insert({ business_id: business.id });
+  const { error: settingsError } = await supabase
+    .from("business_settings")
+    .insert({ business_id: business.id });
+  if (settingsError) {
+    await rollbackBusiness();
+    throw new ApiError("INTERNAL", "Gagal membuat business");
+  }
 
   // Trial subscription (docs/02 §2.4) — plan starter + trial_days dari platform_settings.
   const { data: plan } = await supabase
@@ -173,7 +200,7 @@ export async function createBusiness(userId: string, input: BusinessCreateInput)
     const now = new Date();
     const trialEnd = nextPeriod(now, trialDays).end;
     const period = nextPeriod(now);
-    await supabase.from("subscriptions").insert({
+    const { error: subError } = await supabase.from("subscriptions").insert({
       business_id: business.id,
       plan_id: plan.id,
       status: "trial",
@@ -181,6 +208,12 @@ export async function createBusiness(userId: string, input: BusinessCreateInput)
       current_period_start: period.start,
       current_period_end: period.end,
     });
+    // Tanpa subscription, tenant tidak punya entitlement: gagalkan + rollback
+    // daripada membiarkan workspace yang tidak bisa dipakai.
+    if (subError) {
+      await rollbackBusiness();
+      throw new ApiError("INTERNAL", "Gagal membuat business");
+    }
   }
 
   // Email selamat datang (best-effort, non-blocking — tidak boleh gagalkan

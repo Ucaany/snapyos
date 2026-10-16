@@ -39,6 +39,20 @@ test("authorize memakai jalur PIN tanpa photobox_id wajib", async () => {
   assert.doesNotMatch(src, /photobox_id/);
 });
 
+test("authorize menegakkan lockout per email SEBELUM verifikasi", async () => {
+  const src = await readFile(new URL("src/lib/auth.ts", root), "utf8");
+  // Gate baca-saja (tidak menambah counter) harus mendahului lookup user dan
+  // verifikasi, supaya percobaan ke-N tidak menyentuh DB/argon2 sama sekali.
+  const gateAt = src.indexOf("await failureCount(failKey)");
+  const lookupAt = src.indexOf('.from("users")');
+  const verifyAt = src.indexOf("await verify(user.password_hash, password)");
+  assert.ok(gateAt > 0, "harus ada gate failureCount untuk kunci login:fail");
+  assert.ok(gateAt < lookupAt, "gate lockout harus mendahului query user");
+  assert.ok(gateAt < verifyAt, "gate lockout harus mendahului verifikasi argon2");
+  // Cabang mati lama (fails >= 5 di bawah verify, sama-sama return null) harus hilang.
+  assert.doesNotMatch(src, /fails >= 5/);
+});
+
 test("form login tidak memuat selector booth", async () => {
   const src = await readFile(new URL("src/components/auth-block.tsx", root), "utf8");
   assert.doesNotMatch(src, /photobox_id/);

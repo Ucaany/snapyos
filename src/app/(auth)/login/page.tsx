@@ -7,7 +7,7 @@ import { getUserMemberships, requireUser } from "@/lib/tenant";
 import { isAdminUser } from "@/server/admin";
 
 export const metadata: Metadata = {
-  title: "Masuk — SnapyOS",
+  title: "Masuk | SnapyOS",
 };
 
 export default async function LoginPage() {

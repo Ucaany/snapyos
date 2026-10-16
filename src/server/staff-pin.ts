@@ -24,6 +24,10 @@ export async function verifyStaffPin(email: string, pin: string): Promise<boolea
     .select("pin_hash, users!inner ( email )")
     .eq("users.email", email)
     .not("pin_hash", "is", null)
+    // Urutan deterministik: tanpa `order by`, subset 10 hash yang diperiksa
+    // berubah-ubah saat staff punya lebih dari MAX_PIN_CANDIDATES assignment,
+    // sehingga PIN yang sah bisa tiba-tiba ditolak.
+    .order("photobox_id", { ascending: true })
     .limit(MAX_PIN_CANDIDATES);
 
   const hashes = ((data ?? []) as { pin_hash: string | null }[])

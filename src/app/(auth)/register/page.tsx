@@ -5,8 +5,10 @@ import Link from "next/link";
 import { MessageCircleIcon } from "lucide-react";
 
 import { waDisplay, waLink } from "@/lib/consult";
-import { requireUser } from "@/lib/tenant";
+import { destinationForUser } from "@/lib/destination";
+import { getUserMemberships, requireUser } from "@/lib/tenant";
 import { getConsultWhatsApp } from "@/server/consult";
+import { isAdminUser } from "@/server/admin";
 import { buttonVariants } from "@/components/ui/button";
 import { DecorIcon } from "@/components/decor-icon";
 
@@ -14,12 +16,17 @@ export const metadata: Metadata = { title: "Konsultasi Pendaftaran | SnapyOS" };
 
 export default async function RegisterConsultPage() {
   const user = await requireUser();
-  if (user) redirect("/dashboard");
+  if (user) {
+    // Resolver tujuan kanonis (sama dengan /login + guard) supaya staff-only
+    // dan admin tidak dipaksa mendarat di /dashboard.
+    const memberships = await getUserMemberships(user.id);
+    redirect(destinationForUser(memberships, { isAdmin: isAdminUser(user) }));
+  }
   const number = await getConsultWhatsApp();
 
   return (
     <div>
-      <div className="relative flex h-screen w-full items-center justify-center overflow-hidden px-6 md:px-8">
+      <div className="relative flex min-h-[100dvh] w-full items-center justify-center overflow-hidden px-6 md:px-8">
         <div className="relative flex w-full max-w-sm flex-col justify-between p-6 md:p-8">
           <div className="absolute -inset-y-6 -left-px w-px bg-ink" />
           <div className="absolute -inset-y-6 -right-px w-px bg-ink" />
@@ -54,7 +61,7 @@ export default async function RegisterConsultPage() {
               href={waLink(number)}
               target="_blank"
               rel="noopener noreferrer"
-              className={buttonVariants({ size: "sm", className: "w-full" })}
+              className={buttonVariants({ size: "sm", className: "min-h-11 w-full" })}
             >
               <MessageCircleIcon />
               Mulai chat WhatsApp

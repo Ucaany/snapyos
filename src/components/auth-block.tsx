@@ -1,7 +1,6 @@
 "use client";
 
-import * as React from "react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useActionState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -16,7 +15,7 @@ import {
 } from "@/components/ui/input-group";
 import { AuthDivider } from "@/components/auth-divider";
 import { DecorIcon } from "@/components/decor-icon";
-import { TurnstileWidget } from "@/components/turnstile-widget";
+import { TurnstileWidget, type TurnstileHandle } from "@/components/turnstile-widget";
 
 import { loginAction, type FormState } from "@/server/auth-actions";
 
@@ -48,17 +47,30 @@ export function AuthPage() {
   const [pinMode, setPinMode] = useState(false);
   const [captchaVerified, setCaptchaVerified] = useState(false);
   const [captchaToken, setCaptchaToken] = useState("");
+  const turnstileRef = useRef<TurnstileHandle>(null);
 
   const captchaSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
   // Tanpa site key (dev) → tidak ada gate CAPTCHA.
   const captchaBlocked = Boolean(captchaSiteKey) && !captchaVerified;
 
+  // Token Turnstile sekali-pakai: setelah submit apa pun, token lama sudah
+  // dikonsumsi server. Tanpa reset, submit berikutnya selalu ditolak
+  // `timeout-or-duplicate`. Buang token & minta challenge baru setelah tiap
+  // percobaan; tombol terkunci lagi sampai token segar siap (captchaBlocked),
+  // jadi submit tidak pernah membawa token kosong.
+  async function submitWithFreshCaptcha(formData: FormData) {
+    await formAction(formData);
+    if (!captchaSiteKey) return;
+    setCaptchaVerified(false);
+    setCaptchaToken("");
+    void turnstileRef.current?.reset();
+  }
+
   return (
-    <div className="relative flex h-screen w-full items-center justify-center overflow-hidden px-6 md:px-8">
+    <div className="relative flex min-h-[100dvh] w-full items-center justify-center overflow-hidden px-6 md:px-8">
       <div
         className={cn(
-          "relative flex w-full max-w-sm flex-col justify-between p-6 md:p-8",
-          "dark:bg-[radial-gradient(50%_80%_at_20%_0%,--theme(--color-foreground/.1),transparent)]"
+          "relative flex w-full max-w-sm flex-col justify-between p-6 md:p-8"
         )}
       >
         <div className="absolute -inset-y-6 -left-px w-px bg-border" />
@@ -85,7 +97,12 @@ export function AuthPage() {
             </div>
           </div>
 
-          <form action={formAction} noValidate autoComplete="on" className="space-y-4">
+          <form
+            action={submitWithFreshCaptcha}
+            noValidate
+            autoComplete="on"
+            className="space-y-4"
+          >
             <div className="space-y-2">
               <InputGroup>
                 <InputGroupAddon align="inline-start">
@@ -96,7 +113,7 @@ export function AuthPage() {
                   name="email"
                   type="email"
                   aria-label="Email"
-                  placeholder="your.email@example.com"
+                  placeholder="nama@bisnis.id"
                   required
                   autoComplete="email"
                   aria-invalid={Boolean(fieldErrors.email)}
@@ -161,9 +178,12 @@ export function AuthPage() {
               {pinMode ? "Masuk dengan password" : "Masuk dengan PIN staff"}
             </button>
 
-            <FormError error={state.error} />
+            {/* Refine loginSchema (payload tanpa password DAN pin) masuk ke
+                fieldErrors.form; tampilkan sebagai error form. */}
+            <FormError error={state.error ?? fieldErrors.form?.[0]} />
 
             <TurnstileWidget
+              ref={turnstileRef}
               siteKey={captchaSiteKey}
               action="login"
               onVerified={setCaptchaVerified}
@@ -173,7 +193,12 @@ export function AuthPage() {
               <input type="hidden" name="cf-turnstile-response" value={captchaToken} />
             )}
 
-            <Button className="w-full" size="sm" type="submit" disabled={pending || captchaBlocked}>
+            <Button
+              className="min-h-11 w-full"
+              size="sm"
+              type="submit"
+              disabled={pending || captchaBlocked}
+            >
               {pending ? "Memproses…" : captchaBlocked ? "Menunggu verifikasi…" : "Masuk"}
             </Button>
           </form>

@@ -5,7 +5,7 @@ import { verify } from "@node-rs/argon2";
 import { randomBytes } from "crypto";
 
 import { createServerClient } from "@/lib/supabase/server";
-import { rateLimit, registerFailure, resetLimit } from "@/lib/rate-limit";
+import { failureCount, rateLimit, registerFailure, resetLimit } from "@/lib/rate-limit";
 import { redactSensitive } from "@/lib/error-redaction";
 import { getClientIp } from "@/lib/request-ip";
 import { verifyTurnstile } from "@/lib/turnstile";
@@ -29,6 +29,10 @@ declare module "next-auth/jwt" {
 // di produksi (mis. region jauh dari Supabase). Fail-closed tetap setelah habis.
 const SESSION_FETCH_RETRIES = 3;
 const SESSION_FETCH_BACKOFF_MS = 150;
+
+/** Lockout per email: 5 percobaan gagal / 15 menit (docs/09 §10). */
+const MAX_EMAIL_FAILURES = 5;
+const EMAIL_FAILURE_WINDOW_MS = 15 * 60_000;
 
 /**
  * Query baris sesi untuk revocation check, dengan retry ringan untuk error
@@ -125,7 +129,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const emailDayLimit = await rateLimit(`login:email:${email}`, 20, 86_400_000);
         if (!emailDayLimit.ok) return null;
 
+        // Lockout per email: 5 percobaan / 15 menit (lapis kedua di atas limit
+        // IP). Gate SEBELUM lookup user dan verifikasi argon2 supaya percobaan
+        // ke-6 tidak menyentuh DB/hash sama sekali, dan supaya email yang tidak
+        // terdaftar ikut terhitung. Direset saat login sukses (resetLimit).
         const failKey = `login:fail:${email}`;
+        if ((await failureCount(failKey)) >= MAX_EMAIL_FAILURES) return null;
+
         const supabase = createServerClient();
         const { data: user, error: userError } = await supabase
           .from("users")
@@ -137,31 +147,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           console.error("[auth] query user gagal:", userError.code, userError.message);
           return null;
         }
-        if (!user) {
-          await registerFailure(failKey, 15 * 60_000);
-          return null;
-        }
+        // Email tak dikenal / user suspended hanya membuang satu kuota lockout
+        // (dihitung di cabang verifikasi di bawah) — tidak ada counter terpisah
+        // supaya percobaan gagal tidak dihitung dua kali.
+        if (!user) return null;
         // User suspended (admin, docs/10 §10.2) tidak boleh login.
-        if (user.status === "suspended") {
-          await registerFailure(failKey, 15 * 60_000);
-          return null;
-        }
+        if (user.status === "suspended") return null;
 
         // Staff login via PIN, bukan password (0043). Booth TIDAK lagi dipilih
         // pra-sesi (dulu membocorkan ID/nama booth per email anonim): PIN
         // diverifikasi terhadap assignment milik email, lalu shell staff
         // menentukan business dari membership.
         if (pin) {
-          // Lockout per email: 5 gagal / 15 menit (di atas limit IP).
+          // Lockout PIN per email (bukan per booth, karena booth tidak dipilih
+          // pra-sesi) — gate sebelum verify supaya argon2 tidak dibakar.
           const pinKey = `login:pin:${email}`;
-          const pinFails = await registerFailure(pinKey, 15 * 60_000);
-          if (pinFails > 5) {
-            await registerFailure(failKey, 15 * 60_000);
+          if ((await failureCount(pinKey)) >= MAX_EMAIL_FAILURES) {
+            await registerFailure(failKey, EMAIL_FAILURE_WINDOW_MS);
             return null;
           }
           const ok = await verifyStaffPin(email, pin);
           if (!ok) {
-            await registerFailure(failKey, 15 * 60_000);
+            await registerFailure(pinKey, EMAIL_FAILURE_WINDOW_MS);
+            await registerFailure(failKey, EMAIL_FAILURE_WINDOW_MS);
             return null;
           }
           await resetLimit(pinKey);
@@ -175,7 +183,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
 
         if (!user.password_hash) {
-          await registerFailure(failKey, 15 * 60_000);
+          await registerFailure(failKey, EMAIL_FAILURE_WINDOW_MS);
           return null;
         }
         let valid = false;
@@ -186,8 +194,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
         if (!valid) {
-          const fails = await registerFailure(failKey, 15 * 60_000);
-          if (fails >= 5) return null; // lockout 15 menit (pesan dipetakan di action)
+          // Lockout ditegakkan sebagai gate di atas; di sini cukup mencatat
+          // kegagalan. Pesan generik yang sama untuk semua sebab (anti-enumerasi).
+          await registerFailure(failKey, EMAIL_FAILURE_WINDOW_MS);
           return null;
         }
         await resetLimit(failKey);

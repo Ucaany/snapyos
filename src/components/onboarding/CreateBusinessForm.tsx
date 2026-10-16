@@ -12,8 +12,8 @@ const initial: FormState = {};
 
 /**
  * Onboarding — buat business pertama (docs/04 onboarding, docs/12 Phase 1).
- * Neo-brutalist telemetry form: live slug preview, hex-name slug validation,
- * step-counter, hard-shadow inputs.
+ * Live slug preview (auto dari nama, bisa ditimpa), validasi slug
+ * (reserved + pola), dan indikator status OK/X.
  */
 export function CreateBusinessForm() {
   const [state, formAction, pending] = useActionState(createBusinessAction, initial);
@@ -30,7 +30,7 @@ export function CreateBusinessForm() {
   const slugValidation = useMemo(() => {
     if (!effectiveSlug) return { state: "idle" as const, msg: null };
     if (RESERVED_SLUGS.includes(effectiveSlug as (typeof RESERVED_SLUGS)[number])) {
-      return { state: "invalid" as const, msg: "Slug dipesan sistem — pilih lain" };
+      return { state: "invalid" as const, msg: "Slug dipesan sistem, pilih lain" };
     }
     if (!isValidSlug(effectiveSlug)) {
       return { state: "invalid" as const, msg: "Min 3 karakter · huruf kecil/angka/strip" };
@@ -129,7 +129,7 @@ export function CreateBusinessForm() {
               ? "OK"
               : slugValidation.state === "invalid"
                 ? "X"
-                : "—"}
+                : "·"}
           </span>
         </div>
         {state.fieldErrors?.slug ? (
@@ -168,7 +168,7 @@ export function CreateBusinessForm() {
           type="submit"
           size="lg"
           disabled={pending}
-          className="font-display uppercase tracking-tight shadow-[4px_4px_0_0_#111111] active:translate-y-[2px] active:shadow-none"
+          className="font-display min-h-11 uppercase tracking-tight shadow-[4px_4px_0_0_#111111] active:translate-y-[2px] active:shadow-none"
         >
           {pending ? "Membuat..." : "Buat Bisnis"}
         </Button>

@@ -110,6 +110,10 @@ export const TurnstileWidget = forwardRef<TurnstileHandle, Props>(
       reset: () =>
         new Promise<string>((resolve) => {
           tokenRef.current = "";
+          // Token lama sudah dibuang → beri tahu pemanggil supaya gate submit
+          // menutup kembali sampai challenge baru selesai (jangan biarkan
+          // tombol aktif dengan token yang sudah dikonsumsi server).
+          onVerifiedRef.current?.(false);
           let done = false;
           const timer: ReturnType<typeof setTimeout> = setTimeout(() => finish(""), RESET_TIMEOUT_MS);
           function finish(token: string) {

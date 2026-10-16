@@ -109,13 +109,22 @@ export const registerSchema = z.object({
   planned_devices: z.number().int().min(0).max(1000).optional().nullable(),
 })
 
-export const loginSchema = z.object({
-  email: z.string().trim().toLowerCase().email("Format email tidak valid"),
-  password: z.string().min(1, "Password wajib diisi").optional(),
-  // Staff login: PIN 4–6 digit (password kosong untuk jalur ini). Booth tidak
-  // dipilih pra-sesi: PIN diverifikasi terhadap assignment milik email.
-  pin: z.string().trim().regex(/^\d{4,6}$/, "PIN 4–6 digit").optional(),
-})
+export const loginSchema = z
+  .object({
+    email: z.string().trim().toLowerCase().email("Format email tidak valid"),
+    password: z.string().min(1, "Password wajib diisi").optional(),
+    // Staff login: PIN 4–6 digit (password kosong untuk jalur ini). Booth tidak
+    // dipilih pra-sesi: PIN diverifikasi terhadap assignment milik email.
+    pin: z.string().trim().regex(/^\d{4,6}$/, "PIN 4–6 digit").optional(),
+  })
+  // Form memakai `noValidate`, jadi submit kosong tetap sampai ke server.
+  // Tanpa refine ini, payload tanpa password DAN pin lolos validasi lalu
+  // membakar satu verifikasi argon2 sekaligus menambah counter lockout.
+  // Error di level root (tanpa path): field password tidak dirender di mode
+  // PIN, jadi pesan harus tampil sebagai error form, bukan error field.
+  .refine((v) => Boolean(v.password) !== Boolean(v.pin), {
+    message: "Isi password atau PIN",
+  })
 
 export const staffPinSchema = z.object({
   user_id: uuid,

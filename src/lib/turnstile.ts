@@ -16,10 +16,6 @@ export function turnstileEnabled(): boolean {
   return Boolean(process.env.TURNSTILE_SECRET_KEY?.trim());
 }
 
-export function turnstileSiteKey(): string {
-  return process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? "";
-}
-
 export type TurnstileOptions = {
   remoteIp?: string;
   expectedAction?: string;

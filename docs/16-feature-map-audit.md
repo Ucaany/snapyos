@@ -734,18 +734,18 @@
 ## 9. AUTENTIKASI & ONBOARDING
 
 ### A. Login `/login`
-- **Page**: `src/app/(auth)/login/page.tsx` → `AuthPage` (`src/components/auth-block.tsx` → `AuthUI`/`AuthForm`).
+- **Page**: `src/app/(auth)/login/page.tsx` → `AuthPage` (`src/components/auth-block.tsx`, satu komponen client; tidak ada `AuthUI`/`AuthForm` terpisah).
 - **Action**: `loginAction` (`src/server/auth-actions.ts`).
 - **Mekanisme**: Auth.js v5 `signIn("credentials")`; rate limit + verifikasi di `authorize()` (`src/lib/auth.ts`) = single source of truth; Turnstile CAPTCHA; dua mode (email+password, email+PIN).
-- **Redirect**: `isAdminEmail` → `/admin`, else `/dashboard` (destination dihitung ulang di layout).
-- **DB**: `users, auth_sessions, business_members, member_photoboxes, devices`.
+- **Redirect**: `destinationForUser` (`src/lib/destination.ts`) — admin → `/admin`, tanpa membership → `/welcome`, staff-only → `/staff`, selain itu → `/dashboard`.
+- **DB**: `users, auth_sessions, business_members, member_photoboxes` (auth tidak menyentuh `devices`).
 - **API**: `GET/POST /api/auth/[...nextauth]`, `POST /api/auth/logout`.
 
 ### B. Register `/register` (Konsultasi)
 - **Page**: `src/app/(auth)/register/page.tsx` — **pendaftaran mandiri ditutup**; menampilkan nomor WhatsApp konsultasi.
 - **Data**: `getConsultWhatsApp` (`src/server/consult.ts`).
 - **DB**: `platform_settings`.
-- **Catatan**: `registerAction` mengembalikan error "Pendaftaran mandiri ditutup…"; akun hanya dibuat admin via `/admin/users`. API `POST /api/auth/register` ada sebagai stub.
+- **Catatan**: tidak ada server action register (satu-satunya stub penolakan ada di API `POST /api/auth/register`, `REGISTRATION_CLOSED` 403); akun hanya dibuat admin via `/admin/users`. User yang sudah login di-redirect lewat resolver kanonis `destinationForUser`.
 
 ### C. Welcome `/welcome`
 - **Page**: `src/app/welcome/page.tsx` — pemilih peran (owner buat bisnis / staff tunggu undangan).
@@ -757,14 +757,14 @@
 ### D. Onboarding `/onboarding/create-business`
 - **Page**: `src/app/onboarding/create-business/page.tsx` + `CreateBusinessForm`.
 - **Action**: `createBusinessAction` (`src/server/business-actions.ts`).
-- **Field**: nama bisnis, slug, timezone, profil (owner_name, whatsapp, contact_email, address).
-- **Server**: `createBusiness` (`src/server/business.ts`).
+- **Field**: nama bisnis, slug (opsional; auto dari nama). Field profil (owner_name, whatsapp, contact_email, address) dan timezone diisi belakangan dari `/dashboard/settings`, bukan di onboarding.
+- **Server**: `createBusiness` (`src/server/business.ts`) — insert lanjutan (membership owner, settings, trial) diperiksa; gagal di tengah → business di-rollback, bukan meninggalkan tenant yatim.
 - **DB**: `businesses, business_members, business_settings, subscriptions, plans, platform_settings`.
 - **Dampak**: membuat tenant + membership owner + subscription trial (`trial_days` dari platform_settings).
 
 ### E. Workspace Switching
 - **Action**: `switchWorkspaceAction` (`src/server/business-actions.ts`) — set cookie `snapyos_active_business`, validasi membership.
-- **API**: `GET /api/v1/me/businesses`, `GET /api/v1/businesses`.
+- **API**: `GET /api/v1/me/businesses` (daftar kanonis); `POST /api/v1/businesses` (create, bukan GET).
 - **DB**: `business_members, businesses`.
 
 ---
@@ -951,7 +951,7 @@
 
 | # | Temuan | Bukti | Dampak |
 | --- | --- | --- | --- |
-| T1 | `registerAction` menutup pendaftaran mandiri; akun hanya via admin | `src/server/auth-actions.ts:28` | `/register` = halaman konsultasi WhatsApp; API register stub |
+| T1 | Pendaftaran mandiri ditutup; akun hanya via admin | `src/app/api/auth/register/route.ts` (`REGISTRATION_CLOSED` 403) | `/register` = halaman konsultasi WhatsApp; tidak ada action register |
 | T2 | `user.role='admin'` **dan** allowlist `ADMIN_EMAILS` dua-duanya sah | `src/server/admin/guard.ts:11-24` | Admin email env bisa naik tanpa ubah DB |
 | T3 | MRR dihitung dari snapshot `plans.price_monthly` (bukan histori invoice) | `src/server/admin/overview.ts:71` (`ponytail:`) | MRR bergeser bila admin ubah harga plan |
 | T4 | `photoboxes.pos_enabled` dibatasi unique index satu booth POS aktif per business | `db/schema.sql:237` | Owner tidak bisa aktifkan POS di >1 booth sekaligus |

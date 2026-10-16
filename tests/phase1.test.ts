@@ -9,7 +9,12 @@ import assert from "node:assert/strict";
 import { slugify, isValidSlug, RESERVED_SLUGS } from "../src/lib/slug.ts";
 import { destinationFor, destinationForUser } from "../src/lib/destination.ts";
 import { can, canUnchecked } from "../src/lib/rbac.ts";
-import { rateLimit, registerFailure, resetLimit } from "../src/lib/rate-limit.ts";
+import {
+  failureCount,
+  rateLimit,
+  registerFailure,
+  resetLimit,
+} from "../src/lib/rate-limit.ts";
 import { API_ERRORS, ApiError, listEnvelope } from "../src/lib/api-errors.ts";
 import {
   businessCreateSchema,
@@ -46,6 +51,29 @@ test("registerSchema menolak input tidak valid", () => {
     assert.equal(ok.data.email, "a@b.id");
     assert.equal(ok.data.name, "Budi");
   }
+});
+
+test("loginSchema menolak payload tanpa password DAN tanpa PIN", () => {
+  // Form noValidate: submit kosong sampai ke server. Dulu dua field opsional
+  // membuat payload kosong lolos lalu membakar satu verifikasi argon2.
+  const empty = loginSchema.safeParse({ email: "a@b.id" });
+  assert.equal(empty.success, false);
+  const bothEmpty = loginSchema.safeParse({ email: "a@b.id", password: "", pin: "" });
+  assert.equal(bothEmpty.success, false);
+  // Tepat satu kredensial = sah.
+  assert.equal(loginSchema.safeParse({ email: "a@b.id", password: "x" }).success, true);
+  assert.equal(loginSchema.safeParse({ email: "a@b.id", pin: "1234" }).success, true);
+});
+
+test("failureCount membaca counter tanpa menambah (gate lockout)", async () => {
+  const key = `test:fail:${Math.random()}`;
+  assert.equal(await failureCount(key), 0);
+  await registerFailure(key, 60_000);
+  await registerFailure(key, 60_000);
+  assert.equal(await failureCount(key), 2, "baca tidak boleh menambah counter");
+  assert.equal(await failureCount(key), 2);
+  await resetLimit(key);
+  assert.equal(await failureCount(key), 0);
 });
 
 test("loginSchema mewajibkan email + password", () => {

@@ -135,6 +135,34 @@ export async function registerFailure(key: string, windowMs: number): Promise<nu
 }
 
 /**
+ * Baca hitungan gagal TANPA menambahnya — untuk menegakkan lockout sebagai
+ * gate sebelum verifikasi (percobaan ke-N tidak menyentuh DB/argon2 sama
+ * sekali). Production tanpa shared store fail-closed (selaras registerFailure):
+ * kembalikan nilai di atas ambang lockout supaya login ditolak, bukan dibiarkan.
+ */
+export async function failureCount(key: string): Promise<number> {
+  if (productionWithoutSharedStore) return Number.MAX_SAFE_INTEGER;
+  if (hasUpstash) {
+    try {
+      const res = await fetch(`${UPSTASH_URL}/get/${encodeURIComponent(key)}`, {
+        headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` },
+        cache: "no-store",
+      });
+      if (!res.ok) throw new Error(`Upstash GET ${res.status}`);
+      const body = (await res.json()) as { result?: string | number | null };
+      const n = Number(body.result ?? 0);
+      return Number.isFinite(n) ? n : 0;
+    } catch {
+      if (process.env.NODE_ENV === "production") return Number.MAX_SAFE_INTEGER;
+      // Non-production: jatuh ke in-memory di bawah.
+    }
+  }
+  const bucket = buckets.get(key);
+  if (!bucket || bucket.resetAt <= Date.now()) return 0;
+  return bucket.count;
+}
+
+/**
  * Rate-limit tambahan berskala device (per booth), BUKAN pengganti limit IP.
  * Banyak booth di belakang satu NAT berbagi bucket IP — pembatas ini memakai
  * prefix hash device_token sehingga traffic satu booth tidak menstarvasi booth
