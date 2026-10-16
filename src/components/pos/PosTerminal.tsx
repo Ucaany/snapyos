@@ -144,10 +144,12 @@ export function PosTerminal({
     setError(null);
     try {
       await posCancelOrderAction({ orderId: pendingOrder.orderId });
+      setPendingOrder(null);
     } catch (err) {
+      // Dialog tetap terbuka saat gagal — order masih pending dan bisa dibayar,
+      // jangan orphan-kan order yang sudah dibuat di server.
       setError(err instanceof Error ? err.message : "Gagal membatalkan pesanan");
     } finally {
-      setPendingOrder(null);
       setBusy(false);
     }
   };

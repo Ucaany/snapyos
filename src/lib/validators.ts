@@ -758,11 +758,6 @@ export const posManualPaySchema = z.object({
   method: z.enum(["cash", "bank_transfer", "other"]),
 })
 
-export const posBoothToggleSchema = z.object({
-  photoboxId: uuid,
-  enabled: z.boolean(),
-})
-
 export const staffUpdateSchema = z.object({
   role: z.enum(["owner", "manager", "staff"]),
 })

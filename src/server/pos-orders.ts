@@ -52,13 +52,6 @@ export type PosOrderRow = {
 
 export type PosOrderDetail = { order: PosOrderRow; items: PosOrderItemRow[] };
 
-export type PosOrderListInput = {
-  status?: "pending" | "paid" | "cancelled";
-  photoboxId?: string;
-  page?: number;
-  limit?: number;
-};
-
 type JoinName = { name: string } | { name: string }[] | null;
 
 const ORDER_COLUMNS = `id, number, status, business_id, photobox_id, outlet_id, cashier_user_id,
@@ -472,38 +465,4 @@ export async function getPosOrder(
   const detail = await fetchOrderDetail(supabase, businessId, orderId);
   if (!detail) throw new ApiError("NOT_FOUND", "Order tidak ditemukan");
   return detail;
-}
-
-export async function listPosOrders(
-  userId: string,
-  businessId: string,
-  query: PosOrderListInput = {}
-): Promise<{ rows: PosOrderRow[]; page: number; limit: number; total: number }> {
-  const membership = await requirePosAccess(userId, businessId);
-  if (!can(membership.role, "pos:read")) {
-    throw new ApiError("NOT_FOUND", "Business tidak ditemukan");
-  }
-
-  const page = Math.max(1, Math.trunc(query.page ?? 1));
-  const limit = Math.min(100, Math.max(1, Math.trunc(query.limit ?? 20)));
-
-  const supabase = createServerClient();
-  let req = supabase
-    .from("pos_orders")
-    .select(ORDER_COLUMNS, { count: "exact" })
-    .eq("business_id", businessId)
-    .order("created_at", { ascending: false })
-    .range((page - 1) * limit, page * limit - 1);
-
-  if (query.status) req = req.eq("status", query.status);
-  if (query.photoboxId) req = req.eq("photobox_id", query.photoboxId);
-
-  const { data, count, error } = await req;
-  if (error) throw new ApiError("INTERNAL", "Gagal memuat order POS");
-  return {
-    rows: (data ?? []).map(mapOrder),
-    page,
-    limit,
-    total: count ?? 0,
-  };
 }

@@ -29,15 +29,18 @@ import {
  * Safe-parse (coerceDateFields): tanggal berformat salah / kosong DIBUANG →
  * jatuh ke "semua riwayat", bukan melempar ZodError yang menjatuhkan halaman
  * via error boundary (input URL bebas; sejalan dengan dashboard/metrics).
+ * Rentang terbalik (from > to) di-SWAP — bukan error boundary (pola
+ * resolveRange di src/server/dashboard.ts).
  */
 function resolveRange(query: DateRangeInput, tz: string) {
   const parsed = coerceDateFields(query);
   if (!parsed.from && !parsed.to) {
     return { fromIso: null, toIso: null };
   }
-  const from = parsed.from ?? "1970-01-01";
-  const to = parsed.to ?? todayISO(tz);
-  if (from > to) throw new ApiError("VALIDATION_ERROR", "'from' harus ≤ 'to'");
+  const rawFrom = parsed.from ?? "1970-01-01";
+  const rawTo = parsed.to ?? todayISO(tz);
+  const from = rawFrom <= rawTo ? rawFrom : rawTo;
+  const to = rawFrom <= rawTo ? rawTo : rawFrom;
   const { startMs, endMs } = rangeBoundariesTz(from, to, tz);
   return { fromIso: new Date(startMs).toISOString(), toIso: new Date(endMs).toISOString() };
 }
@@ -52,17 +55,20 @@ export async function posRevenueReport(
   const { fromIso, toIso } = resolveRange(query, tz);
 
   const supabase = createServerClient();
+  // REVENUE SELALU dari transactions (docs/pos/05 §9 anti double-count);
+  // pos_orders hanya dipakai untuk hitung status order.
   let paidReq = supabase
-    .from("pos_orders")
+    .from("transactions")
     .select("gross_amount, discount_amount, final_amount, payment_method")
     .eq("business_id", businessId)
-    .eq("status", "paid");
+    .eq("status", "paid")
+    .not("pos_order_id", "is", null);
   let statusReq = supabase
     .from("pos_orders")
     .select("status")
     .eq("business_id", businessId);
   if (fromIso) paidReq = paidReq.gte("paid_at", fromIso).lt("paid_at", toIso);
-  if (toIso) statusReq = statusReq.gte("created_at", fromIso).lt("created_at", toIso);
+  if (fromIso) statusReq = statusReq.gte("created_at", fromIso).lt("created_at", toIso);
   const [paid, statuses] = await Promise.all([paidReq, statusReq]);
   if (paid.error || statuses.error) {
     throw new ApiError("INTERNAL", "Gagal memuat laporan POS");

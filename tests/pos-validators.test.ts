@@ -6,7 +6,6 @@ import {
   posManualPaySchema,
   posProductCreateSchema,
   posProductUpdateSchema,
-  posBoothToggleSchema,
 } from "../src/lib/validators.ts";
 
 const UUID = "123e4567-e89b-12d3-a456-426614174000";
@@ -78,10 +77,4 @@ test("posProductUpdateSchema: minimal satu field + id", () => {
   assert.ok(posProductUpdateSchema.safeParse({ id: UUID, name: "Y" }).success);
   assert.ok(!posProductUpdateSchema.safeParse({ id: UUID }).success);
   assert.ok(!posProductUpdateSchema.safeParse({ name: "Y" }).success);
-});
-
-test("posBoothToggleSchema: photoboxId uuid + enabled boolean", () => {
-  assert.ok(posBoothToggleSchema.safeParse({ photoboxId: UUID, enabled: true }).success);
-  assert.ok(!posBoothToggleSchema.safeParse({ photoboxId: "bukan-uuid", enabled: true }).success);
-  assert.ok(!posBoothToggleSchema.safeParse({ photoboxId: UUID, enabled: "yes" }).success);
 });

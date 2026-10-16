@@ -15,5 +15,3 @@ export const POS_CATEGORIES = [
 ] as const;
 
 export type PosCategory = (typeof POS_CATEGORIES)[number];
-
-export const DEFAULT_POS_CATEGORY: PosCategory = "lainnya";
