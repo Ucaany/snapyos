@@ -29,8 +29,8 @@ export default function ContactPage() {
               Bicarakan kebutuhan booth Anda
             </h1>
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
-              Kirim detail singkat. Tim SnapyOS menindaklanjuti melalui alamat email
-              yang Anda berikan. Untuk panduan mandiri, buka dokumentasi lebih dulu.
+              Kirim detail singkat, lanjutkan chat di WhatsApp yang terbuka otomatis.
+              Untuk pertanyaan non-urgent, email juga ditanggapi. Panduan mandiri ada di dokumentasi.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <Button nativeButton={false} render={<Link href="/docs" />}>
@@ -42,7 +42,7 @@ export default function ContactPage() {
               </Button>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-2 pt-1 text-xs text-muted-foreground">
-              <span className="rounded-none border-2 border-ink px-3 py-1">Respon via email</span>
+              <span className="rounded-none border-2 border-ink px-3 py-1">Chat via WhatsApp</span>
               <span className="rounded-none border-2 border-ink px-3 py-1">Tanpa login</span>
               <span className="rounded-none border-2 border-ink px-3 py-1">Gratis bertanya</span>
             </div>

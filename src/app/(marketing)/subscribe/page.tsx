@@ -3,7 +3,11 @@ import type { Metadata } from "next";
 import { SubscribeForm } from "@/components/subscribe-form";
 import { getPublicPlans, getPublicAddOns } from "@/server/catalog";
 
-export const metadata: Metadata = { title: "Berlangganan | SnapyOS" };
+export const metadata: Metadata = {
+  title: "Berlangganan | SnapyOS",
+  description:
+    "Konsultasi paket dan add-on SnapyOS untuk bisnis photobox Anda via WhatsApp.",
+};
 
 export default async function SubscribePage({
   searchParams,

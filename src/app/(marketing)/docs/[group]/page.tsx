@@ -126,8 +126,8 @@ export default async function DocsGroupPage({ params }: Props) {
                     href={`/docs/${x.slug}`}
                     className={
                       x.slug === g.slug
-                        ? "shrink-0 rounded-none border border-ink px-3 py-1.5 text-xs font-medium"
-                        : "shrink-0 rounded-none border border-ink px-3 py-1.5 text-xs font-medium"
+                        ? "shrink-0 rounded-none border-2 border-ink bg-accent px-3 py-1.5 text-xs font-semibold"
+                        : "shrink-0 rounded-none border border-ink px-3 py-1.5 text-xs font-medium text-muted-foreground"
                     }
                   >
                     {x.title}

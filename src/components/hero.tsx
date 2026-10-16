@@ -2,7 +2,15 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ArrowRightIcon, PhoneCallIcon } from "lucide-react";
 
-export function HeroSection() {
+export function HeroSection({
+	startingPrice = null,
+}: {
+	/** Harga plan termurah dari DB (M1: harga tanpa hardcode); null bila katalog kosong. */
+	startingPrice?: number | null;
+}) {
+	const priceLabel = startingPrice
+		? `Mulai dari Rp${startingPrice.toLocaleString("id-ID")}/bulan`
+		: "Lihat paket dan harga";
 	return (
 		<section className="relative mx-auto w-full max-w-5xl overflow-hidden border-b-2 border-ink bg-bg pt-16">
 			<div
@@ -28,7 +36,7 @@ export function HeroSection() {
 						<p className="font-mono text-xs uppercase tracking-wide">START</p>
 					</div>
 
-					<span className="font-mono text-xs uppercase tracking-wide">Mulai dari Rp99.000/bulan</span>
+					<span className="font-mono text-xs uppercase tracking-wide">{priceLabel}</span>
 					<span className="block h-5 border-l-2 border-ink" />
 
 					<div className="pr-1">

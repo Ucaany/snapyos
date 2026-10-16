@@ -38,7 +38,7 @@ const faqs = [
   },
   {
     q: "Bagaimana alur pendaftaran sampai booth siap?",
-    a: "Daftar akun lewat email → buat bisnis → tambahkan photobox → atur paket dan metode pembayaran → aktifkan device. Setelah itu tim kami menghubungi Anda via WhatsApp untuk memandu setup sampai booth berjalan. Langsung chat kami di WhatsApp +62 898 3704 013.",
+    a: "Daftar akun lewat email → buat bisnis → tambahkan photobox → atur paket dan metode pembayaran → aktifkan device. Setelah itu tim kami menghubungi Anda via WhatsApp untuk memandu setup sampai booth berjalan. Langsung chat kami lewat tombol WhatsApp di bawah halaman ini.",
   },
   {
     q: "Bagaimana jika saya kesulitan memakai SnapyOS?",
@@ -54,7 +54,14 @@ const faqs = [
   },
 ];
 
-export default function Faqs01({ defaultValue }: { defaultValue?: string }) {
+export default function Faqs01({
+  defaultValue,
+  consultHref,
+}: {
+  defaultValue?: string;
+  /** Link WhatsApp konsultasi (server, dari getConsultWhatsApp), bukan hardcode. */
+  consultHref: string;
+}) {
   return (
     <section className="relative bg-bg py-8 sm:py-12">
       <div
@@ -96,7 +103,7 @@ export default function Faqs01({ defaultValue }: { defaultValue?: string }) {
               </p>
             </div>
           </div>
-          <Button size="sm" nativeButton={false} className="rounded-none border-2 border-ink bg-accent font-mono text-xs font-bold uppercase tracking-[0.08em] text-ink shadow-[4px_4px_0_0_#111111] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#111111] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none" render={<a href="https://wa.me/628983704013" target="_blank" rel="noreferrer" />}>
+          <Button size="sm" nativeButton={false} className="rounded-none border-2 border-ink bg-accent font-mono text-xs font-bold uppercase tracking-[0.08em] text-ink shadow-[4px_4px_0_0_#111111] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#111111] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none" render={<a href={consultHref} target="_blank" rel="noreferrer" />}>
             Chat WhatsApp
             <ArrowRight />
           </Button>

@@ -45,6 +45,50 @@ export function SubscribeForm({
     }
   }, [state.waUrl]);
 
+  if (state.waUrl) {
+    return (
+      <div className="w-full max-w-sm animate-in space-y-8">
+        <div className="flex flex-col items-center space-y-4 text-center">
+          <Image
+            src="/avatar-snappy/4.svg"
+            alt="SnapyOS"
+            width={48}
+            height={48}
+            className="size-12"
+          />
+          <div className="flex flex-col gap-5 text-center">
+            <h1 className="text-balance font-display text-4xl uppercase leading-[0.95] tracking-tight md:text-5xl">Konsultasi berlangganan</h1>
+            <p className="mx-auto max-w-2xl text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
+              Isi data Anda, kami akan lanjutkan via WhatsApp.
+            </p>
+          </div>
+        </div>
+        <div role="status" className="border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111]">
+          <p className="font-mono text-xs font-bold uppercase tracking-[0.08em] text-ink">{"/// Chat siap dibuka"}</p>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            WhatsApp konsultasi terbuka di tab baru. Jika tidak terbuka,{" "}
+            <a
+              className="font-semibold text-ink underline underline-offset-4"
+              href={state.waUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              buka chat manual
+            </a>
+            .
+          </p>
+        </div>
+        <p className="text-muted-foreground text-sm">
+          Data hanya digunakan untuk follow-up pemesanan.{" "}
+          <Link className="underline underline-offset-4 hover:text-accent-4" href="/">
+            Kembali ke beranda
+          </Link>
+          .
+        </p>
+      </div>
+    );
+  }
+
   const fieldErrors = state.fieldErrors ?? {};
 
   const planLabel = plan

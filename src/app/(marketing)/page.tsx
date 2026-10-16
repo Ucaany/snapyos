@@ -4,9 +4,10 @@ import { LogosSection } from "@/components/logos-section";
 import { FeatureSection } from "@/components/feature-section";
 import { Integrations } from "@/components/integrations";
 import { Pricing } from "@/components/pricing";
-import { getPublicPlans, getPublicAddOns } from "@/server/catalog";
+import { getPublicPlans, getPublicAddOns, getCheapestPlanPrice } from "@/server/catalog";
+import { getConsultWhatsApp } from "@/server/consult";
+import { waLink } from "@/lib/consult";
 import { SectionHeader } from "@/components/section-header";
-import { TestimonialsSection } from "@/components/testimonials-section";
 import CTAWithVerticalMarquee from "@/components/cta-vertical-marquee";
 import Faqs01 from "@/components/faq";
 import { KioskSimulation } from "@/components/kiosk-simulation";
@@ -14,9 +15,11 @@ import { SiteFooter } from "@/components/site-footer";
 import { CallToAction } from "@/components/cta-3";
 
 export default async function MarketingPage() {
-  const [plans, addOns] = await Promise.all([
+  const [plans, addOns, cheapestPlan, consultNumber] = await Promise.all([
     getPublicPlans(),
     getPublicAddOns(),
+    getCheapestPlanPrice(),
+    getConsultWhatsApp(),
   ]);
   return (
     <div className="relative min-h-[100dvh] bg-bg text-ink">
@@ -24,7 +27,7 @@ export default async function MarketingPage() {
         <Header />
       </div>
       <main className="relative space-y-8 md:space-y-12">
-        <HeroSection />
+        <HeroSection startingPrice={cheapestPlan} />
         <LogosSection />
         <section className="space-y-8">
           <div className="mx-auto w-full max-w-5xl px-4 md:px-8">
@@ -50,18 +53,8 @@ export default async function MarketingPage() {
         <section id="pricing">
           <Pricing plans={plans} addOns={addOns} />
         </section>
-        <section className="space-y-16">
-          <div className="mx-auto w-full max-w-4xl px-4 md:px-8">
-            <SectionHeader
-              badge="Testimoni"
-              title="Dipakai pemilik photobox"
-              subtitle="Cerita dari pemilik booth yang menjalankan bisnisnya dengan SnapyOS."
-            />
-          </div>
-          <TestimonialsSection />
-        </section>
         <CTAWithVerticalMarquee />
-        <Faqs01 />
+        <Faqs01 consultHref={waLink(consultNumber)} />
         <section className="space-y-8">
           <CallToAction />
         </section>

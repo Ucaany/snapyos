@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { companyLinks, legalLinks, productLinks } from "@/components/nav-links";
 import { LinkItem } from "@/components/sheard";
@@ -60,14 +60,33 @@ export function MobileNav() {
 						</div>
 						<div className="mt-5 flex flex-col gap-2">
 							<DialogPrimitive.Close
-								render={
-									<Button className="w-full" variant="outline" nativeButton={false} render={<Link href="/login" />} />
-								}
+								nativeButton={false}
+								render={(props) => (
+									<Link
+										{...props}
+										className={buttonVariants({
+											variant: "outline",
+											className: "w-full [@media(pointer:coarse)]:min-h-11",
+										})}
+										href="/login"
+									>
+										Masuk
+									</Link>
+								)}
 							/>
 							<DialogPrimitive.Close
-								render={
-									<Button className="w-full" nativeButton={false} render={<Link href="/register" />} />
-								}
+								nativeButton={false}
+								render={(props) => (
+									<Link
+										{...props}
+										className={buttonVariants({
+											className: "w-full [@media(pointer:coarse)]:min-h-11",
+										})}
+										href="/register"
+									>
+										Buat Bisnis
+									</Link>
+								)}
 							/>
 						</div>
 					</DialogPrimitive.Popup>

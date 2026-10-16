@@ -53,3 +53,9 @@ export async function getPublicAddOns(): Promise<PublicAddOn[]> {
     return [];
   }
 }
+
+/** Harga plan termurah untuk badge hero; null bila katalog kosong. */
+export async function getCheapestPlanPrice(): Promise<number | null> {
+  const plans = await getPublicPlans();
+  return plans[0]?.price_monthly ?? null;
+}
