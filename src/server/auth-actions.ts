@@ -9,7 +9,7 @@
 
 import { AuthError } from "next-auth";
 import { signIn, signOut } from "@/lib/auth";
-import { toFormState } from "@/lib/form-state";
+import { str, toFormState } from "@/lib/form-state";
 import { loginSchema } from "@/lib/validators";
 
 export type FormState = {
@@ -23,10 +23,15 @@ export async function loginAction(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
+  // Field yang absen dari FormData (mis. submit saat input `disabled` karena
+  // `pending`) harus jadi string kosong, bukan `null`: `null` membuat Zod
+  // membalas pesan mentah berbahasa Inggris ("expected string, received null")
+  // yang bocor ke UI. Password TIDAK di-trim (spasi bisa bagian dari password);
+  // email/PIN sudah di-trim oleh loginSchema sendiri.
   const parsed = loginSchema.safeParse({
-    email: formData.get("email"),
-    password: formData.get("password") || undefined,
-    pin: formData.get("pin") || undefined,
+    email: str(formData, "email"),
+    password: String(formData.get("password") ?? "") || undefined,
+    pin: str(formData, "pin") || undefined,
   });
   if (!parsed.success) {
     return toFormState(parsed.error);

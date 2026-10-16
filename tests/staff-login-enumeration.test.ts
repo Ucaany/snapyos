@@ -53,6 +53,18 @@ test("authorize menegakkan lockout per email SEBELUM verifikasi", async () => {
   assert.doesNotMatch(src, /fails >= 5/);
 });
 
+test("loginAction tidak meneruskan null ke loginSchema", async () => {
+  const src = await readFile(new URL("src/server/auth-actions.ts", root), "utf8");
+  // Field yang absen dari FormData (submit saat input `disabled` karena
+  // `pending`) harus jadi "" sebelum Zod, bukan null — kalau tidak, pesan
+  // mentah berbahasa Inggris bocor ke UI sebagai role="alert".
+  assert.match(src, /import \{ str, toFormState \} from "@\/lib\/form-state"/);
+  assert.match(src, /email: str\(formData, "email"\)/);
+  assert.match(src, /pin: str\(formData, "pin"\) \|\| undefined/);
+  assert.doesNotMatch(src, /email: formData\.get\("email"\)/);
+  assert.doesNotMatch(src, /pin: formData\.get\("pin"\)/);
+});
+
 test("form login tidak memuat selector booth", async () => {
   const src = await readFile(new URL("src/components/auth-block.tsx", root), "utf8");
   assert.doesNotMatch(src, /photobox_id/);
