@@ -5,6 +5,7 @@ import { finalizeSession } from "@/server/kiosk-sessions";
 import { rateLimit, rateLimitByDevice } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/request-ip";
 import {
+  FINALIZE_MAX_PHOTOS,
   FINALIZE_MAX_REQUEST_BYTES,
   FINALIZE_TOO_LARGE_MESSAGE,
   isFinalizeRequestTooLarge,
@@ -65,8 +66,10 @@ function sumFileBytes(files: readonly PhotoFile[]): number {
  *  foto tidak valid (422) — dua kondisi berbeda tidak boleh satu status. */
 type FilesValidation = { ok: true } | { ok: false; tooLarge: boolean; message: string };
 
-function validateFiles(files: readonly PhotoFile[]): FilesValidation {
-  const totalBytes = sumFileBytes(files);
+function validateFiles(files: readonly PhotoFile[], extraBytes = 0): FilesValidation {
+  // `extraBytes` = foto mentah untuk GIF; batas 50 MB berlaku untuk SELURUH
+  // body multipart, bukan hanya `photos`.
+  const totalBytes = sumFileBytes(files) + Math.max(0, extraBytes);
   // Total byte dari file yang benar-benar terkirim: multipart bisa tanpa
   // Content-Length (chunked), jadi jalur ini tetap perlu.
   if (isFinalizeRequestTooLarge(totalBytes)) {
@@ -100,6 +103,12 @@ async function readValidatedPhotos(files: readonly PhotoFile[]): Promise<PhotoFi
 
 function parsePhotos(form: FormData): PhotoFile[] {
   return form.getAll("photos").filter((value): value is File => value instanceof File);
+}
+
+/** Capture mentah tanpa frame — hanya dipakai sebagai frame GIF slideshow.
+ *  Klien lama tidak mengirim field ini; server lalu memakai `photos`. */
+function parseGifPhotos(form: FormData): PhotoFile[] {
+  return form.getAll("gif_photos").filter((value): value is File => value instanceof File);
 }
 
 function parseMetadata(form: FormData) {
@@ -151,17 +160,24 @@ export async function POST(request: Request, { params }: Params) {
     if (deviceLimit && !deviceLimit.ok) return rateLimited(deviceLimit.retryAfterSec);
 
     const photos = parsePhotos(form);
-    const filesError = validateFiles(photos);
+    const gifPhotos = parseGifPhotos(form);
+    if (gifPhotos.length > FINALIZE_MAX_PHOTOS) return uploadInvalid("Jumlah foto tidak valid");
+
+    const filesError = validateFiles(photos, sumFileBytes(gifPhotos));
     if (!filesError.ok) return filesInvalid(filesError);
     let validatedPhotos: PhotoFile[];
+    let validatedGifPhotos: PhotoFile[];
     try {
       validatedPhotos = await readValidatedPhotos(photos);
+      validatedGifPhotos = gifPhotos.length > 0 ? await readValidatedPhotos(gifPhotos) : [];
     } catch (error) {
       return uploadInvalid(error instanceof Error ? error.message : "Foto tidak valid");
     }
 
     return NextResponse.json(
-      dataEnvelope(await finalizeSession(businessSlug, id, input, validatedPhotos))
+      dataEnvelope(
+        await finalizeSession(businessSlug, id, input, validatedPhotos, validatedGifPhotos)
+      )
     );
   } catch (error) {
     return toErrorResponse(error);

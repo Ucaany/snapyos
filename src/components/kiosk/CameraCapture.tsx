@@ -4,10 +4,10 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Camera, FlipHorizontal2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CAMERA_ERRORS, cameraErrorKind } from "@/lib/camera-errors";
-import { captureFrame } from "@/lib/camera-capture";
+import { captureFrame, normalizeRotation, normalizeZoom } from "@/lib/camera-capture";
 import { resolveFacingMode } from "@/lib/camera-provider";
 import { getDeviceProfile } from "@/lib/device-profile";
-import type { CameraSettings, CapturePhoto, KioskVisualStyle } from "@/lib/kiosk-types";
+import { kioskThemeVars, type CameraSettings, type CapturePhoto, type KioskVisualStyle } from "@/lib/kiosk-types";
 import type { TemplateLayout } from "@/lib/template-layout";
 import { useObjectUrl } from "@/components/kiosk/use-object-url";
 import { FramePreviewPanel } from "@/components/kiosk/FramePreviewPanel";
@@ -58,6 +58,9 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
   // masih "preview" — closure `stage` basi, guard selalu early-return.
   const stageRef = useRef<Stage>("preview");
   const [mirror, setMirror] = useState(cameraSettings.mirror_preview !== false);
+  // Kalibrasi studio: rotasi & zoom kamera yang dipasang miring/terlalu lebar.
+  const rotation = normalizeRotation(cameraSettings.rotation_degrees);
+  const calibrationZoom = normalizeZoom(cameraSettings.zoom);
   const [cameraReady, setCameraReady] = useState(false);
   // `action` = label tombol; `onAction` = yang benar-benar dijalankan. Tanpa
   // pemisahan ini, error batas retake (satu-satunya jalur keluar dari review)
@@ -263,7 +266,13 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
     // ambil frame dari stream yang baru/baru tersambung.
     if (!videoRef.current || stageRef.current !== "countdown") return;
     try {
-      const photo = await captureFrame(videoRef.current, cameraSettings.jpeg_quality || 0.92, mirror);
+      const photo = await captureFrame(
+        videoRef.current,
+        cameraSettings.jpeg_quality || 0.92,
+        mirror,
+        normalizeRotation(cameraSettings.rotation_degrees),
+        normalizeZoom(cameraSettings.zoom)
+      );
       setCurrent(photo);
       setFlash(true);
       if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
@@ -309,9 +318,9 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
   }
 
   return (
-    <div className="flex min-h-[100dvh] flex-col overflow-y-auto bg-ink lg:flex-row lg:overflow-hidden">
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-ink lg:flex-row lg:overflow-hidden">
       {/* Left panel — camera preview / review */}
-      <div className="relative flex flex-1 items-center justify-center overflow-hidden bg-ink">
+      <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-ink">
         {videoUrl && stage === "preview" && (
           <video
             src={videoUrl}
@@ -335,7 +344,18 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
               muted
               onLoadedData={() => setCameraReady(true)}
               className="max-h-full max-w-full object-contain"
-              style={mirror ? { transform: "scaleX(-1)" } : undefined}
+              // Preview = hasil capture: rotasi kalibrasi, mirror, lalu zoom.
+              // CSS transform tidak memengaruhi drawImage, tapi di sini keduanya
+              // harus tampak sama bagi customer.
+              style={{
+                transform: [
+                  mirror ? "scaleX(-1)" : "",
+                  rotation ? `rotate(${rotation}deg)` : "",
+                  calibrationZoom !== 1 ? `scale(${calibrationZoom})` : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ") || undefined,
+              }}
             />
             {stage === "countdown" && (
               <div className="absolute inset-0 flex items-center justify-center bg-ink/60">
@@ -385,7 +405,7 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
           area kamera tetap gelap agar kontras preview/retake). bg-ink fallback
           dipakai saat kioskStyle tidak ada (inline style menang bila ada). */}
       <div
-        className={`flex shrink-0 flex-col gap-5 border-t-2 border-bg bg-ink p-6 lg:w-[38%] lg:border-l-2 lg:border-t-0 lg:justify-center lg:p-8 ${
+        className={`flex shrink-0 flex-col gap-4 overflow-y-auto border-t-2 border-bg bg-ink p-5 lg:w-[38%] lg:border-l-2 lg:border-t-0 lg:justify-center lg:gap-5 lg:p-6 ${
           kioskStyle
             ? kioskStyle.align === "left"
               ? "items-start text-left"
@@ -396,7 +416,13 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
         }`}
         style={
           kioskStyle
-            ? { backgroundColor: kioskStyle.bg, color: kioskStyle.text, padding: kioskStyle.padding, borderColor: "currentColor" }
+            ? {
+                ...kioskThemeVars(kioskStyle),
+                backgroundColor: kioskStyle.bg,
+                color: kioskStyle.text,
+                padding: kioskStyle.padding,
+                borderColor: "currentColor",
+              }
             : undefined
         }
       >
@@ -421,8 +447,9 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
           </p>
         </div>
 
-        {/* Preview frame langsung: slot terisi = hasil foto, slot aktif = kamera. */}
-        {layout && (
+        {/* Preview frame langsung: slot terisi = hasil foto, slot aktif = kamera.
+            Template legacy tanpa slot tetap tampil (frame jadi kanvas preview). */}
+        {(layout || frameUrl) && (
           <FramePreviewPanel
             layout={layout}
             frameUrl={frameUrl}
@@ -442,7 +469,11 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
               onClick={startCountdown}
               disabled={!cameraReady}
               className="h-20 bg-accent-2 text-3xl shadow-[6px_6px_0_0_#111111] hover:shadow-[4px_4px_0_0_#111111]"
-              style={kioskStyle ? { borderRadius: kioskStyle.radius } : undefined}
+              style={
+                kioskStyle
+                  ? { borderRadius: kioskStyle.radius, backgroundColor: kioskStyle.accent, color: kioskStyle.accentText }
+                  : undefined
+              }
             >
               <Camera className="size-8" aria-hidden />
               {cameraReady ? `Ambil foto ${slot + 1}/${photoCount}` : "Menyiapkan kamera"}
@@ -462,7 +493,16 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
             <Button size="lg" variant="outline" onClick={retake} className="flex-1 bg-bg text-ink" style={kioskStyle ? { borderRadius: kioskStyle.radius } : undefined}>
               <RotateCcw className="size-6" aria-hidden /> Ulang
             </Button>
-            <Button size="lg" onClick={continueNext} className="flex-1 bg-accent-3" style={kioskStyle ? { borderRadius: kioskStyle.radius } : undefined}>
+            <Button
+              size="lg"
+              onClick={continueNext}
+              className="flex-1 bg-accent-3"
+              style={
+                kioskStyle
+                  ? { borderRadius: kioskStyle.radius, backgroundColor: kioskStyle.accent, color: kioskStyle.accentText }
+                  : undefined
+              }
+            >
               {slot + 1 >= photoCount ? "Lanjut edit" : "Lanjut"}
             </Button>
           </div>

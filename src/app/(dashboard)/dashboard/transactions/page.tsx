@@ -82,9 +82,9 @@ export default async function TransactionsPage({
   const businessId = active.business.id;
 
   // Query URL bertipe longgar (string); `listTransactions` mem-parse via
-  // `transactionListQuerySchema` untuk menegakkan enum `source` dsb.
+  // `transactionListQuerySchema` (safeParse — nilai rusak dibuang, bukan throw).
   const [result, outlets, photoboxes, packages] = await Promise.all([
-    listTransactions(user.id, businessId, query as Parameters<typeof listTransactions>[2]),
+    listTransactions(user.id, businessId, query),
     listOutlets(user.id, businessId),
     listPhotoboxes(user.id, businessId),
     listPackages(user.id, businessId),

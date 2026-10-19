@@ -34,6 +34,9 @@ export type QueuedFinalize = {
   templateId: string | null;
   retakeCount: number;
   photos: Blob[];
+  /** Capture mentah (tanpa frame) untuk GIF slideshow. Item antrian lama
+   *  tidak punya field ini — server lalu memakai `photos` sebagai fallback. */
+  gifPhotos?: Blob[];
   queuedAt: number;
 };
 
@@ -132,12 +135,15 @@ export function buildFinalizeForm(input: {
   templateId: string | null;
   retakeCount: number;
   photos: Blob[];
+  /** Capture mentah tanpa frame — sumber GIF slideshow. */
+  gifPhotos?: Blob[];
 }): FormData {
   const form = new FormData();
   form.append("device_token", input.deviceToken);
   form.append("retake_count", String(input.retakeCount));
   if (input.templateId) form.append("template_id", input.templateId);
   for (const p of input.photos) form.append("photos", p, "photo.jpg");
+  for (const p of input.gifPhotos ?? []) form.append("gif_photos", p, "gif-photo.jpg");
   return form;
 }
 
@@ -163,6 +169,7 @@ export async function syncOne(item: QueuedFinalize, deviceToken: string | null):
           templateId: item.templateId,
           retakeCount: item.retakeCount,
           photos: item.photos,
+          gifPhotos: item.gifPhotos,
         }),
       }
     );

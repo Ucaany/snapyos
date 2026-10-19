@@ -1,7 +1,7 @@
 "use client";
 
 import { Camera, Download, Printer } from "lucide-react";
-import type { KioskVisualStyle, PublicPackage } from "@/lib/kiosk-types";
+import { kioskThemeVars, type KioskVisualStyle, type PublicPackage } from "@/lib/kiosk-types";
 import { formatIDR } from "@/lib/dashboard-math";
 import { defaultBrandColors } from "@/lib/brand-defaults";
 import { KioskVideoBackground } from "@/components/kiosk/KioskVideoBackground";
@@ -38,18 +38,32 @@ export function PackagePicker({
   const ks = kioskStyle;
   const primary = primaryColor || defaultBrandColors.accent;
   const secondary = secondaryColor || defaultBrandColors.ink;
+  // Perataan mengikuti setting kiosk; default tengah (perilaku lama).
+  const contentAlign = ks?.align ?? "center";
   const alignClass =
-    ks?.align === "left" ? "text-left" : ks?.align === "right" ? "text-right" : "text-center";
+    contentAlign === "left" ? "text-left" : contentAlign === "right" ? "text-right" : "text-center";
+  const itemsClass =
+    contentAlign === "left" ? "items-start" : contentAlign === "right" ? "items-end" : "items-center";
   const buttonBase =
     "min-h-14 border-2 px-6 py-3 font-mono text-sm font-bold uppercase tracking-[0.1em] transition-transform active:translate-y-[2px] disabled:cursor-not-allowed disabled:opacity-60";
   return (
     <div
-      className="relative flex min-h-[100dvh] flex-1 flex-col gap-3 overflow-hidden bg-bg px-4 py-4 md:gap-4 md:px-6 md:py-5"
-      style={ks ? { backgroundColor: ks.bg, color: ks.text, paddingLeft: ks.padding, paddingRight: ks.padding } : undefined}
+      className="relative flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-bg px-4 py-4 md:gap-4 md:px-6 md:py-5"
+      style={
+        ks
+          ? {
+              ...kioskThemeVars(ks),
+              backgroundColor: ks.bg,
+              color: ks.text,
+              paddingLeft: ks.padding,
+              paddingRight: ks.padding,
+            }
+          : undefined
+      }
     >
       <KioskVideoBackground videoUrl={videoUrl} />
       <header className={`relative z-10 mx-auto flex w-full max-w-[1000px] shrink-0 items-start justify-between gap-3 ${alignClass}`}>
-        <div className="flex flex-col">
+        <div className={`flex flex-col ${itemsClass}`}>
           <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
             {"/// STEP 01 · PILIH PAKET"}
           </p>

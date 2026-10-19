@@ -19,6 +19,7 @@ import {
 } from "@/server/storage-usage"
 import { getStorage, resolveStorage } from "@/server/storage"
 import { publicConfigCacheTag } from "@/server/public-config"
+import { resetPageOverrides } from "@/lib/branding-pages"
 
 const BRAND_ASSETS_BUCKET = "business-assets" as const
 const SIGNED_URL_CACHE_TTL = 55 * 60 // 55 menit — buffer 5 menit sebelum expire
@@ -103,7 +104,9 @@ export async function getBranding(userId: string, businessId: string): Promise<B
 export async function updateBranding(
   userId: string,
   businessId: string,
-  input: BrandingInput
+  input: BrandingInput,
+  /** Layar yang override-nya harus DIHAPUS (bukan digabung). Video tetap. */
+  options: { resetPages?: readonly string[] } = {}
 ): Promise<BrandingView> {
   const parsed = brandingSchema.parse(input)
   await requireMembership(userId, businessId, true)
@@ -125,13 +128,18 @@ export async function updateBranding(
   for (const key of Object.keys(parsedPages)) {
     mergedPages[key] = { ...(currentPages[key] ?? {}), ...(parsedPages[key] ?? {}) }
   }
+  // Reset per-layar: hapus seluruh override visual layar itu, sisakan video_key
+  // (video punya kontrol hapus sendiri). Tanpa ini tombol "Reset layar" di
+  // editor hanya tidak mengirim key, dan deep-merge justru mempertahankan
+  // nilai lama — tombol terlihat berhasil tapi kiosk tak berubah.
+  const afterReset = resetPageOverrides(mergedPages, options.resetPages ?? [])
   const merged = brandingSchema.parse({
     ...current,
     ...parsed,
     kiosk: {
       ...(current.kiosk ?? {}),
       ...(parsed.kiosk ?? {}),
-      pages: mergedPages,
+      pages: afterReset,
     },
   })
 

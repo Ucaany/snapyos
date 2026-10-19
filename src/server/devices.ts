@@ -278,6 +278,15 @@ export async function verifyDevice(input: DeviceVerifyInput) {
   const { photobox, deviceId, businessSlug } = await resolveActiveDevice(input.device_token);
   const supabase = createServerClient();
 
+  // Mode terkunci: kiosk berhenti polling config live. Dulu kolom
+  // `devices.kiosk_locked` ditulis siapa pun tetapi tidak pernah dibaca.
+  const { data: lockRow } = await supabase
+    .from("devices")
+    .select("kiosk_locked")
+    .eq("id", deviceId)
+    .maybeSingle();
+  const kioskLocked = Boolean((lockRow as { kiosk_locked?: boolean } | null)?.kiosk_locked);
+
   // Sesi aktif di booth ini (jika ada) — dipakai kiosk untuk RESUME, bukan
   // memaksa customer memilih paket lagi (anti "bayar lalu terkunci").
   const { data: sessionRow } = await supabase
@@ -328,6 +337,8 @@ export async function verifyDevice(input: DeviceVerifyInput) {
   return {
     device_id: deviceId,
     business_slug: businessSlug,
+    /** Mode terkunci (kiosk_locked) — dipakai kiosk untuk berhenti polling. */
+    kiosk_locked: kioskLocked,
     photobox: {
       id: photobox.id,
       slug: photobox.slug,

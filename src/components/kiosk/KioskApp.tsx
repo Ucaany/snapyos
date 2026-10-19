@@ -38,8 +38,8 @@ const Editor = dynamic(
   () => import("@/components/kiosk/Editor").then((m) => m.Editor),
   { ssr: false }
 );
-const PrintLayoutRenderer = dynamic(
-  () => import("@/components/kiosk/PrintLayoutRenderer").then((m) => m.PrintLayoutRenderer),
+const PrintFlow = dynamic(
+  () => import("@/components/kiosk/PrintFlow").then((m) => m.PrintFlow),
   { ssr: false }
 );
 
@@ -65,6 +65,8 @@ type Step =
 type SessionInfo = { session_id: string; expires_at: string; result_token?: string | null };
 type VerifyData = {
   photobox: PublicConfig["photobox"];
+  /** Server menandai booth dalam mode terkunci — poll config live dijeda. */
+  kiosk_locked?: boolean;
   active_session: {
     session_id: string;
     package_id: string;
@@ -104,7 +106,9 @@ export function KioskApp({
   // Live config: poll ETag/304 3s saat idle — perubahan owner (timer, retake,
   // branding, paket) tersinkron tanpa reload; sesi berjalan tidak disentuh.
   const idle = step === "welcome" || step === "guide" || step === "package";
-  const liveConfig = useConfigSync(config, businessSlug, config.photobox.slug, idle);
+  // kiosk_locked dari verify: berhenti polling saat booth dikunci.
+  const [kioskLocked, setKioskLocked] = useState(false);
+  const liveConfig = useConfigSync(config, businessSlug, config.photobox.slug, idle && !kioskLocked);
   // Derive (bukan sync-effect): idle = config live; sesi = snapshot state.
   const currentPhotobox = idle ? liveConfig.photobox : photobox;
 
@@ -139,7 +143,8 @@ export function KioskApp({
   const { reengage, requestFullscreen, unlock } = useKioskLock(
     step !== "activation",
     currentPhotobox.camera_settings.screen_orientation,
-    requestExit
+    requestExit,
+    currentPhotobox.camera_settings.fullscreen !== false
   );
   const touchExit = useHoldExit(requestExit);
 
@@ -252,6 +257,7 @@ export function KioskApp({
             if (localStorage.getItem(TOKEN_KEY) !== token) return;
             setDeviceToken(token);
             setPhotobox(data.photobox);
+            setKioskLocked(data.kiosk_locked === true);
             // Sesi aktif (mis. sudah dibayar lalu reload/back) → RESUME,
             // jangan paksa customer memilih paket & membayar lagi.
             if (resumeFromVerify(token, data)) return;
@@ -443,6 +449,8 @@ export function KioskApp({
             templateId: selectedTemplate?.id ?? null,
             retakeCount,
             photos: final.map((p) => p.blob),
+            // Capture mentah tanpa frame → GIF slideshow (bukan hasil komposit).
+            gifPhotos: photos.map((p) => p.blob),
             queuedAt: Date.now(),
           });
           setFinalPhotos(final);
@@ -462,6 +470,8 @@ export function KioskApp({
           templateId: selectedTemplate?.id ?? null,
           retakeCount,
           photos: final.map((p) => p.blob),
+          // Capture mentah tanpa frame → GIF slideshow (bukan hasil komposit).
+          gifPhotos: photos.map((p) => p.blob),
         });
 
         const data = await apiForm<FinalizeResult>(
@@ -485,7 +495,7 @@ export function KioskApp({
         setBusy(false);
       }
     },
-    [deviceToken, session, selectedTemplate, currentPhotobox.print_settings.enabled, selectedPackage, businessSlug, retakeCount]
+    [deviceToken, session, selectedTemplate, currentPhotobox.print_settings.enabled, selectedPackage, businessSlug, retakeCount, photos]
   );
 
   const handleEditorFinish = useCallback(
@@ -549,11 +559,9 @@ export function KioskApp({
     );
   }, [selectedPackage, selectedTemplate, currentPhotobox.print_settings.layout]);
 
-  // Jumlah capture = jumlah slot template (docs/15 §5.6); legacy = photo_count.
-  const captureCount = (() => {
-    const slotCount = selectedTemplate?.slot_count ?? 0;
-    return slotCount > 0 ? slotCount : (selectedPackage?.photo_count ?? 1);
-  })();
+  // Jumlah capture = kuota paket. Frame berapa pun slotnya dipakai lintas paket;
+  // slot yang lebih banyak diisi bergiliran di editor (template-fit.ts).
+  const captureCount = selectedPackage?.photo_count ?? 1;
 
   const sessionSettings = currentPhotobox.session_settings;
   // Gaya visual per layar — global kiosk + override per-layar (kioskVisualStyle).
@@ -570,7 +578,12 @@ export function KioskApp({
 
   return (
     <div
-      className="flex min-h-[100dvh] flex-col bg-bg text-ink"
+      // SATU sumbu scroll: shell setinggi viewport di semua ukuran, tiap layar
+      // mengatur scroll internalnya. Dulu tinggi dikunci hanya di `lg`, jadi
+      // tablet portrait 768–1023px jatuh ke layout mobile dan menciptakan
+      // double scroll (shell + layar).
+      data-kiosk-shell="true"
+      className="flex h-[100dvh] flex-col overflow-hidden bg-bg text-ink"
       style={{
         paddingTop: "env(safe-area-inset-top)",
         paddingBottom: "env(safe-area-inset-bottom)",
@@ -604,8 +617,17 @@ export function KioskApp({
         </div>
       )}
 
+      {/* Timer turun saat banner notice terbuka — dulu keduanya fixed di
+          kanan-atas dan banner menutupi hitungan waktu sesi. */}
       {session && ["template", "capture", "editor"].includes(step) && (
-        <div className="fixed right-4 top-4 z-40">
+        <div
+          className="fixed right-3 z-40"
+          style={{
+            top: notice
+              ? "calc(env(safe-area-inset-top) + 4.25rem)"
+              : "calc(env(safe-area-inset-top) + 0.75rem)",
+          }}
+        >
           <SessionTimer
             expiresAt={session.expires_at}
             warningSeconds={sessionSettings?.warning_seconds ?? 60}
@@ -622,6 +644,7 @@ export function KioskApp({
           deviceToken={deviceToken}
           onDone={handleSetupDone}
           onAuthError={handleSetupAuthError}
+          printSettings={currentPhotobox.print_settings}
         />
       )}
       {step === "welcome" && (
@@ -663,8 +686,8 @@ export function KioskApp({
           offlineEnabled={offlineEnabled}
           paymentTitle={liveConfig.branding.kiosk?.payment_title}
           paymentHint={liveConfig.branding.kiosk?.payment_hint}
-          paymentAlign={liveConfig.branding.kiosk?.payment_align}
           kioskStyle={pageStyle("payment")}
+          videoUrl={kioskBranding?.pages?.payment?.video_url ?? null}
           onOffline={() => void startDirectSession(selectedPackage)}
           onPaid={(checkoutId) => handleCheckoutPaid(checkoutId)}
           onBack={() => setStep("package")}
@@ -674,6 +697,7 @@ export function KioskApp({
         <TemplatePicker
           packageId={selectedPackage.id}
           businessSlug={businessSlug}
+          photoCount={selectedPackage.photo_count}
           kioskStyle={pageStyle("template")}
           titleText={kioskBranding?.template_title}
           videoUrl={kioskBranding?.pages?.template?.video_url ?? null}
@@ -706,12 +730,14 @@ export function KioskApp({
           titleText={liveConfig.branding.kiosk?.editor_title}
           hintText={liveConfig.branding.kiosk?.editor_hint}
           kioskStyle={pageStyle("edit")}
+          videoUrl={kioskBranding?.pages?.edit?.video_url ?? null}
           allowZoomPan={kioskBranding?.allow_zoom_pan !== false}
           finishRequested={finishRequested}
+          chromaKeyEnabled={currentPhotobox.camera_settings.chroma_key_enabled === true}
         />
       )}
       {step === "printing" && plan && (
-        <PrintLayoutRenderer
+        <PrintFlow
           photos={finalPhotos}
           plan={plan}
           printSettings={currentPhotobox.print_settings}
@@ -757,20 +783,26 @@ export function KioskApp({
           onPointerLeave={touchExit.onPointerLeave}
           onPointerCancel={touchExit.onPointerCancel}
           onContextMenu={(e) => e.preventDefault()}
-          // Editor: panel kontrol menutup sudut kiri-bawah, jadi tombol pindah
-          // ke kanan-atas — tapi DI BAWAH SessionTimer (fixed right-4 top-4),
-          // bukan menimpanya; kalau bertumpuk, hitungan waktu sesi tertutup.
-          className={`fixed z-40 flex size-11 items-center justify-center border-2 border-ink/20 bg-surface/60 text-muted-foreground opacity-40 active:opacity-100 ${
-            step === "editor" ? "right-3 top-16 lg:right-4 lg:top-16" : "bottom-3 left-3 lg:bottom-4 lg:left-4"
-          }`}
+          // Kiri-bawah, di atas banner offline bila banner tampil. Sebelumnya
+          // editor memindahkannya ke kanan-atas dan bertabrakan dengan header
+          // foto + timer sesi; sudut kiri-bawah tidak dipakai kontrol mana pun.
+          aria-describedby="kiosk-exit-help"
+          className="fixed left-3 z-40 flex size-14 items-center justify-center border-2 border-ink/20 bg-surface/60 text-muted-foreground opacity-40 active:opacity-100 lg:left-4"
           style={{
-            marginBottom: "env(safe-area-inset-bottom)",
             marginLeft: "env(safe-area-inset-left)",
+            bottom: online
+              ? "calc(env(safe-area-inset-bottom) + 0.75rem)"
+              : "calc(env(safe-area-inset-bottom) + 3.25rem)",
           }}
         >
-          <Lock className="size-4" aria-hidden />
+          <Lock className="size-5" aria-hidden />
         </button>
       )}
+      {/* Teks prosedur untuk pembaca layar; tidak terlihat (bukan teks visual). */}
+      <p id="kiosk-exit-help" className="sr-only">
+        Tahan tombol ini tiga detik lalu masukkan PIN keluar. Di keyboard, tahan
+        Ctrl Alt X selama dua detik.
+      </p>
 
       {/* Overlay re-engage fullscreen. Customer hanya bisa kembali ke mode
           penuh; keluar kiosk butuh PIN petugas (server-verified). */}

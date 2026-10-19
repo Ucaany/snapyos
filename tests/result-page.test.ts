@@ -88,3 +88,36 @@ test("result page: ada loading.tsx (halaman dinamis + presign lambat)", async ()
   const s = await src("src/app/r/[token]/loading.tsx");
   assert.ok(s.includes("aria-busy"), "loading.tsx wajib ada dengan skeleton");
 });
+
+// --- R6: gerbang 404 harus di layout, bukan page -----------------------------
+//
+// `loading.tsx` di segmen ini membuat Suspense boundary. Begitu boundary itu
+// menyala, Next mengirim kerangka respons dengan status 200 dan status itu tidak
+// bisa diubah lagi: `notFound()` di `page.tsx` hanya mengganti isi body. Gejala
+// yang pernah terukur: link kedaluwarsa dijawab 200 dengan body memuat skeleton
+// DAN teks "tidak ditemukan" sekaligus (E2E kiosk 22/23).
+//
+// Layout dirender di LUAR boundary tersebut, jadi `notFound()` di sana
+// menetapkan status 404 sebelum byte pertama dikirim. Tes ini menjaga agar
+// gerbang itu tidak dipindahkan kembali ke page.
+
+test("result page: gerbang NOT_FOUND ada di layout.tsx (di luar Suspense loading)", async () => {
+  const s = await src("src/app/r/[token]/layout.tsx");
+  assert.ok(
+    s.includes("cause instanceof ApiError && cause.code === \"NOT_FOUND\"") &&
+      s.includes("notFound()"),
+    "layout.tsx wajib memetakan NOT_FOUND → notFound(); tanpa gerbang di luar boundary loading.tsx, link kedaluwarsa dijawab 200"
+  );
+  assert.ok(
+    s.includes("} catch (cause) {") && !s.includes("} catch {"),
+    "catch wajib menangkap error (gangguan DB tidak boleh jadi 404 palsu)"
+  );
+});
+
+test("getResult dibungkus cache(): layout + page berbagi satu query", async () => {
+  const s = await src("src/server/kiosk-sessions.ts");
+  assert.ok(
+    s.includes("export const getResult = cache(loadResult)"),
+    "getResult wajib dibungkus cache() supaya gerbang di layout dan render di page tidak menembak Supabase dua kali"
+  );
+});

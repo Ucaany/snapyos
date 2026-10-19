@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { kioskVisualStyle, KIOSK_FONT_FAMILIES, type KioskBrandingConfig } from "../src/lib/kiosk-types.ts";
+import { kioskThemeVars, kioskVisualStyle, KIOSK_FONT_FAMILIES, type KioskBrandingConfig } from "../src/lib/kiosk-types.ts";
 import { brandingContrastIssues } from "../src/lib/validators.ts";
+import { cardSurface, contrastRatio, readableText } from "../src/lib/color.ts";
 
 test("kioskVisualStyle: tanpa page, global defaults", () => {
   const s = kioskVisualStyle(undefined);
@@ -141,4 +142,71 @@ test("brandingContrastIssues: kontras cukup tidak menghasilkan issue", () => {
     kiosk: { bg_color: "#000000", text_color: "#ffffff", pages: { guide: { bg_color: "#004d00" } } },
   });
   assert.equal(issues.length, 0);
+});
+test("kioskVisualStyle: surface diturunkan dari bg, bukan putih paksa", () => {
+  const s = kioskVisualStyle({ bg_color: "#000000", text_color: "#ffffff" });
+  assert.notEqual(s.surface, "#ffffff");
+  assert.notEqual(s.surface, "#000000");
+  // teks di atas surface tetap kontras AA
+  assert.ok(contrastRatio(s.surfaceText, s.surface) >= 4.5);
+});
+
+test("kioskVisualStyle: accentText memilih teks yang terbaca di atas accent", () => {
+  const light = kioskVisualStyle(undefined, undefined, { primary: "#ffd400", secondary: "#111111" });
+  assert.ok(contrastRatio(light.accentText, light.accent) >= 4.5);
+  const dark = kioskVisualStyle(undefined, undefined, { primary: "#111111", secondary: "#111111" });
+  assert.ok(contrastRatio(dark.accentText, dark.accent) >= 4.5);
+});
+
+test("kioskVisualStyle: payment_align legacy dibaca hanya bila align belum diset", () => {
+  assert.equal(kioskVisualStyle({ payment_align: "center" }).align, "center");
+  // align eksplisit menang atas field legacy
+  assert.equal(kioskVisualStyle({ align: "right", payment_align: "center" }).align, "right");
+});
+
+test("kioskVisualStyle: surface ikut override bg per layar", () => {
+  const k: KioskBrandingConfig = {
+    bg_color: "#fffdf5",
+    text_color: "#111111",
+    pages: { payment: { bg_color: "#001122", text_color: "#eeeeee" } },
+  };
+  const global = kioskVisualStyle(k);
+  const payment = kioskVisualStyle(k, "payment");
+  assert.notEqual(payment.surface, global.surface);
+  assert.ok(contrastRatio(payment.surfaceText, payment.surface) >= 4.5);
+});
+
+test("color: contrastRatio & readableText", () => {
+  assert.equal(contrastRatio("#000000", "#ffffff"), 21);
+  assert.equal(contrastRatio("nope", "#ffffff"), 1);
+  // kuning terang: teks gelap dipilih
+  assert.equal(readableText("#ffd400", "#ffffff"), "#111111");
+  // latar gelap: teks terang dipilih
+  assert.equal(readableText("#111111", "#111111"), "#ffffff");
+  assert.ok(contrastRatio(readableText("#ffd400", "#777777"), "#ffd400") >= 4.5);
+});
+
+test("color: cardSurface mencampur bg dengan teks", () => {
+  assert.equal(cardSurface("#000000", "#ffffff"), "#0f0f0f");
+  assert.equal(cardSurface("#ffffff", "#000000"), "#f0f0f0");
+  // input tidak valid → bg apa adanya
+  assert.equal(cardSurface("nope", "#000000"), "nope");
+});
+
+test("kioskVisualStyle: mutedText tetap AA di palet gelap maupun terang", () => {
+  const dark = kioskVisualStyle({ bg_color: "#101820", text_color: "#F2E9DC" });
+  assert.ok(contrastRatio(dark.mutedText, dark.bg) >= 4.5, `dark muted ${dark.mutedText}`);
+  const light = kioskVisualStyle({ bg_color: "#FFFDF5", text_color: "#111111" });
+  assert.ok(contrastRatio(light.mutedText, light.bg) >= 4.5, `light muted ${light.mutedText}`);
+  // tetap lebih redup daripada teks utama (bukan sekadar menyalin `text`)
+  assert.notEqual(light.mutedText, light.text);
+});
+
+test("kioskThemeVars: memetakan surface/ink/muted untuk subtree layar", () => {
+  const s = kioskVisualStyle({ bg_color: "#101820", text_color: "#F2E9DC" });
+  const vars = kioskThemeVars(s);
+  assert.equal(vars["--color-surface"], s.surface);
+  assert.equal(vars["--color-ink"], s.surfaceText);
+  assert.equal(vars["--color-muted-foreground"], s.mutedText);
+  assert.equal(vars["--color-muted"], s.mutedSurface);
 });

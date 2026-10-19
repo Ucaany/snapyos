@@ -7,15 +7,17 @@ import {
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// Catatan: tidak ada prop `collapsible` (beda dari Radix). Accordion Base UI
+// mode `single` selalu bisa ditutup — lihat `AccordionRoot.handleValueChange`
+// (`value[0] === newValue ? [] : [newValue]`) — jadi prop itu tidak akan
+// mengubah apa pun kalau diteruskan.
 function Accordion({
   className,
   type,
-  collapsible,
   defaultValue,
   ...props
 }: Omit<React.ComponentProps<typeof AccordionPrimitive.Root>, "defaultValue"> & {
   type?: "single" | "multiple";
-  collapsible?: boolean;
   defaultValue?: string | string[];
 }) {
   return (

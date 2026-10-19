@@ -50,7 +50,7 @@ Aturan resolusi:
 - **Neo-Brutalism (industrial-brutalist-ui) = satu-satunya bahasa visual UI/UX SnapyOS** untuk marketing/auth/kiosk/result/shell dashboard/API. Tidak ada estetika UI/UX lain (Dashboard-01 dual-shell dihapus 2026-08-30).
 - **Uang selalu integer IDR** (tidak ada floating-point).
 - **Upload logo tanpa SVG** — allowlist logo hanya PNG/JPG/WebP (`src/lib/upload-validation.ts`); SVG berisiko XSS. Key storage wajib lewat guard path-traversal `r2Key`; id layar kiosk (`page`) wajib allowlist `KIOSK_PAGE_IDS`.
-- **Rate limit pakai shared store di production** — `src/lib/rate-limit.ts` memakai Upstash (`UPSTASH_REDIS_REST_URL`+`UPSTASH_REDIS_REST_TOKEN`) bila di-set; fallback in-memory. Fail-closed di production saat backend error. Interface async `rateLimit(key, limit, windowMs)`.
+- **Rate limit in-memory per proses**: `src/lib/rate-limit.ts` menyimpan counter di memori; tidak ada backend shared. Di deployment multi-instance limit efektif = limit × jumlah instance. Interface async `rateLimit(key, limit, windowMs)`.
 - **Dependency audit hijau** — tidak boleh ada advisory `critical` (`npm audit`); transitive dev-time boleh tercatat residual.
 - **Backend = source of truth** harga/voucher/payment; frontend tidak pernah dipercaya. Payment QRIS memakai reservation `creating` + partial unique index satu payment aktif per checkout/invoice; webhook paid wajib validasi amount/order serta server-to-server status provider sebelum settlement.
 - **Route single-domain** (saling eksklusif, tidak ada tabrakan):

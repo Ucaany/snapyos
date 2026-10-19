@@ -1,5 +1,5 @@
 -- 0019_pos_addon.sql — POS add-on v2 offline-only, per-booth (docs/pos/02).
--- Additive-only. Reversible (lihat rollback di db/migrations/0019_rollback.sql).
+-- Additive-only. Reversible (lihat rollback di db/migrations/0019_pos_addon_rollback.sql).
 -- TIDAK menyentuh payments / business_members / NOT NULL existing.
 
 begin;

@@ -22,7 +22,7 @@
 -- required per case (owner may want manual activation on a fresh
 -- subscription, or a Pakasir refund).
 --
--- Rollback: 0041_rollback.sql.
+-- Rollback: 0041_subscription_intent_failures_rollback.sql.
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- 1. Table

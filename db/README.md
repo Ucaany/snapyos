@@ -40,11 +40,18 @@ psql -f db/migrations/0027_direct_merchant_payment.sql
 ## Rollback
 
 Setiap migration yang mengubah schema secara destruktif (DROP, ALTER column type)
-**WAJIB** punya `NNNN_rollback.sql` yang bisa mengembalikan state.
+**WAJIB** punya rollback yang bisa mengembalikan state.
+
+**Konvensi nama (sejak 2026-10-16):** `NNNN_nama_rollback.sql` — mengikuti nama
+file forward. Sebelumnya ada dua konvensi (`NNNN_rollback.sql` vs
+`NNNN_nama_rollback.sql`); dengan `ls | sort`, bentuk lama membuat rollback
+berjalan SEBELUM forward untuk nomor 0019/0025/0026/0027/0028/0041/0056/0064.
+Semua sudah diseragamkan; `tests/migration-integrity.test.ts` menjaga agar tidak
+kambuh.
 
 ```bash
 # Rollback migration 0027:
-psql -f db/migrations/0027_rollback.sql
+psql -f db/migrations/0027_direct_merchant_payment_rollback.sql
 ```
 
 ## Migration Chain

@@ -4,6 +4,7 @@ import { ChevronLeft } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 
 import { CameraTest } from "@/components/dashboard/CameraTest";
+import { PrinterTestSection } from "@/components/dashboard/PrinterTestSection";
 import { ApiError } from "@/lib/api-errors";
 import { can } from "@/lib/rbac";
 import { getActiveBusiness, requireUser } from "@/lib/tenant";
@@ -65,11 +66,11 @@ export default async function CameraTestPage({ params }: Props) {
           Kamera & cetak
         </h1>
         <p className="max-w-[65ch] text-sm leading-relaxed text-muted-foreground">
-          Uji kamera booth sebelum live. Ambil foto, retake, dan atur mirror
-          preview — pengaturan mirror disimpan otomatis dan dipakai kiosk
-          customer. Pengaturan kamera lengkap (countdown, resolusi, rotasi,
-          zoom), printer (kertas, salinan, margin), dan sesi diatur di form
-          ubah booth.
+          Dua alat uji dalam satu halaman. Kamera: ambil foto, retake, pilih
+          kamera booth, dan atur mirror preview. Printer: cetak halaman uji
+          lewat dialog sistem atau printer thermal Bluetooth, lalu konfirmasi
+          hasil fisiknya. Pengaturan lengkap (countdown, resolusi, rotasi,
+          zoom, kertas, salinan, margin) ada di form ubah booth.
         </p>
         {canWrite && (
           <Link
@@ -85,6 +86,14 @@ export default async function CameraTestPage({ params }: Props) {
         photoboxId={config.id}
         photoboxName={config.name}
         cameraSettings={config.camera_settings}
+        canWrite={canWrite}
+      />
+
+      <PrinterTestSection
+        photoboxId={config.id}
+        photoboxName={config.name}
+        printSettings={config.print_settings}
+        deviceStatus={config.device_status}
         canWrite={canWrite}
       />
     </div>

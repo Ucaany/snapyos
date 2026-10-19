@@ -38,7 +38,7 @@ export default async function RegisterConsultPage() {
           <div className="w-full max-w-sm animate-in space-y-8">
             <div className="flex flex-col items-center space-y-4 text-center">
               <Image
-                src="/avatar-snappy/4.svg"
+                src="/snapyos-mark.png"
                 alt="SnapyOS"
                 width={48}
                 height={48}

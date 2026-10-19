@@ -1690,9 +1690,11 @@ language sql stable as $$
         and status = 'active') as active_outlets;
 $$;
 
--- Index pendukung customer_spending. idx_tx_paid_at (business_id, status, paid_at)
+-- Index pendukung customer_spending. Komposit (business_id, status, paid_at)
 -- sengaja tidak ditambahkan: partial index existing idx_tx_business_paid
 -- (business_id, paid_at) WHERE status='paid' sudah meng-cover semua query paid tx.
+-- Catatan: `idx_tx_paid_at` (paid_at saja, partial status='paid') dibuat oleh
+-- 0067 untuk rentang waktu GLOBAL — beda kolom, bukan index yang dimaksud di sini.
 create index if not exists idx_tx_customer
   on transactions (business_id, customer_id)
   where customer_id is not null;
@@ -2274,3 +2276,40 @@ grant execute on function create_photobox_with_quota(uuid, integer, jsonb) to se
 
 revoke execute on function add_business_member_with_quota(uuid, integer, uuid, text) from public, anon, authenticated;
 grant execute on function add_business_member_with_quota(uuid, integer, uuid, text) to service_role;
+
+-- ============================================================================
+-- 11. Pin search_path RPC (0071) — defense-in-depth.
+-- 0065 men-lock EXECUTE ke service_role; ini memastikan resolusi nama di dalam
+-- body tidak bergeser bila search_path role/sesi berubah. Daftar lengkap +
+-- post-check ada di db/migrations/0071_rpc_search_path_hardening.sql.
+-- ============================================================================
+
+-- bootstrap_admin (0052) mendefinisikan `set search_path = public` inline tanpa
+-- pg_temp; di sini ditambahkan (lihat juga komentar di migrasi 0071).
+alter function bootstrap_admin(text) set search_path = public, pg_temp;
+
+alter function activate_device_atomically(text, text) set search_path = public, pg_temp;
+alter function pos_complete_payment(uuid, uuid, text, uuid, text, uuid, uuid, integer, integer, integer) set search_path = public, pg_temp;
+alter function pos_decrement_stock(uuid, uuid, integer) set search_path = public, pg_temp;
+alter function settle_paid_payment_atomically(uuid, text, text) set search_path = public, pg_temp;
+alter function create_voucher_payment_atomically(uuid, uuid, text, text, text, text) set search_path = public, pg_temp;
+alter function exit_pin_register_failure(uuid, integer, bigint) set search_path = public, pg_temp;
+
+alter function dashboard_tx_summary(uuid, timestamptz, timestamptz) set search_path = public, pg_temp;
+alter function dashboard_daily_revenue(uuid, timestamptz, timestamptz, text) set search_path = public, pg_temp;
+alter function finance_expense_summary(uuid, date, date) set search_path = public, pg_temp;
+alter function revenue_breakdown(uuid, timestamptz, timestamptz, text) set search_path = public, pg_temp;
+alter function tx_insights_summary(uuid, timestamptz, timestamptz, text) set search_path = public, pg_temp;
+alter function metrics_tx_status(uuid, timestamptz, timestamptz) set search_path = public, pg_temp;
+alter function metrics_returning_customers(uuid, timestamptz, timestamptz) set search_path = public, pg_temp;
+alter function metrics_revenue_per_booth(uuid, timestamptz, timestamptz) set search_path = public, pg_temp;
+alter function metrics_sessions_per_booth(uuid, timestamptz, timestamptz) set search_path = public, pg_temp;
+alter function metrics_session_summary(uuid, timestamptz, timestamptz) set search_path = public, pg_temp;
+alter function metrics_popular_package(uuid, timestamptz, timestamptz) set search_path = public, pg_temp;
+alter function metrics_popular_template(uuid, timestamptz, timestamptz) set search_path = public, pg_temp;
+alter function staff_directory_today(uuid, timestamptz, timestamptz) set search_path = public, pg_temp;
+alter function customer_spending(uuid, uuid[]) set search_path = public, pg_temp;
+alter function operational_metrics(uuid, timestamptz, timestamptz) set search_path = public, pg_temp;
+
+alter function storage_account_add(uuid, text, text, bigint) set search_path = public, pg_temp;
+alter function storage_account_sub(uuid, text[]) set search_path = public, pg_temp;

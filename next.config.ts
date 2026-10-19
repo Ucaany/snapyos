@@ -5,7 +5,9 @@ const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   // Kiosk butuh akses kamera; batasi hanya untuk origin sendiri.
-  { key: "Permissions-Policy", value: "camera=(self), microphone=()" },
+  // bluetooth=(self) wajib agar Web Bluetooth (printer thermal ESC/POS) tidak
+  // ditolak Chrome lewat Permissions-Policy.
+  { key: "Permissions-Policy", value: "camera=(self), microphone=(), bluetooth=(self)" },
   {
     key: "Strict-Transport-Security",
     value: "max-age=63072000; includeSubDomains",
@@ -25,7 +27,12 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // VPS self-host: server.js mandiri + node_modules hasil trace, dijalankan
+  // systemd. `npm run start` menunjuk ke `.next/standalone/server.js`.
+  output: "standalone",
   poweredByHeader: false,
+  // Kompresi di Node; Nginx tetap meneruskan Accept-Encoding apa adanya.
+  compress: true,
   reactStrictMode: true,
   // Dev server Next 15+ menolak (403) request subresource dengan Origin
   // tak dikenal — tunnel ngrok WAJIB didaftarkan agar chunk JS kiosk
@@ -56,6 +63,14 @@ const nextConfig: NextConfig = {
     ],
   },
   experimental: {
+    // Batas klon body proxy (Next 16, `src/proxy.ts` match hampir semua path).
+    // Default Next = 10 MB dan bersifat MEMOTONG, bukan menolak: body >10 MB
+    // dipotong diam-diam lalu `request.formData()` gagal dengan
+    // "Failed to parse body as FormData" → 500. Cap finalize app adalah 50 MB
+    // (`FINALIZE_MAX_REQUEST_BYTES`), jadi upload kiosk 10-50 MB GAGAL total.
+    // Di-set di atas cap route supaya route sendiri yang memberi 413
+    // berdasarkan `content-length` (dicek SEBELUM body diparse).
+    proxyClientMaxBodySize: "52mb",
     serverActions: {
       // Fase 3: batas 8 MB ini MENAHAN upload server-action yang cap-nya lebih
       // besar (VIDEO_MAX_BYTES=15 MB, PHOTO_MAX_BYTES=10 MB) — validasi ukuran
@@ -71,6 +86,9 @@ const nextConfig: NextConfig = {
   // wildcard '*.supabase.co' cover semua region. Bila di-self-host di
   // subdomain custom, tambahkan pattern lain lewat env (mis. STORAGE_HOST).
   images: {
+    // VPS 2 vCPU: optimasi gambar (sharp) memakan RAM dan CPU per request.
+    // Gambar di-serve langsung dari URL aslinya.
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: "https",

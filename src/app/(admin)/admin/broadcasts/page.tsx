@@ -200,7 +200,7 @@ async function RecipientHistory({ campaignId }: { campaignId: string }) {
       <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
         Riwayat Pengiriman ({recipients.length})
       </p>
-      <div className="max-h-96 overflow-y-auto border-2 border-ink/20">
+      <div className="max-h-96 overflow-x-auto overflow-y-auto border-2 border-ink/20">
         <table className="w-full border-collapse font-mono text-xs">
           <thead className="sticky top-0 bg-bg">
             <tr className="border-b-2 border-ink text-left">

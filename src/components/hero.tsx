@@ -89,9 +89,9 @@ export function HeroSection({
 						<img
 							alt="Dashboard SnapyOS"
 							className="z-2 aspect-video border-2 border-ink"
-							height="1716"
+							height="1162"
 							src="/dashboard-preview.png"
-							width="3024"
+							width="2048"
 							loading="eager"
 							fetchPriority="high"
 						/>

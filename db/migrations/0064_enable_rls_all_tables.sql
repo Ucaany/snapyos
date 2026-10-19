@@ -10,7 +10,8 @@
 -- tidak dipakai client. Migrasi ini menutup blast radius PostgREST
 -- (defense-in-depth): RLS ON + satu policy `svc_all` untuk service_role +
 -- revoke dari anon/authenticated. Pola mengikuti `subscription_intent_failures`
--- (schema.sql:1731): RLS ON, TANPA policy `to public`/`anon`/`authenticated`.
+-- (schema.sql, cari "alter table subscription_intent_failures enable row level
+-- security"): RLS ON, TANPA policy `to public`/`anon`/`authenticated`.
 --
 -- Idempotent: `alter table if exists ... enable row level security` aman diulang;
 -- `drop policy if exists` lalu `create policy` untuk memastikan bentuk final.

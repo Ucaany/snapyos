@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { defaultBrandColors, slotColors } from "@/lib/brand-defaults";
 import {
   FILTER_PRESETS,
+  kioskThemeVars,
   type CapturePhoto,
   type FinalPhoto,
   type KioskOverlay,
@@ -14,6 +15,7 @@ import {
   type PhotoEdit,
 } from "@/lib/kiosk-types";
 import type { TemplateLayout } from "@/lib/template-layout";
+import { fillSlots } from "@/lib/template-fit";
 import { composeFrame } from "@/lib/compose-frame";
 import {
   canvasToBlob,
@@ -23,6 +25,7 @@ import {
   renderFramedPhotoBlob,
 } from "@/components/kiosk/photo-render";
 import { StickerPicker } from "@/components/kiosk/StickerPicker";
+import { KioskVideoBackground } from "@/components/kiosk/KioskVideoBackground";
 import { useObjectUrls } from "@/components/kiosk/use-object-url";
 
 const TEXT_COLORS = [
@@ -53,7 +56,11 @@ type Props = {
   kioskStyle?: KioskVisualStyle;
   /** Izinkan customer zoom/pan foto (default true). */
   allowZoomPan?: boolean;
+  /** Video promo layar edit (pages.edit.video_url). */
+  videoUrl?: string | null;
   finishRequested?: boolean;
+  /** Booth punya layar hijau (`camera_settings.chroma_key_enabled`). */
+  chromaKeyEnabled?: boolean;
 };
 
 let idSeq = 0;
@@ -72,9 +79,11 @@ function editSignature(e: PhotoEdit): string {
 }
 
 /** Photo Editor — docs/05 §5.9–5.11 (filter, zoom/pan, adjust, teks & stiker dasar). */
-function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = null, titleText, hintText, kioskStyle, allowZoomPan = true, finishRequested = false }: Props) {
+function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = null, titleText, hintText, kioskStyle, allowZoomPan = true, videoUrl = null, finishRequested = false, chromaKeyEnabled = false }: Props) {
   const [edits, setEdits] = useState<PhotoEdit[]>(() => photos.map(() => defaultEdit()));
   const [active, setActive] = useState(0);
+  // Chroma key: hanya ditawarkan bila booth dikonfigurasi dengan layar hijau.
+  const [chromaOn, setChromaOn] = useState(false);
   // Filter GLOBAL — satu pilihan berlaku untuk seluruh foto (docs/05 §5.9).
   const [filterId, setFilterId] = useState("original");
   const [text, setText] = useState("");
@@ -172,22 +181,42 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
     return { ...e, adjust: { ...e.adjust, zoom: 1, panX: 0, panY: 0 } };
   }
 
-  function renderSlotOffscreens(maxW: number): (HTMLCanvasElement | null)[] {
+  /**
+   * Offscreen per FOTO (bukan per slot) — cache key = indeks foto. Slot yang
+   * lebih banyak dari foto memakai ulang offscreen yang sama, jadi frame 6
+   * slot pada paket 3 foto tidak menggandakan kerja render.
+   */
+  function renderPhotoOffscreens(maxW: number): (HTMLCanvasElement | null)[] {
     const cache = slotCacheRef.current;
     return photos.map((_, i) => {
       const img = imgsRef.current[i];
       if (!img) return null;
       const base = slotBaseEdit(filteredEdit(edits[i] ?? defaultEdit()));
-      // Signature: recomposite hanya bila edit/img/lebar berubah. Drag slot
-      // aktif → hanya slot itu invalid; slot lain dipakai ulang dari cache.
-      const sig = `${imgVersion}:${maxW}:${editSignature(base)}`;
+      // Signature: recomposite hanya bila edit/img/lebar berubah.
+      const sig = `${imgVersion}:${maxW}:${editSignature(base)}:${chromaOn ? "chroma" : "plain"}`;
       const cached = cache[i];
       if (cached && cached.sig === sig) return cached.canvas;
       const off = document.createElement("canvas");
-      drawPhoto(off, img, base, maxW);
+      drawPhoto(off, img, base, maxW, chromaOn);
       cache[i] = { sig, canvas: off };
       return off;
     });
+  }
+
+  /** Transform zoom/pan milik satu foto (dipakai tiap slot yang menampilkannya). */
+  function transformsFor(photoIndex: number) {
+    const e = edits[photoIndex] ?? defaultEdit();
+    return { zoom: e.adjust.zoom, panX: e.adjust.panX, panY: e.adjust.panY };
+  }
+
+  /**
+   * Sumber per slot: indeks foto mengikuti `fillSlots`. Slot ke-i memakai
+   * foto `i % photos.length`, jadi slot berlebih terisi bergiliran.
+   */
+  function slotSources(maxW: number): (HTMLCanvasElement | null)[] {
+    if (!layout) return renderPhotoOffscreens(maxW);
+    const offscreens = renderPhotoOffscreens(maxW);
+    return fillSlots(layout.slots.length, photos.length).map((photoIndex) => offscreens[photoIndex] ?? null);
   }
 
   // redraw preview when image or edits change
@@ -195,12 +224,15 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
     const canvas = canvasRef.current;
     if (!canvas) return;
     if (layout) {
+      const sources = slotSources(640);
       composeFrame(
         canvas,
         layout,
         frameRef.current,
-        renderSlotOffscreens(640),
-        edits.map((e) => ({ zoom: e.adjust.zoom, panX: e.adjust.panX, panY: e.adjust.panY })),
+        sources,
+        fillSlots(sources.length, photos.length).map(
+          (photoIndex) => transformsFor(photoIndex)
+        ),
         720
       );
       // highlight slot aktif (petunjuk zoom/pan berlaku per slot)
@@ -223,13 +255,13 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
     }
     const img = imgsRef.current[active];
     if (img) {
-      drawPhoto(canvas, img, filteredEdit(edit));
+      drawPhoto(canvas, img, filteredEdit(edit), 640, chromaOn);
       // Template legacy (tanpa slot) = frame full-canvas DI ATAS foto — preview
       // harus menampilkan hal yang sama dengan hasil final (docs/05 §5.9).
       drawFrameOverlay(canvas, frameRef.current);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [imgVersion, frameVersion, edit, edits, active, layout, filterId]);
+  }, [imgVersion, frameVersion, edit, edits, active, layout, filterId, chromaOn]);
 
   function patchEdit(patch: (e: PhotoEdit) => PhotoEdit) {
     setEdits((prev) => prev.map((e, i) => (i === active ? patch(e) : e)));
@@ -385,12 +417,13 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
         // Satu composite resolusi penuh via engine yang sama dengan preview
         // (docs/15 §15.4 — hasil identik builder/kiosk/print).
         const canvas = document.createElement("canvas");
+        const sources = slotSources(Number.POSITIVE_INFINITY);
         composeFrame(
           canvas,
           layout,
           frameRef.current,
-          renderSlotOffscreens(Number.POSITIVE_INFINITY),
-          edits.map((e) => ({ zoom: e.adjust.zoom, panX: e.adjust.panX, panY: e.adjust.panY })),
+          sources,
+          fillSlots(sources.length, photos.length).map((photoIndex) => transformsFor(photoIndex)),
           Number.POSITIVE_INFINITY
         );
         onFinish([{ blob: await canvasToBlob(canvas) }]);
@@ -404,7 +437,8 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
         const blob = await renderFramedPhotoBlob(
           photos[i]!.blob,
           filteredEdit(edits[i] ?? defaultEdit()),
-          frameRef.current
+          frameRef.current,
+          chromaOn
         );
         results.push({ blob });
       }
@@ -430,11 +464,24 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
 
   return (
     <div
-      className="flex min-h-[100dvh] flex-1 flex-col overflow-y-auto bg-bg lg:overflow-hidden"
-      style={kioskStyle ? { backgroundColor: kioskStyle.bg } : undefined}
+      // `lg:h-full` (bukan `100dvh`): shell KioskApp sudah setinggi layar dan
+      // memberi padding safe-area, jadi 100dvh di sini akan meluber.
+      className="relative flex min-h-0 flex-1 flex-col overflow-y-auto bg-bg lg:overflow-hidden"
+      style={
+        kioskStyle
+          ? {
+              ...kioskThemeVars(kioskStyle),
+              backgroundColor: kioskStyle.bg,
+              color: kioskStyle.text,
+              paddingLeft: kioskStyle.padding,
+              paddingRight: kioskStyle.padding,
+            }
+          : undefined
+      }
     >
+      <KioskVideoBackground videoUrl={videoUrl} />
       <header
-        className={`flex shrink-0 flex-wrap items-center justify-between gap-3 border-b-2 border-ink px-4 py-3 md:px-6 ${
+        className={`relative z-10 flex shrink-0 flex-wrap items-center justify-between gap-2 border-b-2 border-ink px-4 py-2.5 md:gap-3 md:px-6 md:py-3 ${
           kioskStyle?.align === "left"
             ? ""
             : kioskStyle?.align === "right"
@@ -488,19 +535,44 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
         )}
       </header>
 
-      <div className="grid min-h-[calc(100dvh-6rem)] flex-1 grid-cols-1 gap-4 p-4 md:grid-cols-[1fr_340px] md:gap-6 md:p-6 lg:overflow-hidden">
-        <div className="relative flex items-center justify-center overflow-hidden">
+      {/* Baris grid dikunci ke tinggi sisa layar (`minmax(0,1fr)`). Tanpa itu
+          baris mengikuti tinggi kanvas (mis. strip 1:3 setinggi 2160px) dan
+          `max-h-full` tidak punya acuan, jadi frame terpotong di bawah. */}
+      <div className="relative z-10 grid flex-1 grid-cols-1 gap-4 p-4 md:grid-cols-[1fr_340px] md:gap-6 md:p-6 lg:min-h-0 lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden">
+        <div className="relative flex min-h-[38vh] items-center justify-center overflow-hidden md:min-h-0">
           <canvas
             ref={canvasRef}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
-            className="relative max-h-full max-w-full border-2 border-ink bg-ink shadow-[4px_4px_0_0_#111111]"
+            className="relative max-h-[52vh] max-w-full border-2 border-ink bg-ink shadow-[4px_4px_0_0_#111111] lg:max-h-full"
             style={{ cursor: edit.adjust.zoom > 1.01 ? "grab" : "default", touchAction: "none" }}
           />
         </div>
 
-        <div className="flex flex-col gap-4 overflow-y-auto pr-1">
+        <div className="flex min-h-0 flex-col gap-4 overflow-y-auto pr-1">
+          {/* Layar hijau booth: hapus latar agar frame transparan terlihat. */}
+          {chromaKeyEnabled && (
+            <div className="flex flex-col gap-2 border-2 border-ink bg-surface p-3">
+              <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
+                Latar layar hijau
+              </p>
+              <button
+                type="button"
+                onClick={() => setChromaOn((value) => !value)}
+                aria-pressed={chromaOn}
+                className={`min-h-11 border-2 border-ink px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.08em] ${
+                  chromaOn ? "bg-accent-3" : "bg-surface"
+                }`}
+              >
+                {chromaOn ? "Latar dihapus" : "Hapus latar hijau"}
+              </button>
+              <p className="font-mono text-[10px] leading-relaxed text-muted-foreground">
+                Warna latar diambil dari sudut foto. Nyalakan bila booth memakai layar hijau.
+              </p>
+            </div>
+          )}
+
           {/* Filters — GLOBAL: satu pilihan berlaku untuk semua foto */}
           <div className="flex flex-col gap-2">
             <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]" style={{ color: kioskStyle ? kioskStyle.text : undefined }}>Filter</p>
@@ -703,7 +775,17 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
             </Button>
           )}
 
-          <Button size="lg" onClick={() => { setFinishError(null); void finish(); }} disabled={finishing} className="mt-auto bg-accent" style={kioskStyle ? { borderRadius: kioskStyle.radius } : undefined}>
+          <Button
+            size="lg"
+            onClick={() => { setFinishError(null); void finish(); }}
+            disabled={finishing}
+            className="mt-auto bg-accent"
+            style={
+              kioskStyle
+                ? { borderRadius: kioskStyle.radius, backgroundColor: kioskStyle.accent, color: kioskStyle.accentText }
+                : undefined
+            }
+          >
             <Check className="size-5" aria-hidden />
             {finishing ? "Menyimpan…" : "Selesai"}
           </Button>

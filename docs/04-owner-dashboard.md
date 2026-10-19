@@ -363,7 +363,7 @@ PREMIUM Rp35.000  — 5 photos, 2 prints, digital copy, premium templates
 - `GET/POST/PATCH/DELETE /api/v1/business/:businessId/templates`
 - `POST /api/v1/business/:businessId/templates/upload` (multipart)
 
-**Validation:** tipe file gambar (PNG/JPG/WebP — SVG dihapus dari allowlist, audit keamanan 2026-10-09), max size, dimensi (opsional), nama wajib, `layout` valid (schema `15-template-builder.md` §15.2 — slot dalam batas canvas, max 8 slot, `slot_count == package.photo_count` saat assign).
+**Validation:** tipe file gambar (PNG/JPG/WebP — SVG dihapus dari allowlist, audit keamanan 2026-10-09), max size, dimensi (opsional), nama wajib, `layout` valid (schema `15-template-builder.md` §15.2 — slot dalam batas canvas, max 8 slot). Assign ke paket tidak lagi dibatasi jumlah slot.
 
 **Security:** upload divalidasi; preview pakai signed URL jika private.
 
@@ -377,7 +377,7 @@ UMKM **bisa** membuat/mengkustomisasi template **lengkap dengan slot foto**:
 
 - Upload frame/overlay template sendiri (PNG transparan yang mereka desain di Canva/Figma/Photoshop).
 - **Template Builder** (`/dashboard/templates/builder/[id]`): tambahkan **slot foto** (kotak/rounded/circle/ellipse) via drag-and-drop di atas frame — atur posisi, ukuran, rotasi, fit. Hasil foto customer otomatis ter-composite pas ke slot (detail penuh: `15-template-builder.md`).
-- Kategorisasi, preview, aktif/nonaktif, assign ke package (syarat `slot_count == package.photo_count`).
+- Kategorisasi, preview, aktif/nonaktif, assign ke package. Semua master template boleh di-assign ke paket mana pun.
 - Template dipasangkan dengan **sticker & text tool** milik SnapyOS di editor customer.
 - Library template default per kategori (seed platform).
 

@@ -60,12 +60,6 @@ const STYLES = `
 @keyframes df-rise { from { translate: 0 30%; } }
 `;
 
-const icon = (d: string) => (
-	<svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">
-		<path d={d} />
-	</svg>
-);
-
 // Tanpa default socials: belum ada profil sosial SnapyOS yang nyata,
 // jadi tidak ada ghost link (anti-slop R-24/R-38). Lewat prop bila nanti ada.
 const DEFAULT_SOCIALS: FooterSocial[] = [];
@@ -131,7 +125,7 @@ export default function DitheredFooter({
 			<div className="mx-auto grid max-w-5xl grid-cols-2 gap-x-6 gap-y-12 px-4 pb-4 pt-8 sm:gap-x-10 sm:px-8 md:grid-cols-[minmax(0,1.6fr)_repeat(3,minmax(0,1fr))]">
 				<div className="col-span-2 md:col-span-1">
 					<div className="flex items-center gap-2.5">
-						<img src="/avatar-snappy/4.svg" alt="Logo SnapyOS" className="h-9 w-9" />
+						<img src="/snapyos-mark.png" alt="Logo SnapyOS" className="h-9 w-9" />
 						<a href={brandHref} className={`rounded-sm text-base font-semibold tracking-tight ${focus}`}>
 							{brand}
 						</a>

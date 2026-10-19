@@ -15,7 +15,6 @@ import { insertAudit } from "@/server/audit";
 import {
   todayISO,
   formatTxNumber,
-  type DateRangeInput,
   dateFieldsSchema,
   rangeBoundariesTz,
 } from "@/lib/dashboard-math";
@@ -100,22 +99,10 @@ async function requireTxRead(userId: string, businessId: string, write = false) 
   return membership;
 }
 
-type TransactionListInput = DateRangeInput & {
-  status?: string;
-  outlet?: string;
-  photobox?: string;
-  package?: string;
-  method?: string;
-  source?: "pos" | "kiosk";
-  q?: string;
-  page?: number;
-  limit?: number;
-};
-
 export async function listTransactions(
   userId: string,
   businessId: string,
-  query: TransactionListInput
+  query: unknown
 ): Promise<{
   rows: TransactionRow[];
   page: number;
@@ -124,7 +111,15 @@ export async function listTransactions(
   range: { from: string; to: string };
 }> {
   await requireTxRead(userId, businessId);
-  const parsed = transactionListQuerySchema.parse(query);
+  // Query URL bebas diketik/di-bookmark. `transactionListQuerySchema` sudah
+  // `.catch()` tiap field, jadi nilai rusak dibuang — bukan ZodError. Yang masih
+  // bisa gagal hanya bentuk non-objek (`searchParams` selalu objek, tapi jaga-jaga);
+  // jalur itu jatuh ke default (`page` 1, `limit` 20), bukan error boundary.
+  const parsed =
+    transactionListQuerySchema.safeParse(query).data ??
+    transactionListQuerySchema.parse({});
+  // `parsed` sudah lolos `isoDate`, jadi parse kedua ini tidak akan melempar —
+  // dipertahankan sebagai dokumentasi tipe (DateRangeFields) untuk `resolveRange`.
   const dates = dateFieldsSchema.parse(parsed);
   const { range } = await resolveRange(userId, businessId, dates);
 
@@ -173,24 +168,6 @@ export async function listTransactions(
     total: count ?? 0,
     range: { from: range.from, to: range.to },
   };
-}
-
-export async function getTransaction(
-  userId: string,
-  businessId: string,
-  transactionId: string
-): Promise<TransactionRow> {
-  await requireTxRead(userId, businessId);
-  const supabase = createServerClient();
-  const { data, error } = await supabase
-    .from("transactions")
-    .select(COLUMNS)
-    .eq("id", transactionId)
-    .eq("business_id", businessId)
-    .maybeSingle();
-  if (error) throw new ApiError("INTERNAL", "Gagal memuat transaksi");
-  if (!data) throw new ApiError("NOT_FOUND", "Transaksi tidak ditemukan");
-  return mapRow(data);
 }
 
 async function assertOwned(

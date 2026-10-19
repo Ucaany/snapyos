@@ -1,0 +1,32 @@
+# SnapyOS: jadwal cron VPS (pengganti Vercel Cron).
+#
+# Pasang:
+#   sudo cp deploy/cron/snapyos.cron /etc/cron.d/snapyos
+#   sudo chmod 0644 /etc/cron.d/snapyos
+#   sudo chown root:root /etc/cron.d/snapyos
+#
+# Jadwal sama dengan vercel.json. Vercel Cron berjalan di UTC; set zona sistem
+# VPS ke UTC agar waktunya identik:
+#   sudo timedatectl set-timezone UTC
+#
+# Format /etc/cron.d: ada kolom USER setelah jadwal.
+# Secret dibaca dari file (0600, root), bukan ditulis di baris perintah.
+
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+CRON_SECRET_FILE=/var/www/snapyos/.cron-secret
+
+# Retention: hapus media kedaluwarsa. 20:00 UTC = 03:00 WIB.
+0 20 * * * root . "$CRON_SECRET_FILE" 2>/dev/null; curl -fsS -m 300 -H "Authorization: Bearer $CRON_SECRET" http://127.0.0.1:3000/api/cron/retention > /dev/null 2>&1
+
+# Siklus langganan: aktif → kedaluwarsa → grace. 00:00 UTC = 07:00 WIB.
+0 0 * * * root . "$CRON_SECRET_FILE" 2>/dev/null; curl -fsS -m 300 -H "Authorization: Bearer $CRON_SECRET" http://127.0.0.1:3000/api/cron/subscription-lifecycle > /dev/null 2>&1
+
+# Pengingat kedaluwarsa langganan (H-3/H-1). 06:00 UTC = 13:00 WIB.
+0 6 * * * root . "$CRON_SECRET_FILE" 2>/dev/null; curl -fsS -m 300 -H "Authorization: Bearer $CRON_SECRET" http://127.0.0.1:3000/api/cron/subscription-expiry-reminder > /dev/null 2>&1
+
+# Pemulihan pembayaran menggantung. 21:00 UTC = 04:00 WIB.
+0 21 * * * root . "$CRON_SECRET_FILE" 2>/dev/null; curl -fsS -m 300 -H "Authorization: Bearer $CRON_SECRET" http://127.0.0.1:3000/api/cron/payment-recovery > /dev/null 2>&1
+
+# Pembersihan perangkat kiosk basi. 03:00 UTC = 10:00 WIB.
+0 3 * * * root . "$CRON_SECRET_FILE" 2>/dev/null; curl -fsS -m 300 -H "Authorization: Bearer $CRON_SECRET" http://127.0.0.1:3000/api/cron/device-cleanup > /dev/null 2>&1

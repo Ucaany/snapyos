@@ -1,12 +1,10 @@
 /**
- * Rate limiter fixed-window dengan backend opsional shared (Upstash Redis REST).
+ * Rate limiter fixed-window in-memory.
  * Kebijakan: docs/08 §8.18 + docs/09 §10 (login 5/menit/IP, lockout per email).
  *
- * - Bila `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` di-set → pakai
- *   Upstash (counter shared lintas instance; aman untuk scale-out).
- * - Bila tidak → fallback in-memory hanya untuk dev/test; production fail-closed.
- * - Non-production: bila Upstash error → fail-open (jangan blokir dev).
- *   Production: bila Upstash error → fail-closed (tolak; jangan bocorkan limit).
+ * Counter hidup di memori proses. Di deployment multi-instance (Vercel), tiap
+ * instance punya hitungan sendiri, jadi limit efektif = limit × jumlah instance
+ * yang sedang melayani. Untuk satu proses (VPS systemd) hitungannya utuh.
  */
 
 import { createHash } from "node:crypto";
@@ -14,13 +12,6 @@ import { createHash } from "node:crypto";
 type Bucket = { count: number; resetAt: number };
 
 const buckets = new Map<string, Bucket>();
-
-const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL?.trim();
-const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
-const hasUpstash = Boolean(UPSTASH_URL && UPSTASH_TOKEN);
-
-const productionWithoutSharedStore =
-  process.env.NODE_ENV === "production" && !hasUpstash;
 
 function sweep(now: number) {
   // TTL berbasis waktu: sapu tiap 60 detik ATAU saat size besar, bukan hanya size.
@@ -54,76 +45,19 @@ function inMemoryRateLimit(
 }
 
 /**
- * Bump counter fixed-window via Upstash secara ATOMIK (satu pipeline):
- *   INCR key            → nilai count baru (dipakai apa adanya)
- *   EXPIRE key ttl NX   → set TTL HANYA bila belum ada (fixed window utuh)
- * Return {count, ttlSec}. Tidak ada GET-then-SET (race-free).
- */
-async function upstashIncr(key: string, windowMs: number): Promise<{ count: number; ttlSec: number }> {
-  const ttlSec = Math.max(1, Math.ceil(windowMs / 1000));
-  const res = await fetch(`${UPSTASH_URL}/pipeline`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${UPSTASH_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify([
-      ["INCR", key],
-      ["EXPIRE", key, ttlSec, "NX"],
-    ]),
-    cache: "no-store",
-  });
-  if (!res.ok) throw new Error(`Upstash pipeline ${res.status}`);
-  const results = (await res.json()) as { error?: string; result?: number }[];
-  const incr = results[0];
-  if (!incr || incr.error || typeof incr.result !== "number") {
-    throw new Error(`Upstash INCR gagal: ${incr?.error ?? "hasil tidak valid"}`);
-  }
-  return { count: incr.result, ttlSec };
-}
-
-/**
- * Rate limit fixed-window. Async agar backend shared (Upstash) bisa dipakai.
- * Interface (key, limit, windowMs) dipertahankan dari versi in-memory.
+ * Rate limit fixed-window. Async agar call-site tidak perlu berubah bila
+ * backend suatu saat dipindah keluar proses.
  */
 export async function rateLimit(
   key: string,
   limit: number,
   windowMs: number
 ): Promise<{ ok: boolean; retryAfterSec: number }> {
-  if (!hasUpstash) {
-    if (productionWithoutSharedStore) {
-      return { ok: false, retryAfterSec: Math.max(1, Math.ceil(windowMs / 1000)) };
-    }
-    return inMemoryRateLimit(key, limit, windowMs);
-  }
-  try {
-    const { count, ttlSec } = await upstashIncr(key, windowMs);
-    if (count > limit) return { ok: false, retryAfterSec: ttlSec };
-    return { ok: true, retryAfterSec: 0 };
-  } catch {
-    // Upstash error: dev/test fail-open (jangan blokir), production fail-closed.
-    if (process.env.NODE_ENV === "production") {
-      return { ok: false, retryAfterSec: Math.max(1, Math.ceil(windowMs / 1000)) };
-    }
-    return inMemoryRateLimit(key, limit, windowMs);
-  }
+  return inMemoryRateLimit(key, limit, windowMs);
 }
 
 /** Increment hitungan gagal (lockout per email — docs/09 §10). */
 export async function registerFailure(key: string, windowMs: number): Promise<number> {
-  if (productionWithoutSharedStore) return Number.MAX_SAFE_INTEGER;
-  if (hasUpstash) {
-    try {
-      const { count } = await upstashIncr(key, windowMs);
-      return count;
-    } catch {
-      // Production: fail-closed — kembalikan nilai di atas ambang lockout
-      // (pemanggil menolak login). Jangan pecah counter ke per-instance memory.
-      if (process.env.NODE_ENV === "production") return Number.MAX_SAFE_INTEGER;
-      // Non-production: lanjut ke in-memory di bawah (jangan blokir dev).
-    }
-  }
   const now = Date.now();
   const bucket = buckets.get(key);
   if (!bucket || bucket.resetAt <= now) {
@@ -137,26 +71,9 @@ export async function registerFailure(key: string, windowMs: number): Promise<nu
 /**
  * Baca hitungan gagal TANPA menambahnya, untuk menegakkan lockout sebagai
  * gate sebelum verifikasi (percobaan ke-N tidak menyentuh DB/argon2 sama
- * sekali). Production tanpa shared store fail-closed (selaras registerFailure):
- * kembalikan nilai di atas ambang lockout supaya login ditolak, bukan dibiarkan.
+ * sekali).
  */
 export async function failureCount(key: string): Promise<number> {
-  if (productionWithoutSharedStore) return Number.MAX_SAFE_INTEGER;
-  if (hasUpstash) {
-    try {
-      const res = await fetch(`${UPSTASH_URL}/get/${encodeURIComponent(key)}`, {
-        headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` },
-        cache: "no-store",
-      });
-      if (!res.ok) throw new Error(`Upstash GET ${res.status}`);
-      const body = (await res.json()) as { result?: string | number | null };
-      const n = Number(body.result ?? 0);
-      return Number.isFinite(n) ? n : 0;
-    } catch {
-      if (process.env.NODE_ENV === "production") return Number.MAX_SAFE_INTEGER;
-      // Non-production: jatuh ke in-memory di bawah.
-    }
-  }
   const bucket = buckets.get(key);
   if (!bucket || bucket.resetAt <= Date.now()) return 0;
   return bucket.count;
@@ -187,14 +104,4 @@ export async function rateLimitByDevice(
 /** Hapus bucket (reset hitungan setelah sukses). */
 export async function resetLimit(key: string): Promise<void> {
   buckets.delete(key);
-  if (hasUpstash) {
-    try {
-      await fetch(`${UPSTASH_URL}/del/${encodeURIComponent(key)}`, {
-        headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` },
-        cache: "no-store",
-      });
-    } catch {
-      /* best-effort: bucket in-memory tetap dihapus */
-    }
-  }
 }

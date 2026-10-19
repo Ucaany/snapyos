@@ -3,6 +3,12 @@ import {
   type KioskOverlay,
   type PhotoEdit,
 } from "@/lib/kiosk-types";
+import {
+  applyChromaKey,
+  DEFAULT_CHROMA_KEY,
+  sampleCornerColor,
+  type ChromaKeyOptions,
+} from "@/lib/chroma-key";
 function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -14,6 +20,40 @@ function loadImage(url: string): Promise<HTMLImageElement> {
 
 function normRot(deg: number): number {
   return ((Math.round(deg) % 360) + 360) % 360;
+}
+
+/**
+ * Salinan gambar dengan latar kunci dibuat transparan. Warna kunci diambil
+ * dari piksel sudut foto (layar hijau bisa berbeda karena pencahayaan booth),
+ * lalu diterapkan ke salinan offscreen — gambar asli tidak dimutasi agar
+ * preview dan hasil akhir konsisten.
+ */
+function chromaPreparedImage(
+  img: HTMLImageElement,
+  options: boolean | ChromaKeyOptions
+): CanvasImageSource {
+  const w = img.naturalWidth || 1;
+  const h = img.naturalHeight || 1;
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return img;
+  ctx.drawImage(img, 0, 0, w, h);
+  let data: ImageData;
+  try {
+    data = ctx.getImageData(0, 0, w, h);
+  } catch {
+    // Canvas tainted (cross-origin tanpa CORS) — jangan gagalkan render.
+    return img;
+  }
+  const config: ChromaKeyOptions =
+    options === true
+      ? { ...DEFAULT_CHROMA_KEY, key: sampleCornerColor(data.data, w, h) }
+      : { ...DEFAULT_CHROMA_KEY, ...options };
+  if (applyChromaKey(data.data, config) === 0) return img;
+  ctx.putImageData(data, 0, 0);
+  return canvas;
 }
 
 function drawOverlay(ctx: CanvasRenderingContext2D, o: KioskOverlay, w: number, h: number) {
@@ -42,8 +82,11 @@ export function drawPhoto(
   canvas: HTMLCanvasElement,
   img: HTMLImageElement,
   edit: PhotoEdit,
-  maxW = 640
+  maxW = 640,
+  /** Aktif → warna latar (diambil dari sudut foto) dibuat transparan. */
+  chroma: boolean | ChromaKeyOptions = false
 ): void {
+  const source = chroma ? chromaPreparedImage(img, chroma) : img;
   const rot = normRot(edit.adjust.rotation);
   const swap = rot === 90 || rot === 270;
   const srcW = img.naturalWidth || 1;
@@ -75,7 +118,7 @@ export function drawPhoto(
   ctx.scale(edit.adjust.zoom, edit.adjust.zoom);
   ctx.scale(scale, scale);
   ctx.translate(-srcW / 2 + edit.adjust.panX, -srcH / 2 + edit.adjust.panY);
-  ctx.drawImage(img, 0, 0, srcW, srcH);
+  ctx.drawImage(source, 0, 0, srcW, srcH);
   ctx.restore();
 
   ctx.filter = "none";
@@ -134,13 +177,14 @@ export function drawFrameOverlay(
 export async function renderFramedPhotoBlob(
   blob: Blob,
   edit: PhotoEdit,
-  frame: HTMLImageElement | null
+  frame: HTMLImageElement | null,
+  chroma: boolean | ChromaKeyOptions = false
 ): Promise<Blob> {
   const url = URL.createObjectURL(blob);
   try {
     const img = await loadImage(url);
     const canvas = document.createElement("canvas");
-    drawPhoto(canvas, img, edit, Number.POSITIVE_INFINITY);
+    drawPhoto(canvas, img, edit, Number.POSITIVE_INFINITY, chroma);
     drawFrameOverlay(canvas, frame);
     return await canvasToBlob(canvas);
   } finally {

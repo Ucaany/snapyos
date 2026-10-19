@@ -2,38 +2,69 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getDeviceProfile } from "@/lib/device-profile";
+import { isBlockedShortcut, isExitShortcut } from "@/lib/kiosk-lock";
 
 /**
  * Kiosk fullscreen lock — layar terkunci penuh setelah setup. Keluar hanya via
  * PIN petugas (diverifikasi server, diatur owner di dashboard).
  *
  * - Desktop: Ctrl+Alt+X tahan 2 detik → minta PIN.
- * - Tablet/sentuh: tap-tahan 3 detik di overlay re-engage → minta PIN.
+ * - Tablet/sentuh: tap-tahan 3 detik di tombol petugas → minta PIN.
  * - Fullscreen: Escape/F11 diblokir; auto re-engage setiap kali keluar
  *   fullscreen (gestur pertama memicu requestFullscreen ulang).
  * - Orientasi: dikunci per booth (`screen_orientation`) via Screen Orientation
  *   API bila tersedia (Chrome Android/desktop); iOS PWA mengikuti manifest.
  * - iOS (iPad/iPhone): `requestFullscreen` tidak didukung — lock mengandalkan
  *   PWA `standalone` + blokir gestur (tanpa fullscreen). Lihat device-profile.
+ * - `enabled` = `camera_settings.fullscreen !== false`: bila owner mematikan
+ *   fullscreen, hook tetap mengunci orientasi dan shortcut, tetapi tidak
+ *   memaksa fullscreen atau memasang overlay re-engage.
  *
  * Keluar TIDAK me-reset state — sesi berjalan tetap utuh (tidak reload).
  */
 
 const EXIT_HOLD_MS = 2000;
 const TOUCH_EXIT_HOLD_MS = 3000;
+/** Flag sesi: petugas sudah keluar — overlay re-engage tidak boleh muncul lagi. */
+const UNLOCKED_SESSION_KEY = "snapyos_kiosk_unlocked";
+
+function alreadyUnlocked(): boolean {
+  try {
+    return sessionStorage.getItem(UNLOCKED_SESSION_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markUnlocked(): void {
+  try {
+    sessionStorage.setItem(UNLOCKED_SESSION_KEY, "1");
+  } catch {
+    /* private mode / storage penuh: state memori tetap jadi sumber kebenaran */
+  }
+}
 
 export function useKioskLock(
   active: boolean,
   orientation: "landscape" | "portrait" | undefined,
-  onExitRequest?: () => void
+  onExitRequest?: () => void,
+  /** `camera_settings.fullscreen`; false = jangan paksa fullscreen. */
+  fullscreenEnabled = true
 ) {
   const [reengage, setReengage] = useState(false);
   const unlockedRef = useRef(false);
   const holdStartRef = useRef<number | null>(null);
   const holdTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Guard: requestFullscreen masih menunggu jawaban → fullscreenchange yang
+  // datang di tengah jalan bukan berarti petugas keluar kiosk.
+  const requestingRef = useRef(false);
 
   const requestFullscreen = useCallback(() => {
     if (unlockedRef.current) return;
+    if (!fullscreenEnabled) {
+      setReengage(false);
+      return;
+    }
     // iOS/iPadOS tidak dukung fullscreen — tidak perlu re-engage.
     if (!getDeviceProfile().supportsFullscreen) {
       setReengage(false);
@@ -41,15 +72,20 @@ export function useKioskLock(
     }
     const el = document.documentElement;
     if (el.requestFullscreen) {
+      requestingRef.current = true;
       el.requestFullscreen().then(
-        () => setReengage(false),
         () => {
+          requestingRef.current = false;
+          setReengage(false);
+        },
+        () => {
+          requestingRef.current = false;
           // Tanpa user gesture — tunggu interaksi pertama untuk retry.
           setReengage(true);
         }
       );
     }
-  }, []);
+  }, [fullscreenEnabled]);
 
   const clearHold = useCallback(() => {
     holdStartRef.current = null;
@@ -72,6 +108,7 @@ export function useKioskLock(
   const unlock = useCallback(() => {
     clearHold();
     unlockedRef.current = true;
+    markUnlocked();
     setReengage(false);
     if (document.fullscreenElement) void document.exitFullscreen();
     void lockOrientation("any").catch(() => undefined);
@@ -79,9 +116,11 @@ export function useKioskLock(
 
   // Aktifkan lock + pasang semua penjaga.
   useEffect(() => {
-    if (!active || unlockedRef.current) return;
+    if (!active || unlockedRef.current || alreadyUnlocked()) return;
 
-    requestFullscreen();
+    // Defer: requestFullscreen bisa men-set state (reengage) — jangan sinkron
+    // di body effect (memicu cascading render).
+    if (fullscreenEnabled) void Promise.resolve().then(() => requestFullscreen());
 
     // Orientasi layar per booth (landscape/portrait). Default landscape.
     const target =
@@ -98,19 +137,9 @@ export function useKioskLock(
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (unlockedRef.current) return;
-      // Blokir keluar fullscreen standar.
-      if (e.key === "Escape" || e.key === "F11") {
-        e.preventDefault();
-        return;
-      }
-      // Blokir Alt+Tab / Ctrl+W / Ctrl+N / Ctrl+T (keluar kiosk tanpa PIN).
-      if (e.altKey || (e.ctrlKey && ["w", "n", "t", "r"].includes(e.key.toLowerCase()))) {
-        e.preventDefault();
-        return;
-      }
-      // Shortcut petugas: Ctrl+Alt+X 2 detik → minta PIN keluar (bukan unlock
-      // langsung — PIN diverifikasi server sebelum kiosk benar-benar keluar).
-      if (e.ctrlKey && e.altKey && (e.key === "x" || e.key === "X")) {
+      // Shortcut keluar diperiksa SEBELUM blokir — Ctrl+Alt+X juga cocok
+      // dengan aturan "altKey" dan dulu tertelan oleh cabang blokir.
+      if (isExitShortcut(e)) {
         e.preventDefault();
         if (holdStartRef.current === null) {
           holdStartRef.current = Date.now();
@@ -123,15 +152,18 @@ export function useKioskLock(
         }
         return;
       }
-      clearHold();
+      if (isBlockedShortcut(e)) {
+        e.preventDefault();
+        clearHold();
+      }
     };
 
     const onKeyUp = (e: KeyboardEvent) => {
-      if (e.key === "x" || e.key === "X") clearHold();
+      if (e.key.toLowerCase() === "x") clearHold();
     };
 
     const onFullscreenChange = () => {
-      if (unlockedRef.current) return;
+      if (unlockedRef.current || requestingRef.current) return;
       // Keluar fullscreen (di luar jalur unlock) → tandai re-engage.
       setReengage(!document.fullscreenElement);
     };
@@ -151,7 +183,12 @@ export function useKioskLock(
     // Gestur pertama di mana pun mencoba fullscreen ulang bila belum aktif
     // (kecuali iOS yang tidak dukung fullscreen).
     const onPointerDown = () => {
-      if (!unlockedRef.current && !document.fullscreenElement && getDeviceProfile().supportsFullscreen) {
+      if (
+        !unlockedRef.current &&
+        !requestingRef.current &&
+        !document.fullscreenElement &&
+        getDeviceProfile().supportsFullscreen
+      ) {
         requestFullscreen();
       }
     };
@@ -174,7 +211,7 @@ export function useKioskLock(
       document.removeEventListener("contextmenu", onContextMenu);
       document.removeEventListener("pointerdown", onPointerDown);
     };
-  }, [active, orientation, clearHold, requestFullscreen, lockOrientation, onExitRequest]);
+  }, [active, orientation, clearHold, requestFullscreen, lockOrientation, onExitRequest, fullscreenEnabled]);
 
   return { reengage, requestFullscreen, unlock };
 }

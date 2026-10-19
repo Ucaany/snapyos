@@ -14,7 +14,8 @@ import { captureFrame } from "@/lib/camera-capture";
 import { useObjectUrl } from "@/components/kiosk/use-object-url";
 import { CAMERA_ERRORS, cameraErrorKind, resolutionLabel, resolutionWarning } from "@/lib/camera-errors";
 import type { CameraSettings } from "@/lib/kiosk-types";
-import { setPhotoboxMirrorAction } from "@/server/booth-actions";
+import { setPhotoboxMirrorAction, setPhotoboxPreferredCameraAction } from "@/server/booth-actions";
+import { normalizeRotation, normalizeZoom } from "@/lib/camera-capture";
 
 type Props = {
   photoboxId: string;
@@ -62,6 +63,13 @@ export function CameraTest({ photoboxId, photoboxName, cameraSettings, canWrite 
   const [resW, setResW] = useState(0);
 
   const [mirror, setMirror] = useState<boolean>(cameraSettings.mirror_preview ?? false);
+  const calibrationRotation = normalizeRotation(cameraSettings.rotation_degrees);
+  const calibrationZoom = normalizeZoom(cameraSettings.zoom);
+  // Daftar kamera + pilihan tersimpan (preferred_device_id).
+  const [devices, setDevices] = useState<{ deviceId: string; label: string }[]>([]);
+  const [preferredId, setPreferredId] = useState<string>(cameraSettings.preferred_device_id ?? "");
+  const [savingDevice, setSavingDevice] = useState(false);
+  const [deviceError, setDeviceError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -143,7 +151,13 @@ export function CameraTest({ photoboxId, photoboxName, cameraSettings, canWrite 
   async function handleCapture() {
     if (!videoRef.current) return;
     try {
-      const shot = await captureFrame(videoRef.current, cameraSettings.jpeg_quality || 0.92, mirror);
+      const shot = await captureFrame(
+        videoRef.current,
+        cameraSettings.jpeg_quality || 0.92,
+        mirror,
+        normalizeRotation(cameraSettings.rotation_degrees),
+        normalizeZoom(cameraSettings.zoom)
+      );
       setCapture(shot);
       setFlash(true);
       setTimeout(() => setFlash(false), 180);
@@ -159,6 +173,36 @@ export function CameraTest({ photoboxId, photoboxName, cameraSettings, canWrite 
     setCapture(null);
     setStage("preview");
     void openStream();
+  }
+
+  /** Daftar kamera hanya berisi label setelah izin diberikan — enumerate
+   *  setelah stream hidup, bukan sebelum. */
+  useEffect(() => {
+    if (resW <= 0) return;
+    let cancelled = false;
+    void navigator.mediaDevices
+      .enumerateDevices()
+      .then((list) => {
+        if (cancelled) return;
+        const cams = list
+          .filter((d) => d.kind === "videoinput")
+          .map((d, i) => ({ deviceId: d.deviceId, label: d.label || `Kamera ${i + 1}` }));
+        setDevices(cams);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [resW]);
+
+  async function handleSaveDevice(deviceId: string) {
+    if (savingDevice) return;
+    setDeviceError(null);
+    setSavingDevice(true);
+    setPreferredId(deviceId);
+    const res = await setPhotoboxPreferredCameraAction(photoboxId, deviceId || null);
+    setSavingDevice(false);
+    if (!res.ok) setDeviceError(res.error ?? "Gagal menyimpan kamera booth.");
   }
 
   async function handleMirror(next: boolean) {
@@ -192,7 +236,16 @@ export function CameraTest({ photoboxId, photoboxName, cameraSettings, canWrite 
             void e.currentTarget.play().catch(() => undefined);
           }}
           className="absolute inset-0 z-0 h-full w-full object-contain"
-          style={mirror ? { transform: "scaleX(-1)" } : undefined}
+          style={{
+            transform:
+              [
+                mirror ? "scaleX(-1)" : "",
+                calibrationRotation ? `rotate(${calibrationRotation}deg)` : "",
+                calibrationZoom !== 1 ? `scale(${calibrationZoom})` : "",
+              ]
+                .filter(Boolean)
+                .join(" ") || undefined,
+          }}
         />
 
         {stage === "review" && capture && captureUrl && (
@@ -283,6 +336,50 @@ export function CameraTest({ photoboxId, photoboxName, cameraSettings, canWrite 
           )}
           <p className="font-mono text-[10px] leading-relaxed text-muted-foreground">
             Tampilan mirror preview di kiosk. Disimpan otomatis — kiosk ikut pengaturan ini.
+          </p>
+        </div>
+
+        {/* Pilihan kamera booth — persist ke preferred_device_id */}
+        <div className="flex flex-col gap-2 border-2 border-ink bg-surface p-4">
+          <p className="font-mono text-xs uppercase tracking-[0.1em]">Kamera booth</p>
+          {devices.length === 0 ? (
+            <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.05em] text-muted-foreground">
+              Daftar kamera muncul setelah izin kamera diberikan.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <label htmlFor="camera-preferred" className="sr-only">
+                Kamera yang dipakai kiosk
+              </label>
+              <select
+                id="camera-preferred"
+                value={preferredId}
+                onChange={(e) => void handleSaveDevice(e.target.value)}
+                disabled={!canWrite || savingDevice}
+                className="h-11 w-full rounded-none border-2 border-ink bg-bg px-3 font-mono text-xs outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+              >
+                <option value="">Otomatis (kamera default)</option>
+                {devices.map((d) => (
+                  <option key={d.deviceId} value={d.deviceId}>
+                    {d.label}
+                  </option>
+                ))}
+              </select>
+              {savingDevice && (
+                <p role="status" className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+                  Menyimpan…
+                </p>
+              )}
+            </div>
+          )}
+          {deviceError && (
+            <p role="alert" className="font-mono text-[10px] uppercase tracking-[0.05em] text-destructive">
+              {deviceError}
+            </p>
+          )}
+          <p className="font-mono text-[10px] leading-relaxed text-muted-foreground">
+            Disimpan ke booth dan dipakai kiosk saat sesi foto dimulai. Tanpa pilihan,
+            kiosk memakai kamera default perangkat.
           </p>
         </div>
 

@@ -1,6 +1,6 @@
 "use client"
 import { ArrowLeft, Banknote, QrCode, Tag } from "lucide-react"
-import type { KioskPaymentMethod } from "@/lib/kiosk-types"
+import type { KioskPaymentMethod, KioskVisualStyle } from "@/lib/kiosk-types"
 const icon = { qris: QrCode, va: Banknote, redirect: QrCode, voucher: Tag, cash: Banknote }
 export function PaymentMethodPicker({
   methods,
@@ -9,6 +9,7 @@ export function PaymentMethodPicker({
   error,
   onSelect,
   onBack,
+  kioskStyle,
 }: {
   methods: KioskPaymentMethod[]
   disabled?: boolean
@@ -17,10 +18,14 @@ export function PaymentMethodPicker({
   error?: string | null
   onSelect(method: KioskPaymentMethod): void
   onBack?(): void
+  /** Palet kiosk: permukaan kartu, aksen CTA, radius tombol. */
+  kioskStyle?: KioskVisualStyle
 }) {
+  const ks = kioskStyle
+  const radius = ks?.radius ?? 0
   return (
     <section className="mx-auto flex w-full max-w-[1000px] flex-1 flex-col justify-center gap-4">
-      <div className="border-2 border-ink bg-surface p-4 shadow-[4px_4px_0_0_#111111]">
+      <div className="border-2 border-ink bg-surface p-4 shadow-[4px_4px_0_0_#111111]" style={{ borderRadius: radius }}>
         <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-ink/70">
           [ PILIH PEMBAYARAN ]
         </p>
@@ -62,6 +67,11 @@ export function PaymentMethodPicker({
               disabled={disabled}
               onClick={() => onSelect(method)}
                className={`flex min-h-32 flex-col items-start justify-between border-2 border-ink p-4 text-left shadow-[4px_4px_0_0_#111111] transition-transform active:translate-y-[2px] disabled:opacity-50 disabled:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${index === 0 ? "bg-accent" : "bg-surface"}`}
+              style={
+                index === 0 && ks
+                  ? { borderRadius: radius, backgroundColor: ks.accent, color: ks.accentText }
+                  : { borderRadius: radius }
+              }
             >
               <Icon className="size-7" />
               <span>

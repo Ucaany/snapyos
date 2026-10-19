@@ -37,13 +37,14 @@ export const metadata: Metadata = {
     icon: [
       { url: "/snapyos-icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/snapyos-icon-512.png", sizes: "512x512", type: "image/png" },
-      { url: "/snapyos-icon.svg", type: "image/svg+xml" },
     ],
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
 };
 
 export const viewport: Viewport = {
+  // Warna accent token (src/styles/tokens.css), bukan warna logo — chrome PWA
+  // mengikuti CTA kuning di seluruh UI.
   themeColor: "#ffd400",
   viewportFit: "cover",
   width: "device-width",

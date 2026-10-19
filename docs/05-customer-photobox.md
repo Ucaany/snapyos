@@ -172,7 +172,7 @@ Konfigurasi kiosk (`branding.kiosk`) mencakup:
 
 > v2: tahap ini terjadi **setelah pembayaran sukses (paid)** — bagian dari sesi foto yang sudah dibayar.
 
-**UI:** grid preview template — thumbnail = **preview frame dengan slot terisi foto sample** (render engine composite, `15-template-builder.md`). Hanya template yang di-assign ke package **dan `slot_count == package.photo_count`** yang tampil.
+**UI:** grid preview template — thumbnail = **preview frame dengan slot terisi foto sample** (render engine composite, `15-template-builder.md`). Semua template aktif tampil untuk paket mana pun. Jumlah capture tetap `package.photo_count`; bila template punya slot lebih banyak, slot sisa diisi foto secara bergiliran (`src/lib/template-fit.ts`).
 
 **Data:** `templates` (+ `layout` slot) via `package_templates` join.
 

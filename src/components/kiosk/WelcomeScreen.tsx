@@ -1,7 +1,7 @@
 "use client";
 
 import type { BrandingConfig, KioskBrandingConfig } from "@/lib/kiosk-types";
-import { kioskVisualStyle } from "@/lib/kiosk-types";
+import { kioskThemeVars, kioskVisualStyle } from "@/lib/kiosk-types";
 import { defaultBrandColors } from "@/lib/brand-defaults";
 import { KioskVideoBackground } from "@/components/kiosk/KioskVideoBackground";
 
@@ -109,7 +109,7 @@ export function WelcomeScreen({ business, branding, onStart }: Props) {
       </div>
     ) : (
       <div
-        className={`relative z-10 mx-auto grid w-full max-w-[1400px] flex-1 grid-cols-1 items-center gap-8 py-16 md:grid-cols-2 md:gap-12 md:py-20 lg:gap-16 ${
+        className={`relative z-10 mx-auto grid w-full max-w-[1400px] flex-1 grid-cols-1 items-center gap-8 py-10 md:grid-cols-2 md:gap-12 md:py-14 lg:gap-16 ${
           layout === "split-right" ? "md:[&>*:first-child]:order-2" : ""
         }`}
         style={padStyle}
@@ -121,8 +121,8 @@ export function WelcomeScreen({ business, branding, onStart }: Props) {
 
   return (
     <div
-      className="relative flex min-h-[100dvh] flex-1 overflow-hidden"
-      style={{ backgroundColor: bg, color: text }}
+      className="relative flex min-h-0 flex-1 overflow-y-auto"
+      style={{ ...kioskThemeVars(vs), backgroundColor: bg, color: text }}
     >
       {/* Video background attract loop — muted/autoplay/loop, overlay warna
           supaya teks tetap kontras; fallback = warna background. */}

@@ -5,7 +5,8 @@ import { PAST_DUE_GRACE_DAYS } from "@/lib/subscription-math";
 /**
  * Cron subscription lifecycle — docs/02 §2.4.
  * Transisi status subscription yang sudah kedaluwarsa secara waktu.
- * Dijalankan setiap jam (vercel.json cron). Autentikasi: Bearer CRON_SECRET.
+ * Dijalankan harian `0 0 * * *` UTC (vercel.json cron; lihat deploy/cron/snapyos.cron).
+ * Autentikasi: Bearer CRON_SECRET.
  *
  * Transisi:
  *   trial   + trial_ends_at < now                           → expired

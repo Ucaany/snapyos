@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Camera, Printer } from "lucide-react";
+import { Camera } from "lucide-react";
+import { PrintTestPanel } from "@/components/print/PrintTestPanel";
+import { resolvePrintMode } from "@/lib/print/print-mode";
+import type { PrintSettings } from "@/lib/kiosk-types";
 import { Button } from "@/components/ui/button";
 import { CAMERA_ERRORS, cameraErrorKind, resolutionLabel, resolutionWarning } from "@/lib/camera-errors";
 import { getDeviceProfile } from "@/lib/device-profile";
@@ -12,12 +15,14 @@ type Props = {
   onDone: () => void;
   /** Token ditolak server (FORBIDDEN) saat report — paksa aktivasi ulang. */
   onAuthError?: () => void;
+  /** Setelan cetak booth: menentukan mode uji (dialog OS vs thermal Bluetooth). */
+  printSettings?: PrintSettings;
 };
 
 type Stage = "camera" | "print";
 
 /** Setup Wizard sekali — docs/05 §5.0.1 (permission kamera + detection + print test). */
-export function SetupWizard({ deviceToken, onDone, onAuthError }: Props) {
+export function SetupWizard({ deviceToken, onDone, onAuthError, printSettings = {} }: Props) {
   const [stage, setStage] = useState<Stage>("camera");
 
   // camera state
@@ -31,6 +36,10 @@ export function SetupWizard({ deviceToken, onDone, onAuthError }: Props) {
   const [resWarning, setResWarning] = useState<string | null>(null);
   const [cameraError, setCameraError] = useState<{ message: string; action: string } | null>(null);
   const [supported, setSupported] = useState(true);
+  // Kamera siap = stream hidup DAN frame pertama sudah tampil. Tanpa flag ini
+  // tombol "Lanjut" bisa diklik sebelum `<video>` menerima data (race saat
+  // wizard dibuka), lalu wizard terlihat "gagal" padahal kamera normal.
+  const [cameraLive, setCameraLive] = useState(false);
 
   // print state
   const [printConfirmed, setPrintConfirmed] = useState(false);
@@ -87,6 +96,7 @@ export function SetupWizard({ deviceToken, onDone, onAuthError }: Props) {
   async function openStream(deviceId?: string) {
     const generation = ++streamGeneration.current;
     setCameraError(null);
+    setCameraLive(false);
     stopStream();
     if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
       setSupported(false);
@@ -114,6 +124,8 @@ export function SetupWizard({ deviceToken, onDone, onAuthError }: Props) {
         setResLabel(resolutionLabel(width));
         setResWidth(width);
         setResWarning(resolutionWarning(width));
+        // Tandai siap setelah track hidup; frame pertama bisa menyusul.
+        setCameraLive(track.readyState === "live");
       }
       const list = await navigator.mediaDevices.enumerateDevices();
       const cams = list.filter((d) => d.kind === "videoinput");
@@ -141,8 +153,14 @@ export function SetupWizard({ deviceToken, onDone, onAuthError }: Props) {
   }, []);
 
   async function onCameraNext() {
-    if (!supported || cameraError || !streamRef.current?.getVideoTracks().some((track) => track.readyState === "live")) {
-      setCameraError({ message: "Kamera belum siap. Hubungkan kamera lalu coba lagi.", action: "COBA LAGI" });
+    const live =
+      cameraLive ||
+      Boolean(streamRef.current?.getVideoTracks().some((track) => track.readyState === "live"));
+    if (!supported || cameraError || !live) {
+      // Belum hidup: coba buka ulang, bukan menampilkan error permanen.
+      // Error sungguhan (izin ditolak, kamera dipakai app lain) sudah tampil
+      // dari `openStream` dengan pesan dan aksi yang tepat.
+      if (!cameraError) void openStream(selectedId || undefined);
       return;
     }
     await report({
@@ -165,7 +183,7 @@ export function SetupWizard({ deviceToken, onDone, onAuthError }: Props) {
   }
 
   return (
-    <div className="flex min-h-[100dvh] flex-col items-center gap-8 bg-bg px-6 py-10">
+    <div className="flex min-h-0 flex-1 flex-col items-center gap-8 overflow-y-auto bg-bg px-6 py-10">
       <header className="flex flex-col items-center gap-2 text-center">
         <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground">
           {`/// SETUP PERANGKAT: ${stage === "camera" ? "KAMERA" : "PRINTER"} (SEKALI SAJA)`}
@@ -246,8 +264,13 @@ export function SetupWizard({ deviceToken, onDone, onAuthError }: Props) {
                 {resWarning && <span className="text-muted-foreground">· {resWarning}</span>}
               </div>
 
-              <Button size="lg" onClick={() => void onCameraNext()} disabled={Boolean(cameraError)} className="bg-accent-2">
-                Lanjut ke uji cetak
+              <Button
+                size="lg"
+                onClick={() => void onCameraNext()}
+                disabled={Boolean(cameraError) || !cameraLive}
+                className="bg-accent-2"
+              >
+                {cameraLive ? "Lanjut ke uji cetak" : "Menyiapkan kamera…"}
               </Button>
             </>
           )}
@@ -268,19 +291,13 @@ export function SetupWizard({ deviceToken, onDone, onAuthError }: Props) {
             </div>
           ) : (
             <>
-              <div className="flex flex-col items-start gap-4 border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111]">
-                <Printer className="size-8" aria-hidden />
-                <p className="max-w-[46ch] text-sm leading-relaxed text-muted-foreground">
-                  Printer foto default OS harus sudah terpasang di perangkat kiosk
-                  (ukuran kertas ikut setting owner: 4x6/A6). Cetak halaman uji,
-                  lalu konfirmasi hasil fisik. Di tablet Android/iPad dialog print
-                  sistem selalu muncul, pilih printer foto di dialog. Cetak senyap
-                  tanpa dialog hanya di Chrome desktop flag --kiosk-printing.
-                </p>
-                <Button variant="outline" onClick={() => window.print()}>
-                  Cetak halaman uji
-                </Button>
-              </div>
+              <PrintTestPanel
+                mode={resolvePrintMode(printSettings)}
+                paperWidthMm={printSettings.bluetooth_paper_width_mm === 58 ? 58 : 80}
+                sample={{ title: "UJI CETAK", lines: ["SETUP BOOTH", "SNAP YOS"] }}
+                canReport={false}
+                onReport={() => undefined}
+              />
 
               <div className="flex flex-col gap-3">
                 <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">

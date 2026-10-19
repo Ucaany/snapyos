@@ -73,7 +73,7 @@ Smoke produksi (tenant pilot, checklist tertulis):
 | Matikan POS global TANPA deploy | Admin: `add_ons.is_active=false` utk `code='pos'` → semua `requirePosAccess` → `POS_NOT_SUBSCRIBED` |
 | Matikan POS per tenant | Admin: `subscription_add_ons.status='cancelled'` utk tenant itu |
 | Matikan POS per booth | Owner: toggle `pos_enabled=false` di `/dashboard/pos` (atau admin via DB) |
-| Migration bermasalah | Jalankan `0019_rollback.sql` (docs/pos/02 §10) — aman kapan pun (semua objek murni additive, tak ada kolom existing yang berubah) |
+| Migration bermasalah | Jalankan `0019_pos_addon_rollback.sql` (docs/pos/02 §10) — aman kapan pun (semua objek murni additive, tak ada kolom existing yang berubah) |
 
 ---
 

@@ -67,6 +67,49 @@ async function fetchSessionRow(supabase: ReturnType<typeof createServerClient>, 
   return { data: null, error: lastError as { message: string } };
 }
 
+/** Baris gabungan `auth_sessions` + `users` yang dibaca revocation check. */
+export type SessionRow = {
+  expires: string;
+  users?:
+    | { role?: "user" | "admin"; status?: "active" | "suspended" }
+    | { role?: "user" | "admin"; status?: "active" | "suspended" }[]
+    | null;
+};
+
+/**
+ * Putuskan token mana yang dikembalikan pada jalur "bukan sign-in" jwt callback.
+ *
+ * Dipisah dari callback agar bisa diuji langsung: ini inti kontrol revocation
+ * (docs/09 §10) dan satu-satunya alasan sesi bisa dimatikan dari server. Semua
+ * jalur gagal mengembalikan `{}` (klaim dibuang → logged out), tidak pernah
+ * membiarkan sesi hidup.
+ *
+ * `now` disuntik supaya tes bisa menguji kedaluwarsa tanpa menunggu waktu nyata.
+ */
+export function resolveTokenAfterRevocationCheck(args: {
+  token: JWT;
+  row: SessionRow | null;
+  rowError: { message: string } | null;
+  now?: number;
+}): JWT {
+  const { token, row, rowError } = args;
+  const now = args.now ?? Date.now();
+
+  // Error DB (setelah retry) → fail-closed. Sesi yang sudah direvoke tidak boleh
+  // tetap hidup hanya karena Supabase sedang outage.
+  if (rowError) return {};
+  // Baris hilang atau kedaluwarsa → sesi sudah tidak berlaku.
+  if (!row || new Date(row.expires).getTime() <= now) return {};
+
+  const joined = row.users;
+  const userRow = Array.isArray(joined) ? joined[0] : joined;
+  // Suspend user → sesi tidak berlaku (revocation).
+  if (userRow && userRow.status && userRow.status !== "active") return {};
+
+  const role = userRow?.role;
+  return role ? { ...token, role } : token;
+}
+
 /**
  * Auth.js v5 — credential email/password.
  *
@@ -239,22 +282,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token.sid) {
         const { data: row, error: rowError } = await fetchSessionRow(supabase, token.sid);
         if (rowError) {
-          // Fail-closed: DB unreachable setelah retry → klaim dibuang (logged out).
-          // Sesi yang sudah direvoke tidak boleh tetap hidup hanya karena outage DB.
           console.error("[auth] cek sesi DB gagal:", rowError.message);
-          return {};
-        } else if (!row || new Date(row.expires).getTime() <= Date.now()) {
-          const revoked: JWT = {}; // klaim dibuang → auth() tanpa user
-          return revoked;
         }
-        const joined = (row as { users?: { role?: "user" | "admin"; status?: "active" | "suspended" } | { role?: "user" | "admin"; status?: "active" | "suspended" }[] | null }).users;
-        const userRow = Array.isArray(joined) ? joined[0] : joined;
-        // Suspend user → sesi tidak berlaku (revocation). Join users.status.
-        if (userRow && userRow.status && userRow.status !== "active") {
-          return {}; // klaim dibuang → logged out
-        }
-        const role = userRow?.role;
-        return role ? { ...token, role } : token;
+        return resolveTokenAfterRevocationCheck({
+          token,
+          row: row as SessionRow | null,
+          rowError: rowError as { message: string } | null,
+        });
       }
       return token;
     },

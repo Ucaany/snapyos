@@ -70,7 +70,7 @@ test("0064 migration: idempotent + daftar tabel cocok schema", () => {
 
 test("0064 rollback: mematikan RLS & policy svc_all", async () => {
   const rollback = await readFile(
-    new URL("db/migrations/0064_rollback.sql", root),
+    new URL("db/migrations/0064_enable_rls_all_tables_rollback.sql", root),
     "utf8"
   )
   assert.ok(/drop policy if exists svc_all/i.test(rollback))

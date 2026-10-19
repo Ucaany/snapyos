@@ -4,7 +4,7 @@
  * → tolak sampai window reset. Semua endpoint (login, checkout, activate,
  * withdrawal, dll.) memakai wrapper ini — regresi = 429/rate leak.
  *
- * Backend default in-memory (tanpa env Upstash) — test tidak butuh jaringan.
+ * Backend in-memory, jadi test tidak butuh jaringan.
  */
 
 import assert from "node:assert/strict";

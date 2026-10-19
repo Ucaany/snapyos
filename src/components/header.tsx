@@ -24,7 +24,7 @@ export function Header() {
 						className="flex items-center gap-2 border-2 border-transparent px-3 py-2.5 hover:border-ink hover:bg-accent"
 						href="/"
 					>
-						<img src="/avatar-snappy/4.svg" alt="Logo SnapyOS" className="h-7 w-7 border-2 border-ink" />
+						<img src="/snapyos-mark.png" alt="Logo SnapyOS" className="h-7 w-7 border-2 border-ink" />
 						<span className="font-display text-base uppercase tracking-tight text-ink">SnapyOS</span>
 					</Link>
 					<DesktopNav />

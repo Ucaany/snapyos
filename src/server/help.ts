@@ -561,7 +561,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       {
         heading: "Assign ke package",
         paragraphs: [
-          "Edit package lalu multi select template. Filter otomatis hanya menampilkan template dengan slot count sama. Simpan menghapus relasi lama lalu insert bulk yang baru.",
+          "Edit package lalu multi select template. Semua template aktif boleh dipakai paket mana pun; jumlah slot tidak lagi membatasi assign. Simpan menghapus relasi lama lalu insert bulk yang baru.",
         ],
         steps: [
           "Edit package, pilih template yang berlaku.",
@@ -572,9 +572,9 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     troubleshooting: [
       {
-        gejala: "Template tidak bisa di assign",
-        penyebab: "slot count tidak sama dengan photo count",
-        solusi: "Ubah jumlah slot di builder atau pilih paket dengan photo count sama.",
+        gejala: "Frame punya slot lebih banyak daripada jumlah foto paket",
+        penyebab: "Jumlah capture mengikuti paket, bukan jumlah slot",
+        solusi: "Tidak perlu diubah. Slot sisa terisi foto secara bergiliran. Ubah jumlah foto hanya bila paket memang harus menambah capture.",
       },
       {
         gejala: "Hasil print beda dari preview",

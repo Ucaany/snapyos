@@ -88,7 +88,7 @@ Error:
 
 ## 8.7a Packages / Templates / Stickers
 
-> **REMOVED (Fase 5):** `GET/POST/PATCH/DELETE /packages(/:id)`, `GET/POST/PATCH/DELETE /templates(/:id)`, `POST /templates/upload`. Server actions: `src/server/catalog-actions.ts` (packages), `src/server/templates.ts` (CRUD + upload; wrapper action di `src/server/hardware-actions.ts` / grid). Aturan assign template↔package tetap: ditolak kecuali `slot_count == packages.photo_count`. Public template endpoint (`/api/v1/public/:businessSlug/templates?package=`) tidak berubah — masih dipakai kiosk.
+> **REMOVED (Fase 5):** `GET/POST/PATCH/DELETE /packages(/:id)`, `GET/POST/PATCH/DELETE /templates(/:id)`, `POST /templates/upload`. Server actions: `src/server/catalog-actions.ts` (packages), `src/server/templates.ts` (CRUD + upload; wrapper action di `src/server/hardware-actions.ts` / grid). Aturan assign template↔package: semua template aktif boleh dipakai paket mana pun; slot berlebih diisi bergiliran. Public template endpoint (`/api/v1/public/:businessSlug/templates?package=`) tidak berubah — masih dipakai kiosk.
 
 ## 8.8 Vouchers
 
@@ -127,7 +127,7 @@ Error:
 
 ## 8.13b Finance — Saldo & Penarikan (lihat `14-settlement-withdrawal.md`)
 
-> **REMOVED (Fase 5):** `GET /balance`, `POST /withdrawals`, `GET /withdrawals`. Server actions: `src/server/balance.ts`, `src/server/withdrawals.ts`, `src/server/withdrawal-actions.ts`. Ledger tampil di halaman `/dashboard/finance` (tanpa REST); RPC `withdrawable_payments_sum` tetap sebagai source of truth ceiling penarikan (invariant docs/07 §7).
+> **REMOVED (Fase 5, lalu dimatikan total oleh 0044):** `GET /balance`, `POST /withdrawals`, `GET /withdrawals`, server actions `src/server/balance.ts` / `withdrawals.ts` / `withdrawal-actions.ts`, dan RPC `withdrawable_payments_sum` — semuanya **sudah tidak ada** di kode maupun schema (migrasi `0044_drop_withdrawal_flow.sql`). Yang tersisa hanya halaman `/dashboard/finance` sebagai laporan arus kas (tanpa REST, tanpa saldo), plus kolom penanda `transactions.withdrawable` untuk reporting (invariant docs/07 §transactions).
 
 ## 8.14 Public (Customer Photobox)
 
@@ -196,9 +196,8 @@ Prefix `/api/v1/admin` (role `admin`, guard `requireAdmin()` = role='admin' ATAU
 - Public checkout & apply-voucher: moderate (misal 30/menit per IP/session).
 - Webhook: tidak di-limit oleh IP, tapi diverifikasi provider-side, amount/order, serta idempotency. Pakasir tidak menyediakan signature callback; event `paid` wajib server-to-server status check sebelum settlement.
 - Backend limiter (`src/lib/rate-limit.ts`, interface async `rateLimit(key, limit, windowMs)`):
-  pakai **Upstash Redis REST** bila `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`
-  di-set (counter shared lintas instance); fallback **in-memory** bila kosong.
-  Fail-closed di production saat backend error; fail-open hanya di non-production.
+  counter **in-memory per proses**. Tidak ada backend shared; di deployment
+  multi-instance limit efektif = limit × jumlah instance.
 - Melampaui limit → `429 RATE_LIMITED` dengan `details.retry_after` (detik).
   Diterapkan di handler (`/api/*`), bukan middleware.
 
@@ -236,9 +235,68 @@ Endpoint berikut ada di kode namun belum tercantum di section di atas:
 - `POST /api/v1/public/devices/exit` — verifikasi PIN keluar kiosk (server-side, `photoboxes.exit_pin_hash`).
 - `POST /api/v1/public/devices/report` — heartbeat/status report device kiosk.
 - `GET/POST /api/v1/admin/add-ons` + `PATCH /api/v1/admin/add-ons/:id` — CRUD katalog add-on platform (termasuk POS).
-- `GET /api/health` — health check.
+- `GET /api/health` — readiness check (audit 2026-10-16, lihat §8.21).
 - `GET /api/v1/emoji` — katalog emoji/stiker global untuk kiosk & template builder (menggantikan stickers REST per-business).
 - `GET /api/v1/help` — konten halaman bantuan.
 - `GET /api/cron/retention` — cron pembersihan media (Bearer `CRON_SECRET`, vercel.json).
 - `GET /api/cron/subscription-lifecycle` — cron transisi lifecycle subscription (Bearer `CRON_SECRET`).
 - **POS add-on: TANPA REST** — seluruh operasi POS via server actions (`src/server/pos-actions.ts`) + RPC `pos_decrement_stock` (kontrak `docs/pos/01` §5: "REST mirror: TIDAK dibuat").
+
+## 8.21 `GET /api/health` — kontrak readiness (2026-10-16)
+
+Sebelumnya endpoint ini **statis** (selalu `200` walau Supabase/R2 mati), sehingga
+tidak berguna untuk Nginx, systemd, atau uptime monitor. Sekarang ia menjalankan
+dua probe paralel dan mengembalikan **503** bila salah satu gagal.
+
+Logika probe ada di `src/lib/health.ts` (pure, teruji di `tests/health.test.ts`);
+route `src/app/api/health/route.ts` hanya menyuplai closure probe.
+
+**Probe:**
+
+| Check | Yang dijalankan | Gagal bila |
+| --- | --- | --- |
+| `database` | `select key from platform_settings limit 1` lewat service client | PostgREST balas error / kredensial salah |
+| `storage` | `head("generated-photos", "__healthcheck__/probe")` pada provider write | `head()` balas `null` (provider error / env tidak lengkap) |
+
+Setiap probe dibungkus timeout 4 detik (`HEALTH_PROBE_TIMEOUT_MS`). Probe yang
+gagal **tidak melempar**: hasilnya `{ ok: false, detail }`. Endpoint ini ada di
+allowlist `src/proxy.ts`, jadi ia wajib tetap menjawab walau maintenance mode
+aktif.
+
+**Respons `200` (semua lulus):**
+
+```json
+{
+  "status": "ok",
+  "service": "snapyos",
+  "time": "2026-10-16T04:12:33.104Z",
+  "checks": {
+    "database": { "ok": true, "latencyMs": 41 },
+    "storage": { "ok": true, "latencyMs": 118 }
+  }
+}
+```
+
+**Respons `503` (ada yang gagal):**
+
+```json
+{
+  "status": "degraded",
+  "service": "snapyos",
+  "time": "2026-10-16T04:12:33.104Z",
+  "checks": {
+    "database": { "ok": true, "latencyMs": 41 },
+    "storage": { "ok": false, "latencyMs": 4001, "detail": "timeout 4000ms" }
+  }
+}
+```
+
+Catatan kompatibilitas:
+
+- Field lama `status`/`service`/`time` **tidak berubah bentuk**; `checks` aditif.
+- Nilai `status` bertambah `"degraded"` (sebelumnya hanya `"ok"`). Monitor yang
+  hanya mengecek HTTP code tidak perlu diubah — code-nya yang membedakan.
+- `detail` dibersihkan `sanitizeDetail()`: kredensial bergaya
+  `scheme://user:pass@host` dibuang dan panjang dipotong 200 karakter, karena
+  endpoint ini publik.
+- `Cache-Control: no-store` supaya probe tidak pernah di-cache.

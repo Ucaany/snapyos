@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { defaultBrandColors } from "@/lib/brand-defaults";
 import type { KioskVisualStyle } from "@/lib/kiosk-types";
 import { slotsByZ, type TemplateLayout } from "@/lib/template-layout";
@@ -8,7 +8,8 @@ import { composeFrame, type ComposeSource } from "@/lib/compose-frame";
 import { useObjectUrls } from "@/components/kiosk/use-object-url";
 
 type Props = {
-  /** Layout slot template terpilih. Null = tanpa frame (panel ini disembunyikan). */
+  /** Layout slot template terpilih. Null = template legacy (frame full-canvas
+   *  di atas foto); preview tetap tampil bila `frameUrl` ada. */
   layout: TemplateLayout | null;
   /** URL PNG frame transparan (slot sudah berlubang). */
   frameUrl: string | null;
@@ -51,6 +52,9 @@ export function FramePreviewPanel({
   const mirrorCtxRef = useRef<CanvasRenderingContext2D | null>(null);
   const [frameError, setFrameError] = useState(false);
   const [assetVersion, setAssetVersion] = useState(0);
+  // Dimensi PNG frame — template legacy tidak menyimpan canvas, jadi ukuran
+  // frame itu sendiri yang menjadi kanvas preview.
+  const [frameSize, setFrameSize] = useState<{ width: number; height: number } | null>(null);
   // Object URL ref-counted (StrictMode-safe) untuk foto terkonfirmasi + override.
   const capturedUrls = useObjectUrls(captured);
   const overrideUrl = useObjectUrls(activeOverride ? [activeOverride] : [])[0] ?? null;
@@ -68,6 +72,9 @@ export function FramePreviewPanel({
       if (cancelled) return;
       setFrameError(false);
       frameRef.current = img;
+      if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+        setFrameSize({ width: img.naturalWidth, height: img.naturalHeight });
+      }
       setAssetVersion((v) => v + 1);
     };
     img.onerror = () => {
@@ -126,17 +133,48 @@ export function FramePreviewPanel({
     };
   }, [activeOverride, overrideUrl]);
 
+  /**
+   * Layout efektif untuk preview. Template legacy (tanpa slot) tidak punya
+   * canvas tersimpan; frame PNG-nya sendiri yang menjadi kanvas, dengan satu
+   * slot penuh di bawah frame — persis urutan render final legacy (foto lalu
+   * frame di atasnya). Tanpa ini preview legacy kosong total.
+   */
+  const previewLayout = useMemo<TemplateLayout | null>(() => {
+    if (layout) return layout;
+    if (!frameUrl || !frameSize) return null;
+    return {
+      version: 1,
+      canvas: { width: frameSize.width, height: frameSize.height, preset: "custom" },
+      slots: [
+        {
+          id: "legacy",
+          shape: "rect",
+          x: 0,
+          y: 0,
+          width: frameSize.width,
+          height: frameSize.height,
+          rotation: 0,
+          z: 0,
+          fit: "cover",
+        },
+      ],
+    };
+  }, [layout, frameUrl, frameSize]);
+
   useEffect(() => {
-    if (!layout) return;
+    if (!previewLayout) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const maxW = 420;
     const live = Boolean(videoEl && videoEl.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA);
+    // Legacy hanya punya satu slot penuh: kamera/hasil review selalu di slot 0,
+    // bukan di indeks slot capture (yang bisa 1..n).
+    const liveSlot = layout ? activeSlot : 0;
 
     /** Sumber untuk satu slot, urut z (mapping photos[i] → slot ke-i). */
     const sourceAt = (i: number): ComposeSource | null => {
-      if (i === activeSlot) {
+      if (i === liveSlot) {
         if (overrideRef.current) return overrideRef.current;
         if (!live || !videoEl) return null;
         if (!mirror) return videoEl;
@@ -167,9 +205,9 @@ export function FramePreviewPanel({
     };
 
     const paint = () => {
-      const ordered = slotsByZ(layout);
+      const ordered = slotsByZ(previewLayout);
       const sources = ordered.map((_, i) => sourceAt(i));
-      composeFrame(canvas, layout, frameRef.current, sources, [], maxW, "blank");
+      composeFrame(canvas, previewLayout, frameRef.current, sources, [], maxW, "blank");
     };
 
     paint();
@@ -182,11 +220,15 @@ export function FramePreviewPanel({
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [layout, activeSlot, videoEl, mirror, assetVersion]);
+  }, [previewLayout, layout, activeSlot, videoEl, mirror, assetVersion]);
 
-  if (!layout) return null;
+  if (!previewLayout) return null;
 
-  const slotTotal = layout.slots.length;
+  const slotTotal = previewLayout.slots.length;
+  const legacy = layout === null;
+  const statusLabel = legacy
+    ? `Mode frame penuh · ${captured.length} terisi`
+    : `Slot ${activeSlot + 1} / ${slotTotal} · ${captured.length} terisi`;
 
   return (
     <div className="flex w-full flex-col gap-2">
@@ -199,8 +241,12 @@ export function FramePreviewPanel({
       <div className="relative mx-auto w-fit max-w-full border-2 border-ink bg-ink shadow-[4px_4px_0_0_#111111]">
         <canvas
           ref={canvasRef}
-          className="block h-auto max-h-[38vh] w-auto max-w-full object-contain lg:max-h-[44vh]"
-          aria-label={`Preview frame, slot ${activeSlot + 1} dari ${slotTotal}`}
+          className="block h-auto max-h-[30vh] w-auto max-w-full object-contain lg:max-h-[36vh]"
+          aria-label={
+            legacy
+              ? "Preview frame penuh"
+              : `Preview frame, slot ${activeSlot + 1} dari ${slotTotal}`
+          }
         />
         {frameError && (
           <p
@@ -215,7 +261,7 @@ export function FramePreviewPanel({
         className="font-mono text-[10px] uppercase tracking-[0.12em]"
         style={{ opacity: 0.55, color: kioskStyle ? kioskStyle.text : undefined }}
       >
-        {`Slot ${activeSlot + 1} / ${slotTotal} · ${captured.length} terisi`}
+        {statusLabel}
       </p>
     </div>
   );

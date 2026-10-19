@@ -23,7 +23,7 @@ export function StaffTopbar({
         >
           {/* eslint-disable-next-line @next/next/no-img-element -- SVG statis 1 file, tidak butuh optimizer next/image */}
           <img
-            src="/avatar-snappy/4.svg"
+            src="/snapyos-mark.png"
             alt="Logo SnapyOS"
             className="h-8 w-8 shrink-0"
           />

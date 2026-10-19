@@ -4,7 +4,7 @@
 
 SESUAI (inti): server-side authorization penuh (`getMembership` → 404 non-member, `can()` RBAC, composite `.eq(business_id)`), argon2id + rate limit login + lockout, JWT + DB revocation (`auth_sessions`), webhook signature + idempotency, upload validation (SVG dihapus, guard path-traversal), formula-injection guard export, retention cron, **RLS di semua tabel publik (migrasi 0064)**.
 
-Security hardening 2026-10-09 (audit keamanan) — lihat §9.12 dan `docs/README.md` changelog: dependency critical dibersihkan (next di-upgrade, xlsx→exceljs), injeksi key storage via `page` kiosk ditutup, SVG dihapus dari logo, rate limit pindah ke backend shared opsional (Upstash).
+Security hardening 2026-10-09 (audit keamanan), lihat §9.12 dan `docs/README.md` changelog: dependency critical dibersihkan (next di-upgrade, xlsx→exceljs), injeksi key storage via `page` kiosk ditutup, SVG dihapus dari logo, rate limit memakai backend shared opsional (sejak 2026-10-17 kembali in-memory; lihat §9.5).
 
 Security hardening 2026-10-08 (C1–M2) — lihat `docs/README.md` changelog v1.15:
 
@@ -89,11 +89,10 @@ Catatan tradeoff: DB strategy butuh query session tiap request (overhead kecil, 
 ## 9.5 Input Validation & Security Controls
 
 - Validasi semua input (zod schema) di server.
-- Rate limiting (login, public checkout, aktivasi device). Backend **shared**
-  (Upstash Redis REST) bila `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`
-  di-set; fallback **in-memory** bila kosong. Fail-closed di production saat
-  backend error; fail-open hanya di non-production. Interface
-  `rateLimit(key, limit, windowMs)` async (`src/lib/rate-limit.ts`).
+- Rate limiting (login, public checkout, aktivasi device). Counter **in-memory
+  per proses** (`src/lib/rate-limit.ts`, interface `rateLimit(key, limit,
+  windowMs)` async). Tidak ada backend shared, jadi di deployment multi-instance
+  limit efektif = limit × jumlah instance yang melayani.
 - CSRF protection untuk mutasi berbasis cookie (Next.js server actions sudah menangani sebagian; tambahkan token bila perlu).
 - Sanitasi output (hindari XSS) — React escape default; hati-hati render HTML kustom.
 - Parameterized queries (supabase-js) → hindari SQL injection.
@@ -223,8 +222,7 @@ R2_ACCOUNT_ID / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY
 R2_BUCKET_BUSINESS_ASSETS / R2_BUCKET_GENERATED_PHOTOS  # bucket per area
 R2_BUCKET                 # legacy/opsional: satu bucket fallback semua area
 R2_ENDPOINT               # endpoint opsional (default turun dari account id)
-# Rate limiting (backend shared opsional)
-UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN  # kosong = fallback in-memory
+# Rate limiting (in-memory per proses; tidak ada env)
 # Admin
 ADMIN_EMAILS
 # Cron retention
@@ -263,7 +261,7 @@ Sumber: audit keamanan 2026-10-09. Status: **fixed**, **documented-residual**, a
 | P1-a | high | Injeksi key storage via `page` kiosk → `kiosk-page-${page}` (`src/server/branding.ts:309`) | **fixed** — allowlist `KIOSK_PAGE_IDS` divalidasi di sink + action | `tests/phase3.test.ts` |
 | P1-b | high | Path traversal key R2 | **fixed** — guard `..`/backslash di `r2Key` (`src/lib/r2/areas.ts`) | `tests/storage-abstraction.test.ts` |
 | P1-c | medium (laten) | SVG lolos sebagai logo → XSS bila disajikan inline | **fixed** — SVG dihapus dari `LOGO_ALLOWED_TYPES` + `sniffImageType` | `tests/upload-magic.test.ts`, `tests/phase3.test.ts` |
-| P2-a | medium | Rate limiter in-memory (hanya 1 instance) | **fixed** — backend shared Upstash opsional + fallback in-memory, fail-closed prod | `tests/rate-limit.test.ts` |
+| P2-a | medium | Rate limiter in-memory (hanya 1 instance) | **diterima**: backend shared dihapus 2026-10-17; counter per proses, didokumentasikan di §9.5 | `tests/rate-limit.test.ts` |
 | P2-b | medium | Verifikasi secret webhook Pakasir | **sudah** `timingSafeEqual` + fail-closed; ditambah test eksplisit | `tests/pakasir-webhook-credential.test.ts` |
 
 ### Potensial / defense-in-depth (documented-residual)
@@ -283,5 +281,7 @@ Sumber: audit keamanan 2026-10-09. Status: **fixed**, **documented-residual**, a
 
 - `next` terpasang via `^16.3.8` → resolve ke 16.4.0; advisory baru pasca-16.4.0
   harus ditinjau berkala (`npm audit`).
-- Rate limit shared **memerlukan** env Upstash di production multi-instance;
-  tanpa env, limiter per-instance (didokumentasikan, bukan bug).
+- Rate limit berjalan **per instance**. Di deployment multi-instance, penyerang
+  yang tersebar ke beberapa instance bisa melewati limit sebanyak jumlah
+  instance. Lockout per email dan lockout PIN tetap berlaku penuh di dalam satu
+  instance (didokumentasikan, bukan bug).

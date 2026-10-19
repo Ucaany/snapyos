@@ -187,6 +187,27 @@ const RESULT_LAYOUT_OPTIONS = [
   { value: "qr-below", label: "QR bawah" },
 ] as const;
 
+/**
+ * Lapisan video latar di pratinjau layar. Dipakai semua tab yang punya slot
+ * video sendiri (pages.<id>.video_url) supaya pratinjau menunjukkan apa yang
+ * benar-benar dirender kiosk — bukan hanya di tab Welcome dan Tutorial.
+ */
+function PreviewVideo({ url }: { url?: string | null }) {
+  if (!url) return null;
+  return (
+    <video
+      key={url}
+      src={url}
+      muted
+      loop
+      playsInline
+      autoPlay
+      className="pointer-events-none absolute inset-0 size-full object-cover opacity-60"
+      aria-hidden
+    />
+  );
+}
+
 const PREVIEW_SCREENS = [
   { id: "welcome", label: "Welcome" },
   { id: "guide", label: "Tutorial" },
@@ -239,7 +260,6 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
   const [packageTitle, setPackageTitle] = useState(k.package_title ?? "");
   const [templateTitle, setTemplateTitle] = useState(k.template_title ?? "");
   const [welcomeLayout, setWelcomeLayout] = useState(k.welcome_layout ?? "split-left");
-  const [paymentAlign, setPaymentAlign] = useState(k.payment_align ?? "left");
   const [resultLayout, setResultLayout] = useState(k.result_layout ?? "qr-right");
   const [showLogo, setShowLogo] = useState(k.show_logo !== false);
   const [showTagline, setShowTagline] = useState(k.show_tagline !== false);
@@ -273,6 +293,8 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
   const [previewScreen, setPreviewScreen] = useState<(typeof PREVIEW_SCREENS)[number]["id"]>("welcome");
   const [activePage, setActivePage] = useState<KioskPageId>("welcome");
 
+  /** Layar yang override tersimpannya harus dihapus saat Save berikutnya. */
+  const [resetPages, setResetPages] = useState<KioskPageId[]>([]);
   const [pageOverrides, setPageOverrides] = useState<Partial<Record<KioskPageId, PageOverrideState>>>(() => {
     const savedPages = k.pages ?? {};
     const result: Record<string, PageOverrideState> = {};
@@ -338,7 +360,6 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
     packageTitle: k.package_title ?? "",
     templateTitle: k.template_title ?? "",
     welcomeLayout: k.welcome_layout ?? "split-left",
-    paymentAlign: k.payment_align ?? "left",
     resultLayout: k.result_layout ?? "qr-right",
     showLogo: k.show_logo !== false,
     showTagline: k.show_tagline !== false,
@@ -378,6 +399,13 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
       }
       return next;
     });
+    // Server melakukan deep-merge, jadi "tidak mengirim" saja tidak menghapus
+    // apa pun. Catat layar ini agar save() meminta server membuang override-nya
+    // (video_key tetap dipertahankan). Side effect sengaja di luar updater
+    // state agar tidak berjalan dua kali di StrictMode.
+    if (!active && k.pages?.[id]) {
+      setResetPages((list) => (list.includes(id) ? list : [...list, id]));
+    }
   }
 
   /** Konfigurasi `pages` untuk disimpan — hanya layar aktif dengan nilai non-empty.
@@ -446,7 +474,6 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
     setPackageTitle(saved.packageTitle);
     setTemplateTitle(saved.templateTitle);
     setWelcomeLayout(saved.welcomeLayout);
-    setPaymentAlign(saved.paymentAlign);
     setResultLayout(saved.resultLayout);
     setShowLogo(saved.showLogo);
     setShowTagline(saved.showTagline);
@@ -454,6 +481,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
     setShowMirrorToggle(saved.showMirrorToggle);
     setAllowZoomPan(saved.allowZoomPan);
     setPageOverrides(saved.pageOverrides);
+    setResetPages([]);
     setStatus({ kind: "idle" });
     setFieldErrors({});
   }
@@ -513,7 +541,6 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
             button_radius: radius,
             padding: padding,
             welcome_layout: welcomeLayout,
-            payment_align: paymentAlign,
             result_layout: resultLayout,
             show_logo: showLogo,
             show_tagline: showTagline,
@@ -681,7 +708,6 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
           button_radius: radius,
           padding: padding,
           welcome_layout: welcomeLayout,
-          payment_align: paymentAlign,
           result_layout: resultLayout,
           payment_title: paymentTitle.trim() || undefined,
           payment_hint: paymentHint.trim() || undefined,
@@ -702,9 +728,13 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
           guide_steps: guideSteps.length > 0 ? guideSteps : undefined,
           pages: buildPagesConfig(),
         },
+        // Level atas action, bukan di dalam `kiosk`: server membacanya sebagai
+        // instruksi hapus, dan menyimpannya di jsonb akan lolos tanpa efek.
+        reset_pages: resetPages,
       });
       if (result.ok) {
         setStatus({ kind: "success", message: "Tersimpan: kiosk memakai konfigurasi terbaru." });
+        setResetPages([]);
         // Sinkronkan baseline Reset ke nilai yang baru saja disimpan (cegah
         // Reset mengembalikan nilai basi sebelum save).
         Object.assign(saved, {
@@ -733,7 +763,6 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
           packageTitle,
           templateTitle,
           welcomeLayout,
-          paymentAlign,
           resultLayout,
           showLogo,
           showTagline,
@@ -761,8 +790,8 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
   const pvAlignClass =
     pvAlign === "left" ? "items-start text-left" : pvAlign === "right" ? "items-end text-right" : "items-center text-center";
   const pvFont = ps.fontFamily;
-  // Payment memakai payment_align (bukan align global) — sama dengan CheckoutScreen.
-  const payAlignClass = paymentAlign === "center" ? "items-center text-center" : "items-start text-left";
+  // Payment memakai align global (payment_align legacy sudah diserap di state align).
+  const payAlignClass = align === "center" || align === "" ? "items-center text-center" : align === "right" ? "items-end text-right" : "items-start text-left";
 
   // Peta key editor → key fieldErrors dari Zod (brandingSchema + kioskBrandingSchema).
   // Editor memakai id pendek ("primary","secondary","bg","text"); Zod memakai
@@ -921,6 +950,12 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
               >
                 {FONT_FAMILY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
+              {fontFamily === "mono" && (
+                <p role="status" className="font-mono text-[10px] leading-relaxed text-destructive">
+                  Mono sulit dibaca untuk instruksi customer. Pakai Display untuk judul dan
+                  biarkan Mono untuk metadata.
+                </p>
+              )}
             </div>
             <div className={fieldClass}>
               <label htmlFor="kb-font" className={labelClass}>Skala font ({fontScale.toFixed(2)}x)</label>
@@ -1205,6 +1240,10 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
             <div className={fieldClass}>
               <label htmlFor="kb-template-title" className={labelClass}>Judul frame (opsional)</label>
               <Input id="kb-template-title" placeholder="Pilih frame" value={templateTitle} onChange={(e) => setTemplateTitle(e.target.value)} disabled={pending || !canWrite} maxLength={80} />
+              <p className="font-mono text-[10px] leading-relaxed text-muted-foreground">
+                Semua frame aktif tampil di semua paket. Slot yang lebih banyak dari jumlah
+                foto paket diisi foto secara bergiliran.
+              </p>
             </div>
           </div>
         </section>
@@ -1378,7 +1417,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
               </div>
             )}
             <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em] text-muted-foreground">
-              {"/// VIDEO LATAR DITAMPILKAN DI LAYAR YANG DIPILIH (WELCOME, TUTORIAL, PAKET, FRAME, PAYMENT, FOTO, RESULT)."}
+              {"/// VIDEO LATAR DITAMPILKAN DI LAYAR YANG DIPILIH (WELCOME, TUTORIAL, PAKET, PAYMENT, FRAME, FOTO, EDIT, RESULT)."}
             </p>
           </div>
         </section>
@@ -1501,20 +1540,21 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
           )}
 
           {previewScreen === "package" && (
-            <div className="flex size-full flex-col gap-2" style={{ backgroundColor: ps.bg, color: ps.text, padding: Math.min(ps.padding, 20) }}>
-              <div className={pvAlignClass}>
+            <div className="relative flex size-full flex-col gap-2 overflow-hidden" style={{ backgroundColor: ps.bg, color: ps.text, padding: Math.min(ps.padding, 20) }}>
+              <PreviewVideo url={k.pages?.package?.video_url} />
+              <div className={`relative z-10 ${pvAlignClass}`}>
                 <p className="font-mono text-[8px] uppercase tracking-[0.25em] opacity-60">{"/// STEP 01 · PILIH PAKET"}</p>
                 <h2 className="font-display uppercase leading-none tracking-tight" style={{ fontSize: `${1.3 * ps.fontScale}rem`, fontFamily: pvFont }}>
                   {packageTitle || "Pilih paket"}
                 </h2>
               </div>
-              <div className="mt-auto grid grid-cols-3 gap-2">
+              <div className="relative z-10 mt-auto grid grid-cols-3 gap-2">
                 {[0, 1, 2].map((i) => (
                   <div key={i} className="flex flex-col gap-1 border-2 p-2" style={{ borderColor: ps.text, backgroundColor: i === 0 ? pSafe : "transparent", borderRadius: ps.radius }}>
                     <p className="font-mono text-[7px] font-bold uppercase tracking-[0.1em]" style={{ opacity: 0.7 }}>{`PKG-${String(i + 1).padStart(2, "0")}`}</p>
                     <p className="font-display text-[11px] uppercase leading-none" style={{ fontFamily: pvFont }}>{`[PAKET ${i + 1}]`}</p>
-                    <p className="font-mono text-[9px] font-bold" style={{ color: sSafe }}>Rp—</p>
-                    <span className="mt-auto border-2 px-2 py-1 text-center font-mono text-[7px] font-bold uppercase" style={{ borderColor: ps.text, backgroundColor: i === 0 ? "var(--color-surface)" : pSafe, borderRadius: ps.radius }}>Pilih</span>
+                    <p className="font-mono text-[9px] font-bold" style={{ color: sSafe }}>Rp ...</p>
+                    <span className="mt-auto border-2 px-2 py-1 text-center font-mono text-[7px] font-bold uppercase" style={{ borderColor: ps.text, backgroundColor: i === 0 ? ps.surface : pSafe, borderRadius: ps.radius }}>Pilih</span>
                   </div>
                 ))}
               </div>
@@ -1522,19 +1562,20 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
           )}
 
           {previewScreen === "payment" && (
-            <div className={`flex size-full flex-col ${payAlignClass}`} style={{ backgroundColor: ps.bg, color: ps.text, padding: Math.min(ps.padding, 24) }}>
-              <div className={`flex w-full flex-col gap-1 ${payAlignClass}`}>
+            <div className={`relative flex size-full flex-col overflow-hidden ${payAlignClass}`} style={{ backgroundColor: ps.bg, color: ps.text, padding: Math.min(ps.padding, 24) }}>
+              <PreviewVideo url={k.pages?.payment?.video_url} />
+              <div className={`relative z-10 flex w-full flex-col gap-1 ${payAlignClass}`}>
                 <p className="font-mono text-[8px] uppercase tracking-[0.3em] opacity-60">{"/// CHECKOUT"}</p>
                 <h2 className="font-display uppercase leading-none tracking-tight" style={{ fontSize: `${1.25 * ps.fontScale}rem`, fontFamily: pvFont }}>
                   {paymentTitle || "Bayar sebelum foto"}
                 </h2>
                 {paymentHint && <p className="font-mono text-[8px] uppercase tracking-[0.1em] opacity-70">{paymentHint}</p>}
               </div>
-              <div className="mt-auto grid w-full grid-cols-2 gap-3">
+              <div className="relative z-10 mt-auto grid w-full grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1 border-2 p-3" style={{ borderColor: ps.text, borderRadius: ps.radius }}>
                   <p className="font-mono text-[7px] uppercase tracking-[0.1em] opacity-60">[ RINGKASAN ]</p>
                   <p className="font-display text-[11px] uppercase leading-none" style={{ fontFamily: pvFont }}>[PAKET]</p>
-                  <p className="font-mono text-[10px] font-bold" style={{ color: sSafe }}>Rp—</p>
+                  <p className="font-mono text-[10px] font-bold" style={{ color: sSafe }}>Rp ...</p>
                 </div>
                 <div className="flex flex-col items-center justify-center gap-2 border-2 p-3" style={{ borderColor: ps.text, backgroundColor: pSafe, borderRadius: ps.radius }}>
                   <span className="inline-block size-16 border-2" style={{ borderColor: sSafe }} aria-hidden />
@@ -1545,17 +1586,18 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
           )}
 
           {previewScreen === "template" && (
-            <div className="flex size-full overflow-hidden" style={{ backgroundColor: ps.bg, color: ps.text }}>
-              <div className="flex w-[38%] shrink-0 flex-col justify-center gap-1.5 border-r-2 p-3" style={{ borderColor: ps.text }}>
+            <div className="relative flex size-full overflow-hidden" style={{ backgroundColor: ps.bg, color: ps.text }}>
+              <PreviewVideo url={k.pages?.template?.video_url} />
+              <div className={`relative z-10 flex w-[38%] shrink-0 flex-col justify-center gap-1.5 border-r-2 p-3 ${pvAlignClass}`} style={{ borderColor: ps.text }}>
                 <p className="font-mono text-[8px] uppercase tracking-[0.25em] opacity-60">{"/// STEP 02 · FRAME"}</p>
                 <h2 className="font-display uppercase leading-none tracking-tight" style={{ fontSize: `${1.3 * ps.fontScale}rem`, fontFamily: pvFont }}>
                   {templateTitle || "Pilih frame"}
                 </h2>
                 <p className="font-mono text-[7px] uppercase tracking-[0.1em]" style={{ opacity: 0.6 }}>[N] FRAME</p>
               </div>
-              <div className="grid flex-1 grid-cols-3 gap-1.5 p-3" style={{ backgroundColor: `color-mix(in srgb, ${ps.text} 4%, ${ps.bg})` }}>
+              <div className="relative z-10 grid flex-1 grid-cols-3 gap-1.5 p-3" style={{ backgroundColor: `color-mix(in srgb, ${ps.text} 4%, ${ps.bg})` }}>
                 {[0, 1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="flex aspect-[3/4] items-center justify-center border-2 font-mono text-[7px] uppercase tracking-[0.1em]" style={{ borderColor: ps.text, borderRadius: ps.radius, backgroundColor: i === 0 ? pSafe : "var(--color-surface)" }}>
+                  <div key={i} className="flex aspect-[3/4] items-center justify-center border-2 font-mono text-[7px] uppercase tracking-[0.1em]" style={{ borderColor: ps.text, borderRadius: ps.radius, backgroundColor: i === 0 ? pSafe : ps.surface }}>
                     {i === 0 ? "TANPA" : `FRAME ${i}`}
                   </div>
                 ))}
@@ -1564,11 +1606,12 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
           )}
 
           {previewScreen === "capture" && (
-            <div className="flex size-full overflow-hidden" style={{ backgroundColor: ps.bg, color: ps.text }}>
-              <div className="flex flex-1 items-center justify-center bg-ink">
+            <div className="relative flex size-full overflow-hidden" style={{ backgroundColor: ps.bg, color: ps.text }}>
+              <PreviewVideo url={k.pages?.capture?.video_url} />
+              <div className="relative z-10 flex flex-1 items-center justify-center bg-ink">
                 <span className="font-display text-4xl text-accent" aria-hidden>FOTO 1/3</span>
               </div>
-              <div className={`flex w-[34%] flex-col justify-center gap-2 border-l-2 p-4 ${pvAlignClass}`} style={{ borderColor: ps.text, backgroundColor: ps.bg, color: ps.text, padding: Math.min(ps.padding, 32) }}>
+              <div className={`relative z-10 flex w-[34%] flex-col justify-center gap-2 border-l-2 p-4 ${pvAlignClass}`} style={{ borderColor: ps.text, backgroundColor: ps.bg, color: ps.text, padding: Math.min(ps.padding, 32) }}>
                 <p className="font-mono text-[8px] uppercase tracking-[0.25em]" style={{ opacity: 0.6 }}>{"/// CAPTURE"}</p>
                 <p className="font-display text-base uppercase" style={{ fontSize: `${1 * ps.fontScale}rem`, fontFamily: pvFont }}>
                   {captureTitle || "Foto 1 / 3"}
@@ -1582,9 +1625,10 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
           )}
 
           {previewScreen === "editor" && (
-            <div className="flex size-full flex-col" style={{ backgroundColor: ps.bg, color: ps.text }}>
+            <div className="relative flex size-full flex-col overflow-hidden" style={{ backgroundColor: ps.bg, color: ps.text }}>
+              <PreviewVideo url={k.pages?.edit?.video_url} />
               <div
-                className={`flex items-center gap-3 border-b-2 px-4 py-2 ${pvAlign === "left" ? "justify-start" : pvAlign === "right" ? "justify-end" : "flex-col justify-center"}`}
+                className={`relative z-10 flex items-center gap-3 border-b-2 px-4 py-2 ${pvAlign === "left" ? "justify-start" : pvAlign === "right" ? "justify-end" : "flex-col justify-center"}`}
                 style={{ borderColor: ps.text, backgroundColor: `color-mix(in srgb, ${ps.text} 8%, ${ps.bg})` }}
               >
                 <div className={`flex flex-col ${pvAlignClass}`}>
@@ -1600,7 +1644,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                   ))}
                 </div>
               </div>
-              <div className="flex flex-1 items-center justify-center" style={{ backgroundColor: `color-mix(in srgb, ${ps.text} 4%, ${ps.bg})` }}>
+              <div className="relative z-10 flex flex-1 items-center justify-center" style={{ backgroundColor: `color-mix(in srgb, ${ps.text} 4%, ${ps.bg})` }}>
                 <span className="flex h-2/3 w-1/2 items-center justify-center border-2 border-dashed font-mono text-[9px] uppercase tracking-[0.15em]" style={{ borderColor: `color-mix(in srgb, ${ps.text} 30%, transparent)` }}>
                   FOTO + FRAME
                 </span>
@@ -1609,18 +1653,19 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
           )}
 
           {previewScreen === "result" && (
-            <div className={`flex size-full overflow-hidden ${resultLayout === "qr-below" ? "flex-col" : "flex-row"}`} style={{ backgroundColor: ps.bg, color: ps.text }}>
+            <div className={`relative flex size-full overflow-hidden ${resultLayout === "qr-below" ? "flex-col" : "flex-row"}`} style={{ backgroundColor: ps.bg, color: ps.text }}>
+              <PreviewVideo url={k.pages?.result?.video_url} />
               <div
-                className={`flex flex-1 flex-col items-center justify-center gap-2 p-3 ${
+                className={`relative z-10 flex flex-1 flex-col items-center justify-center gap-2 p-3 ${
                   resultLayout === "qr-below" ? "border-b-2" : resultLayout === "qr-left" ? "border-l-2" : "border-r-2"
                 } ${resultLayout === "qr-left" ? "order-2" : ""}`}
-                style={{ borderColor: ps.text, backgroundColor: "var(--color-surface)" }}
+                style={{ borderColor: ps.text, backgroundColor: ps.surface }}
               >
                 <span className="flex h-1/2 w-1/2 items-center justify-center border-2 border-dashed font-mono text-[8px] uppercase tracking-[0.15em]" style={{ borderColor: `color-mix(in srgb, ${ps.text} 30%, transparent)` }}>
                   HASIL FOTO
                 </span>
               </div>
-              <div className={`flex flex-col justify-center gap-2 p-3 ${resultLayout === "qr-below" ? "w-full" : "w-[38%]"} ${pvAlignClass}`}>
+              <div className={`relative z-10 flex flex-col justify-center gap-2 p-3 ${resultLayout === "qr-below" ? "w-full" : "w-[38%]"} ${pvAlignClass}`}>
                 <h2 className="font-display uppercase leading-none tracking-tight" style={{ fontSize: `${1.25 * ps.fontScale}rem`, color: sSafe, fontFamily: pvFont }}>
                   {resultTitle || "Foto kamu jadi!"}
                 </h2>

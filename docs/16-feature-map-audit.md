@@ -1,12 +1,16 @@
-# SnapyOS — Peta Fitur Menyeluruh (Audit Kode 2026-10-11)
+# SnapyOS — Peta Fitur Menyeluruh (Audit Kode 2026-10-11, angka disegarkan 2026-10-16)
 
 > **Status**: audit berbasis kode berjalan (`src/`, `db/schema.sql`, `tests/`) + knowledge graph
 > `codebase-memory` (proyek `Users-ucaany-Downloads-PT-SNAPY-OS`, mode `moderate`, generasi 2026-10-11).
-> **Metode**: Scout→Verify. Graf (4.167 node / 14.341 edge), 55 tabel `create table`, 26 fungsi SQL,
-> 61 route API, 65 page, 7 layout, 17 modul `"use server"`, 160 komponen, 60 berkas uji.
+> **Metode**: Scout→Verify. Graf (4.167 node / 14.341 edge, snapshot 2026-10-11), 55 tabel `create table`, 29 fungsi SQL,
+> 63 route API, 65 page, 7 layout, 17 modul `"use server"` (99 aksi ter-export), 159 komponen, 86 berkas uji (`tests/*.test.ts`).
 > **Bukan** dokumen PRD — dokumen ini merekam **apa yang benar-benar terpasang** di kode.
 > Sumber kebenaran tetap `src/`, lalu `db/schema.sql`, lalu `docs/07`+`docs/08`.
 > **Cakupan**: seluruh fitur per kategori (Admin, Owner, Staff, Kiosk, POS, Marketing/Auth, Result, API, Cron, DB).
+>
+> **Segarkan angka 2026-10-16:** hitungan §0/§11/§13 diukur ulang dari kode (lihat `docs/18-audit-report.md`).
+> Angka lama (26 fungsi / 61 route / 160 komponen / 60 uji) tertinggal oleh migrasi 0069 dan route
+> `device-cleanup` + `/v1/public/frame` yang masuk setelah audit 2026-10-11.
 
 ---
 
@@ -14,7 +18,7 @@
 
 | # | Bagian |
 | --- | --- |
-| 0 | [Ringkasan Angka](#0-ringkasan-angka-audit-2026-10-11) |
+| 0 | [Ringkasan Angka](#0-ringkasan-angka-audit-2026-10-11-angka-disegarkan-2026-10-16) |
 | 1 | [Lapisan Lintas-Potong](#1-lapisan-lintas-potong-cross-cutting) — routing, RBAC, tenant, gate langganan, API wrapper, rate limit, desain |
 | 2 | [Dashboard Admin](#2-dashboard-admin-platform--ceo) — A1–A16 |
 | 3 | [Dashboard Owner](#3-dashboard-owner-bisnis) — O1–O25 |
@@ -25,29 +29,29 @@
 | 8 | [Marketing & Publik](#8-marketing--publik) — M1–M5 |
 | 9 | [Autentikasi & Onboarding](#9-autentikasi--onboarding) — A–E |
 | 10 | [Pembayaran & Webhook](#10-pembayaran--webhook) |
-| 11 | [API Routes](#11-api-routes-61) — daftar ekshaustif 61 route |
+| 11 | [API Routes](#11-api-routes-63) — daftar ekshaustif 63 route |
 | 12 | [Cron & Lifecycle](#12-cron--lifecycle-verceljson) |
-| 13 | [Database](#13-database-55-tabel--26-fungsi) |
+| 13 | [Database](#13-database-55-tabel--29-fungsi) |
 | 14 | [Storage](#14-storage-dual-provider) |
 | 15 | [Ringkasan Audit](#15-ringkasan-audit) — temuan, backlog, batasan |
 
 ---
 
-## 0. Ringkasan Angka (Audit 2026-10-11)
+## 0. Ringkasan Angka (Audit 2026-10-11, angka disegarkan 2026-10-16)
 
 | Dimensi | Jumlah | Catatan |
 | --- | --- | --- |
 | Halaman (`page.tsx`) | 65 | 5 route group + kiosk/result/onboarding/welcome |
 | Layout (`layout.tsx`) | 7 | root, auth, dashboard, admin, staff, pos, onboarding |
-| Route API (`route.ts`) | 61 | 23 admin, 9 business/me, 16 public kiosk, 3 webhook, 4 cron, health, auth, emoji, help |
-| Modul server action | 17 | `"use server"` · 96 aksi ter-export |
+| Route API (`route.ts`) | 63 | 23 admin, 7 business, 17 public, 3 webhook, 5 cron, health, auth×3, me, emoji, help, businesses |
+| Modul server action | 17 | `"use server"` · 99 aksi ter-export |
 | Modul server (`src/server`) | 106 | data layer |
-| Modul lib (`src/lib`) | 69 | pure/util |
-| Komponen (`src/components`) | 160 `.tsx` | 63 dashboard, 22 kiosk (+7 `.ts`), 3 pos, 7 admin |
+| Modul lib (`src/lib`) | 73 | pure/util (65 di akar + `r2/` 6 + `supabase/` 2) |
+| Komponen (`src/components`) | 159 `.tsx` | 64 dashboard, 24 kiosk (+7 `.ts`), 3 pos, 7 admin |
 | Tabel DB | 55 | `db/schema.sql` |
-| Fungsi SQL/RPC | 26 | 25 dipakai app + 1 trigger |
-| Berkas uji | 60 | `node --test` |
-| Knowledge graph | 4.167 node / 14.341 edge | 15 label, 18 edge type |
+| Fungsi SQL/RPC | 29 | 27 dipakai app (4 SECURITY DEFINER) + 2 trigger |
+| Berkas uji | 86 | `node --test` (naik dari 83 setelah suite keamanan ditambahkan — `docs/18` §3) |
+| Knowledge graph | 4.167 node / 14.341 edge | snapshot 2026-10-11 |
 
 **Route group & domain** (single-domain, saling eksklusif):
 
@@ -111,7 +115,7 @@
 
 ### 1.6 Rate Limit & Keamanan Input
 
-- `src/lib/rate-limit.ts` — `rateLimit(key, limit, windowMs)` async; Upstash Redis bila `UPSTASH_REDIS_REST_URL/TOKEN` di-set, fallback in-memory; **fail-closed di production** saat backend error. `rateLimitByDevice` lapis kedua per booth.
+- `src/lib/rate-limit.ts` — `rateLimit(key, limit, windowMs)` async; counter in-memory per proses (tanpa backend shared). `rateLimitByDevice` lapis kedua per booth.
 - `src/lib/upload-validation.ts` — logo PNG/JPG/WebP maks 2 MB (SVG **dilarang**), foto 10 MB, video 15 MB; sniff magic bytes.
 - `src/lib/validators.ts` (~1.094 baris) — semua skema Zod: auth, bisnis, branding, kamera, cetak, sesi, outlet, photobox, package, template, voucher, expense, tx manual, staff, POS, kiosk (`KIOSK_PAGE_IDS` allowlist).
 - `src/lib/uuid-param.ts` — `parseUuidParam` (non-UUID → 404 sebelum query).
@@ -123,6 +127,7 @@
 - Primitif UI: `src/components/ui/*` (card, button, input, select, table, dialog, badge, chart, empty-state, page-header, date-input, multi-select, confirm-dialog, …).
 - Eyebrow mono `/// …`, `font-display` uppercase, border 2px ink, hard shadow, radius 0.
 - Shell: `src/components/layout/CollapsibleShell.tsx`, `dashboard/Sidebar.tsx`, `dashboard/Topbar.tsx`, `admin/AdminSidebar.tsx`, `staff/StaffSidebar.tsx`.
+- **Aset brand** (diganti 2026-10-16): `public/snapyos-icon-192.png`, `public/snapyos-icon-512.png`, `public/snapyos-icon-maskable-512.png`, `public/apple-touch-icon.png`, `public/snapyos-mark.png` (mark topbar/header/footer/auth), `src/app/favicon.ico` (multi-ukuran 16–256). Dirujuk `src/app/layout.tsx` (`icons`) + `src/app/manifest.ts`. Mark lama `public/avatar-snappy/4.svg` (raster 1,1 MB) dihapus; ilustrasi marketing `public/avatars/*` dan `public/fiture-avatar/*` dipertahankan.
 
 ---
 
@@ -599,7 +604,7 @@
 - **Lib**: `src/lib/camera-capture.ts`, `camera-provider.ts`, `camera-errors.ts`, `photo-render.ts`.
 - **API**: `POST /api/v1/public/devices/report` (status).
 - **DB**: tidak langsung; hasil disimpan di state sampai finalize.
-- **Batasan**: `camera_settings` (deviceId, mirror, countdown, resolution); kuota capture = `slot_count` template (fallback `package.photo_count` bila template legacy, docs/15 §5.6); finalize menolak `photos.length > package.photo_count`; `max_retakes` opsional dari `session_settings` (tidak diset = retake tak terbatas, docs/05 §5.5.2).
+- **Batasan**: `camera_settings` (deviceId, mirror, countdown, resolution, rotasi/zoom kalibrasi, chroma key); kuota capture = `package.photo_count`; slot template berlebih diisi bergiliran; finalize menolak `photos.length > package.photo_count`; `max_retakes` opsional dari `session_settings` (tidak diset = retake tak terbatas, docs/05 §5.5.2).
 
 ### K10. Editor (Edit Foto)
 - **Komponen**: `Editor` (dynamic import) + `StickerPicker`.
@@ -651,6 +656,7 @@
 **Isi**: nama bisnis, judul "Foto kamu siap!", GIF slideshow (`result_gif_key`), foto berframe (signed URL), unduh — tombol unduh memakai signed URL `Content-Disposition: attachment` (`gif_download_url`, `photos[].download_url`) karena atribut `download` pada `<a>` cross-origin diabaikan browser.
 **DB**: `checkout_sessions (result_token), sessions, photos, businesses, business_settings (retention_days)`. (Dokumen sebelumnya menulis `templates` — salah; `photos.template_id` tidak pernah dibaca di jalur ini.)
 **Dampak**: token publik (`checkout_sessions.result_token`); media dibersihkan cron retention setelah `retention_days` → link kedaluwarsa (404). Error transien (DB/storage down) → error boundary, bukan 404.
+**Gerbang 404 ada di `layout.tsx`, bukan `page.tsx`** — `loading.tsx` di segmen ini membuat Suspense boundary; begitu boundary menyala, Next mengirim kerangka respons dengan status 200 dan status itu tidak bisa diubah lagi, sehingga `notFound()` di page hanya mengganti body. Layout dirender di luar boundary itu, jadi `notFound()` di sana menetapkan 404 sebelum byte pertama. `getResult` dibungkus `cache()` supaya gerbang dan render berbagi satu query. Dijaga `tests/result-page.test.ts` (docs/18 §5.1).
 **Gap backlog (disengaja, docs/05 §5.13)**: UNDUH SEMUA (ZIP), logo owner di header, background kustom owner — belum diimplementasi.
 
 ---
@@ -797,30 +803,33 @@
 
 ---
 
-## 11. API ROUTES (61)
+## 11. API ROUTES (63)
 
 ### Admin (23, `requireAdmin`)
 `GET /api/v1/admin/overview` · `users` (GET/POST) · `users/[id]` (GET/PATCH/DELETE) · `businesses` (GET/POST) · `businesses/[id]` (GET/PATCH/DELETE) · `plans` (GET/POST) · `plans/[id]` (PATCH) · `add-ons` (GET/POST) · `add-ons/[id]` (PATCH) · `promos` (GET/POST) · `promos/[id]` (PATCH) · `subscriptions` (GET) · `subscriptions/[id]` (GET/PATCH) · `subscriptions/[id]/add-ons` (POST) · `subscription-add-ons/[id]` (PATCH/DELETE) · `template-categories` (GET/POST) · `template-categories/[id]` (DELETE) · `templates` (GET/POST) · `templates/[id]` (PATCH/DELETE) · `settings` (GET/PATCH) · `payments` (GET) · `payments/summary` (GET) · `payments/pos-revenue` (GET).
 
-### Business / Me (9, auth)
+### Business / Me (8, auth)
 `GET /api/v1/me/businesses` · `GET/POST /api/v1/businesses` · `GET /api/v1/business/[id]/customers/[id]` · `GET/POST /api/v1/business/[id]/devices` · `DELETE /api/v1/business/[id]/devices/[id]` · `POST /api/v1/business/[id]/photoboxes/[id]/activation` · `GET /api/v1/business/[id]/reports` · `GET /api/v1/business/[id]/storage` · `GET /api/v1/business/[id]/cash-payments`.
 
-### Public Kiosk (16)
-`GET /api/v1/public/[businessSlug]?photobox=` (ETag/304) · `GET .../packages` · `GET .../templates?package=` · `POST .../checkout` · `POST .../checkout/apply-voucher` · `POST .../payments/create` · `POST .../payments/cash-confirm` · `GET .../payments/[paymentRef]/status` · `POST .../sessions` · `POST .../sessions/[id]/finalize` · `POST .../sessions/[id]/abort` · `POST /api/v1/public/devices/activate` · `verify` · `exit` · `report` · `GET /api/v1/public/results/[resultToken]`.
+> Hitungan: 23 admin + 9 business/me (8 berkas `route.ts`; `businesses` melayani GET+POST) + 17 public + 3 webhook + 5 cron + 1 health + 3 auth + 1 emoji + 1 help = **63 berkas `route.ts`**.
+> Dua yang masuk setelah audit 2026-10-11: `GET /api/v1/public/frame` (proxy frame R2/allowlist) dan `GET /api/cron/device-cleanup`.
 
-### Webhook (3), Cron (4), Misc (3)
-`POST /api/webhooks/payment/{pakasir,midtrans,tripay}` · `GET /api/cron/{retention,subscription-lifecycle,subscription-expiry-reminder,payment-recovery}` · `GET /api/health` · `GET/POST /api/auth/[...nextauth]` · `POST /api/auth/logout` · `POST /api/auth/register` (stub) · `GET /api/v1/emoji` (proxy emoji-api.com, rate limit 60/menit) · `GET /api/v1/help`.
+### Public Kiosk (17)
+`GET /api/v1/public/[businessSlug]?photobox=` (ETag/304) · `GET .../packages` · `GET .../templates?package=` · `POST .../checkout` · `POST .../checkout/apply-voucher` · `POST .../payments/create` · `POST .../payments/cash-confirm` · `GET .../payments/[paymentRef]/status` · `POST .../sessions` · `POST .../sessions/[id]/finalize` · `POST .../sessions/[id]/abort` · `POST /api/v1/public/devices/activate` · `verify` · `exit` · `report` · `GET /api/v1/public/frame` (proxy allowlist R2) · `GET /api/v1/public/results/[resultToken]`.
+
+### Webhook (3), Cron (5), Misc (3)
+`POST /api/webhooks/payment/{pakasir,midtrans,tripay}` · `GET /api/cron/{retention,subscription-lifecycle,subscription-expiry-reminder,payment-recovery,device-cleanup}` · `GET /api/health` · `GET/POST /api/auth/[...nextauth]` · `POST /api/auth/logout` · `POST /api/auth/register` (stub) · `GET /api/v1/emoji` (proxy emoji-api.com, rate limit 60/menit) · `GET /api/v1/help`.
 
 ---
 
-### 11.1 Daftar Lengkap 61 Route (ekshaustif)
+### 11.1 Daftar Lengkap 63 Route (ekshaustif)
 
 | Route | Method |
 | --- | --- |
 | `/api/auth/[...nextauth]` | GET, POST (NextAuth) |
 | `/api/auth/logout` | POST |
 | `/api/auth/register` | POST (stub — pendaftaran mandiri ditutup) |
-| `/api/health` | GET |
+| `/api/health` | GET (readiness DB + storage; 503 saat gagal) |
 | `/api/v1/help` | GET |
 | `/api/v1/emoji` | GET |
 | `/api/v1/me/businesses` | GET |
@@ -870,6 +879,7 @@
 | `/api/v1/public/devices/verify` | POST |
 | `/api/v1/public/devices/exit` | POST |
 | `/api/v1/public/devices/report` | POST |
+| `/api/v1/public/frame` | GET (proxy allowlist R2; path-style + custom domain) |
 | `/api/v1/public/results/[resultToken]` | GET |
 | `/api/webhooks/payment/pakasir` | POST |
 | `/api/webhooks/payment/midtrans` | POST |
@@ -878,8 +888,9 @@
 | `/api/cron/subscription-lifecycle` | GET |
 | `/api/cron/subscription-expiry-reminder` | GET |
 | `/api/cron/payment-recovery` | GET |
+| `/api/cron/device-cleanup` | GET |
 
-**Total: 61 route.**
+**Total: 63 route.**
 
 ## 12. CRON & LIFECYCLE (vercel.json)
 
@@ -889,6 +900,7 @@
 | `/api/cron/subscription-lifecycle` | `0 0 * * *` | trial habis → expired; active + cancel_at_period_end → cancelled; active lewat period → past_due; past_due lewat grace → expired |
 | `/api/cron/subscription-expiry-reminder` | `0 6 * * *` | email pengingat ke owner (subscription habis <3 hari) via Resend |
 | `/api/cron/payment-recovery` | `0 21 * * *` | paid-but-unsettled → jalankan ulang side effects (idempotent, jendela 7 hari); expire checkout basi |
+| `/api/cron/device-cleanup` | `0 3 * * *` | hapus device basi/tak aktif (heartbeat lewat batas) + `device_logs` lama; fail-closed tanpa `CRON_SECRET` |
 
 - **Auth cron**: `CRON_SECRET` (`src/lib/cron-auth.ts`) — tolak placeholder `change-me`; `*_CRON_OPEN` hanya di luar production (fail-closed).
 - **DB**: `sessions, photos, storage_usage, storage_objects, subscriptions, invoices, payments, checkout_sessions, lifecycle_emails`.
@@ -896,7 +908,7 @@
 
 ---
 
-## 13. DATABASE (55 tabel + 26 fungsi)
+## 13. DATABASE (55 tabel + 29 fungsi)
 
 **Identity & Tenant**: `users`, `auth_sessions`, `businesses`, `business_members`, `business_settings`.
 **Billing**: `plans`, `subscriptions`, `invoices`, `add_ons`, `subscription_add_ons`, `subscription_promos`, `subscription_intent_failures`, `lifecycle_emails`, `payment_credentials`.
@@ -911,10 +923,10 @@
 **Support & Marketing**: `support_tickets`, `support_ticket_replies`, `broadcast_campaigns`, `broadcast_recipients`.
 **Storage**: `storage_objects`, `storage_usage`.
 
-**Fungsi SQL/RPC (26)**:
-`set_updated_at` (trigger) · `activate_device_atomically` · `pos_complete_payment` · `pos_decrement_stock` · `settle_paid_payment_atomically` · `create_voucher_payment_atomically` · `exit_pin_register_failure` · `dashboard_tx_summary` · `dashboard_daily_revenue` · `finance_expense_summary` · `revenue_breakdown` · `tx_insights_summary` · `metrics_tx_status` · `metrics_returning_customers` · `metrics_revenue_per_booth` · `metrics_sessions_per_booth` · `metrics_session_summary` · `metrics_popular_package` · `metrics_popular_template` · `staff_directory_today` · `customer_spending` · `operational_metrics` · `tg_subscription_intent_failures_touch` · `storage_account_add` · `storage_account_sub` · `bootstrap_admin` (promosi eksplisit satu user ke role admin, migration 0052; service_role-only).
+**Fungsi SQL/RPC (29)**:
+`set_updated_at` (trigger) · `activate_device_atomically` · `pos_complete_payment` · `pos_decrement_stock` · `settle_paid_payment_atomically` · `create_voucher_payment_atomically` · `exit_pin_register_failure` · `dashboard_tx_summary` · `dashboard_daily_revenue` · `finance_expense_summary` · `revenue_breakdown` · `tx_insights_summary` · `metrics_tx_status` · `metrics_returning_customers` · `metrics_revenue_per_booth` · `metrics_sessions_per_booth` · `metrics_session_summary` · `metrics_popular_package` · `metrics_popular_template` · `staff_directory_today` · `customer_spending` · `operational_metrics` · `tg_subscription_intent_failures_touch` · `storage_account_add` · `storage_account_sub` · `bootstrap_admin` (promosi eksplisit satu user ke role admin, migration 0052; service_role-only) · **`create_outlet_with_quota` · `create_photobox_with_quota` · `add_business_member_with_quota`** (kuota atomik 0069 — advisory lock per `(business, jenis)`, `SECURITY DEFINER`, `PLAN_LIMIT_REACHED` bila lewat limit).
 
-**Konvensi**: uang integer IDR; RLS + policy `svc_all` service_role di semua tabel publik (0064); semua RPC `revoke` anon/authenticated + `grant` service_role (0065); migration terakhir `0067_performance_indexes`.
+**Konvensi**: uang integer IDR; RLS + policy `svc_all` service_role di semua tabel publik (0064); semua RPC `revoke` anon/authenticated + `grant` service_role (0065); `search_path` dipin `public, pg_temp` pada seluruh RPC aplikasi (0071 — **ditulis & diuji statis, BELUM di-apply**); migration terakhir `0071_rpc_search_path_hardening`.
 
 **Tabel tanpa UI aktif** (dormant/backlog): `bookings` (+anti-overlap gist), `events`, `event_templates`, `stickers`, `device_logs`, `storage_objects` (dipakai akuntansi).
 
@@ -943,9 +955,9 @@
 - **Marketing**: 9 halaman + form subscribe/kontak + docs.
 - **Auth/Onboarding**: 5 alur (login, register-konsultasi, welcome, create-business, workspace switch).
 - **Pembayaran/Webhook**: 3 provider + invoice aggregator + recovery.
-- **Cron**: 4 job.
-- **API**: 61 route.
-- **DB**: 55 tabel, 26 fungsi.
+- **Cron**: 5 job.
+- **API**: 63 route.
+- **DB**: 55 tabel, 29 fungsi.
 
 ### 15.2 Temuan (kode = kenyataan)
 
@@ -955,16 +967,35 @@
 | T2 | `user.role='admin'` **dan** allowlist `ADMIN_EMAILS` dua-duanya sah | `src/server/admin/guard.ts:11-24` | Admin email env bisa naik tanpa ubah DB |
 | T3 | MRR dihitung dari snapshot `plans.price_monthly` (bukan histori invoice) | `src/server/admin/overview.ts:71` (`ponytail:`) | MRR bergeser bila admin ubah harga plan |
 | T4 | `photoboxes.pos_enabled` dibatasi unique index satu booth POS aktif per business | `db/schema.sql:237` | Owner tidak bisa aktifkan POS di >1 booth sekaligus |
-| T5 | `transactions.payment_method` mencakup `manual` & `offline` = non-withdrawable | `db/schema.sql:647` | Uang manual/offline hanya reporting, tidak masuk saldo |
+| T5 | `transactions.payment_method` mencakup `manual` & `offline` = non-withdrawable | `db/schema.sql:647` | Uang manual/offline hanya reporting (`withdrawable=false`, 0033); alur saldo/penarikan sendiri sudah **dihapus 0044** |
 | T6 | Payment webhook state-aware `received`→`processed` | migrasi 0066 | Replay window berbasis `event_id` unik |
 | T7 | Kuota sesi konkuren efektif = plan + add-on `unit='session'` | `src/server/plan-limits.ts:58` | Add-on menambah `max_concurrent_sessions` |
 | T8 | Kiosk finalize punya grace offline (`OFFLINE_FINALIZE_GRACE_MS`) | `src/server/kiosk-sessions.ts:402` | Foto ter-capture sebelum expiry tetap diproses |
 | T9 | Kredensial payment dienkripsi (`server_key`, `private_key`) | `src/server/payment/providers/encrypt.ts` | Wajib `PAYMENT_ENCRYPTION_KEY` |
-| T10 | Rate limit fail-closed di production saat backend error | `src/lib/rate-limit.ts` | Upstash mati → request ditolak (aman) |
+| T10 | Rate limit fixed-window per proses | `src/lib/rate-limit.ts` | Counter di memori; batas `>` bukan `>=` |
 | T11 | Storage dual-provider (R2 write / resolve read) | `src/server/storage/index.ts` | Key identik antar provider → resolusi via `head()` |
 | T12 | `bookings`/`events`/`event_templates`/`stickers` ada di schema tanpa UI | `db/schema.sql` | Backlog (booking, event mode, sticker) |
 | T13 | God-components terdaftar known-issue | `KioskBrandingEditor` 1.642, `TemplateBuilder` 996, `KioskApp` 813 baris | Refactor kandidat |
 | T14 | `docs/flow-maps/` hanya memuat 01–03; 04–15 belum ada | `docs/flow-maps/00-INDEX.md` | Referensi flow kiosk/POS/payment berbasis dokumen ini |
+
+### 15.2b Temuan yang SUDAH diperbaiki (verifikasi kode 2026-10-16)
+
+| # | Temuan lama | Status | Bukti |
+| --- | --- | --- | --- |
+| T15 | React #441 (input uncontrolled `defaultValue` berubah di POS) | **FIXED** | `src/components/dashboard/PosProductFields.tsx` — state terkontrol `useState`; diverifikasi E2E 5 skenario (`newErrs=0`) |
+| T16 | `listTransactions` bisa melempar saat `searchParams` non-objek | **FIXED** | `src/server/transactions.ts` — `safeParse` + fallback default; 3 tes regresi di `tests/phase5.test.ts` |
+| T17 | `getTransaction` dead export; `TransactionListInput` dead type | **FIXED** | dihapus (0 caller repo-wide) |
+| T18 | `collapsible` pada Accordion (no-op Base UI) | **FIXED** | `src/components/ui/accordion.tsx` — prop dibuang; `faq.tsx` diselaraskan |
+| T19 | ESLint repo-wide 3114 error dari `.claude/worktrees/**` | **FIXED** | `eslint.config.mjs` — ignore `**/worktrees/**`; CI hijau |
+| T20 | Dua konvensi nama rollback → `sort` menjalankan rollback sebelum forward (0019/0025/0026/0027/0028/0041/0056/0064) | **FIXED** | diseragamkan ke `NNNN_nama_rollback.sql`; dijaga `tests/migration-integrity.test.ts` |
+| T21 | Tanpa tes untuk isolasi tenant / revocation sesi / idempotensi webhook | **FIXED** | `tests/tenant-isolation.test.ts`, `session-revocation.test.ts`, `webhook-log.test.ts` |
+| T22 | 23 RPC aplikasi tanpa `search_path` terpin | **PREPARED** | migrasi `0071` + rollback ditulis & diuji statis (`tests/rpc-search-path.test.ts`); **belum di-apply** ke Supabase |
+| T23 | `/api/health` statis — selalu 200 walau Supabase/R2 mati | **FIXED** | `src/app/api/health/route.ts` + `src/lib/health.ts` — readiness DB + storage, timeout 4s, **503** saat gagal, `checks` aditif; `tests/health.test.ts` |
+| T24 | Komentar cron `subscription-lifecycle` bilang "setiap jam", jadwal aktual `0 0 * * *` harian | **FIXED** | komentar `src/app/api/cron/subscription-lifecycle/route.ts` diselaraskan dengan `vercel.json` |
+| T25 | `docs/flow-maps/00-INDEX.md` mencantumkan `04`–`15` seolah ada, `13` masih mengklaim alur withdrawal | **FIXED** | baris `04`–`15` ditandai backlog eksplisit, `13` ditandai obsolete (`0044`) |
+| T26 | Aset brand lama (SVG ikon "P" kuning + `avatar-snappy/4.svg` raster 1,1 MB) tidak mencerminkan logo produk | **FIXED** | diganti logo baru: `snapyos-icon-{192,512}.png`, `snapyos-icon-maskable-512.png`, `apple-touch-icon.png`, `snapyos-mark.png` (topbar), `src/app/favicon.ico` multi-ukuran 16–256; `snapyos-icon.svg`, `snapyos-icon-maskable.svg`, `avatar-snappy/4.svg` dihapus; 9 call-site dialihkan ke `/snapyos-mark.png` |
+| T27 | **Service worker cache-first atas URL `public/` yang stabil** → mengganti aset apa pun (logo, ilustrasi) tidak pernah terlihat di klien terpasang; kiosk PWA menyajikan berkas lama **selamanya** | **FIXED** | `public/sw.js` → stale-while-revalidate (sajikan cache, revalidasi di latar), cache `snapyos-kiosk-v4`; direproduksi di browser (entri cache `6fbf1645…` → `120dc20f…` setelah satu muat, tanpa bersihkan cache manual); dijaga `tests/service-worker-assets.test.ts` |
+| T28 | Aset `public/` membengkak: `dashboard-preview.png` 1,8 MB @3024px (tampil ≤988px), `pakasir.png` 248 KB @1080px (tampil 20–24px), 5 ilustrasi marketing 5,46 MB (raster tertanam di dalam SVG, tampil 44–128px) | **FIXED** | `dashboard-preview.png` → 562 KB palette @2048px (mean diff 0.32, 0,0012% px terdampak); `pakasir.png` → 7,8 KB @192px (flatten 24px: mean 0,65, 0 px >32); 5 SVG → 463 KB total (render 256px identik: mean ≤0,42, 0 px >32); `public/` 7,5 MB → 1,4 MB; dimensi intrinsik `hero.tsx`/`feature-section.tsx` disinkronkan |
 
 ### 15.3 Fitur tanpa UI (backlog kode)
 - Booking & event mode (tabel ada, tanpa page/action).
@@ -978,4 +1009,7 @@
 ### 15.4 Batasan audit ini
 - Graf diindeks mode `moderate` (semantic + AST), `parse_partial` pada `db/schema.sql` (ranges dilaporkan) → klaim tabel/kolom diverifikasi langsung dari sumber.
 - `docs/flow-maps/04..15` tidak ada; pemetaan kiosk/POS/payment/DB di dokumen ini dari kode.
-- Tidak ada klaim dead-code ekshaustif; 60 berkas uji ada, suite tidak dijalankan dalam audit ini.
+- ~~Tidak ada klaim dead-code ekshaustif; 60 berkas uji ada, suite tidak dijalankan dalam audit ini.~~
+  **Diperbarui 2026-10-16:** suite **dijalankan** (`npm test` → 809 lulus, 0 gagal; 84 berkas uji)
+  dan gate lain (lint/typecheck/build) diukur di `docs/18-audit-report.md`. Angka suite di sini
+  mencakup tes keamanan baru (isolasi tenant, revocation sesi, idempotensi webhook, privilege RPC).

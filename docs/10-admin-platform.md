@@ -1,8 +1,15 @@
 # 10. SnapyOS Platform Admin
 
+> **CATATAN (2026-10-16):** seluruh alur penarikan saldo (`withdrawals`, `balances`,
+> `balance_ledger`, halaman `/admin/withdrawals`, `processWithdrawal`/`rejectWithdrawal`,
+> setelan `withdrawal_days`/`withdrawal_sla_hours`) **sudah dihapus** oleh migrasi
+> `0044_drop_withdrawal_flow.sql` — lihat `docs/14-settlement-withdrawal.md`.
+> Penyebutan withdrawal di changelog di bawah adalah **catatan historis** audit
+> 2026-09-16, bukan status terkini.
+
 ## Status Implementasi (audit 2026-09-16)
 
-SESUAI (inti): dashboard admin lengkap (overview, users, businesses, plans, subscriptions, add-ons, **promos**, templates, payments + summary, withdrawals, settings), overview MRR/metrics, suspend/reactivate business, process/reject withdrawal dengan ledger simetris (debit saat paid + credit saat reject).
+SESUAI (inti): dashboard admin lengkap (overview, users, businesses, plans, subscriptions, add-ons, **promos**, templates, payments + summary, settings), overview MRR/metrics, suspend/reactivate business.
 
 EKSTRA (audit 2026-09-16, semua sudah terdokumentasi):
 

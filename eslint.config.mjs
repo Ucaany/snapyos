@@ -36,8 +36,11 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Vercel build output (generated bundles/launchers — bukan source):
     ".vercel/**",
-    // Agent Manager worktrees: duplicate full copy of the repo (generated):
-    ".kilo/worktrees/**",
+    // Agent worktrees: salinan penuh repo (generated), bukan source app.
+    // `.claude/worktrees/**` dulu terlewat sehingga `npm run lint` melaporkan
+    // ribuan error dari kode yang bukan milik app — pola `**/worktrees/**`
+    // menutup semua tooling yang membuat worktree.
+    "**/worktrees/**",
     // Local audit / Playwright E2E harness (bukan source app):
     ".audit/**",
     ".e2e-tmp/**",

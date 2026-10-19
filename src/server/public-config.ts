@@ -10,6 +10,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
 import { brandingSchema, type BrandingInput } from "@/lib/validators";
 import { slotCount, type TemplateLayout } from "@/lib/template-layout";
+import { selectVisibleTemplates } from "@/lib/template-visibility";
 import type {
   BrandingConfig,
   KioskPageConfig,
@@ -166,6 +167,7 @@ async function buildPublicConfig(
     kiosk: {
       bg_color: merged.kiosk?.bg_color,
       text_color: merged.kiosk?.text_color,
+      font_family: merged.kiosk?.font_family,
       font_scale: merged.kiosk?.font_scale,
       button_radius: merged.kiosk?.button_radius,
       padding: merged.kiosk?.padding,
@@ -278,10 +280,19 @@ export async function listPublicPackages(
 }
 
 /**
- * Template aktif milik business/global, di-assign ke package (docs/05 §5.4,
- * docs/15 §15.6). Saat packageId diberikan: filter slot_count ==
- * package.photo_count (template legacy slot_count 0 tetap lolos) dan
- * file_url/thumbnail_url dikirim sebagai signed URL (bucket private).
+ * Template aktif milik business/global untuk kiosk (docs/05 §5.4,
+ * docs/15 §15.6).
+ *
+ * Aturan pilih: assignment package Mempersempit daftar, tapi tidak pernah
+ * mengosongkannya. Bila package punya template ter-assign yang slot-nya cocok,
+ * hanya itu yang tampil. Bila tidak ada satu pun yang cocok (data lama: paket
+ * belum di-assign, atau assignment dibuat sebelum validasi slot), daftar jatuh
+ * ke seluruh template aktif yang slot-nya cocok — booth tetap bisa dipakai
+ * tanpa menunggu owner memperbaiki assignment.
+ *
+ * Slot tetap wajib cocok dengan `package.photo_count` (legacy slot 0 lolos):
+ * jumlah capture mengikuti slot template, jadi template 4-slot pada paket
+ * 3 foto akan membuat finalize ditolak kuota.
  */
 function frameProxyUrl(url: string): string {
   if (!/^https?:\/\//i.test(url)) return url;
@@ -326,33 +337,19 @@ export async function listPublicTemplates(businessId: string, packageId?: string
   });
 
   let allowed: Set<string> | null = null;
-  let photoCount: number | null = null;
   if (packageId) {
-    const [{ data: links }, { data: pkg }] = await Promise.all([
-      supabase.from("package_templates").select("template_id").eq("package_id", packageId),
-      supabase
-        .from("packages")
-        .select("photo_count")
-        .eq("id", packageId)
-        .eq("business_id", businessId)
-        .maybeSingle(),
-    ]);
+    const { data: links } = await supabase
+      .from("package_templates")
+      .select("template_id")
+      .eq("package_id", packageId);
     allowed = new Set((links ?? []).map((l) => l.template_id));
-    photoCount = pkg?.photo_count ?? null;
   }
 
-  const filtered = visible.filter((t) => {
-    if (allowed && !allowed.has(t.id)) return false;
-    if (photoCount !== null) {
-      // docs/15 §15.6 — filter slot_count == package.photo_count (legacy 0 lolos).
-      const sc = slotCount(t.layout);
-      if (sc > 0 && sc !== photoCount) return false;
-    }
-    return true;
-  });
+  // Semua frame aktif tampil untuk paket mana pun; jumlah slot tidak lagi
+  // menyaring (slot berlebih diisi bergiliran di editor).
+  const filtered = selectVisibleTemplates(visible, { assignedIds: allowed });
 
   // Batch signed URL — satu request storage untuk seluruh daftar (bukan N+1).
-  // ponytail: fallback ke key mentah bila batch gagal — kiosk retry render berikutnya.
   const keys = Array.from(
     new Set(filtered.flatMap((t) => {
       const ks = [t.file_url];
@@ -362,13 +359,25 @@ export async function listPublicTemplates(businessId: string, packageId?: string
   );
   const urlByKey = await signedUrlMap(BRAND_ASSETS_BUCKET, keys, SIGNED_URL_TTL);
 
-  return filtered.map((t) => ({
-    id: t.id,
-    name: t.name,
-    category: t.category,
-    file_url: frameProxyUrl(urlByKey.get(t.file_url) ?? t.file_url),
-    thumbnail_url: t.thumbnail_url ? (urlByKey.get(t.thumbnail_url) ?? null) : null,
-    layout: (slotCount(t.layout) > 0 ? t.layout : null) as TemplateLayout | null,
-    slot_count: slotCount(t.layout),
-  }));
+  // Template tanpa frame yang bisa dimuat tidak boleh ditawarkan: Editor
+  // memblokir finish saat frame gagal dimuat, jadi sesi customer berakhir buntu.
+  return filtered.flatMap((t) => {
+    const fileUrl = /^https?:\/\//i.test(t.file_url) ? t.file_url : urlByKey.get(t.file_url);
+    if (!fileUrl) return [];
+    const thumb = t.thumbnail_url ? urlByKey.get(t.thumbnail_url) : undefined;
+    // Data lama menyimpan thumbnail = frame (tidak ada thumbnail terpisah).
+    // Jangan kirim PNG penuh ke grid: minta versi 480px dari proxy frame.
+    const thumbUrl = thumb ?? `${fileUrl}${fileUrl.includes("?") ? "&" : "?"}w=480`;
+    return [{
+      id: t.id,
+      name: t.name,
+      category: t.category,
+      file_url: frameProxyUrl(fileUrl),
+      // Thumbnail selalu URL siap pakai; key mentah tidak pernah dikirim
+      // sebagai src (bukan URL, akan 404 di origin kiosk).
+      thumbnail_url: frameProxyUrl(thumbUrl),
+      layout: (slotCount(t.layout) > 0 ? t.layout : null) as TemplateLayout | null,
+      slot_count: slotCount(t.layout),
+    }];
+  });
 }

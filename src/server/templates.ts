@@ -18,6 +18,7 @@ import {
 } from "@/lib/validators"
 import { slotCount, type TemplateLayout } from "@/lib/template-layout"
 import { staleTemplateKeys, staleThumbnailKeys } from "@/lib/template-cleanup"
+import { generateFrameThumbnail } from "@/server/frame-thumbnail"
 import { SIGNED_URL_TTL_SECONDS as SIGNED_URL_TTL } from "@/lib/constants"
 import {
   assertStorageAvailable,
@@ -43,6 +44,11 @@ export type TemplateRow = {
   /** layout jsonb mentah — null/{} = template legacy (docs/15 §15.2). */
   layout: TemplateLayout | Record<string, never> | null
   slot_count: number
+  /** Di-assign ke minimal satu paket? Template aktif tanpa assignment tidak
+   *  pernah sampai ke kiosk. Opsional: builder/admin membangun row manual. */
+  assigned?: boolean
+  /** Paket yang memakai template ini (informasi assignment di dashboard). */
+  assigned_packages?: { id: string; name: string; photo_count: number }[]
 }
 
 async function requireMembership(userId: string, businessId: string, permission: Permission) {
@@ -150,6 +156,40 @@ export async function listTemplates(
   )
   const urlByKey = await signedUrlMap(BUCKET, keys, SIGNED_URL_TTL)
 
+  // Template aktif yang belum di-assign ke paket mana pun tidak akan pernah
+  // muncul di kiosk (docs/05 §5.4) — owner melihat sebabnya langsung di kartu,
+  // bukan menebak kenapa frame "sudah aktif" tetap tidak ada di booth.
+  const linkedIds = new Set<string>()
+  const packagesByTemplate = new Map<string, { id: string; name: string; photo_count: number }[]>()
+  if (rows.length > 0) {
+    const { data: linked } = await supabase
+      .from("package_templates")
+      .select("template_id, package_id")
+      .in("template_id", rows.map((r) => r.id))
+    const links = (linked ?? []) as { template_id: string; package_id: string }[]
+    for (const l of links) linkedIds.add(l.template_id)
+
+    // Nama + jumlah foto paket: satu query untuk seluruh link (bukan N+1).
+    const packageIds = Array.from(new Set(links.map((l) => l.package_id)))
+    if (packageIds.length > 0) {
+      const { data: pkgs } = await supabase
+        .from("packages")
+        .select("id, name, photo_count")
+        .eq("business_id", businessId)
+        .in("id", packageIds)
+      const byId = new Map(
+        ((pkgs ?? []) as { id: string; name: string; photo_count: number }[]).map((p) => [p.id, p])
+      )
+      for (const l of links) {
+        const pkg = byId.get(l.package_id)
+        if (!pkg) continue
+        const list = packagesByTemplate.get(l.template_id) ?? []
+        list.push({ id: pkg.id, name: pkg.name, photo_count: pkg.photo_count })
+        packagesByTemplate.set(l.template_id, list)
+      }
+    }
+  }
+
   return rows.map((row) => ({
     id: row.id,
     name: row.name,
@@ -160,6 +200,8 @@ export async function listTemplates(
     preview_url: urlByKey.get(row.file_url) ?? null,
     layout: (row.layout ?? {}) as TemplateRow["layout"],
     slot_count: slotCount(row.layout),
+    assigned: linkedIds.has(row.id),
+    assigned_packages: packagesByTemplate.get(row.id) ?? [],
   }))
 }
 
@@ -206,7 +248,8 @@ export async function uploadTemplate(
     file_url: "pending",
   })
 
-  const key = `${businessId}/templates/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${check.ext}`
+  const baseName = `${businessId}/templates/${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+  const key = `${baseName}.${check.ext}`
   const supabase = createServerClient()
   const { error: uploadError } = await getStorage().upload(BUCKET, key, body, {
     contentType: file.type ?? "application/octet-stream",
@@ -215,6 +258,9 @@ export async function uploadTemplate(
   if (uploadError) throw new ApiError("INTERNAL", "Gagal mengunggah frame")
   await accountStorageAdd(businessId, BUCKET, key, body.length)
 
+  // Thumbnail WebP terpisah: grid pilih frame tidak perlu mengunduh PNG penuh.
+  const thumbKey = await uploadGeneratedThumbnail(businessId, baseName, body)
+
   const { data, error } = await supabase
     .from("templates")
     .insert({
@@ -222,13 +268,38 @@ export async function uploadTemplate(
       name: parsed.name,
       category: parsed.category,
       file_url: key,
-      thumbnail_url: key,
+      thumbnail_url: thumbKey ?? key,
       is_active: true,
     })
     .select(COLUMNS)
     .single()
   if (error) throw new ApiError("INTERNAL", "Gagal menyimpan template")
   return data
+}
+
+/**
+ * Buat + unggah thumbnail WebP. Return key bila berhasil, null bila decode
+ * gagal (pemanggil memakai frame penuh sebagai fallback). Upload thumbnail
+ * yang gagal tidak boleh menggagalkan upload frame: best-effort + log.
+ */
+async function uploadGeneratedThumbnail(
+  businessId: string,
+  baseName: string,
+  frameBytes: Buffer
+): Promise<string | null> {
+  const thumb = await generateFrameThumbnail(frameBytes)
+  if (!thumb) return null
+  const thumbKey = `${baseName}-thumb.${thumb.extension}`
+  const { error } = await getStorage().upload(BUCKET, thumbKey, thumb.bytes, {
+    contentType: thumb.contentType,
+    upsert: false,
+  })
+  if (error) {
+    console.error("[templates] gagal mengunggah thumbnail:", error.message)
+    return null
+  }
+  await accountStorageAdd(businessId, BUCKET, thumbKey, thumb.bytes.length)
+  return thumbKey
 }
 
 export async function updateTemplate(
@@ -273,7 +344,13 @@ export async function uploadTemplateThumbnail(
   if (!check.ok) {
     throw new ApiError("VALIDATION_ERROR", check.error, { thumbnail: [check.error] })
   }
-  const key = `${businessId}/templates/${Date.now()}-thumb-${Math.random().toString(36).slice(2, 8)}.${check.ext}`
+  // Thumbnail dari builder bisa berupa PNG preview penuh; turunkan ke WebP
+  // kecil agar grid kiosk tetap ringan. Gagal decode = pakai byte asli.
+  const resized = await generateFrameThumbnail(body)
+  const stored = resized ? resized.bytes : body
+  const ext = resized ? resized.extension : check.ext
+  const contentType = resized ? resized.contentType : (file.type ?? "application/octet-stream")
+  const key = `${businessId}/templates/${Date.now()}-thumb-${Math.random().toString(36).slice(2, 8)}.${ext}`
   const supabase = createServerClient()
   // Thumbnail lama → dibersihkan setelah update sukses (anti orphan).
   // PENTING: ambil `file_url` juga — pada template hasil upload, thumbnail_url
@@ -289,12 +366,12 @@ export async function uploadTemplateThumbnail(
   const oldThumb = row?.thumbnail_url ?? null
   const currentFrame = row?.file_url ?? null
 
-  const { error: uploadError } = await getStorage().upload(BUCKET, key, body, {
-    contentType: file.type ?? "application/octet-stream",
+  const { error: uploadError } = await getStorage().upload(BUCKET, key, stored, {
+    contentType,
     upsert: false,
   })
   if (uploadError) throw new ApiError("INTERNAL", "Gagal mengunggah thumbnail")
-  await accountStorageAdd(businessId, BUCKET, key, body.length)
+  await accountStorageAdd(businessId, BUCKET, key, stored.length)
 
   const { error } = await supabase
     .from("templates")
@@ -345,21 +422,24 @@ export async function replaceTemplateFrame(
     .eq("business_id", businessId)
     .maybeSingle()
   if (!row) throw new ApiError("NOT_FOUND", "Template tidak ditemukan")
-  const key = `${businessId}/templates/${Date.now()}-chroma-${Math.random().toString(36).slice(2, 8)}.png`
+  const baseName = `${businessId}/templates/${Date.now()}-chroma-${Math.random().toString(36).slice(2, 8)}`
+  const key = `${baseName}.png`
   const { error: uploadError } = await getStorage().upload(BUCKET, key, body, {
     contentType: "image/png",
     upsert: false,
   })
   if (uploadError) throw new ApiError("INTERNAL", "Gagal mengunggah hasil chroma key")
   await accountStorageAdd(businessId, BUCKET, key, body.length)
+  // Thumbnail WebP dari frame baru (transparansi dipertahankan).
+  const thumbKey = await uploadGeneratedThumbnail(businessId, baseName, body)
   const { error } = await supabase
     .from("templates")
-    .update({ file_url: key, thumbnail_url: key })
+    .update({ file_url: key, thumbnail_url: thumbKey ?? key })
     .eq("id", templateId)
     .eq("business_id", businessId)
   if (error) {
-    await removeResolved(BUCKET, [key])
-    await accountStorageSub(businessId, [key])
+    await removeResolved(BUCKET, thumbKey ? [key, thumbKey] : [key])
+    await accountStorageSub(businessId, thumbKey ? [key, thumbKey] : [key])
     throw new ApiError("INTERNAL", "Gagal menyimpan frame chroma key")
   }
   // Bersihkan frame lama + thumbnail lama (keduanya kini unreferenced).
@@ -368,7 +448,7 @@ export async function replaceTemplateFrame(
     oldFile: oldRows.file_url,
     oldThumbnail: oldRows.thumbnail_url,
     newKey: key,
-  })
+  }).filter((staleKey) => staleKey !== thumbKey)
   if (stale.length > 0) {
     await removeResolved(BUCKET, stale)
     await accountStorageSub(businessId, stale)

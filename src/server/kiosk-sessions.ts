@@ -7,6 +7,7 @@
  */
 
 import "server-only"
+import { cache } from "react"
 import { randomUUID } from "node:crypto"
 import { createServerClient } from "@/lib/supabase/server"
 import { ApiError } from "@/lib/api-errors"
@@ -417,11 +418,16 @@ async function discardSessionMedia(businessId: string, session: SessionRow): Pro
   await discardUploadedObjects(businessId, keys)
 }
 
+/**
+ * @param gifPhotos Capture mentah TANPA frame untuk GIF slideshow. Kosong
+ *   (klien lama) → fallback ke `photos` seperti perilaku sebelumnya.
+ */
 export async function finalizeSession(
   businessSlug: string,
   sessionId: string,
   input: SessionFinalizeInput,
-  photos: PhotoFile[]
+  photos: PhotoFile[],
+  gifPhotos: PhotoFile[] = []
 ) {
   const parsed = sessionFinalizeSchema.parse(input)
   const device = await resolveActiveDevice(parsed.device_token)
@@ -494,7 +500,8 @@ export async function finalizeSession(
   }
 
   // Storage gate (0053): kuota penuh → blokir simpan hasil (riwayat foto).
-  // Incoming = total foto; GIF slideshow mengikuti ukuran foto gabungan.
+  // Hanya foto final yang disimpan; capture mentah GIF tidak pernah di-upload,
+  // jadi tidak boleh ikut dihitung (bisa menolak sesi yang sebenarnya muat).
   const photoBytes = photos.reduce((sum, f) => sum + (f.size ?? 0), 0)
   await assertStorageAvailable(device.businessId, photoBytes)
 
@@ -512,14 +519,24 @@ export async function finalizeSession(
   const gifKey = `${uploadKey}/result.gif`
   await accountStorageSub(device.businessId, [...photoKeys, gifKey])
 
-  // Baca + validasi semua buffer sekali (GIF membutuhkan seluruh frame). Validasi
-  // SEBELUM upload apa pun agar body invalid tidak meninggalkan objek parsial.
+  // Baca + validasi semua buffer sekali. Validasi SEBELUM upload apa pun agar
+  // body invalid tidak meninggalkan objek parsial.
   const bodies: Buffer[] = []
   for (const file of photos) {
     const body = Buffer.from(await file.arrayBuffer())
     const check = validatePhotoFile(file, body)
     if (!check.ok) throw new ApiError("VALIDATION_ERROR", check.error)
     bodies.push(body)
+  }
+
+  // GIF dibuat dari capture mentah (potret, tanpa frame) — bukan dari hasil
+  // komposit. Hanya di-upload sebagai `result.gif`; tidak menjadi baris foto.
+  const gifBodies: Buffer[] = []
+  for (const file of gifPhotos) {
+    const body = Buffer.from(await file.arrayBuffer())
+    const check = validatePhotoFile(file, body)
+    if (!check.ok) throw new ApiError("VALIDATION_ERROR", check.error)
+    gifBodies.push(body)
   }
 
   // Upload paralel dengan konkurensi terbatas (I/O-bound; 4 cukup untuk tablet
@@ -539,8 +556,9 @@ export async function finalizeSession(
   })
 
   // GIF slideshow server-side (docs/05 §5.13) — di-decode frame-by-frame
-  // (puncak memori O(satu frame), bukan O(semua frame)).
-  const gif = generateSlideshowGif(bodies)
+  // (puncak memori O(satu frame), bukan O(semua frame)). Sumber: capture
+  // mentah bila ada; klien lama tanpa `gif_photos` tetap memakai hasil akhir.
+  const gif = generateSlideshowGif(gifBodies.length > 0 ? gifBodies : bodies)
   const { error: gifErr } = await getStorage().upload(GENERATED_BUCKET, gifKey, gif, {
     contentType: "image/gif",
     upsert: true,
@@ -670,8 +688,7 @@ async function buildResult(businessId: string, session: Pick<SessionRow, "id" | 
   }
 }
 
-/** Akses result online via result_token (docs/05 §5.13, retention docs/09). */
-export async function getResult(resultToken: string) {
+async function loadResult(resultToken: string) {
   const supabase = createServerClient()
   const { data: checkout } = await supabase
     .from("checkout_sessions")
@@ -742,3 +759,13 @@ export async function getResult(resultToken: string) {
     photos: photoItems,
   }
 }
+
+/**
+ * Akses result online via result_token (docs/05 §5.13, retention docs/09).
+ *
+ * Dibungkus `cache()` (react) supaya satu request hanya menjalankan query ini
+ * SEKALI. `/r/[token]/layout.tsx` memanggilnya sebagai gerbang 404 dan
+ * `page.tsx` memanggilnya untuk merender. Tanpa cache keduanya menembak
+ * Supabase dua kali untuk token yang sama.
+ */
+export const getResult = cache(loadResult)

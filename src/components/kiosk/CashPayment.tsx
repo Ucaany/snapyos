@@ -1,19 +1,24 @@
 "use client"
 import { ArrowLeft, Banknote } from "lucide-react"
 import { formatIDR } from "@/lib/dashboard-math"
+import type { KioskVisualStyle } from "@/lib/kiosk-types"
 export function CashPayment({
   amount,
   left,
   onCancel,
+  kioskStyle,
 }: {
   amount: number
   left: number
   onCancel(): void
+  kioskStyle?: KioskVisualStyle
 }) {
+  const ks = kioskStyle
   const time = `${String(Math.floor(left / 60)).padStart(2, "0")}:${String(left % 60).padStart(2, "0")}`
   return (
     <div
-      className="mx-auto flex w-full max-w-[700px] flex-1 flex-col justify-center gap-4 border-2 border-ink bg-accent-2 p-6 shadow-[4px_4px_0_0_#111111]"
+      className="mx-auto flex w-full max-w-[700px] flex-1 flex-col justify-center gap-4 border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111]"
+      style={ks ? { borderRadius: ks.radius } : undefined}
       aria-live="polite"
     >
       <Banknote className="size-9" />

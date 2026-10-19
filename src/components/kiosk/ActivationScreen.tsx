@@ -53,7 +53,7 @@ export function ActivationScreen({ initialCode, onActivated }: Props) {
   }, [initialCode]);
 
   return (
-    <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-8 bg-bg px-6 py-10 text-center">
+    <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-8 overflow-y-auto bg-bg px-6 py-10 text-center">
       <div className="flex flex-col items-center gap-4">
         <KeyRound className="size-12" aria-hidden />
         <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground">

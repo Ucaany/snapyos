@@ -91,6 +91,8 @@ export async function saveBrandingKioskAction(input: {
   primary_color?: string;
   secondary_color?: string;
   kiosk?: Record<string, unknown>;
+  /** Layar yang override visualnya dihapus (tombol "Reset layar ini"). */
+  reset_pages?: string[];
 }): Promise<{ ok: true } | { ok: false; error?: string; fieldErrors?: Record<string, string[]> }> {
   const user = await requireUser();
   if (!user) return { ok: false, error: "Sesi berakhir. Silakan login ulang." };
@@ -98,8 +100,13 @@ export async function saveBrandingKioskAction(input: {
   if (!active) return { ok: false, error: "Business tidak ditemukan" };
   await requireEffectiveSubscription(active.business.id, "write");
 
+  // Allowlist id layar: nilai ini dipakai sebagai key jsonb, bukan segmen
+  // storage, tapi tetap tidak boleh membawa key sembarang dari client.
+  const resetPages = (input.reset_pages ?? []).filter((p) => kioskPageIdSchema.safeParse(p).success);
+  const { reset_pages: _ignored, ...payload } = input;
+
   try {
-    await updateBranding(user.id, active.business.id, input);
+    await updateBranding(user.id, active.business.id, payload, { resetPages });
   } catch (error) {
     // Peta ke shape `{ok:false}` yang khas action ini — pakai toFormState
     // (kanonis) agar tidak duplikasi blok Zod/ApiError manual di file lain.

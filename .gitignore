@@ -1,8 +1,6 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
+# --- Dependencies ---
+node_modules/
+.pnp
 .pnp.*
 .yarn/*
 !.yarn/patches
@@ -10,58 +8,54 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
-/coverage
+# --- Build output ---
+.next/
+out/
+build/
+dist-release/
 
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-._*
+# --- Secrets ---
+# Semua file .env diabaikan; hanya template yang boleh masuk Git.
+.env
+.env.*
+!.env.example
 *.pem
 
-# debug
+# --- Logs ---
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
-!.env.example
+# --- Test & tooling ---
+coverage/
+.turbo/
+test-results/
+playwright-report/
+.vercel/
 
-# vercel
-.vercel
-
-# typescript
+# --- OS / editor ---
+.DS_Store
+._*
 *.tsbuildinfo
 next-env.d.ts
 
-# Catatan pribadi non-teknis (di luar repo)
+# --- Local harness (bukan bagian app) ---
+.audit/
+.e2e-tmp/
+.e2e-builder/
+.claude/
+.playwright-mcp/
+.ngodingpakeai/
+anti-slop/
+.kilo/
+.agents/
+/supabase/
 SnapyOS Saas/
 hardware-agent/target/
 tauri-kiosk/target/
 tauri-kiosk/gen/
 
-# Supabase CLI temp state (regenerated on every `supabase` command)
-/supabase/
-
-# Audit harness lokal (Playwright E2E, bukan bagian app)
-/.audit/
-/.e2e-tmp/
-/test-results/
-
-# Artefak tooling lokal (bukan bagian app; .claude/worktrees = salinan repo penuh)
-/.claude/
-/.playwright-mcp/
-/anti-slop/
-/.ngodingpakeai/
-
-# Screenshot evidence e2e — di-generate ulang tiap run, jangan di-commit.
-# Bukti terkurasi tetap disimpan manual (mis. k2-media-frame-evidence.png).
+# Screenshot e2e — dibuat ulang tiap run; bukti terkurasi disimpan manual.
 /tests/e2e/*.png

@@ -10,6 +10,12 @@ export type PrintSettingsInput = {
   auto_print?: boolean;
   copies?: number | null;
   margins_mm?: number | null;
+  /** Jalur cetak (baris lama tanpa `mode` = browser). */
+  mode?: "browser" | "bluetooth" | null;
+  /** Lebar kertas thermal (58/80mm). */
+  bluetooth_paper_width_mm?: 58 | 80 | null;
+  /** Nama printer Bluetooth (informasi untuk petugas). */
+  bluetooth_device_name?: string | null;
 };
 
 export type PrintPageSize = { widthMm: number; heightMm: number; marginMm: number };
@@ -74,4 +80,25 @@ export function printPlan(
   const photoIndexes: number[] = [];
   for (let s = 0; s < prints; s++) photoIndexes.push(s % photos);
   return { kind: "single", sheets: prints, photoIndexes };
+}
+
+/**
+ * Pemetaan lembar → indeks foto, dipakai BERSAMA oleh jalur browser
+ * (`BrowserPrintSheet`) dan jalur thermal (`BluetoothPrintScreen`).
+ *
+ * `copies` menggandakan set lembar (bukan menambah foto), dan `single`
+ * menggilir foto bila print_count > jumlah foto.
+ */
+export function printSheets(plan: PrintPlan, photoCount: number, copies: number): number[][] {
+  if (plan.kind === "digital") return [];
+  const photos = Math.max(0, Math.floor(photoCount));
+  if (photos === 0) return [];
+  const base =
+    plan.kind === "strip"
+      ? Array.from({ length: plan.sheets }, () =>
+          Array.from({ length: Math.min(plan.photosPerStrip, photos) }, (_, i) => i)
+        )
+      : plan.photoIndexes.map((idx) => [idx % photos]);
+  const repeat = Math.min(20, Math.max(1, Math.floor(copies) || 1));
+  return Array.from({ length: repeat }, () => base).flat();
 }

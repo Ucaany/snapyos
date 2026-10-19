@@ -41,7 +41,12 @@ export default async function PackagesPage() {
 
       <PackagesTable
         packages={packages}
-        templates={templates.map((t) => ({ id: t.id, name: `${t.name} (${t.category})` }))}
+        // Jumlah slot ditulis sebagai metadata: semua frame bisa dipakai paket
+        // mana pun, dan slot berlebih diisi bergiliran.
+        templates={templates.map((t) => ({
+          id: t.id,
+          name: `${t.name} (${t.category}, ${t.slot_count === 0 ? "tanpa slot" : `${t.slot_count} slot`})`,
+        }))}
         outlets={outlets.map((o) => ({ id: o.id, name: o.name }))}
         photoboxes={photoboxes.map((b) => ({ id: b.id, name: b.name }))}
         canWrite={canWrite}

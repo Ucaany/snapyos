@@ -340,6 +340,9 @@ export type PhotoboxCameraConfig = {
   name: string;
   slug: string;
   camera_settings: CameraSettings;
+  /** Setelan cetak + status uji terakhir untuk panel Kamera & Cetak. */
+  print_settings: PrintSettings;
+  device_status: Record<string, unknown> | null;
 };
 
 /** Baca camera_settings photobox — dipakai owner camera-test (docs/05 §5.5). */
@@ -353,7 +356,7 @@ export async function getPhotoboxCameraConfig(
   const supabase = createServerClient();
   const { data, error } = await supabase
     .from("photoboxes")
-    .select("id, name, slug, camera_settings")
+    .select("id, name, slug, camera_settings, print_settings, device_status")
     .eq("id", photoboxId)
     .eq("business_id", businessId)
     .maybeSingle();
@@ -364,6 +367,8 @@ export async function getPhotoboxCameraConfig(
     name: data.name,
     slug: data.slug,
     camera_settings: (data.camera_settings as CameraSettings | null) ?? {},
+    print_settings: (data.print_settings as PrintSettings | null) ?? {},
+    device_status: (data.device_status as Record<string, unknown> | null) ?? null,
   };
 }
 
@@ -404,6 +409,51 @@ export async function updatePhotoboxCameraConfig(
   if (!data) throw new ApiError("NOT_FOUND", "Photobox tidak ditemukan");
   invalidatePublicConfig(businessId);
   return (data.camera_settings as CameraSettings | null) ?? {};
+}
+
+export type PrinterTestStatus = {
+  confirmed: boolean;
+  last_test_at: string;
+  mode?: "browser" | "bluetooth";
+  device_name?: string;
+};
+
+/**
+ * Simpan hasil UJI CETAK dari dashboard owner.
+ *
+ * Jalur device (`reportDevice`) memakai device_token dan tidak bisa dipanggil
+ * owner dari browser biasa; panel uji di dashboard butuh jalur owner-scoped
+ * yang menulis ke `device_status.printer` dengan bentuk yang sama.
+ */
+export async function updatePhotoboxPrintStatus(
+  userId: string,
+  businessId: string,
+  photoboxId: string,
+  status: PrinterTestStatus
+): Promise<void> {
+  await requireMembership(userId, businessId, "photobox:write");
+  const supabase = createServerClient();
+  const { data: cur, error: readErr } = await supabase
+    .from("photoboxes")
+    .select("device_status")
+    .eq("id", photoboxId)
+    .eq("business_id", businessId)
+    .maybeSingle();
+  if (readErr) throw new ApiError("INTERNAL", "Gagal memuat status printer");
+  if (!cur) throw new ApiError("NOT_FOUND", "Photobox tidak ditemukan");
+
+  const current = (cur.device_status as Record<string, unknown> | null) ?? {};
+  const printer = {
+    ...((current.printer as Record<string, unknown> | null) ?? {}),
+    ...status,
+  };
+  const { error } = await supabase
+    .from("photoboxes")
+    .update({ device_status: { ...current, printer } })
+    .eq("id", photoboxId)
+    .eq("business_id", businessId);
+  if (error) throw new ApiError("INTERNAL", "Gagal menyimpan status printer");
+  invalidatePublicConfig(businessId);
 }
 
 // --- PER-BOOTH BRANDING OVERRIDE (0045) ---

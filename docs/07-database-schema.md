@@ -1,10 +1,12 @@
 # 7. Database Schema
 
-> **Sinkron dengan `db/schema.sql` aktual per audit 2026-09-14, diperbarui hardening 2026-10-08** (55 tabel + RPC `pos_decrement_stock` + `pos_complete_payment`; migration terakhir hardening `0066_webhook_status_received.sql`). Tabel/kolom di bawah = realita schema; deviasi dari draft awal ditandai.
+> **Sinkron dengan `db/schema.sql` aktual per audit 2026-09-14, diperbarui hardening 2026-10-08 & 2026-10-16** (55 tabel + 29 fungsi; migrasi terakhir `0071_rpc_search_path_hardening.sql` — ditulis & diuji statis, **belum di-apply**). Tabel/kolom di bawah = realita schema; deviasi dari draft awal ditandai.
 >
 > **RLS (C1, migrasi 0064):** setiap tabel `public.*` punya `alter table ... enable row level security` + policy `svc_all` (`for all to service_role using (true) with check (true)`); `anon`/`authenticated` di-revoke, `service_role` di-grant. Tidak ada policy `to public/anon/authenticated`.
 >
 > **RPC privilege (H1, migrasi 0065):** setiap fungsi aplikasi di `db/schema.sql` di-lock `revoke execute from public, anon, authenticated` + `grant execute to service_role` (fungsi trigger `set_updated_at`/`tg_*` dikecualikan).
+>
+> **RPC search_path (0071):** seluruh RPC aplikasi di-pin `set search_path = public, pg_temp` (defense-in-depth; 0065 sudah menutup EXECUTE). Migrasi ini **disiapkan, belum dijalankan** di Supabase.
 
 PostgreSQL (Supabase). Konvensi:
 - Semua PK `uuid` (default `gen_random_uuid()`), kecuali disebutkan lain.
@@ -315,7 +317,7 @@ Owner mengatur booth mana yang bisa diakses staff; PK `(user_id, photobox_id)`.
 | category_id | uuid → template_categories(id) ON DELETE RESTRICT | **BARU (migration 0039)** — FK canonical ke kategori. Backfill dari `category` text saat migrasi. |
 | file_url | text | storage key (PNG frame, alpha = lubang slot) |
 | thumbnail_url | text | auto-generate dari preview builder |
-| layout | jsonb | NOT NULL default `'{}'` — canvas size + array slot foto; kosong = template legacy full-canvas. Contract & validasi: `15-template-builder.md` §15.2 (slot max 8, dalam batas canvas, `slot_count == package.photo_count` saat assign) |
+| layout | jsonb | NOT NULL default `'{}'` — canvas size + array slot foto; kosong = template legacy full-canvas. Contract & validasi: `15-template-builder.md` §15.2 (slot max 8, dalam batas canvas; assign lintas paket tidak dibatasi jumlah slot) |
 | video_url | text | nullable — video frame (0020) |
 | is_active | boolean | |
 | created_at / updated_at | timestamptz | |
@@ -401,7 +403,7 @@ Owner mengatur booth mana yang bisa diakses staff; PK `(user_id, photobox_id)`.
 | paid_at | timestamptz | |
 | created_at / updated_at | timestamptz | |
 
-> **Invarian saldo (Fase 3):** `balances.available` **hanya** dikredit dari settlement QRIS Pakasir. Ceiling penarikan dihitung via RPC `withdrawable_payments_sum(business)` = `sum(payments.final_amount where status='paid')` **join** `transactions.withdrawable=true`. Manual/offline tercatat untuk reporting saja — `payments` **tidak** di-insert dan `balance_ledger` **tidak** disentuh (`src/server/transactions.ts` createManualTransaction; `src/server/kiosk-sessions.ts` offline insert).
+> **Invarian saldo (Fase 3 → dihapus 0044):** alur saldo/penarikan (`balances`, `balance_ledger`, `withdrawals`, RPC `withdrawable_payments_sum`) **sudah dihapus** oleh migrasi `0044_drop_withdrawal_flow.sql`; tidak ada satu pun objek itu di `db/schema.sql`. Yang tersisa adalah kolom penanda `transactions.withdrawable`: `manual`/`offline` → `false` (dibuat 0033), QRIS Pakasir → `true`. Kolom itu kini **murni reporting** — ditampilkan di `/dashboard/finance` dan `TransactionsView.tsx`, tidak menggerakkan saldo apa pun. Manual/offline tetap tidak meng-insert baris `payments` (`src/server/transactions.ts` createManualTransaction; `src/server/kiosk-sessions.ts` offline insert).
 
 ### payments
 | kolom | tipe | ket |

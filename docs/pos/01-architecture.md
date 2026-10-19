@@ -11,7 +11,7 @@
 
 Dieksekusi 2026-08-28 (tanggal commit `db/migrations/0019_pos_addon.sql`). Arsitektur §1–§9 terimplementasi sesuai kontrak REVISI v2: offline-only (cash/bank_transfer/other), per-booth `photoboxes.pos_enabled`, tanpa role cashier, tanpa QRIS/payments/webhook. File aktual:
 
-- Migration: `db/migrations/0019_pos_addon.sql` + `db/migrations/0019_rollback.sql`.
+- Migration: `db/migrations/0019_pos_addon.sql` + `db/migrations/0019_pos_addon_rollback.sql`.
 - Server: `src/server/pos-entitlement.ts`, `pos-products.ts`, `pos-orders.ts`, `pos-reports.ts`, `pos-actions.ts`.
 - Lib: `src/lib/pos-math.ts`, `src/lib/pos-entitlement.ts`, `src/lib/pos-reports-math.ts`, schema POS di `src/lib/validators.ts`, error POS di `src/lib/api-errors.ts`, permission `pos:*` di `src/lib/rbac.ts`.
 - Route: `src/app/(pos)/pos/{page,layout,terminal,receipt/[orderId]}`, `src/app/(dashboard)/dashboard/pos/`.

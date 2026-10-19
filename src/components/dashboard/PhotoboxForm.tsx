@@ -35,6 +35,9 @@ export function PhotoboxForm({ outlets, photobox, onDone }: Props) {
   const [unlimitedRetakes, setUnlimitedRetakes] = useState(
     photobox?.session_settings.max_retakes == null
   );
+  const [printMode, setPrintMode] = useState<"browser" | "bluetooth">(
+    photobox?.print_settings.mode === "bluetooth" ? "bluetooth" : "browser"
+  );
   const [captchaVerified, setCaptchaVerified] = useState(false);
   const [captchaToken, setCaptchaToken] = useState("");
 
@@ -285,10 +288,45 @@ export function PhotoboxForm({ outlets, photobox, onDone }: Props) {
           <legend className="px-2 font-mono text-xs font-bold uppercase tracking-[0.1em]">Cetak</legend>
           <label className="flex items-center gap-2 font-mono text-xs uppercase"><input type="checkbox" name="print_enabled" defaultChecked={photobox?.print_settings.enabled ?? true} disabled={pending} className="size-4" /> Printer aktif</label>
           <label className="flex items-center gap-2 font-mono text-xs uppercase"><input type="checkbox" name="auto_print" defaultChecked={photobox?.print_settings.auto_print ?? true} disabled={pending} className="size-4" /> Cetak otomatis</label>
-          <div className="flex flex-col gap-2"><label htmlFor={`pb-paper-${uid}`} className="font-mono text-xs uppercase">Ukuran kertas</label><Select id={`pb-paper-${uid}`} name="paper_size" defaultValue={photobox?.print_settings.paper_size ?? "4x6"} disabled={pending}><option value="4x6">4 × 6 inci</option><option value="A6">A6</option></Select></div>
-          <div className="flex flex-col gap-2"><label htmlFor={`pb-layout-${uid}`} className="font-mono text-xs uppercase">Layout cetak</label><Select id={`pb-layout-${uid}`} name="print_layout" defaultValue={photobox?.print_settings.layout ?? "single"} disabled={pending}><option value="single">Single</option><option value="strip">Photostrip</option></Select></div>
-          <div className="flex flex-col gap-2"><label htmlFor={`pb-orientation-${uid}`} className="font-mono text-xs uppercase">Orientasi</label><Select id={`pb-orientation-${uid}`} name="orientation" defaultValue={photobox?.print_settings.orientation ?? "portrait"} disabled={pending}><option value="portrait">Portrait</option><option value="landscape">Landscape</option></Select></div>
-          <div className="grid grid-cols-2 gap-2"><div className="flex flex-col gap-2"><label htmlFor={`pb-copies-${uid}`} className="font-mono text-xs uppercase">Salinan</label><Input id={`pb-copies-${uid}`} name="copies" type="number" min={1} max={20} defaultValue={photobox?.print_settings.copies ?? 1} disabled={pending} /></div><div className="flex flex-col gap-2"><label htmlFor={`pb-margin-${uid}`} className="font-mono text-xs uppercase">Margin mm</label><Input id={`pb-margin-${uid}`} name="margins_mm" type="number" min={0} max={20} defaultValue={photobox?.print_settings.margins_mm ?? 0} disabled={pending} /></div></div>
+          <div className="flex flex-col gap-2">
+            <label htmlFor={`pb-print-mode-${uid}`} className="font-mono text-xs uppercase">Jalur cetak</label>
+            <Select
+              id={`pb-print-mode-${uid}`}
+              name="print_mode"
+              defaultValue={photobox?.print_settings.mode ?? "browser"}
+              disabled={pending}
+              onChange={(event) => setPrintMode(event.target.value === "bluetooth" ? "bluetooth" : "browser")}
+            >
+              <option value="browser">Dialog sistem (printer foto)</option>
+              <option value="bluetooth">Bluetooth thermal (ESC/POS)</option>
+            </Select>
+          </div>
+          {printMode === "bluetooth" ? (
+            <>
+              <div className="flex flex-col gap-2">
+                <label htmlFor={`pb-bt-width-${uid}`} className="font-mono text-xs uppercase">Lebar kertas thermal</label>
+                <Select id={`pb-bt-width-${uid}`} name="bluetooth_paper_width_mm" defaultValue={String(photobox?.print_settings.bluetooth_paper_width_mm ?? 80)} disabled={pending}>
+                  <option value="80">80 mm</option>
+                  <option value="58">58 mm</option>
+                </Select>
+              </div>
+              <div className="flex flex-col gap-2 md:col-span-1">
+                <label htmlFor={`pb-bt-name-${uid}`} className="font-mono text-xs uppercase">Nama printer</label>
+                <Input id={`pb-bt-name-${uid}`} name="bluetooth_device_name" defaultValue={photobox?.print_settings.bluetooth_device_name ?? ""} placeholder="cth. RPP02" maxLength={60} disabled={pending} />
+              </div>
+              <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-muted-foreground md:col-span-2">
+                {"/// KHUSUS PRINTER THERMAL ESC/POS · BUTUH CHROME + BLUETOOTH · PRINTER FOTO KONSUMEN TETAP PAKAI DIALOG SISTEM"}
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="flex flex-col gap-2"><label htmlFor={`pb-paper-${uid}`} className="font-mono text-xs uppercase">Ukuran kertas</label><Select id={`pb-paper-${uid}`} name="paper_size" defaultValue={photobox?.print_settings.paper_size ?? "4x6"} disabled={pending}><option value="4x6">4 × 6 inci</option><option value="A6">A6</option></Select></div>
+              <div className="flex flex-col gap-2"><label htmlFor={`pb-layout-${uid}`} className="font-mono text-xs uppercase">Layout cetak</label><Select id={`pb-layout-${uid}`} name="print_layout" defaultValue={photobox?.print_settings.layout ?? "single"} disabled={pending}><option value="single">Single</option><option value="strip">Photostrip</option></Select></div>
+              <div className="flex flex-col gap-2"><label htmlFor={`pb-orientation-${uid}`} className="font-mono text-xs uppercase">Orientasi</label><Select id={`pb-orientation-${uid}`} name="orientation" defaultValue={photobox?.print_settings.orientation ?? "portrait"} disabled={pending}><option value="portrait">Portrait</option><option value="landscape">Landscape</option></Select></div>
+              <div className="flex flex-col gap-2"><label htmlFor={`pb-margin-${uid}`} className="font-mono text-xs uppercase">Margin mm</label><Input id={`pb-margin-${uid}`} name="margins_mm" type="number" min={0} max={20} defaultValue={photobox?.print_settings.margins_mm ?? 0} disabled={pending} /></div>
+            </>
+          )}
+          <div className="flex flex-col gap-2"><label htmlFor={`pb-copies-${uid}`} className="font-mono text-xs uppercase">Salinan</label><Input id={`pb-copies-${uid}`} name="copies" type="number" min={1} max={20} defaultValue={photobox?.print_settings.copies ?? 1} disabled={pending} /></div>
         </fieldset>
       </div>
 

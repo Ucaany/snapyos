@@ -5,6 +5,7 @@
 
 import type { TemplateLayout } from "@/lib/template-layout"
 import { defaultBrandColors } from "./brand-defaults.ts"
+import { cardSurface, mutedSurface, mutedText, readableText } from "./color.ts"
 
 /**
  * Tipe kiosk payment method canonical (dipakai client + server).
@@ -44,6 +45,7 @@ export type KioskBrandingConfig = {
   /** Perataan konten semua layar — kiri/tengah/kanan (full element). */
   align?: KioskPageAlign
   welcome_layout?: "split-left" | "split-right" | "center"
+  /** @deprecated Digantikan `align`; dibaca sekali untuk migrasi data lama. */
   payment_align?: "left" | "center"
   result_layout?: "qr-right" | "qr-left" | "qr-below"
   payment_title?: string
@@ -110,6 +112,46 @@ export type KioskVisualStyle = {
   accent: string
   /** Warna teks/garis brand (secondary_color) — dipakai teks tombol CTA. */
   primary: string
+  /** Permukaan kartu di dalam layar — turunan `bg`, bukan putih paksa. */
+  surface: string
+  /** Warna teks di atas `surface`; dipilih agar tetap ≥4.5:1. */
+  surfaceText: string
+  /** Warna teks di atas `accent` (tombol CTA) — dijaga ≥4.5:1. */
+  accentText: string
+  /** Teks sekunder (hint/label) di atas `bg` — dijaga ≥4.5:1. */
+  mutedText: string
+  /** Latar blok sekunder (chip/panel redup) di dalam layar. */
+  mutedSurface: string
+}
+
+/** Variabel CSS untuk subtree layar kiosk: `bg-surface` di dalamnya ikut palet. */
+export function kioskThemeVars(style: KioskVisualStyle): Record<string, string> {
+  return {
+    "--color-surface": style.surface,
+    "--color-ink": style.surfaceText,
+    // Tailwind v4 `@theme inline` membuat utility memakai var mentahnya,
+    // jadi keduanya di-set: nama tema dan nama token shadcn.
+    "--color-muted-foreground": style.mutedText,
+    "--muted-foreground": style.mutedText,
+    "--color-muted": style.mutedSurface,
+    "--muted": style.mutedSurface,
+    "--color-border": style.mutedSurface,
+    "--border": style.mutedSurface,
+  }
+}
+
+function withSurface(
+  style: Omit<KioskVisualStyle, "surface" | "surfaceText" | "accentText" | "mutedText" | "mutedSurface">
+): KioskVisualStyle {
+  const surface = cardSurface(style.bg, style.text)
+  return {
+    ...style,
+    surface,
+    surfaceText: readableText(surface, style.text, [style.bg]),
+    accentText: readableText(style.accent, style.primary, [style.text, "#111111", "#ffffff"]),
+    mutedText: mutedText(style.bg, style.text),
+    mutedSurface: mutedSurface(style.bg, style.text),
+  }
 }
 
 export function kioskVisualStyle(
@@ -119,21 +161,23 @@ export function kioskVisualStyle(
 ): KioskVisualStyle {
   const accent = brand?.primary || defaultBrandColors.accent
   const ink = brand?.secondary || defaultBrandColors.ink
-  const global: KioskVisualStyle = {
+  const global = withSurface({
     bg: k?.bg_color || defaultBrandColors.bg,
     text: k?.text_color || defaultBrandColors.ink,
     fontFamily: KIOSK_FONT_FAMILIES[k?.font_family ?? "display"],
     fontScale: k?.font_scale ?? 1,
     radius: k?.button_radius ?? 0,
     padding: k?.padding ?? 24,
-    align: k?.align,
+    // payment_align adalah field legacy: layar payment lama bergantung padanya,
+    // jadi ia dibaca sebagai align hanya ketika align global belum diset.
+    align: k?.align ?? k?.payment_align,
     accent,
     primary: ink,
-  }
+  })
   if (!page) return global
   const p = k?.pages?.[page]
   if (!p) return global
-  return {
+  return withSurface({
     bg: p.bg_color ?? global.bg,
     text: p.text_color ?? global.text,
     fontFamily: global.fontFamily,
@@ -143,7 +187,7 @@ export function kioskVisualStyle(
     align: p.align ?? global.align,
     accent: global.accent,
     primary: global.primary,
-  }
+  })
 }
 
 export type BrandingConfig = {
@@ -184,6 +228,12 @@ export type PrintSettings = {
   auto_print?: boolean
   copies?: number
   margins_mm?: number
+  /** "browser" (dialog OS, default) atau "bluetooth" (thermal ESC/POS). */
+  mode?: "browser" | "bluetooth"
+  /** Lebar kertas thermal 58/80 mm. */
+  bluetooth_paper_width_mm?: 58 | 80
+  /** Nama printer Bluetooth terakhir (informasi petugas). */
+  bluetooth_device_name?: string
 }
 
 export type SessionSettings = {

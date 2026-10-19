@@ -11,7 +11,7 @@
 
 Dieksekusi 2026-08-28. Yang jadi, sesuai DDL §2:
 
-- `db/migrations/0019_pos_addon.sql` applied + `0019_rollback.sql` tersedia: 3 tabel `pos_products`/`pos_orders`/`pos_order_items`, `photoboxes.pos_enabled`, kolom `transactions.pos_order_id`/`cashier_user_id`, seed `add_ons code='pos'` (`on conflict do nothing`).
+- `db/migrations/0019_pos_addon.sql` applied + `0019_pos_addon_rollback.sql` tersedia: 3 tabel `pos_products`/`pos_orders`/`pos_order_items`, `photoboxes.pos_enabled`, kolom `transactions.pos_order_id`/`cashier_user_id`, seed `add_ons code='pos'` (`on conflict do nothing`).
 - Entitlement gate: `src/server/pos-entitlement.ts` (`hasPosEntitlement`, `requirePosAccess`) + evaluator pure `src/lib/pos-entitlement.ts` (`evaluatePosEntitlement`) — diekstrak ke lib agar unit-testable tanpa DB (deviasi kecil dari §4, tanpa ubah kontrak).
 - RBAC: `pos:manage/sell/read` untuk manager + `pos:sell/read` untuk staff di `src/lib/rbac.ts` — tanpa role baru, tanpa perubahan DB role.
 - Validator POS di `src/lib/validators.ts` (posProduct/posOrderCreate/posManualPay/posBoothToggle); error POS di `src/lib/api-errors.ts`.
@@ -262,7 +262,7 @@ Perintah: `npm run test && npm run typecheck && npm run lint` (semua hijau).
 ## 10. Rollback
 
 ```sql
--- 0019_rollback.sql (simpan berdampingan, jangan dijalankan otomatis)
+-- 0019_pos_addon_rollback.sql (simpan berdampingan, jangan dijalankan otomatis)
 alter table transactions drop column if exists cashier_user_id;
 alter table transactions drop column if exists pos_order_id;
 alter table photoboxes drop column if exists pos_enabled;

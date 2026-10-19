@@ -160,6 +160,28 @@ export function TemplatesGrid({ templates, canWrite }: Props) {
                   <StatusBadge status={tpl.is_active ? "active" : "inactive"} />
                 </div>
 
+                {/* Status slot + assignment: dua alasan paling sering frame
+                    "sudah aktif" tapi tidak muncul di booth (docs/05 §5.4). */}
+                <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+                  {tpl.slot_count > 0
+                    ? `${tpl.slot_count} slot foto`
+                    : "Tanpa slot (frame penuh)"}
+                </p>
+                {tpl.is_active && tpl.assigned === false && (
+                  <p className="border-2 border-destructive bg-destructive/10 px-2 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.08em]">
+                    Belum di-assign ke paket mana pun, jadi tidak muncul di kiosk
+                  </p>
+                )}
+                {/* Semua frame tampil di semua paket; jumlah slot tidak lagi
+                    memfilter. Slot lebih banyak dari foto diisi bergiliran. */}
+                {tpl.is_active && (
+                  <p className="border-2 border-ink/20 bg-muted px-2 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+                    {tpl.slot_count > 0
+                      ? `Tampil di semua paket. ${tpl.slot_count} slot; foto diisi bergiliran bila paket punya foto lebih sedikit.`
+                      : "Tampil di semua paket sebagai frame penuh."}
+                  </p>
+                )}
+
                 {editingId === tpl.id && canWrite ? (
                   <TemplateEditForm template={tpl} onDone={() => setEditingId(null)} />
                 ) : (

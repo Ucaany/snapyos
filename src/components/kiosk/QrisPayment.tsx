@@ -3,6 +3,7 @@
 "use client"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { formatIDR } from "@/lib/dashboard-math"
+import type { KioskVisualStyle } from "@/lib/kiosk-types"
 export type PendingPayment = {
   status: "pending" | "paid" | "expired"
   payment_reference: string
@@ -24,17 +25,20 @@ export function QrisPayment({
   left,
   online,
   onBack,
+  kioskStyle,
 }: {
   payment: PendingPayment
   qrSrc: string | null
   left: number
   online: boolean
   onBack(): void
+  kioskStyle?: KioskVisualStyle
 }) {
+  const ks = kioskStyle
   const time = `${String(Math.floor(left / 60)).padStart(2, "0")}:${String(left % 60).padStart(2, "0")}`
   return (
     <div className="mx-auto grid w-full max-w-[1000px] flex-1 grid-cols-1 content-center gap-3 pb-14 md:grid-cols-2 md:content-center md:gap-4 md:pb-0">
-      <section className="flex flex-col justify-center gap-3 border-2 border-ink bg-surface p-4 shadow-[4px_4px_0_0_#111111] md:p-5">
+      <section className="flex flex-col justify-center gap-3 border-2 border-ink bg-surface p-4 shadow-[4px_4px_0_0_#111111] md:p-5" style={ks ? { borderRadius: ks.radius } : undefined}>
         <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em]">[ SCAN QRIS ]</p>
         {qrSrc ? (
           <img
@@ -53,7 +57,7 @@ export function QrisPayment({
           </p>
         )}
       </section>
-      <section className="flex flex-col justify-center gap-3 border-2 border-ink bg-accent p-4 shadow-[4px_4px_0_0_#111111] md:gap-4 md:p-5">
+      <section className="flex flex-col justify-center gap-3 border-2 border-ink bg-accent p-4 shadow-[4px_4px_0_0_#111111] md:gap-4 md:p-5" style={ks ? { borderRadius: ks.radius, backgroundColor: ks.accent, color: ks.accentText } : undefined}>
         <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em]">[ STATUS ]</p>
         <p className="font-mono text-sm font-bold uppercase" aria-live="polite">
           <span
@@ -77,9 +81,12 @@ export function QrisPayment({
     </div>
   )
 }
-export function PaidNotice({ onRetry, busy }: { onRetry?(): void; busy?: boolean } = {}) {
+export function PaidNotice({ onRetry, busy, kioskStyle }: { onRetry?(): void; busy?: boolean; kioskStyle?: KioskVisualStyle } = {}) {
   return (
-    <div className="mx-auto flex min-h-[50dvh] w-full max-w-[1000px] flex-1 flex-col items-center justify-center gap-4 border-2 border-ink bg-accent p-6 text-center shadow-[4px_4px_0_0_#111111]">
+    <div
+      className="mx-auto flex min-h-[50dvh] w-full max-w-[1000px] flex-1 flex-col items-center justify-center gap-4 border-2 border-ink bg-accent p-6 text-center shadow-[4px_4px_0_0_#111111]"
+      style={kioskStyle ? { borderRadius: kioskStyle.radius, backgroundColor: kioskStyle.accent, color: kioskStyle.accentText } : undefined}
+    >
       <Loader2 className="size-8 animate-spin" />
       <p className="font-mono text-sm font-bold uppercase">
         {busy ? "Pembayaran berhasil. Membuka sesi foto" : "Pembayaran berhasil."}

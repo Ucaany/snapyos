@@ -365,6 +365,12 @@ export const printSettingsSchema = z.object({
   auto_print: z.boolean().optional(),
   copies: z.number().int().min(1).max(20).optional(),
   margins_mm: z.number().int().min(0).max(20).optional(),
+  /** Jalur cetak: dialog OS (browser) atau thermal ESC/POS lewat Web Bluetooth. */
+  mode: z.enum(["browser", "bluetooth"]).optional(),
+  /** Lebar kertas thermal 58/80 mm. */
+  bluetooth_paper_width_mm: z.union([z.literal(58), z.literal(80)]).optional(),
+  /** Nama printer Bluetooth (informasi petugas, bukan kredensial). */
+  bluetooth_device_name: z.string().trim().max(60).optional(),
 })
 
 export const sessionSettingsSchema = z
@@ -888,6 +894,10 @@ export const deviceReportSchema = z.object({
     .object({
       confirmed: z.boolean().optional(),
       last_test_at: z.string().trim().max(40).optional(),
+      /** Jalur cetak yang diuji: dialog OS atau thermal Bluetooth. */
+      mode: z.enum(["browser", "bluetooth"]).optional(),
+      /** Nama printer yang diuji (informasi petugas). */
+      device_name: z.string().trim().max(60).optional(),
     })
     .optional(),
 })

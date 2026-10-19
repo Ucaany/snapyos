@@ -1,5 +1,6 @@
 "use client"
 import { ArrowLeft, Tag } from "lucide-react"
+import type { KioskVisualStyle } from "@/lib/kiosk-types"
 import { OnScreenKeyboard } from "./OnScreenKeyboard"
 export function VoucherPayment({
   code,
@@ -8,6 +9,7 @@ export function VoucherPayment({
   onBack,
   busy,
   error,
+  kioskStyle,
 }: {
   code: string
   onCode(value: string): void
@@ -15,9 +17,14 @@ export function VoucherPayment({
   onBack(): void
   busy: boolean
   error: string | null
+  kioskStyle?: KioskVisualStyle
 }) {
+  const ks = kioskStyle
   return (
-    <div className="mx-auto flex w-full max-w-[700px] flex-1 flex-col justify-center gap-4 border-2 border-ink bg-accent p-6 shadow-[4px_4px_0_0_#111111]">
+    <div
+      className="mx-auto flex w-full max-w-[700px] flex-1 flex-col justify-center gap-4 border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111]"
+      style={ks ? { borderRadius: ks.radius } : undefined}
+    >
       <Tag className="size-8" />
       <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em]">[ VOUCHER SESI ]</p>
       <h2 className="font-display text-3xl uppercase leading-[0.9]">Masukkan kode voucher</h2>
@@ -45,7 +52,8 @@ export function VoucherPayment({
           type="button"
           onClick={onApply}
           disabled={busy || !code.trim()}
-          className="w-fit border-2 border-ink bg-surface px-5 py-3 font-display text-lg uppercase shadow-[4px_4px_0_0_#111111] active:translate-y-[2px] disabled:opacity-50"
+          className="w-fit border-2 border-ink bg-accent px-5 py-3 font-display text-lg uppercase shadow-[4px_4px_0_0_#111111] active:translate-y-[2px] disabled:opacity-50"
+          style={ks ? { borderRadius: ks.radius, backgroundColor: ks.accent, color: ks.accentText } : undefined}
         >
           {busy ? "Memeriksa" : "Gunakan voucher"}
         </button>

@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import QRCode from "qrcode"
 import { ArrowLeft, Loader2, WifiOff } from "lucide-react"
-import type { KioskPaymentMethod, KioskVisualStyle, PublicPackage } from "@/lib/kiosk-types"
+import { kioskThemeVars, type KioskPaymentMethod, type KioskVisualStyle, type PublicPackage } from "@/lib/kiosk-types"
 import { formatIDR } from "@/lib/dashboard-math"
 import { apiGet, apiPost, KioskError } from "@/components/kiosk/api"
 import { useQrisPolling } from "@/hooks/use-qris-polling"
@@ -11,6 +11,7 @@ import { PaymentMethodPicker } from "./PaymentMethodPicker"
 import { PaidNotice, QrisPayment, type PendingPayment } from "./QrisPayment"
 import { VaPayment } from "./VaPayment"
 import { VoucherPayment } from "./VoucherPayment"
+import { KioskVideoBackground } from "./KioskVideoBackground"
 
 type Amounts = {
   checkout_session_id: string
@@ -38,8 +39,10 @@ type Props = {
   deviceToken: string
   paymentTitle?: string
   paymentHint?: string
-  paymentAlign?: "left" | "center"
+  /** Gaya visual kustom (Branding & Kiosk) — warna/font/radius mengikuti. */
   kioskStyle?: KioskVisualStyle
+  /** Video promo layar payment (pages.payment.video_url). */
+  videoUrl?: string | null
   offlineEnabled?: boolean
   onOffline?(): void
   /** Membuka sesi dari checkout paid. false = gagal; layar menawarkan ulang. */
@@ -49,6 +52,7 @@ type Props = {
 const button =
   "inline-flex min-h-11 items-center justify-center border-2 border-ink bg-bg px-4 py-2 font-mono text-xs font-bold uppercase shadow-[3px_3px_0_0_#111111] transition-transform active:translate-y-[2px] disabled:opacity-50 disabled:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
 const backButton = `w-fit gap-2 ${button}`
+const surfaceCard = "border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111]"
 
 export function CheckoutScreen({
   businessSlug,
@@ -56,8 +60,8 @@ export function CheckoutScreen({
   deviceToken,
   paymentTitle,
   paymentHint,
-  paymentAlign,
   kioskStyle,
+  videoUrl = null,
   offlineEnabled = false,
   onOffline,
   onPaid,
@@ -258,19 +262,32 @@ export function CheckoutScreen({
   }
   const style = kioskStyle
     ? {
+        ...kioskThemeVars(kioskStyle),
         backgroundColor: kioskStyle.bg,
         color: kioskStyle.text,
         paddingLeft: kioskStyle.padding,
         paddingRight: kioskStyle.padding,
+        fontFamily: kioskStyle.fontFamily,
       }
     : undefined
-  // Perataan: payment_align legacy menang bila diset; fallback ke align global.
-  const effectiveAlign = paymentAlign ?? (kioskStyle?.align === "left" || kioskStyle?.align === "right" ? "left" : "center")
-  const align = effectiveAlign === "center" ? "items-center text-center" : "items-start text-left"
+  // Perataan mengikuti `align` (payment_align legacy sudah diserap di
+  // kioskVisualStyle), sehingga kontrol perataan global benar-benar berlaku.
+  const align =
+    kioskStyle?.align === "right"
+      ? "items-end text-right"
+      : kioskStyle?.align === "left"
+        ? "items-start text-left"
+        : "items-center text-center"
+  const radius = kioskStyle?.radius ?? 0
+  /** Gaya tombol CTA utama: aksen brand + teks yang kontras. */
+  const ctaStyle = kioskStyle
+    ? { borderRadius: radius, backgroundColor: kioskStyle.accent, color: kioskStyle.accentText }
+    : undefined
   return (
-    <div className="relative flex min-h-[100dvh] flex-1 flex-col gap-4 overflow-hidden bg-bg px-4 pt-5 pb-16" style={style}>
+    <div className="relative flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto bg-bg px-4 pt-5 pb-16" style={style}>
+      <KioskVideoBackground videoUrl={videoUrl} />
       <header className={`relative z-10 mx-auto flex w-full max-w-[1000px] flex-col gap-1 ${align}`}>
-        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-ink/70">
+        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] opacity-70">
           [ CHECKOUT ]
         </p>
         <h1
@@ -310,7 +327,7 @@ export function CheckoutScreen({
         </div>
       )}
       {phase === "summary" && amounts && (
-        <section className="mx-auto flex w-full max-w-[700px] flex-1 flex-col justify-center gap-4 border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111]">
+        <section className={`mx-auto flex w-full max-w-[700px] flex-1 flex-col justify-center gap-4 ${surfaceCard}`} style={{ borderRadius: radius }}>
           <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
             [ RINGKASAN PESANAN ]
           </p>
@@ -333,6 +350,7 @@ export function CheckoutScreen({
             type="button"
             onClick={() => setPhase("method-picker")}
             className="w-fit border-2 border-ink bg-accent px-5 py-3 font-display text-lg uppercase shadow-[4px_4px_0_0_#111111] active:translate-y-[2px]"
+            style={ctaStyle}
           >
             Pilih pembayaran
           </button>
@@ -368,6 +386,7 @@ export function CheckoutScreen({
               setError(null)
               setPhase("summary")
             }}
+            kioskStyle={kioskStyle}
           />
       )}
       {phase === "voucher" && (
@@ -381,6 +400,7 @@ export function CheckoutScreen({
           }}
           busy={busy}
           error={error}
+          kioskStyle={kioskStyle}
         />
       )}
       {phase === "cash-waiting" && payment && (
@@ -393,6 +413,7 @@ export function CheckoutScreen({
             setError(null)
             setPhase("method-picker")
           }}
+          kioskStyle={kioskStyle}
         />
       )}
       {phase === "qris" && payment && (
@@ -402,13 +423,14 @@ export function CheckoutScreen({
           left={left}
           online={online}
           onBack={backToMethods}
+          kioskStyle={kioskStyle}
         />
       )}
       {phase === "va" && payment && (
-        <VaPayment payment={payment} left={left} onBack={backToMethods} />
+        <VaPayment payment={payment} left={left} onBack={backToMethods} kioskStyle={kioskStyle} />
       )}
       {phase === "redirect" && payment && (
-        <div className="mx-auto flex w-full max-w-[700px] flex-1 flex-col justify-center gap-4 border-2 border-ink bg-accent p-6 shadow-[4px_4px_0_0_#111111]">
+        <div className={`mx-auto flex w-full max-w-[700px] flex-1 flex-col justify-center gap-4 ${surfaceCard}`} style={{ borderRadius: radius }}>
           <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
             [ LANJUTKAN PEMBAYARAN ]
           </p>
@@ -418,7 +440,8 @@ export function CheckoutScreen({
           {payment.payment_url ? (
             <a
               href={payment.payment_url}
-              className="w-fit border-2 border-ink bg-surface px-5 py-3 font-display text-lg uppercase shadow-[4px_4px_0_0_#111111]"
+              className="w-fit border-2 border-ink bg-accent px-5 py-3 font-display text-lg uppercase shadow-[4px_4px_0_0_#111111]"
+              style={ctaStyle}
             >
               Lanjut bayar
             </a>
@@ -432,7 +455,7 @@ export function CheckoutScreen({
         </div>
       )}
       {phase === "expired" && (
-        <div className="mx-auto flex min-h-[50dvh] w-full max-w-[700px] flex-1 flex-col justify-center gap-4 border-2 border-ink bg-accent-2 p-6 shadow-[4px_4px_0_0_#111111]">
+        <div className={`mx-auto flex min-h-[50dvh] w-full max-w-[700px] flex-1 flex-col justify-center gap-4 ${surfaceCard}`} style={{ borderRadius: radius }}>
           <p className="font-mono text-sm font-bold uppercase">[ WAKTU HABIS ]</p>
            <h2 className="font-display text-3xl uppercase">Pembayaran kedaluwarsa</h2>
           <button type="button" onClick={onBack} className={`${button} w-fit`}>
@@ -444,6 +467,7 @@ export function CheckoutScreen({
       {phase === "paid" && (
         <PaidNotice
           busy={!paidFailed}
+          kioskStyle={kioskStyle}
           onRetry={
             paidCheckoutId
               ? () => void openPaidSession(paidCheckoutId)

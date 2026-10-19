@@ -2,8 +2,8 @@
 
 Status: active
 Audience: owner, staff, admin, developer, operator
-Last updated: 2026-10-08
-Last verified: 2026-10-08
+Last updated: 2026-10-16
+Last verified: 2026-10-16
 Source of truth: `src/`, `db/schema.sql`, `README.md`
 
 ## Active
@@ -50,13 +50,94 @@ Selesai (migrasi `0064`–`0066`, commit per phase):
 | M1 IDOR storage | route storage tenant-scoped (404 cross-tenant) | `tests/parse-uuid-param.test.ts` |
 | M2 adminRoute | guard admin di lapisan route | `tests/admin.test.ts` |
 
+## Hardening lanjutan (2026-10-16, audit rilis VPS)
+
+| Temuan | Perbaikan | Bukti |
+| --- | --- | --- |
+| Isolasi tenant tanpa tes | tes yang benar-benar mengimpor `src/lib/tenant.ts` (404 membership null, cookie lintas-tenant ditolak, filter role) | `tests/tenant-isolation.test.ts` |
+| Revocation sesi tanpa tes | tes jalur `resolveTokenAfterRevocationCheck` (row hilang/kedaluwarsa → claims dibuang; suspended → logout; DB error → fail-closed) | `tests/session-revocation.test.ts` |
+| Idempotensi webhook hanya di-mock | tes langsung `src/server/payment/webhook-log.ts` (`23505` → duplicate/retryable, non-unik → THROW) | `tests/webhook-log.test.ts` |
+| RPC tanpa `search_path` | migrasi `0071_rpc_search_path_hardening.sql` (+ rollback) — **ditulis & diuji statis, BELUM di-apply ke Supabase** | `tests/rpc-search-path.test.ts` |
+| Rollback sebelum forward (`ls \| sort`) | 8 berkas rollback di-rename ke `NNNN_nama_rollback.sql`; guard statis | `tests/migration-integrity.test.ts` |
+| `/api/health` statis (selalu 200) | readiness nyata (DB + storage, timeout 4s, **503** saat gagal, `checks` aditif) | `tests/health.test.ts` |
+
+## Aset brand (2026-10-16)
+
+Logo dan favicon diganti dengan mark produk baru; berkas lama dihapus.
+
+| Berkas | Status | Dipakai di |
+| --- | --- | --- |
+| `public/snapyos-icon-192.png` | diganti | `src/app/layout.tsx` (icons), `src/app/manifest.ts` |
+| `public/snapyos-icon-512.png` | diganti | idem |
+| `public/snapyos-icon-maskable-512.png` | diganti | `src/app/manifest.ts` (`purpose: maskable`) |
+| `public/apple-touch-icon.png` | diganti | `src/app/layout.tsx` (`icons.apple`) |
+| `public/snapyos-mark.png` | **baru** | 9 call-site mark: `header`, `footer`, `auth-block`, `subscribe-form` (2×), `register`, `Topbar`, `AdminTopbar`, `StaffTopbar` |
+| `src/app/favicon.ico` | diganti | konvensi Next (multi-ukuran 16/32/48/64/128/256) |
+| `public/snapyos-icon.svg`, `public/snapyos-icon-maskable.svg` | **dihapus** | tidak ada lagi rujukan |
+| `public/avatar-snappy/4.svg` (raster 1,1 MB) | **dihapus** | digantikan `snapyos-mark.png` |
+
+`public/avatars/5.svg`, `8.svg` dan `public/fiture-avatar/12–14.svg` **dipertahankan** — itu
+ilustrasi karakter marketing, bukan mark brand (isinya dioptimalkan, lihat bawah).
+
+### Service worker: cache-first → stale-while-revalidate (T27)
+
+Ditemukan saat penggantian aset di atas: `public/sw.js` memakai **cache-first** atas URL
+`public/` yang **stabil** (tidak content-hashed, berbeda dengan keluaran build Next).
+Akibatnya mengganti isi aset apa pun tidak pernah terlihat di klien yang sudah terpasang —
+kiosk PWA menyimpan salinan lama **selamanya**. Direproduksi di browser: setelah berkas di
+server diganti, entri cache tetap `6fbf1645…`; setelah perbaikan, entri cache berpindah ke
+`120dc20f…` dalam satu muat tanpa bersihkan cache manual.
+
+`public/sw.js` sekarang menyajikan salinan cache seketika lalu **merevalidasi di latar**
+(stale-while-revalidate), cache naik ke `snapyos-kiosk-v4`. HTML navigasi, `/api/`,
+Supabase, dan URL bertanda tangan tetap tidak pernah di-cache. Dijaga
+`tests/service-worker-assets.test.ts`.
+
+### Optimasi aset (T28)
+
+| Aset | Sebelum | Sesudah | Bukti kualitas |
+| --- | --- | --- | --- |
+| `dashboard-preview.png` | 1,85 MB @3024×1716 | 562 KB @2048×1162 (palette) | mean diff 0,32/255; 0,0012% px beda >32 |
+| `payment-logos/pakasir.png` | 248 KB @1080×1080 | 7,8 KB @192×192 | flatten 24px: mean 0,65, 0 px beda >32 |
+| `avatars/5.svg`, `8.svg`, `fiture-avatar/12–14.svg` | 5,46 MB (raster 1235–1536px tertanam) | 463 KB (raster 512px) | render 256px identik: mean ≤0,42, 0 px beda >32 |
+
+Total `public/` turun dari ~7,5 MB ke 1,4 MB. Dimensi intrinsik di `hero.tsx` dan
+`feature-section.tsx` disinkronkan ke ukuran berkas baru (2048×1162).
+
 Deferred (known-issue, TIDAK diimplementasikan):
 
-- L1 rate-limit in-memory (single-instance) → Redis/Upstash.
+- L1 rate-limit in-memory (single-instance). Backend shared dihapus 2026-10-17 atas permintaan operator; lihat `docs/09` §9.5.
 - M4 nomor migrasi duplikat/gap (`0024`, `0051`).
 - M7 unbounded select (vouchers, photoboxes, staff, support-tickets, subscription devices).
 - H7 god-components (`KioskBrandingEditor` ~1419, `TemplateBuilder` ~955, `KioskApp` ~722).
 - P3 replay-window penuh (dedup event_id berbasis waktu) di luar window set-based.
+- **0071 belum di-apply** ke Supabase (keputusan pemilik: tulis + validasi statis saja).
+- Rehearsal migrasi destruktif (`scripts/verify-migration-rollbacks.mjs`) belum dijalankan —
+  butuh Postgres; tidak tersedia di mesin ini.
+
+## Baseline gate (2026-10-16, commit `a56483b`)
+
+Titik nol audit rilis VPS. Diukur di mesin pengembang (macOS, Node 24), bukan
+di VPS; gate yang butuh Linux/VPS dicatat terpisah di `docs/18-audit-report.md`.
+
+| Gate | Perintah | Hasil |
+| --- | --- | --- |
+| Lint (repo-wide, dipakai CI) | `npm run lint` | **PASS** 0 error, 12 warning |
+| Typecheck | `npm run typecheck` | **PASS** |
+| Unit/integration | `npm test` | **PASS** 744/744 |
+| Build produksi | `npm run build` | **PASS** |
+| Dependency audit | `npm audit` | 0 critical, 9 high, 2 moderate (dev-time/transitive) |
+
+Angka suite terkini setelah hardening 2026-10-16: **815 tes lulus, 0 gagal** (dari 744 pada
+titik nol; +6 dari `tests/service-worker-assets.test.ts`). Laporan gate lengkap ada di
+`docs/18-audit-report.md`.
+
+Blocker CI yang ditemukan dan diperbaiki pada titik nol ini:
+`eslint.config.mjs` hanya meng-ignore `.kilo/worktrees/**`, bukan
+`.claude/worktrees/**` (salinan repo 2,0 GB). `npm run lint` melaporkan
+**3114 error** dari kode yang bukan milik app, sehingga CI
+(`.github/workflows/ci.yml` menjalankan `npm run lint`) merah. Pola ignore
+diganti menjadi `**/worktrees/**`.
 
 ## Backlog
 

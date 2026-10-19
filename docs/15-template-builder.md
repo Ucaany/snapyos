@@ -81,7 +81,7 @@ ALTER TABLE templates ADD COLUMN layout jsonb NOT NULL DEFAULT '{}';
 - Slot: `width > 0`, `height > 0`, `x ≥ 0`, `y ≥ 0`, `x + width ≤ canvas.width`, `y + height ≤ canvas.height`, `rotation` −180..180, `shape` enum valid, `radius ≥ 0`.
 - Max slot per template: **8**.
 - `slot_count = layout.slots.length` (layout kosong = 0).
-- **Assign template → package DITOLAK kecuali `slot_count == packages.photo_count`.** Constraint dicek di endpoint assign maupun saat `PATCH packages` mengubah `photo_count`.
+- **Assign template → package tidak dibatasi jumlah slot (2026-10-19).** Paket 3 foto boleh memakai frame 6 slot; slot sisa diisi foto bergiliran di editor. Jumlah capture tetap `packages.photo_count`.
 - Upload PNG: validasi tipe & max size mengikuti §4.10 `04-owner-dashboard.md`. Warning "PNG tanpa alpha channel" **belum diimplementasikan**; kandidat, bukan perilaku saat ini.
 
 ### Deliberate simplifications (ponytail)
@@ -137,8 +137,8 @@ Output = full resolusi design canvas (PNG/JPEG sesuai pipeline finalize eksistin
 
 | Tahap                | Perubahan                                                                                                                                      |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| §5.4 Choose Template | Thumbnail = preview frame dengan slot terisi foto sample; daftar difilter `slot_count == photo_count` package                                  |
-| §5.6 Capture         | Jumlah foto = jumlah slot template terpilih                                                                                                    |
+| §5.4 Choose Template | Thumbnail WebP 480px; semua frame aktif tampil untuk paket mana pun                                                          |
+| §5.6 Capture         | Jumlah foto = `package.photo_count`; slot berlebih diisi bergiliran (`fillSlots`)                                                              |
 | §5.9 Editor          | Zoom/pan menyesuaikan foto **di dalam slot** (bukan full canvas); zoom minimal = cover-fit; filter/adjust/sticker/text tetap di atas composite |
 | §5.15 Print          | `PrintLayoutRenderer` memakai `composeFrame` — hasil cetak identik dengan preview builder                                                      |
 
@@ -149,7 +149,7 @@ Output = full resolusi design canvas (PNG/JPEG sesuai pipeline finalize eksistin
 | `GET/POST /api/v1/business/:businessId/templates`     | terima/kembalikan `layout` (server validation §15.2)                                |
 | `POST /api/v1/business/:businessId/templates/upload`  | multipart PNG; response berisi `layout` kosong siap dibuilder                       |
 | `PATCH /api/v1/business/:businessId/templates/:id`    | update `layout` (draft/publish via `is_active`)                                     |
-| `GET /api/v1/public/:businessSlug/templates?package=` | include `layout` + frame signed URL; **filter `slot_count == package.photo_count`** |
+| `GET /api/v1/public/:businessSlug/templates?package=` | include `layout` + frame signed URL + thumbnail 480px; tanpa filter slot |
 | `POST /sessions`                                      | memastikan `template_id` pilihan tersimpan (behavior eksisting)                     |
 
 Tidak ada endpoint baru — CRUD lama cukup.
@@ -162,7 +162,7 @@ Tidak ada endpoint baru — CRUD lama cukup.
 
 ## 15.8 Phasing
 
-- **Tahap A (inti, wajib):** migration `layout` + builder (rect/rounded/circle/ellipse, drag/resize/rotate) + `composeFrame` + kiosk slot-fit + preview sample + filter assign `slot_count`. Test unit: validasi layout, matematika cover-fit, composite deterministik.
+- **Tahap A (inti, wajib):** migration `layout` + builder (rect/rounded/circle/ellipse, drag/resize/rotate) + `composeFrame` + kiosk slot-fit + preview sample. Test unit: validasi layout, matematika cover-fit, composite deterministik, `fillSlots`.
 - **Tahap B (skip dulu, tambah saat diminta):** shape path/custom mask, `frame_z` layer configurable, duplicate template.
 
 ## 15.9 Acceptance Criteria

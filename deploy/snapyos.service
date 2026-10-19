@@ -1,0 +1,49 @@
+[Unit]
+Description=SnapyOS (Next.js standalone)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/snapyos/.next/standalone
+
+# Rahasia dibaca dari file terpisah (0600, root:www-data).
+EnvironmentFile=/var/www/snapyos/.env.production
+
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOSTNAME=127.0.0.1
+# Batasi heap di bawah MemoryMax supaya V8 tidak tumbuh sampai OOM killer.
+Environment=NODE_OPTIONS=--max-old-space-size=640
+
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=5
+
+# --- Hardening ---
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+
+# Satu-satunya path yang boleh ditulis: cache Next (ISR/revalidate).
+ReadWritePaths=/var/www/snapyos/.next/standalone/.next/cache
+
+MemoryMax=768M
+TasksMax=256
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=snapyos
+
+[Install]
+WantedBy=multi-user.target

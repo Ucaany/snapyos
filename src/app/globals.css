@@ -116,6 +116,20 @@ body::after {
   }
 }
 
+/* Kiosk pada layar pendek (panel 800x480, tablet portrait kecil): rapatkan
+   padding kiosk agar panel kontrol tidak memakan seluruh tinggi. Hanya
+   menyentuh subtree kiosk (data-kiosk-shell), bukan dashboard. */
+@media (max-height: 700px) {
+  [data-kiosk-shell="true"] {
+    font-size: 93%;
+  }
+  /* Kontrol kiosk tetap bisa dijangkau: margin vertikal dirapatkan, bukan
+     diperkecil sampai di bawah target sentuh 44px. */
+  [data-kiosk-shell="true"] button {
+    padding-top: max(0.5rem, env(safe-area-inset-top));
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

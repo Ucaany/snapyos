@@ -14,7 +14,7 @@ export function AdminTopbar({
       <div className="flex h-16 w-full items-center gap-2 px-4 md:gap-4 md:px-6">
         <a href="/admin" className="flex shrink-0 items-center gap-2 font-display text-base font-bold uppercase tracking-tight md:text-lg">
           <img
-            src="/avatar-snappy/4.svg"
+            src="/snapyos-mark.png"
             alt="Logo SnapyOS"
             className="h-8 w-8 shrink-0"
           />

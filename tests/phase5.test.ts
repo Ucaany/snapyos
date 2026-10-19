@@ -227,6 +227,63 @@ test("checkoutSettingsSchema: offline_enabled boolean optional (docs/05 mode off
   assert.equal(transactionListQuerySchema.safeParse({ method: "offline" }).success, true)
 })
 
+// --- listTransactions: query URL mentah tidak boleh menjatuhkan halaman ---
+// `searchParams` Next selalu objek, tapi `listTransactions` memakai
+// `safeParse` + fallback supaya nilai rusak/`null` jatuh ke default, bukan
+// ZodError yang memicu error boundary (docs/08 §8.2).
+test("transactionListQuerySchema: bentuk non-objek gagal parse (dasar fallback)", () => {
+  assert.equal(transactionListQuerySchema.safeParse(null).success, false)
+  assert.equal(transactionListQuerySchema.safeParse("from=2026-01-01").success, false)
+  assert.equal(transactionListQuerySchema.safeParse(42).success, false)
+  // Fallback yang dipakai `listTransactions` saat itu terjadi:
+  const fallback = transactionListQuerySchema.parse({})
+  assert.equal(fallback.page, 1)
+  assert.equal(fallback.limit, 20)
+  assert.equal(fallback.from, undefined)
+})
+
+test("transactionListQuerySchema: nilai rusak dibuang, bukan melempar", () => {
+  const parsed = transactionListQuerySchema.parse({
+    from: "2026-99-99", // tanggal kalender invalid
+    to: "bukan-tanggal",
+    page: "abc",
+    status: "status-yang-tidak-ada",
+    method: "metode-yang-tidak-ada",
+    source: "sumber-yang-tidak-ada",
+    outlet: "bukan-uuid",
+    q: "",
+  })
+  assert.equal(parsed.from, undefined)
+  assert.equal(parsed.to, undefined)
+  assert.equal(parsed.page, 1)
+  assert.equal(parsed.status, undefined)
+  assert.equal(parsed.method, undefined)
+  assert.equal(parsed.source, undefined)
+  assert.equal(parsed.outlet, undefined)
+  assert.equal(parsed.q, undefined)
+})
+
+test("transactionListQuerySchema: nilai valid dipertahankan + limit di-clamp", () => {
+  const parsed = transactionListQuerySchema.parse({
+    from: "2026-01-01",
+    to: "2026-01-31",
+    status: "paid",
+    method: "qris",
+    source: "kiosk",
+    page: "3",
+    limit: "50",
+  })
+  assert.equal(parsed.from, "2026-01-01")
+  assert.equal(parsed.to, "2026-01-31")
+  assert.equal(parsed.status, "paid")
+  assert.equal(parsed.method, "qris")
+  assert.equal(parsed.source, "kiosk")
+  assert.equal(parsed.page, 3)
+  assert.equal(parsed.limit, 50)
+  // Di atas plafon → `.catch(20)` (bukan nilai besar yang membebani DB).
+  assert.equal(transactionListQuerySchema.parse({ limit: "9999" }).limit, 20)
+})
+
 test("buildCheckoutPayload: form QRIS tanpa toggle offline TIDAK mengirim offline_enabled", () => {
   const fd = new FormData()
   fd.set("qris_expiry_minutes", "7")

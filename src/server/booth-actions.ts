@@ -24,6 +24,7 @@ import {
   updatePhotobox,
   updatePhotoboxCameraConfig,
   updatePhotoboxBranding,
+  updatePhotoboxPrintStatus,
 } from "@/server/photoboxes";
 import type { FormState } from "@/server/auth-actions";
 
@@ -146,6 +147,9 @@ function photoboxInput(formData: FormData) {
       auto_print: formData.get("auto_print") === "on",
       copies: number("copies", 1),
       margins_mm: number("margins_mm", 0),
+      mode: str(formData, "print_mode") === "bluetooth" ? "bluetooth" as const : "browser" as const,
+      bluetooth_paper_width_mm: number("bluetooth_paper_width_mm", 80) === 58 ? 58 as const : 80 as const,
+      bluetooth_device_name: str(formData, "bluetooth_device_name") || undefined,
     },
     // Perangkat (kamera/printer/display) tidak diisi manual —
     // auto-detect saat device pairing (docs/05 §5.0.1, Phase 4).
@@ -263,6 +267,72 @@ export async function setPhotoboxMirrorAction(
 
   revalidatePath(`/dashboard/photoboxes/${photoboxId}/camera`);
   return { ok: true, mirror };
+}
+
+/**
+ * Pilih kamera booth dari dashboard (owner). Tanpa ini satu-satunya jalan
+ * mengganti `preferred_device_id` adalah mengulang pairing perangkat.
+ */
+export async function setPhotoboxPreferredCameraAction(
+  photoboxId: string,
+  deviceId: string | null
+): Promise<{ ok: boolean; error?: string }> {
+  const ctx = await requireActiveBusiness();
+  if (!ctx) return { ok: false, error: "Sesi berakhir. Login ulang." };
+  await requireEffectiveSubscription(ctx.businessId, "write");
+  if (!photoboxId) return { ok: false, error: "Photobox tidak valid" };
+  const normalized = deviceId?.trim() ? deviceId.trim().slice(0, 200) : null;
+
+  try {
+    await updatePhotoboxCameraConfig(ctx.user.id, ctx.businessId, photoboxId, {
+      preferred_device_id: normalized,
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof ApiError ? error.message : "Gagal menyimpan pilihan kamera.",
+    };
+  }
+
+  revalidatePath(`/dashboard/photoboxes/${photoboxId}/camera`);
+  return { ok: true };
+}
+
+export type PrintTestReport = {
+  confirmed: boolean;
+  mode: "browser" | "bluetooth";
+  device_name?: string;
+};
+
+/**
+ * Simpan hasil uji cetak dari dashboard owner (bukan dari device).
+ * Panel yang sama dipakai SetupWizard lewat `reportDevice` (device-token).
+ */
+export async function reportPrintTestAction(
+  photoboxId: string,
+  report: PrintTestReport
+): Promise<{ ok: boolean; error?: string }> {
+  const ctx = await requireActiveBusiness();
+  if (!ctx) return { ok: false, error: "Sesi berakhir. Login ulang." };
+  await requireEffectiveSubscription(ctx.businessId, "write");
+  if (!photoboxId) return { ok: false, error: "Photobox tidak valid" };
+
+  try {
+    await updatePhotoboxPrintStatus(ctx.user.id, ctx.businessId, photoboxId, {
+      confirmed: report.confirmed,
+      last_test_at: new Date().toISOString(),
+      mode: report.mode,
+      device_name: report.device_name,
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof ApiError ? error.message : "Gagal menyimpan hasil uji cetak.",
+    };
+  }
+
+  revalidatePath(`/dashboard/photoboxes/${photoboxId}/camera`);
+  return { ok: true };
 }
 
 // --- PER-BOOTH BRANDING OVERRIDE (0045) ---

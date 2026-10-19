@@ -14,7 +14,6 @@ import {
   type PackageCreateInput,
   type PackageUpdateInput,
 } from "@/lib/validators";
-import { slotCount } from "@/lib/template-layout";
 
 const COLUMNS = `id, name, price, photo_count, print_count, digital_output, capture_mode,
   description, is_active, created_at,
@@ -114,43 +113,11 @@ async function assertIdsOwned(
 }
 
 /**
- * Assign template → package DITOLAK kecuali slot_count == photo_count
- * (docs/15 §15.2). Template legacy (slot_count 0, layout kosong) tetap
- * boleh — backward compatible (docs/15 §15.9 AC 5).
+ * Template boleh di-assign lintas paket berapa pun jumlah slotnya. Aturan
+ * "slot_count == photo_count" dihapus 2026-10-19: slot yang lebih banyak dari
+ * foto diisi bergiliran (`src/lib/template-fit.ts`), dan jumlah capture tetap
+ * mengikuti `packages.photo_count`.
  */
-async function assertTemplatesMatchPhotoCount(
-  businessId: string,
-  templateIds: string[],
-  photoCount: number
-) {
-  if (templateIds.length === 0) return;
-  const supabase = createServerClient();
-  const { data } = await supabase
-    .from("templates")
-    .select("id, name, layout")
-    .or(`business_id.eq.${businessId},business_id.is.null`)
-    .in("id", templateIds);
-  const rows = (data ?? []) as { id: string; name: string; layout: unknown }[];
-  const found = new Set(rows.map((r) => r.id));
-  const missing = templateIds.filter((id) => !found.has(id));
-  if (missing.length > 0) {
-    throw new ApiError("VALIDATION_ERROR", "Ada templates yang bukan milik business ini", {
-      template_ids: ["Berisi id tidak valid"],
-    });
-  }
-  const mismatched = rows
-    .map((r) => ({ name: r.name, slots: slotCount(r.layout) }))
-    .filter((r) => r.slots > 0 && r.slots !== photoCount);
-  if (mismatched.length > 0) {
-    throw new ApiError(
-      "VALIDATION_ERROR",
-      "Jumlah slot template harus sama dengan jumlah foto package",
-      {
-        template_ids: mismatched.map((r) => `${r.name}: ${r.slots} slot ≠ ${photoCount} foto`),
-      }
-    );
-  }
-}
 
 /**
  * Sinkron m2m: selisihkan (diff) terhadap isi yang ada: insert dulu, baru
@@ -218,7 +185,6 @@ export async function createPackage(
   const parsed = packageCreateSchema.parse(input);
   await requireMembership(userId, businessId, "package:write");
   await Promise.all([
-    assertTemplatesMatchPhotoCount(businessId, parsed.template_ids, parsed.photo_count),
     assertIdsOwned(businessId, "outlets", parsed.outlet_ids),
     assertIdsOwned(businessId, "photoboxes", parsed.photobox_ids),
   ]);
@@ -251,29 +217,6 @@ export async function updatePackage(
 
   const supabase = createServerClient();
 
-  // Constraint slot_count (docs/15 §15.2): berlaku untuk template_ids baru
-  // DAN untuk photo_count yang berubah saat template sudah ter-assign.
-  const { data: existing } = await supabase
-    .from("packages")
-    .select("id, photo_count")
-    .eq("id", packageId)
-    .eq("business_id", businessId)
-    .maybeSingle();
-  if (!existing) throw new ApiError("NOT_FOUND", "Package tidak ditemukan");
-  const finalPhotoCount = parsed.photo_count ?? existing.photo_count;
-  if (parsed.template_ids) {
-    await assertTemplatesMatchPhotoCount(businessId, parsed.template_ids, finalPhotoCount);
-  } else if (parsed.photo_count !== undefined) {
-    const { data: links } = await supabase
-      .from("package_templates")
-      .select("template_id")
-      .eq("package_id", packageId);
-    await assertTemplatesMatchPhotoCount(
-      businessId,
-      (links ?? []).map((l) => l.template_id),
-      finalPhotoCount
-    );
-  }
   await assertIdsOwned(businessId, "outlets", parsed.outlet_ids ?? []);
   await assertIdsOwned(businessId, "photoboxes", parsed.photobox_ids ?? []);
 

@@ -75,12 +75,7 @@ export default function Faqs01({
           subtitle="Jawaban singkat untuk pertanyaan yang paling sering kami terima."
         />
 
-        <Accordion
-          type="single"
-          collapsible
-          className="mt-12"
-          defaultValue={defaultValue}
-        >
+        <Accordion type="single" className="mt-12" defaultValue={defaultValue}>
           {faqs.map((f, i) => (
             <AccordionItem key={f.q} value={`item-${i}`}>
               <AccordionTrigger>{f.q}</AccordionTrigger>

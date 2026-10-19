@@ -1401,7 +1401,9 @@ Bordered table (hand-rolled atau shadcn Table customized)
 **Owner dashboard tidak memerlukan migration baru** (semua tabel sudah ada di baseline `db/schema.sql` + migrations `0002`–`0042`).
 
 **Tabel dipakai**:
-- `businesses`, `business_members`, `business_settings`, `outlets`, `photoboxes`, `devices`, `activation_codes`, `packages`, `package_templates`, `package_outlets`, `package_photoboxes`, `templates`, `template_categories`, `vouchers`, `voucher_usages`, `customers`, `transactions`, `expenses`, `subscriptions`, `subscription_add_ons`, `invoices`, `invoice_payments`, `payment_credentials`, `balances`, `balance_ledger`, `withdrawals`, `audit_logs`.
+- `businesses`, `business_members`, `business_settings`, `outlets`, `photoboxes`, `devices`, `activation_codes`, `packages`, `package_templates`, `package_outlets`, `package_photoboxes`, `templates`, `template_categories`, `vouchers`, `voucher_usages`, `customers`, `transactions`, `expenses`, `subscriptions`, `subscription_add_ons`, `invoices`, `invoice_payments`, `payment_credentials`, `audit_logs`.
+
+> Tabel `balances`/`balance_ledger`/`withdrawals` pernah ada di sini, tetapi dihapus migrasi `0044_drop_withdrawal_flow.sql`.
 
 **Migration historis terkait owner**:
 - `0002`: outlets province

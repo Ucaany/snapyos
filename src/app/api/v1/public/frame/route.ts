@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { isAllowedFrameTarget, type FrameProxyEnv } from "@/lib/frame-proxy";
+import { clampResizeWidth } from "@/lib/frame-resize";
 import { sniffImageType } from "@/lib/upload-validation";
 
 const MAX_FRAME_BYTES = 8 * 1024 * 1024;
@@ -18,8 +19,12 @@ function frameEnv(): FrameProxyEnv {
 }
 
 export async function GET(request: Request) {
-  const raw = new URL(request.url).searchParams.get("url");
+  const params = new URL(request.url).searchParams;
+  const raw = params.get("url");
   if (!raw) return new NextResponse("Missing frame URL", { status: 400 });
+  // `w` = versi kecil untuk grid pilih frame (baris lama yang thumbnail-nya
+  // masih sama dengan frame penuh). Tanpa `w`, respons identik seperti dulu.
+  const resizeWidth = clampResizeWidth(params.get("w"));
 
   let target: URL;
   try {
@@ -52,6 +57,29 @@ export async function GET(request: Request) {
   const sniffed = sniffImageType(bytes);
   if (!sniffed || sniffed !== declaredType) {
     return new NextResponse("Frame content does not match its type", { status: 415 });
+  }
+
+  if (resizeWidth) {
+    // Sniff/allowlist sudah lolos di atas — resize hanya dilakukan pada byte
+    // yang sudah terbukti gambar. Gagal decode = kirim byte asli (lebih baik
+    // daripada 500; frame penuh tetap bisa dipakai kiosk).
+    try {
+      const sharp = (await import("sharp")).default;
+      const resized = await sharp(Buffer.from(bytes), { failOn: "none" })
+        .resize({ width: resizeWidth, withoutEnlargement: true, fit: "inside" })
+        .webp({ quality: 78, alphaQuality: 90 })
+        .toBuffer();
+      return new NextResponse(new Uint8Array(resized), {
+        headers: {
+          "Cache-Control": "private, max-age=3600",
+          "Content-Type": "image/webp",
+          "X-Content-Type-Options": "nosniff",
+          "Cross-Origin-Resource-Policy": "same-origin",
+        },
+      });
+    } catch {
+      // jatuh ke byte asli di bawah
+    }
   }
 
   return new NextResponse(bytes, {
