@@ -20,7 +20,7 @@ export default async function WelcomePage() {
       <div className="mx-auto grid max-w-[1100px] gap-6">
         <header className="border-2 border-ink bg-surface p-7 shadow-[6px_6px_0_0_#111111] sm:p-10">
           <p className="font-mono text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">
-            {"/// SELAMAT DATANG"}
+            {"SELAMAT DATANG"}
           </p>
           <p className="mt-3 font-mono text-sm font-bold text-ink">{user.name ?? user.email}</p>
           <h1 className="mt-4 max-w-[14ch] font-display text-5xl uppercase leading-[.92] tracking-tight text-ink sm:text-7xl">

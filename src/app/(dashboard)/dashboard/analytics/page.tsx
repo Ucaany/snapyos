@@ -92,7 +92,7 @@ export default async function AnalyticsPage({
         description="Rincian pendapatan (net, setelah diskon) per hari, outlet, paket, photobox, dan metode pembayaran."
         meta={
           tab === "package" ? (
-            <span>{"/// termasuk transaksi POS non-paket (bucket tanpa package)"}</span>
+            <span>{"termasuk transaksi POS non-paket (bucket tanpa package)"}</span>
           ) : null
         }
         right={

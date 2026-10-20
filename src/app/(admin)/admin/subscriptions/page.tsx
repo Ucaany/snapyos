@@ -40,7 +40,7 @@ export default async function AdminSubscriptionsPage({
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            {"/// ADMIN - SUBSCRIPTIONS"}
+            {"ADMIN - SUBSCRIPTIONS"}
           </p>
           <h1 className="mt-2 font-display text-3xl uppercase tracking-tight md:text-4xl">
             Manajemen Subscription
@@ -66,7 +66,7 @@ export default async function AdminSubscriptionsPage({
       </header>
 
       {items.length === 0 ? (
-        <AdminEmptyState heading="/// TIDAK ADA SUBSCRIPTION">
+        <AdminEmptyState heading="TIDAK ADA SUBSCRIPTION">
           Tidak ada subscription{q.status ? ` berstatus ${q.status}` : ""} saat ini.
         </AdminEmptyState>
       ) : (

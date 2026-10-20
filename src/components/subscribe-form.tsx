@@ -61,7 +61,7 @@ export function SubscribeForm({
           className="border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111]"
         >
           <p className="font-mono text-xs font-bold uppercase tracking-[0.08em] text-ink">
-            {"/// Chat siap dibuka"}
+            {"Chat siap dibuka"}
           </p>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             WhatsApp konsultasi terbuka di tab baru. Jika tidak terbuka,{" "}

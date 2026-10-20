@@ -49,7 +49,7 @@ export function ExpensesPanel({
               noValidate
             >
               <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-                {"/// Pengeluaran baru"}
+                {"Pengeluaran baru"}
               </p>
               <ExpenseFields outlets={outlets} state={createState} pending={creating} />
               {createState.error && (

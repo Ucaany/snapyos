@@ -106,7 +106,7 @@ export function TemplatePicker({
         style={ks ? { paddingLeft: ks.padding, paddingRight: ks.padding } : undefined}
       >
         <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-          {"/// STEP 02 · PILIH FRAME"}
+          {"STEP 02 · PILIH FRAME"}
         </p>
         <h1
           className="font-display text-3xl uppercase leading-[0.9] tracking-tight md:text-5xl lg:text-6xl"
@@ -180,7 +180,7 @@ export function TemplatePicker({
             ) : templates.length === 0 ? (
               <div className="col-span-full flex flex-col items-start gap-2 border-2 border-dashed border-ink/40 bg-muted p-5">
                 <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-                  {"/// BELUM ADA FRAME UNTUK PAKET INI"}
+                  {"BELUM ADA FRAME UNTUK PAKET INI"}
                 </p>
                 <p className="max-w-[50ch] font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
                   Owner perlu mengaktifkan minimal satu template di dashboard. Paket ini memakai{" "}

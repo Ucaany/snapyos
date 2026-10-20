@@ -21,7 +21,7 @@ export function MarketingPage({
       <Header />
       <main className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 lg:px-8 lg:py-20">
         <header className="max-w-3xl border-b-2 border-ink pb-10">
-          <p className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-ink">{`{/// ${eyebrow}}`}</p>
+          <p className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-ink">{`{${eyebrow}}`}</p>
           <h1 className="mt-4 font-display text-balance text-4xl uppercase leading-[0.95] tracking-tight md:text-5xl">
             {title}
           </h1>

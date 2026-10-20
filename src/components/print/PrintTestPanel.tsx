@@ -168,7 +168,7 @@ export function PrintTestPanel({
     >
       <header className="flex flex-col gap-2 border-b-2 border-ink pb-4">
         <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
-          {"/// UJI CETAK"}
+          {"UJI CETAK"}
         </p>
         <h2 id="print-test-heading" className="font-display text-2xl uppercase tracking-tight">
           Test printer

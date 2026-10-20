@@ -60,7 +60,7 @@ export default async function CameraTestPage({ params }: Props) {
           <ChevronLeft className="size-4" aria-hidden /> Kembali ke photobox
         </Link>
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {"/// KAMERA & CETAK: " + active.role.toUpperCase()}
+          {"KAMERA & CETAK: " + active.role.toUpperCase()}
         </p>
         <h1 className="font-display text-4xl uppercase tracking-tight md:text-5xl">
           Kamera & cetak

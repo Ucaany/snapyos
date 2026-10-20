@@ -146,7 +146,7 @@ export function SubscriptionCheckout({
 
           <section>
             <p className="mb-2 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-              {"/// 01. PLAN"}
+              {"01. PLAN"}
             </p>
             <div className="flex flex-wrap gap-2">
               {plans.map((p) => (
@@ -172,7 +172,7 @@ export function SubscriptionCheckout({
           {addOns.length > 0 && (
             <section>
               <p className="mb-2 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                {"/// 02. ADD-ON: ATUR JUMLAH SENDIRI"}
+                {"02. ADD-ON: ATUR JUMLAH SENDIRI"}
               </p>
               <ul className="flex flex-col gap-2">
                 {addOns.map((a) => {
@@ -232,7 +232,7 @@ export function SubscriptionCheckout({
 
           <section>
             <p className="mb-2 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-              {"/// 03. VOUCHER PROMO: OPSIONAL"}
+              {"03. VOUCHER PROMO: OPSIONAL"}
             </p>
             <div className="flex flex-wrap gap-2">
               <input
@@ -279,7 +279,7 @@ export function SubscriptionCheckout({
 
           <section className="border-t-2 border-ink/10 pt-4">
             <p className="mb-2 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-              {"/// 04. HARGA FIX"}
+              {"04. HARGA FIX"}
             </p>
             <dl className="flex flex-col gap-1 text-sm">
               <div className="flex justify-between">

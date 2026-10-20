@@ -48,7 +48,7 @@ export default async function CreateBusinessPage() {
 
         <header className="mt-10">
           <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-            {"/// Workspace baru · 01/01"}
+            {"Workspace baru · 01/01"}
           </p>
           <h1 className="font-display mt-4 text-5xl uppercase leading-[.92] tracking-tight text-ink sm:text-7xl">
             Mari beri rumah untuk bisnis Anda.

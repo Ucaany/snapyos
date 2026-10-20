@@ -62,7 +62,7 @@ export function InstallPWA() {
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
           <p className="font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
-            {"/// INSTALL PWA"}
+            {"INSTALL PWA"}
           </p>
           <p className="text-sm font-bold leading-tight">
             {showIosGuide

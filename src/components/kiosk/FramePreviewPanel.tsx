@@ -236,7 +236,7 @@ export function FramePreviewPanel({
         className="font-mono text-[10px] uppercase tracking-[0.2em]"
         style={{ opacity: 0.6, color: kioskStyle ? kioskStyle.text : undefined }}
       >
-        {"/// PREVIEW FRAME"}
+        {"PREVIEW FRAME"}
       </p>
       <div className="relative mx-auto w-fit max-w-full border-2 border-ink bg-ink shadow-[4px_4px_0_0_#111111]">
         <canvas

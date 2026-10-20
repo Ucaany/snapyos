@@ -39,7 +39,7 @@ export function TemplatesGrid({ templates, canWrite }: Props) {
           noValidate
         >
           <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-            {"/// Upload frame baru"}
+            {"Upload frame baru"}
           </p>
           <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
             <div className="flex flex-col gap-2">

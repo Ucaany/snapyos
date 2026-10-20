@@ -71,7 +71,7 @@ export function PhotoboxForm({ outlets, photobox, onDone }: Props) {
     >
       {isEdit && photobox && <input type="hidden" name="id" value={photobox.id} />}
       <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-        {isEdit ? `/// UBAH PHOTOBOX: ${photobox?.name.toUpperCase()}` : "/// PHOTOBOX BARU"}
+        {isEdit ? `UBAH PHOTOBOX: ${photobox?.name.toUpperCase()}` : "PHOTOBOX BARU"}
       </p>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -570,7 +570,7 @@ export function PhotoboxForm({ outlets, photobox, onDone }: Props) {
               </div>
               <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-muted-foreground md:col-span-2">
                 {
-                  "/// KHUSUS PRINTER THERMAL ESC/POS · BUTUH CHROME + BLUETOOTH · PRINTER FOTO KONSUMEN TETAP PAKAI DIALOG SISTEM"
+                  "KHUSUS PRINTER THERMAL ESC/POS · BUTUH CHROME + BLUETOOTH · PRINTER FOTO KONSUMEN TETAP PAKAI DIALOG SISTEM"
                 }
               </p>
             </>
@@ -652,7 +652,7 @@ export function PhotoboxForm({ outlets, photobox, onDone }: Props) {
       </div>
 
       <p className="max-w-[60ch] font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-        {"/// DEVICE DIPILIH SAAT PAIRING · PENGATURAN DI ATAS MENGONTROL RUNTIME KIOSK"}
+        {"DEVICE DIPILIH SAAT PAIRING · PENGATURAN DI ATAS MENGONTROL RUNTIME KIOSK"}
       </p>
 
       {state.error && (

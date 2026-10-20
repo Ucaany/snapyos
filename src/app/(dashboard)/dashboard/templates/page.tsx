@@ -44,7 +44,7 @@ export default async function TemplatesPage() {
             id="premium-templates"
             className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-bg"
           >
-            {"/// Template Premium (Marketplace)"}
+            {"Template Premium (Marketplace)"}
           </p>
           <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.08em] text-bg/70">
             Frame berbayar dari platform. Beli sekali, lalu gunakan di paket.
@@ -54,7 +54,7 @@ export default async function TemplatesPage() {
         {purchased.length > 0 && (
           <div className="border-2 border-ink bg-surface p-4 shadow-[4px_4px_0_0_#111111]">
             <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-              {`/// Sudah dimiliki: ${purchased.length}`}
+              {`Sudah dimiliki: ${purchased.length}`}
             </p>
             <ul
               className="mt-3 flex flex-col divide-y-2 divide-ink/10"

@@ -29,10 +29,7 @@ export function EmptyState({
       )}
     >
       {Icon && <Icon className="size-8" aria-hidden />}
-      <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-        {"/// "}
-        {eyebrow}
-      </p>
+      <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">{eyebrow}</p>
       <p
         className={cn(
           "font-display uppercase tracking-tight",

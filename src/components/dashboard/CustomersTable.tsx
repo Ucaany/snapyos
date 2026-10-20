@@ -168,7 +168,7 @@ export function CustomersTable({
                     <tr className="border-b-2 border-ink/10 bg-muted">
                       <td colSpan={6} className="px-4 py-4 md:px-6">
                         <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-                          {`/// Riwayat: ${(c.name ?? "PELANGGAN").toUpperCase()}`}
+                          {`Riwayat: ${(c.name ?? "PELANGGAN").toUpperCase()}`}
                         </p>
                         {loading && (
                           <div className="mt-4 flex gap-3" aria-label="Memuat detail">

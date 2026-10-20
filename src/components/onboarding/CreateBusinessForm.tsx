@@ -64,7 +64,7 @@ export function CreateBusinessForm() {
         />
         {state.fieldErrors?.name ? (
           <p role="alert" className="font-mono text-xs text-destructive">
-            {"/// ERR · "}
+            {"ERR · "}
             {state.fieldErrors.name[0]}
           </p>
         ) : (
@@ -124,7 +124,7 @@ export function CreateBusinessForm() {
         </div>
         {state.fieldErrors?.slug ? (
           <p role="alert" className="font-mono text-xs text-destructive">
-            {"/// ERR · "}
+            {"ERR · "}
             {state.fieldErrors.slug[0]}
           </p>
         ) : slugValidation.msg ? (
@@ -144,7 +144,7 @@ export function CreateBusinessForm() {
           className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs leading-relaxed text-ink"
         >
           <span className="mr-2 font-bold uppercase tracking-[0.16em] text-destructive">
-            {"/// ERR"}
+            {"ERR"}
           </span>
           {state.error}
         </div>

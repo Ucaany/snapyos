@@ -55,7 +55,7 @@ export default async function AdminBroadcastsPage() {
     <div className="flex flex-col gap-8 p-6 md:p-10">
       <header>
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {"/// ADMIN - BROADCAST EMAIL"}
+          {"ADMIN - BROADCAST EMAIL"}
         </p>
         <h1 className="mt-2 font-display text-3xl uppercase tracking-tight md:text-4xl">
           Broadcast Email
@@ -150,7 +150,7 @@ export default async function AdminBroadcastsPage() {
 
       <div className="flex flex-col gap-4">
         {broadcasts.length === 0 ? (
-          <AdminEmptyState heading="/// BELUM ADA BROADCAST">
+          <AdminEmptyState heading="BELUM ADA BROADCAST">
             Buat draft pertama di atas, lalu kirim ke audiens terpilih.
           </AdminEmptyState>
         ) : (

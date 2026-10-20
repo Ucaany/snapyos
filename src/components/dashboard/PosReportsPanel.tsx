@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * PosReportsPanel — /// LAPORAN POS (docs/pos/05 §5).
+ * PosReportsPanel — LAPORAN POS (docs/pos/05 §5).
  * Metric grid + tab breakdown (PRODUK/KASIR/OUTLET/BOOTH/HARI) + chart by-day.
  * Tab state di URL (mirror pola /dashboard/analytics) supaya deep-link jalan.
  */
@@ -107,7 +107,7 @@ export function PosReportsPanel({ data, timeZone }: { data: PosReportsData; time
             </div>
           </dl>
           <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.06em] text-muted-foreground">
-            {`/// diskon ${formatIDR(revenue.totalDiscount)} \u00b7 gross ${formatIDR(revenue.totalGross)}`}
+            {`diskon ${formatIDR(revenue.totalDiscount)} \u00b7 gross ${formatIDR(revenue.totalGross)}`}
           </p>
         </div>
 
@@ -145,7 +145,7 @@ export function PosReportsPanel({ data, timeZone }: { data: PosReportsData; time
 
         {rows.length === 0 ? (
           <p className="border-2 border-dashed border-ink/40 bg-muted p-6 font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
-            {"/// BELUM ADA DATA PADA RENTANG INI"}
+            {"BELUM ADA DATA PADA RENTANG INI"}
           </p>
         ) : (
           <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">

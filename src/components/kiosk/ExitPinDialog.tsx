@@ -127,7 +127,7 @@ export function ExitPinDialog({ deviceToken, onSuccess, onCancel }: Props) {
           <LockKeyhole className="size-6 shrink-0" aria-hidden />
           <div className="flex min-w-0 flex-col">
             <p className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-muted-foreground">
-              {"/// AKSES PETUGAS"}
+              {"AKSES PETUGAS"}
             </p>
             <h2 className="font-display text-2xl uppercase leading-none tracking-tight">
               Keluar mode kiosk
@@ -211,7 +211,7 @@ export function ExitPinDialog({ deviceToken, onSuccess, onCancel }: Props) {
             </div>
 
             <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-              {"/// KEYBOARD: ANGKA · BACKSPACE · ENTER"}
+              {"KEYBOARD: ANGKA · BACKSPACE · ENTER"}
             </p>
 
             <button

@@ -29,7 +29,7 @@ export function PrinterTestSection({
   return (
     <div className="flex flex-col gap-3">
       <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-        {"/// PRINTER · " + photoboxName.toUpperCase()}
+        {"PRINTER · " + photoboxName.toUpperCase()}
       </p>
       {error && (
         <p

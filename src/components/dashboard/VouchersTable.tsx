@@ -50,7 +50,7 @@ export function VouchersTable({ vouchers, analytics, packages, outlets, canWrite
               noValidate
             >
               <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-                {"/// Voucher baru"}
+                {"Voucher baru"}
               </p>
               <VoucherFields
                 packages={packages}

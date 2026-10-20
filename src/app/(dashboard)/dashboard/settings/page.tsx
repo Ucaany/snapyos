@@ -75,7 +75,7 @@ export default async function SettingsPage() {
         eyebrow="PENGATURAN: PROFIL, STORAGE & KEBIJAKAN"
         title="Pengaturan"
         description="Profil bisnis, kuota penyimpanan, durasi kedaluwarsa QRIS, dan masa simpan hasil foto (1–3 hari). Kustomisasi tampilan kiosk ada di Branding & Kiosk; chroma key template diatur dari menu Template."
-        meta="[ 4 MODUL ] /// PROFIL · STORAGE · CHECKOUT · RETENTION"
+        meta="[ 4 MODUL ] PROFIL · STORAGE · CHECKOUT · RETENTION"
       />
 
       <div className="grid max-w-6xl grid-cols-1 gap-8 lg:grid-cols-2">

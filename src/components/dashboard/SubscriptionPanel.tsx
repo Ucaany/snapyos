@@ -370,7 +370,7 @@ export function SubscriptionPanel({
             Plans
           </h2>
           <span className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            {"/// 03. PILIH PLAN"}
+            {"03. PILIH PLAN"}
           </span>
         </div>
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
@@ -412,7 +412,7 @@ export function SubscriptionPanel({
             Add-ons
           </h2>
           <span className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            {"/// 04. ADD-ON: SESI, STORAGE, FITUR"}
+            {"04. ADD-ON: SESI, STORAGE, FITUR"}
           </span>
         </div>
         {addOns.length === 0 ? (
@@ -458,7 +458,7 @@ export function SubscriptionPanel({
             Invoice
           </h2>
           <span className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            {"/// 05. TAGIHAN: BAYAR VIA QRIS"}
+            {"05. TAGIHAN: BAYAR VIA QRIS"}
           </span>
         </div>
         <p className="mb-4 max-w-[70ch] text-xs text-muted-foreground">

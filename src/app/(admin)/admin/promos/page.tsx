@@ -34,7 +34,7 @@ export default async function AdminPromosPage() {
     <div className="flex flex-col gap-8 p-6 md:p-10">
       <header>
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {"/// ADMIN - SUBSCRIPTION PROMOS"}
+          {"ADMIN - SUBSCRIPTION PROMOS"}
         </p>
         <h1 className="mt-2 font-display text-3xl uppercase tracking-tight md:text-4xl">
           Promo Berlangganan
@@ -163,7 +163,7 @@ export default async function AdminPromosPage() {
 
       <div className="flex flex-col gap-4">
         {promos.length === 0 ? (
-          <AdminEmptyState heading="/// BELUM ADA PROMO">
+          <AdminEmptyState heading="BELUM ADA PROMO">
             Buat promo pertama di atas, dipakai saat owner meng-upgrade atau renew plan.
           </AdminEmptyState>
         ) : (

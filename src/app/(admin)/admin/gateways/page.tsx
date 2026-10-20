@@ -30,7 +30,7 @@ export default async function AdminGatewaysPage({
     <div className="flex flex-col gap-8 p-6 md:p-10">
       <header>
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {"/// ADMIN - PAYMENT GATEWAYS"}
+          {"ADMIN - PAYMENT GATEWAYS"}
         </p>
         <h1 className="mt-2 font-display text-3xl uppercase tracking-tight md:text-4xl">
           Payment Gateway
@@ -98,7 +98,7 @@ export default async function AdminGatewaysPage({
       {state.credentials.length === 0 ? (
         <div className="flex flex-col items-start gap-2 border-2 border-dashed border-ink/40 bg-muted p-8">
           <p className="font-mono text-sm font-bold uppercase tracking-[0.15em]">
-            {"/// BELUM ADA CREDENTIAL"}
+            {"BELUM ADA CREDENTIAL"}
           </p>
           <p className="max-w-[55ch] text-sm leading-relaxed text-muted-foreground">
             Belum ada tenant yang memasang credential direct merchant. Owner mengelola dari{" "}

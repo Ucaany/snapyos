@@ -43,7 +43,7 @@ export function TxInsightsPanel({
     return (
       <section aria-labelledby="tx-insights">
         <div className="mb-3 flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-          <h2 id="tx-insights">{"/// TX.INSIGHTS"}</h2>
+          <h2 id="tx-insights">{"TX.INSIGHTS"}</h2>
           <span aria-hidden className="h-px flex-1 bg-ink/30" />
           <span>{rangeLabel}</span>
         </div>
@@ -68,7 +68,7 @@ export function TxInsightsPanel({
   return (
     <section aria-labelledby="tx-insights" className="flex flex-col gap-4">
       <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-        <h2 id="tx-insights">{"/// TX.INSIGHTS"}</h2>
+        <h2 id="tx-insights">{"TX.INSIGHTS"}</h2>
         <span aria-hidden className="h-px flex-1 bg-ink/30" />
         <span>
           {rangeLabel} · NET {formatIDR(net)}
@@ -97,7 +97,7 @@ export function TxInsightsPanel({
         <div className="border-2 border-ink bg-surface p-4 shadow-[3px_3px_0_0_#111111] md:p-5">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h3 className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-              {"/// JAM.RAMAI"}
+              {"JAM.RAMAI"}
             </h3>
             <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
               {peakHour !== null ? (
@@ -140,7 +140,7 @@ export function TxInsightsPanel({
         <div className="border-2 border-ink bg-surface p-4 shadow-[3px_3px_0_0_#111111] md:p-5">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h3 className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-              {"/// OUTLET.TERAMAI"}
+              {"OUTLET.TERAMAI"}
             </h3>
             <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
               {outlets.length} OUTLET
@@ -148,7 +148,7 @@ export function TxInsightsPanel({
           </div>
           {outlets.length === 0 ? (
             <p className="mt-4 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
-              {"/// TIDAK ADA OUTLET"}
+              {"TIDAK ADA OUTLET"}
             </p>
           ) : (
             <div className="mt-4 overflow-x-auto">

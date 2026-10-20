@@ -157,7 +157,6 @@ export function PaymentCredentialCard({ credential, onChanged }: Props) {
 
       {notice && (
         <p role="status" className="font-mono text-xs text-ink">
-          {"/// "}
           {notice}
         </p>
       )}

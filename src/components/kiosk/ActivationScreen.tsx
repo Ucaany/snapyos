@@ -60,7 +60,7 @@ export function ActivationScreen({ initialCode, onActivated }: Props) {
       <div className="flex flex-col items-center gap-4">
         <KeyRound className="size-12" aria-hidden />
         <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground">
-          {"/// AKTIVASI PERANGKAT"}
+          {"AKTIVASI PERANGKAT"}
         </p>
         <h1 className="font-display text-4xl uppercase leading-[0.95] tracking-tight md:text-6xl">
           Masukkan kode aktivasi

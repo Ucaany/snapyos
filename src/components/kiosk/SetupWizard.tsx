@@ -200,7 +200,7 @@ export function SetupWizard({ deviceToken, onDone, onAuthError, printSettings = 
     <div className="flex min-h-0 flex-1 flex-col items-center gap-8 overflow-y-auto bg-bg px-6 py-10">
       <header className="flex flex-col items-center gap-2 text-center">
         <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground">
-          {`/// SETUP PERANGKAT: ${stage === "camera" ? "KAMERA" : "PRINTER"} (SEKALI SAJA)`}
+          {`SETUP PERANGKAT: ${stage === "camera" ? "KAMERA" : "PRINTER"} (SEKALI SAJA)`}
         </p>
         <h1 className="font-display text-4xl uppercase leading-[0.95] tracking-tight md:text-5xl">
           {stage === "camera" ? "Siapkan kamera" : "Uji cetak"}

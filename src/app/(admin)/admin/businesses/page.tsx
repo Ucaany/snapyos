@@ -33,7 +33,7 @@ export default async function AdminBusinessesPage({
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            {"/// ADMIN - BUSINESSES"}
+            {"ADMIN - BUSINESSES"}
           </p>
           <h1 className="mt-2 font-display text-3xl uppercase tracking-tight md:text-4xl">
             Manajemen Bisnis
@@ -76,7 +76,7 @@ export default async function AdminBusinessesPage({
       </header>
 
       {items.length === 0 ? (
-        <AdminEmptyState heading="/// TIDAK ADA BISNIS">
+        <AdminEmptyState heading="TIDAK ADA BISNIS">
           {q.search || status ? (
             <>
               Tidak ada bisnis yang cocok dengan{" "}

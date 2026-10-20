@@ -63,7 +63,7 @@ export function PosProductsTable({
               <div className="flex items-center gap-3 border-b-2 border-ink pb-4">
                 <Plus className="size-4" aria-hidden />
                 <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-                  {"/// Produk baru"}
+                  {"Produk baru"}
                 </p>
               </div>
               <PosProductFields categories={allCategories} state={createState} pending={creating} />
@@ -89,7 +89,7 @@ export function PosProductsTable({
         <div className="flex flex-col items-start gap-4 border-2 border-dashed border-ink/40 bg-muted p-8">
           <Tag className="size-8" aria-hidden />
           <p className="font-mono text-sm font-bold uppercase tracking-[0.15em]">
-            {"/// Belum ada produk"}
+            {"Belum ada produk"}
           </p>
           <p className="max-w-[55ch] text-sm leading-relaxed text-muted-foreground">
             Katalog ini dipakai semua booth POS: keychain, gantungan, cetak tambahan, merchandise.

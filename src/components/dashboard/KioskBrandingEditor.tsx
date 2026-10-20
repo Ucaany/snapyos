@@ -976,7 +976,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                 Logo kiosk
               </label>
               <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em] text-muted-foreground">
-                {"/// PNG, JPG, ATAU WEBP · MAKSIMAL 2 MB"}
+                {"PNG, JPG, ATAU WEBP · MAKSIMAL 2 MB"}
               </p>
               <div className="flex flex-wrap items-center gap-3">
                 <input
@@ -1034,7 +1034,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
             </span>
           </div>
           <p className="mb-5 font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em] text-muted-foreground">
-            {"/// NILAI DASAR SELURUH LAYAR KIOSK · OVERRIDE PER-LAYAR ADA DI BAGIAN 03"}
+            {"NILAI DASAR SELURUH LAYAR KIOSK · OVERRIDE PER-LAYAR ADA DI BAGIAN 03"}
           </p>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             {(
@@ -1181,9 +1181,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
             </span>
           </div>
           <p className="mb-5 font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em] text-muted-foreground">
-            {
-              "/// PILIH LAYAR LALU TIMPA GAYA GLOBALNYA · WARNA, PERATAAN, SKALA FONT, RADIUS, PADDING"
-            }
+            {"PILIH LAYAR LALU TIMPA GAYA GLOBALNYA · WARNA, PERATAAN, SKALA FONT, RADIUS, PADDING"}
           </p>
 
           <div
@@ -1361,7 +1359,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
             </span>
           </div>
           <p className="mb-5 font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em] text-muted-foreground">
-            {"/// STRUKTUR KOLOM/PANEL · BERBEDA DARI PERATAAN KONTEN (BAGIAN 02 & 03)"}
+            {"STRUKTUR KOLOM/PANEL · BERBEDA DARI PERATAAN KONTEN (BAGIAN 02 & 03)"}
           </p>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <div className={fieldClass}>
@@ -1403,7 +1401,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
           </div>
           <p className="mt-4 font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em] text-muted-foreground">
             {
-              "/// WELCOME = BRAND KIRI/KANAN/TENGAH · RESULT = QR KANAN/KIRI/BAWAH · PERATAAN LAINNYA LIHAT BAGIAN 02"
+              "WELCOME = BRAND KIRI/KANAN/TENGAH · RESULT = QR KANAN/KIRI/BAWAH · PERATAAN LAINNYA LIHAT BAGIAN 02"
             }
           </p>
         </section>
@@ -1594,7 +1592,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
             <div className="flex flex-col gap-2">
               <label className={labelClass}>Langkah tutorial (custom + urut)</label>
               <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em] text-muted-foreground">
-                {"/// DITAMPILKAN SEBELUM PEMILIHAN PAKET · KOSONG = DILEWATI. MAX 8 LANGKAH."}
+                {"DITAMPILKAN SEBELUM PEMILIHAN PAKET · KOSONG = DILEWATI. MAX 8 LANGKAH."}
               </p>
               {guideSteps.length === 0 ? (
                 <p className="font-mono text-xs text-muted-foreground">
@@ -1713,7 +1711,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
           </div>
           <p className="mb-5 font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em] text-muted-foreground">
             {
-              "/// BOOTH MEWARISI KONFIGURASI GLOBAL; PILIH BOOTH UNTUK TIMPA SEBAGIAN/SELURUH TAMPILANNYA."
+              "BOOTH MEWARISI KONFIGURASI GLOBAL; PILIH BOOTH UNTUK TIMPA SEBAGIAN/SELURUH TAMPILANNYA."
             }
           </p>
           <div className="flex flex-col gap-4">
@@ -1741,8 +1739,8 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
               <div className="flex flex-col gap-3 border-2 border-ink/30 bg-bg p-4">
                 <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
                   {boothUsesOverride
-                    ? "/// BOOTH INI PUNYA OVERRIDE SENDIRI (TIMPA GLOBAL)."
-                    : "/// BOOTH INI MEWARISI KONFIGURASI GLOBAL."}
+                    ? "BOOTH INI PUNYA OVERRIDE SENDIRI (TIMPA GLOBAL)."
+                    : "BOOTH INI MEWARISI KONFIGURASI GLOBAL."}
                 </p>
                 <p className="font-mono text-xs leading-relaxed text-muted-foreground">
                   Override booth menyimpan snapshot konfigurasi form global saat ini. Setelah
@@ -1909,7 +1907,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
             )}
             <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em] text-muted-foreground">
               {
-                "/// VIDEO LATAR DITAMPILKAN DI LAYAR YANG DIPILIH (WELCOME, TUTORIAL, PAKET, PAYMENT, FRAME, FOTO, EDIT, RESULT)."
+                "VIDEO LATAR DITAMPILKAN DI LAYAR YANG DIPILIH (WELCOME, TUTORIAL, PAKET, PAYMENT, FRAME, FOTO, EDIT, RESULT)."
               }
             </p>
           </div>
@@ -2081,7 +2079,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                 />
               )}
               <p className="relative z-10 font-mono text-[8px] uppercase tracking-[0.25em] opacity-60">
-                {"/// PETUNJUK"}
+                {"PETUNJUK"}
               </p>
               <h2
                 className="relative z-10 font-display uppercase leading-none tracking-tight"
@@ -2138,7 +2136,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
               <PreviewVideo url={k.pages?.package?.video_url} />
               <div className={`relative z-10 ${pvAlignClass}`}>
                 <p className="font-mono text-[8px] uppercase tracking-[0.25em] opacity-60">
-                  {"/// STEP 01 · PILIH PAKET"}
+                  {"STEP 01 · PILIH PAKET"}
                 </p>
                 <h2
                   className="font-display uppercase leading-none tracking-tight"
@@ -2193,7 +2191,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
               <PreviewVideo url={k.pages?.payment?.video_url} />
               <div className={`relative z-10 flex w-full flex-col gap-1 ${payAlignClass}`}>
                 <p className="font-mono text-[8px] uppercase tracking-[0.3em] opacity-60">
-                  {"/// CHECKOUT"}
+                  {"CHECKOUT"}
                 </p>
                 <h2
                   className="font-display uppercase leading-none tracking-tight"
@@ -2256,7 +2254,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                 style={{ borderColor: ps.text }}
               >
                 <p className="font-mono text-[8px] uppercase tracking-[0.25em] opacity-60">
-                  {"/// STEP 02 · FRAME"}
+                  {"STEP 02 · FRAME"}
                 </p>
                 <h2
                   className="font-display uppercase leading-none tracking-tight"
@@ -2316,7 +2314,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                   className="font-mono text-[8px] uppercase tracking-[0.25em]"
                   style={{ opacity: 0.6 }}
                 >
-                  {"/// CAPTURE"}
+                  {"CAPTURE"}
                 </p>
                 <p
                   className="font-display text-base uppercase"
@@ -2363,7 +2361,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
               >
                 <div className={`flex flex-col ${pvAlignClass}`}>
                   <p className="font-mono text-[8px] uppercase tracking-[0.2em] opacity-60">
-                    {"/// EDIT"}
+                    {"EDIT"}
                   </p>
                   <h2
                     className="font-display uppercase leading-none tracking-tight"
@@ -2453,7 +2451,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
         </div>
 
         <p className="mt-3 font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em] text-muted-foreground">
-          {"/// PRATINJAU 8 LAYAR KIOSK · WARNA, FONT, RADIUS, PADDING, & PERATAAN MENGIKUTI FORM."}
+          {"PRATINJAU 8 LAYAR KIOSK · WARNA, FONT, RADIUS, PADDING, & PERATAAN MENGIKUTI FORM."}
         </p>
       </aside>
     </div>

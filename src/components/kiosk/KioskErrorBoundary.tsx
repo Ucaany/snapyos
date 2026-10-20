@@ -27,7 +27,7 @@ export class KioskErrorBoundary extends Component<Props, State> {
     return (
       <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-6 bg-bg p-6 text-center">
         <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground">
-          {"/// KESALAHAN RUNTIME"}
+          {"KESALAHAN RUNTIME"}
         </p>
         <h1 className="font-display text-4xl uppercase leading-none tracking-tight md:text-5xl">
           Kiosk perlu dimuat ulang

@@ -147,7 +147,7 @@ export function PosTerminal({
     <div className="flex min-h-[100dvh] flex-col">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-ink bg-surface px-4 py-3 md:px-6">
         <p className="font-mono text-[10px] font-bold uppercase tracking-[0.15em] md:text-xs">
-          {"/// TERMINAL KASIR"}
+          {"TERMINAL KASIR"}
         </p>
         <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground md:text-xs">
           {businessName.toUpperCase()} · BOOTH: {booth.name.toUpperCase()} · OUTLET:{" "}
@@ -204,7 +204,7 @@ export function PosTerminal({
           {visibleProducts.length === 0 ? (
             <div className="flex flex-1 items-center justify-center border-2 border-dashed border-ink/40 bg-muted p-8">
               <p className="font-mono text-sm font-bold uppercase tracking-[0.15em]">
-                {"/// Tidak ada produk cocok"}
+                {"Tidak ada produk cocok"}
               </p>
             </div>
           ) : (
@@ -261,7 +261,7 @@ export function PosTerminal({
           className="flex flex-col gap-4 border-t-2 border-ink bg-surface p-4 md:p-6 lg:border-t-0"
         >
           <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-            {"/// Keranjang"}
+            {"Keranjang"}
             <span className="ml-2 text-muted-foreground">{totalQty} item</span>
           </p>
 

@@ -10,7 +10,7 @@ export default function KioskError({ reset }: { error: Error; reset: () => void 
   return (
     <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-6 bg-bg px-6 py-10 text-center text-ink">
       <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground">
-        {"/// BOOTH GAGAL DIMUAT"}
+        {"BOOTH GAGAL DIMUAT"}
       </p>
       <h1 className="font-display text-4xl uppercase leading-[0.95] tracking-tight md:text-6xl">
         Coba muat ulang

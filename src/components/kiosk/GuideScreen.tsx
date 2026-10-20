@@ -50,7 +50,7 @@ export function GuideScreen({
     >
       <KioskVideoBackground videoUrl={videoUrl} />
       <div className={`relative z-10 flex w-full max-w-2xl flex-col ${alignClass}`}>
-        <p className="font-mono text-xs uppercase tracking-[0.25em] opacity-60">{"/// PETUNJUK"}</p>
+        <p className="font-mono text-xs uppercase tracking-[0.25em] opacity-60">{"PETUNJUK"}</p>
         <h1
           className="mt-3 font-display uppercase leading-none tracking-tight"
           style={{ fontFamily: kioskStyle.fontFamily, fontSize: `${3 * kioskStyle.fontScale}rem` }}

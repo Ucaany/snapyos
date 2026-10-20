@@ -225,7 +225,7 @@ export function DeviceDialog({
       <DialogContent className="max-w-[720px]">
         <DialogTitle>
           <span className="block font-mono text-[10px] font-normal uppercase tracking-[0.2em] text-muted-foreground">
-            {`/// PERANGKAT: ${photobox.name.toUpperCase()}`}
+            {`PERANGKAT: ${photobox.name.toUpperCase()}`}
           </span>
           Device pairing
         </DialogTitle>
@@ -240,7 +240,7 @@ export function DeviceDialog({
           <div className="flex flex-wrap items-center justify-between gap-3 border-2 border-ink bg-accent/20 p-4">
             <div className="flex flex-col gap-1">
               <p className="font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
-                {"/// UNDUH PWA: ANDROID / TABLET / IOS"}
+                {"UNDUH PWA: ANDROID / TABLET / IOS"}
               </p>
               <p className="text-sm font-bold leading-tight">
                 Buka pairing di perangkat mobile lalu pasang sebagai aplikasi kiosk (Add to Home
@@ -300,7 +300,7 @@ export function DeviceDialog({
             </div>
             {hasActive ? (
               <p className="border-2 border-dashed border-ink/40 bg-muted px-4 py-3 font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
-                {"/// DEVICE AKTIF TERHUBUNG \u2014 cabut dulu untuk memasang perangkat baru"}
+                {"DEVICE AKTIF TERHUBUNG \u2014 cabut dulu untuk memasang perangkat baru"}
               </p>
             ) : (
               activation && (
@@ -354,7 +354,7 @@ export function DeviceDialog({
             <Skeleton className="h-10 w-full border-2 border-ink" />
           ) : devices.length === 0 ? (
             <p className="border-2 border-dashed border-ink/40 bg-muted px-4 py-3 font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
-              {"/// BELUM ADA DEVICE \u2014 buat kode lalu buka URL di perangkat kiosk"}
+              {"BELUM ADA DEVICE \u2014 buat kode lalu buka URL di perangkat kiosk"}
             </p>
           ) : (
             <ul className="divide-y-2 divide-ink/10 border-2 border-ink">

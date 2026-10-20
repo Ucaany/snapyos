@@ -47,7 +47,7 @@ export function SupportTicketsPanel({ tickets }: { tickets: SupportTicket[] }) {
             noValidate
           >
             <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-              {"/// Laporkan masalah"}
+              {"Laporkan masalah"}
             </p>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

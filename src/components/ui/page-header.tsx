@@ -13,11 +13,10 @@ export function PageHeader({
   meta?: ReactNode;
   right?: ReactNode;
 }) {
-  // Shared /// eyebrow creates one operational dashboard voice and separates context from task title.
+  // Shared eyebrow creates one operational dashboard voice and separates context from task title.
   return (
     <header className="space-y-2">
       <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-        {"/// "}
         {eyebrow}
       </p>
       <div className="flex flex-wrap items-end justify-between gap-4">

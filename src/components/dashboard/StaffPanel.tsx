@@ -240,7 +240,7 @@ function BoothsEditor({
       <form action={action} onSubmit={() => setSubmitted(true)}>
         <input type="hidden" name="user_id" value={member.userId} />
         <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-          {`/// Akses booth: ${member.name ?? member.email ?? ""}`}
+          {`Akses booth: ${member.name ?? member.email ?? ""}`}
         </p>
         {photoboxes.length === 0 ? (
           <p className="mt-3 font-mono text-xs text-muted-foreground">
@@ -302,7 +302,7 @@ function BoothsEditor({
       {member.booths.length > 0 && (
         <div className="mt-5 border-t-2 border-ink/10 pt-4">
           <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
-            {"/// PIN login per booth (staff)"}
+            {"PIN login per booth (staff)"}
           </p>
           <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
             {member.booths.map((booth) => (
@@ -365,9 +365,7 @@ export function StaffPanel({
         className="flex flex-col gap-6 border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111] md:p-6"
         noValidate
       >
-        <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-          {"/// Tambah staff"}
-        </p>
+        <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">{"Tambah staff"}</p>
         <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
           <div className="flex flex-col gap-2">
             <label htmlFor="staff-email" className={labelClass}>

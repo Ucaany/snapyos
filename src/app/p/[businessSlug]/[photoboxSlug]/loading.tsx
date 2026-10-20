@@ -10,7 +10,7 @@ export default function KioskLoading() {
       className="flex min-h-[100dvh] flex-col items-center justify-center gap-5 bg-bg px-6 text-center text-ink"
     >
       <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground">
-        {"/// MENYIAPKAN BOOTH"}
+        {"MENYIAPKAN BOOTH"}
       </p>
       <h1 className="font-display text-4xl uppercase leading-[0.95] tracking-tight md:text-6xl">
         Sebentar

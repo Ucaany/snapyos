@@ -48,7 +48,7 @@ export function SupportTicketDetail({ ticket }: { ticket: SupportTicketDetail })
 
       <div className="flex flex-col gap-3">
         <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-          {"/// Riwayat balasan"}
+          {"Riwayat balasan"}
         </p>
         {ticket.replies.length === 0 ? (
           <div className="flex items-center gap-3 border-2 border-dashed border-ink/40 bg-muted p-6">
@@ -77,7 +77,7 @@ export function SupportTicketDetail({ ticket }: { ticket: SupportTicketDetail })
         >
           <input type="hidden" name="ticketId" value={ticket.id} />
           <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-            {"/// Tambah balasan"}
+            {"Tambah balasan"}
           </p>
           <textarea
             name="body"
@@ -98,7 +98,7 @@ export function SupportTicketDetail({ ticket }: { ticket: SupportTicketDetail })
         </form>
       ) : (
         <p className="font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
-          {"/// TIKET SELESAI: tidak menerima balasan baru"}
+          {"TIKET SELESAI: tidak menerima balasan baru"}
         </p>
       )}
     </div>

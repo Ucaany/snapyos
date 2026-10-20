@@ -39,7 +39,7 @@ export default async function AdminTemplatesPage() {
     <div className="flex flex-col gap-8 p-6 md:p-10">
       <header>
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {"/// ADMIN - TEMPLATES & CATEGORIES"}
+          {"ADMIN - TEMPLATES & CATEGORIES"}
         </p>
         <h1 className="mt-2 font-display text-3xl uppercase tracking-tight md:text-4xl">
           Template Global
@@ -92,7 +92,7 @@ export default async function AdminTemplatesPage() {
 
           {categories.length === 0 ? (
             <p className="font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
-              {"/// BELUM ADA KATEGORI GLOBAL"}
+              {"BELUM ADA KATEGORI GLOBAL"}
             </p>
           ) : (
             <ul className="flex flex-wrap gap-2">
@@ -132,7 +132,7 @@ export default async function AdminTemplatesPage() {
         <CardContent>
           {categories.length === 0 ? (
             <p className="font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
-              {"/// BUAT KATEGORI DULU SEBELUM UPLOAD TEMPLATE"}
+              {"BUAT KATEGORI DULU SEBELUM UPLOAD TEMPLATE"}
             </p>
           ) : (
             <AdminActionForm
@@ -239,7 +239,7 @@ export default async function AdminTemplatesPage() {
         </CardHeader>
         <CardContent>
           {templates.length === 0 ? (
-            <AdminEmptyState heading="/// BELUM ADA TEMPLATE GLOBAL">
+            <AdminEmptyState heading="BELUM ADA TEMPLATE GLOBAL">
               Upload template pertama lewat form &quot;Upload Template Global Baru&quot; di atas.
             </AdminEmptyState>
           ) : (
@@ -356,7 +356,7 @@ export default async function AdminTemplatesPage() {
         <CardContent>
           {purchases.length === 0 ? (
             <p className="font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
-              {"/// BELUM ADA PEMBELIAN TEMPLATE PREMIUM"}
+              {"BELUM ADA PEMBELIAN TEMPLATE PREMIUM"}
             </p>
           ) : (
             <div className="overflow-x-auto border-2 border-ink">

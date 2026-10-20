@@ -81,7 +81,7 @@ export default async function AdminSubscriptionPendingReviewPage({
       {/* Header - micro-typography + massive header per docs/11 §11.1 */}
       <header className="flex flex-col gap-3">
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {"/// ADMIN - SUBSCRIPTIONS / PENDING REVIEW"}
+          {"ADMIN - SUBSCRIPTIONS / PENDING REVIEW"}
         </p>
         <h1 className="font-display text-3xl uppercase tracking-tight md:text-4xl">
           Antrian Aktivasi Manual
@@ -140,8 +140,8 @@ export default async function AdminSubscriptionPendingReviewPage({
         <div className="flex flex-col items-start gap-2 border-2 border-dashed border-ink/40 bg-muted p-8">
           <p className="font-mono text-sm font-bold uppercase tracking-[0.15em]">
             {activeStatus === "pending"
-              ? "/// ANTRIAN BERSIH - TIDAK ADA KASUS PENDING"
-              : `/// TIDAK ADA KASUS BERSTATUS ${activeStatus.toUpperCase()}`}
+              ? "ANTRIAN BERSIH - TIDAK ADA KASUS PENDING"
+              : `TIDAK ADA KASUS BERSTATUS ${activeStatus.toUpperCase()}`}
           </p>
           <p className="max-w-[55ch] text-sm leading-relaxed text-muted-foreground">
             {activeStatus === "pending"

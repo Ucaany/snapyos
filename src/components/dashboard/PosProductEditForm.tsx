@@ -36,7 +36,7 @@ export function PosProductEditForm({ product, categories, onDone }: Props) {
     <form action={action} className="flex flex-col gap-5" noValidate>
       <input type="hidden" name="id" value={product.id} />
       <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-        {`/// Ubah: ${product.name.toUpperCase()}`}
+        {`Ubah: ${product.name.toUpperCase()}`}
       </p>
       <PosProductFields product={product} categories={categories} state={state} pending={pending} />
       {state.error && (

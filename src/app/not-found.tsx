@@ -4,7 +4,7 @@ export default function NotFound() {
   return (
     <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-6 bg-bg p-6 text-center">
       <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-        {"/// ERROR 404"}
+        {"ERROR 404"}
       </p>
       <h1 className="font-display text-6xl uppercase tracking-tight">404</h1>
       <p className="max-w-[50ch] font-mono text-sm leading-relaxed text-muted-foreground">

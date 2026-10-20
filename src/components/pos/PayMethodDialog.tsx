@@ -38,9 +38,7 @@ export function PayMethodDialog({
           aria-label="Pilih metode pembayaran"
           className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 border-2 border-ink bg-surface p-6 shadow-[8px_8px_0_0_#111111] outline-none"
         >
-          <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-            {"/// Pembayaran"}
-          </p>
+          <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">{"Pembayaran"}</p>
           <p className="mt-4 font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
             Order {orderNumber}
           </p>

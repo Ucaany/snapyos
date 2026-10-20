@@ -50,7 +50,7 @@ export function PackagesTable({ packages, templates, outlets, photoboxes, canWri
               noValidate
             >
               <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-                {"/// Paket baru"}
+                {"Paket baru"}
               </p>
               <PackageFields
                 templates={templates}

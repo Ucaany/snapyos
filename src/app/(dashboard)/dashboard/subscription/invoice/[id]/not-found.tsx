@@ -18,7 +18,7 @@ export default function InvoiceNotFound() {
     <div className="flex flex-col gap-8 p-6 md:p-10">
       <div className="flex flex-col items-start gap-4 border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111]">
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {"/// ERROR 404: INVOICE"}
+          {"ERROR 404: INVOICE"}
         </p>
         <h1 className="font-display text-4xl uppercase tracking-tight">Invoice tidak ditemukan</h1>
         <p className="max-w-[55ch] text-sm leading-relaxed text-muted-foreground">

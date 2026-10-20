@@ -160,9 +160,7 @@ export default async function PosManagementPage({
             }}
           />
           <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-            {
-              "/// revenue selalu dari transactions; breakdown dari pos_orders (snapshot nama produk)"
-            }
+            {"revenue selalu dari transactions; breakdown dari pos_orders (snapshot nama produk)"}
           </p>
         </section>
       ) : null}

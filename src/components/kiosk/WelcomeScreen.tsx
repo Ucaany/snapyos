@@ -58,7 +58,7 @@ export function WelcomeScreen({ business, branding, onStart }: Props) {
         className="font-mono font-bold uppercase tracking-[0.3em] opacity-70"
         style={{ fontSize: `${0.75 * fontScale}rem` }}
       >
-        {"/// " + business.name.toUpperCase()}
+        {"" + business.name.toUpperCase()}
       </p>
     </div>
   );

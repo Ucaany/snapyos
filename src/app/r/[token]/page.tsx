@@ -34,7 +34,7 @@ export default async function ResultPage({ params }: Props) {
       <header className="border-b-2 border-ink bg-surface">
         <div className="mx-auto flex max-w-[900px] items-center justify-between px-6 py-4">
           <p className="font-mono text-xs uppercase tracking-[0.25em] text-muted-foreground">
-            {`/// ${result.business.name?.toUpperCase() ?? "PHOTOBOX"}`}
+            {`${result.business.name?.toUpperCase() ?? "PHOTOBOX"}`}
           </p>
           <p className="font-mono text-xs uppercase tracking-[0.15em]">Hasil Foto</p>
         </div>

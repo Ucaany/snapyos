@@ -32,7 +32,7 @@ export default async function MaintenancePage() {
     <main className="flex min-h-dvh flex-col items-center justify-center bg-bg px-6 py-16">
       <div className="w-full max-w-xl border-2 border-ink bg-surface p-8 shadow-[6px_6px_0_0_#111111]">
         <p className="font-mono text-xs uppercase tracking-[0.25em] text-muted-foreground">
-          {"/// STATUS 503"}
+          {"STATUS 503"}
         </p>
         <h1 className="mt-4 font-display text-4xl uppercase leading-tight tracking-tight md:text-5xl">
           Sedang Perawatan Sistem

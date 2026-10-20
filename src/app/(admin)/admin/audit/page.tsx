@@ -44,7 +44,7 @@ export default async function AdminAuditPage({
     <div className="flex flex-col gap-8 p-6 md:p-10">
       <header>
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {"/// ADMIN - AUDIT LOG"}
+          {"ADMIN - AUDIT LOG"}
         </p>
         <h1 className="mt-2 font-display text-3xl uppercase tracking-tight md:text-4xl">
           Log Audit
@@ -56,7 +56,7 @@ export default async function AdminAuditPage({
 
       <section className="border-2 border-ink bg-muted p-4 shadow-[4px_4px_0_0_#111111]">
         <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-          {"/// HAPUS RIWAYAT (RETENSI)"}
+          {"HAPUS RIWAYAT (RETENSI)"}
         </p>
         <p className="mt-1 max-w-[60ch] text-xs leading-relaxed text-muted-foreground">
           Hapus log audit lebih lama dari tanggal batas. Tindakan permanen - pastikan tidak ada
@@ -112,7 +112,7 @@ export default async function AdminAuditPage({
       </form>
 
       {items.length === 0 ? (
-        <AdminEmptyState heading="/// TIDAK ADA LOG">
+        <AdminEmptyState heading="TIDAK ADA LOG">
           Tidak ada entry audit yang cocok dengan filter.
         </AdminEmptyState>
       ) : (

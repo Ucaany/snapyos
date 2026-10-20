@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 /**
  * Empty state brutalist bersama. Sebelumnya blok `border-2 border-dashed`
- * dengan heading `/// ...` + paragraf diulang di 10+ halaman admin dengan
+ * dengan heading `...` + paragraf diulang di 10+ halaman admin dengan
  * padding dan copy yang sedikit berbeda-beda. Satu komponen, satu bentuk.
  */
 export function AdminEmptyState({

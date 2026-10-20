@@ -48,7 +48,7 @@ export default async function StaffDashboardPage() {
       <header className="flex flex-wrap items-end justify-between gap-4 border-b-2 border-ink pb-5">
         <div>
           <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-            {"/// STATION.CTL · "}
+            {"STATION.CTL · "}
             <span className="text-accent-3-strong">
               {STATUS_LABEL[overview.boothCounts.online > 0 ? "online" : "offline"]}
             </span>
@@ -115,7 +115,7 @@ export default async function StaffDashboardPage() {
         </div>
         {overview.activeSessions.length === 0 ? (
           <div className="border-2 border-dashed border-ink/40 bg-muted p-6 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
-            {"/// NO ACTIVE SESSIONS · MENUNGGU CUSTOMER"}
+            {"NO ACTIVE SESSIONS · MENUNGGU CUSTOMER"}
           </div>
         ) : (
           <ol className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -284,10 +284,7 @@ function ResourceCard({
 function EmptyBooth({ href, label }: { href: string; label: string }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 border-2 border-dashed border-ink/40 bg-muted p-6">
-      <p className="font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
-        {"/// "}
-        {label}
-      </p>
+      <p className="font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">{label}</p>
       <Link
         href={href}
         className="inline-flex min-h-11 items-center border-2 border-ink bg-surface px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.05em] text-ink shadow-[2px_2px_0_0_#111111] hover:bg-accent active:translate-y-[1px] active:shadow-none"

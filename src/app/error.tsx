@@ -12,7 +12,7 @@ export default function GlobalError({
   return (
     <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-6 bg-bg p-6 text-center">
       <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-        {"/// SISTEM BERHENTI"}
+        {"SISTEM BERHENTI"}
       </p>
       <h1 className="font-display text-4xl uppercase tracking-tight">Terjadi Kesalahan</h1>
       <p className="max-w-[50ch] font-mono text-sm leading-relaxed text-muted-foreground">

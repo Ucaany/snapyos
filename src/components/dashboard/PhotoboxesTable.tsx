@@ -60,7 +60,7 @@ export function PhotoboxesTable({
           className="border-2 border-ink bg-accent p-4 shadow-[4px_4px_0_0_#111111]"
         >
           <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em]">
-            {"/// PERINGATAN KEAMANAN · " + noPinBooths.length + " BOOTH TANPA PIN"}
+            {"PERINGATAN KEAMANAN · " + noPinBooths.length + " BOOTH TANPA PIN"}
           </p>
           <p className="mt-2 font-display text-base uppercase leading-tight">
             Set PIN keluar kiosk sekarang
@@ -85,7 +85,7 @@ export function PhotoboxesTable({
           className="border-2 border-destructive bg-destructive/10 p-4 shadow-[4px_4px_0_0_#111111]"
         >
           <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-destructive">
-            {"/// EXIT-PIN LEGACY · " + legacyPinBooths.length + " BOOTH"}
+            {"EXIT-PIN LEGACY · " + legacyPinBooths.length + " BOOTH"}
           </p>
           <p className="mt-2 font-display text-base uppercase leading-tight">
             Set ulang PIN keluar photobox
@@ -150,7 +150,7 @@ export function PhotoboxesTable({
 
       {canWrite && noOutlet && (
         <p className="border-2 border-dashed border-ink/40 bg-muted px-3 py-3 font-mono text-xs uppercase tracking-[0.05em]">
-          {"/// BUTUH OUTLET"} - photobox harus terpasang di dalam outlet.{" "}
+          {"BUTUH OUTLET"} - photobox harus terpasang di dalam outlet.{" "}
           <Link href="/dashboard/outlets" className="font-bold underline underline-offset-4">
             Buat outlet dahulu
           </Link>

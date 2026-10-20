@@ -52,7 +52,7 @@ export default async function PwaPage() {
       <ol className="grid grid-cols-1 gap-[2px] border-2 border-ink bg-ink md:grid-cols-3">
         {STEPS.map((s, i) => (
           <li key={s.title} className="flex flex-col gap-3 bg-surface p-5">
-            <span className="font-mono text-xs font-bold text-accent-2">{`/// 0${i + 1}`}</span>
+            <span className="font-mono text-xs font-bold text-accent-2">{`0${i + 1}`}</span>
             <s.icon className="size-8" aria-hidden />
             <p className="font-display text-base font-bold uppercase tracking-tight">{s.title}</p>
             <p className="text-sm leading-relaxed text-muted-foreground">{s.body}</p>

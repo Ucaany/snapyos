@@ -534,7 +534,7 @@ function EditorInner({
           }`}
         >
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            {"/// LANGKAH 03: EDIT FOTO"}
+            {"LANGKAH 03: EDIT FOTO"}
           </p>
           <h1
             className="font-display text-xl uppercase leading-none tracking-tight md:text-2xl"
@@ -751,7 +751,7 @@ function EditorInner({
           {selectedOverlay && (
             <div className="flex flex-col gap-3 border-2 border-ink bg-surface p-3">
               <p className="font-mono text-[10px] font-bold uppercase tracking-[0.15em]">
-                {`/// UBAH ${edit.overlays.find((o) => o.id === selectedOverlay)?.kind === "text" ? "TEKS" : "STIKER"}`}
+                {`UBAH ${edit.overlays.find((o) => o.id === selectedOverlay)?.kind === "text" ? "TEKS" : "STIKER"}`}
               </p>
               {edit.overlays
                 .filter((o) => o.id === selectedOverlay)

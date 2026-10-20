@@ -56,7 +56,7 @@ export default async function ReportsPage() {
     <div className="flex flex-col gap-8 p-6 md:p-10">
       <header>
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {"/// LAPORAN: EXPORT"}
+          {"LAPORAN: EXPORT"}
         </p>
         <h1 className="mt-2 font-display text-4xl uppercase tracking-tight md:text-5xl">Laporan</h1>
         <p className="mt-3 max-w-[65ch] text-sm leading-relaxed text-muted-foreground">

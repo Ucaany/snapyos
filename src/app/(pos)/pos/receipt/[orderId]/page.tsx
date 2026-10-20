@@ -31,7 +31,7 @@ export default async function PosReceiptPage({ params }: { params: Promise<{ ord
     return (
       <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col items-start justify-center gap-4 p-6">
         <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-destructive">
-          {"/// Gagal memuat struk"}
+          {"Gagal memuat struk"}
         </p>
         <p className="max-w-[55ch] text-sm leading-relaxed text-muted-foreground">
           Order tidak dapat dimuat. Kembali ke terminal untuk transaksi baru.

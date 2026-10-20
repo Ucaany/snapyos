@@ -71,7 +71,7 @@ export function PackagePicker({
       >
         <div className={`flex flex-col ${itemsClass}`}>
           <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-            {"/// STEP 01 · PILIH PAKET"}
+            {"STEP 01 · PILIH PAKET"}
           </p>
           <h1
             className="mt-1 font-display text-2xl uppercase leading-[0.95] tracking-tight md:text-4xl"
@@ -102,7 +102,7 @@ export function PackagePicker({
       {packages.length === 0 ? (
         <div className="mx-auto flex w-full max-w-[1000px] flex-1 flex-col items-start justify-center gap-4 border-2 border-dashed border-ink/40 bg-surface p-6">
           <p className="font-mono text-sm font-bold uppercase tracking-[0.15em]">
-            {"/// BELUM ADA PAKET"}
+            {"BELUM ADA PAKET"}
           </p>
           <p className="max-w-[50ch] text-sm text-muted-foreground">
             Owner belum mengaktifkan paket untuk booth ini. Hubungi petugas.

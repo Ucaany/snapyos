@@ -34,7 +34,7 @@ export function ContactForm() {
         className="mt-6 border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111]"
       >
         <p className="font-mono text-xs font-bold uppercase tracking-[0.08em] text-ink">
-          {"/// Pesan siap dikirim"}
+          {"Pesan siap dikirim"}
         </p>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
           WhatsApp konsultasi terbuka di tab baru. Jika tidak terbuka,{" "}

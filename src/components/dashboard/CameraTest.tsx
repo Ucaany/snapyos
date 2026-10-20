@@ -282,7 +282,7 @@ export function CameraTest({ photoboxId, photoboxName, cameraSettings, canWrite 
         {!error && (
           <div className="pointer-events-none absolute left-3 top-3 z-10 flex flex-col items-start gap-1">
             <span className="px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-bg/60 [text-shadow:0_1px_2px_rgba(0,0,0,0.9)]">
-              {"/// PREVIEW"}
+              {"PREVIEW"}
             </span>
             {resLabel && (
               <span className="border border-bg/40 bg-ink/70 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-bg/90">
@@ -297,7 +297,7 @@ export function CameraTest({ photoboxId, photoboxName, cameraSettings, canWrite 
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            {"/// CAMERA TEST"}
+            {"CAMERA TEST"}
           </p>
           <p className="font-display text-2xl uppercase leading-none tracking-tight">
             {photoboxName}

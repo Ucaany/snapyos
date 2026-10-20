@@ -36,7 +36,7 @@ export function ExpenseEditForm({ expense, outlets, onDone }: Props) {
     <form action={action} className="flex flex-col gap-5" noValidate>
       <input type="hidden" name="id" value={expense.id} />
       <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-        {`/// Ubah: ${expense.category.toUpperCase()} ${expense.expense_date}`}
+        {`Ubah: ${expense.category.toUpperCase()} ${expense.expense_date}`}
       </p>
       <ExpenseFields expense={expense} outlets={outlets} state={state} pending={pending} />
       {state.error && (

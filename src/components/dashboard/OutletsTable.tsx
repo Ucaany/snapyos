@@ -71,7 +71,7 @@ export function OutletsTable({ outlets, canWrite, maxOutlets }: Props) {
               <div className="flex items-center gap-3 border-b-2 border-ink pb-4">
                 <Plus className="size-4" aria-hidden />
                 <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-                  {"/// Outlet baru"}
+                  {"Outlet baru"}
                 </p>
               </div>
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">

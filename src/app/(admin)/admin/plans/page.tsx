@@ -75,7 +75,7 @@ export default async function AdminPlansPage() {
     <div className="flex flex-col gap-8 p-6 md:p-10">
       <header>
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {"/// ADMIN - PLANS"}
+          {"ADMIN - PLANS"}
         </p>
         <h1 className="mt-2 font-display text-3xl uppercase tracking-tight md:text-4xl">
           Manajemen Plan

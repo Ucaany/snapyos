@@ -27,7 +27,7 @@ export default async function PosGatePage() {
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-[1100px] flex-col gap-8 p-6 md:p-10">
       <header>
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {"/// TERMINAL POS: " + active.business.name.toUpperCase()}
+          {"TERMINAL POS: " + active.business.name.toUpperCase()}
         </p>
         <h1 className="mt-2 font-display text-4xl uppercase tracking-tight md:text-5xl">
           Pilih booth
@@ -42,7 +42,7 @@ export default async function PosGatePage() {
         <div className="flex flex-col items-start gap-4 border-2 border-dashed border-ink/40 bg-muted p-8">
           <ScanBarcode className="size-8" aria-hidden />
           <p className="font-mono text-sm font-bold uppercase tracking-[0.15em]">
-            {"/// Belum ada booth POS aktif"}
+            {"Belum ada booth POS aktif"}
           </p>
           <p className="max-w-[55ch] text-sm leading-relaxed text-muted-foreground">
             Owner/manager mengaktifkan POS per booth di halaman manajemen POS.

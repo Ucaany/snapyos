@@ -46,7 +46,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
     <div className="flex flex-col gap-8 p-6 md:p-10">
       <header className="flex flex-col gap-3">
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {"/// ADMIN - USERS / DETAIL"}
+          {"ADMIN - USERS / DETAIL"}
         </p>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -124,7 +124,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
 
       <section aria-labelledby="businesses" className="flex flex-col gap-3">
         <h2 id="businesses" className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-          {"/// BISNIS"}
+          {"BISNIS"}
         </h2>
         {businesses.length === 0 ? (
           <p className="border-2 border-dashed border-ink/40 bg-muted p-4 font-mono text-xs uppercase text-muted-foreground">
@@ -167,7 +167,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
 
       <section aria-labelledby="invoices" className="flex flex-col gap-3">
         <h2 id="invoices" className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-          {"/// RIWAYAT INVOICE"} <span className="text-muted-foreground">({invoices.length})</span>
+          {"RIWAYAT INVOICE"} <span className="text-muted-foreground">({invoices.length})</span>
         </h2>
         {invoices.length === 0 ? (
           <p className="border-2 border-dashed border-ink/40 bg-muted p-4 font-mono text-xs uppercase text-muted-foreground">
@@ -208,7 +208,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
 
       <section aria-labelledby="transactions" className="flex flex-col gap-3">
         <h2 id="transactions" className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-          {"/// RIWAYAT TRANSAKSI"}{" "}
+          {"RIWAYAT TRANSAKSI"}{" "}
           <span className="text-muted-foreground">({transactions.length})</span>
         </h2>
         {transactions.length === 0 ? (

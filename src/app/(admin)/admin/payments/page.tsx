@@ -54,7 +54,7 @@ export default async function AdminPaymentsPage({
     <div className="flex flex-col gap-8 p-6 md:p-10">
       <header>
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {"/// ADMIN - PAYMENT MONITORING"}
+          {"ADMIN - PAYMENT MONITORING"}
         </p>
         <h1 className="mt-2 font-display text-3xl uppercase tracking-tight md:text-4xl">
           Monitoring Pembayaran
@@ -122,7 +122,7 @@ export default async function AdminPaymentsPage({
         <CardContent>
           {summary.byTenant.length === 0 ? (
             <p className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
-              {"/// BELUM ADA PAYMENT PAID"}
+              {"BELUM ADA PAYMENT PAID"}
             </p>
           ) : (
             <div className="overflow-x-auto border-2 border-ink">
@@ -168,7 +168,7 @@ export default async function AdminPaymentsPage({
         <CardContent>
           {posRevenue.rows.length === 0 ? (
             <p className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
-              {"/// BELUM ADA TRANSAKSI POS"}
+              {"BELUM ADA TRANSAKSI POS"}
             </p>
           ) : (
             <>
@@ -233,7 +233,7 @@ export default async function AdminPaymentsPage({
       {items.length === 0 ? (
         <div className="flex flex-col items-start gap-2 border-2 border-dashed border-ink/40 bg-muted p-6 md:p-8">
           <p className="font-mono text-sm font-bold uppercase tracking-[0.15em]">
-            {"/// TIDAK ADA PAYMENT"}
+            {"TIDAK ADA PAYMENT"}
           </p>
           <p className="max-w-[55ch] text-sm leading-relaxed text-muted-foreground">
             Tidak ada payment yang cocok dengan filter saat ini.

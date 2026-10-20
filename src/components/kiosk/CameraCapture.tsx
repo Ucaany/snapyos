@@ -471,7 +471,7 @@ function CameraCaptureInner({
             className="font-mono text-[10px] uppercase tracking-[0.25em]"
             style={{ opacity: 0.6, color: kioskStyle ? kioskStyle.text : undefined }}
           >
-            {"/// CAPTURE"}
+            {"CAPTURE"}
           </p>
           <p
             className="font-display text-2xl uppercase leading-none tracking-tight md:text-3xl"

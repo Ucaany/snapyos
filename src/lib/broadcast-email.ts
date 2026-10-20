@@ -18,11 +18,11 @@ export const BROADCAST_KIND_LABEL: Record<BroadcastKind, string> = {
 };
 
 export const BROADCAST_KIND_TAGLINE: Record<BroadcastKind, string> = {
-  announcement: "/// Official announcement",
-  promo: "/// Limited offer",
-  newsletter: "/// Newsletter edition",
-  event: "/// Event notice",
-  system: "/// System notice",
+  announcement: "Official announcement",
+  promo: "Limited offer",
+  newsletter: "Newsletter edition",
+  event: "Event notice",
+  system: "System notice",
 };
 
 const KIND_ACCENT: Record<BroadcastKind, string> = {

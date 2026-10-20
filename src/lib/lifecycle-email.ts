@@ -15,9 +15,9 @@ const KIND_ACCENT: Record<LifecycleEmailKind, string> = {
 };
 
 const KIND_TAGLINE: Record<LifecycleEmailKind, string> = {
-  welcome: "/// Selamat bergabung",
-  subscription_started: "/// Subscription aktif",
-  expiry_reminder: "/// Masa aktif hampir habis",
+  welcome: "Selamat bergabung",
+  subscription_started: "Subscription aktif",
+  expiry_reminder: "Masa aktif hampir habis",
 };
 
 function escapeHtml(s: string): string {

@@ -58,7 +58,7 @@ export default async function AdminUsersPage({
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            {"/// ADMIN - USERS"}
+            {"ADMIN - USERS"}
           </p>
           <h1 className="mt-2 font-display text-3xl uppercase tracking-tight md:text-4xl">
             Manajemen User
@@ -100,7 +100,7 @@ export default async function AdminUsersPage({
         className="border-2 border-ink bg-muted p-4 shadow-[4px_4px_0_0_#111111]"
       >
         <p id="tambah-user" className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-          {"/// TAMBAH USER"}
+          {"TAMBAH USER"}
         </p>
         <p className="mt-1 max-w-[60ch] text-xs leading-relaxed text-muted-foreground">
           Pendaftaran mandiri ditutup - akun baru hanya dibuat dari sini. Password minimal 8
@@ -177,7 +177,7 @@ export default async function AdminUsersPage({
       </section>
 
       {items.length === 0 ? (
-        <AdminEmptyState heading="/// TIDAK ADA USER">
+        <AdminEmptyState heading="TIDAK ADA USER">
           Tidak ada user yang cocok dengan pencarian{" "}
           <span className="font-mono">{q.search ?? "-"}</span>.
         </AdminEmptyState>

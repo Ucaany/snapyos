@@ -37,7 +37,7 @@ export function FeatureError({ title, description, error, reset }: FeatureErrorP
             Fitur belum aktif
           </h1>
           <p className="font-mono text-sm font-bold uppercase tracking-[0.15em] text-destructive">
-            {"/// FITUR BUTUH UPGRADE"}
+            {"FITUR BUTUH UPGRADE"}
           </p>
           <p className="text-sm leading-relaxed text-muted-foreground">
             Fitur ini tidak termasuk dalam plan Anda saat ini. Upgrade subscription untuk membuka
@@ -63,7 +63,7 @@ export function FeatureError({ title, description, error, reset }: FeatureErrorP
       >
         <h1 className="font-display text-2xl uppercase tracking-tight text-ink">{title}</h1>
         <p className="font-mono text-sm font-bold uppercase tracking-[0.15em] text-destructive">
-          {`/// ${title}`}
+          {`${title}`}
         </p>
         <p className="text-sm leading-relaxed text-muted-foreground">{description}</p>
         <p className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">

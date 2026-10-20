@@ -166,7 +166,7 @@ export function ResultScreen({
         } ${qrFirst && !isBelow ? "lg:order-2 lg:border-r-0 lg:border-l-2" : ""}`}
       >
         <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-          {"/// " + businessName.toUpperCase()}
+          {"" + businessName.toUpperCase()}
         </p>
         {previewPhoto ? (
           // eslint-disable-next-line @next/next/no-img-element

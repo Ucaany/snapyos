@@ -29,7 +29,7 @@ export default async function PaymentGatewayPage() {
         eyebrow="KEUANGAN / PAYMENT GATEWAY"
         title="Payment Gateway"
         description="Credential merchant terenkripsi (Pakasir / Midtrans / Tripay). Dana pembayaran masuk rekening owner langsung, bukan platform. Secret tidak pernah ditampilkan kembali setelah tersimpan."
-        meta="[ DIRECT MERCHANT ] /// PAKASIR · MIDTRANS · TRIPAY"
+        meta="[ DIRECT MERCHANT ] PAKASIR · MIDTRANS · TRIPAY"
       />
       <PaymentGatewaySettings initialCredentials={credentials} />
     </div>

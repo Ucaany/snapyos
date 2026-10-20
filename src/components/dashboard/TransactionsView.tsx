@@ -81,10 +81,10 @@ export function TransactionsView({
               noValidate
             >
               <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-                {"/// Transaksi manual (langsung paid)"}
+                {"Transaksi manual (langsung paid)"}
               </p>
               <div className="border-2 border-ink bg-accent-2 p-3 font-mono text-xs uppercase tracking-[0.05em]">
-                {"/// TRANSAKSI MANUAL TIDAK MASUK SALDO WITHDRAWABLE"}
+                {"TRANSAKSI MANUAL TIDAK MASUK SALDO WITHDRAWABLE"}
               </div>
               <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
                 <div className="flex flex-col gap-2">

@@ -91,7 +91,7 @@ export function RetentionSettingsEditor({ retentionDays, canWrite }: Props) {
           </Button>
           {touched && state.error === undefined && state.fieldErrors === undefined && (
             <p className="font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
-              {"/// TERSIMPAN"}
+              {"TERSIMPAN"}
             </p>
           )}
         </div>
