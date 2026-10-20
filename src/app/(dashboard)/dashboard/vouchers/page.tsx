@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { VouchersTable } from "@/components/dashboard/VouchersTable";
+import { FeatureLockedPanel } from "@/components/dashboard/FeatureLockedPanel";
 import { PageHeader } from "@/components/ui/page-header";
 import { can } from "@/lib/rbac";
 import { getActiveBusiness, requireUser } from "@/lib/tenant";
+import { hasFeature } from "@/server/feature-gate";
 import { listVouchers, getVoucherAnalyticsBatch } from "@/server/vouchers";
 import { listPackages } from "@/server/packages";
 import { listOutlets } from "@/server/outlets";
@@ -20,6 +22,13 @@ export default async function VouchersPage() {
 
   const active = await getActiveBusiness(user.id);
   if (!active) redirect("/dashboard");
+
+  // Gate plan dibaca sebelum query supaya plan tanpa voucher mendapat panel
+  // upgrade, bukan error boundary (dulu FEATURE_DISABLED dilempar dari
+  // listVouchers dan tercatat sebagai console error meski UI-nya benar).
+  if (!(await hasFeature(active.business.id, "voucher"))) {
+    return <FeatureLockedPanel />;
+  }
 
   const canWrite = can(active.role, "voucher:write");
 
