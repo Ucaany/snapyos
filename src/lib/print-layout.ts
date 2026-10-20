@@ -83,7 +83,7 @@ export function printPlan(
 
 /**
  * Pemetaan lembar → indeks foto, dipakai BERSAMA oleh jalur browser
- * (`BrowserPrintSheet`) dan jalur thermal (`BluetoothPrintScreen`).
+ * (`PrintLayoutRenderer`) dan jalur thermal (`BluetoothPrintScreen`).
  *
  * `copies` menggandakan set lembar (bukan menambah foto), dan `single`
  * menggilir foto bila print_count > jumlah foto.
