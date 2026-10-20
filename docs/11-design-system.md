@@ -13,6 +13,7 @@ Dilarang tampil seperti: generic Tailwind dashboard, generic AI SaaS, Linear clo
 ## 11.2 Visual Language
 
 **Gunakan:**
+
 - Bold typography
 - Thick borders (2–4px, warna solid gelap)
 - Hard shadows (offset, no blur) — misal `box-shadow: 4px 4px 0 #000`
@@ -26,6 +27,7 @@ Dilarang tampil seperti: generic Tailwind dashboard, generic AI SaaS, Linear clo
 - Strong visual hierarchy
 
 **Hindari:**
+
 - Soft blurry shadows
 - Excessive glassmorphism
 - Excessive gradients
@@ -38,16 +40,16 @@ Dilarang tampil seperti: generic Tailwind dashboard, generic AI SaaS, Linear clo
 ## 11.3 Design Tokens (Tailwind)
 
 ```css
---color-bg: #FFFDF5;        /* off-white kertas */
---color-surface: #FFFFFF;
---color-ink: #111111;        /* teks utama */
---color-border: #111111;     /* border tebal */
---color-accent: #FFD400;     /* kuning */
---color-accent-2: #FF5C8A;   /* pink */
---color-accent-3: #38D9A9;   /* hijau */
---color-accent-4: #4D6BFF;   /* biru */
+--color-bg: #fffdf5; /* off-white kertas */
+--color-surface: #ffffff;
+--color-ink: #111111; /* teks utama */
+--color-border: #111111; /* border tebal */
+--color-accent: #ffd400; /* kuning */
+--color-accent-2: #ff5c8a; /* pink */
+--color-accent-3: #38d9a9; /* hijau */
+--color-accent-4: #4d6bff; /* biru */
 
---radius: 0px;               /* atau 4px untuk beberapa elemen */
+--radius: 0px; /* atau 4px untuk beberapa elemen */
 --shadow-hard: 4px 4px 0 #111111;
 --shadow-hard-sm: 2px 2px 0 #111111;
 --border: 2px solid #111111;
@@ -57,24 +59,24 @@ Font: display bold (misal "Space Grotesk"/"Archivo Black" untuk heading), body r
 
 ## 11.4 shadcn/ui Component Mapping
 
-| shadcn/ui | Penggunaan SnapyOS |
-|-----------|-----------------|
-| Button | Primary (bg accent, border tebal, hard shadow), secondary, destructive, ghost |
-| Card | Metric cards, package/template cards (border 2px + hard shadow) |
-| Input | Form (border tebal, focus ring solid) |
-| Select / DropdownMenu / Command | Filter, workspace switcher |
-| Dialog / Sheet | Form create/edit, detail |
-| Tabs | Breakdown analytics, settings |
-| Badge | Status (paid/pending/expired, photobox online/offline) |
-| Table / DataTable | Transactions, customers, vouchers |
-| Form + zod | Semua form |
-| Calendar / Popover | Date range filter |
-| Tooltip | Info |
-| Toast / Sonner | Feedback |
-| Alert | Error/empty state |
-| Sidebar / Breadcrumb / Pagination | Navigasi |
-| Skeleton | Loading state |
-| Chart (Recharts wrapper) | Revenue analytics |
+| shadcn/ui                         | Penggunaan SnapyOS                                                            |
+| --------------------------------- | ----------------------------------------------------------------------------- |
+| Button                            | Primary (bg accent, border tebal, hard shadow), secondary, destructive, ghost |
+| Card                              | Metric cards, package/template cards (border 2px + hard shadow)               |
+| Input                             | Form (border tebal, focus ring solid)                                         |
+| Select / DropdownMenu / Command   | Filter, workspace switcher                                                    |
+| Dialog / Sheet                    | Form create/edit, detail                                                      |
+| Tabs                              | Breakdown analytics, settings                                                 |
+| Badge                             | Status (paid/pending/expired, photobox online/offline)                        |
+| Table / DataTable                 | Transactions, customers, vouchers                                             |
+| Form + zod                        | Semua form                                                                    |
+| Calendar / Popover                | Date range filter                                                             |
+| Tooltip                           | Info                                                                          |
+| Toast / Sonner                    | Feedback                                                                      |
+| Alert                             | Error/empty state                                                             |
+| Sidebar / Breadcrumb / Pagination | Navigasi                                                                      |
+| Skeleton                          | Loading state                                                                 |
+| Chart (Recharts wrapper)          | Revenue analytics                                                             |
 
 **Aturan:** shadcn/ui = component foundation; Neo-Brutalism = visual identity. Jangan pakai default styling shadcn tanpa kustomisasi. Override variabel/`cn` agar semua komponen konsisten Neo-Brutalism.
 
@@ -91,6 +93,7 @@ Chart: gunakan `shadcn/ui Charts` (ChartContainer, AreaChart, BarChart, LineChar
 ## 11.5 Landing Page
 
 **Hero:**
+
 ```
 BUILD YOUR OWN PHOTOBOX.
 "Run your Photobox business, manage your booths, track your revenue,

@@ -25,11 +25,7 @@ function compactIDR(n: number): string {
   return String(n);
 }
 
-export function BreakdownChartInner({
-  data,
-}: {
-  data: { label: string; amount: number }[];
-}) {
+export function BreakdownChartInner({ data }: { data: { label: string; amount: number }[] }) {
   return (
     <ChartContainer config={chartConfig} className="aspect-auto h-[320px] w-full">
       <BarChart
@@ -60,9 +56,7 @@ export function BreakdownChartInner({
             <ChartTooltipContent
               indicator="dot"
               formatter={(value) => (
-                <span className="font-mono font-bold">
-                  {formatIDR(Number(value))}
-                </span>
+                <span className="font-mono font-bold">{formatIDR(Number(value))}</span>
               )}
             />
           }

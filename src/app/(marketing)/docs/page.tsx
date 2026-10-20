@@ -35,7 +35,7 @@ const FLOW = [
   {
     no: "04",
     title: "Ambil foto",
-    desc: "Ikuti hitungan 3, 2, 1. Retake bebas selama timer 5 menit berjalan.",
+    desc: "Ikuti hitungan 3, 2, 1. Retake mengikuti pengaturan booth (default 1 kali) selama durasi sesi berjalan.",
   },
   {
     no: "05",
@@ -59,8 +59,8 @@ export default function DocsPage() {
               Panduan SnapyOS untuk customer dan owner
             </h1>
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
-              Satu halaman untuk dua pembaca. Customer belajar alur foto dari pilih paket sampai unduh hasil.
-              Owner belajar setup booth, pembayaran QRIS, dashboard, dan laporan. Semua ditulis paragraf rapi dan langkah berurutan.
+              Satu halaman untuk dua pembaca. Customer belajar alur foto dari pilih paket sampai
+              unduh hasil. Owner belajar setup booth, pembayaran QRIS, dashboard, dan laporan.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <Button nativeButton={false} render={<Link href="/docs/customer" />}>
@@ -72,9 +72,15 @@ export default function DocsPage() {
               </Button>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-2 pt-1 text-xs text-muted-foreground">
-              <span className="rounded-none border-2 border-ink px-3 py-1">Tanpa login untuk customer</span>
-              <span className="rounded-none border-2 border-ink px-3 py-1">Pay first, baru foto</span>
-              <span className="rounded-none border-2 border-ink px-3 py-1">Hasil tersimpan 1-3 hari</span>
+              <span className="rounded-none border-2 border-ink px-3 py-1">
+                Tanpa login untuk customer
+              </span>
+              <span className="rounded-none border-2 border-ink px-3 py-1">
+                Pay first, baru foto
+              </span>
+              <span className="rounded-none border-2 border-ink px-3 py-1">
+                Hasil tersimpan 1-3 hari
+              </span>
             </div>
           </div>
         </section>
@@ -82,13 +88,21 @@ export default function DocsPage() {
         <section id="alur" className="mx-auto w-full max-w-5xl scroll-mt-24 px-4 md:px-8">
           <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div className="max-w-2xl">
-              <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Alur sesi foto</p>
-              <h2 className="mt-2 text-3xl font-display font-black uppercase tracking-tight sm:text-4xl">Lima langkah dari layar ke HP</h2>
+              <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                Alur sesi foto
+              </p>
+              <h2 className="mt-2 text-3xl font-display font-black uppercase tracking-tight sm:text-4xl">
+                Lima langkah dari layar ke HP
+              </h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
-                Ikuti urutan kiosk dari kiri ke kanan. Bayar dulu, timer sesi baru jalan setelah status paid.
+                Ikuti urutan kiosk dari kiri ke kanan. Bayar dulu, timer sesi baru jalan setelah
+                status paid.
               </p>
             </div>
-            <Link href="/docs/mulai" className="shrink-0 text-sm font-medium underline underline-offset-4">
+            <Link
+              href="/docs/mulai"
+              className="inline-flex shrink-0 items-center text-sm font-medium underline underline-offset-4 [@media(pointer:coarse)]:min-h-11"
+            >
               Ikuti panduan mulai cepat
             </Link>
           </div>
@@ -108,10 +122,12 @@ export default function DocsPage() {
 
         <section className="mx-auto w-full max-w-5xl px-4 md:px-8">
           <div className="max-w-3xl">
-            <h2 className="text-3xl font-display font-black uppercase tracking-tight sm:text-4xl">Pilih kategori panduan</h2>
+            <h2 className="text-3xl font-display font-black uppercase tracking-tight sm:text-4xl">
+              Pilih kategori panduan
+            </h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
-              Pilih kategori di sidebar, ganti mode grid atau list, lalu buka panduannya.
-              Tiap kategori juga punya halaman sendiri dengan tombol Berikutnya antar kategori.
+              Pilih kategori di sidebar, ganti mode grid atau list, lalu buka panduannya. Tiap
+              kategori juga punya halaman sendiri dengan tombol Berikutnya antar kategori.
             </p>
           </div>
 
@@ -130,16 +146,21 @@ export default function DocsPage() {
           </div>
 
           <div className="mt-14 border-t border-ink pt-10">
-            <h3 className="text-2xl font-display font-black uppercase tracking-tight md:text-3xl">Daftar isi tiap kategori</h3>
+            <h3 className="text-2xl font-display font-black uppercase tracking-tight md:text-3xl">
+              Daftar isi tiap kategori
+            </h3>
             <div className="mt-6 grid gap-x-12 gap-y-8 md:grid-cols-2">
               {DOC_GROUPS.map((g) => (
                 <div key={g.slug}>
                   <p className="font-semibold">
-                    <Link href={`/docs/${g.slug}`} className="hover:underline">
+                    <Link
+                      href={`/docs/${g.slug}`}
+                      className="hover:underline [@media(pointer:coarse)]:inline-flex [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 [@media(pointer:coarse)]:items-center"
+                    >
                       {g.title}
                     </Link>
                   </p>
-                  <ul className="mt-2 space-y-1.5 text-sm leading-6">
+                  <ul className="mt-2 space-y-1.5 text-sm leading-6 [@media(pointer:coarse)]:space-y-0">
                     {g.slugs.map((slug) => {
                       const doc = getDocBySlug(slug);
                       if (!doc) return null;
@@ -147,7 +168,7 @@ export default function DocsPage() {
                         <li key={slug}>
                           <Link
                             href={`/docs/${g.slug}#${slug}`}
-                            className="font-medium underline underline-offset-4 hover:no-underline"
+                            className="font-medium underline underline-offset-4 hover:no-underline [@media(pointer:coarse)]:inline-flex [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:items-center"
                           >
                             {doc.title}
                           </Link>
@@ -165,8 +186,9 @@ export default function DocsPage() {
             <p className="text-sm font-semibold text-ink">Catatan sumber kebenaran.</p>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
               Panduan ini disusun dari perilaku kode berjalan SnapyOS. Backend menghitung ulang
-              pembayaran. Dana QRIS masuk langsung ke rekening merchant owner. Transaksi tunai tercatat untuk laporan
-              tetapi tidak mengkredit saldo. Hasil foto tersimpan 1 sampai 3 hari mengikuti pengaturan booth.
+              pembayaran. Dana QRIS masuk langsung ke rekening merchant owner. Transaksi tunai
+              tercatat untuk laporan tetapi tidak mengkredit saldo. Hasil foto tersimpan 1 sampai 3
+              hari mengikuti pengaturan booth.
             </p>
           </div>
         </section>

@@ -1,9 +1,9 @@
-import Link from "next/link"
-import { Receipt } from "lucide-react"
+import Link from "next/link";
+import { Receipt } from "lucide-react";
 
-import { EmptyState } from "@/components/ui/empty-state"
-import { formatIDR } from "@/lib/dashboard-math"
-import type { TxInsights } from "@/lib/tx-insights"
+import { EmptyState } from "@/components/ui/empty-state";
+import { formatIDR } from "@/lib/dashboard-math";
+import type { TxInsights } from "@/lib/tx-insights";
 
 /**
  * TxInsightsPanel — insights transaksi owner (docs/04 §4.1, docs/11).
@@ -13,9 +13,9 @@ import type { TxInsights } from "@/lib/tx-insights"
  */
 
 const STATUS_CELLS: {
-  key: "total" | "paid" | "failed" | "pending" | "cancelled" | "refunded"
-  label: string
-  tone: string
+  key: "total" | "paid" | "failed" | "pending" | "cancelled" | "refunded";
+  label: string;
+  tone: string;
 }[] = [
   { key: "total", label: "Total Trx", tone: "text-ink" },
   { key: "paid", label: "Berhasil", tone: "text-accent-3-strong" },
@@ -23,21 +23,21 @@ const STATUS_CELLS: {
   { key: "pending", label: "Pending", tone: "text-ink" },
   { key: "cancelled", label: "Dibatalkan", tone: "text-muted-foreground" },
   { key: "refunded", label: "Refund", tone: "text-muted-foreground" },
-]
+];
 
 function hourLabel(h: number): string {
-  return String(h).padStart(2, "0")
+  return String(h).padStart(2, "0");
 }
 
 export function TxInsightsPanel({
   insights,
   rangeLabel,
 }: {
-  insights: TxInsights
-  rangeLabel: string
+  insights: TxInsights;
+  rangeLabel: string;
 }) {
-  const { statusCounts, hourly, peakHour, peakCount, outlets, net } = insights
-  const maxHourly = Math.max(1, ...hourly)
+  const { statusCounts, hourly, peakHour, peakCount, outlets, net } = insights;
+  const maxHourly = Math.max(1, ...hourly);
 
   if (statusCounts.total === 0) {
     return (
@@ -62,7 +62,7 @@ export function TxInsightsPanel({
           }
         />
       </section>
-    )
+    );
   }
 
   return (
@@ -75,7 +75,7 @@ export function TxInsightsPanel({
         </span>
       </div>
 
-      {/* Bar 1 — strip status SEMUA transaksi (grid tipis blueprint). */}
+      {/* Bar 1: strip status SEMUA transaksi (grid tipis blueprint). */}
       <dl
         className="grid grid-cols-2 gap-[2px] border-2 border-ink bg-ink shadow-[4px_4px_0_0_#111111] sm:grid-cols-3 lg:grid-cols-6"
         aria-label="Ringkasan status transaksi"
@@ -93,7 +93,7 @@ export function TxInsightsPanel({
       </dl>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* Bar 2 — jam ramai: histogram 24 slot CSS. */}
+        {/* Bar 2: jam ramai: histogram 24 slot CSS. */}
         <div className="border-2 border-ink bg-surface p-4 shadow-[3px_3px_0_0_#111111] md:p-5">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h3 className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
@@ -116,14 +116,14 @@ export function TxInsightsPanel({
           <div
             className="mt-4 grid h-28 grid-cols-12 items-end gap-[2px] border-2 border-ink bg-bg p-2 md:grid-cols-[repeat(24,minmax(0,1fr))]"
             role="img"
-            aria-label={`Histogram transaksi per jam lokal, puncak ${peakHour !== null ? hourLabel(peakHour) + ":00" : "—"} dengan ${peakCount} transaksi`}
+            aria-label={`Histogram transaksi per jam lokal, puncak ${peakHour !== null ? hourLabel(peakHour) + ":00" : "-"} dengan ${peakCount} transaksi`}
           >
             {hourly.map((count, h) => (
               <div
                 key={h}
                 className={h === peakHour ? "bg-accent" : count > 0 ? "bg-ink/70" : "bg-ink/10"}
                 style={{ height: `${Math.max(2, Math.round((count / maxHourly) * 100))}%` }}
-                title={`${hourLabel(h)}:00 — ${count} trx`}
+                title={`${hourLabel(h)}:00: ${count} trx`}
               />
             ))}
           </div>
@@ -136,7 +136,7 @@ export function TxInsightsPanel({
           </div>
         </div>
 
-        {/* Bar 3 — outlet teramai (real, sorted by count). */}
+        {/* Bar 3: outlet teramai (real, sorted by count). */}
         <div className="border-2 border-ink bg-surface p-4 shadow-[3px_3px_0_0_#111111] md:p-5">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h3 className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
@@ -183,7 +183,7 @@ export function TxInsightsPanel({
                       </td>
                       <td className="py-2.5 pr-3 text-right font-bold">{o.count}</td>
                       <td className="py-2.5 pr-3 text-right text-destructive">
-                        {o.failedCount > 0 ? o.failedCount : "—"}
+                        {o.failedCount > 0 ? o.failedCount : "-"}
                       </td>
                       <td className="py-2.5 text-right font-bold">{formatIDR(o.net)}</td>
                     </tr>
@@ -195,5 +195,5 @@ export function TxInsightsPanel({
         </div>
       </div>
     </section>
-  )
+  );
 }

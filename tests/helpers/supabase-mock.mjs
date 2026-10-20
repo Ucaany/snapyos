@@ -107,9 +107,8 @@ function makeBuilder(table, steps, handlers) {
 /** Jalankan handler tabel; selalu mengembalikan Promise bentuk PostgREST. */
 function run(table, steps, handlers) {
   const handler = handlers[table];
-  const result = typeof handler === "function"
-    ? handler({ table, steps })
-    : { data: null, error: null };
+  const result =
+    typeof handler === "function" ? handler({ table, steps }) : { data: null, error: null };
   return Promise.resolve({ count: null, ...result });
 }
 
@@ -129,5 +128,7 @@ export function stepArgs(steps, method) {
 
 /** Bantu: nilai argumen kedua dari semua langkah `eq` (kolom → nilai). */
 export function eqPairs(steps) {
-  return Object.fromEntries(steps.filter((s) => s.method === "eq").map((s) => [s.args[0], s.args[1]]));
+  return Object.fromEntries(
+    steps.filter((s) => s.method === "eq").map((s) => [s.args[0], s.args[1]])
+  );
 }

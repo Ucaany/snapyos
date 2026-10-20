@@ -42,7 +42,9 @@ export function WilayahPicker({ idPrefix, province, city, disabled }: Props) {
   // Pilihan user. `undefined` = belum disentuh (pakai nilai awal dari props);
   // `null` = sengaja dikosongkan, harus tetap kosong, bukan snap-back ke nilai awal.
   const [pickedProvinceId, setPickedProvinceId] = useState<string | null | undefined>(undefined);
-  const [pickedProvinceName, setPickedProvinceName] = useState<string | null | undefined>(undefined);
+  const [pickedProvinceName, setPickedProvinceName] = useState<string | null | undefined>(
+    undefined
+  );
   const [cityName, setCityName] = useState(city ?? "");
 
   // Muat data wilayah sekali (init lazy dari cache modul).
@@ -66,8 +68,10 @@ export function WilayahPicker({ idPrefix, province, city, disabled }: Props) {
     wilayah && province
       ? (wilayah.provinces.find((p) => p.name.toLowerCase() === province.toLowerCase())?.id ?? null)
       : null;
-  const provinceId = pickedProvinceId === undefined ? (initialProvinceId ?? "") : (pickedProvinceId ?? "");
-  const provinceName = pickedProvinceName === undefined ? (province ?? "") : (pickedProvinceName ?? "");
+  const provinceId =
+    pickedProvinceId === undefined ? (initialProvinceId ?? "") : (pickedProvinceId ?? "");
+  const provinceName =
+    pickedProvinceName === undefined ? (province ?? "") : (pickedProvinceName ?? "");
 
   const regencies = wilayah?.provinces.find((p) => p.id === provinceId)?.regencies ?? null;
 
@@ -78,8 +82,11 @@ export function WilayahPicker({ idPrefix, province, city, disabled }: Props) {
         <input type="hidden" name="province" value={provinceName} />
         <input type="hidden" name="city" value={cityName} />
         <div className="flex flex-col gap-2">
-          <label htmlFor={`${idPrefix}-province`} className="font-mono text-xs uppercase tracking-[0.1em]">
-            Provinsi (manual — data wilayah tidak termuat)
+          <label
+            htmlFor={`${idPrefix}-province`}
+            className="font-mono text-xs uppercase tracking-[0.1em]"
+          >
+            Provinsi (manual: data wilayah tidak termuat)
           </label>
           <Input
             id={`${idPrefix}-province`}
@@ -91,7 +98,10 @@ export function WilayahPicker({ idPrefix, province, city, disabled }: Props) {
           />
         </div>
         <div className="flex flex-col gap-2">
-          <label htmlFor={`${idPrefix}-city`} className="font-mono text-xs uppercase tracking-[0.1em]">
+          <label
+            htmlFor={`${idPrefix}-city`}
+            className="font-mono text-xs uppercase tracking-[0.1em]"
+          >
             Kabupaten / Kota
           </label>
           <Input
@@ -109,12 +119,15 @@ export function WilayahPicker({ idPrefix, province, city, disabled }: Props) {
 
   return (
     <>
-      {/* Field tersubmit — nama, bukan id (schema: province/city text). */}
+      {/* Field tersubmit: nama, bukan id (schema: province/city text). */}
       <input type="hidden" name="province" value={provinceName} />
       <input type="hidden" name="city" value={cityName} />
 
       <div className="flex flex-col gap-2">
-        <label htmlFor={`${idPrefix}-province-select`} className="font-mono text-xs uppercase tracking-[0.1em]">
+        <label
+          htmlFor={`${idPrefix}-province-select`}
+          className="font-mono text-xs uppercase tracking-[0.1em]"
+        >
           Provinsi *
         </label>
         <Select
@@ -131,9 +144,7 @@ export function WilayahPicker({ idPrefix, province, city, disabled }: Props) {
           }}
           aria-label="Pilih provinsi"
         >
-          <option value="">
-            {wilayah ? "-- PILIH PROVINSI --" : "MEMUAT…"}
-          </option>
+          <option value="">{wilayah ? "-- PILIH PROVINSI --" : "MEMUAT…"}</option>
           {wilayah?.provinces.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}

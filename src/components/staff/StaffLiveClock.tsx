@@ -12,12 +12,7 @@
 
 import { useEffect, useState } from "react";
 
-import {
-  clockParts,
-  elapsedMinutes,
-  remainingMinutes,
-  sessionProgressPct,
-} from "@/lib/staff-live";
+import { clockParts, elapsedMinutes, remainingMinutes, sessionProgressPct } from "@/lib/staff-live";
 
 const TICK_MS = 15_000;
 
@@ -36,13 +31,7 @@ function useNowMs(initialMs: number): number {
 }
 
 /** Jam stasiun + label zona bisnis (WIB/WITA/WIT mengikuti timezone bisnis). */
-export function StationClock({
-  initialMs,
-  timeZone,
-}: {
-  initialMs: number;
-  timeZone: string;
-}) {
+export function StationClock({ initialMs, timeZone }: { initialMs: number; timeZone: string }) {
   const nowMs = useNowMs(initialMs);
   const { time, zone } = clockParts(nowMs, timeZone);
   return (

@@ -1,31 +1,31 @@
-import type { Metadata } from "next"
-import { redirect } from "next/navigation"
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import { DateRangeFilter } from "@/components/dashboard/DateRangeFilter"
-import { MetricCard } from "@/components/dashboard/MetricCard"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { EmptyState } from "@/components/ui/empty-state"
-import { PageHeader } from "@/components/ui/page-header"
-import { can } from "@/lib/rbac"
-import { formatBp, formatIDR } from "@/lib/dashboard-math"
-import { getActiveBusiness, requireUser } from "@/lib/tenant"
-import { getBusinessMetrics } from "@/server/metrics"
+import { DateRangeFilter } from "@/components/dashboard/DateRangeFilter";
+import { MetricCard } from "@/components/dashboard/MetricCard";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
+import { can } from "@/lib/rbac";
+import { formatBp, formatIDR } from "@/lib/dashboard-math";
+import { getActiveBusiness, requireUser } from "@/lib/tenant";
+import { getBusinessMetrics } from "@/server/metrics";
 
 export const metadata: Metadata = {
   title: "Metrik: SnapyOS",
-}
+};
 
 /** /dashboard/metrics — metrik operasional menyeluruh (docs/04 §4.3). */
 export default async function MetricsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string }>
+  searchParams: Promise<{ from?: string; to?: string }>;
 }) {
-  const user = await requireUser()
-  if (!user) redirect("/login")
+  const user = await requireUser();
+  if (!user) redirect("/login");
 
-  const active = await getActiveBusiness(user.id)
-  if (!active) redirect("/dashboard")
+  const active = await getActiveBusiness(user.id);
+  if (!active) redirect("/dashboard");
 
   if (!can(active.role, "transaction:read")) {
     return (
@@ -39,14 +39,14 @@ export default async function MetricsPage({
           </CardHeader>
         </Card>
       </div>
-    )
+    );
   }
 
-  const query = await searchParams
+  const query = await searchParams;
   const metrics = await getBusinessMetrics(user.id, active.business.id, {
     from: query.from,
     to: query.to,
-  })
+  });
 
   return (
     <div className="flex flex-col gap-8 p-6 md:p-10">
@@ -159,5 +159,5 @@ export default async function MetricsPage({
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

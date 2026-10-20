@@ -20,7 +20,13 @@ const PAYMENT_PROVIDERS = ["pakasir", "midtrans", "tripay"] as const;
 export default async function AdminPaymentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; provider?: string; from?: string; to?: string; page?: string }>;
+  searchParams: Promise<{
+    status?: string;
+    provider?: string;
+    from?: string;
+    to?: string;
+    page?: string;
+  }>;
 }) {
   const raw = await searchParams;
   // Validasi ketat: from/to harus YYYY-MM-DD. Nilai invalid JANGAN diteruskan
@@ -29,7 +35,14 @@ export default async function AdminPaymentsPage({
   const q = parsed.success ? parsed.data : {};
   const page = q.page ?? 1;
   const [{ items, total }, summary, posRevenue] = await Promise.all([
-    listPayments({ status: q.status, provider: q.provider, from: q.from, to: q.to, page, limit: 20 }),
+    listPayments({
+      status: q.status,
+      provider: q.provider,
+      from: q.from,
+      to: q.to,
+      page,
+      limit: 20,
+    }),
     getPaymentsSummary({ from: q.from, to: q.to }),
     adminPosRevenueSummary({ from: q.from, to: q.to }),
   ]);
@@ -72,7 +85,10 @@ export default async function AdminPaymentsPage({
               { label: "Failed", value: String(summary.counts.failed ?? 0) },
               { label: "Expired", value: String(summary.counts.expired ?? 0) },
               { label: "Cancelled", value: String(summary.counts.cancelled ?? 0) },
-              { label: "Webhook Invalid Sig", value: String(summary.webhookIntegrity.invalidSignature) },
+              {
+                label: "Webhook Invalid Sig",
+                value: String(summary.webhookIntegrity.invalidSignature),
+              },
               { label: "Webhook Error", value: String(summary.webhookIntegrity.errors) },
               { label: "Webhook Total", value: String(summary.webhookIntegrity.total) },
             ].map((cell) => (
@@ -87,7 +103,9 @@ export default async function AdminPaymentsPage({
           {summary.byProvider.length > 0 ? (
             <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
               Provider:{" "}
-              {summary.byProvider.map((p) => `${p.provider} (${p.count}x · ${formatIDR(p.volume)})`).join(" · ")}
+              {summary.byProvider
+                .map((p) => `${p.provider} (${p.count}x · ${formatIDR(p.volume)})`)
+                .join(" · ")}
             </p>
           ) : null}
         </CardContent>
@@ -97,7 +115,8 @@ export default async function AdminPaymentsPage({
         <CardHeader>
           <CardTitle>Gross / Fee / Net per Tenant</CardTitle>
           <CardDescription>
-            Rincian platform fee dan net per bisnis (dari payment `paid`, sesuai policy fee plan aktif).
+            Rincian platform fee dan net per bisnis (dari payment `paid`, sesuai policy fee plan
+            aktif).
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -121,10 +140,14 @@ export default async function AdminPaymentsPage({
                   {summary.byTenant.map((t) => (
                     <tr key={t.businessId} className="border-t-2 border-ink/10">
                       <td className="px-4 py-3 text-sm">{t.businessName}</td>
-                      <td className="px-4 py-3 font-mono text-xs font-bold">{formatIDR(t.gross)}</td>
+                      <td className="px-4 py-3 font-mono text-xs font-bold">
+                        {formatIDR(t.gross)}
+                      </td>
                       <td className="px-4 py-3 font-mono text-xs">{formatIDR(t.fee)}</td>
                       <td className="px-4 py-3 font-mono text-xs font-bold">{formatIDR(t.net)}</td>
-                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{t.count}x</td>
+                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                        {t.count}x
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -138,7 +161,8 @@ export default async function AdminPaymentsPage({
         <CardHeader>
           <CardTitle>Revenue POS per Tenant</CardTitle>
           <CardDescription>
-            Transaksi POS (offline, source of truth transactions) - sama periode dengan filter di bawah.
+            Transaksi POS (offline, source of truth transactions) - sama periode dengan filter di
+            bawah.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -153,7 +177,10 @@ export default async function AdminPaymentsPage({
               </p>
               <ul className="flex flex-col gap-2">
                 {posRevenue.rows.map((r) => (
-                  <li key={r.businessId} className="flex items-center justify-between gap-3 border-2 border-ink bg-surface px-3 py-2">
+                  <li
+                    key={r.businessId}
+                    className="flex items-center justify-between gap-3 border-2 border-ink bg-surface px-3 py-2"
+                  >
                     <span className="text-sm">{r.businessName}</span>
                     <span className="font-mono text-xs">
                       {formatIDR(r.final)}
@@ -233,7 +260,9 @@ export default async function AdminPaymentsPage({
                   <td className="px-4 py-3 font-mono text-xs font-bold">
                     {formatIDR(p.final_amount)}
                     {p.discount_amount > 0 ? (
-                      <span className="block text-muted-foreground">diskon {formatIDR(p.discount_amount)}</span>
+                      <span className="block text-muted-foreground">
+                        diskon {formatIDR(p.discount_amount)}
+                      </span>
                     ) : null}
                   </td>
                   <td className="px-4 py-3 font-mono text-xs uppercase">{p.provider}</td>

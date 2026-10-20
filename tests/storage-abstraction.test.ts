@@ -10,12 +10,19 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { R2_AREAS, R2_BUCKET_ENV, r2BucketName, r2Key } from "../src/lib/r2/areas.ts";
-import { resolveWriteProviderName, resolveFallbackProviderName, r2Configured } from "../src/lib/r2/provider.ts";
+import {
+  resolveWriteProviderName,
+  resolveFallbackProviderName,
+  r2Configured,
+} from "../src/lib/r2/provider.ts";
 import { StorageResolver } from "../src/lib/r2/resolver.ts";
 import { SIGNED_URL_TTL_SECONDS } from "../src/lib/constants.ts";
 
 test("r2Key: key Supabase dipakai apa adanya (bucket per-area, tanpa prefix)", () => {
-  assert.equal(r2Key("business-assets", "biz-1/branding/logo-123.png"), "biz-1/branding/logo-123.png");
+  assert.equal(
+    r2Key("business-assets", "biz-1/branding/logo-123.png"),
+    "biz-1/branding/logo-123.png"
+  );
   assert.equal(
     r2Key("generated-photos", "biz-1/sessions/s1/photo-00.jpg"),
     "biz-1/sessions/s1/photo-00.jpg"

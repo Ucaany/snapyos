@@ -57,13 +57,9 @@ export type IntentFailureReason =
   (typeof INTENT_FAILURE_REASON)[keyof typeof INTENT_FAILURE_REASON];
 
 /** Normalisasi intent → daftar item (shape baru `items`, legacy single-item). */
-export function intentToItems(
-  intent: IntentShape,
-  fallbackAmount: number
-): InvoiceIntentItem[] {
+export function intentToItems(intent: IntentShape, fallbackAmount: number): InvoiceIntentItem[] {
   if (!intent) return [];
-  if (Array.isArray(intent.items) && intent.items.length > 0)
-    return intent.items;
+  if (Array.isArray(intent.items) && intent.items.length > 0) return intent.items;
   return [
     {
       type:
@@ -106,10 +102,7 @@ export interface IntentDbQuery extends PromiseLike<IntentDbResult> {
   select(cols?: string, opts?: unknown): IntentDbQuery;
   update(patch: Record<string, unknown>): IntentDbQuery;
   insert(row: Record<string, unknown>): PromiseLike<IntentDbResult>;
-  upsert(
-    row: Record<string, unknown>,
-    opts?: Record<string, unknown>
-  ): PromiseLike<IntentDbResult>;
+  upsert(row: Record<string, unknown>, opts?: Record<string, unknown>): PromiseLike<IntentDbResult>;
   eq(col: string, val: unknown): IntentDbQuery;
   or(cond: string): IntentDbQuery;
   in(col: string, vals: unknown[]): IntentDbQuery;
@@ -155,9 +148,7 @@ export interface ApplyIntentDeps {
  * retry berikutnya. `applied_at` sengaja di-null (bukan dihapus) agar
  * terlihat bahwa pernah ada percobaan klaim.
  */
-export function buildReleasedIntent(
-  originalIntent: IntentShape
-): Record<string, unknown> {
+export function buildReleasedIntent(originalIntent: IntentShape): Record<string, unknown> {
   return { ...(originalIntent ?? {}), applied: false, applied_at: null };
 }
 
@@ -167,9 +158,7 @@ export function buildReleasedIntent(
  * (items/type/plan/add-on), bukan status klaim — jadi flag CAS
  * `applied`/`applied_at` dibuang seluruhnya.
  */
-export function buildFailureSnapshot(
-  intent: IntentShape
-): Record<string, unknown> {
+export function buildFailureSnapshot(intent: IntentShape): Record<string, unknown> {
   const snapshot: Record<string, unknown> = { ...(intent ?? {}) };
   delete snapshot.applied;
   delete (snapshot as { applied_at?: unknown }).applied_at;
@@ -279,10 +268,7 @@ async function recordActivationFailure(
  * sembuh sendiri. Tidak pernah throw — kegagalan di sini tidak boleh
  * membatalkan aktivasi yang sudah sukses.
  */
-async function autoDismissResolvedFailures(
-  db: IntentDb,
-  invoiceId: string
-): Promise<void> {
+async function autoDismissResolvedFailures(db: IntentDb, invoiceId: string): Promise<void> {
   try {
     await db
       .from("subscription_intent_failures")
@@ -329,16 +315,14 @@ export async function applyInvoiceIntentWithDeps(
     .eq("id", invoiceId)
     .eq("business_id", businessId)
     .maybeSingle();
-  const invoice = (data ?? null) as
-    | {
-        id: string;
-        number: string;
-        subscription_id: string | null;
-        amount: number;
-        intent: IntentShape;
-        status: string;
-      }
-    | null;
+  const invoice = (data ?? null) as {
+    id: string;
+    number: string;
+    subscription_id: string | null;
+    amount: number;
+    intent: IntentShape;
+    status: string;
+  } | null;
   // No-op yang sah (BUKAN silent failure):
   // - invoice hilang: caller ID salah, tidak ada yang bisa diaktivasi.
   // - intent null: invoice manual tanpa plan/add-on.
@@ -359,9 +343,7 @@ export async function applyInvoiceIntentWithDeps(
   if (!claimed) return; // sudah diterapkan (atau sedang diterapkan pemanggil lain).
 
   try {
-    const planItem = [...items]
-      .reverse()
-      .find((i) => i.type === "plan_change" && i.plan_id);
+    const planItem = [...items].reverse().find((i) => i.type === "plan_change" && i.plan_id);
     if (planItem) {
       const { data: currentSub } = await db
         .from("subscriptions")
@@ -411,11 +393,8 @@ export async function applyInvoiceIntentWithDeps(
         // → periode baru penuh dari now().
         period = nextPeriod(new Date());
       } else if (!alreadyApplied) {
-        const periodEnd = Number.isFinite(periodEndMs)
-          ? new Date(periodEndMs)
-          : null;
-        const base =
-          periodEnd && periodEnd.getTime() > nowMs ? periodEnd : new Date(nowMs);
+        const periodEnd = Number.isFinite(periodEndMs) ? new Date(periodEndMs) : null;
+        const base = periodEnd && periodEnd.getTime() > nowMs ? periodEnd : new Date(nowMs);
         // Sub expired → periodEnd lampau → base = now: periode baru dari
         // now(), BUKAN extend dari periode yang sudah mati (docs/02 §2.4).
         period = nextPeriod(base);
@@ -527,9 +506,7 @@ export async function applyInvoiceIntentWithDeps(
     // Template premium (docs/15 §15.9b): tulis kepemilikan agar template global
     // premium tampil & bisa dipakai tenant. Idempotent via unique
     // (business_id, template_id) — onConflict do nothing.
-    const templateItems = items.filter(
-      (i) => i.type === "template_purchase" && i.template_id
-    );
+    const templateItems = items.filter((i) => i.type === "template_purchase" && i.template_id);
     for (const item of templateItems) {
       if (!item.template_id) continue;
       const { error: purchaseErr } = await db.from("business_template_purchases").upsert(
@@ -550,7 +527,11 @@ export async function applyInvoiceIntentWithDeps(
         businessId,
         action: "template.purchased",
         target: item.template_id,
-        meta: { template: item.name ?? item.template_id, price: item.amount, invoice: invoice.number },
+        meta: {
+          template: item.name ?? item.template_id,
+          price: item.amount,
+          invoice: invoice.number,
+        },
       });
     }
 

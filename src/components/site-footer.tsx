@@ -5,5 +5,10 @@ import { DitheredFooter, type DitheredFooterProps } from "@/components/footer";
  * bukan saat render client (mencegah hydration mismatch New Year boundary).
  */
 export function SiteFooter(props: DitheredFooterProps) {
-	return <DitheredFooter {...props} copyright={props.copyright ?? `© ${new Date().getFullYear()} SnapyOS.`} />;
+  return (
+    <DitheredFooter
+      {...props}
+      copyright={props.copyright ?? `© ${new Date().getFullYear()} SnapyOS.`}
+    />
+  );
 }

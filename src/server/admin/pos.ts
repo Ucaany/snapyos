@@ -11,10 +11,7 @@ import { requireAdmin } from "./guard";
  * POS revenue per tenant — docs/pos/05 §4. Sumber: transactions paid
  * pos_order_id NOT NULL (bukan pos_orders — anti double-count).
  */
-export async function adminPosRevenueSummary(query: {
-  from?: string;
-  to?: string;
-}): Promise<{
+export async function adminPosRevenueSummary(query: { from?: string; to?: string }): Promise<{
   rows: { businessId: string; businessName: string; final: number; count: number }[];
   total: number;
 }> {
@@ -37,8 +34,7 @@ export async function adminPosRevenueSummary(query: {
     final_amount: number;
     businesses: { name: string } | { name: string }[] | null;
   }[]) {
-    const name =
-      r.businesses && !Array.isArray(r.businesses) ? r.businesses.name : r.business_id;
+    const name = r.businesses && !Array.isArray(r.businesses) ? r.businesses.name : r.business_id;
     const cur = agg.get(r.business_id) ?? { businessName: name, final: 0, count: 0 };
     cur.final += r.final_amount;
     cur.count += 1;

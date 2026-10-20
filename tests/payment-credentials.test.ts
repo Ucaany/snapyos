@@ -17,19 +17,35 @@ const KEY = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 process.env.PAYMENT_ENCRYPTION_KEY = KEY;
 
 const stored = {
-  id: "cred-1", business_id: "business-a", provider: "tripay" as const, label: "Tripay Sandbox",
-  merchant_id: "T123", server_key_encrypted: encrypt("api-secret", KEY), client_key: null,
-  environment: "sandbox" as const, is_active: true,
-  metadata: { private_key_encrypted: encrypt("private-secret", KEY), enabled_methods: ["QRIS", "NOT_A_METHOD"] },
-  created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-01T00:00:00.000Z",
+  id: "cred-1",
+  business_id: "business-a",
+  provider: "tripay" as const,
+  label: "Tripay Sandbox",
+  merchant_id: "T123",
+  server_key_encrypted: encrypt("api-secret", KEY),
+  client_key: null,
+  environment: "sandbox" as const,
+  is_active: true,
+  metadata: {
+    private_key_encrypted: encrypt("private-secret", KEY),
+    enabled_methods: ["QRIS", "NOT_A_METHOD"],
+  },
+  created_at: "2026-01-01T00:00:00.000Z",
+  updated_at: "2026-01-01T00:00:00.000Z",
 };
 
 test("credential authorization requires owner", () => {
   assert.doesNotThrow(() => assertPaymentCredentialOwner("owner"));
   for (const role of ["manager", "staff"] as const) {
-    assert.throws(() => assertPaymentCredentialOwner(role), (error: unknown) => error instanceof ApiError && error.code === "FORBIDDEN");
+    assert.throws(
+      () => assertPaymentCredentialOwner(role),
+      (error: unknown) => error instanceof ApiError && error.code === "FORBIDDEN"
+    );
   }
-  assert.throws(() => assertPaymentCredentialOwner(null), (error: unknown) => error instanceof ApiError && error.code === "NOT_FOUND");
+  assert.throws(
+    () => assertPaymentCredentialOwner(null),
+    (error: unknown) => error instanceof ApiError && error.code === "NOT_FOUND"
+  );
 });
 
 test("credential tenant scoping rejects another business", () => {
@@ -56,8 +72,14 @@ test("callback URL requires absolute HTTPS public base URL", async () => {
   const priorPublic = process.env.SnapyOS_PUBLIC_BASE_URL;
   try {
     process.env.SnapyOS_PUBLIC_BASE_URL = "https://snapyos.example/base";
-    assert.equal(paymentWebhookUrl("midtrans"), "https://snapyos.example/api/webhooks/payment/midtrans");
-    assert.equal(paymentWebhookUrl("pakasir"), "https://snapyos.example/api/webhooks/payment/pakasir");
+    assert.equal(
+      paymentWebhookUrl("midtrans"),
+      "https://snapyos.example/api/webhooks/payment/midtrans"
+    );
+    assert.equal(
+      paymentWebhookUrl("pakasir"),
+      "https://snapyos.example/api/webhooks/payment/pakasir"
+    );
     process.env.SnapyOS_PUBLIC_BASE_URL = "http://localhost:3000";
     assert.equal(paymentWebhookUrl("tripay"), null);
   } finally {
@@ -70,14 +92,21 @@ test("Pakasir credential requires and encrypts webhook secret", () => {
   assert.throws(
     () =>
       paymentCredentialCreateSchema.parse({
-        provider: "pakasir", merchant_id: "project-slug", server_key: "api-key",
-        environment: "production", enabled_methods: ["qris"],
+        provider: "pakasir",
+        merchant_id: "project-slug",
+        server_key: "api-key",
+        environment: "production",
+        enabled_methods: ["qris"],
       }),
     /Webhook secret Pakasir wajib diisi/
   );
   const parsed = paymentCredentialCreateSchema.parse({
-    provider: "pakasir", merchant_id: "project-slug", server_key: "api-key", webhook_secret: "whsec-123",
-    environment: "production", enabled_methods: ["qris"],
+    provider: "pakasir",
+    merchant_id: "project-slug",
+    server_key: "api-key",
+    webhook_secret: "whsec-123",
+    environment: "production",
+    enabled_methods: ["qris"],
   });
   const metadata = credentialMetadata(parsed);
   assert.equal(typeof metadata.webhook_secret_encrypted, "string");
@@ -104,14 +133,24 @@ test("all three providers expose a connection test (create+cancel / non-destruct
 test("active credential limit blocks more than two active gateways", () => {
   assert.doesNotThrow(() => assertActiveCredentialLimit(0));
   assert.doesNotThrow(() => assertActiveCredentialLimit(1));
-  assert.throws(() => assertActiveCredentialLimit(2), (error: unknown) => error instanceof ApiError && error.code === "VALIDATION_ERROR");
-  assert.throws(() => assertActiveCredentialLimit(3), (error: unknown) => error instanceof ApiError && error.code === "VALIDATION_ERROR");
+  assert.throws(
+    () => assertActiveCredentialLimit(2),
+    (error: unknown) => error instanceof ApiError && error.code === "VALIDATION_ERROR"
+  );
+  assert.throws(
+    () => assertActiveCredentialLimit(3),
+    (error: unknown) => error instanceof ApiError && error.code === "VALIDATION_ERROR"
+  );
 });
 
 test("Tripay maps merchant code, API key and encrypted private key", () => {
   const parsed = paymentCredentialCreateSchema.parse({
-    provider: "tripay", merchant_id: "MERCHANT-CODE", server_key: "api-key", private_key: "private-key",
-    environment: "sandbox", enabled_methods: ["QRIS"],
+    provider: "tripay",
+    merchant_id: "MERCHANT-CODE",
+    server_key: "api-key",
+    private_key: "private-key",
+    environment: "sandbox",
+    enabled_methods: ["QRIS"],
   });
   const metadata = credentialMetadata(parsed);
   assert.equal(parsed.merchant_id, "MERCHANT-CODE");

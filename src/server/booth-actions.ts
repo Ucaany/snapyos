@@ -13,11 +13,7 @@ import { verifyTurnstile } from "@/lib/turnstile";
 import { getClientIp } from "@/lib/request-ip";
 import { requireActiveBusiness } from "@/server/action-utils";
 import { requireEffectiveSubscription } from "@/server/require-subscription";
-import {
-  createOutlet,
-  deleteOutlet,
-  updateOutlet,
-} from "@/server/outlets";
+import { createOutlet, deleteOutlet, updateOutlet } from "@/server/outlets";
 import {
   createPhotobox,
   deletePhotobox,
@@ -30,10 +26,7 @@ import type { FormState } from "@/server/auth-actions";
 
 // --- OUTLETS ---
 
-export async function createOutletAction(
-  _prev: FormState,
-  formData: FormData
-): Promise<FormState> {
+export async function createOutletAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const ctx = await requireActiveBusiness();
   if (!ctx) return { error: "Sesi berakhir. Silakan login ulang." };
   await requireEffectiveSubscription(ctx.businessId, "write");
@@ -54,10 +47,7 @@ export async function createOutletAction(
   return { error: undefined };
 }
 
-export async function updateOutletAction(
-  _prev: FormState,
-  formData: FormData
-): Promise<FormState> {
+export async function updateOutletAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const ctx = await requireActiveBusiness();
   if (!ctx) return { error: "Sesi berakhir. Silakan login ulang." };
   await requireEffectiveSubscription(ctx.businessId, "write");
@@ -123,7 +113,8 @@ function photoboxInput(formData: FormData) {
       countdown_seconds: number("countdown_seconds", 3),
       mirror_preview: formData.get("mirror_preview") === "on",
       fullscreen: formData.get("fullscreen") === "on",
-      facingMode: str(formData, "facing_mode") === "user" ? "user" as const : "environment" as const,
+      facingMode:
+        str(formData, "facing_mode") === "user" ? ("user" as const) : ("environment" as const),
       capture_width: number("capture_width", 1920),
       capture_height: number("capture_height", 1080),
       jpeg_quality: number("jpeg_quality", 0.92),
@@ -141,14 +132,19 @@ function photoboxInput(formData: FormData) {
     },
     print_settings: {
       enabled: formData.get("print_enabled") === "on",
-      paper_size: str(formData, "paper_size") === "A6" ? "A6" as const : "4x6" as const,
-      layout: str(formData, "print_layout") === "strip" ? "strip" as const : "single" as const,
-      orientation: str(formData, "orientation") === "landscape" ? "landscape" as const : "portrait" as const,
+      paper_size: str(formData, "paper_size") === "A6" ? ("A6" as const) : ("4x6" as const),
+      layout: str(formData, "print_layout") === "strip" ? ("strip" as const) : ("single" as const),
+      orientation:
+        str(formData, "orientation") === "landscape"
+          ? ("landscape" as const)
+          : ("portrait" as const),
       auto_print: formData.get("auto_print") === "on",
       copies: number("copies", 1),
       margins_mm: number("margins_mm", 0),
-      mode: str(formData, "print_mode") === "bluetooth" ? "bluetooth" as const : "browser" as const,
-      bluetooth_paper_width_mm: number("bluetooth_paper_width_mm", 80) === 58 ? 58 as const : 80 as const,
+      mode:
+        str(formData, "print_mode") === "bluetooth" ? ("bluetooth" as const) : ("browser" as const),
+      bluetooth_paper_width_mm:
+        number("bluetooth_paper_width_mm", 80) === 58 ? (58 as const) : (80 as const),
       bluetooth_device_name: str(formData, "bluetooth_device_name") || undefined,
     },
     // Perangkat (kamera/printer/display) tidak diisi manual —
@@ -156,10 +152,7 @@ function photoboxInput(formData: FormData) {
   };
 }
 
-async function createPhotoboxAction(
-  _prev: FormState,
-  formData: FormData
-): Promise<FormState> {
+async function createPhotoboxAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const ctx = await requireActiveBusiness();
   if (!ctx) return { error: "Sesi berakhir. Silakan login ulang." };
   await requireEffectiveSubscription(ctx.businessId, "write");
@@ -187,10 +180,7 @@ async function createPhotoboxAction(
   return { error: undefined };
 }
 
-async function updatePhotoboxAction(
-  _prev: FormState,
-  formData: FormData
-): Promise<FormState> {
+async function updatePhotoboxAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const ctx = await requireActiveBusiness();
   if (!ctx) return { error: "Sesi berakhir. Silakan login ulang." };
   await requireEffectiveSubscription(ctx.businessId, "write");
@@ -208,10 +198,7 @@ async function updatePhotoboxAction(
   return { error: undefined };
 }
 
-export async function savePhotoboxAction(
-  prev: FormState,
-  formData: FormData
-): Promise<FormState> {
+export async function savePhotoboxAction(prev: FormState, formData: FormData): Promise<FormState> {
   const normalized = new FormData();
   for (const [key, value] of formData.entries()) {
     if (key === "0") continue;
@@ -359,8 +346,7 @@ export async function savePhotoboxBrandingAction(input: {
       input.branding as Parameters<typeof updatePhotoboxBranding>[3]
     );
   } catch (error) {
-    const message =
-      error instanceof ApiError ? error.message : "Gagal menyimpan branding booth.";
+    const message = error instanceof ApiError ? error.message : "Gagal menyimpan branding booth.";
     return { ok: false, error: message };
   }
 

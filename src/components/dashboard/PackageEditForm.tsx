@@ -38,7 +38,7 @@ export function PackageEditForm({ pkg, templates, outlets, photoboxes, onDone }:
     <form action={action} className="flex flex-col gap-5" noValidate>
       <input type="hidden" name="id" value={pkg.id} />
       <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-        {`/// Ubah — ${pkg.name.toUpperCase()}`}
+        {`/// Ubah: ${pkg.name.toUpperCase()}`}
       </p>
       <PackageFields
         templates={templates}
@@ -49,7 +49,10 @@ export function PackageEditForm({ pkg, templates, outlets, photoboxes, onDone }:
         pending={pending}
       />
       {state.error && (
-        <p role="alert" className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink">
+        <p
+          role="alert"
+          className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink"
+        >
           {state.error}
         </p>
       )}

@@ -16,11 +16,7 @@ import {
   generateResultToken,
   hashDeviceToken,
 } from "../src/lib/device-token.ts";
-import {
-  cameraErrorKind,
-  resolutionLabel,
-  resolutionWarning,
-} from "../src/lib/camera-errors.ts";
+import { cameraErrorKind, resolutionLabel, resolutionWarning } from "../src/lib/camera-errors.ts";
 import {
   computeExpiresAt,
   DEFAULT_TIMER_SECONDS,
@@ -29,10 +25,7 @@ import {
   remainingSeconds,
 } from "../src/lib/session-timer.ts";
 import { printPlan } from "../src/lib/print-layout.ts";
-import {
-  deviceActivateSchema,
-  sessionCreateSchema,
-} from "../src/lib/validators.ts";
+import { deviceActivateSchema, sessionCreateSchema } from "../src/lib/validators.ts";
 
 // --- device token & kode aktivasi (docs/05 §5.0) ---
 test("generateDeviceToken: 64 hex chars, unik", () => {
@@ -141,7 +134,11 @@ test("printPlan: digital only saat print_count 0", () => {
 
 test("printPlan: photostrip → 1 strip berisi semua foto per lembar", () => {
   assert.deepEqual(printPlan(1, 3, "photostrip"), { kind: "strip", sheets: 1, photosPerStrip: 3 });
-  assert.deepEqual(printPlan(2, 4, "single", "strip"), { kind: "strip", sheets: 2, photosPerStrip: 4 });
+  assert.deepEqual(printPlan(2, 4, "single", "strip"), {
+    kind: "strip",
+    sheets: 2,
+    photosPerStrip: 4,
+  });
 });
 
 test("printPlan: single → tiap lembar satu foto (siklik)", () => {
@@ -176,10 +173,7 @@ test("deviceActivateSchema: 6 char alfanumerik uppercase", () => {
 test("sessionCreateSchema: wajib checkout_session_id ATAU package_id + device_token", () => {
   const token = "a".repeat(64);
   const uuid = "00000000-0000-4000-8000-000000000000";
-  assert.equal(
-    sessionCreateSchema.safeParse({ device_token: token }).success,
-    false
-  );
+  assert.equal(sessionCreateSchema.safeParse({ device_token: token }).success, false);
   assert.equal(
     sessionCreateSchema.safeParse({ checkout_session_id: uuid, device_token: token }).success,
     true
@@ -189,8 +183,11 @@ test("sessionCreateSchema: wajib checkout_session_id ATAU package_id + device_to
     true
   );
   assert.equal(
-    sessionCreateSchema.safeParse({ package_id: uuid, checkout_session_id: uuid, device_token: token })
-      .success,
+    sessionCreateSchema.safeParse({
+      package_id: uuid,
+      checkout_session_id: uuid,
+      device_token: token,
+    }).success,
     true
   );
   assert.equal(

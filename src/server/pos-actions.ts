@@ -41,7 +41,7 @@ export async function posCreateProductAction(
     await createPosProduct(ctx.user.id, ctx.businessId, {
       name: str(formData, "name"),
       sku: str(formData, "sku") || null,
-      category: str(formData, "category") || "lainnya" as const,
+      category: str(formData, "category") || ("lainnya" as const),
       description: str(formData, "description") || null,
       price: Number(str(formData, "price") || "0") || 0,
       cost: intOrNull(formData, "cost"),
@@ -123,9 +123,7 @@ export async function posToggleBoothAction(formData: FormData): Promise<void> {
 
 // --- TERMINAL KASIR (owner/manager/staff — pos:sell) ---
 
-export async function posSubmitOrderAction(
-  input: PosOrderCreateInput
-): Promise<PosOrderDetail> {
+export async function posSubmitOrderAction(input: PosOrderCreateInput): Promise<PosOrderDetail> {
   const ctx = await requireActiveBusiness();
   if (!ctx) throw new ApiError("UNAUTHORIZED", "Sesi berakhir. Silakan login ulang.");
   await requireEffectiveSubscription(ctx.businessId, "write");

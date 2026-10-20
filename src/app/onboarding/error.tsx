@@ -12,9 +12,7 @@ export default function OnboardingError({
       <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
         {"/// TERJADI KESALAHAN"}
       </p>
-      <h1 className="font-display text-4xl uppercase tracking-tight">
-        Onboarding Error
-      </h1>
+      <h1 className="font-display text-4xl uppercase tracking-tight">Onboarding Error</h1>
       <p className="max-w-[50ch] font-mono text-sm leading-relaxed text-muted-foreground">
         Terjadi kesalahan saat onboarding. Silakan coba lagi.
       </p>

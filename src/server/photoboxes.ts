@@ -74,9 +74,13 @@ function invalidatePublicConfig(businessId: string) {
 
 function assertSlug(slug: string) {
   if (slug.length < 3 || slug.length > 48 || !SLUG_PATTERN.test(slug)) {
-    throw new ApiError("VALIDATION_ERROR", "Slug tidak valid (3–48, huruf kecil/angka/tanda hubung)", {
-      slug: ["Slug hanya boleh huruf kecil, angka, dan tanda hubung"],
-    });
+    throw new ApiError(
+      "VALIDATION_ERROR",
+      "Slug tidak valid (3–48, huruf kecil/angka/tanda hubung)",
+      {
+        slug: ["Slug hanya boleh huruf kecil, angka, dan tanda hubung"],
+      }
+    );
   }
 }
 
@@ -93,10 +97,7 @@ async function assertOutletOwned(businessId: string, outletId: string) {
   return data;
 }
 
-export async function listPhotoboxes(
-  userId: string,
-  businessId: string
-): Promise<PhotoboxRow[]> {
+export async function listPhotoboxes(userId: string, businessId: string): Promise<PhotoboxRow[]> {
   const membership = await requireMembership(userId, businessId, "photobox:read");
 
   const supabase = createServerClient();
@@ -117,7 +118,10 @@ export async function listPhotoboxes(
   const { data, error } = await req.order("created_at", { ascending: true });
 
   if (error) throw new ApiError("INTERNAL", "Gagal memuat photobox");
-  const rows = (data ?? []) as unknown as (Omit<PhotoboxRow, "outlet_name" | "has_exit_pin" | "has_legacy_exit_pin"> & {
+  const rows = (data ?? []) as unknown as (Omit<
+    PhotoboxRow,
+    "outlet_name" | "has_exit_pin" | "has_legacy_exit_pin"
+  > & {
     exit_pin_hash: string | null;
     outlets: { name: string } | { name: string }[] | null;
   })[];
@@ -130,12 +134,13 @@ export async function listPhotoboxes(
     printer: row.printer,
     display: row.display,
     outlet_id: row.outlet_id,
-    outlet_name:
-      row.outlets && !Array.isArray(row.outlets) ? (row.outlets.name as string) : null,
+    outlet_name: row.outlets && !Array.isArray(row.outlets) ? (row.outlets.name as string) : null,
     device_status: row.device_status,
     has_exit_pin: Boolean(row.exit_pin_hash),
     has_legacy_exit_pin: Boolean(row.exit_pin_hash) && !row.exit_pin_hash!.startsWith("$argon2"),
-    chroma_key_enabled: Boolean((row as { camera_settings?: CameraSettings | null }).camera_settings?.chroma_key_enabled),
+    chroma_key_enabled: Boolean(
+      (row as { camera_settings?: CameraSettings | null }).camera_settings?.chroma_key_enabled
+    ),
     camera_settings: (row.camera_settings as CameraSettings | null) ?? {},
     print_settings: (row.print_settings as PrintSettings | null) ?? {},
     session_settings: (row.session_settings as SessionSettings | null) ?? {},
@@ -179,6 +184,12 @@ export async function createPhotobox(
     });
   }
 
+  const exitPinHash = exitPin !== undefined ? await hashDevicePin(exitPin) : null;
+  const mergedCameraSettings = {
+    ...(cameraSettings ?? {}),
+    chroma_key_enabled: chromaKeyEnabled ?? cameraSettings?.chroma_key_enabled ?? false,
+  };
+
   // Kuota + insert atomik (0069) — cegah race count-then-insert.
   const { data, error } = await supabase.rpc("create_photobox_with_quota", {
     p_business_id: businessId,
@@ -192,11 +203,8 @@ export async function createPhotobox(
       printer: photoboxColumns.printer ?? null,
       display: photoboxColumns.display ?? null,
       payment_mode: photoboxColumns.payment_mode ?? null,
-      exit_pin_hash: exitPin !== undefined ? await hashDevicePin(exitPin) : null,
-      camera_settings: {
-        ...(cameraSettings ?? {}),
-        chroma_key_enabled: chromaKeyEnabled ?? cameraSettings?.chroma_key_enabled ?? false,
-      },
+      exit_pin_hash: exitPinHash,
+      camera_settings: mergedCameraSettings,
       print_settings: photoboxColumns.print_settings ?? null,
       session_settings: photoboxColumns.session_settings ?? null,
     },
@@ -306,7 +314,7 @@ export async function updatePhotobox(
       ...exitPinPatch,
     })
     .eq("id", photoboxId)
-    .eq("business_id", businessId) // tenant scope — lintas tenant = 0 row → 404
+    .eq("business_id", businessId) // tenant scope: lintas tenant = 0 row → 404
     .select(COLUMNS)
     .maybeSingle();
   if (error) throw new ApiError("INTERNAL", "Gagal memperbarui photobox");
@@ -315,11 +323,7 @@ export async function updatePhotobox(
   return data;
 }
 
-export async function deletePhotobox(
-  userId: string,
-  businessId: string,
-  photoboxId: string
-) {
+export async function deletePhotobox(userId: string, businessId: string, photoboxId: string) {
   await requireMembership(userId, businessId, "photobox:write");
 
   const supabase = createServerClient();
@@ -458,39 +462,6 @@ export async function updatePhotoboxPrintStatus(
 
 // --- PER-BOOTH BRANDING OVERRIDE (0045) ---
 
-export type PhotoboxBranding = {
-  id: string;
-  name: string;
-  slug: string;
-  /** null = inherit global business_settings.branding. */
-  branding: BrandingConfig | null;
-};
-
-/** Baca branding per-booth (untuk editor inherit/override di dashboard). */
-export async function getPhotoboxBranding(
-  userId: string,
-  businessId: string,
-  photoboxId: string
-): Promise<PhotoboxBranding> {
-  await requireMembership(userId, businessId, "photobox:read");
-
-  const supabase = createServerClient();
-  const { data, error } = await supabase
-    .from("photoboxes")
-    .select("id, name, slug, branding")
-    .eq("id", photoboxId)
-    .eq("business_id", businessId)
-    .maybeSingle();
-  if (error) throw new ApiError("INTERNAL", "Gagal memuat branding booth");
-  if (!data) throw new ApiError("NOT_FOUND", "Photobox tidak ditemukan");
-  return {
-    id: data.id,
-    name: data.name,
-    slug: data.slug,
-    branding: (data.branding as BrandingConfig | null) ?? null,
-  };
-}
-
 /**
  * Simpan branding override per-booth. Deep-merge dengan override lama agar
  * update parsial tidak menghapus field lain; input `null`/`{}` = reset ke
@@ -520,7 +491,10 @@ export async function updatePhotoboxBranding(
   const hasOverride = parsed && Object.keys(parsed).length > 0;
   const existing = current.branding ? brandingSchema.safeParse(current.branding) : null;
   const existingBranding = existing?.success ? existing.data : null;
-  const existingPages = (existingBranding?.kiosk?.pages ?? {}) as Record<string, Record<string, unknown>>;
+  const existingPages = (existingBranding?.kiosk?.pages ?? {}) as Record<
+    string,
+    Record<string, unknown>
+  >;
   const parsedPages = (parsed?.kiosk?.pages ?? {}) as Record<string, Record<string, unknown>>;
   const mergedPages: Record<string, Record<string, unknown>> = { ...existingPages };
   for (const key of Object.keys(parsedPages)) {

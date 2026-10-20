@@ -26,7 +26,12 @@ export function ExpenseFields({
         <label htmlFor={`exp-cat-${id}`} className={labelClass}>
           Kategori *
         </label>
-        <Select id={`exp-cat-${id}`} name="category" defaultValue={expense?.category ?? "other"} disabled={pending}>
+        <Select
+          id={`exp-cat-${id}`}
+          name="category"
+          defaultValue={expense?.category ?? "other"}
+          disabled={pending}
+        >
           {EXPENSE_CATEGORIES.map((c) => (
             <option key={c} value={c}>
               {c.toUpperCase()}
@@ -73,7 +78,12 @@ export function ExpenseFields({
         <label htmlFor={`exp-outlet-${id}`} className={labelClass}>
           Outlet (opsional)
         </label>
-        <Select id={`exp-outlet-${id}`} name="outlet_id" defaultValue={expense?.outlet_id ?? ""} disabled={pending}>
+        <Select
+          id={`exp-outlet-${id}`}
+          name="outlet_id"
+          defaultValue={expense?.outlet_id ?? ""}
+          disabled={pending}
+        >
           <option value="">Semua outlet</option>
           {outlets.map((o) => (
             <option key={o.id} value={o.id}>
@@ -86,7 +96,13 @@ export function ExpenseFields({
         <label htmlFor={`exp-note-${id}`} className={labelClass}>
           Catatan
         </label>
-        <Input id={`exp-note-${id}`} name="note" defaultValue={expense?.note ?? ""} placeholder="cth. Kertas 4R 5 pack" disabled={pending} />
+        <Input
+          id={`exp-note-${id}`}
+          name="note"
+          defaultValue={expense?.note ?? ""}
+          placeholder="cth. Kertas 4R 5 pack"
+          disabled={pending}
+        />
       </div>
     </div>
   );

@@ -41,11 +41,7 @@ export function EmptyState({
       >
         {title}
       </p>
-      {body && (
-        <p className="max-w-[55ch] text-sm leading-relaxed text-muted-foreground">
-          {body}
-        </p>
-      )}
+      {body && <p className="max-w-[55ch] text-sm leading-relaxed text-muted-foreground">{body}</p>}
       {cta && <div>{cta}</div>}
     </div>
   );

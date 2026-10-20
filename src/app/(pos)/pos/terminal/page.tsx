@@ -6,7 +6,7 @@ import { getActiveBusiness, requireUser } from "@/lib/tenant";
 import { listPosBooths, listPosProducts } from "@/server/pos-products";
 
 export const metadata: Metadata = {
-  title: "Terminal Kasir — SnapyOS",
+  title: "Terminal Kasir | SnapyOS",
 };
 
 /** /pos/terminal?photobox=<id> — terminal kasir full-screen per booth (docs/pos/03 §5.3). */

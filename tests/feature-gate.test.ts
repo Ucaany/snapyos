@@ -103,9 +103,7 @@ test("Growth plan: staff disabled", () => {
 // ---------- Business plan: all features enabled ----------
 
 test("Business plan: all gated features enabled", () => {
-  const keys: FeatureKey[] = [
-    "voucher", "finance", "reports", "staff", "cash_payment",
-  ];
+  const keys: FeatureKey[] = ["voucher", "finance", "reports", "staff", "cash_payment"];
   for (const key of keys) {
     assert.equal(isFeatureEnabled(businessFeatures, key), true, `${key} should be enabled`);
   }
@@ -115,8 +113,14 @@ test("Business plan: all gated features enabled", () => {
 
 test("isFeatureEnabled: non-boolean truthy value → false (strict boolean)", () => {
   // jsonb could theoretically have string/number; only boolean true counts
-  assert.equal(isFeatureEnabled({ voucher: 1 } as unknown as Record<string, boolean>, "voucher"), false);
-  assert.equal(isFeatureEnabled({ voucher: "true" } as unknown as Record<string, boolean>, "voucher"), false);
+  assert.equal(
+    isFeatureEnabled({ voucher: 1 } as unknown as Record<string, boolean>, "voucher"),
+    false
+  );
+  assert.equal(
+    isFeatureEnabled({ voucher: "true" } as unknown as Record<string, boolean>, "voucher"),
+    false
+  );
 });
 
 // ---------- Feature matrix Starter vs Growth vs Business ----------

@@ -3,9 +3,9 @@
  * Murni tipe — tanpa "server-only" agar bisa diimpor komponen client.
  */
 
-import type { TemplateLayout } from "@/lib/template-layout"
-import { defaultBrandColors } from "./brand-defaults.ts"
-import { cardSurface, mutedSurface, mutedText, readableText } from "./color.ts"
+import type { TemplateLayout } from "@/lib/template-layout";
+import { defaultBrandColors } from "./brand-defaults.ts";
+import { cardSurface, mutedSurface, mutedText, readableText } from "./color.ts";
 
 /**
  * Tipe kiosk payment method canonical (dipakai client + server).
@@ -13,116 +13,116 @@ import { cardSurface, mutedSurface, mutedText, readableText } from "./color.ts"
  * `src/lib/kiosk-types.ts` = universal (client-safe),
  * `src/server/payment/kiosk-payment.ts` = impl builder + helper.
  */
-export type KioskPaymentDisplay = "qris" | "va" | "redirect" | "voucher" | "cash"
-export type KioskPaymentKind = "gateway" | "voucher" | "cash"
+export type KioskPaymentDisplay = "qris" | "va" | "redirect" | "voucher" | "cash";
+export type KioskPaymentKind = "gateway" | "voucher" | "cash";
 export type KioskPaymentMethod = {
-  id: string
-  kind: KioskPaymentKind
-  display: KioskPaymentDisplay
-  label: string
-  provider: "midtrans" | "tripay" | "pakasir" | null
-  method: string | null
-  hint: string | null
-}
+  id: string;
+  kind: KioskPaymentKind;
+  display: KioskPaymentDisplay;
+  label: string;
+  provider: "midtrans" | "tripay" | "pakasir" | null;
+  method: string | null;
+  hint: string | null;
+};
 
-export type KioskFontFamily = "display" | "sans" | "mono"
+export type KioskFontFamily = "display" | "sans" | "mono";
 
 /** Pemetaan font_family → CSS var font SnapyOS (lihat tokens.css §fonts). */
 export const KIOSK_FONT_FAMILIES: Record<KioskFontFamily, string> = {
   display: "var(--font-display)",
   sans: "var(--font-body)",
   mono: "var(--font-mono)",
-}
+};
 
 export type KioskBrandingConfig = {
-  bg_color?: string
-  text_color?: string
+  bg_color?: string;
+  text_color?: string;
   /** Font family judul/label kiosk (default = display). */
-  font_family?: KioskFontFamily
-  font_scale?: number
-  button_radius?: number
-  padding?: number
+  font_family?: KioskFontFamily;
+  font_scale?: number;
+  button_radius?: number;
+  padding?: number;
   /** Perataan konten semua layar — kiri/tengah/kanan (full element). */
-  align?: KioskPageAlign
-  welcome_layout?: "split-left" | "split-right" | "center"
+  align?: KioskPageAlign;
+  welcome_layout?: "split-left" | "split-right" | "center";
   /** @deprecated Digantikan `align`; dibaca sekali untuk migrasi data lama. */
-  payment_align?: "left" | "center"
-  result_layout?: "qr-right" | "qr-left" | "qr-below"
-  payment_title?: string
-  payment_hint?: string
-  capture_title?: string
-  capture_hint?: string
-  editor_title?: string
-  editor_hint?: string
-  result_title?: string
-  result_hint?: string
-  guide_title?: string
-  guide_button?: string
-  package_title?: string
-  template_title?: string
-  show_logo?: boolean
-  show_tagline?: boolean
+  payment_align?: "left" | "center";
+  result_layout?: "qr-right" | "qr-left" | "qr-below";
+  payment_title?: string;
+  payment_hint?: string;
+  capture_title?: string;
+  capture_hint?: string;
+  editor_title?: string;
+  editor_hint?: string;
+  result_title?: string;
+  result_hint?: string;
+  guide_title?: string;
+  guide_button?: string;
+  package_title?: string;
+  template_title?: string;
+  show_logo?: boolean;
+  show_tagline?: boolean;
   /** Storage key bucket business-assets (URL di-sign saat render) — null = tanpa video. */
-  video_key?: string | null
+  video_key?: string | null;
   /** Signed URL video background (bucket private) — diisi server saat render. */
-  video_url?: string | null
+  video_url?: string | null;
   /** Override visual per layar — menimpa nilai global di atas. */
-  pages?: Partial<Record<KioskPageId, KioskPageConfig>>
-  guide_steps?: string[]
+  pages?: Partial<Record<KioskPageId, KioskPageConfig>>;
+  guide_steps?: string[];
   /** Tampilkan tombol mirror di layar kamera customer (default true). */
-  show_mirror_toggle?: boolean
+  show_mirror_toggle?: boolean;
   /** Izinkan customer zoom/pan foto di editor (default true). */
-  allow_zoom_pan?: boolean
-}
+  allow_zoom_pan?: boolean;
+};
 
 /** Layar kiosk customer yang bisa dikustomisasi per-layar. */
 export type KioskPageId =
-  "welcome" | "guide" | "package" | "payment" | "template" | "capture" | "edit" | "result"
+  "welcome" | "guide" | "package" | "payment" | "template" | "capture" | "edit" | "result";
 
 /** Perataan konten layar — full element (bukan hanya header). */
-export type KioskPageAlign = "left" | "center" | "right"
+export type KioskPageAlign = "left" | "center" | "right";
 
 /** Override per layar (opsional semua) — fallback ke nilai global kiosk. */
 export type KioskPageConfig = {
-  bg_color?: string
-  text_color?: string
-  font_scale?: number
-  button_radius?: number
-  padding?: number
+  bg_color?: string;
+  text_color?: string;
+  font_scale?: number;
+  button_radius?: number;
+  padding?: number;
   /** Perataan konten layar ini (menimpa global). */
-  align?: KioskPageAlign
+  align?: KioskPageAlign;
   /** Storage key bucket business-assets (URL di-sign saat render). */
-  video_key?: string | null
+  video_key?: string | null;
   /** Signed URL video promo layar ini (diisi server saat render). */
-  video_url?: string | null
-}
+  video_url?: string | null;
+};
 
 /** Gaya visual kiosk turunan branding.kiosk — dipakai lintas screen. */
 export type KioskVisualStyle = {
-  bg: string
-  text: string
+  bg: string;
+  text: string;
   /** CSS font-family judul/label (dari font_family, default display). */
-  fontFamily: string
-  fontScale: number
-  radius: number
-  padding: number
+  fontFamily: string;
+  fontScale: number;
+  radius: number;
+  padding: number;
   /** Perataan konten layar (page override ?? global) — undefined = default layar. */
-  align?: KioskPageAlign
+  align?: KioskPageAlign;
   /** Warna aksen brand (primary_color) — dipakai tombol CTA layar kiosk. */
-  accent: string
+  accent: string;
   /** Warna teks/garis brand (secondary_color) — dipakai teks tombol CTA. */
-  primary: string
+  primary: string;
   /** Permukaan kartu di dalam layar — turunan `bg`, bukan putih paksa. */
-  surface: string
+  surface: string;
   /** Warna teks di atas `surface`; dipilih agar tetap ≥4.5:1. */
-  surfaceText: string
+  surfaceText: string;
   /** Warna teks di atas `accent` (tombol CTA) — dijaga ≥4.5:1. */
-  accentText: string
+  accentText: string;
   /** Teks sekunder (hint/label) di atas `bg` — dijaga ≥4.5:1. */
-  mutedText: string
+  mutedText: string;
   /** Latar blok sekunder (chip/panel redup) di dalam layar. */
-  mutedSurface: string
-}
+  mutedSurface: string;
+};
 
 /** Variabel CSS untuk subtree layar kiosk: `bg-surface` di dalamnya ikut palet. */
 export function kioskThemeVars(style: KioskVisualStyle): Record<string, string> {
@@ -137,13 +137,16 @@ export function kioskThemeVars(style: KioskVisualStyle): Record<string, string> 
     "--muted": style.mutedSurface,
     "--color-border": style.mutedSurface,
     "--border": style.mutedSurface,
-  }
+  };
 }
 
 function withSurface(
-  style: Omit<KioskVisualStyle, "surface" | "surfaceText" | "accentText" | "mutedText" | "mutedSurface">
+  style: Omit<
+    KioskVisualStyle,
+    "surface" | "surfaceText" | "accentText" | "mutedText" | "mutedSurface"
+  >
 ): KioskVisualStyle {
-  const surface = cardSurface(style.bg, style.text)
+  const surface = cardSurface(style.bg, style.text);
   return {
     ...style,
     surface,
@@ -151,7 +154,7 @@ function withSurface(
     accentText: readableText(style.accent, style.primary, [style.text, "#111111", "#ffffff"]),
     mutedText: mutedText(style.bg, style.text),
     mutedSurface: mutedSurface(style.bg, style.text),
-  }
+  };
 }
 
 export function kioskVisualStyle(
@@ -159,8 +162,8 @@ export function kioskVisualStyle(
   page?: KioskPageId,
   brand?: { primary?: string | null; secondary?: string | null }
 ): KioskVisualStyle {
-  const accent = brand?.primary || defaultBrandColors.accent
-  const ink = brand?.secondary || defaultBrandColors.ink
+  const accent = brand?.primary || defaultBrandColors.accent;
+  const ink = brand?.secondary || defaultBrandColors.ink;
   const global = withSurface({
     bg: k?.bg_color || defaultBrandColors.bg,
     text: k?.text_color || defaultBrandColors.ink,
@@ -173,10 +176,10 @@ export function kioskVisualStyle(
     align: k?.align ?? k?.payment_align,
     accent,
     primary: ink,
-  })
-  if (!page) return global
-  const p = k?.pages?.[page]
-  if (!p) return global
+  });
+  if (!page) return global;
+  const p = k?.pages?.[page];
+  if (!p) return global;
   return withSurface({
     bg: p.bg_color ?? global.bg,
     text: p.text_color ?? global.text,
@@ -187,147 +190,147 @@ export function kioskVisualStyle(
     align: p.align ?? global.align,
     accent: global.accent,
     primary: global.primary,
-  })
+  });
 }
 
 export type BrandingConfig = {
-  welcome_title?: string
-  welcome_tagline?: string
-  welcome_button?: string
-  primary_color?: string
-  secondary_color?: string
+  welcome_title?: string;
+  welcome_tagline?: string;
+  welcome_button?: string;
+  primary_color?: string;
+  secondary_color?: string;
   /** Storage key bucket business-assets (URL di-sign saat render). */
-  logo_key?: string | null
-  logo_url?: string | null
-  kiosk?: KioskBrandingConfig
-}
+  logo_key?: string | null;
+  logo_url?: string | null;
+  kiosk?: KioskBrandingConfig;
+};
 
 export type CameraSettings = {
-  countdown_seconds?: number
-  mirror_preview?: boolean
-  chroma_key_enabled?: boolean
-  fullscreen?: boolean
-  facingMode?: string | null
-  preferred_device_id?: string | null
-  capture_width?: number
-  capture_height?: number
-  jpeg_quality?: number
+  countdown_seconds?: number;
+  mirror_preview?: boolean;
+  chroma_key_enabled?: boolean;
+  fullscreen?: boolean;
+  facingMode?: string | null;
+  preferred_device_id?: string | null;
+  capture_width?: number;
+  capture_height?: number;
+  jpeg_quality?: number;
   /** Kalibrasi teknisi — rotasi default kamera (derajat, 0/90/180/270). */
-  rotation_degrees?: number
+  rotation_degrees?: number;
   /** Kalibrasi teknisi — zoom default kamera (1 = tanpa zoom). */
-  zoom?: number
+  zoom?: number;
   /** Orientasi layar kiosk per booth (landscape/portrait) — dikunci runtime. */
-  screen_orientation?: "landscape" | "portrait"
-}
+  screen_orientation?: "landscape" | "portrait";
+};
 
 export type PrintSettings = {
-  enabled?: boolean
-  paper_size?: "4x6" | "A6"
-  layout?: "single" | "strip"
-  orientation?: "portrait" | "landscape"
-  auto_print?: boolean
-  copies?: number
-  margins_mm?: number
+  enabled?: boolean;
+  paper_size?: "4x6" | "A6";
+  layout?: "single" | "strip";
+  orientation?: "portrait" | "landscape";
+  auto_print?: boolean;
+  copies?: number;
+  margins_mm?: number;
   /** "browser" (dialog OS, default) atau "bluetooth" (thermal ESC/POS). */
-  mode?: "browser" | "bluetooth"
+  mode?: "browser" | "bluetooth";
   /** Lebar kertas thermal 58/80 mm. */
-  bluetooth_paper_width_mm?: 58 | 80
+  bluetooth_paper_width_mm?: 58 | 80;
   /** Nama printer Bluetooth terakhir (informasi petugas). */
-  bluetooth_device_name?: string
-}
+  bluetooth_device_name?: string;
+};
 
 export type SessionSettings = {
-  timer_seconds?: number
-  warning_seconds?: number
-  max_retakes?: number | null
-}
+  timer_seconds?: number;
+  warning_seconds?: number;
+  max_retakes?: number | null;
+};
 
 export type PublicPackage = {
-  id: string
-  name: string
-  price: number
-  photo_count: number
-  print_count: number
-  digital_output: boolean
-  capture_mode: "single" | "burst" | "photostrip"
-  description?: string | null
-}
+  id: string;
+  name: string;
+  price: number;
+  photo_count: number;
+  print_count: number;
+  digital_output: boolean;
+  capture_mode: "single" | "burst" | "photostrip";
+  description?: string | null;
+};
 
 export type PublicTemplate = {
-  id: string
-  name: string
-  category: string
+  id: string;
+  name: string;
+  category: string;
   /** Signed URL frame (bucket private) — null layout = template legacy. */
-  file_url: string
-  thumbnail_url?: string | null
-  layout: TemplateLayout | null
-  slot_count: number
-}
+  file_url: string;
+  thumbnail_url?: string | null;
+  layout: TemplateLayout | null;
+  slot_count: number;
+};
 
 export type PhotoboxConfig = {
-  id: string
-  slug: string
-  name: string
-  status: string
-  camera_settings: CameraSettings
-  print_settings: PrintSettings
-  session_settings: SessionSettings
-  device_status: Record<string, unknown> | null
-}
+  id: string;
+  slug: string;
+  name: string;
+  status: string;
+  camera_settings: CameraSettings;
+  print_settings: PrintSettings;
+  session_settings: SessionSettings;
+  device_status: Record<string, unknown> | null;
+};
 
 export type PublicConfig = {
-  business: { name: string; slug: string; logo_url: string | null }
-  branding: BrandingConfig
-  photobox: PhotoboxConfig
-  packages: PublicPackage[]
+  business: { name: string; slug: string; logo_url: string | null };
+  branding: BrandingConfig;
+  photobox: PhotoboxConfig;
+  packages: PublicPackage[];
   /** Mode offline kiosk (docs/05): sesi tanpa QRIS, transaksi offline non-withdrawable. */
-  checkout: { offline_enabled: boolean }
+  checkout: { offline_enabled: boolean };
   /** Hash konten config — dipakai ETag/If-None-Match (poll kiosk 304 anti boros). */
-  etag: string
-}
+  etag: string;
+};
 
 export type CapturePhoto = {
   /** Blob JPEG hasil capture (disimpan di state client sampai finalize).
    *  Data URL TIDAK disimpan — render pakai URL.createObjectURL(blob). */
-  blob: Blob
-}
+  blob: Blob;
+};
 
 /** Foto final yang dihasilkan editor (blob saja — render via object URL). */
 export type FinalPhoto = {
-  blob: Blob
-}
+  blob: Blob;
+};
 
 export type EditorAdjust = {
-  filter: string
-  zoom: number
-  panX: number
-  panY: number
-  rotation: number
-  brightness: number
-  contrast: number
-  saturation: number
-  blur: number
-  grain: number
-  vignette: number
-}
+  filter: string;
+  zoom: number;
+  panX: number;
+  panY: number;
+  rotation: number;
+  brightness: number;
+  contrast: number;
+  saturation: number;
+  blur: number;
+  grain: number;
+  vignette: number;
+};
 
 /** Overlay teks/stiker (editor) — posisi normalized 0..1, size = fraksi tinggi foto. */
 export type KioskOverlay = {
-  id: string
-  kind: "text" | "sticker"
-  content: string
-  color: string
-  size: number
-  x: number
-  y: number
-  rotation: number
-}
+  id: string;
+  kind: "text" | "sticker";
+  content: string;
+  color: string;
+  size: number;
+  x: number;
+  y: number;
+  rotation: number;
+};
 
 /** Editan per foto yang dicapture. */
 export type PhotoEdit = {
-  adjust: EditorAdjust
-  overlays: KioskOverlay[]
-}
+  adjust: EditorAdjust;
+  overlays: KioskOverlay[];
+};
 
 export const FILTER_PRESETS: { id: string; label: string; css: string }[] = [
   { id: "original", label: "Original", css: "none" },
@@ -338,4 +341,4 @@ export const FILTER_PRESETS: { id: string; label: string; css: string }[] = [
   { id: "retro", label: "Retro", css: "sepia(0.4) contrast(1.1) saturate(1.15)" },
   { id: "vintage", label: "Vintage", css: "sepia(0.5) brightness(0.95) contrast(0.95)" },
   { id: "y2k", label: "Y2K", css: "saturate(1.6) contrast(1.1) brightness(1.05)" },
-]
+];

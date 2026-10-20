@@ -7,11 +7,7 @@ import { Camera, ChevronDown, Pencil, Plus } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
-import {
-  Collapsible,
-  CollapsiblePanel,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { PhotoboxForm } from "@/components/dashboard/PhotoboxForm";
 import { DeviceDialog } from "@/components/dashboard/DeviceDialog";
 import { DeleteConfirmForm } from "@/components/dashboard/DeleteConfirmForm";
@@ -70,17 +66,13 @@ export function PhotoboxesTable({
             Set PIN keluar kiosk sekarang
           </p>
           <p className="mt-1 max-w-[70ch] font-mono text-xs leading-relaxed text-ink">
-            Tanpa PIN, siapa pun bisa keluar dari mode kiosk dan mengakses
-            perangkat booth. Buka tiap booth di bawah, isi kolom{" "}
-            <strong>PIN keluar kiosk (4–8 digit)</strong>, lalu simpan. Petugas
-            memakai PIN ini untuk keluar dari mode kiosk.
+            Tanpa PIN, siapa pun bisa keluar dari mode kiosk dan mengakses perangkat booth. Buka
+            tiap booth di bawah, isi kolom <strong>PIN keluar kiosk (4–8 digit)</strong>, lalu
+            simpan. Petugas memakai PIN ini untuk keluar dari mode kiosk.
           </p>
           <ul className="mt-3 flex flex-wrap gap-2 font-mono text-[11px] uppercase tracking-[0.06em]">
             {noPinBooths.map((b) => (
-              <li
-                key={b.id}
-                className="border-2 border-ink bg-surface px-2 py-1 font-bold"
-              >
+              <li key={b.id} className="border-2 border-ink bg-surface px-2 py-1 font-bold">
                 {b.name}
               </li>
             ))}
@@ -99,16 +91,12 @@ export function PhotoboxesTable({
             Set ulang PIN keluar photobox
           </p>
           <p className="mt-1 font-mono text-xs leading-relaxed text-ink">
-            Hash PIN lama (sha256) sudah tidak diterima, sistem sekarang pakai
-            argon2id. Buka tiap booth di bawah dan simpan PIN baru sebelum
-            petugas mencoba keluar mode kiosk.
+            Hash PIN lama (sha256) sudah tidak diterima, sistem sekarang pakai argon2id. Buka tiap
+            booth di bawah dan simpan PIN baru sebelum petugas mencoba keluar mode kiosk.
           </p>
           <ul className="mt-3 flex flex-wrap gap-2 font-mono text-[11px] uppercase tracking-[0.06em]">
             {legacyPinBooths.map((b) => (
-              <li
-                key={b.id}
-                className="border-2 border-ink bg-surface px-2 py-1 font-bold"
-              >
+              <li key={b.id} className="border-2 border-ink bg-surface px-2 py-1 font-bold">
                 {b.name}
               </li>
             ))}
@@ -126,7 +114,10 @@ export function PhotoboxesTable({
             <CollapsibleTrigger className="px-4" aria-label="Buka form photobox baru">
               <Plus className="size-4" aria-hidden />
               Photobox baru
-              <ChevronDown className="size-4 transition-transform duration-100 [[data-panel-open]_&]:rotate-180" aria-hidden />
+              <ChevronDown
+                className="size-4 transition-transform duration-100 [[data-panel-open]_&]:rotate-180"
+                aria-hidden
+              />
             </CollapsibleTrigger>
             <CollapsiblePanel className="mt-4">
               <PhotoboxForm
@@ -142,15 +133,18 @@ export function PhotoboxesTable({
       </div>
 
       {canWrite && createDone && (
-        <p role="status" className="border-2 border-ink bg-accent-3 px-3 py-2 font-mono text-xs uppercase tracking-[0.05em] shadow-[4px_4px_0_0_#111111]">
+        <p
+          role="status"
+          className="border-2 border-ink bg-accent-3 px-3 py-2 font-mono text-xs uppercase tracking-[0.05em] shadow-[4px_4px_0_0_#111111]"
+        >
           {"[ OK ]"} Photobox tersimpan. URL perangkat siap dipakai di kiosk.
         </p>
       )}
 
       {canWrite && limitReached && !noOutlet && (
         <p className="border-2 border-ink bg-accent px-3 py-2 font-mono text-xs uppercase tracking-[0.05em]">
-          {"[ LIMIT ]"} Kuota photobox plan tercapai ({maxPhotoboxes}). Upgrade subscription
-          untuk menambah booth.
+          {"[ LIMIT ]"} Kuota photobox plan tercapai ({maxPhotoboxes}). Upgrade subscription untuk
+          menambah booth.
         </p>
       )}
 
@@ -186,12 +180,26 @@ export function PhotoboxesTable({
             <caption className="sr-only">Daftar photobox</caption>
             <thead>
               <tr className="border-b-2 border-ink bg-ink font-mono text-[10px] uppercase tracking-[0.12em] text-bg">
-                <th scope="col" className="px-4 py-3">Booth</th>
-                <th scope="col" className="px-4 py-3">URL Perangkat</th>
-                <th scope="col" className="px-4 py-3">Outlet</th>
-                <th scope="col" className="px-4 py-3">Status</th>
-                <th scope="col" className="px-4 py-3">Perangkat</th>
-                {canWrite && <th scope="col" className="px-4 py-3 text-right">Aksi</th>}
+                <th scope="col" className="px-4 py-3">
+                  Booth
+                </th>
+                <th scope="col" className="px-4 py-3">
+                  URL Perangkat
+                </th>
+                <th scope="col" className="px-4 py-3">
+                  Outlet
+                </th>
+                <th scope="col" className="px-4 py-3">
+                  Status
+                </th>
+                <th scope="col" className="px-4 py-3">
+                  Perangkat
+                </th>
+                {canWrite && (
+                  <th scope="col" className="px-4 py-3 text-right">
+                    Aksi
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -199,24 +207,32 @@ export function PhotoboxesTable({
                 <Fragment key={box.id}>
                   <tr className="border-b-2 border-ink/10 font-mono text-xs">
                     <td className="px-4 py-3 font-bold uppercase tracking-[0.05em]">{box.name}</td>
-                    <td className="px-4 py-3 text-muted-foreground">/p/{businessSlug}/{box.slug}</td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      /p/{businessSlug}/{box.slug}
+                    </td>
                     <td className="px-4 py-3">{box.outlet_name ?? "-"}</td>
                     <td className="px-4 py-3">
-                      <span className={cn(
-                        "inline-block border-2 border-ink px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]",
-                        STATUS_STYLE[box.status] ?? "bg-muted"
-                      )}>
+                      <span
+                        className={cn(
+                          "inline-block border-2 border-ink px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]",
+                          STATUS_STYLE[box.status] ?? "bg-muted"
+                        )}
+                      >
                         {box.status}
                       </span>
                     </td>
                     <td className="px-4 py-3">
                       <span className="flex flex-wrap items-center gap-2">
-                      {[box.camera, box.printer, box.display].filter(Boolean).join(" · ") || (
-                        <span className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                          Belum ada perangkat terdeteksi
-                        </span>
-                      )}
-                      {box.chroma_key_enabled && <span className="border-2 border-ink bg-accent px-1.5 py-0.5 text-[10px] font-bold uppercase">CHROMA KEY</span>}
+                        {[box.camera, box.printer, box.display].filter(Boolean).join(" · ") || (
+                          <span className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                            Belum ada perangkat terdeteksi
+                          </span>
+                        )}
+                        {box.chroma_key_enabled && (
+                          <span className="border-2 border-ink bg-accent px-1.5 py-0.5 text-[10px] font-bold uppercase">
+                            CHROMA KEY
+                          </span>
+                        )}
                       </span>
                     </td>
                     {canWrite && (

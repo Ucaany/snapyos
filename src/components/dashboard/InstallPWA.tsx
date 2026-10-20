@@ -67,7 +67,7 @@ export function InstallPWA() {
           <p className="text-sm font-bold leading-tight">
             {showIosGuide
               ? "iPad/iPhone: buka menu Share di Safari → Add to Home Screen agar kiosk jalan tanpa address bar."
-              : "Pasang SnapyOS sebagai aplikasi kiosk di perangkat ini — tanpa App Store, tanpa install file. Buka dari layar utama, fullscreen."}
+              : "Pasang SnapyOS sebagai aplikasi kiosk di perangkat ini, tanpa App Store, tanpa install file. Buka dari layar utama, fullscreen."}
           </p>
         </div>
         <button

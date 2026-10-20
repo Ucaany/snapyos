@@ -53,13 +53,11 @@ export function CategoryBrowser({ groups }: { groups: BrowserGroup[] }) {
                 aria-pressed={isActive}
                 className={
                   isActive
-                    ? "flex shrink-0 items-center gap-3 rounded-none border-2 border-ink bg-accent py-2 pr-5 pl-2 text-left shadow-[4px_4px_0_0_#111111] transition-all active:translate-x-[4px] active:translate-y-[4px] active:shadow-none lg:w-full lg:py-3 lg:pr-4 lg:pl-3"
-                    : "flex shrink-0 items-center gap-3 rounded-none border-2 border-ink bg-surface py-2 pr-5 pl-2 text-left shadow-[2px_2px_0_0_#111111] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none active:translate-x-[4px] active:translate-y-[4px] active:shadow-none lg:w-full lg:py-3 lg:pr-4 lg:pl-3"
+                    ? "flex shrink-0 items-center gap-3 rounded-none border-2 border-ink bg-accent py-2 pr-5 pl-2 text-left shadow-[4px_4px_0_0_#111111] min-h-11 transition-all active:translate-x-[4px] active:translate-y-[4px] active:shadow-none lg:w-full lg:py-3 lg:pr-4 lg:pl-3"
+                    : "flex shrink-0 items-center gap-3 rounded-none border-2 border-ink bg-surface py-2 pr-5 pl-2 text-left shadow-[2px_2px_0_0_#111111] min-h-11 transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none active:translate-x-[4px] active:translate-y-[4px] active:shadow-none lg:w-full lg:py-3 lg:pr-4 lg:pl-3"
                 }
               >
-                <span
-                  className="grid size-9 shrink-0 place-items-center border-2 border-ink bg-surface"
-                >
+                <span className="grid size-9 shrink-0 place-items-center border-2 border-ink bg-surface">
                   <Icon className="size-4" />
                 </span>
                 <span className="flex items-baseline gap-2 whitespace-nowrap lg:whitespace-normal">
@@ -67,9 +65,7 @@ export function CategoryBrowser({ groups }: { groups: BrowserGroup[] }) {
                     {String(i + 1).padStart(2, "0")}
                   </span>
                   <span className="text-sm font-semibold">{g.title}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {g.docs.length}
-                  </span>
+                  <span className="text-xs text-muted-foreground">{g.docs.length}</span>
                 </span>
               </button>
             );
@@ -83,8 +79,12 @@ export function CategoryBrowser({ groups }: { groups: BrowserGroup[] }) {
             <p className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-ink">
               {active.docs.length} panduan
             </p>
-            <h3 className="mt-1 font-display text-xl uppercase tracking-tight md:text-2xl">{active.title}</h3>
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base md:leading-7">{active.desc}</p>
+            <h3 className="mt-1 font-display text-xl uppercase tracking-tight md:text-2xl">
+              {active.title}
+            </h3>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
+              {active.desc}
+            </p>
           </div>
           <div
             role="group"
@@ -97,8 +97,8 @@ export function CategoryBrowser({ groups }: { groups: BrowserGroup[] }) {
               aria-pressed={view === "grid"}
               className={
                 view === "grid"
-                  ? "inline-flex items-center gap-1.5 border-2 border-ink bg-accent px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.08em] text-ink"
-                  : "inline-flex items-center gap-1.5 border-2 border-transparent px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground hover:text-ink"
+                  ? "inline-flex items-center gap-1.5 border-2 border-ink bg-accent px-4 py-2 min-h-11 font-mono text-xs font-bold uppercase tracking-[0.08em] text-ink"
+                  : "inline-flex items-center gap-1.5 border-2 border-transparent px-4 py-2 min-h-11 font-mono text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground hover:text-ink"
               }
             >
               <LayoutGrid className="size-3.5" />
@@ -110,8 +110,8 @@ export function CategoryBrowser({ groups }: { groups: BrowserGroup[] }) {
               aria-pressed={view === "list"}
               className={
                 view === "list"
-                  ? "inline-flex items-center gap-1.5 border-2 border-ink bg-accent px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.08em] text-ink"
-                  : "inline-flex items-center gap-1.5 border-2 border-transparent px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground hover:text-ink"
+                  ? "inline-flex items-center gap-1.5 border-2 border-ink bg-accent px-4 py-2 min-h-11 font-mono text-xs font-bold uppercase tracking-[0.08em] text-ink"
+                  : "inline-flex items-center gap-1.5 border-2 border-transparent px-4 py-2 min-h-11 font-mono text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground hover:text-ink"
               }
             >
               <List className="size-3.5" />
@@ -165,7 +165,7 @@ export function CategoryBrowser({ groups }: { groups: BrowserGroup[] }) {
 
         <Link
           href={`/docs/${active.slug}`}
-          className="group mt-4 inline-flex items-center gap-1.5 text-sm font-medium underline underline-offset-4 hover:no-underline"
+          className="group mt-4 inline-flex items-center gap-1.5 text-sm font-medium underline underline-offset-4 hover:no-underline [@media(pointer:coarse)]:min-h-11"
         >
           Buka halaman penuh {active.title}
           <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />

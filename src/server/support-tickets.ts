@@ -78,13 +78,19 @@ export async function getSupportTicket(ticketId: string): Promise<SupportTicketD
 
   if (error) throw new ApiError("INTERNAL", "Gagal memuat tiket");
   // Owner melihat semua tiket business; anggota lain hanya tiket miliknya.
-  if (data && ctx.role !== "owner" && (data as { created_by?: string }).created_by !== ctx.user.id) {
+  if (
+    data &&
+    ctx.role !== "owner" &&
+    (data as { created_by?: string }).created_by !== ctx.user.id
+  ) {
     throw new ApiError("NOT_FOUND", "Tiket tidak ditemukan");
   }
   if (!data) throw new ApiError("NOT_FOUND", "Tiket tidak ditemukan");
 
   type Row = SupportTicket & {
-    support_ticket_replies: { id: string; body: string; created_at: string; users: { name: string | null } | null }[] | null;
+    support_ticket_replies:
+      | { id: string; body: string; created_at: string; users: { name: string | null } | null }[]
+      | null;
   };
   const row = data as unknown as Row;
   return {
@@ -109,8 +115,10 @@ export async function submitSupportTicket(input: {
 
   const subject = input.subject.trim();
   const description = input.description.trim();
-  if (!subject || subject.length > 200) throw new ApiError("VALIDATION_ERROR", "Subjek wajib diisi (maks 200 karakter).");
-  if (!description || description.length > 4000) throw new ApiError("VALIDATION_ERROR", "Deskripsi wajib diisi (maks 4000 karakter).");
+  if (!subject || subject.length > 200)
+    throw new ApiError("VALIDATION_ERROR", "Subjek wajib diisi (maks 200 karakter).");
+  if (!description || description.length > 4000)
+    throw new ApiError("VALIDATION_ERROR", "Deskripsi wajib diisi (maks 4000 karakter).");
   if (!(SUPPORT_TICKET_CATEGORIES as readonly string[]).includes(input.category))
     throw new ApiError("VALIDATION_ERROR", "Kategori tidak valid.");
   if (!(SUPPORT_TICKET_AREAS as readonly string[]).includes(input.area))
@@ -132,7 +140,10 @@ export async function submitSupportTicket(input: {
 
   if (error) {
     if (isMissingRelation(error)) {
-      throw new ApiError("FEATURE_DISABLED", "Fitur tiket belum diaktifkan. Terapkan migration 0050_support_tickets.sql.");
+      throw new ApiError(
+        "FEATURE_DISABLED",
+        "Fitur tiket belum diaktifkan. Terapkan migration 0050_support_tickets.sql."
+      );
     }
     throw new ApiError("INTERNAL", "Gagal membuat tiket");
   }
@@ -145,7 +156,8 @@ export async function replySupportTicket(ticketId: string, body: string): Promis
   if (!ctx) throw new ApiError("UNAUTHORIZED", "Sesi berakhir. Silakan masuk kembali.");
 
   const text = body.trim();
-  if (!text || text.length > 4000) throw new ApiError("VALIDATION_ERROR", "Balasan wajib diisi (maks 4000 karakter).");
+  if (!text || text.length > 4000)
+    throw new ApiError("VALIDATION_ERROR", "Balasan wajib diisi (maks 4000 karakter).");
 
   const supabase = createServerClient();
   const { error: ownedErr, data: owned } = await supabase

@@ -10,11 +10,7 @@ import { num, str, toFormState } from "@/lib/form-state";
 import { requireActiveBusiness } from "@/server/action-utils";
 import { requireEffectiveSubscription } from "@/server/require-subscription";
 import type { FormState } from "@/server/auth-actions";
-import {
-  createExpense,
-  deleteExpense,
-  updateExpense,
-} from "@/server/finance";
+import { createExpense, deleteExpense, updateExpense } from "@/server/finance";
 import { createManualTransaction } from "@/server/transactions";
 import { EXPENSE_CATEGORIES } from "@/lib/validators";
 
@@ -22,7 +18,9 @@ import { EXPENSE_CATEGORIES } from "@/lib/validators";
 
 function expenseInput(formData: FormData) {
   return {
-    category: EXPENSE_CATEGORIES.includes(str(formData, "category") as (typeof EXPENSE_CATEGORIES)[number])
+    category: EXPENSE_CATEGORIES.includes(
+      str(formData, "category") as (typeof EXPENSE_CATEGORIES)[number]
+    )
       ? (str(formData, "category") as (typeof EXPENSE_CATEGORIES)[number])
       : "other",
     amount: num(formData, "amount"),
@@ -107,4 +105,3 @@ export async function createManualTxAction(
   revalidatePath("/dashboard");
   return { error: undefined };
 }
-

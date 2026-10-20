@@ -4,10 +4,7 @@ import { useState } from "react";
 
 import { PaymentCredentialForm } from "@/components/dashboard/PaymentCredentialForm";
 import { Button } from "@/components/ui/button";
-import {
-  canTestPaymentCredential,
-  type PaymentCredentialPublic,
-} from "@/lib/payment-credentials";
+import { canTestPaymentCredential, type PaymentCredentialPublic } from "@/lib/payment-credentials";
 import {
   deleteCredentialAction,
   testCredentialAction,
@@ -19,7 +16,11 @@ type Props = {
   onChanged(): void;
 };
 
-const providerNames: Record<string, string> = { pakasir: "PAKASIR", midtrans: "MIDTRANS", tripay: "TRIPAY" };
+const providerNames: Record<string, string> = {
+  pakasir: "PAKASIR",
+  midtrans: "MIDTRANS",
+  tripay: "TRIPAY",
+};
 
 /**
  * PaymentCredentialCard — satu credential merchant owner: status, metode,
@@ -114,9 +115,7 @@ export function PaymentCredentialCard({ credential, onChanged }: Props) {
         </div>
         <div className="flex justify-between gap-4">
           <dt className="uppercase">Metode</dt>
-          <dd className="text-right">
-            {credential.enabled_methods.join(", ") || "Belum dipilih"}
-          </dd>
+          <dd className="text-right">{credential.enabled_methods.join(", ") || "Belum dipilih"}</dd>
         </div>
       </dl>
 
@@ -129,7 +128,7 @@ export function PaymentCredentialCard({ credential, onChanged }: Props) {
           {credential.webhook_url ? (
             <>
               <span className="font-mono text-[10px] uppercase tracking-[0.1em]">
-                Webhook URL — daftarkan di Detail Proyek Pakasir
+                Webhook URL: daftarkan di Detail Proyek Pakasir
               </span>
               <code className="break-all font-mono text-xs">{credential.webhook_url}</code>
               <Button type="button" variant="outline" onClick={() => void copyWebhookUrl()}>
@@ -206,7 +205,9 @@ export function PaymentCredentialCard({ credential, onChanged }: Props) {
           variant="destructive"
           disabled={pending}
           onClick={() => {
-            if (window.confirm("Hapus credential merchant ini? Pembayaran metode hilang dari kiosk.")) {
+            if (
+              window.confirm("Hapus credential merchant ini? Pembayaran metode hilang dari kiosk.")
+            ) {
               void run(() => deleteCredentialAction(credential.id), "Credential dihapus");
             }
           }}

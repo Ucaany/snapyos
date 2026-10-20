@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 /**
  * Error boundary - /dashboard/branding (kiosk customization).
@@ -6,14 +6,14 @@
  * pesannya menahan owner dari menyimpan perubahan.
  */
 
-import { FeatureError } from "@/components/dashboard/FeatureError"
+import { FeatureError } from "@/components/dashboard/FeatureError";
 
 export default function BrandingError({
   error,
   reset,
 }: {
-  error: Error & { digest?: string }
-  reset: () => void
+  error: Error & { digest?: string };
+  reset: () => void;
 }) {
   return (
     <FeatureError
@@ -22,5 +22,5 @@ export default function BrandingError({
       error={error}
       reset={reset}
     />
-  )
+  );
 }

@@ -12,12 +12,11 @@ export function AdminTopbar({
   return (
     <header className="sticky top-0 z-10 border-b-2 border-ink bg-bg">
       <div className="flex h-16 w-full items-center gap-2 px-4 md:gap-4 md:px-6">
-        <a href="/admin" className="flex shrink-0 items-center gap-2 font-display text-base font-bold uppercase tracking-tight md:text-lg">
-          <img
-            src="/snapyos-mark.png"
-            alt="Logo SnapyOS"
-            className="h-8 w-8 shrink-0"
-          />
+        <a
+          href="/admin"
+          className="flex min-h-11 shrink-0 items-center gap-2 font-display text-base font-bold uppercase tracking-tight md:text-lg"
+        >
+          <img src="/snapyos-mark.png" alt="Logo SnapyOS" className="h-8 w-8 shrink-0" />
           SnapyOS<span className="text-accent">®</span>
         </a>
 
@@ -35,7 +34,7 @@ export function AdminTopbar({
           <form action={logoutAction}>
             <button
               type="submit"
-              className="border-2 border-ink bg-surface px-2.5 py-2 font-mono text-[10px] uppercase tracking-[0.05em] text-ink transition-colors duration-150 ease-[var(--ease-brutal)] hover:bg-accent active:translate-y-[2px] md:px-3 md:text-xs"
+              className="min-h-11 min-w-11 border-2 border-ink bg-surface px-2.5 py-2 font-mono text-[10px] uppercase tracking-[0.05em] text-ink transition-colors duration-150 ease-[var(--ease-brutal)] hover:bg-accent active:translate-y-[2px] md:px-3 md:text-xs"
             >
               Keluar
             </button>

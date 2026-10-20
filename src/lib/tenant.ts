@@ -50,26 +50,24 @@ export const requireUser = cache(async (): Promise<AppUser | null> => {
 /** Daftar business tempat user menjadi member (tenant miliknya).
  *  Di-memo per-request via React.cache: layout + page + getActiveBusiness
  *  memanggil fungsi ini beberapa kali, tapi query Supabase hanya 1×. */
-export const getUserMemberships = cache(
-  async (userId: string): Promise<Membership[]> => {
-    const supabase = createServerClient();
-    const { data, error } = await supabase
-      .from("business_members")
-      .select("role, businesses ( id, slug, name, status, timezone, currency )")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: true });
+export const getUserMemberships = cache(async (userId: string): Promise<Membership[]> => {
+  const supabase = createServerClient();
+  const { data, error } = await supabase
+    .from("business_members")
+    .select("role, businesses ( id, slug, name, status, timezone, currency )")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
 
-    if (error) {
-      throw new ApiError("INTERNAL", "Gagal memuat membership user");
-    }
-
-    return (data ?? []).flatMap((row) => {
-      const business = row.businesses;
-      if (!business || Array.isArray(business)) return [];
-      return [{ business, role: row.role as BusinessRole }];
-    });
+  if (error) {
+    throw new ApiError("INTERNAL", "Gagal memuat membership user");
   }
-);
+
+  return (data ?? []).flatMap((row) => {
+    const business = row.businesses;
+    if (!business || Array.isArray(business)) return [];
+    return [{ business, role: row.role as BusinessRole }];
+  });
+});
 
 /**
  * Business aktif: cookie activeBusinessId (docs/04 §4.16) divalidasi terhadap
@@ -91,7 +89,9 @@ export async function getActiveBusinessForRoles(
 
   const store = await cookies();
   const activeId = store.get(ACTIVE_BUSINESS_COOKIE)?.value;
-  return memberships.find((membership) => membership.business.id === activeId) ?? memberships[0] ?? null;
+  return (
+    memberships.find((membership) => membership.business.id === activeId) ?? memberships[0] ?? null
+  );
 }
 
 /** Membership user pada business tertentu; null = bukan miliknya (→404).

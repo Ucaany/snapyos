@@ -43,9 +43,7 @@ export async function listPendingCashPayments(
   // membocorkan data saat fitur dimatikan.
   await requireFeature(businessId, "cash_payment");
   const restrictTo =
-    membership.role === "staff"
-      ? await listAssignedPhotoboxIds(userId, businessId)
-      : null;
+    membership.role === "staff" ? await listAssignedPhotoboxIds(userId, businessId) : null;
   if (restrictTo !== null && restrictTo.length === 0) return [];
 
   const supabase = createServerClient();
@@ -74,11 +72,11 @@ export async function listPendingCashPayments(
     payment_reference: row.payment_reference,
     amount: row.final_amount,
     photobox_name: Array.isArray(row.photoboxes)
-      ? row.photoboxes[0]?.name ?? "—"
-      : row.photoboxes?.name ?? "—",
+      ? (row.photoboxes[0]?.name ?? "-")
+      : (row.photoboxes?.name ?? "-"),
     outlet_name: Array.isArray(row.outlets)
-      ? row.outlets[0]?.name ?? null
-      : row.outlets?.name ?? null,
+      ? (row.outlets[0]?.name ?? null)
+      : (row.outlets?.name ?? null),
     created_at: row.created_at,
   }));
 }

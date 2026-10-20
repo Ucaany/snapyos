@@ -253,10 +253,10 @@ route `src/app/api/health/route.ts` hanya menyuplai closure probe.
 
 **Probe:**
 
-| Check | Yang dijalankan | Gagal bila |
-| --- | --- | --- |
-| `database` | `select key from platform_settings limit 1` lewat service client | PostgREST balas error / kredensial salah |
-| `storage` | `head("generated-photos", "__healthcheck__/probe")` pada provider write | `head()` balas `null` (provider error / env tidak lengkap) |
+| Check      | Yang dijalankan                                                         | Gagal bila                                                 |
+| ---------- | ----------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `database` | `select key from platform_settings limit 1` lewat service client        | PostgREST balas error / kredensial salah                   |
+| `storage`  | `head("generated-photos", "__healthcheck__/probe")` pada provider write | `head()` balas `null` (provider error / env tidak lengkap) |
 
 Setiap probe dibungkus timeout 4 detik (`HEALTH_PROBE_TIMEOUT_MS`). Probe yang
 gagal **tidak melempar**: hasilnya `{ ok: false, detail }`. Endpoint ini ada di

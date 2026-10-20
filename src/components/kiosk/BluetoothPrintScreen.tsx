@@ -4,7 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Bluetooth, Check, Loader2, Printer, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { encodeEscPos, type EscPosBlock } from "@/lib/print/escpos";
-import { printSheets, printCopies, shouldAutoPrint, type PrintPlan, type PrintSettingsInput } from "@/lib/print-layout";
+import {
+  printSheets,
+  printCopies,
+  shouldAutoPrint,
+  type PrintPlan,
+  type PrintSettingsInput,
+} from "@/lib/print-layout";
 import { bluetoothWidthDots } from "@/lib/print/print-mode";
 import { rasterizePhoto } from "@/lib/print/photo-bitmap";
 import {
@@ -35,7 +41,13 @@ type State = "idle" | "connecting" | "preparing" | "printing" | "done" | "error"
  * terputus. Job yang putus di tengah jalan bisa meninggalkan lembar parsial ,
  * itu disebut eksplisit di pesan `Coba lagi`, bukan disembunyikan.
  */
-export function BluetoothPrintScreen({ photos, plan, printSettings, onDone, onUseBrowserPrint }: Props) {
+export function BluetoothPrintScreen({
+  photos,
+  plan,
+  printSettings,
+  onDone,
+  onUseBrowserPrint,
+}: Props) {
   const [state, setState] = useState<State>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ sheet: number; total: number } | null>(null);
@@ -109,28 +121,31 @@ export function BluetoothPrintScreen({ photos, plan, printSettings, onDone, onUs
     [buildJob, finish]
   );
 
-  const connectAndPrint = useCallback(async (acceptAll = false) => {
-    setState("connecting");
-    setMessage(null);
-    try {
-      const device = await requestEscPosDevice({ acceptAll });
-      setPrinterName(device.name ?? "Printer Bluetooth");
-      const link = await connectEscPos(device);
-      linkRef.current = link;
-      await run(link);
-    } catch (error) {
-      if (error instanceof BluetoothPrintError && error.code === "NO_DEVICE") {
-        setState("idle");
-        return;
+  const connectAndPrint = useCallback(
+    async (acceptAll = false) => {
+      setState("connecting");
+      setMessage(null);
+      try {
+        const device = await requestEscPosDevice({ acceptAll });
+        setPrinterName(device.name ?? "Printer Bluetooth");
+        const link = await connectEscPos(device);
+        linkRef.current = link;
+        await run(link);
+      } catch (error) {
+        if (error instanceof BluetoothPrintError && error.code === "NO_DEVICE") {
+          setState("idle");
+          return;
+        }
+        setMessage(
+          error instanceof BluetoothPrintError
+            ? error.message
+            : "Gagal menghubungkan printer Bluetooth."
+        );
+        setState("error");
       }
-      setMessage(
-        error instanceof BluetoothPrintError
-          ? error.message
-          : "Gagal menghubungkan printer Bluetooth."
-      );
-      setState("error");
-    }
-  }, [run]);
+    },
+    [run]
+  );
 
   const retry = useCallback(async () => {
     const link = linkRef.current;
@@ -205,8 +220,8 @@ export function BluetoothPrintScreen({ photos, plan, printSettings, onDone, onUs
             Bluetooth tidak tersedia
           </p>
           <p className="max-w-[46ch] font-mono text-xs uppercase leading-relaxed tracking-[0.1em] text-muted-foreground">
-            Browser ini tidak mendukung Web Bluetooth. Gunakan Chrome di Android atau desktop,
-            atau cetak lewat dialog sistem.
+            Browser ini tidak mendukung Web Bluetooth. Gunakan Chrome di Android atau desktop, atau
+            cetak lewat dialog sistem.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <Button size="lg" variant="outline" onClick={onUseBrowserPrint}>
@@ -230,7 +245,9 @@ export function BluetoothPrintScreen({ photos, plan, printSettings, onDone, onUs
       ) : state === "error" ? (
         <>
           <TriangleAlert className="size-12 text-destructive" aria-hidden />
-          <p className="font-display text-2xl uppercase leading-none tracking-tight">Gagal mencetak</p>
+          <p className="font-display text-2xl uppercase leading-none tracking-tight">
+            Gagal mencetak
+          </p>
           <p className="max-w-[48ch] font-mono text-xs uppercase leading-relaxed tracking-[0.1em] text-muted-foreground">
             {message ?? "Printer tidak merespons."}
           </p>

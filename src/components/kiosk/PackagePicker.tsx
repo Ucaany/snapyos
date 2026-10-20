@@ -43,7 +43,11 @@ export function PackagePicker({
   const alignClass =
     contentAlign === "left" ? "text-left" : contentAlign === "right" ? "text-right" : "text-center";
   const itemsClass =
-    contentAlign === "left" ? "items-start" : contentAlign === "right" ? "items-end" : "items-center";
+    contentAlign === "left"
+      ? "items-start"
+      : contentAlign === "right"
+        ? "items-end"
+        : "items-center";
   const buttonBase =
     "min-h-14 border-2 px-6 py-3 font-mono text-sm font-bold uppercase tracking-[0.1em] transition-transform active:translate-y-[2px] disabled:cursor-not-allowed disabled:opacity-60";
   return (
@@ -62,14 +66,18 @@ export function PackagePicker({
       }
     >
       <KioskVideoBackground videoUrl={videoUrl} />
-      <header className={`relative z-10 mx-auto flex w-full max-w-[1000px] shrink-0 items-start justify-between gap-3 ${alignClass}`}>
+      <header
+        className={`relative z-10 mx-auto flex w-full max-w-[1000px] shrink-0 items-start justify-between gap-3 ${alignClass}`}
+      >
         <div className={`flex flex-col ${itemsClass}`}>
           <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
             {"/// STEP 01 · PILIH PAKET"}
           </p>
           <h1
             className="mt-1 font-display text-2xl uppercase leading-[0.95] tracking-tight md:text-4xl"
-            style={ks ? { fontFamily: ks.fontFamily, fontSize: `${1.5 * ks.fontScale}rem` } : undefined}
+            style={
+              ks ? { fontFamily: ks.fontFamily, fontSize: `${1.5 * ks.fontScale}rem` } : undefined
+            }
           >
             {titleText || "Pilih paket kamu"}
           </h1>

@@ -106,7 +106,14 @@ export function VoucherFields({
         <label htmlFor={`vcr-type-${id}`} className={labelClass}>
           Tipe diskon *
         </label>
-        <Select id={`vcr-type-${id}`} name="type" value={values.type} onChange={(e) => set("type", e.target.value)} disabled={pending} aria-invalid={Boolean(fieldError(state, "type"))}>
+        <Select
+          id={`vcr-type-${id}`}
+          name="type"
+          value={values.type}
+          onChange={(e) => set("type", e.target.value)}
+          disabled={pending}
+          aria-invalid={Boolean(fieldError(state, "type"))}
+        >
           <option value="percentage">PERCENTAGE (%)</option>
           <option value="fixed">FIXED (IDR)</option>
         </Select>
@@ -134,28 +141,68 @@ export function VoucherFields({
         <label htmlFor={`vcr-min-${id}`} className={labelClass}>
           Minimum transaksi (IDR)
         </label>
-        <Input id={`vcr-min-${id}`} name="min_transaction" type="number" min={0} step={1} value={values.min_transaction} onChange={(e) => set("min_transaction", e.target.value)} disabled={pending} aria-invalid={Boolean(fieldError(state, "min_transaction"))} />
+        <Input
+          id={`vcr-min-${id}`}
+          name="min_transaction"
+          type="number"
+          min={0}
+          step={1}
+          value={values.min_transaction}
+          onChange={(e) => set("min_transaction", e.target.value)}
+          disabled={pending}
+          aria-invalid={Boolean(fieldError(state, "min_transaction"))}
+        />
         <FieldError state={state} field="min_transaction" />
       </div>
       <div className="flex flex-col gap-2">
         <label htmlFor={`vcr-max-${id}`} className={labelClass}>
           Maksimum diskon (IDR, opsional)
         </label>
-        <Input id={`vcr-max-${id}`} name="max_discount" type="number" min={0} step={1} value={values.max_discount} onChange={(e) => set("max_discount", e.target.value)} disabled={pending} aria-invalid={Boolean(fieldError(state, "max_discount"))} />
+        <Input
+          id={`vcr-max-${id}`}
+          name="max_discount"
+          type="number"
+          min={0}
+          step={1}
+          value={values.max_discount}
+          onChange={(e) => set("max_discount", e.target.value)}
+          disabled={pending}
+          aria-invalid={Boolean(fieldError(state, "max_discount"))}
+        />
         <FieldError state={state} field="max_discount" />
       </div>
       <div className="flex flex-col gap-2">
         <label htmlFor={`vcr-limit-${id}`} className={labelClass}>
           {"Usage limit total (kosong = \u221E)"}
         </label>
-        <Input id={`vcr-limit-${id}`} name="usage_limit" type="number" min={0} step={1} value={values.usage_limit} onChange={(e) => set("usage_limit", e.target.value)} disabled={pending} aria-invalid={Boolean(fieldError(state, "usage_limit"))} />
+        <Input
+          id={`vcr-limit-${id}`}
+          name="usage_limit"
+          type="number"
+          min={0}
+          step={1}
+          value={values.usage_limit}
+          onChange={(e) => set("usage_limit", e.target.value)}
+          disabled={pending}
+          aria-invalid={Boolean(fieldError(state, "usage_limit"))}
+        />
         <FieldError state={state} field="usage_limit" />
       </div>
       <div className="flex flex-col gap-2">
         <label htmlFor={`vcr-per-${id}`} className={labelClass}>
           Usage per customer
         </label>
-        <Input id={`vcr-per-${id}`} name="usage_per_customer" type="number" min={1} step={1} value={values.usage_per_customer} onChange={(e) => set("usage_per_customer", e.target.value)} disabled={pending} aria-invalid={Boolean(fieldError(state, "usage_per_customer"))} />
+        <Input
+          id={`vcr-per-${id}`}
+          name="usage_per_customer"
+          type="number"
+          min={1}
+          step={1}
+          value={values.usage_per_customer}
+          onChange={(e) => set("usage_per_customer", e.target.value)}
+          disabled={pending}
+          aria-invalid={Boolean(fieldError(state, "usage_per_customer"))}
+        />
         <FieldError state={state} field="usage_per_customer" />
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -163,14 +210,30 @@ export function VoucherFields({
           <label htmlFor={`vcr-start-${id}`} className={labelClass}>
             Mulai
           </label>
-          <Input id={`vcr-start-${id}`} name="start_date" type="datetime-local" value={values.start_date} onChange={(e) => set("start_date", e.target.value)} disabled={pending} aria-invalid={Boolean(fieldError(state, "start_date"))} />
+          <Input
+            id={`vcr-start-${id}`}
+            name="start_date"
+            type="datetime-local"
+            value={values.start_date}
+            onChange={(e) => set("start_date", e.target.value)}
+            disabled={pending}
+            aria-invalid={Boolean(fieldError(state, "start_date"))}
+          />
           <FieldError state={state} field="start_date" />
         </div>
         <div className="flex flex-col gap-2">
           <label htmlFor={`vcr-end-${id}`} className={labelClass}>
             Berakhir
           </label>
-          <Input id={`vcr-end-${id}`} name="end_date" type="datetime-local" value={values.end_date} onChange={(e) => set("end_date", e.target.value)} disabled={pending} aria-invalid={Boolean(fieldError(state, "end_date"))} />
+          <Input
+            id={`vcr-end-${id}`}
+            name="end_date"
+            type="datetime-local"
+            value={values.end_date}
+            onChange={(e) => set("end_date", e.target.value)}
+            disabled={pending}
+            aria-invalid={Boolean(fieldError(state, "end_date"))}
+          />
           <FieldError state={state} field="end_date" />
         </div>
       </div>
@@ -207,7 +270,14 @@ export function VoucherFields({
         <FieldError state={state} field="outlet_ids" />
       </div>
       <label className="flex items-center gap-2 self-end border-2 border-ink/10 px-3 py-3 font-mono text-xs uppercase tracking-[0.05em]">
-        <input type="checkbox" name="is_active" checked={values.is_active} onChange={(e) => set("is_active", e.target.checked)} disabled={pending} className="size-4 accent-[#111111]" />
+        <input
+          type="checkbox"
+          name="is_active"
+          checked={values.is_active}
+          onChange={(e) => set("is_active", e.target.checked)}
+          disabled={pending}
+          className="size-4 accent-[#111111]"
+        />
         Aktif
       </label>
     </div>

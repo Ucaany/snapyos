@@ -45,9 +45,7 @@ export async function GET(request: Request) {
 
   const supabase = createServerClient();
   const now = new Date().toISOString();
-  const graceDate = new Date(
-    Date.now() - PAST_DUE_GRACE_DAYS * 86_400_000
-  ).toISOString();
+  const graceDate = new Date(Date.now() - PAST_DUE_GRACE_DAYS * 86_400_000).toISOString();
 
   let trialExpired = 0;
   let cancelledAtEnd = 0;

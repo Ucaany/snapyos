@@ -65,10 +65,14 @@ export async function createTemplateCategory(input: { name: string; price?: numb
     .select("id, name, is_global, price")
     .single();
   if (error) {
-    if (error.code === "23505") throw new ApiError("VALIDATION_ERROR", "Nama kategori sudah dipakai");
+    if (error.code === "23505")
+      throw new ApiError("VALIDATION_ERROR", "Nama kategori sudah dipakai");
     throw new ApiError("INTERNAL", "Gagal membuat kategori");
   }
-  await audit(admin.id, "admin.template_category.create", data.id, { name: parsed.name, price: parsed.price ?? null });
+  await audit(admin.id, "admin.template_category.create", data.id, {
+    name: parsed.name,
+    price: parsed.price ?? null,
+  });
   return data as AdminTemplateCategoryRow;
 }
 
@@ -121,7 +125,7 @@ export async function listGlobalTemplates(): Promise<AdminTemplateRow[]> {
   };
   return ((data ?? []) as Row[]).map((r) => {
     const cat = Array.isArray(r.template_categories)
-      ? r.template_categories[0] ?? null
+      ? (r.template_categories[0] ?? null)
       : r.template_categories;
     return {
       id: r.id,
@@ -191,14 +195,12 @@ export async function createGlobalTemplate(input: {
 
 /** Upload file frame global langsung dari browser admin (docs/10 §10.2).
  *  Mirip uploadTemplate owner: file PNG/JPG/WebP/SVG → storage bucket. */
-export async function uploadGlobalTemplateFile(
-  file: {
-    name?: string | null;
-    type?: string | null;
-    size?: number | null;
-    arrayBuffer(): Promise<ArrayBuffer>;
-  }
-): Promise<{ key: string }> {
+export async function uploadGlobalTemplateFile(file: {
+  name?: string | null;
+  type?: string | null;
+  size?: number | null;
+  arrayBuffer(): Promise<ArrayBuffer>;
+}): Promise<{ key: string }> {
   await requireAdmin();
   const body = Buffer.from(await file.arrayBuffer());
   const check = validateFrameFile(file, body);
@@ -215,12 +217,15 @@ export async function uploadGlobalTemplateFile(
   return { key };
 }
 
-export async function updateGlobalTemplate(templateId: string, input: {
-  name?: string;
-  price?: number | null;
-  is_premium?: boolean;
-  is_active?: boolean;
-}) {
+export async function updateGlobalTemplate(
+  templateId: string,
+  input: {
+    name?: string;
+    price?: number | null;
+    is_premium?: boolean;
+    is_active?: boolean;
+  }
+) {
   const admin = await requireAdmin();
   const supabase = createServerClient();
   const patch: Record<string, unknown> = {};
@@ -286,7 +291,12 @@ export async function getGlobalTemplate(templateId: string): Promise<AdminTempla
   if (error) throw new ApiError("INTERNAL", "Gagal memuat template global");
   if (!data) throw new ApiError("NOT_FOUND", "Template global tidak ditemukan");
   const row = data as {
-    id: string; name: string; category: string; file_url: string; layout: unknown; is_active: boolean;
+    id: string;
+    name: string;
+    category: string;
+    file_url: string;
+    layout: unknown;
+    is_active: boolean;
   };
   // file_url absolut (CDN publik) dipakai langsung; key storage di-sign.
   const isExternal = /^https?:\/\//i.test(row.file_url);
@@ -299,7 +309,7 @@ export async function getGlobalTemplate(templateId: string): Promise<AdminTempla
     name: row.name,
     category: row.category,
     file_url: row.file_url,
-    preview_url: isExternal ? row.file_url : signed?.signedUrl ?? null,
+    preview_url: isExternal ? row.file_url : (signed?.signedUrl ?? null),
     layout: row.layout,
     is_active: row.is_active,
   };
@@ -375,13 +385,20 @@ export async function uploadGlobalTemplateThumbnail(
 /** Replace frame global (chroma-key PNG) — mirror owner replaceTemplateFrame. */
 export async function replaceGlobalTemplateFrame(
   templateId: string,
-  file: { name?: string | null; type?: string | null; size?: number | null; arrayBuffer(): Promise<ArrayBuffer> }
+  file: {
+    name?: string | null;
+    type?: string | null;
+    size?: number | null;
+    arrayBuffer(): Promise<ArrayBuffer>;
+  }
 ) {
   await requireAdmin();
   const body = Buffer.from(await file.arrayBuffer());
   const check = validateFrameFile(file, body);
   if (!check.ok || file.type !== "image/png") {
-    throw new ApiError("VALIDATION_ERROR", "Hasil chroma key harus PNG", { chroma_file: ["Hasil chroma key harus PNG"] });
+    throw new ApiError("VALIDATION_ERROR", "Hasil chroma key harus PNG", {
+      chroma_file: ["Hasil chroma key harus PNG"],
+    });
   }
   const supabase = createServerClient();
   const { data: row } = await supabase
@@ -451,7 +468,9 @@ export async function deleteGlobalTemplate(templateId: string) {
   const storageKeys = storageKeysOnly(keys);
   if (storageKeys.length > 0) await removeResolved("business-assets", storageKeys);
 
-  await audit(admin.id, "admin.template.delete", templateId, { name: (row as { name: string }).name });
+  await audit(admin.id, "admin.template.delete", templateId, {
+    name: (row as { name: string }).name,
+  });
   return { id: templateId };
 }
 

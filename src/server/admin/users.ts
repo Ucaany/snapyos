@@ -37,7 +37,8 @@ export type AdminUserWithBusiness = AdminUserRow & {
   businesses: { id: string; name: string; slug: string }[];
 };
 
-const ADMIN_USER_COLUMNS = "id, email, email_verified, name, role, status, created_at, whatsapp, acquisition_source, planned_devices, signup_ip, signup_user_agent";
+const ADMIN_USER_COLUMNS =
+  "id, email, email_verified, name, role, status, created_at, whatsapp, acquisition_source, planned_devices, signup_ip, signup_user_agent";
 
 // ---------------------------------------------------------------------------
 // Queries
@@ -121,18 +122,6 @@ export async function listUsers(query: {
   return { items, total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) };
 }
 
-export async function getUser(userId: string): Promise<AdminUserRow> {
-  await requireAdmin();
-  const supabase = createServerClient();
-  const { data } = await supabase
-    .from("users")
-    .select(ADMIN_USER_COLUMNS)
-    .eq("id", userId)
-    .maybeSingle();
-  if (!data) throw new ApiError("NOT_FOUND", "User tidak ditemukan");
-  return data as AdminUserRow;
-}
-
 // ---------------------------------------------------------------------------
 // User detail + riwayat (invoices, transaksi, payment) — docs/10 §10.2
 // ---------------------------------------------------------------------------
@@ -206,7 +195,9 @@ export async function getUserDetail(userId: string): Promise<UserDetail> {
   const bizIds = bizRows.map((b) => b.id);
 
   const businesses: UserDetailBusiness[] = bizRows.map((b) => {
-    const subs = Array.isArray(b.subscriptions) ? b.subscriptions : [b.subscriptions].filter(Boolean);
+    const subs = Array.isArray(b.subscriptions)
+      ? b.subscriptions
+      : [b.subscriptions].filter(Boolean);
     const latest = subs[0];
     const plan = latest && !Array.isArray(latest.plans) ? latest.plans : null;
     return {
@@ -223,7 +214,9 @@ export async function getUserDetail(userId: string): Promise<UserDetail> {
     bizIds.length
       ? supabase
           .from("invoices")
-          .select("id, number, amount, status, paid_at, business_id, created_at, businesses ( name )")
+          .select(
+            "id, number, amount, status, paid_at, business_id, created_at, businesses ( name )"
+          )
           .in("business_id", bizIds)
           .order("created_at", { ascending: false })
           .limit(100)
@@ -231,7 +224,9 @@ export async function getUserDetail(userId: string): Promise<UserDetail> {
     bizIds.length
       ? supabase
           .from("transactions")
-          .select("id, number, final_amount, status, paid_at, business_id, created_at, businesses ( name )")
+          .select(
+            "id, number, final_amount, status, paid_at, business_id, created_at, businesses ( name )"
+          )
           .in("business_id", bizIds)
           .order("created_at", { ascending: false })
           .limit(100)
@@ -280,7 +275,7 @@ export async function getUserDetail(userId: string): Promise<UserDetail> {
       amount: i.amount,
       status: i.status,
       paid_at: i.paid_at,
-      business_name: (Array.isArray(i.businesses) ? i.businesses[0] : i.businesses)?.name ?? "—",
+      business_name: (Array.isArray(i.businesses) ? i.businesses[0] : i.businesses)?.name ?? "-",
       created_at: i.created_at,
     })),
     transactions: ((transactions.data ?? []) as unknown as TxRow[]).map((t) => ({
@@ -289,7 +284,7 @@ export async function getUserDetail(userId: string): Promise<UserDetail> {
       final_amount: t.final_amount,
       status: t.status,
       paid_at: t.paid_at,
-      business_name: (Array.isArray(t.businesses) ? t.businesses[0] : t.businesses)?.name ?? "—",
+      business_name: (Array.isArray(t.businesses) ? t.businesses[0] : t.businesses)?.name ?? "-",
       created_at: t.created_at,
     })),
     sessions: sessions.count ?? 0,
@@ -376,7 +371,7 @@ export async function deleteUser(userId: string) {
     if (error.code === "23503") {
       throw new ApiError(
         "VALIDATION_ERROR",
-        "User masih terkait data (owner business) — suspend sebagai gantinya, atau hapus/pindahkan business-nya dulu"
+        "User masih terkait data (owner business): suspend sebagai gantinya, atau hapus/pindahkan business-nya dulu"
       );
     }
     throw new ApiError("INTERNAL", "Gagal menghapus user");

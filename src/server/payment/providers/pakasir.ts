@@ -57,9 +57,7 @@ function resolveConfig(credential: GatewayCredential | null): {
   const apiKey = process.env.PAKASIR_API_KEY?.trim() ?? "";
   const project = process.env.PAKASIR_PROJECT_SLUG?.trim() ?? "";
   if (!apiKey || !project) {
-    throw new Error(
-      "Payment belum terkonfigurasi. Isi PAKASIR_API_KEY dan PAKASIR_PROJECT_SLUG."
-    );
+    throw new Error("Payment belum terkonfigurasi. Isi PAKASIR_API_KEY dan PAKASIR_PROJECT_SLUG.");
   }
   return {
     apiKey,

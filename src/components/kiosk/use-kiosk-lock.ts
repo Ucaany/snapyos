@@ -123,8 +123,7 @@ export function useKioskLock(
     if (fullscreenEnabled) void Promise.resolve().then(() => requestFullscreen());
 
     // Orientasi layar per booth (landscape/portrait). Default landscape.
-    const target =
-      orientation === "portrait" ? "portrait-primary" : "landscape-primary";
+    const target = orientation === "portrait" ? "portrait-primary" : "landscape-primary";
     void lockOrientation(target).catch(() => undefined);
 
     // Tablet (iPad/Android PWA): blokir swipe-navigasi + overscroll tanpa
@@ -211,7 +210,15 @@ export function useKioskLock(
       document.removeEventListener("contextmenu", onContextMenu);
       document.removeEventListener("pointerdown", onPointerDown);
     };
-  }, [active, orientation, clearHold, requestFullscreen, lockOrientation, onExitRequest, fullscreenEnabled]);
+  }, [
+    active,
+    orientation,
+    clearHold,
+    requestFullscreen,
+    lockOrientation,
+    onExitRequest,
+    fullscreenEnabled,
+  ]);
 
   return { reengage, requestFullscreen, unlock };
 }

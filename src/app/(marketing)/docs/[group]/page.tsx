@@ -60,7 +60,7 @@ export default async function DocsGroupPage({ params }: Props) {
         <section className="mx-auto w-full max-w-5xl px-4 pt-12 md:px-8 md:pt-16">
           <Link
             href="/docs"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-ink"
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-ink [@media(pointer:coarse)]:min-h-11"
           >
             <ArrowLeft className="size-4" />
             Semua kategori
@@ -71,8 +71,7 @@ export default async function DocsGroupPage({ params }: Props) {
               {g.title}: {g.desc}
             </h1>
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
-              Halaman ini hanya berisi kategori {g.title} ({docs.length} panduan). Untuk kategori lain,
-              pakai tombol Berikutnya di bawah atau navigasi kiri.
+              {docs.length} panduan di kategori ini.
             </p>
           </div>
         </section>
@@ -84,7 +83,10 @@ export default async function DocsGroupPage({ params }: Props) {
                 aria-label="Navigasi kategori"
                 className="sticky top-20 max-h-[calc(100dvh-6rem)] space-y-1 overflow-y-auto border-r border-ink pr-8 text-sm"
               >
-                <Link href="/docs" className="block py-1 text-muted-foreground hover:text-ink hover:underline">
+                <Link
+                  href="/docs"
+                  className="block py-1 text-muted-foreground hover:text-ink hover:underline"
+                >
                   Ringkasan
                 </Link>
                 {DOC_GROUPS.map((x) => (
@@ -108,7 +110,10 @@ export default async function DocsGroupPage({ params }: Props) {
                   <ul className="mt-2 space-y-1.5">
                     {docs.map((d) => (
                       <li key={d.slug}>
-                        <a href={`#${d.slug}`} className="text-muted-foreground hover:text-ink hover:underline">
+                        <a
+                          href={`#${d.slug}`}
+                          className="text-muted-foreground hover:text-ink hover:underline"
+                        >
                           {d.title}
                         </a>
                       </li>
@@ -119,16 +124,21 @@ export default async function DocsGroupPage({ params }: Props) {
             </aside>
 
             <div className="min-w-0 max-w-full lg:pl-2">
-              <div className="flex max-w-full gap-2 overflow-x-auto pb-2 lg:hidden" aria-label="Pintasan kategori">
+              <div
+                className="flex max-w-full gap-2 overflow-x-auto pb-2 lg:hidden"
+                aria-label="Pintasan kategori"
+              >
                 {DOC_GROUPS.map((x) => (
                   <Link
                     key={x.slug}
                     href={`/docs/${x.slug}`}
-                    className={
+                    // Chip pintasan ini kontrol sentuh penuh: 32px terlalu pendek
+                    // untuk jempol, jadi dinaikkan ke 44px (antislop R-03).
+                    className={`inline-flex shrink-0 items-center [@media(pointer:coarse)]:min-h-11 ${
                       x.slug === g.slug
-                        ? "shrink-0 rounded-none border-2 border-ink bg-accent px-3 py-1.5 text-xs font-semibold"
-                        : "shrink-0 rounded-none border border-ink px-3 py-1.5 text-xs font-medium text-muted-foreground"
-                    }
+                        ? "rounded-none border-2 border-ink bg-accent px-3 py-1.5 text-xs font-semibold"
+                        : "rounded-none border border-ink px-3 py-1.5 text-xs font-medium text-muted-foreground"
+                    }`}
                   >
                     {x.title}
                   </Link>
@@ -141,15 +151,22 @@ export default async function DocsGroupPage({ params }: Props) {
                 ))}
               </div>
 
-              <nav aria-label="Pindah kategori" className="mt-16 grid gap-3 border-t border-ink pt-8 sm:grid-cols-2">
+              <nav
+                aria-label="Pindah kategori"
+                className="mt-16 grid gap-3 border-t border-ink pt-8 sm:grid-cols-2"
+              >
                 <div>
                   {prev ? (
                     <Link
                       href={`/docs/${prev.slug}`}
                       className="group flex h-full flex-col gap-1 rounded-none border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111]"
                     >
-                      <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Sebelumnya</span>
-                      <span className="text-sm font-semibold group-hover:underline">{prev.title}</span>
+                      <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                        Sebelumnya
+                      </span>
+                      <span className="text-sm font-semibold group-hover:underline">
+                        {prev.title}
+                      </span>
                       <span className="text-xs leading-5 text-muted-foreground">{prev.desc}</span>
                     </Link>
                   ) : (
@@ -157,7 +174,9 @@ export default async function DocsGroupPage({ params }: Props) {
                       href="/docs"
                       className="flex h-full flex-col gap-1 rounded-none border-2 border-dashed border-ink p-5 text-muted-foreground"
                     >
-                      <span className="text-xs font-medium uppercase tracking-widest">Sebelumnya</span>
+                      <span className="text-xs font-medium uppercase tracking-widest">
+                        Sebelumnya
+                      </span>
                       <span className="text-sm font-semibold">Ringkasan dokumentasi</span>
                     </Link>
                   )}
@@ -172,7 +191,9 @@ export default async function DocsGroupPage({ params }: Props) {
                         Berikutnya
                         <ArrowRight className="size-3 transition-transform group-hover:translate-x-1" />
                       </span>
-                      <span className="text-sm font-semibold group-hover:underline">{next.title}</span>
+                      <span className="text-sm font-semibold group-hover:underline">
+                        {next.title}
+                      </span>
                       <span className="text-xs leading-5 text-muted-foreground">{next.desc}</span>
                     </Link>
                   ) : (
@@ -180,7 +201,9 @@ export default async function DocsGroupPage({ params }: Props) {
                       href="/docs"
                       className="flex h-full flex-col items-end gap-1 rounded-none border-2 border-dashed border-ink p-5 text-right text-muted-foreground"
                     >
-                      <span className="text-xs font-medium uppercase tracking-widest">Berikutnya</span>
+                      <span className="text-xs font-medium uppercase tracking-widest">
+                        Berikutnya
+                      </span>
                       <span className="text-sm font-semibold">Ringkasan dokumentasi</span>
                     </Link>
                   )}
@@ -201,7 +224,10 @@ export default async function DocsGroupPage({ params }: Props) {
                 <ul className="mt-3 space-y-2">
                   {docs.map((d) => (
                     <li key={d.slug}>
-                      <a href={`#${d.slug}`} className="text-muted-foreground hover:text-ink hover:underline">
+                      <a
+                        href={`#${d.slug}`}
+                        className="text-muted-foreground hover:text-ink hover:underline"
+                      >
                         {d.title}
                       </a>
                     </li>
@@ -218,8 +244,8 @@ export default async function DocsGroupPage({ params }: Props) {
               <p className="text-sm font-semibold text-ink">Catatan sumber kebenaran.</p>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
                 Panduan ini disusun dari perilaku kode berjalan SnapyOS. Backend menghitung ulang
-                pembayaran. Dana QRIS masuk langsung ke rekening merchant owner. Hasil foto tersimpan 1 sampai 3 hari
-                mengikuti pengaturan booth.
+                pembayaran. Dana QRIS masuk langsung ke rekening merchant owner. Hasil foto
+                tersimpan 1 sampai 3 hari mengikuti pengaturan booth.
               </p>
             </div>
           </div>

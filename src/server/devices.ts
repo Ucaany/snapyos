@@ -291,7 +291,9 @@ export async function verifyDevice(input: DeviceVerifyInput) {
   // memaksa customer memilih paket lagi (anti "bayar lalu terkunci").
   const { data: sessionRow } = await supabase
     .from("sessions")
-    .select("id, package_id, expires_at, checkout_sessions ( result_token ), packages ( photo_count )")
+    .select(
+      "id, package_id, expires_at, checkout_sessions ( result_token ), packages ( photo_count )"
+    )
     .eq("photobox_id", photobox.id)
     .eq("status", "active")
     .gt("expires_at", new Date().toISOString())
@@ -307,13 +309,21 @@ export async function verifyDevice(input: DeviceVerifyInput) {
   } | null;
   const checkout = active?.checkout_sessions ?? null;
   const resultToken =
-    checkout && !Array.isArray(checkout) ? checkout.result_token : Array.isArray(checkout) ? (checkout[0]?.result_token ?? null) : null;
+    checkout && !Array.isArray(checkout)
+      ? checkout.result_token
+      : Array.isArray(checkout)
+        ? (checkout[0]?.result_token ?? null)
+        : null;
   // Kuota foto paket asli (fix drift): dipakai kiosk untuk menyusun paket
   // sintetis saat resume pasca-pembayaran — memastikan capture/upload sesuai
   // yang divalidasi server (`photos.length <= package.photo_count`).
   const pkgJoin = active?.packages ?? null;
   const photoCount =
-    pkgJoin && !Array.isArray(pkgJoin) ? pkgJoin.photo_count : Array.isArray(pkgJoin) ? (pkgJoin[0]?.photo_count ?? null) : null;
+    pkgJoin && !Array.isArray(pkgJoin)
+      ? pkgJoin.photo_count
+      : Array.isArray(pkgJoin)
+        ? (pkgJoin[0]?.photo_count ?? null)
+        : null;
 
   // Checkout paid tapi sesi belum dibuat (kiosk keluar/reload pasca-bayar,
   // sebelum onPaid sempat jalan) → diklaim otomatis kiosk saat boot, agar
@@ -387,12 +397,12 @@ export async function verifyDeviceExit(input: DeviceExitInput) {
     .select("exit_pin_locked_until")
     .eq("id", photobox.id)
     .maybeSingle();
-  const lockedUntilMs =
-    (fresh as { exit_pin_locked_until?: string | null } | null)?.exit_pin_locked_until
-      ? new Date((fresh as { exit_pin_locked_until: string }).exit_pin_locked_until).getTime()
-      : 0;
+  const lockedUntilMs = (fresh as { exit_pin_locked_until?: string | null } | null)
+    ?.exit_pin_locked_until
+    ? new Date((fresh as { exit_pin_locked_until: string }).exit_pin_locked_until).getTime()
+    : 0;
   if (lockedUntilMs > now) {
-    throw new ApiError("PIN_LOCKED", "PIN keluar terkunci — coba lagi nanti", {
+    throw new ApiError("PIN_LOCKED", "PIN keluar terkunci: coba lagi nanti", {
       retry_after_seconds: Math.ceil((lockedUntilMs - now) / 1000),
     });
   }
@@ -405,16 +415,17 @@ export async function verifyDeviceExit(input: DeviceExitInput) {
     // Atomic increment via RPC — anti read-modify-write race (fix #8). RPC
     // menambah counter lalu, bila mencapai threshold, mereset counter + set
     // locked_until dalam satu operasi atomik.
-    const { data: failData, error: failErr } = await supabase.rpc(
-      "exit_pin_register_failure",
-      { p_photobox_id: photobox.id, p_threshold: PIN_FAIL_THRESHOLD, p_lock_ms: PIN_LOCK_MS }
-    );
+    const { data: failData, error: failErr } = await supabase.rpc("exit_pin_register_failure", {
+      p_photobox_id: photobox.id,
+      p_threshold: PIN_FAIL_THRESHOLD,
+      p_lock_ms: PIN_LOCK_MS,
+    });
     if (failErr) throw new ApiError("INTERNAL", "Gagal memproses PIN keluar");
-    const failRow = (failData as
-      | { locked: boolean; failed_count: number; locked_until: string | null }[]
-      | null)?.[0];
+    const failRow = (
+      failData as { locked: boolean; failed_count: number; locked_until: string | null }[] | null
+    )?.[0];
     if (failRow?.locked) {
-      throw new ApiError("PIN_LOCKED", "PIN keluar terkunci — coba lagi nanti", {
+      throw new ApiError("PIN_LOCKED", "PIN keluar terkunci: coba lagi nanti", {
         retry_after_seconds: Math.ceil(PIN_LOCK_MS / 1000),
       });
     }
@@ -446,8 +457,10 @@ export async function reportDevice(input: DeviceReportInput) {
   const deviceStatus = {
     ...((photobox.device_status as Record<string, unknown>) ?? {}),
   };
-  if (input.camera) deviceStatus.camera = { ...((deviceStatus.camera as object) ?? {}), ...input.camera };
-  if (input.printer) deviceStatus.printer = { ...((deviceStatus.printer as object) ?? {}), ...input.printer };
+  if (input.camera)
+    deviceStatus.camera = { ...((deviceStatus.camera as object) ?? {}), ...input.camera };
+  if (input.printer)
+    deviceStatus.printer = { ...((deviceStatus.printer as object) ?? {}), ...input.printer };
 
   const { error } = await supabase
     .from("photoboxes")
@@ -459,7 +472,8 @@ export async function reportDevice(input: DeviceReportInput) {
   // diagnostics wajib terisi — dashboard & diagnostik membaca kolom ini.
   // last_heartbeat_at ditulis resolveActiveDevice (throttle 60s di atas).
   const diagnostics: Record<string, unknown> = { last_report_at: new Date().toISOString() };
-  if (input.preferred_device_id !== undefined) diagnostics.preferred_device_id = input.preferred_device_id;
+  if (input.preferred_device_id !== undefined)
+    diagnostics.preferred_device_id = input.preferred_device_id;
   if (input.camera) diagnostics.camera = input.camera;
   if (input.printer) diagnostics.printer = input.printer;
   const deviceUpdate: Record<string, unknown> = { diagnostics };

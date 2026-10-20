@@ -51,25 +51,18 @@ export function PosTerminal({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const categories = useMemo(
-    () => [...new Set(products.map((p) => p.category))],
-    [products]
-  );
+  const categories = useMemo(() => [...new Set(products.map((p) => p.category))], [products]);
 
   const visibleProducts = useMemo(() => {
     const q = search.trim().toLowerCase();
     return products.filter((p) => {
       if (category && p.category !== category) return false;
       if (!q) return true;
-      return (
-        p.name.toLowerCase().includes(q) ||
-        (p.sku ?? "").toLowerCase().includes(q)
-      );
+      return p.name.toLowerCase().includes(q) || (p.sku ?? "").toLowerCase().includes(q);
     });
   }, [products, search, category]);
 
-  const cartQty = (productId: string) =>
-    cart.find((l) => l.productId === productId)?.qty ?? 0;
+  const cartQty = (productId: string) => cart.find((l) => l.productId === productId)?.qty ?? 0;
 
   const addProduct = (product: TerminalProduct) => {
     if (product.stock !== null && cartQty(product.id) >= product.stock) return;
@@ -77,9 +70,7 @@ export function PosTerminal({
     setCart((prev) => {
       const line = prev.find((l) => l.productId === product.id);
       if (line) {
-        return prev.map((l) =>
-          l.productId === product.id ? { ...l, qty: l.qty + 1 } : l
-        );
+        return prev.map((l) => (l.productId === product.id ? { ...l, qty: l.qty + 1 } : l));
       }
       return [...prev, { productId: product.id, qty: 1 }];
     });
@@ -91,9 +82,7 @@ export function PosTerminal({
       setCart((prev) => prev.filter((l) => l.productId !== productId));
       return;
     }
-    setCart((prev) =>
-      prev.map((l) => (l.productId === productId ? { ...l, qty } : l))
-    );
+    setCart((prev) => prev.map((l) => (l.productId === productId ? { ...l, qty } : l)));
   };
 
   const cartLines = cart.flatMap((line) => {
@@ -162,8 +151,7 @@ export function PosTerminal({
         </p>
         <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground md:text-xs">
           {businessName.toUpperCase()} · BOOTH: {booth.name.toUpperCase()} · OUTLET:{" "}
-          {(booth.outletName ?? "—").toUpperCase()} · STAFF:{" "}
-          {(cashierName ?? "—").toUpperCase()}
+          {(booth.outletName ?? "-").toUpperCase()} · STAFF: {(cashierName ?? "-").toUpperCase()}
         </p>
       </header>
 
@@ -245,7 +233,7 @@ export function PosTerminal({
                           {formatIDR(product.price)}
                         </span>
                         <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-                          {product.stock === null ? "—" : `SISA ${product.stock}`}
+                          {product.stock === null ? "-" : `SISA ${product.stock}`}
                         </span>
                       </span>
                       {qty > 0 && (
@@ -280,16 +268,13 @@ export function PosTerminal({
           {cartLines.length === 0 ? (
             <div className="flex flex-1 items-center justify-center border-2 border-dashed border-ink/40 p-6">
               <p className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
-                 Keranjang kosong. Pilih produk.
+                Keranjang kosong. Pilih produk.
               </p>
             </div>
           ) : (
             <ul className="flex max-h-[42dvh] flex-col gap-[2px] overflow-y-auto border-2 border-ink bg-ink lg:max-h-none lg:flex-1">
               {cartLines.map(({ product, qty }) => (
-                <li
-                  key={product.id}
-                  className="flex items-center gap-3 bg-surface p-3"
-                >
+                <li key={product.id} className="flex items-center gap-3 bg-surface p-3">
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-mono text-xs font-bold uppercase tracking-[0.03em]">
                       {product.name}
@@ -308,9 +293,7 @@ export function PosTerminal({
                     >
                       <Minus aria-hidden />
                     </Button>
-                    <output className="w-8 text-center font-mono text-sm font-bold">
-                      {qty}
-                    </output>
+                    <output className="w-8 text-center font-mono text-sm font-bold">{qty}</output>
                     <Button
                       type="button"
                       variant="outline"
@@ -355,11 +338,7 @@ export function PosTerminal({
             </div>
           </dl>
 
-          <Button
-            size="lg"
-            onClick={() => void submitCart()}
-            disabled={cart.length === 0 || busy}
-          >
+          <Button size="lg" onClick={() => void submitCart()} disabled={cart.length === 0 || busy}>
             {busy ? "Memproses…" : "Bayar"}
           </Button>
         </aside>

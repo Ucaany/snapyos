@@ -43,12 +43,7 @@ export const PERMISSIONS: Record<BusinessRole, readonly string[]> = {
   // Wildcard = semua permission incl. yang owner-only di bawah.
   // String owner-only dicantumkan eksplisit agar typo-test
   // (semua can() harus terdaftar) tetap berlaku + intent terdokumentasi.
-  owner: [
-    "*",
-    "expense:write",
-    "subscription:write",
-    "transaction:manual-create",
-  ],
+  owner: ["*", "expense:write", "subscription:write", "transaction:manual-create"],
   manager: [
     "business:read",
     "business:update",

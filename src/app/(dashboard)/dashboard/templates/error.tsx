@@ -1,17 +1,17 @@
-"use client"
+"use client";
 
 /**
  * Error boundary - /dashboard/templates (lokal + premium marketplace).
  */
 
-import { FeatureError } from "@/components/dashboard/FeatureError"
+import { FeatureError } from "@/components/dashboard/FeatureError";
 
 export default function TemplatesError({
   error,
   reset,
 }: {
-  error: Error & { digest?: string }
-  reset: () => void
+  error: Error & { digest?: string };
+  reset: () => void;
 }) {
   return (
     <FeatureError
@@ -20,5 +20,5 @@ export default function TemplatesError({
       error={error}
       reset={reset}
     />
-  )
+  );
 }

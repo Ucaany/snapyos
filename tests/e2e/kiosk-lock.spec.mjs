@@ -8,7 +8,13 @@
  */
 
 import { config, requireServiceRole } from "./helpers/env.mjs";
-import { createAdmin, resolvePhotobox, mintActivationCode, resetBooth, activateDevice } from "./helpers/booth.mjs";
+import {
+  createAdmin,
+  resolvePhotobox,
+  mintActivationCode,
+  resetBooth,
+  activateDevice,
+} from "./helpers/booth.mjs";
 import { launchKiosk, collectConsole, seedDevice } from "./helpers/browser.mjs";
 import { createReporter } from "./helpers/report.mjs";
 
@@ -68,7 +74,10 @@ try {
   report.record("tombol petugas tersedia", await hold.isVisible().catch(() => false));
 
   // Kiosk harus tetap bisa dipakai setelah dialog ditutup.
-  report.record("welcome masih aktif", await welcome.isVisible({ timeout: 5_000 }).catch(() => false));
+  report.record(
+    "welcome masih aktif",
+    await welcome.isVisible({ timeout: 5_000 }).catch(() => false)
+  );
 } catch (error) {
   report.record("alur lock berjalan", false, error.message);
 } finally {

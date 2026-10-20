@@ -7,11 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { FancyButton } from "@/components/ui/pricing-9-utils/fancy-button";
 import { SectionHeader } from "@/components/section-header";
-import {
-  ArrowUpRightIcon,
-  CheckIcon,
-  PlusIcon,
-} from "lucide-react";
+import { ArrowUpRightIcon, CheckIcon, PlusIcon } from "lucide-react";
 import type { PublicPlan, PublicAddOn } from "@/server/catalog";
 
 const animVariant: Variants = {
@@ -39,26 +35,15 @@ const animVariant: Variants = {
 
 const formatRupiah = (n: number) => `Rp ${n.toLocaleString("id-ID")}`;
 
-export function Pricing({
-  plans,
-  addOns,
-}: {
-  plans: PublicPlan[];
-  addOns: PublicAddOn[];
-}) {
-  const [selectedPlanCode, setSelectedPlanCode] = useState(
-    plans[0]?.code ?? "",
-  );
+export function Pricing({ plans, addOns }: { plans: PublicPlan[]; addOns: PublicAddOn[] }) {
+  const [selectedPlanCode, setSelectedPlanCode] = useState(plans[0]?.code ?? "");
   const [selectedAddOns, setSelectedAddOns] = useState<Set<string>>(new Set());
 
-  const selectedPlan =
-    plans.find((p) => p.code === selectedPlanCode) ?? plans[0];
+  const selectedPlan = plans.find((p) => p.code === selectedPlanCode) ?? plans[0];
 
   const totalPrice =
     (selectedPlan?.price_monthly ?? 0) +
-    addOns
-      .filter((a) => selectedAddOns.has(a.code))
-      .reduce((sum, a) => sum + a.price_monthly, 0);
+    addOns.filter((a) => selectedAddOns.has(a.code)).reduce((sum, a) => sum + a.price_monthly, 0);
 
   const toggleAddOn = (code: string) => {
     setSelectedAddOns((prev) => {
@@ -71,9 +56,7 @@ export function Pricing({
 
   const subscribeHref =
     `/subscribe?plan=${encodeURIComponent(selectedPlan?.code ?? "")}` +
-    (selectedAddOns.size
-      ? `&addons=${encodeURIComponent([...selectedAddOns].join(","))}`
-      : "");
+    (selectedAddOns.size ? `&addons=${encodeURIComponent([...selectedAddOns].join(","))}` : "");
 
   const basePrice = selectedPlan?.price_monthly ?? 0;
 
@@ -86,7 +69,10 @@ export function Pricing({
             title="Bayar sesuai kebutuhan"
             subtitle="Mulai dari paket dasar lalu tambah add-on sesuai pertumbuhan bisnis Anda."
           />
-          <div className="w-full rounded-none border-2 border-ink bg-surface p-6 text-center shadow-[4px_4px_0_0_#111111] md:p-8" role="status">
+          <div
+            className="w-full rounded-none border-2 border-ink bg-surface p-6 text-center shadow-[4px_4px_0_0_#111111] md:p-8"
+            role="status"
+          >
             <p className="text-sm font-medium text-foreground">Katalog harga belum tersedia.</p>
             <p className="mt-1 text-xs text-muted-foreground">
               Coba muat ulang halaman, atau hubungi tim via WhatsApp konsultasi.
@@ -109,9 +95,11 @@ export function Pricing({
         <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-2">
           <div className="flex flex-col gap-6 rounded-none border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111] md:p-8">
             <div className="flex flex-col gap-2">
-              <h3 className="font-mono text-xs font-bold uppercase tracking-[0.1em] text-foreground">Pilih paket</h3>
+              <h3 className="font-mono text-xs font-bold uppercase tracking-[0.1em] text-foreground">
+                Pilih paket
+              </h3>
               <p className="text-xs text-muted-foreground">
-                Fitur menentukan paket; perangkat tambahan lewat add-on.
+                Fitur menentukan paket; sesi bersamaan tambahan lewat add-on.
               </p>
             </div>
 
@@ -124,15 +112,11 @@ export function Pricing({
                     type="button"
                     onClick={() => setSelectedPlanCode(plan.code)}
                     className={`flex items-center justify-between gap-3 rounded-none border-2 border-ink p-3 text-left transition-colors ${
-                      active
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:bg-muted"
+                      active ? "border-primary bg-primary/5" : "border-border hover:bg-muted"
                     }`}
                   >
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-sm font-medium text-foreground">
-                        {plan.name}
-                      </span>
+                      <span className="text-sm font-medium text-foreground">{plan.name}</span>
                       <span className="text-xs text-muted-foreground">
                         {formatRupiah(plan.price_monthly)}/bulan
                       </span>
@@ -151,7 +135,9 @@ export function Pricing({
 
             {addOns.length > 0 && (
               <div className="flex flex-col gap-2">
-                <h3 className="font-mono text-xs font-bold uppercase tracking-[0.1em] text-foreground">Modul add-on</h3>
+                <h3 className="font-mono text-xs font-bold uppercase tracking-[0.1em] text-foreground">
+                  Modul add-on
+                </h3>
                 <div className="flex flex-col gap-2">
                   {addOns.map((addOn) => {
                     const enabled = selectedAddOns.has(addOn.code);
@@ -201,7 +187,9 @@ export function Pricing({
 
           <div className="flex flex-col gap-6 rounded-none border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111] md:p-8">
             <div className="flex flex-col gap-2">
-              <h3 className="font-display text-base font-bold uppercase tracking-tight text-ink">Paket Anda</h3>
+              <h3 className="font-display text-base font-bold uppercase tracking-tight text-ink">
+                Paket Anda
+              </h3>
               <p className="text-xs text-muted-foreground">
                 {selectedPlan?.name ?? "Paket"} + {selectedAddOns.size} add-on dipilih
               </p>
@@ -251,17 +239,13 @@ export function Pricing({
                   <div className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-none bg-primary">
                     <CheckIcon className="size-2.5 text-primary-foreground" />
                   </div>
-                  <span className="text-xs text-muted-foreground">
-                    Dashboard pendapatan
-                  </span>
+                  <span className="text-xs text-muted-foreground">Dashboard pendapatan</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <div className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-none bg-primary">
                     <CheckIcon className="size-2.5 text-primary-foreground" />
                   </div>
-                  <span className="text-xs text-muted-foreground">
-                    Dukungan email
-                  </span>
+                  <span className="text-xs text-muted-foreground">Dukungan email</span>
                 </li>
               </ul>
             </div>

@@ -4,6 +4,7 @@
 > Dual-shell (brutalist default + Dashboard-01 alternatif via `DashboardThemeSwitcher`) pernah terimplementasi penuh, lalu dihapus atas keputusan owner: **satu dashboard brutalist saja**. File ini dipertahankan sebagai histori keputusan; TIDAK berlaku lagi sebagai kontrak aktif.
 >
 > Yang dihapus pada 2026-08-30:
+>
 > - `src/components/shadcn-theme/` (OwnerShadcnShell, AdminShadcnShell, SiteHeader, NavUser, WorkspaceMenu, ShadcnNav, D01ThemeToggle) — seluruh folder.
 > - `src/components/theme/DashboardThemeSwitcher.tsx`, `src/server/theme-actions.ts`, `src/lib/dashboard-theme.ts`.
 > - Scope CSS `.snapyos-d01` (light + dark + normalisasi utilitas brutalist) dari `src/app/globals.css`.
@@ -28,23 +29,23 @@ Alur audit shell yang dulu dipakai dual-shell tetap relevan sebagai referensi st
 
 Owner dashboard `/dashboard/*` (layout `src/app/(dashboard)/layout.tsx`):
 
-| Route | Judul | Widget | Gating |
-|---|---|---|---|
-| `/dashboard` | Business name / onboarding | MetricCard hero, dl-grid 8 metrik, RevenueChart, DateRangeFilter, CreateBusinessForm | `transaction:read` |
-| `/dashboard/analytics` | Revenue Analytics | RevenueChart, BreakdownChart, DateRangeFilter | `transaction:read` |
-| `/dashboard/metrics` | Business Metrics | MetricCard grid, DateRangeFilter | `transaction:read` |
-| `/dashboard/photoboxes` | Photobox | PhotoboxesTable (+PhotoboxForm, DeviceDialog) | `photobox:write` |
-| `/dashboard/outlets` | Outlet | OutletsTable (+WilayahPicker) | `outlet:write` |
-| `/dashboard/templates` | Templates | TemplatesGrid; `/templates/builder/[id]` full-bleed TemplateBuilder | `template:write` |
-| `/dashboard/packages` | Package | PackagesTable | `package:write` |
-| `/dashboard/vouchers` | Voucher | VouchersTable | `voucher:write` |
-| `/dashboard/transactions` | Transaksi | TransactionsView, DateRangeFilter, LiveSearch | `transaction:read/write` |
-| `/dashboard/finance` | Finance | MetricCard, ExpensesPanel, WithdrawalPanel, DateRangeFilter | `finance:read` |
-| `/dashboard/reports` | Reports | form GET → export API | `report:read` |
-| `/dashboard/customers` | Customer | CustomersTable, LiveSearch | `customer:read` |
-| `/dashboard/staff` | Staff & Role | StaffPanel | owner only |
-| `/dashboard/subscription` | Subscription | SubscriptionPanel (+SubscriptionCheckout); `/invoice/[id]` InvoicePayClient; `/invoice/[id]/receipt` = route.ts (bukan halaman) | `subscription:write` |
-| `/dashboard/settings` | Settings | CheckoutSettingsEditor, RetentionSettingsEditor | `business:update` (read semua) |
-| `/dashboard/pos` | POS | PosProductsTable, PosBoothsTable, PosReportsPanel | `pos:read` + entitlement |
+| Route                     | Judul                      | Widget                                                                                                                          | Gating                         |
+| ------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| `/dashboard`              | Business name / onboarding | MetricCard hero, dl-grid 8 metrik, RevenueChart, DateRangeFilter, CreateBusinessForm                                            | `transaction:read`             |
+| `/dashboard/analytics`    | Revenue Analytics          | RevenueChart, BreakdownChart, DateRangeFilter                                                                                   | `transaction:read`             |
+| `/dashboard/metrics`      | Business Metrics           | MetricCard grid, DateRangeFilter                                                                                                | `transaction:read`             |
+| `/dashboard/photoboxes`   | Photobox                   | PhotoboxesTable (+PhotoboxForm, DeviceDialog)                                                                                   | `photobox:write`               |
+| `/dashboard/outlets`      | Outlet                     | OutletsTable (+WilayahPicker)                                                                                                   | `outlet:write`                 |
+| `/dashboard/templates`    | Templates                  | TemplatesGrid; `/templates/builder/[id]` full-bleed TemplateBuilder                                                             | `template:write`               |
+| `/dashboard/packages`     | Package                    | PackagesTable                                                                                                                   | `package:write`                |
+| `/dashboard/vouchers`     | Voucher                    | VouchersTable                                                                                                                   | `voucher:write`                |
+| `/dashboard/transactions` | Transaksi                  | TransactionsView, DateRangeFilter, LiveSearch                                                                                   | `transaction:read/write`       |
+| `/dashboard/finance`      | Finance                    | MetricCard, ExpensesPanel, WithdrawalPanel, DateRangeFilter                                                                     | `finance:read`                 |
+| `/dashboard/reports`      | Reports                    | form GET → export API                                                                                                           | `report:read`                  |
+| `/dashboard/customers`    | Customer                   | CustomersTable, LiveSearch                                                                                                      | `customer:read`                |
+| `/dashboard/staff`        | Staff & Role               | StaffPanel                                                                                                                      | owner only                     |
+| `/dashboard/subscription` | Subscription               | SubscriptionPanel (+SubscriptionCheckout); `/invoice/[id]` InvoicePayClient; `/invoice/[id]/receipt` = route.ts (bukan halaman) | `subscription:write`           |
+| `/dashboard/settings`     | Settings                   | CheckoutSettingsEditor, RetentionSettingsEditor                                                                                 | `business:update` (read semua) |
+| `/dashboard/pos`          | POS                        | PosProductsTable, PosBoothsTable, PosReportsPanel                                                                               | `pos:read` + entitlement       |
 
 Admin platform `/admin/*` (layout `src/app/(admin)/layout.tsx`): overview, users, businesses, plans, subscriptions, add-ons, templates, payments, withdrawals, settings (nav 10 item, `src/components/admin/AdminSidebar.tsx`).

@@ -38,10 +38,7 @@ async function requireMembership(userId: string, businessId: string, permission:
   return membership;
 }
 
-export async function listOutlets(
-  userId: string,
-  businessId: string
-): Promise<OutletRow[]> {
+export async function listOutlets(userId: string, businessId: string): Promise<OutletRow[]> {
   await requireMembership(userId, businessId, "outlet:read");
 
   const supabase = createServerClient();
@@ -74,11 +71,7 @@ export async function listOutlets(
   }));
 }
 
-export async function createOutlet(
-  userId: string,
-  businessId: string,
-  input: OutletCreateInput
-) {
+export async function createOutlet(userId: string, businessId: string, input: OutletCreateInput) {
   const parsed = outletCreateSchema.parse(input);
   await requireMembership(userId, businessId, "outlet:write");
 
@@ -121,7 +114,7 @@ export async function updateOutlet(
     .from("outlets")
     .update(parsed)
     .eq("id", outletId)
-    .eq("business_id", businessId) // tenant scope — lintas tenant = 0 row → 404
+    .eq("business_id", businessId) // tenant scope: lintas tenant = 0 row → 404
     .select(OUTLET_COLUMNS)
     .maybeSingle();
   if (error) throw new ApiError("INTERNAL", "Gagal memperbarui outlet");

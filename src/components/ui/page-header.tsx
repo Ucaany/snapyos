@@ -27,9 +27,7 @@ export function PageHeader({
         {right}
       </div>
       {description && (
-        <p className="max-w-[65ch] font-mono text-sm text-muted-foreground">
-          {description}
-        </p>
+        <p className="max-w-[65ch] font-mono text-sm text-muted-foreground">{description}</p>
       )}
       {meta && (
         <div className="font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">

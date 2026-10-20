@@ -48,13 +48,25 @@ export function TemplateEditForm({ template, onDone }: Props) {
         <label htmlFor={`tpl-edit-name-${template.id}`} className={labelClass}>
           Nama *
         </label>
-        <Input id={`tpl-edit-name-${template.id}`} name="name" value={name} onChange={(e) => setName(e.target.value)} disabled={pending} />
+        <Input
+          id={`tpl-edit-name-${template.id}`}
+          name="name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          disabled={pending}
+        />
       </div>
       <div className="flex flex-col gap-2">
         <label htmlFor={`tpl-edit-cat-${template.id}`} className={labelClass}>
           Kategori
         </label>
-        <Select id={`tpl-edit-cat-${template.id}`} name="category" value={category} onChange={(e) => setCategory(e.target.value)} disabled={pending}>
+        <Select
+          id={`tpl-edit-cat-${template.id}`}
+          name="category"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          disabled={pending}
+        >
           {TEMPLATE_CATEGORIES.map((c) => (
             <option key={c} value={c}>
               {c.toUpperCase()}

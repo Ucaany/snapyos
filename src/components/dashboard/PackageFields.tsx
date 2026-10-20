@@ -127,7 +127,8 @@ export function PackageFields({
       </div>
       <div className="flex flex-col gap-2">
         <label htmlFor={`pkg-templates-${id}`} className={labelClass}>
-          Pilih satu atau beberapa template. Di komputer gunakan Ctrl/Cmd + klik, di ponsel ketuk pilihan satu per satu.
+          Pilih satu atau beberapa template. Di komputer gunakan Ctrl/Cmd + klik, di ponsel ketuk
+          pilihan satu per satu.
         </label>
         <MultiSelect
           id={`pkg-templates-${id}`}
@@ -164,11 +165,23 @@ export function PackageFields({
       <fieldset className="flex flex-wrap items-center gap-6 border-2 border-ink/10 p-3">
         <legend className={labelClass}>Opsi</legend>
         <label className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.05em]">
-          <input type="checkbox" name="digital_output" defaultChecked={pkg?.digital_output} disabled={pending} className="size-4 accent-[#111111]" />
+          <input
+            type="checkbox"
+            name="digital_output"
+            defaultChecked={pkg?.digital_output}
+            disabled={pending}
+            className="size-4 accent-[#111111]"
+          />
           Digital copy
         </label>
         <label className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.05em]">
-          <input type="checkbox" name="is_active" defaultChecked={pkg?.is_active ?? true} disabled={pending} className="size-4 accent-[#111111]" />
+          <input
+            type="checkbox"
+            name="is_active"
+            defaultChecked={pkg?.is_active ?? true}
+            disabled={pending}
+            className="size-4 accent-[#111111]"
+          />
           Aktif
         </label>
       </fieldset>

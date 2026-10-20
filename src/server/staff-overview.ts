@@ -143,7 +143,7 @@ export async function getStaffOverview(userId: string, businessId: string): Prom
     outlet_id: string;
     outlets: { name: string } | { name: string }[] | null;
   };
-  const boothRows = ((boothRes.data ?? []) as unknown as PhotoboxListRow[]);
+  const boothRows = (boothRes.data ?? []) as unknown as PhotoboxListRow[];
   const counts = { online: 0, offline: 0, maintenance: 0, total: boothRows.length };
   for (const row of boothRows) {
     if (row.status === "online") counts.online += 1;
@@ -153,7 +153,7 @@ export async function getStaffOverview(userId: string, businessId: string): Prom
   // Outlet yang relevan = outlet dari booth yang bisa diakses (0018).
   const outletCount = restrictTo
     ? new Set(boothRows.map((row) => row.outlet_id)).size
-    : outletCountRes.count ?? 0;
+    : (outletCountRes.count ?? 0);
 
   type SessionRow = {
     id: string;
@@ -169,15 +169,17 @@ export async function getStaffOverview(userId: string, businessId: string): Prom
   const activeRows = ((activeRes.data ?? []) as unknown as SessionRow[]).map((row) => {
     const photobox = Array.isArray(row.photoboxes) ? row.photoboxes[0] : row.photoboxes;
     const outlets = photobox?.outlets;
-    const outletName = Array.isArray(outlets) ? outlets[0]?.name ?? null : outlets?.name ?? null;
+    const outletName = Array.isArray(outlets)
+      ? (outlets[0]?.name ?? null)
+      : (outlets?.name ?? null);
     return {
       id: row.id,
       photobox_id: row.photobox_id,
       photobox_name: photobox?.name ?? "-",
       outlet_name: outletName,
       package_name: Array.isArray(row.packages)
-        ? row.packages[0]?.name ?? null
-        : row.packages?.name ?? null,
+        ? (row.packages[0]?.name ?? null)
+        : (row.packages?.name ?? null),
       started_at: row.started_at,
       expires_at: row.expires_at,
     } satisfies ActiveSessionRow;

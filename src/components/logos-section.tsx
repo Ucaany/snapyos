@@ -7,7 +7,7 @@ export function LogosSection() {
       <SectionHeader
         badge="Pembayaran"
         title="Terima pembayaran dengan mudah"
-        subtitle="Kiosk Anda mendukung QRIS via gateway milik Anda: Pakasir, Midtrans, dan Tripay."
+        subtitle="Kiosk Anda bisa menerima QRIS lewat gateway milik Anda: Pakasir, Midtrans, atau Tripay. Fitur ini aktif di paket Growth ke atas setelah credential merchant terpasang."
       />
       <LogoCloud />
     </section>

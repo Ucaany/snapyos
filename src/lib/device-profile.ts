@@ -12,7 +12,8 @@
  * runtime sebenarnya (kamera/orientasi) tetap dicek capability (bukan UA).
  */
 
-export type DeviceKind = "ipad" | "tablet-android" | "phone-android" | "phone-ios" | "desktop" | "unknown";
+export type DeviceKind =
+  "ipad" | "tablet-android" | "phone-android" | "phone-ios" | "desktop" | "unknown";
 
 export type DeviceProfile = {
   kind: DeviceKind;
@@ -63,7 +64,8 @@ function isPwaInstalled(): boolean {
   return (
     window.matchMedia("(display-mode: standalone)").matches ||
     // iOS Safari standalone.
-    (typeof navigator !== "undefined" && (navigator as unknown as { standalone?: boolean }).standalone === true)
+    (typeof navigator !== "undefined" &&
+      (navigator as unknown as { standalone?: boolean }).standalone === true)
   );
 }
 

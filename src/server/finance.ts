@@ -93,9 +93,7 @@ export async function getFinanceSummary(
   const discount = Number(sum?.discount ?? 0);
   const net = Number(sum?.net ?? 0);
 
-  const expensesByCategory = (
-    (expenseRows.data ?? []) as { category: string; amount: number }[]
-  )
+  const expensesByCategory = ((expenseRows.data ?? []) as { category: string; amount: number }[])
     .map((r) => ({ category: r.category, amount: Number(r.amount ?? 0) }))
     .sort((a, b) => b.amount - a.amount);
   const expenses = expensesByCategory.reduce((s, r) => s + r.amount, 0);
@@ -152,11 +150,7 @@ export async function listExpenses(
   return (data ?? []) as ExpenseRow[];
 }
 
-export async function createExpense(
-  userId: string,
-  businessId: string,
-  input: ExpenseCreateInput
-) {
+export async function createExpense(userId: string, businessId: string, input: ExpenseCreateInput) {
   const parsed = expenseCreateSchema.parse(input);
   await requireFinance(userId, businessId, true);
   await assertOutletOwned(businessId, parsed.outlet_id);

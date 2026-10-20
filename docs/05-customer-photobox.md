@@ -5,6 +5,7 @@
 SESUAI (inti): alur pay-first (package → pilih metode pembayaran → paid → template → capture → review/retake → edit → finalize → auto-print → QR result `/r/[token]` + GIF), device pairing/activation, exit PIN, kiosk fullscreen lock, offline sync (IndexedDB), retention cron.
 
 BELUM / TIDAK SESUAI:
+
 - Filter `?event=` pada pilih package — event mode belum ada.
 - ZIP download hasil — belum (hanya GIF + foto berframe per file).
 - Background kustom halaman result — belum.
@@ -22,6 +23,7 @@ Customer **tidak perlu login**. Aplikasi ini adalah pengalaman photobox milik br
 Sebelum customer app bisa dipakai, **perangkat (device/kiosk) harus diaktifkan/dipasangkan** ke photobox milik owner. Ini mencegah orang tak berwenang menjalankan booth.
 
 ### Konsep
+
 - Setiap photobox punya **slug URL khusus**: `GET /p/[businessSlug]/[photoboxSlug]`.
 - Device membuka URL → melihat layar aktivasi (kode + QR belum aktif).
 - Owner (di dashboard) membuka halaman Photobox → menampilkan **kode aktivasi + QR code** (sekali pakai, kedaluwarsa beberapa menit).
@@ -30,6 +32,7 @@ Sebelum customer app bisa dipakai, **perangkat (device/kiosk) harus diaktifkan/d
 - Token persisten **sampai dicabut/reset owner** (device diingat; tidak perlu aktif ulang tiap boot, selama token valid).
 
 ### Flow
+
 ```
 Device buka /p/[slug]/[photoboxSlug]
    ↓ (belum aktif)
@@ -56,21 +59,25 @@ Setelah aktivasi sukses (sebelum Welcome Screen pertama), device menjalankan **S
 4. **Selesai** → langsung Welcome Screen.
 
 Aturan:
+
 - Customer **tidak pernah** melihat UI permission, pemilihan kamera, atau print test — flow customer murni pengalaman brand.
 - Owner dashboard hanya menampilkan `device_status` + tombol **[ ULANGI SETUP ]** (revoke device → re-pair → wizard jalan lagi).
 - Runtime kamera gagal (kamera dicabut, dipakai app lain) → pesan retry sederhana + lapor ke `device_status` (tabel error §5.5.3).
 
 ### Entity (tambahan `07-database-schema.md`)
+
 - `devices` — `{ id, business_id, photobox_id, name, device_token (hash), status (active/revoked), last_seen_at, created_at }`
 - `activation_codes` — `{ id, photobox_id, code, expires_at, used_at, created_at }` (sekali pakai)
 
 ### API
+
 - `GET /api/v1/business/:businessId/photoboxes/:id/activation` — owner: generate kode+QR (return `code`, `qr_url`)
 - `POST /api/v1/public/devices/activate` — `{ code }` (atau payload QR) → `{ device_token }`
 - `POST /api/v1/public/devices/verify` — `{ device_token }` → status device (dipakai saat device boot/reload)
 - `DELETE /api/v1/business/:businessId/devices/:id` — owner: cabut (revoke) device
 
 ### Keamanan
+
 - Kode aktivasi: random, short-lived (expire ~5 menit), **sekali pakai** (`used_at`).
 - `device_token` disimpan **hash** di server; device menyimpan token di `localStorage` (public app, tanpa login).
 - Server memverifikasi `device_token` + `photobox_id` + `business_id` pada setiap request device (bukan hanya saat aktivasi).
@@ -78,6 +85,7 @@ Aturan:
 - Aktivasi gagal → error jelas ("Kode tidak valid atau kedaluwarsa") + tombol coba lagi.
 
 ### Acceptance
+
 - Device hanya bisa masuk customer app setelah aktivasi berhasil.
 - Kode/QR dari dashboard sekali pakai & kedaluwarsa.
 - Device aktif otomatis setelah scan/kode sukses.
@@ -98,6 +106,7 @@ WELCOME → CHOOSE PACKAGE → CHECKOUT → VOUCHER → QRIS PAYMENT → PAID (t
 URL publik: `GET /p/[businessSlug]/[photoboxSlug]` (opsional `?event=<event_code>`). Device yang sudah aktif menyimpan `device_token` dan langsung masuk welcome screen.
 
 Prinsip pay-first:
+
 - Harga & jumlah foto ditentukan **package** (dipilih sebelum bayar).
 - **Sesi foto hanya bisa dimulai setelah payment `paid`** (`POST /sessions` syarat: checkout_session paid).
 - Foto di-upload ke storage **setelah paid** — tidak ada foto tersimpan tanpa pembayaran.
@@ -108,6 +117,7 @@ Prinsip pay-first:
 **Purpose:** menjaga throughput booth — customer tidak menempati booth terlalu lama.
 
 **Konfigurasi (per photobox, owner-configurable)** — `photoboxes.session_settings` jsonb:
+
 ```json
 {
   "timer_seconds": 300,
@@ -117,6 +127,7 @@ Prinsip pay-first:
 ```
 
 **Aturan:**
+
 - Timer mulai saat **webhook PAID** (waktu menunggu QRIS tidak dihitung).
 - `sessions.expires_at` di-set server-side saat session dibuat (post-paid). **Semua endpoint sesi mengecek expiry** → error `SESSION_EXPIRED` jika lewat. Countdown di kiosk hanya UX; server adalah enforcer.
 - UI kiosk: countdown terlihat + warning di sisa waktu terakhir (`warning_seconds`).
@@ -144,6 +155,7 @@ Prinsip pay-first:
 ### Kustomisasi penuh (Branding & Kiosk)
 
 Konfigurasi kiosk (`branding.kiosk`) mencakup:
+
 - **Override per-layar** (`pages.welcome/guide/package/payment/template/capture/edit/result`): warna bg/teks, skala font, radius tombol, padding, perataan konten — menimpa nilai global.
 - **Tutorial custom** (`guide_steps`): langkah ditampilkan sebelum pemilihan paket, dapat ditambah/dihapus/diurutkan (max 8). Kosong = dilewati.
 - **Video promo** (`video_key` global + `pages.*.video_key` per-layar): looping muted; layar kamera awal bisa menampilkan video attract di latar panel preview.
@@ -228,6 +240,7 @@ Setup Wizard (§5.0.1) setelah aktivasi device
 ```
 
 Runtime sesi (di flow customer):
+
 ```
 Ambil preferred_device_id → getUserMedia → preview siap
    ├─ Gagal (NotFound/NotReadable runtime) → pesan retry §5.5.3 + lapor device_status
@@ -238,6 +251,7 @@ Mirror preview & fullscreen mengikuti owner settings (camera_settings)
 ### 5.5.2 Camera Settings (owner-configurable, per photobox)
 
 `photoboxes.camera_settings` jsonb:
+
 ```json
 {
   "countdown_seconds": 3,
@@ -253,16 +267,16 @@ Mirror preview & fullscreen mengikuti owner settings (camera_settings)
 
 ### 5.5.3 Camera Error Handling (user-friendly, full bahasa Indonesia)
 
-| Error | Pesan | Aksi |
-|-------|-------|------|
-| `NotAllowedError` | "Izinkan akses kamera untuk mulai berfoto." | [ AKTIFKAN KAMERA ] |
-| `NotFoundError` | "Tidak ada kamera terdeteksi. Hubungkan webcam USB ke perangkat ini." | [ COBA LAGI ] |
-| `NotReadableError` | "Kamera sedang dipakai aplikasi lain. Tutup aplikasi lain, lalu coba lagi." | [ COBA LAGI ] |
-| `OverconstrainedError` | "Resolusi kamera tidak didukung. Mencoba resolusi standar..." | otomatis fallback |
-| `AbortError` | "Permintaan kamera dibatalkan." | [ COBA LAGI ] |
-| `isSecureContext === false` | "Harus diakses via HTTPS agar kamera berfungsi." | info teknis |
-| 0 device terdeteksi | "Tidak ada kamera terdeteksi. Periksa koneksi USB webcam." | [ PERIKSA KAMERA ] |
-| Resolusi < 480p | "Kualitas kamera rendah. Disarankan webcam HD (720p+)." | warning (tetap bisa lanjut) |
+| Error                       | Pesan                                                                       | Aksi                        |
+| --------------------------- | --------------------------------------------------------------------------- | --------------------------- |
+| `NotAllowedError`           | "Izinkan akses kamera untuk mulai berfoto."                                 | [ AKTIFKAN KAMERA ]         |
+| `NotFoundError`             | "Tidak ada kamera terdeteksi. Hubungkan webcam USB ke perangkat ini."       | [ COBA LAGI ]               |
+| `NotReadableError`          | "Kamera sedang dipakai aplikasi lain. Tutup aplikasi lain, lalu coba lagi." | [ COBA LAGI ]               |
+| `OverconstrainedError`      | "Resolusi kamera tidak didukung. Mencoba resolusi standar..."               | otomatis fallback           |
+| `AbortError`                | "Permintaan kamera dibatalkan."                                             | [ COBA LAGI ]               |
+| `isSecureContext === false` | "Harus diakses via HTTPS agar kamera berfungsi."                            | info teknis                 |
+| 0 device terdeteksi         | "Tidak ada kamera terdeteksi. Periksa koneksi USB webcam."                  | [ PERIKSA KAMERA ]          |
+| Resolusi < 480p             | "Kualitas kamera rendah. Disarankan webcam HD (720p+)."                     | warning (tetap bisa lanjut) |
 
 ### 5.5.4 Components
 
@@ -311,6 +325,7 @@ Jumlah foto mengikuti **template terpilih** — jumlah slot pada `templates.layo
 **Purpose:** Edit sebelum finalize — tahap terakhir sebelum print.
 
 **Features:**
+
 - Transform: crop, rotate, **zoom & pan/posisi** — menyesuaikan foto **di dalam slot** template terpilih (bukan full canvas); zoom minimal = cover-fit, clamp per slot (`15-template-builder.md` §15.4). Template legacy (tanpa slot) = perilaku lama full-canvas.
 - Adjust: brightness, contrast, saturation, blur, grain, vignette
 - **Filters:** Original, Film, Warm, Cool, Black & White, Retro, Vintage, Y2K
@@ -356,6 +371,7 @@ Lihat `06-checkout-payment.md` untuk detail penuh (order summary, voucher, QRIS,
 > v2: checkout terjadi **setelah pilih package, sebelum sesi foto**. Sesi foto ter-unlock setelah payment `paid`.
 
 Ringkas flow checkout:
+
 ```
 PACKAGE → VOUCHER (opsional) → FINAL PRICE → CHECKOUT → QRIS → VERIFY → PAID
 → (lanjut: pilih template §5.4 → sesi foto)
@@ -368,6 +384,7 @@ PACKAGE → VOUCHER (opsional) → FINAL PRICE → CHECKOUT → QRIS → VERIFY 
 ### Kiosk Result Screen (setelah finalize)
 
 **UI:**
+
 ```
 YOUR PHOTO IS READY!
 [ PHOTO PREVIEW ]
@@ -382,6 +399,7 @@ SCAN TO GET YOUR PHOTOS:
 **URL (route customer-facing):** `GET /r/[token]` — halaman Next.js publik pendek (tanpa login). Halaman ini me-fetch data via endpoint `GET /api/v1/public/results/:resultToken` dan merender konten. QR di kiosk mengarah ke `/r/[token]`.
 
 **UI (layout):**
+
 ```
 [ Header: nama business (BACKLOG: logo owner) ]
 YOUR PHOTOS ARE READY!
@@ -392,6 +410,7 @@ YOUR PHOTOS ARE READY!
 ```
 
 Menyediakan:
+
 - **Unduh GIF animasi slideshow** — semua foto berframe bergantian otomatis; digenerate **server-side saat finalize**; storage key di `sessions.result_gif_key`. Preview GIF autoplay loop di atas halaman.
 - **Unduh foto berframe** (statis, per foto — hasil edit + frame pilihan customer), tampil sebagai grid thumbnail, bisa diunduh per foto. **BACKLOG: unduh semua (ZIP)** — belum diimplementasi (lihat blok Status Implementasi).
 - Tombol unduh bekerja lintas origin: URL unduh membawa `Content-Disposition: attachment` (`gif_download_url`, `photos[].download_url` dari `getResult`) — atribut `download` pada `<a>` cross-origin diabaikan browser.
@@ -412,6 +431,7 @@ Menyediakan:
 **Purpose:** Membagikan hasil via QR/tautan.
 
 **UI:**
+
 ```
 SCAN TO GET YOUR PHOTO
 [ QR CODE ]
@@ -454,6 +474,7 @@ Status printer: tercatat di photoboxes.device_status (owner lihat di dashboard)
 ### 5.15.2 Print Settings (owner-configurable, per photobox)
 
 `photoboxes.print_settings` jsonb:
+
 ```json
 {
   "enabled": true,
@@ -468,30 +489,31 @@ Status printer: tercatat di photoboxes.device_status (owner lihat di dashboard)
 
 ### 5.15.3 Print Layout Mapping
 
-| package.print_count | Hasil |
-|---------------------|-------|
-| 0 | digital only (download/QR) |
-| 1 | 1 lembar 4x6" single (atau 1 strip) |
-| 2 | 2 cetak (2 lembar single ATAU 1 lembar berisi 2 strip) |
-| 3 | 3 cetak / photostrip 3 kolom |
+| package.print_count | Hasil                                                  |
+| ------------------- | ------------------------------------------------------ |
+| 0                   | digital only (download/QR)                             |
+| 1                   | 1 lembar 4x6" single (atau 1 strip)                    |
+| 2                   | 2 cetak (2 lembar single ATAU 1 lembar berisi 2 strip) |
+| 3                   | 3 cetak / photostrip 3 kolom                           |
 
 Layout ditentukan `print_settings.layout` + `package.print_count`.
 
 ### 5.15.4 Printer Detection (keterbatasan & solusi)
 
 Browser **tidak bisa** enumerate printer (standar web). Jadi "deteksi" dilakukan:
+
 1. **Print Test di Setup Wizard (§5.0.1)** & dashboard owner → generate halaman test → `window.print()` di kiosk → owner konfirmasi fisik ("Test print berhasil?" Ya/Tidak).
 2. **Printer default OS** harus di-set di kiosk (dokumentasi di Bantuan).
 3. Status disimpan ke `photoboxes.device_status.printer = { status, last_test_at, confirmed }`.
 
 ### 5.15.5 Error Handling (print)
 
-| Kondisi | Pesan / Aksi |
-|---------|--------------|
-| Printer tidak tersedia | "Printer tidak terdeteksi. Jalankan [ PRINT TEST ]." |
-| Kertas habis | deteksi tidak memungkinkan via web → panduan di Bantuan |
-| print gagal (onbeforeprint/onerror) | "Gagal mencetak." + [ CETAK ULANG ] |
-| package tanpa print | langsung ke result (download/QR) |
+| Kondisi                             | Pesan / Aksi                                            |
+| ----------------------------------- | ------------------------------------------------------- |
+| Printer tidak tersedia              | "Printer tidak terdeteksi. Jalankan [ PRINT TEST ]."    |
+| Kertas habis                        | deteksi tidak memungkinkan via web → panduan di Bantuan |
+| print gagal (onbeforeprint/onerror) | "Gagal mencetak." + [ CETAK ULANG ]                     |
+| package tanpa print                 | langsung ke result (download/QR)                        |
 
 ### 5.15.6 Components
 

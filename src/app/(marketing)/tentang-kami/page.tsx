@@ -46,13 +46,12 @@ export default function AboutPage() {
               Operasional photobox, lebih mudah dikelola
             </h1>
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
-              SnapyOS membantu pemilik bisnis photobox mengatur booth, pembayaran,
-              perangkat, dan laporan dari satu tempat. Dibangun mengikuti alur kerja
-              nyata di booth, bukan asumsi.
+              SnapyOS membantu pemilik bisnis photobox mengatur booth, pembayaran, perangkat, dan
+              laporan dari satu tempat. Dibangun mengikuti alur kerja nyata di booth, bukan asumsi.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <Button nativeButton={false} render={<Link href="/register" />}>
-                Mulai dengan SnapyOS
+                Konsultasi Bisnis
                 <ArrowRight data-icon="inline-end" />
               </Button>
               <Button variant="outline" nativeButton={false} render={<Link href="/kontak" />}>
@@ -60,8 +59,12 @@ export default function AboutPage() {
               </Button>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-2 pt-1 text-xs text-muted-foreground">
-              <span className="rounded-none border-2 border-ink px-3 py-1">Pay first, baru foto</span>
-              <span className="rounded-none border-2 border-ink px-3 py-1">Dana ke merchant owner</span>
+              <span className="rounded-none border-2 border-ink px-3 py-1">
+                Pay first, baru foto
+              </span>
+              <span className="rounded-none border-2 border-ink px-3 py-1">
+                Dana ke merchant owner
+              </span>
               <span className="rounded-none border-2 border-ink px-3 py-1">Satu dashboard</span>
             </div>
           </div>
@@ -76,7 +79,10 @@ export default function AboutPage() {
           </h2>
           <ol className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {FOKUS.map((s) => (
-              <li key={s.no} className="rounded-none border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111]">
+              <li
+                key={s.no}
+                className="rounded-none border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111]"
+              >
                 <span className="font-mono text-xs text-muted-foreground">{s.no}</span>
                 <p className="mt-1 text-sm font-semibold">{s.title}</p>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">{s.desc}</p>
@@ -91,22 +97,26 @@ export default function AboutPage() {
               <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
                 Cara kami bekerja
               </p>
-              <h3 className="mt-2 text-xl font-display font-black uppercase tracking-tight md:text-2xl">Jelas dan dapat ditelusuri</h3>
+              <h3 className="mt-2 text-xl font-display font-black uppercase tracking-tight md:text-2xl">
+                Jelas dan dapat ditelusuri
+              </h3>
               <p className="mt-3 text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
-                Setiap transaksi tercatat dari checkout sampai settlement. Voucher
-                tervalidasi server, pembayaran QRIS terverifikasi provider, dan hasil
-                foto tersimpan 1 sampai 3 hari mengikuti pengaturan booth.
+                Setiap transaksi tercatat dari checkout sampai settlement. Voucher tervalidasi
+                server, pembayaran QRIS terverifikasi provider, dan hasil foto tersimpan 1 sampai 3
+                hari mengikuti pengaturan booth.
               </p>
             </div>
             <div className="rounded-none border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111] md:p-8">
               <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
                 Kontrol owner
               </p>
-              <h3 className="mt-2 text-xl font-display font-black uppercase tracking-tight md:text-2xl">Tetap di tangan pemilik</h3>
+              <h3 className="mt-2 text-xl font-display font-black uppercase tracking-tight md:text-2xl">
+                Tetap di tangan pemilik
+              </h3>
               <p className="mt-3 text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
-                Owner mengatur paket, frame, voucher, perangkat, dan kredensial
-                payment sendiri. Staff operasional memakai shell read-only tanpa
-                mengubah konfigurasi bisnis.
+                Owner mengatur paket, frame, voucher, perangkat, dan kredensial payment sendiri.
+                Staff operasional memakai shell operasional untuk konfirmasi pembayaran tunai dan
+                POS, tanpa akses ke konfigurasi bisnis.
               </p>
               <div className="mt-5 flex flex-wrap gap-3">
                 <Button variant="outline" nativeButton={false} render={<Link href="/docs" />}>

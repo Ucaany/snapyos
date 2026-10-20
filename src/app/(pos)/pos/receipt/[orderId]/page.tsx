@@ -10,15 +10,11 @@ import { getActiveBusiness, requireUser } from "@/lib/tenant";
 import { getPosOrder } from "@/server/pos-orders";
 
 export const metadata: Metadata = {
-  title: "Struk POS — SnapyOS",
+  title: "Struk POS | SnapyOS",
 };
 
 /** /pos/receipt/[orderId] — struk siap-cetak (A12: window.print). */
-export default async function PosReceiptPage({
-  params,
-}: {
-  params: Promise<{ orderId: string }>;
-}) {
+export default async function PosReceiptPage({ params }: { params: Promise<{ orderId: string }> }) {
   const user = await requireUser();
   if (!user) redirect("/login");
 

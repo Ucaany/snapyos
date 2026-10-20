@@ -14,5 +14,11 @@ export async function countOnlineDevices(businessId: string): Promise<number> {
     .from("devices")
     .select("status, last_seen_at, last_heartbeat_at")
     .eq("business_id", businessId);
-  return countOnline((data ?? []) as { status: string; last_seen_at: string | null; last_heartbeat_at?: string | null }[]);
+  return countOnline(
+    (data ?? []) as {
+      status: string;
+      last_seen_at: string | null;
+      last_heartbeat_at?: string | null;
+    }[]
+  );
 }

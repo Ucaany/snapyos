@@ -19,9 +19,7 @@ export type ProbeResult = boolean | null;
  *                  → JANGAN hapus baris DB; retry nanti.
  */
 export type ResolveOutcome =
-  | { status: "present"; provider: ProbeableProvider }
-  | { status: "absent" }
-  | { status: "unknown" };
+  { status: "present"; provider: ProbeableProvider } | { status: "absent" } | { status: "unknown" };
 
 /** Permukaan provider yang dibutuhkan resolver (subset StorageProvider). */
 export interface ProbeableProvider {
@@ -40,11 +38,7 @@ export class StorageResolver {
   private fallback: ProbeableProvider;
   private now: () => number;
 
-  constructor(
-    write: ProbeableProvider,
-    fallback: ProbeableProvider,
-    now: () => number = Date.now
-  ) {
+  constructor(write: ProbeableProvider, fallback: ProbeableProvider, now: () => number = Date.now) {
     this.write = write;
     this.fallback = fallback;
     this.now = now;

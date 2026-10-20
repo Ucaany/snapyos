@@ -1,23 +1,23 @@
-"use client"
-import { ArrowLeft, Copy } from "lucide-react"
-import { formatIDR } from "@/lib/dashboard-math"
-import type { KioskVisualStyle } from "@/lib/kiosk-types"
-import type { PendingPayment } from "./QrisPayment"
+"use client";
+import { ArrowLeft, Copy } from "lucide-react";
+import { formatIDR } from "@/lib/dashboard-math";
+import type { KioskVisualStyle } from "@/lib/kiosk-types";
+import type { PendingPayment } from "./QrisPayment";
 export function VaPayment({
   payment,
   left,
   onBack,
   kioskStyle,
 }: {
-  payment: PendingPayment
-  left: number
-  onBack(): void
-  kioskStyle?: KioskVisualStyle
+  payment: PendingPayment;
+  left: number;
+  onBack(): void;
+  kioskStyle?: KioskVisualStyle;
 }) {
-  const ks = kioskStyle
+  const ks = kioskStyle;
   const copy = () => {
-    if (payment.va_number) void navigator.clipboard.writeText(payment.va_number)
-  }
+    if (payment.va_number) void navigator.clipboard.writeText(payment.va_number);
+  };
   return (
     <div
       className="mx-auto flex w-full max-w-[700px] flex-1 flex-col justify-center gap-4 border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111]"
@@ -53,5 +53,5 @@ export function VaPayment({
         Kembali
       </button>
     </div>
-  )
+  );
 }

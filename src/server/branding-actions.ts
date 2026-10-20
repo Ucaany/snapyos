@@ -8,7 +8,12 @@ import { revalidatePath } from "next/cache";
 import { buildCheckoutPayload, str, toFormState } from "@/lib/form-state";
 import { requireEffectiveSubscription } from "@/server/require-subscription";
 import { getActiveBusiness, requireUser } from "@/lib/tenant";
-import { updateBranding, uploadLogo, uploadKioskVideo, uploadKioskPageVideo } from "@/server/branding";
+import {
+  updateBranding,
+  uploadLogo,
+  uploadKioskVideo,
+  uploadKioskPageVideo,
+} from "@/server/branding";
 import { updateSettings } from "@/server/business";
 import { kioskPageIdSchema } from "@/lib/validators";
 import type { FormState } from "@/server/auth-actions";
@@ -43,7 +48,12 @@ export async function updateBrandingAction(
 
 /** Upload logo kiosk, dipanggil dari editor Branding & Kiosk. */
 export async function uploadLogoAction(input: {
-  logo: { name?: string | null; type?: string | null; size?: number | null; arrayBuffer(): Promise<ArrayBuffer> };
+  logo: {
+    name?: string | null;
+    type?: string | null;
+    size?: number | null;
+    arrayBuffer(): Promise<ArrayBuffer>;
+  };
 }): Promise<{ ok: boolean; error?: string }> {
   const user = await requireUser();
   if (!user) return { ok: false, error: "Sesi berakhir. Silakan login ulang." };
@@ -102,7 +112,9 @@ export async function saveBrandingKioskAction(input: {
 
   // Allowlist id layar: nilai ini dipakai sebagai key jsonb, bukan segmen
   // storage, tapi tetap tidak boleh membawa key sembarang dari client.
-  const resetPages = (input.reset_pages ?? []).filter((p) => kioskPageIdSchema.safeParse(p).success);
+  const resetPages = (input.reset_pages ?? []).filter(
+    (p) => kioskPageIdSchema.safeParse(p).success
+  );
   const { reset_pages: _ignored, ...payload } = input;
 
   try {
@@ -147,7 +159,12 @@ export async function uploadKioskVideoAction(
 /** Upload video promo per-layar (mis. layar kamera awal) — `page` = id layar kiosk. */
 export async function uploadKioskPageVideoAction(input: {
   page: string;
-  video: { name?: string | null; type?: string | null; size?: number | null; arrayBuffer(): Promise<ArrayBuffer> };
+  video: {
+    name?: string | null;
+    type?: string | null;
+    size?: number | null;
+    arrayBuffer(): Promise<ArrayBuffer>;
+  };
 }): Promise<{ ok: boolean; error?: string }> {
   const user = await requireUser();
   if (!user) return { ok: false, error: "Sesi berakhir. Silakan login ulang." };
@@ -193,7 +210,9 @@ export async function deleteKioskVideoAction(): Promise<{ ok: boolean; error?: s
 }
 
 /** Hapus video promo per-layar (set pages.<page>.video_key = null). */
-export async function deleteKioskPageVideoAction(page: string): Promise<{ ok: boolean; error?: string }> {
+export async function deleteKioskPageVideoAction(
+  page: string
+): Promise<{ ok: boolean; error?: string }> {
   const user = await requireUser();
   if (!user) return { ok: false, error: "Sesi berakhir. Silakan login ulang." };
   const active = await getActiveBusiness(user.id);

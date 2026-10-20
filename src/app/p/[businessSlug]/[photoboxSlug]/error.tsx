@@ -16,8 +16,8 @@ export default function KioskError({ reset }: { error: Error; reset: () => void 
         Coba muat ulang
       </h1>
       <p className="max-w-[48ch] font-mono text-xs uppercase leading-relaxed tracking-[0.08em] text-muted-foreground">
-        Konfigurasi booth tidak bisa dimuat saat ini. Periksa koneksi internet
-        booth, lalu muat ulang. Sesi foto yang sedang berjalan tidak hilang.
+        Konfigurasi booth tidak bisa dimuat saat ini. Periksa koneksi internet booth, lalu muat
+        ulang. Sesi foto yang sedang berjalan tidak hilang.
       </p>
       <button
         type="button"

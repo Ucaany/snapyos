@@ -34,4 +34,3 @@ export async function generateFrameThumbnail(bytes: Buffer): Promise<FrameThumbn
     return null;
   }
 }
-

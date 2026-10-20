@@ -215,9 +215,7 @@ export class R2StorageProvider implements StorageProvider {
     const requestedOffset = options.offset ?? 0;
     // Prefix R2 selalu berakhiran "/" untuk folder; "" (root area) tetap prefix area.
     const areaPrefix = r2Key(bucket, "");
-    const fullPrefix = prefix
-      ? `${areaPrefix}${prefix.replace(/^\/+/, "")}/`
-      : areaPrefix;
+    const fullPrefix = prefix ? `${areaPrefix}${prefix.replace(/^\/+/, "")}/` : areaPrefix;
     try {
       // Kumpulkan SEMUA entri pada level ini (folder + objek), lalu urutkan by
       // name — paritas dengan Supabase `.list(sortBy name)`. Offset/limit

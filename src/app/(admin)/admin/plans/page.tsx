@@ -56,7 +56,14 @@ function Field({
       <label htmlFor={id} className="font-mono text-[10px] uppercase tracking-[0.12em]">
         {label}
       </label>
-      <Input id={id} name={name} type={type} step={step} defaultValue={defaultValue} placeholder={placeholder} />
+      <Input
+        id={id}
+        name={name}
+        type={type}
+        step={step}
+        defaultValue={defaultValue}
+        placeholder={placeholder}
+      />
     </div>
   );
 }
@@ -82,8 +89,8 @@ export default async function AdminPlansPage() {
         <CardHeader>
           <CardTitle>Buat Plan Baru</CardTitle>
           <CardDescription>
-            Plan seed (Starter/Growth/Business) hanya contoh - semuanya editable di sini.
-            Feature flags & aktif dapat di-set langsung saat create.
+            Plan seed (Starter/Growth/Business) hanya contoh - semuanya editable di sini. Feature
+            flags & aktif dapat di-set langsung saat create.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -94,18 +101,82 @@ export default async function AdminPlansPage() {
           >
             <Field id="new-code" label="Kode" name="code" placeholder="starter" />
             <Field id="new-name" label="Nama" name="name" placeholder="Starter" />
-            <Field id="new-price" label="Harga / bln (IDR)" name="price_monthly" type="number" defaultValue={99000} />
-            <Field id="new-price-yearly" label="Harga / thn (IDR)" name="price_yearly" type="number" defaultValue={990000} />
-            <Field id="new-biz" label="Max Bisnis" name="max_businesses" type="number" defaultValue={1} />
-            <Field id="new-outlets" label="Max Outlet" name="max_outlets" type="number" defaultValue={1} />
-            <Field id="new-boxes" label="Max Photobox" name="max_photoboxes" type="number" defaultValue={1} />
-            <Field id="new-sessions" label="Max Sesi Konkuren" name="max_concurrent_sessions" type="number" defaultValue={1} />
-            <Field id="new-staff" label="Max Staff" name="max_staff" type="number" defaultValue={1} />
-            <Field id="new-storage" label="Storage Limit (MB)" name="storage_limit_mb" type="number" defaultValue={1024} />
-            <Field id="new-fee-pct" label="Platform Fee %" name="platform_fee_percent" type="number" step="0.5" defaultValue={0} />
-            <Field id="new-fee-flat" label="Platform Fee Flat (IDR)" name="platform_fee_flat" type="number" defaultValue={0} />
+            <Field
+              id="new-price"
+              label="Harga / bln (IDR)"
+              name="price_monthly"
+              type="number"
+              defaultValue={99000}
+            />
+            <Field
+              id="new-price-yearly"
+              label="Harga / thn (IDR)"
+              name="price_yearly"
+              type="number"
+              defaultValue={990000}
+            />
+            <Field
+              id="new-biz"
+              label="Max Bisnis"
+              name="max_businesses"
+              type="number"
+              defaultValue={1}
+            />
+            <Field
+              id="new-outlets"
+              label="Max Outlet"
+              name="max_outlets"
+              type="number"
+              defaultValue={1}
+            />
+            <Field
+              id="new-boxes"
+              label="Max Photobox"
+              name="max_photoboxes"
+              type="number"
+              defaultValue={1}
+            />
+            <Field
+              id="new-sessions"
+              label="Max Sesi Konkuren"
+              name="max_concurrent_sessions"
+              type="number"
+              defaultValue={1}
+            />
+            <Field
+              id="new-staff"
+              label="Max Staff"
+              name="max_staff"
+              type="number"
+              defaultValue={1}
+            />
+            <Field
+              id="new-storage"
+              label="Storage Limit (MB)"
+              name="storage_limit_mb"
+              type="number"
+              defaultValue={1024}
+            />
+            <Field
+              id="new-fee-pct"
+              label="Platform Fee %"
+              name="platform_fee_percent"
+              type="number"
+              step="0.5"
+              defaultValue={0}
+            />
+            <Field
+              id="new-fee-flat"
+              label="Platform Fee Flat (IDR)"
+              name="platform_fee_flat"
+              type="number"
+              defaultValue={0}
+            />
             <div className="flex flex-col gap-1">
-              <label htmlFor="new-cycle" className="font-mono text-[10px] uppercase tracking-[0.12em]">
+              <label
+                htmlFor="new-cycle"
+                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+              >
                 Siklus Billing
               </label>
               <select
@@ -154,7 +225,10 @@ export default async function AdminPlansPage() {
 
       <div className="flex flex-col gap-6">
         {plans.map((p) => (
-          <details key={p.id} className="border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
+          <details
+            key={p.id}
+            className="border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]"
+          >
             <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-3 p-4">
               <span className="flex items-center gap-3">
                 <span className="font-display text-lg uppercase tracking-tight">{p.name}</span>
@@ -171,10 +245,19 @@ export default async function AdminPlansPage() {
             <div className="border-t-2 border-ink/10 p-4">
               <dl className="mb-4 grid grid-cols-2 gap-[2px] border-2 border-ink/20 bg-ink/20 md:grid-cols-4">
                 {[
-                  { label: "Harga tahunan", value: p.price_yearly != null ? formatIDR(p.price_yearly) : "—" },
-                  { label: "Siklus billing", value: p.billing_cycle === "yearly" ? "Tahunan" : "Bulanan" },
+                  {
+                    label: "Harga tahunan",
+                    value: p.price_yearly != null ? formatIDR(p.price_yearly) : "-",
+                  },
+                  {
+                    label: "Siklus billing",
+                    value: p.billing_cycle === "yearly" ? "Tahunan" : "Bulanan",
+                  },
                   { label: "Sesi konkuren", value: String(p.max_concurrent_sessions) },
-                  { label: "Bisnis / Outlet / Booth", value: `${p.max_businesses} / ${p.max_outlets} / ${p.max_photoboxes}` },
+                  {
+                    label: "Bisnis / Outlet / Booth",
+                    value: `${p.max_businesses} / ${p.max_outlets} / ${p.max_photoboxes}`,
+                  },
                   { label: "Staff", value: String(p.max_staff) },
                   { label: "Storage", value: `${p.storage_limit_mb} MB` },
                   { label: "Fee %", value: String(p.platform_fee_percent) },
@@ -195,18 +278,82 @@ export default async function AdminPlansPage() {
                 className="grid grid-cols-2 gap-4 md:grid-cols-4"
               >
                 <Field id={`name-${p.id}`} label="Nama" name="name" defaultValue={p.name} />
-                <Field id={`price-${p.id}`} label="Harga / bln" name="price_monthly" type="number" defaultValue={p.price_monthly} />
-                <Field id={`price-yearly-${p.id}`} label="Harga / thn" name="price_yearly" type="number" defaultValue={p.price_yearly ?? ""} />
-                <Field id={`biz-${p.id}`} label="Max Bisnis" name="max_businesses" type="number" defaultValue={p.max_businesses} />
-                <Field id={`outlets-${p.id}`} label="Max Outlet" name="max_outlets" type="number" defaultValue={p.max_outlets} />
-                <Field id={`boxes-${p.id}`} label="Max Photobox" name="max_photoboxes" type="number" defaultValue={p.max_photoboxes} />
-                <Field id={`sessions-${p.id}`} label="Sesi konkuren" name="max_concurrent_sessions" type="number" defaultValue={p.max_concurrent_sessions} />
-                <Field id={`staff-${p.id}`} label="Max Staff" name="max_staff" type="number" defaultValue={p.max_staff} />
-                <Field id={`storage-${p.id}`} label="Storage Limit (MB)" name="storage_limit_mb" type="number" defaultValue={p.storage_limit_mb} />
-                <Field id={`fee-pct-${p.id}`} label="Fee %" name="platform_fee_percent" type="number" step="0.5" defaultValue={p.platform_fee_percent} />
-                <Field id={`fee-flat-${p.id}`} label="Fee flat" name="platform_fee_flat" type="number" defaultValue={p.platform_fee_flat} />
+                <Field
+                  id={`price-${p.id}`}
+                  label="Harga / bln"
+                  name="price_monthly"
+                  type="number"
+                  defaultValue={p.price_monthly}
+                />
+                <Field
+                  id={`price-yearly-${p.id}`}
+                  label="Harga / thn"
+                  name="price_yearly"
+                  type="number"
+                  defaultValue={p.price_yearly ?? ""}
+                />
+                <Field
+                  id={`biz-${p.id}`}
+                  label="Max Bisnis"
+                  name="max_businesses"
+                  type="number"
+                  defaultValue={p.max_businesses}
+                />
+                <Field
+                  id={`outlets-${p.id}`}
+                  label="Max Outlet"
+                  name="max_outlets"
+                  type="number"
+                  defaultValue={p.max_outlets}
+                />
+                <Field
+                  id={`boxes-${p.id}`}
+                  label="Max Photobox"
+                  name="max_photoboxes"
+                  type="number"
+                  defaultValue={p.max_photoboxes}
+                />
+                <Field
+                  id={`sessions-${p.id}`}
+                  label="Sesi konkuren"
+                  name="max_concurrent_sessions"
+                  type="number"
+                  defaultValue={p.max_concurrent_sessions}
+                />
+                <Field
+                  id={`staff-${p.id}`}
+                  label="Max Staff"
+                  name="max_staff"
+                  type="number"
+                  defaultValue={p.max_staff}
+                />
+                <Field
+                  id={`storage-${p.id}`}
+                  label="Storage Limit (MB)"
+                  name="storage_limit_mb"
+                  type="number"
+                  defaultValue={p.storage_limit_mb}
+                />
+                <Field
+                  id={`fee-pct-${p.id}`}
+                  label="Fee %"
+                  name="platform_fee_percent"
+                  type="number"
+                  step="0.5"
+                  defaultValue={p.platform_fee_percent}
+                />
+                <Field
+                  id={`fee-flat-${p.id}`}
+                  label="Fee flat"
+                  name="platform_fee_flat"
+                  type="number"
+                  defaultValue={p.platform_fee_flat}
+                />
                 <div className="flex flex-col gap-1">
-                  <label htmlFor={`cycle-${p.id}`} className="font-mono text-[10px] uppercase tracking-[0.12em]">
+                  <label
+                    htmlFor={`cycle-${p.id}`}
+                    className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                  >
                     Siklus Billing
                   </label>
                   <select
@@ -225,7 +372,10 @@ export default async function AdminPlansPage() {
                       Feature flags
                     </legend>
                     {FEATURE_KEYS.map((key) => (
-                      <label key={key} className="flex items-center gap-2 font-mono text-xs uppercase">
+                      <label
+                        key={key}
+                        className="flex items-center gap-2 font-mono text-xs uppercase"
+                      >
                         {/* hidden "false" dulu → unchecked tetap terkirim (H2 audit) */}
                         <input type="hidden" name={`feature_${key}`} value="false" />
                         <input

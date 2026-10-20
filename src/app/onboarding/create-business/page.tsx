@@ -54,8 +54,8 @@ export default async function CreateBusinessPage() {
             Mari beri rumah untuk bisnis Anda.
           </h1>
           <p className="mt-5 max-w-[38rem] text-base leading-7 text-muted-foreground">
-            Lengkapi informasi dasar. Setelah itu Anda dapat menambahkan outlet
-            dan photobox dari workspace.
+            Lengkapi informasi dasar. Setelah itu Anda dapat menambahkan outlet dan photobox dari
+            workspace.
           </p>
         </header>
 

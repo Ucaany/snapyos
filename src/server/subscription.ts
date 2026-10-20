@@ -46,24 +46,15 @@ import {
   type IntentDb,
 } from "@/lib/subscription-intent-apply";
 
-export {
-  intentToItems,
-  INTENT_FAILURE_REASON,
-  buildReleasedIntent,
-  buildFailureSnapshot,
-};
-export type {
-  InvoiceIntentItem,
-  IntentShape,
-  IntentFailureReason,
-  ApplyIntentDeps,
-  IntentDb,
-};
+export { intentToItems, INTENT_FAILURE_REASON, buildReleasedIntent, buildFailureSnapshot };
+export type { InvoiceIntentItem, IntentShape, IntentFailureReason, ApplyIntentDeps, IntentDb };
 
 /** Nama tampilan invoice (tabel invoice, receipt, halaman bayar). */
 function intentDisplayName(intent: IntentShape, fallbackAmount: number): string {
   return intentToItems(intent, fallbackAmount)
-    .map((i) => (i.qty > 1 ? `${i.name ?? i.code ?? i.type} ×${i.qty}` : (i.name ?? i.code ?? i.type)))
+    .map((i) =>
+      i.qty > 1 ? `${i.name ?? i.code ?? i.type} ×${i.qty}` : (i.name ?? i.code ?? i.type)
+    )
     .join(" + ");
 }
 
@@ -212,7 +203,10 @@ export async function getSubscriptionOverview(
         .select("id, code, name, price_monthly, unit")
         .eq("is_active", true)
         .order("price_monthly", { ascending: true }),
-      supabase.from("outlets").select("id", { count: "exact", head: true }).eq("business_id", businessId),
+      supabase
+        .from("outlets")
+        .select("id", { count: "exact", head: true })
+        .eq("business_id", businessId),
       supabase
         .from("photoboxes")
         .select("id", { count: "exact", head: true })
@@ -239,16 +233,14 @@ export async function getSubscriptionOverview(
     features: Record<string, boolean>;
   };
 
-  const subRow = subRes.data as
-    | {
-        id: string;
-        status: string;
-        cancel_at_period_end: boolean;
-        trial_ends_at: string | null;
-        current_period_end: string | null;
-        plans: PlanJoin | PlanJoin[] | null;
-      }
-    | null;
+  const subRow = subRes.data as {
+    id: string;
+    status: string;
+    cancel_at_period_end: boolean;
+    trial_ends_at: string | null;
+    current_period_end: string | null;
+    plans: PlanJoin | PlanJoin[] | null;
+  } | null;
 
   const toPlan = (p: PlanJoin | PlanJoin[] | null) => {
     if (!p || Array.isArray(p)) return null;
@@ -273,12 +265,17 @@ export async function getSubscriptionOverview(
         .eq("subscription_id", subRow.id)
         .eq("status", "active")
     : { data: null };
-  const activeAddOns = ((activeAddOnRows ?? []) as unknown as {
-    add_on_id: string;
-    quantity: number;
-    cancel_at_period_end: boolean;
-    add_ons: { code: string; name: string; price_monthly: number } | { code: string; name: string; price_monthly: number }[] | null;
-  }[]).map((r) => {
+  const activeAddOns = (
+    (activeAddOnRows ?? []) as unknown as {
+      add_on_id: string;
+      quantity: number;
+      cancel_at_period_end: boolean;
+      add_ons:
+        | { code: string; name: string; price_monthly: number }
+        | { code: string; name: string; price_monthly: number }[]
+        | null;
+    }[]
+  ).map((r) => {
     const a = r.add_ons && !Array.isArray(r.add_ons) ? r.add_ons : null;
     return {
       addOnId: r.add_on_id,
@@ -315,7 +312,11 @@ export async function getSubscriptionOverview(
       photoboxes: boxesRes.count ?? 0,
       staff: staffRes.count ?? 0,
       activeSessions: countOnline(
-        (devicesRes.data ?? []) as { status: string; last_seen_at: string | null; last_heartbeat_at?: string | null }[]
+        (devicesRes.data ?? []) as {
+          status: string;
+          last_seen_at: string | null;
+          last_heartbeat_at?: string | null;
+        }[]
       ),
       maxConcurrentSessions,
     },
@@ -377,13 +378,11 @@ export async function createSubscriptionInvoice(
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  const currentRow = current as
-    | {
-        id: string;
-        status: string;
-        plans: { id: string; code: string; name: string; price_monthly: number } | null;
-      }
-    | null;
+  const currentRow = current as {
+    id: string;
+    status: string;
+    plans: { id: string; code: string; name: string; price_monthly: number } | null;
+  } | null;
   if (!currentRow) throw new ApiError("NOT_FOUND", "Subscription tidak ditemukan");
   // Self-service recovery (docs/02 §2.4): owner expired boleh checkout lagi
   // — invoice recovery SELALU memuat plan_change (periode baru dari now(),
@@ -424,9 +423,18 @@ export async function createSubscriptionInvoice(
     }
 
     const [outletsRes, boxesRes, staffRes] = await Promise.all([
-      supabase.from("outlets").select("id", { count: "exact", head: true }).eq("business_id", businessId),
-      supabase.from("photoboxes").select("id", { count: "exact", head: true }).eq("business_id", businessId),
-      supabase.from("business_members").select("id", { count: "exact", head: true }).eq("business_id", businessId),
+      supabase
+        .from("outlets")
+        .select("id", { count: "exact", head: true })
+        .eq("business_id", businessId),
+      supabase
+        .from("photoboxes")
+        .select("id", { count: "exact", head: true })
+        .eq("business_id", businessId),
+      supabase
+        .from("business_members")
+        .select("id", { count: "exact", head: true })
+        .eq("business_id", businessId),
     ]);
     const usage = {
       outlets: outletsRes.count ?? 0,
@@ -502,8 +510,7 @@ export async function createSubscriptionInvoice(
   // Exception: recovery (expired) SELALU menyertakan plan_change — renew
   // plan lama/baru = aktivasi ulang, periode baru dari now() (docs/02 §2.4).
   const isActualPlanChange =
-    isRecovery ||
-    (Boolean(input.planCode) && input.planCode !== currentPlan?.code);
+    isRecovery || (Boolean(input.planCode) && input.planCode !== currentPlan?.code);
   const items: InvoiceIntentItem[] = [
     ...(isActualPlanChange
       ? [
@@ -527,7 +534,7 @@ export async function createSubscriptionInvoice(
     })),
   ];
   if (items.length === 0) {
-    throw new ApiError("VALIDATION_ERROR", "Tidak ada perubahan — pilih plan baru atau add-on");
+    throw new ApiError("VALIDATION_ERROR", "Tidak ada perubahan: pilih plan baru atau add-on");
   }
   const gross = items.reduce((sum, i) => sum + i.amount * i.qty, 0);
 
@@ -686,7 +693,8 @@ export async function cancelAddOn(userId: string, businessId: string, addOnId: s
     .select("id, quantity")
     .maybeSingle();
   const row = (data ?? null) as { id: string; quantity: number } | null;
-  if (!row) throw new ApiError("VALIDATION_ERROR", "Add-on tidak aktif atau sudah dijadwalkan batal");
+  if (!row)
+    throw new ApiError("VALIDATION_ERROR", "Add-on tidak aktif atau sudah dijadwalkan batal");
 
   await insertAudit({
     actorId: userId,
@@ -722,9 +730,7 @@ export async function applyInvoiceIntent(businessId: string, invoiceId: string) 
           .limit(1)
           .maybeSingle();
         const embedded = (owner?.user ?? null) as
-          | { email: string; name: string | null }
-          | { email: string; name: string | null }[]
-          | null;
+          { email: string; name: string | null } | { email: string; name: string | null }[] | null;
         const u = embedded && !Array.isArray(embedded) ? embedded : null;
         if (u?.email) {
           await sendSubscriptionStartedEmail({

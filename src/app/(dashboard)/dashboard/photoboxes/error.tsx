@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 /**
  * Error boundary - /dashboard/photoboxes.
@@ -6,14 +6,14 @@
  * di lapangan (status pairing / add-on), bukan cuma "muat ulang".
  */
 
-import { FeatureError } from "@/components/dashboard/FeatureError"
+import { FeatureError } from "@/components/dashboard/FeatureError";
 
 export default function PhotoboxesError({
   error,
   reset,
 }: {
-  error: Error & { digest?: string }
-  reset: () => void
+  error: Error & { digest?: string };
+  reset: () => void;
 }) {
   return (
     <FeatureError
@@ -22,5 +22,5 @@ export default function PhotoboxesError({
       error={error}
       reset={reset}
     />
-  )
+  );
 }

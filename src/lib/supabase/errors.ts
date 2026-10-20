@@ -15,7 +15,9 @@ export function isMissingRelation(error: { code?: string } | null | undefined): 
  * diterapkan. Dipakai untuk membedakan MISCONFIG (fungsi/tabel absen →
  * pemanggil boleh fail-open) dari kegagalan TRANSIENT (network/5xx → tahan).
  */
-export function isMissingFunction(error: { code?: string; message?: string } | null | undefined): boolean {
+export function isMissingFunction(
+  error: { code?: string; message?: string } | null | undefined
+): boolean {
   const code = error?.code;
   if (code === "PGRST202") return true;
   if (isMissingRelation(error)) return true;

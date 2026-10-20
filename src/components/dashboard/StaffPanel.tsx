@@ -63,9 +63,7 @@ function StatTile({
         </p>
         <Icon className="size-4" aria-hidden />
       </div>
-      <p className="mt-3 font-display text-2xl uppercase tracking-tight md:text-3xl">
-        {value}
-      </p>
+      <p className="mt-3 font-display text-2xl uppercase tracking-tight md:text-3xl">{value}</p>
       <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.05em] text-muted-foreground">
         {sub}
       </p>
@@ -90,13 +88,7 @@ function InlineActionError({ message }: { message?: string }) {
 }
 
 /** Form update role — memakai useActionState karena action kini mengembalikan FormState. */
-function RoleForm({
-  member,
-  currentUserId,
-}: {
-  member: StaffDirectoryRow;
-  currentUserId: string;
-}) {
+function RoleForm({ member, currentUserId }: { member: StaffDirectoryRow; currentUserId: string }) {
   const [state, action, pending] = useActionState(updateStaffRoleAction, initial);
   return (
     <>
@@ -108,7 +100,7 @@ function RoleForm({
           defaultValue={member.role}
           disabled={pending || member.userId === currentUserId}
           aria-label={`Role ${member.name ?? member.email}`}
-          className="h-11 border-2 border-ink bg-surface px-2 font-mono text-xs uppercase shadow-[2px_2px_0_0_#111111] disabled:opacity-60 sm:h-9"
+          className="h-11 border-2 border-ink bg-surface px-2 font-mono text-xs uppercase shadow-[2px_2px_0_0_#111111] disabled:opacity-60"
         >
           <option value="owner">OWNER</option>
           <option value="manager">MANAGER</option>
@@ -248,18 +240,15 @@ function BoothsEditor({
       <form action={action} onSubmit={() => setSubmitted(true)}>
         <input type="hidden" name="user_id" value={member.userId} />
         <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-          {`/// Akses booth — ${member.name ?? member.email ?? ""}`}
+          {`/// Akses booth: ${member.name ?? member.email ?? ""}`}
         </p>
         {photoboxes.length === 0 ? (
           <p className="mt-3 font-mono text-xs text-muted-foreground">
-            Belum ada photobox di business ini. Buat photobox dahulu di menu
-            Photobox.
+            Belum ada photobox di business ini. Buat photobox dahulu di menu Photobox.
           </p>
         ) : (
           <fieldset className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
-            <legend className="sr-only">
-              Pilih photobox yang bisa diakses
-            </legend>
+            <legend className="sr-only">Pilih photobox yang bisa diakses</legend>
             {photoboxes.map((booth) => (
               <label
                 key={booth.id}
@@ -300,13 +289,7 @@ function BoothsEditor({
             <Save aria-hidden />
             {pending ? "Menyimpan…" : "Simpan akses"}
           </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onClose}
-            disabled={pending}
-          >
+          <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={pending}>
             Batal
           </Button>
           <p className="font-mono text-[10px] uppercase tracking-[0.05em] text-muted-foreground">
@@ -425,13 +408,16 @@ export function StaffPanel({
           </div>
         </div>
         {inviteState.error && (
-          <p role="alert" className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink">
+          <p
+            role="alert"
+            className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink"
+          >
             {inviteState.error}
           </p>
         )}
         <p className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
-          Akun harus sudah terdaftar di SnapyOS — hubungi admin platform bila belum ada.
-          Kuota: {staff.length}/{maxStaff} (termasuk owner).
+          Akun harus sudah terdaftar di SnapyOS: hubungi admin platform bila belum ada. Kuota:{" "}
+          {staff.length}/{maxStaff} (termasuk owner).
         </p>
       </form>
 
@@ -449,11 +435,21 @@ export function StaffPanel({
             </caption>
             <thead>
               <tr className="border-b-2 border-ink bg-ink font-mono text-[10px] uppercase tracking-[0.12em] text-bg">
-                <th scope="col" className="px-4 py-3.5">Member</th>
-                <th scope="col" className="px-4 py-3.5">Role</th>
-                <th scope="col" className="px-4 py-3.5">Akses booth</th>
-                <th scope="col" className="px-4 py-3.5">Trx hari ini</th>
-                <th scope="col" className="px-4 py-3.5 text-right">Aksi</th>
+                <th scope="col" className="px-4 py-3.5">
+                  Member
+                </th>
+                <th scope="col" className="px-4 py-3.5">
+                  Role
+                </th>
+                <th scope="col" className="px-4 py-3.5">
+                  Akses booth
+                </th>
+                <th scope="col" className="px-4 py-3.5">
+                  Trx hari ini
+                </th>
+                <th scope="col" className="px-4 py-3.5 text-right">
+                  Aksi
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -462,7 +458,7 @@ export function StaffPanel({
                   <tr className="border-b-2 border-ink/10 transition-colors hover:bg-muted/60">
                     <td className="px-4 py-4">
                       <p className="font-mono text-sm font-bold uppercase tracking-[0.05em]">
-                        {member.name ?? "—"}
+                        {member.name ?? "-"}
                         {member.userId === currentUserId && (
                           <span className="ml-2 border-2 border-ink bg-accent px-1.5 py-0.5 text-[10px]">
                             ANDA

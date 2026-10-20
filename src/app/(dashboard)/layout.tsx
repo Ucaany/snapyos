@@ -20,11 +20,7 @@ import { hasPosEntitlement } from "@/server/pos-entitlement";
  * - User role staff-only → /staff (operational shell, dipisah).
  * Shell: brutalist single (Neo-Brutalism satu-satunya).
  */
-export default async function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
   if (!user) redirect("/login");
 
@@ -32,8 +28,8 @@ export default async function DashboardLayout({
   const dest = destinationFor(memberships);
   if (dest !== "/dashboard") redirect(dest);
 
-  const dashboardMemberships = memberships.filter((membership) =>
-    membership.role === "owner" || membership.role === "manager"
+  const dashboardMemberships = memberships.filter(
+    (membership) => membership.role === "owner" || membership.role === "manager"
   );
   const active = await getActiveBusinessForRoles(user.id, ["owner", "manager"]);
 
@@ -44,8 +40,8 @@ export default async function DashboardLayout({
 
   const showCashConfirm = Boolean(
     active &&
-      can(active.role, "payment:confirm") &&
-      (await hasFeature(active.business.id, "cash_payment"))
+    can(active.role, "payment:confirm") &&
+    (await hasFeature(active.business.id, "cash_payment"))
   );
 
   const showPwaKiosk = Boolean(active && (await hasFeature(active.business.id, "pwa_kiosk")));

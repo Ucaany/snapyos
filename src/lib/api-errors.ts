@@ -49,11 +49,7 @@ export class ApiError extends Error {
   readonly status: number;
   readonly details: Record<string, unknown>;
 
-  constructor(
-    code: ApiErrorCode,
-    message: string,
-    details: Record<string, unknown> = {}
-  ) {
+  constructor(code: ApiErrorCode, message: string, details: Record<string, unknown> = {}) {
     super(message);
     this.name = "ApiError";
     this.code = code;

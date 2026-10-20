@@ -12,21 +12,21 @@ Server actions adalah jalur utama untuk owner dashboard CRUD. REST hanya dipakai
 
 ## Public kiosk
 
-| Method | Route | Auth | Purpose |
-| --- | --- | --- | --- |
-| GET | `/api/v1/public/:businessSlug?photobox=<photoboxSlug>` | Device context | Ambil konfigurasi kiosk dan package |
-| GET | `/api/v1/public/:businessSlug/packages?photobox=<photoboxSlug>` | Device context | Ambil package aktif |
-| GET | `/api/v1/public/:businessSlug/templates?package=<packageId>` | Device context | Ambil template yang cocok |
-| POST | `/api/v1/public/devices/activate` | Activation code | Pair device sekali pakai |
-| POST | `/api/v1/public/devices/verify` | Device token | Verifikasi device saat boot/reload |
-| POST | `/api/v1/public/:businessSlug/checkout` | Device token | Buat checkout pay-first |
-| POST | `/api/v1/public/:businessSlug/checkout/apply-voucher` | Device token | Validasi voucher |
-| POST | `/api/v1/public/:businessSlug/payments/create` | Device token | Reserve payment provider |
-| POST | `/api/v1/public/:businessSlug/payments/cash-confirm` | Operator session | Konfirmasi cash |
-| GET | `/api/v1/public/:businessSlug/payments/:paymentRef/status` | Device token | Recovery status payment |
-| POST | `/api/v1/public/:businessSlug/sessions` | Device token | Mulai sesi setelah paid |
-| POST | `/api/v1/public/:businessSlug/sessions/:id/finalize` | Device token | Generate result dan print |
-| GET | `/api/v1/public/results/:resultToken` | Public token | Ambil hasil online |
+| Method | Route                                                           | Auth             | Purpose                             |
+| ------ | --------------------------------------------------------------- | ---------------- | ----------------------------------- |
+| GET    | `/api/v1/public/:businessSlug?photobox=<photoboxSlug>`          | Device context   | Ambil konfigurasi kiosk dan package |
+| GET    | `/api/v1/public/:businessSlug/packages?photobox=<photoboxSlug>` | Device context   | Ambil package aktif                 |
+| GET    | `/api/v1/public/:businessSlug/templates?package=<packageId>`    | Device context   | Ambil template yang cocok           |
+| POST   | `/api/v1/public/devices/activate`                               | Activation code  | Pair device sekali pakai            |
+| POST   | `/api/v1/public/devices/verify`                                 | Device token     | Verifikasi device saat boot/reload  |
+| POST   | `/api/v1/public/:businessSlug/checkout`                         | Device token     | Buat checkout pay-first             |
+| POST   | `/api/v1/public/:businessSlug/checkout/apply-voucher`           | Device token     | Validasi voucher                    |
+| POST   | `/api/v1/public/:businessSlug/payments/create`                  | Device token     | Reserve payment provider            |
+| POST   | `/api/v1/public/:businessSlug/payments/cash-confirm`            | Operator session | Konfirmasi cash                     |
+| GET    | `/api/v1/public/:businessSlug/payments/:paymentRef/status`      | Device token     | Recovery status payment             |
+| POST   | `/api/v1/public/:businessSlug/sessions`                         | Device token     | Mulai sesi setelah paid             |
+| POST   | `/api/v1/public/:businessSlug/sessions/:id/finalize`            | Device token     | Generate result dan print           |
+| GET    | `/api/v1/public/results/:resultToken`                           | Public token     | Ambil hasil online                  |
 
 ## Request and response rules
 
@@ -92,11 +92,11 @@ Possible errors: `NOT_FOUND`, `FORBIDDEN`, `SESSION_EXPIRED`, `SESSION_LIMIT_REA
 
 ## Webhooks
 
-| Method | Route | Verification |
-| --- | --- | --- |
-| POST | `/api/webhooks/payment/pakasir` | Provider status check and idempotency |
-| POST | `/api/webhooks/payment/midtrans` | SHA-512 signature, order, amount, credential |
-| POST | `/api/webhooks/payment/tripay` | HMAC-SHA256 callback signature, merchant ref, amount |
+| Method | Route                            | Verification                                         |
+| ------ | -------------------------------- | ---------------------------------------------------- |
+| POST   | `/api/webhooks/payment/pakasir`  | Provider status check and idempotency                |
+| POST   | `/api/webhooks/payment/midtrans` | SHA-512 signature, order, amount, credential         |
+| POST   | `/api/webhooks/payment/tripay`   | HMAC-SHA256 callback signature, merchant ref, amount |
 
 Webhook payload tidak dipercaya untuk tenant, credential, atau payment ID. Server lookup memakai provider reference yang sudah tersimpan, validasi nominal, provider match, lalu menjalankan transition idempotent.
 

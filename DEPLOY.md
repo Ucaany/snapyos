@@ -38,17 +38,17 @@ sudo nano /var/www/snapyos/.env.production
 
 Nilai yang wajib benar di production:
 
-| Variabel | Catatan |
-| --- | --- |
-| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | kunci server, jangan sampai ke klien |
-| `AUTH_SECRET` | `openssl rand -base64 32` |
-| `AUTH_URL`, `SnapyOS_PUBLIC_BASE_URL` | `https://test.snapyos.biz.id` |
-| `CRON_SECRET` | `openssl rand -hex 32` |
-| `PAYMENT_ENCRYPTION_KEY` | `openssl rand -hex 32`, beda dari `AUTH_SECRET` |
-| `TURNSTILE_SECRET_KEY`, `TURNSTILE_ALLOWED_HOSTNAMES` | wajib; tanpa ini login ditolak |
-| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | public, aman di bundle |
-| `DEV_SKIP_PAYMENT=false` | wajib false |
-| `*_CRON_OPEN` | kosongkan semua |
+| Variabel                                              | Catatan                                         |
+| ----------------------------------------------------- | ----------------------------------------------- |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`           | kunci server, jangan sampai ke klien            |
+| `AUTH_SECRET`                                         | `openssl rand -base64 32`                       |
+| `AUTH_URL`, `SnapyOS_PUBLIC_BASE_URL`                 | `https://test.snapyos.biz.id`                   |
+| `CRON_SECRET`                                         | `openssl rand -hex 32`                          |
+| `PAYMENT_ENCRYPTION_KEY`                              | `openssl rand -hex 32`, beda dari `AUTH_SECRET` |
+| `TURNSTILE_SECRET_KEY`, `TURNSTILE_ALLOWED_HOSTNAMES` | wajib; tanpa ini login ditolak                  |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY`                      | public, aman di bundle                          |
+| `DEV_SKIP_PAYMENT=false`                              | wajib false                                     |
+| `*_CRON_OPEN`                                         | kosongkan semua                                 |
 
 `EnvironmentFile` systemd tidak mendukung tanda kutip berlapis dengan andal.
 Tulis nilai apa adanya, satu variabel per baris. Simpan juga `CRON_SECRET` di

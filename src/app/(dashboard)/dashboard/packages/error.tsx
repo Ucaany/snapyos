@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 /**
  * Error boundary - /dashboard/packages.
@@ -6,14 +6,14 @@
  * yang tampil bukan harga final.
  */
 
-import { FeatureError } from "@/components/dashboard/FeatureError"
+import { FeatureError } from "@/components/dashboard/FeatureError";
 
 export default function PackagesError({
   error,
   reset,
 }: {
-  error: Error & { digest?: string }
-  reset: () => void
+  error: Error & { digest?: string };
+  reset: () => void;
 }) {
   return (
     <FeatureError
@@ -22,5 +22,5 @@ export default function PackagesError({
       error={error}
       reset={reset}
     />
-  )
+  );
 }

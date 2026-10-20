@@ -45,9 +45,10 @@ export default async function RegisterConsultPage() {
                 className="size-12"
               />
               <div className="flex flex-col space-y-1">
-                <h1 className="font-bold text-2xl tracking-wide">Pendaftaran SnapyOS</h1>
+                <h1 className="font-bold text-2xl tracking-wide">Konsultasi pendaftaran</h1>
                 <p className="text-base text-muted-foreground">
-                  Setup bisnis photobox Anda bersama tim kami.
+                  Pendaftaran dibuka lewat tim. Ceritakan rencana booth Anda, lalu admin platform
+                  membuatkan akun.
                 </p>
               </div>
             </div>
@@ -64,12 +65,15 @@ export default async function RegisterConsultPage() {
               className={buttonVariants({ size: "sm", className: "min-h-11 w-full" })}
             >
               <MessageCircleIcon />
-              Mulai chat WhatsApp
+              Chat soal akun
             </a>
 
             <p className="text-muted-foreground text-sm">
               Sudah memiliki akun?{" "}
-              <Link className="underline underline-offset-4 hover:text-ink" href="/login">
+              <Link
+                className="underline underline-offset-4 hover:text-ink [@media(pointer:coarse)]:inline-flex [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:items-center"
+                href="/login"
+              >
                 Masuk ke SnapyOS
               </Link>
               .

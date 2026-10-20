@@ -19,7 +19,9 @@ export async function requirePlanLimits(businessId: string): Promise<PlanLimits>
   const supabase = createServerClient();
   const { data, error } = await supabase
     .from("subscriptions")
-    .select("status, trial_ends_at, current_period_end, plans ( max_outlets, max_photoboxes, max_concurrent_sessions, max_staff )")
+    .select(
+      "status, trial_ends_at, current_period_end, plans ( max_outlets, max_photoboxes, max_concurrent_sessions, max_staff )"
+    )
     .eq("business_id", businessId)
     .in("status", ["trial", "active", "past_due"])
     .order("created_at", { ascending: false })
@@ -34,8 +36,18 @@ export async function requirePlanLimits(businessId: string): Promise<PlanLimits>
     trial_ends_at: string | null;
     current_period_end: string | null;
     plans:
-      | { max_outlets: number; max_photoboxes: number; max_concurrent_sessions: number; max_staff: number }
-      | { max_outlets: number; max_photoboxes: number; max_concurrent_sessions: number; max_staff: number }[]
+      | {
+          max_outlets: number;
+          max_photoboxes: number;
+          max_concurrent_sessions: number;
+          max_staff: number;
+        }
+      | {
+          max_outlets: number;
+          max_photoboxes: number;
+          max_concurrent_sessions: number;
+          max_staff: number;
+        }[]
       | null;
   } | null;
 
@@ -109,7 +121,8 @@ export async function getPlanLimits(businessId: string): Promise<PlanLimits> {
   const plan = row.plans;
   if (!plan || Array.isArray(plan)) return DEFAULT_PLAN_LIMITS;
 
-  let sessions = (plan.max_concurrent_sessions as number) ?? DEFAULT_PLAN_LIMITS.max_concurrent_sessions;
+  let sessions =
+    (plan.max_concurrent_sessions as number) ?? DEFAULT_PLAN_LIMITS.max_concurrent_sessions;
   if (row.id) {
     const { data: addOns } = await supabase
       .from("subscription_add_ons")
@@ -118,10 +131,12 @@ export async function getPlanLimits(businessId: string): Promise<PlanLimits> {
       .eq("status", "active");
     sessions = effectiveSessions(
       sessions,
-      ((addOns ?? []) as unknown as {
-        quantity: number;
-        add_ons: { code: string; unit: string } | { code: string; unit: string }[];
-      }[])
+      (
+        (addOns ?? []) as unknown as {
+          quantity: number;
+          add_ons: { code: string; unit: string } | { code: string; unit: string }[];
+        }[]
+      )
         .filter((a) => {
           const addOn = Array.isArray(a.add_ons) ? a.add_ons[0] : a.add_ons;
           return addOn?.code === "extra_session";

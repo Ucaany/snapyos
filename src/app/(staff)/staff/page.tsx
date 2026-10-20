@@ -49,7 +49,9 @@ export default async function StaffDashboardPage() {
         <div>
           <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
             {"/// STATION.CTL · "}
-            <span className="text-accent-3-strong">{STATUS_LABEL[overview.boothCounts.online > 0 ? "online" : "offline"]}</span>
+            <span className="text-accent-3-strong">
+              {STATUS_LABEL[overview.boothCounts.online > 0 ? "online" : "offline"]}
+            </span>
           </p>
           <h1 className="mt-2 font-display text-4xl uppercase tracking-tight md:text-5xl">
             {overview.businessName}
@@ -71,10 +73,7 @@ export default async function StaffDashboardPage() {
           <span>{overview.boothCounts.total} UNIT</span>
         </div>
         {noBooth ? (
-          <EmptyBooth
-            href="/staff/photoboxes"
-            label="Belum ada booth. Hubungi owner."
-          />
+          <EmptyBooth href="/staff/photoboxes" label="Belum ada booth. Hubungi owner." />
         ) : (
           <dl className="grid grid-cols-2 gap-[2px] border-2 border-ink bg-ink shadow-[4px_4px_0_0_#111111] sm:grid-cols-3">
             <TelemCell
@@ -101,18 +100,8 @@ export default async function StaffDashboardPage() {
               tone="ink"
               sub="semua booth"
             />
-            <TelemCell
-              label="OUTLET"
-              value={overview.outletCount}
-              tone="ink"
-              sub="lokasi aktif"
-            />
-            <TelemCell
-              label="HARI INI"
-              value={overview.todayCount}
-              tone="ink"
-              sub="sesi dimulai"
-            />
+            <TelemCell label="OUTLET" value={overview.outletCount} tone="ink" sub="lokasi aktif" />
+            <TelemCell label="HARI INI" value={overview.todayCount} tone="ink" sub="sesi dimulai" />
           </dl>
         )}
       </section>
@@ -140,8 +129,7 @@ export default async function StaffDashboardPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                        {s.outlet_name ?? "Tanpa outlet"} ·{" "}
-                        <span className="text-ink">BOOTH</span>
+                        {s.outlet_name ?? "Tanpa outlet"} · <span className="text-ink">BOOTH</span>
                       </p>
                       <p className="mt-0.5 font-display text-lg font-bold uppercase leading-tight">
                         {s.photobox_name}
@@ -207,12 +195,10 @@ export default async function StaffDashboardPage() {
         </div>
         <p className="mt-2 font-display text-lg uppercase leading-tight tracking-tight">
           Customer bayar dulu via QRIS, lalu sesi dimulai. Pantau{" "}
-          <span className="text-accent">BOOTH.ONLINE</span> yang mati siang
-          ini suruh owner restart.
+          <span className="text-accent">BOOTH.ONLINE</span> yang mati siang ini suruh owner restart.
         </p>
         <p className="mt-2 max-w-[70ch] font-mono text-[11px] uppercase tracking-[0.06em] text-bg/70">
-          Tidak ada akses finansial dari shell ini. Untuk transaksi &
-          settlement → owner.
+          Tidak ada akses finansial dari shell ini. Untuk transaksi & settlement → owner.
         </p>
       </section>
     </div>

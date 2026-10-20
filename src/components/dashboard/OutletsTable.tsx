@@ -6,11 +6,7 @@ import { ChevronDown, Pencil, Plus, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
-import {
-  Collapsible,
-  CollapsiblePanel,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { WilayahPicker } from "@/components/dashboard/WilayahPicker";
 import { DeleteConfirmForm } from "@/components/dashboard/DeleteConfirmForm";
 import { OutletEditForm } from "@/components/dashboard/OutletEditForm";
@@ -18,10 +14,7 @@ import { LABEL_CLASS as labelClass, fieldError } from "@/lib/form-ui";
 import { cn } from "@/lib/utils";
 import type { OutletRow } from "@/server/outlets";
 import type { FormState } from "@/server/auth-actions";
-import {
-  createOutletAction,
-  deleteOutletAction,
-} from "@/server/booth-actions";
+import { createOutletAction, deleteOutletAction } from "@/server/booth-actions";
 
 const initial: FormState = {};
 
@@ -52,63 +45,83 @@ export function OutletsTable({ outlets, canWrite, maxOutlets }: Props) {
               </span>
               <span className="font-mono text-xs font-bold uppercase tracking-[0.1em]">
                 {String(outlets.length).padStart(2, "0")}
-                <span className="text-muted-foreground">/{String(maxOutlets).padStart(2, "0")}</span>
+                <span className="text-muted-foreground">
+                  /{String(maxOutlets).padStart(2, "0")}
+                </span>
               </span>
               <span className="hidden font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground sm:inline">
                 Plan limit
               </span>
-            </div>            <CollapsibleTrigger className="h-10 px-4" aria-label="Buka form outlet baru">
+            </div>{" "}
+            <CollapsibleTrigger className="min-h-11 px-4" aria-label="Buka form outlet baru">
               <Plus aria-hidden />
               Outlet baru
-              <ChevronDown className="transition-transform duration-100 [[data-panel-open]_&]:rotate-180" aria-hidden />
+              <ChevronDown
+                className="transition-transform duration-100 [[data-panel-open]_&]:rotate-180"
+                aria-hidden
+              />
             </CollapsibleTrigger>
           </div>
           <CollapsiblePanel className="mt-4">
-              <form
-                action={createAction}
-                className="flex flex-col gap-6 border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111] md:p-6"
-                noValidate
-              >
-                <div className="flex items-center gap-3 border-b-2 border-ink pb-4">
-                  <Plus className="size-4" aria-hidden />
-                  <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-                    {"/// Outlet baru"}
-                  </p>
+            <form
+              action={createAction}
+              className="flex flex-col gap-6 border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111] md:p-6"
+              noValidate
+            >
+              <div className="flex items-center gap-3 border-b-2 border-ink pb-4">
+                <Plus className="size-4" aria-hidden />
+                <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
+                  {"/// Outlet baru"}
+                </p>
+              </div>
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="outlet-name" className={labelClass}>
+                    Nama outlet *
+                  </label>
+                  <Input
+                    id="outlet-name"
+                    name="name"
+                    required
+                    placeholder="cth. Malioboro"
+                    disabled={creating}
+                    aria-invalid={Boolean(fieldError(createState, "name"))}
+                  />
+                  {fieldError(createState, "name") && (
+                    <p role="alert" className="font-mono text-xs text-destructive">
+                      {fieldError(createState, "name")}
+                    </p>
+                  )}
                 </div>
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                  <div className="flex flex-col gap-2">
-                    <label htmlFor="outlet-name" className={labelClass}>
-                      Nama outlet *
-                    </label>
-                    <Input id="outlet-name" name="name" required placeholder="cth. Malioboro" disabled={creating}
-                      aria-invalid={Boolean(fieldError(createState, "name"))} />
-                    {fieldError(createState, "name") && (
-                      <p role="alert" className="font-mono text-xs text-destructive">
-                        {fieldError(createState, "name")}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label htmlFor="outlet-address" className={labelClass}>
-                      Alamat
-                    </label>
-                    <Input id="outlet-address" name="address" placeholder="Jl. Malioboro No. 1" disabled={creating} />
-                  </div>
-                  <WilayahPicker idPrefix="outlet-create" disabled={creating} />
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="outlet-address" className={labelClass}>
+                    Alamat
+                  </label>
+                  <Input
+                    id="outlet-address"
+                    name="address"
+                    placeholder="Jl. Malioboro No. 1"
+                    disabled={creating}
+                  />
                 </div>
-                {createState.error && (
-                  <p role="alert" className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink">
-                    {createState.error}
-                  </p>
-                )}
-                <div className="flex items-center justify-end gap-3 border-t-2 border-ink/10 pt-4">
-                  <Button type="submit" size="sm" disabled={creating}>
-                    {creating ? "Menyimpan…" : "Simpan outlet"}
-                  </Button>
-                </div>
-              </form>
-            </CollapsiblePanel>
-          </Collapsible>
+                <WilayahPicker idPrefix="outlet-create" disabled={creating} />
+              </div>
+              {createState.error && (
+                <p
+                  role="alert"
+                  className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink"
+                >
+                  {createState.error}
+                </p>
+              )}
+              <div className="flex items-center justify-end gap-3 border-t-2 border-ink/10 pt-4">
+                <Button type="submit" size="sm" disabled={creating}>
+                  {creating ? "Menyimpan…" : "Simpan outlet"}
+                </Button>
+              </div>
+            </form>
+          </CollapsiblePanel>
+        </Collapsible>
       ) : (
         <div className="flex items-center gap-3">
           <span className="inline-flex h-8 items-center border-2 border-ink bg-ink px-3 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-bg">
@@ -155,12 +168,26 @@ export function OutletsTable({ outlets, canWrite, maxOutlets }: Props) {
             <caption className="sr-only">Daftar outlet</caption>
             <thead>
               <tr className="border-b-2 border-ink bg-ink font-mono text-[10px] uppercase tracking-[0.12em] text-bg">
-                <th scope="col" className="px-4 py-3.5 text-right">No</th>
-                <th scope="col" className="px-4 py-3.5">Outlet</th>
-                <th scope="col" className="px-4 py-3.5">Wilayah / Alamat</th>
-                <th scope="col" className="px-4 py-3.5">Status</th>
-                <th scope="col" className="px-4 py-3.5 text-right">Photobox</th>
-                {canWrite && <th scope="col" className="px-4 py-3.5 text-right">Aksi</th>}
+                <th scope="col" className="px-4 py-3.5 text-right">
+                  No
+                </th>
+                <th scope="col" className="px-4 py-3.5">
+                  Outlet
+                </th>
+                <th scope="col" className="px-4 py-3.5">
+                  Wilayah / Alamat
+                </th>
+                <th scope="col" className="px-4 py-3.5">
+                  Status
+                </th>
+                <th scope="col" className="px-4 py-3.5 text-right">
+                  Photobox
+                </th>
+                {canWrite && (
+                  <th scope="col" className="px-4 py-3.5 text-right">
+                    Aksi
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -177,9 +204,7 @@ export function OutletsTable({ outlets, canWrite, maxOutlets }: Props) {
                       <span className="text-ink">
                         {[outlet.city, outlet.province].filter(Boolean).join(" · ") || "-"}
                       </span>
-                      {outlet.address && (
-                        <span className="mt-1 block">{outlet.address}</span>
-                      )}
+                      {outlet.address && <span className="mt-1 block">{outlet.address}</span>}
                     </td>
                     <td className="px-4 py-4">
                       <span
@@ -219,7 +244,11 @@ export function OutletsTable({ outlets, canWrite, maxOutlets }: Props) {
                             }
                             disabled={outlet.photobox_count > 0}
                             triggerLabel={`Hapus outlet ${outlet.name}`}
-                            triggerTitle={outlet.photobox_count > 0 ? "Hapus photobox di outlet ini dahulu" : "Hapus outlet"}
+                            triggerTitle={
+                              outlet.photobox_count > 0
+                                ? "Hapus photobox di outlet ini dahulu"
+                                : "Hapus outlet"
+                            }
                           />
                         </div>
                       </td>

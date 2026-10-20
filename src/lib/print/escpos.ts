@@ -84,9 +84,7 @@ export function sanitizeText(text: string): string {
     "”": '"',
     "•": "*",
   };
-  return text
-    .replace(/[×·–—’“”•]/g, (ch) => map[ch] ?? "")
-    .replace(/[^\x20-\x7e\n]/g, "");
+  return text.replace(/[×·–—’“”•]/g, (ch) => map[ch] ?? "").replace(/[^\x20-\x7e\n]/g, "");
 }
 
 export type EscPosBlock =
@@ -124,7 +122,10 @@ export function concat(chunks: readonly Uint8Array[]): Uint8Array {
 }
 
 /** Rangkai satu job lengkap. `init` default true (reset sebelum mencetak). */
-export function encodeEscPos(blocks: readonly EscPosBlock[], options: { init?: boolean } = {}): Uint8Array {
+export function encodeEscPos(
+  blocks: readonly EscPosBlock[],
+  options: { init?: boolean } = {}
+): Uint8Array {
   const parts: Uint8Array[] = [];
   if (options.init !== false) parts.push(escInit());
   for (const block of blocks) {

@@ -22,9 +22,9 @@ const spaceMono = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SnapyOS — Photobox Business OS untuk UMKM",
+  title: "SnapyOS: Sistem Operasional Photobox untuk UMKM",
   description:
-    "Buka dan jalankan bisnis photobox Anda: kelola booth, terima pembayaran QRIS pay-first, pantau pendapatan, dan layani customer dari satu dashboard.",
+    "Buka dan jalankan bisnis photobox Anda: kelola booth, atur pembayaran, pantau pendapatan, dan layani customer dari satu dashboard.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
@@ -51,15 +51,16 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html
       lang="id"
       className={`${archivoBlack.variable} ${plexSans.variable} ${spaceMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col" suppressHydrationWarning><PwaRegister />{children}</body>
+      <body className="min-h-full flex flex-col" suppressHydrationWarning>
+        <PwaRegister />
+        {children}
+      </body>
     </html>
   );
 }

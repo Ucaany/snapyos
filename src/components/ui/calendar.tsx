@@ -11,12 +11,9 @@ export type { CalendarProps } from "./calendar-inner";
  * Bundle-heavy (locale + DayPicker + internal state machine) sehingga tidak
  * dimuat sampai user benar-benar buka DateRangeFilter atau komponen sejenis.
  */
-export const Calendar = dynamic(
-  () => import("./calendar-inner").then((mod) => mod.Calendar),
-  {
-    ssr: false,
-    loading: () => (
-      <Skeleton className="h-72 w-64 border-2 border-ink shadow-[4px_4px_0_0_#111111]" />
-    ),
-  }
-);
+export const Calendar = dynamic(() => import("./calendar-inner").then((mod) => mod.Calendar), {
+  ssr: false,
+  loading: () => (
+    <Skeleton className="h-72 w-64 border-2 border-ink shadow-[4px_4px_0_0_#111111]" />
+  ),
+});

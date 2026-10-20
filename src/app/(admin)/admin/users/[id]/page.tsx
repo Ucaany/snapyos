@@ -30,11 +30,7 @@ function MoneyCell({ amount, status }: { amount: number; status: string }) {
   );
 }
 
-export default async function AdminUserDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function AdminUserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
   let detail;
@@ -66,17 +62,28 @@ export default async function AdminUserDetailPage({
             <StatusBadge status={user.status === "suspended" ? "inactive" : "active"} />
             <AdminActionButton
               action={updateUserAction}
-              hidden={{ userId: user.id, status: user.status === "suspended" ? "active" : "suspended" }}
+              hidden={{
+                userId: user.id,
+                status: user.status === "suspended" ? "active" : "suspended",
+              }}
               submitLabel={user.status === "suspended" ? "Aktifkan" : "Suspend"}
               variant={user.status === "suspended" ? "secondary" : "destructive"}
-              confirm={user.status === "suspended" ? undefined : "Suspend user ini? Semua sesi aktif akan dicabut."}
+              confirm={
+                user.status === "suspended"
+                  ? undefined
+                  : "Suspend user ini? Semua sesi aktif akan dicabut."
+              }
             />
             <AdminActionButton
               action={updateUserAction}
               hidden={{ userId: user.id, role: user.role === "admin" ? "user" : "admin" }}
               submitLabel={user.role === "admin" ? "Jadikan User" : "Jadikan Admin"}
               variant="outline"
-              confirm={user.role === "admin" ? "Turunkan role user ini menjadi user biasa?" : "Naikkan role user ini menjadi admin platform?"}
+              confirm={
+                user.role === "admin"
+                  ? "Turunkan role user ini menjadi user biasa?"
+                  : "Naikkan role user ini menjadi admin platform?"
+              }
             />
             <Link
               href="/admin/users"
@@ -201,7 +208,8 @@ export default async function AdminUserDetailPage({
 
       <section aria-labelledby="transactions" className="flex flex-col gap-3">
         <h2 id="transactions" className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-          {"/// RIWAYAT TRANSAKSI"} <span className="text-muted-foreground">({transactions.length})</span>
+          {"/// RIWAYAT TRANSAKSI"}{" "}
+          <span className="text-muted-foreground">({transactions.length})</span>
         </h2>
         {transactions.length === 0 ? (
           <p className="border-2 border-dashed border-ink/40 bg-muted p-4 font-mono text-xs uppercase text-muted-foreground">

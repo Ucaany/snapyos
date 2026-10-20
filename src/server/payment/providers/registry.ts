@@ -99,7 +99,10 @@ export async function resolveCredential(businessId: string): Promise<GatewayCred
   // Global provider toggle: nonaktif → anggap tak ada credential (fallback
   // aggregator), sehingga checkout tetap berjalan tanpa provider ini.
   if (!(await isProviderGloballyEnabled(row.provider))) return null;
-  const serverKey = tryDecrypt(row.server_key_encrypted, `aktif ${row.provider}/${row.environment}`); // NEVER log
+  const serverKey = tryDecrypt(
+    row.server_key_encrypted,
+    `aktif ${row.provider}/${row.environment}`
+  ); // NEVER log
   if (serverKey === null) return null;
   const metadata = { ...row.metadata };
   // Tripay: decrypt private_key_encrypted dari metadata jika ada.
@@ -108,7 +111,10 @@ export async function resolveCredential(businessId: string): Promise<GatewayCred
     typeof metadata.private_key_encrypted === "string" &&
     metadata.private_key_encrypted
   ) {
-    const privateKey = tryDecrypt(metadata.private_key_encrypted as string, `tripay private_key ${row.id}`);
+    const privateKey = tryDecrypt(
+      metadata.private_key_encrypted as string,
+      `tripay private_key ${row.id}`
+    );
     if (privateKey === null) return null;
     metadata.private_key = privateKey;
     delete metadata.private_key_encrypted;
@@ -160,7 +166,10 @@ export async function resolveGatewayByCredential(
     environment: string;
     metadata: Record<string, unknown>;
   };
-  const serverKey = tryDecrypt(row.server_key_encrypted, `by-id ${row.provider}/${row.environment}`);
+  const serverKey = tryDecrypt(
+    row.server_key_encrypted,
+    `by-id ${row.provider}/${row.environment}`
+  );
   // Undecryptable (key dirotasi / payload rusak) → null, sesuai kontrak fungsi.
   // Caller (payment-create / qris) gagal eksplisit untuk metode ini — JANGAN
   // fallback ke resolveGateway(businessId): provider bisa berbeda → dana salah.
@@ -171,7 +180,10 @@ export async function resolveGatewayByCredential(
     typeof metadata.private_key_encrypted === "string" &&
     metadata.private_key_encrypted
   ) {
-    const privateKey = tryDecrypt(metadata.private_key_encrypted as string, `tripay private_key ${row.id}`);
+    const privateKey = tryDecrypt(
+      metadata.private_key_encrypted as string,
+      `tripay private_key ${row.id}`
+    );
     if (privateKey === null) return null;
     metadata.private_key = privateKey;
     delete metadata.private_key_encrypted;

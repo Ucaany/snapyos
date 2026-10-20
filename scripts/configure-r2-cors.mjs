@@ -61,7 +61,9 @@ const buckets = [env.R2_BUCKET_BUSINESS_ASSETS, env.R2_BUCKET_GENERATED_PHOTOS, 
   .filter((b, i, arr) => arr.indexOf(b) === i);
 
 if (buckets.length === 0) {
-  console.error("ERROR: tidak ada bucket R2 di env (R2_BUCKET_BUSINESS_ASSETS / R2_BUCKET_GENERATED_PHOTOS).");
+  console.error(
+    "ERROR: tidak ada bucket R2 di env (R2_BUCKET_BUSINESS_ASSETS / R2_BUCKET_GENERATED_PHOTOS)."
+  );
   process.exit(1);
 }
 
@@ -100,7 +102,9 @@ for (const Bucket of buckets) {
       .send(new GetBucketCorsCommand({ Bucket }))
       .then((r) => JSON.stringify(r.CORSRules))
       .catch((e) => `(none: ${e.name})`);
-    await client.send(new PutBucketCorsCommand({ Bucket, CORSConfiguration: { CORSRules: corsRules } }));
+    await client.send(
+      new PutBucketCorsCommand({ Bucket, CORSConfiguration: { CORSRules: corsRules } })
+    );
     const after = await client
       .send(new GetBucketCorsCommand({ Bucket }))
       .then((r) => JSON.stringify(r.CORSRules));

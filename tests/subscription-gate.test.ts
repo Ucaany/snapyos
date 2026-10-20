@@ -12,14 +12,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { readFile } from "node:fs/promises";
 
-import {
-  PAST_DUE_GRACE_DAYS,
-  isSubscriptionEffective,
-} from "../src/lib/subscription-math.ts";
+import { PAST_DUE_GRACE_DAYS, isSubscriptionEffective } from "../src/lib/subscription-math.ts";
 
 const iso = (d: Date) => d.toISOString();
-const daysFromNow = (n: number, ref = new Date()) =>
-  new Date(ref.getTime() + n * 86_400_000);
+const daysFromNow = (n: number, ref = new Date()) => new Date(ref.getTime() + n * 86_400_000);
 
 test("cancelled/expired: selalu inefektif (status short-circuit)", () => {
   const now = new Date();
@@ -87,7 +83,11 @@ test("C3: confirmCashPaymentAction memanggil requireEffectiveSubscription(write)
     /requireEffectiveSubscription\s*\(\s*ctx\.businessId\s*,\s*["']write["']\s*\)/,
     "cash confirm HARUS ter-gate subscription (write)"
   );
-  assert.match(src, /confirmCashPaymentByOperator/, "settlement tunai tetap dipanggil setelah gate");
+  assert.match(
+    src,
+    /confirmCashPaymentByOperator/,
+    "settlement tunai tetap dipanggil setelah gate"
+  );
   // Error gate dikembalikan dengan kode terketik (mis. SUBSCRIPTION_EXPIRED).
   assert.match(src, /code/, "error gate harus membawa kode (SUBSCRIPTION_EXPIRED dll)");
 });

@@ -87,16 +87,15 @@ export default async function AdminSubscriptionPendingReviewPage({
           Antrian Aktivasi Manual
         </h1>
         <p className="max-w-[70ch] text-sm leading-relaxed text-muted-foreground">
-          Invoice sudah paid (uang settled di provider), tapi aktivasi plan
-          atau add-on gagal karena subscription tidak berada pada status
-          yang valid - biasanya owner cancel + cron transisi terjadi sebelum
-          webhook paid diterima. Setiap kasus memerlukan keputusan manual:{" "}
-          <strong>aktivasi</strong> (perbaiki via /admin/subscriptions, lalu
-          tutup tiket) atau <strong>refund</strong> (via dashboard Pakasir).
+          Invoice sudah paid (uang settled di provider), tapi aktivasi plan atau add-on gagal karena
+          subscription tidak berada pada status yang valid - biasanya owner cancel + cron transisi
+          terjadi sebelum webhook paid diterima. Setiap kasus memerlukan keputusan manual:{" "}
+          <strong>aktivasi</strong> (perbaiki via /admin/subscriptions, lalu tutup tiket) atau{" "}
+          <strong>refund</strong> (via dashboard Pakasir).
         </p>
         <Link
           href="/admin/subscriptions"
-          className="w-fit border-2 border-ink bg-surface px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-ink hover:bg-muted"
+          className="inline-flex min-h-11 w-fit items-center border-2 border-ink bg-surface px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-ink hover:bg-muted"
         >
           {"< KEMBALI KE SUBSCRIPTIONS"}
         </Link>
@@ -117,8 +116,8 @@ export default async function AdminSubscriptionPendingReviewPage({
               aria-current={active ? "page" : undefined}
               className={
                 active
-                  ? "flex items-center gap-2 border-2 border-ink bg-accent px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-[0.1em] text-ink"
-                  : "flex items-center gap-2 border-2 border-ink bg-surface px-3 py-1.5 font-mono text-xs uppercase tracking-[0.1em] text-ink hover:bg-muted"
+                  ? "inline-flex min-h-11 items-center gap-2 border-2 border-ink bg-accent px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-[0.1em] text-ink"
+                  : "inline-flex min-h-11 items-center gap-2 border-2 border-ink bg-surface px-3 py-1.5 font-mono text-xs uppercase tracking-[0.1em] text-ink hover:bg-muted"
               }
             >
               <span>{tab.label}</span>
@@ -153,10 +152,7 @@ export default async function AdminSubscriptionPendingReviewPage({
       ) : (
         <ul className="flex flex-col gap-4">
           {items.map((f) => (
-            <li
-              key={f.id}
-              className="border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]"
-            >
+            <li key={f.id} className="border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
               {/* Header baris */}
               <div className="flex flex-wrap items-start justify-between gap-3 border-b-2 border-ink/10 p-4">
                 <div className="flex flex-col gap-1">
@@ -195,9 +191,7 @@ export default async function AdminSubscriptionPendingReviewPage({
                   {f.subscription_id ? (
                     <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
                       SUBSCRIPTION_ID{" "}
-                      <code className="bg-muted px-1 py-0.5 text-ink">
-                        {f.subscription_id}
-                      </code>
+                      <code className="bg-muted px-1 py-0.5 text-ink">{f.subscription_id}</code>
                     </p>
                   ) : (
                     <p className="mt-2 inline-block w-fit border-2 border-ink bg-accent-2 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.1em] text-ink">
@@ -224,9 +218,7 @@ export default async function AdminSubscriptionPendingReviewPage({
                     {f.resolved_at ? ` · ${dateFmt.format(new Date(f.resolved_at))}` : ""}
                   </p>
                   {f.resolution_note ? (
-                    <p className="text-sm leading-relaxed text-ink">
-                      {f.resolution_note}
-                    </p>
+                    <p className="text-sm leading-relaxed text-ink">{f.resolution_note}</p>
                   ) : null}
                 </div>
               ) : null}
@@ -343,9 +335,7 @@ function ResolveForm({
         placeholder="referensi refund / plan yang di-attach / dsb."
         className="min-h-[3rem] w-full resize-y border-2 border-ink bg-bg px-2 py-1.5 font-mono text-xs text-ink outline-none focus:bg-accent/20"
       />
-      <p className="font-mono text-[10px] leading-snug text-muted-foreground">
-        {hint}
-      </p>
+      <p className="font-mono text-[10px] leading-snug text-muted-foreground">{hint}</p>
     </AdminActionForm>
   );
 }

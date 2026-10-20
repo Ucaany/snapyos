@@ -11,13 +11,7 @@
  */
 
 import Script from "next/script";
-import {
-  forwardRef,
-  useEffect,
-  useImperativeHandle,
-  useRef,
-  useState,
-} from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 
 export type TurnstileHandle = {
   /** Token terbaru ("" sebelum challenge selesai). */
@@ -69,106 +63,107 @@ declare global {
   }
 }
 
-export const TurnstileWidget = forwardRef<TurnstileHandle, Props>(
-  function TurnstileWidget({ siteKey, onToken, onVerified, action = "turnstile", className }, ref) {
-    const containerRef = useRef<HTMLDivElement>(null);
-    const hiddenRef = useRef<HTMLInputElement>(null);
-    const widgetId = useRef<string | null>(null);
-    const tokenRef = useRef("");
-    const waiters = useRef<((token: string) => void)[]>([]);
-    // reset() dipanggil sebelum widget ter-render → reset ditunda ke efek render.
-    const pendingResetRef = useRef(false);
-    const [ready, setReady] = useState(false);
+export const TurnstileWidget = forwardRef<TurnstileHandle, Props>(function TurnstileWidget(
+  { siteKey, onToken, onVerified, action = "turnstile", className },
+  ref
+) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const hiddenRef = useRef<HTMLInputElement>(null);
+  const widgetId = useRef<string | null>(null);
+  const tokenRef = useRef("");
+  const waiters = useRef<((token: string) => void)[]>([]);
+  // reset() dipanggil sebelum widget ter-render → reset ditunda ke efek render.
+  const pendingResetRef = useRef(false);
+  const [ready, setReady] = useState(false);
 
-    // Simpan callback di ref → efek tidak ikut re-render saat parent re-render
-    // (Finding: onToken inline bikin widget di-teardown tiap render).
-    const onTokenRef = useRef(onToken);
-    onTokenRef.current = onToken;
-    const onVerifiedRef = useRef(onVerified);
-    onVerifiedRef.current = onVerified;
+  // Simpan callback di ref → efek tidak ikut re-render saat parent re-render
+  // (Finding: onToken inline bikin widget di-teardown tiap render).
+  const onTokenRef = useRef(onToken);
+  onTokenRef.current = onToken;
+  const onVerifiedRef = useRef(onVerified);
+  onVerifiedRef.current = onVerified;
 
-    function deliver(token: string) {
-      tokenRef.current = token;
-      // Mode form: tulis ke hidden input (uncontrolled) → FormData bawa token.
-      if (hiddenRef.current) hiddenRef.current.value = token;
-      onTokenRef.current?.(token);
-      onVerifiedRef.current?.(Boolean(token));
-      const pending = waiters.current;
-      waiters.current = [];
-      for (const resolve of pending) resolve(token);
-    }
-
-    useImperativeHandle(ref, () => ({
-      token: () => tokenRef.current,
-      /**
-       * Minta token baru. TIDAK resolve "" hanya karena widget belum siap:
-       * tunggu sampai widget ter-render lalu challenge selesai (di-batasi
-       * RESET_TIMEOUT_MS). Ini krusial di produksi — `load()` checkout
-       * memanggil reset() saat mount, sering SEBELUM script Turnstile selesai
-       * dimuat; early-return "" membuat POST pertama selalu CAPTCHA_FAILED.
-       */
-      reset: () =>
-        new Promise<string>((resolve) => {
-          tokenRef.current = "";
-          // Token lama sudah dibuang → beri tahu pemanggil supaya gate submit
-          // menutup kembali sampai challenge baru selesai (jangan biarkan
-          // tombol aktif dengan token yang sudah dikonsumsi server).
-          onVerifiedRef.current?.(false);
-          let done = false;
-          const timer: ReturnType<typeof setTimeout> = setTimeout(() => finish(""), RESET_TIMEOUT_MS);
-          function finish(token: string) {
-            if (done) return;
-            done = true;
-            clearTimeout(timer);
-            resolve(token);
-          }
-          waiters.current.push(finish);
-          if (window.turnstile && widgetId.current) {
-            window.turnstile.reset(widgetId.current);
-          } else {
-            // Widget belum ada — tandai; render effect akan reset begitu siap.
-            pendingResetRef.current = true;
-          }
-        }),
-    }));
-
-    useEffect(() => {
-      if (!siteKey || !ready) return;
-      const el = containerRef.current;
-      if (!el || !window.turnstile) return;
-      widgetId.current = window.turnstile.render(el, {
-        sitekey: siteKey,
-        action,
-        callback: deliver,
-        "expired-callback": () => deliver(""),
-        "error-callback": () => deliver(""),
-      });
-      if (pendingResetRef.current) {
-        pendingResetRef.current = false;
-        window.turnstile.reset(widgetId.current);
-      }
-      return () => {
-        if (widgetId.current && window.turnstile) window.turnstile.remove(widgetId.current);
-        widgetId.current = null;
-      };
-    }, [siteKey, ready, action]);
-
-    if (!siteKey) return null;
-
-    return (
-      <div className={className}>
-        <Script
-          src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
-          strategy="afterInteractive"
-          onLoad={() => setReady(true)}
-        />
-        <div ref={containerRef} />
-        {/* Mode form: hidden input dikelola widget sendiri (explicit render tidak
-            meng-inject otomatis). Diabaikan server bila mode JSON yang dipakai. */}
-        {!onToken && (
-          <input ref={hiddenRef} type="hidden" name="cf-turnstile-response" defaultValue="" />
-        )}
-      </div>
-    );
+  function deliver(token: string) {
+    tokenRef.current = token;
+    // Mode form: tulis ke hidden input (uncontrolled) → FormData bawa token.
+    if (hiddenRef.current) hiddenRef.current.value = token;
+    onTokenRef.current?.(token);
+    onVerifiedRef.current?.(Boolean(token));
+    const pending = waiters.current;
+    waiters.current = [];
+    for (const resolve of pending) resolve(token);
   }
-);
+
+  useImperativeHandle(ref, () => ({
+    token: () => tokenRef.current,
+    /**
+     * Minta token baru. TIDAK resolve "" hanya karena widget belum siap:
+     * tunggu sampai widget ter-render lalu challenge selesai (di-batasi
+     * RESET_TIMEOUT_MS). Ini krusial di produksi — `load()` checkout
+     * memanggil reset() saat mount, sering SEBELUM script Turnstile selesai
+     * dimuat; early-return "" membuat POST pertama selalu CAPTCHA_FAILED.
+     */
+    reset: () =>
+      new Promise<string>((resolve) => {
+        tokenRef.current = "";
+        // Token lama sudah dibuang → beri tahu pemanggil supaya gate submit
+        // menutup kembali sampai challenge baru selesai (jangan biarkan
+        // tombol aktif dengan token yang sudah dikonsumsi server).
+        onVerifiedRef.current?.(false);
+        let done = false;
+        const timer: ReturnType<typeof setTimeout> = setTimeout(() => finish(""), RESET_TIMEOUT_MS);
+        function finish(token: string) {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          resolve(token);
+        }
+        waiters.current.push(finish);
+        if (window.turnstile && widgetId.current) {
+          window.turnstile.reset(widgetId.current);
+        } else {
+          // Widget belum ada — tandai; render effect akan reset begitu siap.
+          pendingResetRef.current = true;
+        }
+      }),
+  }));
+
+  useEffect(() => {
+    if (!siteKey || !ready) return;
+    const el = containerRef.current;
+    if (!el || !window.turnstile) return;
+    widgetId.current = window.turnstile.render(el, {
+      sitekey: siteKey,
+      action,
+      callback: deliver,
+      "expired-callback": () => deliver(""),
+      "error-callback": () => deliver(""),
+    });
+    if (pendingResetRef.current) {
+      pendingResetRef.current = false;
+      window.turnstile.reset(widgetId.current);
+    }
+    return () => {
+      if (widgetId.current && window.turnstile) window.turnstile.remove(widgetId.current);
+      widgetId.current = null;
+    };
+  }, [siteKey, ready, action]);
+
+  if (!siteKey) return null;
+
+  return (
+    <div className={className}>
+      <Script
+        src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+        strategy="afterInteractive"
+        onLoad={() => setReady(true)}
+      />
+      <div ref={containerRef} />
+      {/* Mode form: hidden input dikelola widget sendiri (explicit render tidak
+            meng-inject otomatis). Diabaikan server bila mode JSON yang dipakai. */}
+      {!onToken && (
+        <input ref={hiddenRef} type="hidden" name="cf-turnstile-response" defaultValue="" />
+      )}
+    </div>
+  );
+});

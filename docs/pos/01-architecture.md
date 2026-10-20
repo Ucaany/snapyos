@@ -41,24 +41,24 @@ Deviasi dari peta file §4 (fungsional setara):
 
 ## 1. Keputusan yang Dibekukan
 
-| # | Keputusan | Alasan |
-|---|---|---|
-| A1 | POS = add-on ber-entitlement via `add_ons` (`code='pos'`, `unit='feature'`) + `subscription_add_ons` | Nol alur billing baru; harga dikustomisasi admin via `/admin/add-ons` existing |
-| **A2 (v2)** | **POS = offline-only.** Tidak ada integrasi `payments`, `payment_webhooks`, Pakasir, webhook branch, polling, `settlement-recovery`, `creditBalance`. Pembayaran = kasir menerima uang langsung → order paid server-side | Arahan owner: "pembayaran offline saja, tidak ada kaitannya dengan pembayaran yang ada, tidak bentrok". Menghilangkan R1, R2, R7 seluruhnya |
-| **A3 (v2)** | Semua payment POS (cash/bank_transfer/other) → insert `transactions` (paid) **tanpa** `creditBalance` | Konsisten kebijakan migration 0016 (saldo hanya dari QRIS kiosk); kini berlaku ke SEMUA POS karena tak ada QRIS POS |
-| A4 | `transactions` = tetap satu-satunya source of truth reporting; POS insert row paid dengan `pos_order_id` + `cashier_user_id` | Semua report existing otomatis menghitung POS |
-| A5 | Terminal POS = route path-based `/pos/*` (route group `(pos)`), active business via cookie `snapyos_active_business` | Nol perubahan auth; konsisten pola dashboard; subdomain tetap non-goal |
-| **A6 (v2)** | **TANPA role baru.** `staff` mendapat `pos:sell` + `pos:read`; manager `+pos:manage/sell/read`; owner `*`. Tidak ada value role `cashier` di DB | Arahan owner: POS dipakai **staff**. Menghilangkan migration CHECK role + risiko R3 |
-| A7 | Entitlement gate tunggal `requirePosAccess(businessId)` dipanggil SEMUA server action POS | Satu gerbang = tidak ada endpoint bocor (R4) |
-| **A8 (v2)** | Client TIDAK PERNAH mengirim harga/total — payload order hanya `[{productId, qty}]` + `photoboxId`. `businessId` SELALU dari cookie server-side `snapyos_active_business`, tidak pernah parameter client (mismatch membership → 404) | Anti-manipulasi (R8) + resolusi ambiguitas sumber businessId |
-| A9 | Snapshot harga per line item di `pos_order_items` | Perubahan harga produk tidak merusak riwayat |
-| A10 | Stock opsional per produk (`stock NULL` = tidak ditrack); decrement guarded `stock >= qty` | Arsitektur existing bukan inventory-based |
-| A11 | Voucher/discount POS v1 = 0 (hook signature menerima `discountAmount=0`) | Voucher kiosk terikat checkout_sessions; integrasi = fase lanjutan |
-| A12 | Struk = cetak browser (window.print) dari `/pos/receipt/[orderId]`, tanpa printer SDK | YAGNI |
+| #            | Keputusan                                                                                                                                                                                                                                    | Alasan                                                                                                                                                                                                                    |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A1           | POS = add-on ber-entitlement via `add_ons` (`code='pos'`, `unit='feature'`) + `subscription_add_ons`                                                                                                                                         | Nol alur billing baru; harga dikustomisasi admin via `/admin/add-ons` existing                                                                                                                                            |
+| **A2 (v2)**  | **POS = offline-only.** Tidak ada integrasi `payments`, `payment_webhooks`, Pakasir, webhook branch, polling, `settlement-recovery`, `creditBalance`. Pembayaran = kasir menerima uang langsung → order paid server-side                     | Arahan owner: "pembayaran offline saja, tidak ada kaitannya dengan pembayaran yang ada, tidak bentrok". Menghilangkan R1, R2, R7 seluruhnya                                                                               |
+| **A3 (v2)**  | Semua payment POS (cash/bank_transfer/other) → insert `transactions` (paid) **tanpa** `creditBalance`                                                                                                                                        | Konsisten kebijakan migration 0016 (saldo hanya dari QRIS kiosk); kini berlaku ke SEMUA POS karena tak ada QRIS POS                                                                                                       |
+| A4           | `transactions` = tetap satu-satunya source of truth reporting; POS insert row paid dengan `pos_order_id` + `cashier_user_id`                                                                                                                 | Semua report existing otomatis menghitung POS                                                                                                                                                                             |
+| A5           | Terminal POS = route path-based `/pos/*` (route group `(pos)`), active business via cookie `snapyos_active_business`                                                                                                                         | Nol perubahan auth; konsisten pola dashboard; subdomain tetap non-goal                                                                                                                                                    |
+| **A6 (v2)**  | **TANPA role baru.** `staff` mendapat `pos:sell` + `pos:read`; manager `+pos:manage/sell/read`; owner `*`. Tidak ada value role `cashier` di DB                                                                                              | Arahan owner: POS dipakai **staff**. Menghilangkan migration CHECK role + risiko R3                                                                                                                                       |
+| A7           | Entitlement gate tunggal `requirePosAccess(businessId)` dipanggil SEMUA server action POS                                                                                                                                                    | Satu gerbang = tidak ada endpoint bocor (R4)                                                                                                                                                                              |
+| **A8 (v2)**  | Client TIDAK PERNAH mengirim harga/total — payload order hanya `[{productId, qty}]` + `photoboxId`. `businessId` SELALU dari cookie server-side `snapyos_active_business`, tidak pernah parameter client (mismatch membership → 404)         | Anti-manipulasi (R8) + resolusi ambiguitas sumber businessId                                                                                                                                                              |
+| A9           | Snapshot harga per line item di `pos_order_items`                                                                                                                                                                                            | Perubahan harga produk tidak merusak riwayat                                                                                                                                                                              |
+| A10          | Stock opsional per produk (`stock NULL` = tidak ditrack); decrement guarded `stock >= qty`                                                                                                                                                   | Arsitektur existing bukan inventory-based                                                                                                                                                                                 |
+| A11          | Voucher/discount POS v1 = 0 (hook signature menerima `discountAmount=0`)                                                                                                                                                                     | Voucher kiosk terikat checkout_sessions; integrasi = fase lanjutan                                                                                                                                                        |
+| A12          | Struk = cetak browser (window.print) dari `/pos/receipt/[orderId]`, tanpa printer SDK                                                                                                                                                        | YAGNI                                                                                                                                                                                                                     |
 | **A13 (v2)** | **POS per-booth:** `pos_orders.photobox_id NOT NULL` (setiap order terikat satu photobox); toggle `photoboxes.pos_enabled` (default `false`) — owner aktif/nonaktifkan POS per booth; terminal hanya membuka booth dengan `pos_enabled=true` | Arahan owner: "per booth, bisa diaktifkan dan bisa tidak". `photoboxes.outlet_id` NOT NULL (schema.sql:209) → outlet order selalu terisi dari booth → **TIDAK perlu relax NOT NULL `transactions.outlet_id/photobox_id`** |
-| **A14 (v2)** | Nomor order harian `POS-YYYYMMDD-<seq>` memakai **zona Asia/Jakarta (WIB)**; reporting existing tetap UTC (pola `transactions.ts`) | Hari operasional kasir = kalender lokal; resolusi ambiguitas day-boundary |
-| **A15 (v2)** | Status order: `pending \| paid \| cancelled` saja — `expired` DIHAPUS dari CHECK | Pembayaran offline tidak punya expiry; nilai mati tidak boleh ada di schema |
-| **A16 (v2)** | Katalog produk per **business** (owner kelola terpusat di `/dashboard/pos`); booth hanya punya toggle + identitas order | Satu sumber katalog, tidak duplikasi per booth; per-booth pricing = non-goal v1 |
+| **A14 (v2)** | Nomor order harian `POS-YYYYMMDD-<seq>` memakai **zona Asia/Jakarta (WIB)**; reporting existing tetap UTC (pola `transactions.ts`)                                                                                                           | Hari operasional kasir = kalender lokal; resolusi ambiguitas day-boundary                                                                                                                                                 |
+| **A15 (v2)** | Status order: `pending \| paid \| cancelled` saja — `expired` DIHAPUS dari CHECK                                                                                                                                                             | Pembayaran offline tidak punya expiry; nilai mati tidak boleh ada di schema                                                                                                                                               |
+| **A16 (v2)** | Katalog produk per **business** (owner kelola terpusat di `/dashboard/pos`); booth hanya punya toggle + identitas order                                                                                                                      | Satu sumber katalog, tidak duplikasi per booth; per-booth pricing = non-goal v1                                                                                                                                           |
 
 ---
 
@@ -128,22 +128,22 @@ src/app/(dashboard)/dashboard/pos/page.tsx
 
 ## 4. Pemetaan File
 
-| File | Phase | Isi |
-|---|---|---|
-| `db/migrations/0019_pos_addon.sql` | 2 | DDL §Phase 2 (tanpa sentuh payments/business_members) |
-| `src/server/pos-entitlement.ts` | 2 | `hasPosEntitlement`, `requirePosAccess` |
-| `src/lib/rbac.ts` | 2 | `pos:*` untuk manager + staff (tanpa role baru) |
-| `src/lib/validators.ts` | 2 | `posProductCreate/Update`, `posOrderCreate` (+photoboxId), `posManualPay` |
-| `src/lib/api-errors.ts` | 2 | `POS_NOT_SUBSCRIBED`, `INSUFFICIENT_STOCK`, `POS_ORDER_NOT_PAYABLE`, `POS_PRODUCT_INACTIVE`, `POS_BOOTH_DISABLED` |
-| `src/lib/pos-math.ts` | 3 | `computePosTotals` (integer, discount hook = 0), `posOrderNumber` (WIB, retry 3×) |
-| `src/server/pos-products.ts` | 3 | CRUD produk (scoped `.eq(business_id)`) |
-| `src/server/pos-orders.ts` | 3 | createPosOrder, cancelPosOrder, payPosOrderManually (transactions insert + stock), listPosBooths |
-| `src/server/pos-actions.ts` | 3 | server actions terminal + manajemen (binding tipis) |
-| `src/components/pos/*` | 3 | ProductGrid, CartPanel, ProductForm, ProductsTable, BoothPicker, PayMethodDialog, ReceiptView |
-| `src/server/pos-reports.ts` | 5 | agregasi by product/cashier/outlet/booth/status/tanggal |
-| `src/server/analytics.ts`, `metrics.ts`, `transactions.ts` | 5 | label sumber POS vs kiosk (tipe kolom TIDAK berubah — tidak ada relax) |
-| ~~`docs/pos/04-payment-qris.md`~~ | — | **DIBATALKAN (v2)** — payment offline digabung ke Phase 3 |
-| `docs/pos/06..09` | 6–9 | subdomain (opsional/skip), security, testing, deployment |
+| File                                                       | Phase | Isi                                                                                                               |
+| ---------------------------------------------------------- | ----- | ----------------------------------------------------------------------------------------------------------------- |
+| `db/migrations/0019_pos_addon.sql`                         | 2     | DDL §Phase 2 (tanpa sentuh payments/business_members)                                                             |
+| `src/server/pos-entitlement.ts`                            | 2     | `hasPosEntitlement`, `requirePosAccess`                                                                           |
+| `src/lib/rbac.ts`                                          | 2     | `pos:*` untuk manager + staff (tanpa role baru)                                                                   |
+| `src/lib/validators.ts`                                    | 2     | `posProductCreate/Update`, `posOrderCreate` (+photoboxId), `posManualPay`                                         |
+| `src/lib/api-errors.ts`                                    | 2     | `POS_NOT_SUBSCRIBED`, `INSUFFICIENT_STOCK`, `POS_ORDER_NOT_PAYABLE`, `POS_PRODUCT_INACTIVE`, `POS_BOOTH_DISABLED` |
+| `src/lib/pos-math.ts`                                      | 3     | `computePosTotals` (integer, discount hook = 0), `posOrderNumber` (WIB, retry 3×)                                 |
+| `src/server/pos-products.ts`                               | 3     | CRUD produk (scoped `.eq(business_id)`)                                                                           |
+| `src/server/pos-orders.ts`                                 | 3     | createPosOrder, cancelPosOrder, payPosOrderManually (transactions insert + stock), listPosBooths                  |
+| `src/server/pos-actions.ts`                                | 3     | server actions terminal + manajemen (binding tipis)                                                               |
+| `src/components/pos/*`                                     | 3     | ProductGrid, CartPanel, ProductForm, ProductsTable, BoothPicker, PayMethodDialog, ReceiptView                     |
+| `src/server/pos-reports.ts`                                | 5     | agregasi by product/cashier/outlet/booth/status/tanggal                                                           |
+| `src/server/analytics.ts`, `metrics.ts`, `transactions.ts` | 5     | label sumber POS vs kiosk (tipe kolom TIDAK berubah — tidak ada relax)                                            |
+| ~~`docs/pos/04-payment-qris.md`~~                          | —     | **DIBATALKAN (v2)** — payment offline digabung ke Phase 3                                                         |
+| `docs/pos/06..09`                                          | 6–9   | subdomain (opsional/skip), security, testing, deployment                                                          |
 
 ---
 
@@ -151,21 +151,21 @@ src/app/(dashboard)/dashboard/pos/page.tsx
 
 > Semua action: server-side, authenticated (Auth.js session); `businessId` dari cookie `snapyos_active_business` (A8) — parameter businessId dari client tidak diterima; membership mismatch → 404.
 
-| Action | Permission | Input (zod) | Output | Efek |
-|---|---|---|---|---|
-| `posListBooths` | `pos:read` | — | booth list (`pos_enabled=true`) + outlet name | — |
-| `posListProducts` | `pos:read` | `{ search?, category?, activeOnly? }` | produk list (dengan stock) | — |
-| `posCreateProduct` | `pos:manage` | `{ name, sku?, category, description?, price>0, cost?, stock?, imageUrl? }` | produk | insert `pos_products` |
-| `posUpdateProduct` | `pos:manage` | `{ id, ...fields }` | produk | update scoped `.eq(business_id)` |
-| `posDeleteProduct` | `pos:manage` | `{ id }` | — | soft: `is_active=false` |
-| `posListCategories` | `pos:read` | — | kategori unik dari data | — |
-| `posSetBoothEnabled` | `pos:manage` | `{ photoboxId, enabled }` | — | update `photoboxes.pos_enabled` scoped |
-| `posCreateOrder` | `pos:sell` | `{ photoboxId, items: [{productId, qty 1..999}] }` | order pending + items snapshot | total server-side; booth wajib pos_enabled |
-| `posCancelOrder` | `pos:sell` | `{ orderId }` | — | pending→cancelled |
-| `posPayManually` | `pos:sell` | `{ orderId, method: cash\|bank_transfer\|other }` | order paid | insert transactions (tanpa credit) + stock |
-| `posGetOrder` | `pos:read` | `{ orderId }` | order + items | scoped |
-| `posListOrders` | `pos:read` | `{ status?, from?, to?, photoboxId?, page }` | page orders | scoped |
-| `posReports` | `pos:read` | `{ from, to, groupBy: product\|cashier\|outlet\|booth\|method\|day }` | agregasi int IDR | dari `pos_orders`+items+`transactions` |
+| Action               | Permission   | Input (zod)                                                                 | Output                                        | Efek                                       |
+| -------------------- | ------------ | --------------------------------------------------------------------------- | --------------------------------------------- | ------------------------------------------ |
+| `posListBooths`      | `pos:read`   | —                                                                           | booth list (`pos_enabled=true`) + outlet name | —                                          |
+| `posListProducts`    | `pos:read`   | `{ search?, category?, activeOnly? }`                                       | produk list (dengan stock)                    | —                                          |
+| `posCreateProduct`   | `pos:manage` | `{ name, sku?, category, description?, price>0, cost?, stock?, imageUrl? }` | produk                                        | insert `pos_products`                      |
+| `posUpdateProduct`   | `pos:manage` | `{ id, ...fields }`                                                         | produk                                        | update scoped `.eq(business_id)`           |
+| `posDeleteProduct`   | `pos:manage` | `{ id }`                                                                    | —                                             | soft: `is_active=false`                    |
+| `posListCategories`  | `pos:read`   | —                                                                           | kategori unik dari data                       | —                                          |
+| `posSetBoothEnabled` | `pos:manage` | `{ photoboxId, enabled }`                                                   | —                                             | update `photoboxes.pos_enabled` scoped     |
+| `posCreateOrder`     | `pos:sell`   | `{ photoboxId, items: [{productId, qty 1..999}] }`                          | order pending + items snapshot                | total server-side; booth wajib pos_enabled |
+| `posCancelOrder`     | `pos:sell`   | `{ orderId }`                                                               | —                                             | pending→cancelled                          |
+| `posPayManually`     | `pos:sell`   | `{ orderId, method: cash\|bank_transfer\|other }`                           | order paid                                    | insert transactions (tanpa credit) + stock |
+| `posGetOrder`        | `pos:read`   | `{ orderId }`                                                               | order + items                                 | scoped                                     |
+| `posListOrders`      | `pos:read`   | `{ status?, from?, to?, photoboxId?, page }`                                | page orders                                   | scoped                                     |
+| `posReports`         | `pos:read`   | `{ from, to, groupBy: product\|cashier\|outlet\|booth\|method\|day }`       | agregasi int IDR                              | dari `pos_orders`+items+`transactions`     |
 
 - **REST mirror: TIDAK dibuat** (YAGNI — terminal web ter-authentikasi, tidak ada device-token POS).
 - Tidak ada action payment QRIS/poll (A2).
@@ -174,11 +174,11 @@ src/app/(dashboard)/dashboard/pos/page.tsx
 
 ## 6. Matriks Role × Endpoint
 
-| Action | owner | manager | staff |
-|---|---|---|---|
-| posListBooths / posListProducts / posListCategories / posGetOrder / posListOrders / posReports | ✅ | ✅ | ✅ |
-| posCreateProduct / posUpdateProduct / posDeleteProduct / posSetBoothEnabled | ✅ | ✅ | ❌ |
-| posCreateOrder / posCancelOrder / posPayManually | ✅ | ✅ | ✅ |
+| Action                                                                                         | owner | manager | staff |
+| ---------------------------------------------------------------------------------------------- | ----- | ------- | ----- |
+| posListBooths / posListProducts / posListCategories / posGetOrder / posListOrders / posReports | ✅    | ✅      | ✅    |
+| posCreateProduct / posUpdateProduct / posDeleteProduct / posSetBoothEnabled                    | ✅    | ✅      | ❌    |
+| posCreateOrder / posCancelOrder / posPayManually                                               | ✅    | ✅      | ✅    |
 
 Permission mapping (`src/lib/rbac.ts`) — tanpa perubahan DB role:
 
@@ -196,13 +196,13 @@ Halaman `/dashboard/pos` (manajemen) → `pos:manage`; terminal `/pos/*` → `po
 
 Kode baru di `src/lib/api-errors.ts` (pola `{CODE: httpStatus}`):
 
-| Kode | HTTP | Kapan |
-|---|---|---|
-| `POS_NOT_SUBSCRIBED` | 403 | entitlement tidak aktif (semua action POS) |
-| `INSUFFICIENT_STOCK` | 409 | stock guarded-update gagal (item + sisa stok di `details`) |
-| `POS_ORDER_NOT_PAYABLE` | 409 | order bukan pending saat pay/cancel |
-| `POS_PRODUCT_INACTIVE` | 400 | produk di-cart dinonaktifkan sebelum submit |
-| `POS_BOOTH_DISABLED` | 409 | photobox `pos_enabled=false` saat create order |
+| Kode                    | HTTP | Kapan                                                      |
+| ----------------------- | ---- | ---------------------------------------------------------- |
+| `POS_NOT_SUBSCRIBED`    | 403  | entitlement tidak aktif (semua action POS)                 |
+| `INSUFFICIENT_STOCK`    | 409  | stock guarded-update gagal (item + sisa stok di `details`) |
+| `POS_ORDER_NOT_PAYABLE` | 409  | order bukan pending saat pay/cancel                        |
+| `POS_PRODUCT_INACTIVE`  | 400  | produk di-cart dinonaktifkan sebelum submit                |
+| `POS_BOOTH_DISABLED`    | 409  | photobox `pos_enabled=false` saat create order             |
 
 Reuse: `VALIDATION_ERROR`, `NOT_FOUND` (cross-tenant = 404), `FORBIDDEN`.
 

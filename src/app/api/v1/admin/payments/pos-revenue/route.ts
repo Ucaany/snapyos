@@ -10,7 +10,5 @@ import { adminPosRevenueSummary } from "@/server/admin";
  */
 export const GET = adminRawRoute(async ({ request }) => {
   const q = adminPaymentQuerySchema.parse(searchParamsToObject(request));
-  return NextResponse.json(
-    dataEnvelope(await adminPosRevenueSummary({ from: q.from, to: q.to }))
-  );
+  return NextResponse.json(dataEnvelope(await adminPosRevenueSummary({ from: q.from, to: q.to })));
 });

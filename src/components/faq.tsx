@@ -14,15 +14,15 @@ import { SectionHeader } from "@/components/section-header";
 const faqs = [
   {
     q: "Apa itu SnapyOS?",
-    a: "SnapyOS adalah platform all-in-one untuk menjalankan bisnis photobox (mulai dari kiosk customer, pembayaran QRIS, voucher, template dan branding, hingga laporan pendapatan). Pemilik booth tidak perlu lagi merakit banyak software terpisah.",
+    a: "SnapyOS menjalankan kiosk photobox, pembayaran, template, frame, dan laporan pendapatan dari satu dashboard. Pemilik booth tidak perlu merakit beberapa software terpisah.",
   },
   {
     q: "Bagaimana alur customer di booth?",
-    a: "Customer tidak perlu login. Alurnya pay-first: pilih paket → pilih metode pembayaran → bayar (QRIS, voucher, atau tunai) → pilih frame/template → sesi foto → edit → hasil otomatis dicetak dan dikirim ke HP lewat QR result.",
+    a: "Customer tidak perlu login. Alurnya pay-first: pilih paket → pilih metode pembayaran → bayar → pilih frame/template → sesi foto → edit → hasil dicetak dan dikirim ke HP lewat QR result. Metode yang muncul mengikuti plan dan credential bisnis Anda.",
   },
   {
     q: "Metode pembayaran apa saja yang didukung?",
-    a: "QRIS via gateway merchant Anda sendiri (Pakasir, Midtrans, atau Tripay), voucher, dan tunai. Dana masuk langsung ke rekening Anda sebagai pemilik bisnis (bukan lewat perantara). Kiosk juga mendukung mode offline tunai bila diaktifkan.",
+    a: "QRIS lewat gateway merchant Anda sendiri (Pakasir, Midtrans, atau Tripay), voucher, dan tunai. QRIS dan tunai aktif di paket Growth ke atas; voucher di paket Business. Tanpa credential gateway yang aktif, kiosk hanya menawarkan voucher dan tunai. Dana masuk langsung ke rekening Anda sebagai pemilik bisnis, bukan lewat rekening SnapyOS. Mode offline tunai juga tersedia bila opsi itu diaktifkan untuk bisnis Anda.",
   },
   {
     q: "Bagaimana customer menerima hasil fotonya?",
@@ -34,19 +34,19 @@ const faqs = [
   },
   {
     q: "Apakah saya bisa pakai branding sendiri?",
-    a: "Bisa. Welcome screen, template, frame, dan halaman result memakai identitas brand Anda (logo, warna, dan copy). Customer melihat pengalaman milik brand Anda, bukan milik SnapyOS.",
+    a: "Bisa. Welcome screen, template, frame, dan tampilan halaman result memakai identitas brand Anda: logo, warna, dan copy. Nama file hasil unduhan masih memakai awalan snapyos; ubah manual bila perlu.",
   },
   {
     q: "Bagaimana alur pendaftaran sampai booth siap?",
-    a: "Daftar akun lewat email → buat bisnis → tambahkan photobox → atur paket dan metode pembayaran → aktifkan device. Setelah itu tim kami menghubungi Anda via WhatsApp untuk memandu setup sampai booth berjalan. Langsung chat kami lewat tombol WhatsApp di bawah halaman ini.",
+    a: "Hubungi tim kami lewat WhatsApp. Admin platform membuat akun, lalu Anda masuk dan membuat bisnis, menambahkan photobox, mengatur paket dan metode pembayaran, lalu mengaktifkan device. Tim kami memandu lewat WhatsApp sampai booth berjalan. Tombol chat ada di bawah daftar ini.",
   },
   {
     q: "Bagaimana jika saya kesulitan memakai SnapyOS?",
-    a: "Tentu dibantu. Dukungan tersedia lewat WhatsApp dan email (dari setup awal, pairing device, konfigurasi pembayaran QRIS, sampai troubleshooting di lapangan). Tim kami memandu langkah demi langkah sampai booth Anda lancar.",
+    a: "Dukungan tersedia lewat WhatsApp dan email untuk setup awal, pairing device, konfigurasi pembayaran QRIS, dan troubleshooting di lapangan.",
   },
   {
     q: "Perangkat apa saja yang kompatibel?",
-    a: "Tablet Android/iOS sebagai PWA yang memakai kamera internal. Cukup buka link kiosk di Chrome/Safari lalu pilih Add to Home Screen (tanpa install app native).",
+    a: "Tablet atau ponsel Android/iOS dengan kamera internal. Buka link kiosk bisnis Anda di Chrome atau Safari, lalu tambahkan halaman itu ke layar utama. Halaman kiosk membawa manifest sendiri dengan start_url ke booth Anda, bukan ke beranda. Jangan pasang dari beranda SnapyOS: manifest situs marketing mengarah ke beranda.",
   },
   {
     q: "Bagaimana dengan pembatalan langganan?",
@@ -98,7 +98,12 @@ export default function Faqs01({
               </p>
             </div>
           </div>
-          <Button size="sm" nativeButton={false} className="rounded-none border-2 border-ink bg-accent font-mono text-xs font-bold uppercase tracking-[0.08em] text-ink shadow-[4px_4px_0_0_#111111] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#111111] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none" render={<a href={consultHref} target="_blank" rel="noreferrer" />}>
+          <Button
+            size="sm"
+            nativeButton={false}
+            className="rounded-none border-2 border-ink bg-accent font-mono text-xs font-bold uppercase tracking-[0.08em] text-ink shadow-[4px_4px_0_0_#111111] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#111111] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
+            render={<a href={consultHref} target="_blank" rel="noreferrer" />}
+          >
             Chat WhatsApp
             <ArrowRight />
           </Button>

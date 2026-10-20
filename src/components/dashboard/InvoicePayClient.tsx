@@ -1,35 +1,35 @@
-"use client"
+"use client";
 
-import { useCallback, useEffect, useState } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { ArrowLeft, CheckCircle2, Download, Loader2, QrCode } from "lucide-react"
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, CheckCircle2, Download, Loader2, QrCode } from "lucide-react";
 
-import { Button, buttonVariants } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { formatIDR } from "@/lib/dashboard-math"
-import { useQrisPolling } from "@/hooks/use-qris-polling"
-import { createInvoiceQrisAction, invoicePaymentStatusAction } from "@/server/subscription-actions"
-import type { InvoiceQrisResult } from "@/lib/payment-contracts"
-import { ExternalLink, Landmark } from "lucide-react"
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { formatIDR } from "@/lib/dashboard-math";
+import { useQrisPolling } from "@/hooks/use-qris-polling";
+import { createInvoiceQrisAction, invoicePaymentStatusAction } from "@/server/subscription-actions";
+import type { InvoiceQrisResult } from "@/lib/payment-contracts";
+import { ExternalLink, Landmark } from "lucide-react";
 
-type InvoiceItem = { type: string; name: string; qty: number; amount: number }
+type InvoiceItem = { type: string; name: string; qty: number; amount: number };
 
 type Props = {
-  invoiceId: string
-  invoiceNumber: string
-  amount: number
-  businessName: string
-  itemName: string
-  items: InvoiceItem[]
-  canWrite: boolean
-  initialStatus: string
-}
+  invoiceId: string;
+  invoiceNumber: string;
+  amount: number;
+  businessName: string;
+  itemName: string;
+  items: InvoiceItem[];
+  canWrite: boolean;
+  initialStatus: string;
+};
 
 function mmss(total: number): string {
-  const m = Math.floor(total / 60)
-  const s = total % 60
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
 /**
@@ -49,110 +49,110 @@ export function InvoicePayClient({
   canWrite,
   initialStatus,
 }: Props) {
-  const router = useRouter()
+  const router = useRouter();
   const [phase, setPhase] = useState<"idle" | "preparing" | "qr" | "paid" | "expired" | "error">(
     initialStatus === "paid" ? "paid" : "idle"
-  )
-  const [payment, setPayment] = useState<InvoiceQrisResult | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
-  const [amount] = useState(initialAmount)
-  const [items] = useState<InvoiceItem[]>(initialItems)
+  );
+  const [payment, setPayment] = useState<InvoiceQrisResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [amount] = useState(initialAmount);
+  const [items] = useState<InvoiceItem[]>(initialItems);
 
   const settle = useCallback(() => {
-    setPhase("paid")
-    router.refresh()
-  }, [router])
+    setPhase("paid");
+    router.refresh();
+  }, [router]);
 
   // Polling QRIS (interval + countdown + offline guard + recovery) via hook
   // bersama dengan kiosk checkout — aktif hanya selama fase qr.
   const pollStatus = useCallback(async () => {
-    const res = await invoicePaymentStatusAction(invoiceId)
+    const res = await invoicePaymentStatusAction(invoiceId);
     if (res.status === "paid") {
-      settle()
-      return "paid" as const
+      settle();
+      return "paid" as const;
     }
     if (res.status === "expired") {
-      setPhase("expired")
-      return "expired" as const
+      setPhase("expired");
+      return "expired" as const;
     }
-    return "pending" as const
-  }, [invoiceId, settle])
+    return "pending" as const;
+  }, [invoiceId, settle]);
 
   const { left } = useQrisPolling({
     active: phase === "qr",
     expiresAt: payment?.expires_at ?? null,
     poll: pollStatus,
     onExpired: () => setPhase("expired"),
-  })
+  });
 
   const createQris = useCallback(async () => {
-    setError(null)
-    setPhase("preparing")
-    setPayment(null)
+    setError(null);
+    setPhase("preparing");
+    setPayment(null);
     try {
-      const res = await createInvoiceQrisAction(invoiceId)
+      const res = await createInvoiceQrisAction(invoiceId);
       if (res.error || !res.data) {
-        setError(res.error ?? "Gagal membuat QRIS. Coba lagi.")
-        setPhase("error")
-        return
+        setError(res.error ?? "Gagal membuat QRIS. Coba lagi.");
+        setPhase("error");
+        return;
       }
       if (res.data.status === "paid") {
-        settle()
-        return
+        settle();
+        return;
       }
-      setPayment(res.data)
-      setPhase("qr")
+      setPayment(res.data);
+      setPhase("qr");
     } catch {
-      setError("Gagal membuat QRIS. Coba lagi.")
-      setPhase("error")
+      setError("Gagal membuat QRIS. Coba lagi.");
+      setPhase("error");
     }
-  }, [invoiceId, settle])
+  }, [invoiceId, settle]);
 
   const start = useCallback(async () => {
-    if (busy) return
-    setBusy(true)
+    if (busy) return;
+    setBusy(true);
     try {
-      await createQris()
+      await createQris();
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
-  }, [busy, createQris])
+  }, [busy, createQris]);
 
   // Pakasir mengirim payload QRIS mentah (EMVCo string, mis. `0002010102...`)
   // pada `qr_image`; render ke data URI PNG di client agar bisa dipakai
   // langsung sebagai `<img src>`. `qr_url` (bila ada) dipakai apa adanya.
-  const rawQr = payment?.qr_image ?? payment?.qr_url ?? null
-  const directQr = rawQr && (rawQr.startsWith("data:") || rawQr.startsWith("http")) ? rawQr : null
-  const needsEncode = rawQr && !directQr ? rawQr : null
-  const [encodedQr, setEncodedQr] = useState<{ src: string; url: string } | null>(null)
-  const [encodeError, setEncodeError] = useState<string | null>(null)
+  const rawQr = payment?.qr_image ?? payment?.qr_url ?? null;
+  const directQr = rawQr && (rawQr.startsWith("data:") || rawQr.startsWith("http")) ? rawQr : null;
+  const needsEncode = rawQr && !directQr ? rawQr : null;
+  const [encodedQr, setEncodedQr] = useState<{ src: string; url: string } | null>(null);
+  const [encodeError, setEncodeError] = useState<string | null>(null);
   useEffect(() => {
-    if (!needsEncode) return
-    let cancelled = false
+    if (!needsEncode) return;
+    let cancelled = false;
     void (async () => {
       try {
-        const { default: QRCode } = await import("qrcode")
+        const { default: QRCode } = await import("qrcode");
         const url = await QRCode.toDataURL(needsEncode, {
           errorCorrectionLevel: "M",
           width: 400,
           margin: 2,
-        })
-        if (!cancelled) setEncodedQr({ src: needsEncode, url })
+        });
+        if (!cancelled) setEncodedQr({ src: needsEncode, url });
       } catch (err: unknown) {
         if (!cancelled) {
           setEncodeError(
             err instanceof Error ? `Gagal merender QR: ${err.message}` : "Gagal merender QR"
-          )
+          );
         }
       }
-    })()
+    })();
     return () => {
-      cancelled = true
-    }
-  }, [needsEncode])
-  const qrSrc = directQr ?? (encodedQr && encodedQr.src === needsEncode ? encodedQr.url : null)
-  const qrEncoding = Boolean(needsEncode) && !qrSrc && !encodeError
+      cancelled = true;
+    };
+  }, [needsEncode]);
+  const qrSrc = directQr ?? (encodedQr && encodedQr.src === needsEncode ? encodedQr.url : null);
+  const qrEncoding = Boolean(needsEncode) && !qrSrc && !encodeError;
 
   if (initialStatus === "void") {
     return (
@@ -166,7 +166,7 @@ export function InvoicePayClient({
           <ArrowLeft className="size-4" aria-hidden /> Kembali
         </Link>
       </div>
-    )
+    );
   }
 
   if (phase === "paid") {
@@ -194,7 +194,7 @@ export function InvoicePayClient({
           </Link>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -222,7 +222,7 @@ export function InvoicePayClient({
                   {items.map((it) => (
                     <span key={`${it.type}-${it.name}`} className="block truncate">
                       {it.name}
-                      {it.qty > 1 ? ` ×${it.qty}` : ""} — {formatIDR(it.amount * it.qty)}
+                      {it.qty > 1 ? ` ×${it.qty}` : ""} · {formatIDR(it.amount * it.qty)}
                     </span>
                   ))}
                 </dd>
@@ -247,7 +247,7 @@ export function InvoicePayClient({
         {phase === "idle" && (
           <div className="flex w-full flex-col items-start gap-3">
             <p className="font-mono text-xs uppercase tracking-[0.1em]">
-              Siap bayar — konfirmasi dulu
+              Siap bayar: konfirmasi dulu
             </p>
             <p className="font-display text-4xl uppercase tracking-tight tabular-nums">
               {formatIDR(amount)}
@@ -256,7 +256,7 @@ export function InvoicePayClient({
               QRIS hanya dibuat setelah Anda menekan tombol bayar (berbatas waktu).
             </p>
             <Button type="button" onClick={() => void start()} disabled={busy || !canWrite}>
-              <QrCode className="size-4" aria-hidden /> Bayar sekarang — {formatIDR(amount)}
+              <QrCode className="size-4" aria-hidden /> Bayar sekarang: {formatIDR(amount)}
             </Button>
             {error && (
               <p
@@ -292,7 +292,7 @@ export function InvoicePayClient({
         {phase === "expired" && (
           <div className="flex w-full flex-col items-start gap-3">
             <p className="font-mono text-xs uppercase tracking-[0.1em]">
-              Waktu habis — QRIS kedaluwarsa
+              Waktu habis: QRIS kedaluwarsa
             </p>
             <p className="text-xs">
               QR sebelumnya tidak bisa dibayar. Invoice ini tetap pending; buat QR baru dengan
@@ -328,9 +328,7 @@ export function InvoicePayClient({
 
         {phase === "qr" && payment?.va_number && (
           <div className="flex w-full flex-col items-start gap-3">
-            <p className="font-mono text-xs uppercase tracking-[0.1em]">
-              Nomor Virtual Account
-            </p>
+            <p className="font-mono text-xs uppercase tracking-[0.1em]">Nomor Virtual Account</p>
             <p className="flex items-center gap-2 font-mono text-3xl font-bold tabular-nums">
               <Landmark className="size-5" aria-hidden /> {payment.va_number}
             </p>
@@ -401,5 +399,5 @@ export function InvoicePayClient({
         )}
       </section>
     </div>
-  )
+  );
 }

@@ -10,7 +10,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { rateLimit, rateLimitByDevice, registerFailure, resetLimit } from "../src/lib/rate-limit.ts";
+import {
+  rateLimit,
+  rateLimitByDevice,
+  registerFailure,
+  resetLimit,
+} from "../src/lib/rate-limit.ts";
 
 /** Key unik per-test agar bucket in-memory tidak bocor antar test. */
 function k(prefix: string): string {
@@ -77,10 +82,18 @@ test("rateLimitByDevice: dua booth (device) punya bucket independen", async () =
   const tokenA = "a".repeat(64);
   const tokenB = "b".repeat(64);
   for (let i = 0; i < 3; i++) {
-    assert.equal((await rateLimitByDevice(route, tokenA, 3, 60_000))?.ok, true, `A request #${i + 1}`);
+    assert.equal(
+      (await rateLimitByDevice(route, tokenA, 3, 60_000))?.ok,
+      true,
+      `A request #${i + 1}`
+    );
   }
   assert.equal((await rateLimitByDevice(route, tokenA, 3, 60_000))?.ok, false, "A ke-4 ditolak");
-  assert.equal((await rateLimitByDevice(route, tokenB, 3, 60_000))?.ok, true, "B tidak terpengaruh A");
+  assert.equal(
+    (await rateLimitByDevice(route, tokenB, 3, 60_000))?.ok,
+    true,
+    "B tidak terpengaruh A"
+  );
 });
 
 test("rateLimitByDevice: token null = null (route tetap jalan dengan limit IP)", async () => {

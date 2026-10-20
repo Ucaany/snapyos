@@ -92,7 +92,11 @@ export function PaymentCredentialForm({ credential, onCancel, onSaved }: Props) 
   }
 
   const merchantLabel =
-    provider === "tripay" ? "Merchant Code" : provider === "pakasir" ? "Project Slug" : "Merchant ID";
+    provider === "tripay"
+      ? "Merchant Code"
+      : provider === "pakasir"
+        ? "Project Slug"
+        : "Merchant ID";
   const secretLabel =
     provider === "tripay" ? "API Key" : provider === "pakasir" ? "API Key" : "Server Key";
 
@@ -247,9 +251,8 @@ export function PaymentCredentialForm({ credential, onCancel, onSaved }: Props) 
 
       {provider === "pakasir" && (
         <p className="border-l-4 border-accent bg-muted p-3 font-mono text-xs">
-          Pakasir verifikasi pembayaran server-to-server + header X-Secret (webhook secret v2,
-          ambil di Detail Proyek Pakasir). Dana masuk project merchant owner, bukan rekening
-          platform.
+          Pakasir verifikasi pembayaran server-to-server + header X-Secret (webhook secret v2, ambil
+          di Detail Proyek Pakasir). Dana masuk project merchant owner, bukan rekening platform.
         </p>
       )}
 

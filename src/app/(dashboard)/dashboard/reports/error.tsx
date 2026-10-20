@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 /**
  * Error boundary - /dashboard/reports (export CSV/XLSX).
@@ -6,14 +6,14 @@
  * eksplisit: tidak ada unduhan yang dihasilkan.
  */
 
-import { FeatureError } from "@/components/dashboard/FeatureError"
+import { FeatureError } from "@/components/dashboard/FeatureError";
 
 export default function ReportsError({
   error,
   reset,
 }: {
-  error: Error & { digest?: string }
-  reset: () => void
+  error: Error & { digest?: string };
+  reset: () => void;
 }) {
   return (
     <FeatureError
@@ -22,5 +22,5 @@ export default function ReportsError({
       error={error}
       reset={reset}
     />
-  )
+  );
 }

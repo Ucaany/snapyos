@@ -25,18 +25,10 @@ function compactIDR(v: number): string {
   return String(v);
 }
 
-export function PosReportsDayChartInner({
-  data,
-}: {
-  data: { date: string; amount: number }[];
-}) {
+export function PosReportsDayChartInner({ data }: { data: { date: string; amount: number }[] }) {
   return (
     <ChartContainer config={chartConfig} className="mt-2 aspect-auto h-[180px] w-full">
-      <BarChart
-        accessibilityLayer
-        data={data}
-        margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
-      >
+      <BarChart accessibilityLayer data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
         <CartesianGrid vertical={false} stroke="#111111" strokeOpacity={0.15} />
         <XAxis
           dataKey="date"

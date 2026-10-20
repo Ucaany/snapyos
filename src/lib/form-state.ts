@@ -10,9 +10,7 @@ import type { FormState } from "@/server/auth-actions";
 
 export type ZodIssueLike = { path: PropertyKey[]; message: string };
 
-export function fieldErrorsFromIssues(
-  issues: ZodIssueLike[]
-): Record<string, string[]> {
+export function fieldErrorsFromIssues(issues: ZodIssueLike[]): Record<string, string[]> {
   const fieldErrors: Record<string, string[]> = {};
   for (const issue of issues) {
     const key = String(issue.path[0] ?? "form");
@@ -21,18 +19,13 @@ export function fieldErrorsFromIssues(
   return fieldErrors;
 }
 
-export function toFormState(
-  error: unknown,
-  fallback = "Terjadi kesalahan. Coba lagi."
-): FormState {
+export function toFormState(error: unknown, fallback = "Terjadi kesalahan. Coba lagi."): FormState {
   if (error instanceof ApiError) {
     return { error: error.message, fieldErrors: error.details as FormState["fieldErrors"] };
   }
   if (error && typeof error === "object" && "issues" in error) {
     return {
-      fieldErrors: fieldErrorsFromIssues(
-        (error as { issues: ZodIssueLike[] }).issues
-      ),
+      fieldErrors: fieldErrorsFromIssues((error as { issues: ZodIssueLike[] }).issues),
     };
   }
   return { error: fallback };
@@ -65,9 +58,7 @@ export function numDecimal(formData: FormData, key: string): number {
 }
 
 export function bool(formData: FormData, key: string): boolean {
-  return formData
-    .getAll(key)
-    .some((v) => v === "on" || v === "true" || v === "1");
+  return formData.getAll(key).some((v) => v === "on" || v === "true" || v === "1");
 }
 
 export function uuidList(formData: FormData, key: string): string[] {
@@ -78,10 +69,7 @@ export function uuidList(formData: FormData, key: string): string[] {
 }
 
 /** Integer opsional dari form: "" → null, invalid → NaN, float → trunc. */
-export function intOrNull(
-  formData: FormData,
-  key: string
-): number | null | undefined {
+export function intOrNull(formData: FormData, key: string): number | null | undefined {
   const raw = str(formData, key);
   if (raw === "") return null;
   const n = Number(raw);
@@ -96,9 +84,7 @@ export function intOrNull(
  *
  * Murni (tanpa I/O) supaya bisa diuji; validasi tetap di adminSettingsUpdateSchema.
  */
-export function buildSettingsPayload(
-  formData: FormData
-): Record<string, unknown> {
+export function buildSettingsPayload(formData: FormData): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   const decimalKeys = new Set(["platform_fee_percent"]);
   const integerKeys = new Set(["platform_fee_flat", "default_retention_days", "trial_days"]);
@@ -121,7 +107,11 @@ export function buildSettingsPayload(
   if (formData.has("chroma_key_default_enabled")) {
     out.chroma_key_default_enabled = formData.getAll("chroma_key_default_enabled").includes("true");
   }
-  for (const key of ["gateway_pakasir_enabled", "gateway_midtrans_enabled", "gateway_tripay_enabled"]) {
+  for (const key of [
+    "gateway_pakasir_enabled",
+    "gateway_midtrans_enabled",
+    "gateway_tripay_enabled",
+  ]) {
     if (formData.has(key)) {
       out[key] = formData.getAll(key).includes("true");
     }
@@ -136,9 +126,10 @@ export function buildSettingsPayload(
  * diatur di tempat lain menjadi `false` (bug clobber jsonb checkout).
  * Murni (tanpa I/O) supaya bisa diuji; validasi range tetap di checkoutSettingsSchema.
  */
-export function buildCheckoutPayload(
-  formData: FormData
-): { qris_expiry_minutes: number; offline_enabled?: boolean } {
+export function buildCheckoutPayload(formData: FormData): {
+  qris_expiry_minutes: number;
+  offline_enabled?: boolean;
+} {
   const minutes = Number(str(formData, "qris_expiry_minutes"));
   const out: { qris_expiry_minutes: number; offline_enabled?: boolean } = {
     qris_expiry_minutes: minutes,

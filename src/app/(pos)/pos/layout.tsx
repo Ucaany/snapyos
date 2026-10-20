@@ -8,11 +8,7 @@ import { hasPosEntitlement } from "@/server/pos-entitlement";
  * entitlement. Keamanan sebenarnya tetap di requirePosAccess per action (R4).
  * Staff shell (`/staff`) tidak menutup akses `/pos` — route group terpisah.
  */
-export default async function PosLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function PosLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
   if (!user) redirect("/login");
 

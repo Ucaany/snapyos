@@ -35,7 +35,10 @@ export function CheckoutSettingsEditor({ qrisExpiryMinutes, canWrite }: Props) {
         aria-labelledby="checkout-settings-heading"
       >
         <div className="mb-5 flex items-center justify-between gap-4 border-b-2 border-ink pb-4">
-          <h2 id="checkout-settings-heading" className="font-display text-lg uppercase tracking-tight">
+          <h2
+            id="checkout-settings-heading"
+            className="font-display text-lg uppercase tracking-tight"
+          >
             Pembayaran QRIS
           </h2>
           <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
@@ -44,7 +47,10 @@ export function CheckoutSettingsEditor({ qrisExpiryMinutes, canWrite }: Props) {
         </div>
 
         <div className="flex flex-col gap-2">
-          <label htmlFor="qris-expiry-minutes" className="font-mono text-xs uppercase tracking-[0.1em]">
+          <label
+            htmlFor="qris-expiry-minutes"
+            className="font-mono text-xs uppercase tracking-[0.1em]"
+          >
             Kedaluwarsa QR (menit)
           </label>
           <div className="flex max-w-[240px] items-center gap-3">
@@ -70,8 +76,8 @@ export function CheckoutSettingsEditor({ qrisExpiryMinutes, canWrite }: Props) {
             </p>
           ) : (
             <p className="font-mono text-xs text-muted-foreground">
-              Default 3 menit (rentang 1–60). QR hangus otomatis setelah waktu ini — selama
-              masih hidup, customer tidak bisa membuat QR baru.
+              Default 3 menit (rentang 1–60). QR hangus otomatis setelah waktu ini. Selama masih
+              hidup, customer tidak bisa membuat QR baru.
             </p>
           )}
         </div>

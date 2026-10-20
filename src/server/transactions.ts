@@ -56,13 +56,27 @@ export type TransactionRow = {
 
 function mapRow(row: unknown): TransactionRow {
   const r = row as {
-    id: string; number: string; status: string; payment_method: string;
-    gross_amount: number; discount_amount: number; final_amount: number;
-    paid_at: string | null; created_at: string; customer_id: string | null;
-    package_id: string | null; outlet_id: string; photobox_id: string;
-    session_id: string | null; voucher_id: string | null;
-    pos_order_id: string | null; withdrawable: boolean | null;
-    customers?: JoinName; packages?: JoinName; outlets?: JoinName; photoboxes?: JoinName;
+    id: string;
+    number: string;
+    status: string;
+    payment_method: string;
+    gross_amount: number;
+    discount_amount: number;
+    final_amount: number;
+    paid_at: string | null;
+    created_at: string;
+    customer_id: string | null;
+    package_id: string | null;
+    outlet_id: string;
+    photobox_id: string;
+    session_id: string | null;
+    voucher_id: string | null;
+    pos_order_id: string | null;
+    withdrawable: boolean | null;
+    customers?: JoinName;
+    packages?: JoinName;
+    outlets?: JoinName;
+    photoboxes?: JoinName;
   };
   const name = (j?: JoinName) => (j && !Array.isArray(j) ? j.name : null);
   return {
@@ -116,8 +130,7 @@ export async function listTransactions(
   // bisa gagal hanya bentuk non-objek (`searchParams` selalu objek, tapi jaga-jaga);
   // jalur itu jatuh ke default (`page` 1, `limit` 20), bukan error boundary.
   const parsed =
-    transactionListQuerySchema.safeParse(query).data ??
-    transactionListQuerySchema.parse({});
+    transactionListQuerySchema.safeParse(query).data ?? transactionListQuerySchema.parse({});
   // `parsed` sudah lolos `isoDate`, jadi parse kedua ini tidak akan melempar —
   // dipertahankan sebagai dokumentasi tipe (DateRangeFields) untuk `resolveRange`.
   const dates = dateFieldsSchema.parse(parsed);

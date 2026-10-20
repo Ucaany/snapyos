@@ -1,6 +1,5 @@
 export type DestinationMembership = { role: "owner" | "manager" | "staff" };
 
-
 /**
  * Post-auth destination (docs/04 §4 onboarding, role-based dashboard).
  * Aturan:

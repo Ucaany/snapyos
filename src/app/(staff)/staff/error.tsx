@@ -1,18 +1,18 @@
-"use client"
+"use client";
 
 /**
  * Error inline shell staff (docs/13 §13.4: error = inline, bukan toast/global).
  * Pola sama dengan dashboard/error.tsx owner, sinkron UX lintas shell.
  */
 
-import { FeatureError } from "@/components/dashboard/FeatureError"
+import { FeatureError } from "@/components/dashboard/FeatureError";
 
 export default function StaffError({
   error,
   reset,
 }: {
-  error: Error & { digest?: string }
-  reset: () => void
+  error: Error & { digest?: string };
+  reset: () => void;
 }) {
   return (
     <FeatureError
@@ -21,5 +21,5 @@ export default function StaffError({
       error={error}
       reset={reset}
     />
-  )
+  );
 }

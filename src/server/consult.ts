@@ -1,10 +1,7 @@
 import "server-only";
 
 import { createServerClient } from "@/lib/supabase/server";
-import {
-  CONSULT_SETTINGS_KEY,
-  CONSULT_WHATSAPP_DEFAULT,
-} from "@/lib/consult";
+import { CONSULT_SETTINGS_KEY, CONSULT_WHATSAPP_DEFAULT } from "@/lib/consult";
 
 /**
  * Nomor WhatsApp konsultasi pendaftaran — platform_settings (admin bisa ubah),

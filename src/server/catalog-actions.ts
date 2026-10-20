@@ -5,21 +5,11 @@
  */
 
 import { revalidatePath } from "next/cache";
-import {
-  bool,
-  num,
-  str,
-  toFormState,
-  uuidList,
-} from "@/lib/form-state";
+import { bool, num, str, toFormState, uuidList } from "@/lib/form-state";
 import { requireActiveBusiness } from "@/server/action-utils";
 import { requireEffectiveSubscription } from "@/server/require-subscription";
 import type { FormState } from "@/server/auth-actions";
-import {
-  createPackage,
-  deletePackage,
-  updatePackage,
-} from "@/server/packages";
+import { createPackage, deletePackage, updatePackage } from "@/server/packages";
 import {
   deleteTemplate,
   updateTemplate,
@@ -28,11 +18,7 @@ import {
   replaceTemplateFrame,
 } from "@/server/templates";
 import type { TemplateUpdateInput } from "@/lib/validators";
-import {
-  createVoucher,
-  deleteVoucher,
-  updateVoucher,
-} from "@/server/vouchers";
+import { createVoucher, deleteVoucher, updateVoucher } from "@/server/vouchers";
 import { TEMPLATE_CATEGORIES } from "@/lib/validators";
 
 // --- PACKAGES (docs/04 §4.9) ---
@@ -146,7 +132,9 @@ export async function updateTemplateAction(
   try {
     await updateTemplate(ctx.user.id, ctx.businessId, id, {
       name: str(formData, "name") || undefined,
-      category: TEMPLATE_CATEGORIES.includes(str(formData, "category") as (typeof TEMPLATE_CATEGORIES)[number])
+      category: TEMPLATE_CATEGORIES.includes(
+        str(formData, "category") as (typeof TEMPLATE_CATEGORIES)[number]
+      )
         ? (str(formData, "category") as (typeof TEMPLATE_CATEGORIES)[number])
         : undefined,
       is_active: bool(formData, "is_active"),

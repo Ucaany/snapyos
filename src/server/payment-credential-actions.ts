@@ -23,8 +23,7 @@ import type { GatewayProvider } from "@/server/payment/providers/types";
 const REVALIDATE = "/dashboard/payment";
 
 export type PaymentCredentialActionResult =
-  | { ok: true }
-  | { error: string; fieldErrors?: Record<string, string[]> };
+  { ok: true } | { error: string; fieldErrors?: Record<string, string[]> };
 
 export type CreateInput = {
   provider: GatewayProvider;
@@ -68,7 +67,9 @@ function fail(error: unknown): { error: string; fieldErrors?: Record<string, str
   };
 }
 
-export async function createCredentialAction(input: CreateInput): Promise<PaymentCredentialActionResult> {
+export async function createCredentialAction(
+  input: CreateInput
+): Promise<PaymentCredentialActionResult> {
   const ctx = await ownerContext();
   if (!ctx) return { error: "Tidak punya izin untuk mengelola payment gateway" };
   try {
@@ -95,7 +96,9 @@ export async function updateCredentialAction(
   return { ok: true };
 }
 
-export async function deleteCredentialAction(credentialId: string): Promise<PaymentCredentialActionResult> {
+export async function deleteCredentialAction(
+  credentialId: string
+): Promise<PaymentCredentialActionResult> {
   const ctx = await ownerContext();
   if (!ctx) return { error: "Tidak punya izin untuk mengelola payment gateway" };
   try {
@@ -122,9 +125,9 @@ export async function toggleCredentialAction(
   return { ok: true };
 }
 
-export async function testCredentialAction(credentialId: string): Promise<
-  { ok: true; provider: string; environment: string } | { error: string }
-> {
+export async function testCredentialAction(
+  credentialId: string
+): Promise<{ ok: true; provider: string; environment: string } | { error: string }> {
   const ctx = await ownerContext();
   if (!ctx) return { error: "Tidak punya izin untuk mengelola payment gateway" };
   try {

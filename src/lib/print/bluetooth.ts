@@ -28,7 +28,17 @@ export const ESCPOS_SERVICES = [
  * saja membuat printer (mis. RPP20N) tidak muncul di pemilih Chrome. Filter
  * nama adalah jalur cadangan yang tetap terkontrol.
  */
-export const THERMAL_NAME_PREFIXES = ["RPP", "RTP", "XP-", "Xprinter", "MPT", "POS", "Printer", "Thermal", "BT-"] as const;
+export const THERMAL_NAME_PREFIXES = [
+  "RPP",
+  "RTP",
+  "XP-",
+  "Xprinter",
+  "MPT",
+  "POS",
+  "Printer",
+  "Thermal",
+  "BT-",
+] as const;
 
 export const BLE_CHUNK_DEFAULT = 20;
 
@@ -66,10 +76,15 @@ export function isBluetoothPrintSupported(): boolean {
  * "Cari printer lain", filter service adalah jalur utama karena selector
  * tanpa filter membingungkan petugas.
  */
-export async function requestEscPosDevice(options: { acceptAll?: boolean } = {}): Promise<BluetoothDevice> {
+export async function requestEscPosDevice(
+  options: { acceptAll?: boolean } = {}
+): Promise<BluetoothDevice> {
   const bluetooth = navigator.bluetooth;
   if (!bluetooth) {
-    throw new BluetoothPrintError("UNSUPPORTED", "Browser ini tidak mendukung Bluetooth langsung. Gunakan Chrome.");
+    throw new BluetoothPrintError(
+      "UNSUPPORTED",
+      "Browser ini tidak mendukung Bluetooth langsung. Gunakan Chrome."
+    );
   }
   const request: BluetoothRequestDeviceOptions = options.acceptAll
     ? { acceptAllDevices: true, optionalServices: [...ESCPOS_SERVICES] }
@@ -88,7 +103,10 @@ export async function requestEscPosDevice(options: { acceptAll?: boolean } = {})
     if (error instanceof DOMException && error.name === "NotFoundError") {
       throw new BluetoothPrintError("NO_DEVICE", "Tidak ada printer dipilih.");
     }
-    throw new BluetoothPrintError("NO_DEVICE", "Printer tidak bisa dipilih. Nyalakan printer lalu coba lagi.");
+    throw new BluetoothPrintError(
+      "NO_DEVICE",
+      "Printer tidak bisa dipilih. Nyalakan printer lalu coba lagi."
+    );
   }
 }
 
@@ -100,7 +118,11 @@ function findWriteCharacteristic(
   );
   if (writable.length === 0) return null;
   // Utamakan karakteristik standar printer (2af1 pada service 18f0).
-  return writable.find((c) => c.uuid.includes("2af1")) ?? writable.find((c) => c.uuid.includes("ffe1")) ?? writable[0]!;
+  return (
+    writable.find((c) => c.uuid.includes("2af1")) ??
+    writable.find((c) => c.uuid.includes("ffe1")) ??
+    writable[0]!
+  );
 }
 
 /** Sambungkan device yang sudah dipilih. Melempar `NO_WRITABLE_CHARACTERISTIC`
@@ -111,7 +133,10 @@ export async function connectEscPos(
 ): Promise<EscPosLink> {
   const gatt = device.gatt;
   if (!gatt) {
-    throw new BluetoothPrintError("NO_WRITABLE_CHARACTERISTIC", "Perangkat ini bukan printer ESC/POS.");
+    throw new BluetoothPrintError(
+      "NO_WRITABLE_CHARACTERISTIC",
+      "Perangkat ini bukan printer ESC/POS."
+    );
   }
   const server = gatt.connected ? gatt : await gatt.connect();
   // Jangan hanya mengandalkan service di advertisement: banyak printer

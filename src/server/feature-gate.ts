@@ -28,9 +28,7 @@ const getBusinessFeatures = cache(
     const supabase = createServerClient();
     const { data } = await supabase
       .from("subscriptions")
-      .select(
-        "status, trial_ends_at, current_period_end, plans ( features )"
-      )
+      .select("status, trial_ends_at, current_period_end, plans ( features )")
       .eq("business_id", businessId)
       .in("status", ["trial", "active", "past_due"])
       .order("created_at", { ascending: false })
@@ -41,20 +39,10 @@ const getBusinessFeatures = cache(
       status: string;
       trial_ends_at: string | null;
       current_period_end: string | null;
-      plans:
-        | { features: Record<string, boolean> }
-        | { features: Record<string, boolean> }[]
-        | null;
+      plans: { features: Record<string, boolean> } | { features: Record<string, boolean> }[] | null;
     } | null;
 
-    if (
-      !row ||
-      !isSubscriptionEffective(
-        row.status,
-        row.trial_ends_at,
-        row.current_period_end
-      )
-    ) {
+    if (!row || !isSubscriptionEffective(row.status, row.trial_ends_at, row.current_period_end)) {
       return null;
     }
 
@@ -68,10 +56,7 @@ const getBusinessFeatures = cache(
  * Gate: throw FEATURE_DISABLED jika fitur tidak aktif untuk business.
  * Panggil di baris pertama server action/fungsi yang di-gate.
  */
-export async function requireFeature(
-  businessId: string,
-  feature: FeatureKey
-): Promise<void> {
+export async function requireFeature(businessId: string, feature: FeatureKey): Promise<void> {
   const features = await getBusinessFeatures(businessId);
   if (!isFeatureEnabled(features, feature)) {
     throw new ApiError(
@@ -82,9 +67,6 @@ export async function requireFeature(
 }
 
 /** Non-throwing check — untuk path yang perlu tahu aktif/tidak tanpa throw. */
-export async function hasFeature(
-  businessId: string,
-  feature: FeatureKey
-): Promise<boolean> {
+export async function hasFeature(businessId: string, feature: FeatureKey): Promise<boolean> {
   return isFeatureEnabled(await getBusinessFeatures(businessId), feature);
 }

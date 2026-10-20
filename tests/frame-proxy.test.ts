@@ -1,7 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { allowedFrameOrigins, isAllowedFrameTarget, type FrameProxyEnv } from "../src/lib/frame-proxy.ts";
+import {
+  allowedFrameOrigins,
+  isAllowedFrameTarget,
+  type FrameProxyEnv,
+} from "../src/lib/frame-proxy.ts";
 
 const R2_BUCKET = "snapyos-business-assets";
 const R2_ORIGIN = "https://1acbfce09ab44e80ceb41a430a07dbc3.r2.cloudflarestorage.com";
@@ -27,13 +31,19 @@ test("frame proxy: signed URL R2 path-style diterima", () => {
 
 test("frame proxy: signed URL Supabase Storage diterima", () => {
   assert.equal(
-    ok(`https://abcdefghijklmnop.supabase.co/storage/v1/object/sign/business-assets/${KEY}?token=xyz`),
+    ok(
+      `https://abcdefghijklmnop.supabase.co/storage/v1/object/sign/business-assets/${KEY}?token=xyz`
+    ),
     true
   );
 });
 
 test("frame proxy: legacy R2_BUCKET tunggal juga diterima", () => {
-  const legacy: FrameProxyEnv = { ...ENV, R2_BUCKET_BUSINESS_ASSETS: undefined, R2_BUCKET: "snapyos-assets" };
+  const legacy: FrameProxyEnv = {
+    ...ENV,
+    R2_BUCKET_BUSINESS_ASSETS: undefined,
+    R2_BUCKET: "snapyos-assets",
+  };
   assert.equal(ok(`${R2_ORIGIN}/snapyos-assets/${KEY}`, legacy), true);
 });
 
@@ -52,11 +62,18 @@ test("frame proxy: bucket lain di origin R2 ditolak", () => {
 });
 
 test("frame proxy: kredensial di URL ditolak", () => {
-  assert.equal(ok(`https://user:pass@${R2_ORIGIN.replace("https://", "")}/${R2_BUCKET}/${KEY}`), false);
+  assert.equal(
+    ok(`https://user:pass@${R2_ORIGIN.replace("https://", "")}/${R2_BUCKET}/${KEY}`),
+    false
+  );
 });
 
 test("frame proxy: http hanya di non-production", () => {
-  const dev: FrameProxyEnv = { ...ENV, R2_ENDPOINT: "http://localhost:9000", NODE_ENV: "development" };
+  const dev: FrameProxyEnv = {
+    ...ENV,
+    R2_ENDPOINT: "http://localhost:9000",
+    NODE_ENV: "development",
+  };
   assert.equal(ok(`http://localhost:9000/${R2_BUCKET}/${KEY}`, dev), true);
   const prod: FrameProxyEnv = { ...dev, NODE_ENV: "production" };
   assert.equal(ok(`http://localhost:9000/${R2_BUCKET}/${KEY}`, prod), false);

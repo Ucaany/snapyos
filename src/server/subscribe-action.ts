@@ -37,7 +37,9 @@ export async function submitSubscribeAction(
 
   const raw = {
     name: String(formData.get("name") ?? "").trim(),
-    phone: String(formData.get("phone") ?? "").trim().replace(/\s/g, ""),
+    phone: String(formData.get("phone") ?? "")
+      .trim()
+      .replace(/\s/g, ""),
     email: String(formData.get("email") ?? "").trim(),
     source: String(formData.get("source") ?? ""),
     booths: String(formData.get("booths") ?? "").trim(),
@@ -48,8 +50,7 @@ export async function submitSubscribeAction(
 
   const fieldErrors: Record<string, string> = {};
   if (raw.name.length < 2) fieldErrors.name = "Nama lengkap wajib diisi.";
-  if (!PHONE_RE.test(raw.phone))
-    fieldErrors.phone = "Gunakan format +62 (contoh +6281234567890).";
+  if (!PHONE_RE.test(raw.phone)) fieldErrors.phone = "Gunakan format +62 (contoh +6281234567890).";
   if (!EMAIL_RE.test(raw.email)) fieldErrors.email = "Format email tidak valid.";
   if (!ACQUISITION_SOURCES.includes(raw.source as (typeof ACQUISITION_SOURCES)[number]))
     fieldErrors.source = "Pilih sumber informasi.";

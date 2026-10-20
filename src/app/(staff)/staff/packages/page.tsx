@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { PackagesTable } from "@/components/dashboard/PackagesTable";
-import { PageHeader } from "@/components/ui/page-header"
+import { PageHeader } from "@/components/ui/page-header";
 import { getActiveBusiness, requireUser } from "@/lib/tenant";
 import { listPackages } from "@/server/packages";
 import { listTemplates } from "@/server/templates";

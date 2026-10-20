@@ -2,7 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Lock, Maximize2, WifiOff, X } from "lucide-react";
-import type { CapturePhoto, FinalPhoto, KioskPageId, PublicConfig, PublicPackage, PublicTemplate } from "@/lib/kiosk-types";
+import type {
+  CapturePhoto,
+  FinalPhoto,
+  KioskPageId,
+  PublicConfig,
+  PublicPackage,
+  PublicTemplate,
+} from "@/lib/kiosk-types";
 import { kioskVisualStyle } from "@/lib/kiosk-types";
 import { printPlan } from "@/lib/print-layout";
 import { apiForm, apiPost, KioskError } from "@/components/kiosk/api";
@@ -34,14 +41,12 @@ const CameraCapture = dynamic(
   () => import("@/components/kiosk/CameraCapture").then((m) => m.CameraCapture),
   { ssr: false }
 );
-const Editor = dynamic(
-  () => import("@/components/kiosk/Editor").then((m) => m.Editor),
-  { ssr: false }
-);
-const PrintFlow = dynamic(
-  () => import("@/components/kiosk/PrintFlow").then((m) => m.PrintFlow),
-  { ssr: false }
-);
+const Editor = dynamic(() => import("@/components/kiosk/Editor").then((m) => m.Editor), {
+  ssr: false,
+});
+const PrintFlow = dynamic(() => import("@/components/kiosk/PrintFlow").then((m) => m.PrintFlow), {
+  ssr: false,
+});
 
 const TOKEN_KEY = "snapyos_device_token";
 // Flag setup disimpan PER PHOTOBOX — booth lain di browser yang sama tidak
@@ -108,7 +113,12 @@ export function KioskApp({
   const idle = step === "welcome" || step === "guide" || step === "package";
   // kiosk_locked dari verify: berhenti polling saat booth dikunci.
   const [kioskLocked, setKioskLocked] = useState(false);
-  const liveConfig = useConfigSync(config, businessSlug, config.photobox.slug, idle && !kioskLocked);
+  const liveConfig = useConfigSync(
+    config,
+    businessSlug,
+    config.photobox.slug,
+    idle && !kioskLocked
+  );
   // Derive (bukan sync-effect): idle = config live; sesi = snapshot state.
   const currentPhotobox = idle ? liveConfig.photobox : photobox;
 
@@ -203,7 +213,10 @@ export function KioskApp({
    * tidak terbuka — layar checkout memakainya untuk menawarkan tombol ulang,
    * bukan berputar selamanya di atas uang yang sudah dibayar customer.
    */
-  async function handleCheckoutPaid(checkoutSessionId: string, tokenOverride?: string): Promise<boolean> {
+  async function handleCheckoutPaid(
+    checkoutSessionId: string,
+    tokenOverride?: string
+  ): Promise<boolean> {
     const token = tokenOverride ?? deviceToken;
     if (!token) return false;
     if (session) return true;
@@ -454,7 +467,11 @@ export function KioskApp({
             queuedAt: Date.now(),
           });
           setFinalPhotos(final);
-          setResult({ result_token: session.result_token ?? null, gif_url: null, pendingSync: true });
+          setResult({
+            result_token: session.result_token ?? null,
+            gif_url: null,
+            pendingSync: true,
+          });
           setStep(shouldPrint ? "printing" : "result");
         } catch {
           setNotice("Gagal menyimpan hasil offline. Hubungi petugas.");
@@ -485,7 +502,11 @@ export function KioskApp({
         // Grace window lewat (offline terlalu lama) → terminal, bukan menunggu sync.
         if (e instanceof KioskError && e.code === "SESSION_EXPIRED") {
           setFinalPhotos(final);
-          setResult({ result_token: session.result_token ?? null, gif_url: null, syncFailed: true });
+          setResult({
+            result_token: session.result_token ?? null,
+            gif_url: null,
+            syncFailed: true,
+          });
           setStep(shouldPrint ? "printing" : "result");
         } else {
           setNotice(e instanceof KioskError ? e.message : "Gagal memfinalisasi sesi.");
@@ -495,7 +516,16 @@ export function KioskApp({
         setBusy(false);
       }
     },
-    [deviceToken, session, selectedTemplate, currentPhotobox.print_settings.enabled, selectedPackage, businessSlug, retakeCount, photos]
+    [
+      deviceToken,
+      session,
+      selectedTemplate,
+      currentPhotobox.print_settings.enabled,
+      selectedPackage,
+      businessSlug,
+      retakeCount,
+      photos,
+    ]
   );
 
   const handleEditorFinish = useCallback(
@@ -612,12 +642,12 @@ export function KioskApp({
           <p className="font-mono text-[10px] font-bold uppercase tracking-[0.1em]">
             {syncing
               ? "Sinkronisasi hasil offline..."
-               : "Offline. Sesi tetap berjalan, hasil disinkronkan otomatis saat online."}
+              : "Offline. Sesi tetap berjalan, hasil disinkronkan otomatis saat online."}
           </p>
         </div>
       )}
 
-      {/* Timer turun saat banner notice terbuka — dulu keduanya fixed di
+      {/* Timer turun saat banner notice terbuka: dulu keduanya fixed di
           kanan-atas dan banner menutupi hitungan waktu sesi. */}
       {session && ["template", "capture", "editor"].includes(step) && (
         <div
@@ -770,7 +800,7 @@ export function KioskApp({
         />
       )}
 
-      {/* Tombol petugas diskret — iPad/iOS tidak punya overlay re-engage
+      {/* Tombol petugas diskret: iPad/iOS tidak punya overlay re-engage
           (tanpa fullscreen), jadi PIN keluar butuh affordance tap-tahan yang
           selalu ada. Customer tidak terganggu (ikon kecil, low-opacity). */}
       {step !== "activation" && !exitPrompt && (
@@ -800,8 +830,8 @@ export function KioskApp({
       )}
       {/* Teks prosedur untuk pembaca layar; tidak terlihat (bukan teks visual). */}
       <p id="kiosk-exit-help" className="sr-only">
-        Tahan tombol ini tiga detik lalu masukkan PIN keluar. Di keyboard, tahan
-        Ctrl Alt X selama dua detik.
+        Tahan tombol ini tiga detik lalu masukkan PIN keluar. Di keyboard, tahan Ctrl Alt X selama
+        dua detik.
       </p>
 
       {/* Overlay re-engage fullscreen. Customer hanya bisa kembali ke mode
@@ -832,7 +862,7 @@ export function KioskApp({
         </div>
       )}
 
-      {/* Dialog PIN keluar — keluar TIDAK me-reset sesi (tanpa reload). */}
+      {/* Dialog PIN keluar: keluar TIDAK me-reset sesi (tanpa reload). */}
       {exitPrompt && step !== "activation" && (
         <ExitPinDialog
           deviceToken={deviceToken}

@@ -25,7 +25,12 @@ type Props = {
   paperWidthMm: 58 | 80;
   sample: { title: string; lines: string[] };
   /** Status terakhir dari `device_status.printer` (opsional). */
-  lastTest?: { confirmed?: boolean; last_test_at?: string; mode?: string; device_name?: string } | null;
+  lastTest?: {
+    confirmed?: boolean;
+    last_test_at?: string;
+    mode?: string;
+    device_name?: string;
+  } | null;
   onReport: (result: PrintTestResult) => Promise<void> | void;
   /** Tampilkan tombol konfirmasi hasil fisik (dashboard), wizard memakai copy sendiri. */
   canReport?: boolean;
@@ -55,38 +60,41 @@ export function PrintTestPanel({
   const [reported, setReported] = useState(false);
   const widthDots = paperWidthMm === 58 ? THERMAL_WIDTH_DOTS[58] : THERMAL_WIDTH_DOTS[80];
 
-  const sendThermal = useCallback(async (acceptAll = false) => {
-    setPhase("connecting");
-    setMessage(null);
-    try {
-      const device = await requestEscPosDevice({ acceptAll });
-      const name = device.name ?? "Printer Bluetooth";
-      setDeviceName(name);
-      const link = await connectEscPos(device);
+  const sendThermal = useCallback(
+    async (acceptAll = false) => {
+      setPhase("connecting");
+      setMessage(null);
       try {
-        setPhase("printing");
-        const bitmap = await rasterizeTestPattern(widthDots, sample.lines);
-        const bytes = encodeEscPos([
-          { kind: "text", text: sample.title, align: "center", emphasis: true, size: 2 },
-          { kind: "text", text: `${deviceName ?? name}`, align: "center" },
-          { kind: "raster", bitmap },
-          { kind: "feed", lines: 2 },
-          { kind: "cut", partial: true },
-        ]);
-        await link.write(bytes);
-        setPhase("sent");
-      } finally {
-        link.disconnect();
+        const device = await requestEscPosDevice({ acceptAll });
+        const name = device.name ?? "Printer Bluetooth";
+        setDeviceName(name);
+        const link = await connectEscPos(device);
+        try {
+          setPhase("printing");
+          const bitmap = await rasterizeTestPattern(widthDots, sample.lines);
+          const bytes = encodeEscPos([
+            { kind: "text", text: sample.title, align: "center", emphasis: true, size: 2 },
+            { kind: "text", text: `${deviceName ?? name}`, align: "center" },
+            { kind: "raster", bitmap },
+            { kind: "feed", lines: 2 },
+            { kind: "cut", partial: true },
+          ]);
+          await link.write(bytes);
+          setPhase("sent");
+        } finally {
+          link.disconnect();
+        }
+      } catch (error) {
+        setPhase("error");
+        setMessage(
+          error instanceof BluetoothPrintError
+            ? error.message
+            : "Gagal mengirim halaman uji ke printer Bluetooth."
+        );
       }
-    } catch (error) {
-      setPhase("error");
-      setMessage(
-        error instanceof BluetoothPrintError
-          ? error.message
-          : "Gagal mengirim halaman uji ke printer Bluetooth."
-      );
-    }
-  }, [deviceName, sample.lines, sample.title, widthDots]);
+    },
+    [deviceName, sample.lines, sample.title, widthDots]
+  );
 
   function sendBrowser() {
     // Halaman uji memakai kontrak print yang sama dengan `.print-root`.
@@ -128,7 +136,9 @@ export function PrintTestPanel({
       <dl className="grid grid-cols-1 gap-3 font-mono text-xs uppercase tracking-[0.08em] sm:grid-cols-2">
         <div className="flex flex-col gap-1 border-2 border-ink/20 p-3">
           <dt className="text-muted-foreground">Mode cetak</dt>
-          <dd className="font-bold">{mode === "bluetooth" ? "Bluetooth thermal" : "Dialog sistem"}</dd>
+          <dd className="font-bold">
+            {mode === "bluetooth" ? "Bluetooth thermal" : "Dialog sistem"}
+          </dd>
         </div>
         <div className="flex flex-col gap-1 border-2 border-ink/20 p-3">
           <dt className="text-muted-foreground">Kertas</dt>
@@ -149,13 +159,19 @@ export function PrintTestPanel({
       </dl>
 
       {mode === "bluetooth" && !supported && (
-        <p role="alert" className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink">
+        <p
+          role="alert"
+          className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink"
+        >
           Browser ini tidak mendukung Web Bluetooth. Gunakan Chrome di Android atau desktop.
         </p>
       )}
 
       {message && (
-        <p role="alert" className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink">
+        <p
+          role="alert"
+          className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink"
+        >
           {message}
         </p>
       )}
@@ -165,7 +181,9 @@ export function PrintTestPanel({
           type="button"
           size="lg"
           className="bg-accent"
-          disabled={phase === "connecting" || phase === "printing" || (mode === "bluetooth" && !supported)}
+          disabled={
+            phase === "connecting" || phase === "printing" || (mode === "bluetooth" && !supported)
+          }
           onClick={() => (mode === "bluetooth" ? void sendThermal() : sendBrowser())}
         >
           {phase === "connecting" || phase === "printing" ? (
@@ -175,7 +193,11 @@ export function PrintTestPanel({
           ) : (
             <Printer className="size-5" aria-hidden />
           )}
-          {phase === "connecting" ? "Menghubungkan…" : phase === "printing" ? "Mengirim…" : "Cetak halaman uji"}
+          {phase === "connecting"
+            ? "Menghubungkan…"
+            : phase === "printing"
+              ? "Mengirim…"
+              : "Cetak halaman uji"}
         </Button>
         {mode === "bluetooth" && supported && phase !== "connecting" && phase !== "printing" && (
           <button
@@ -187,7 +209,10 @@ export function PrintTestPanel({
           </button>
         )}
         {phase === "sent" && (
-          <span role="status" className="inline-flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-[0.1em]">
+          <span
+            role="status"
+            className="inline-flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-[0.1em]"
+          >
             <Check className="size-4 text-accent-3" aria-hidden /> Perintah cetak terkirim
           </span>
         )}
@@ -205,15 +230,27 @@ export function PrintTestPanel({
               disabled={reporting}
               className="bg-accent-3"
             >
-              {reporting ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Check className="size-4" aria-hidden />}
+              {reporting ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+              ) : (
+                <Check className="size-4" aria-hidden />
+              )}
               Ya, berhasil
             </Button>
-            <Button type="button" variant="outline" onClick={() => void report(false)} disabled={reporting}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void report(false)}
+              disabled={reporting}
+            >
               <TriangleAlert className="size-4" aria-hidden /> Tidak, gagal
             </Button>
           </div>
           {reported && (
-            <p role="status" className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+            <p
+              role="status"
+              className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground"
+            >
               Hasil uji tersimpan.
             </p>
           )}

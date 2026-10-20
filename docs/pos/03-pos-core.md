@@ -240,12 +240,12 @@ Binding tipis (pola `*-actions.ts` existing): setiap action = auth → baca cook
 
 ## 8. Testing
 
-| Test | File | Kasus |
-|---|---|---|
-| pos-math | `tests/pos-math.test.ts` | subtotal, gross multi item, discount hook, qty max, number format WIB + retry |
-| validator | extend `tests/*validators*` (pola existing) | qty 0/1000 reject; items kosong reject; method enum cash/bank_transfer/other; sku duplicate |
+| Test            | File                                                     | Kasus                                                                                                                                                                        |
+| --------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| pos-math        | `tests/pos-math.test.ts`                                 | subtotal, gross multi item, discount hook, qty max, number format WIB + retry                                                                                                |
+| validator       | extend `tests/*validators*` (pola existing)              | qty 0/1000 reject; items kosong reject; method enum cash/bank_transfer/other; sku duplicate                                                                                  |
 | action negative | `tests/pos-orders.test.ts` (mock supabase pola existing) | non-member 404; tanpa entitlement 403; produk inactive 400; order bukan pending 409; booth disabled 409; booth tenant lain 404; pay 2× → 1 transactions row; stock pre-check |
-| manual | dev | CRUD produk; toggle booth; staff buka terminal → cart → bayar tunai → struk; manager kelola produk; owner toggle |
+| manual          | dev                                                      | CRUD produk; toggle booth; staff buka terminal → cart → bayar tunai → struk; manager kelola produk; owner toggle                                                             |
 
 `npm run test && npm run typecheck && npm run lint` hijau. Pre-flight `docs/13` §13.6 sebelum declare done (UI).
 
@@ -253,14 +253,14 @@ Binding tipis (pola `*-actions.ts` existing): setiap action = auth → baca cook
 
 ## 9. Risk & Mitigasi
 
-| Risiko | Mitigasi |
-|---|---|
-| R4 gate terlewat | Semua entry server via `pos-products/pos-orders` yang baris pertamanya `requirePosAccess`; code review checklist |
-| R8 manipulasi payload | Total server-computed; test negative tampered payload |
-| R5 stock race (2 kasir/booth jual item terakhir) | Guarded UPDATE `stock >= qty`; shortfall → log+audit, transaksi tetap paid |
-| R6 transaksi POS di laporan | Row `transactions` dengan photobox_id terisi; verifikasi agregasi Phase 5 |
-| Terminal menyimpang dari design system | Skill wajib di-load; pre-flight 13.6; review visual vs kiosk |
-| Pay double-fire (double-click/2 tab) | exists-check + conditional UPDATE single winner (test) |
+| Risiko                                           | Mitigasi                                                                                                         |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| R4 gate terlewat                                 | Semua entry server via `pos-products/pos-orders` yang baris pertamanya `requirePosAccess`; code review checklist |
+| R8 manipulasi payload                            | Total server-computed; test negative tampered payload                                                            |
+| R5 stock race (2 kasir/booth jual item terakhir) | Guarded UPDATE `stock >= qty`; shortfall → log+audit, transaksi tetap paid                                       |
+| R6 transaksi POS di laporan                      | Row `transactions` dengan photobox_id terisi; verifikasi agregasi Phase 5                                        |
+| Terminal menyimpang dari design system           | Skill wajib di-load; pre-flight 13.6; review visual vs kiosk                                                     |
+| Pay double-fire (double-click/2 tab)             | exists-check + conditional UPDATE single winner (test)                                                           |
 
 ---
 

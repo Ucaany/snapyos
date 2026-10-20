@@ -2,10 +2,10 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "SnapyOS — Photobox Kiosk",
+    name: "SnapyOS Kiosk",
     short_name: "SnapyOS Kiosk",
     description:
-      "Kiosk photobox SnapyOS — jalankan booth, capture foto, terima pembayaran QRIS, dan hasilkan GIF dari iPad, tablet Android, atau ponsel.",
+      "Kiosk photobox SnapyOS: jalankan booth, ambil foto, terima pembayaran, dan hasilkan GIF dari tablet Android, iPad, atau ponsel.",
     id: "/",
     start_url: "/",
     scope: "/",

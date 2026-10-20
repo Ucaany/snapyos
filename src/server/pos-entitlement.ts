@@ -28,7 +28,12 @@ export const hasPosEntitlement = cache(async (businessId: string): Promise<boole
     .maybeSingle();
   if (!sub) return false;
 
-  const subRow = sub as { id: string; status: string; trial_ends_at: string | null; current_period_end: string | null };
+  const subRow = sub as {
+    id: string;
+    status: string;
+    trial_ends_at: string | null;
+    current_period_end: string | null;
+  };
 
   // Date check: status string saja tidak cukup (AGENTS.md §Resolusi Konflik).
   if (!isSubscriptionEffective(subRow.status, subRow.trial_ends_at, subRow.current_period_end)) {
@@ -40,10 +45,12 @@ export const hasPosEntitlement = cache(async (businessId: string): Promise<boole
     .select("status, add_ons ( code, is_active )")
     .eq("subscription_id", subRow.id);
 
-  const addOnRows = ((rows ?? []) as unknown as {
-    status: string;
-    add_ons: { code: string; is_active: boolean } | { code: string; is_active: boolean }[] | null;
-  }[]).map<PosEntitlementAddOnRow>((r) => {
+  const addOnRows = (
+    (rows ?? []) as unknown as {
+      status: string;
+      add_ons: { code: string; is_active: boolean } | { code: string; is_active: boolean }[] | null;
+    }[]
+  ).map<PosEntitlementAddOnRow>((r) => {
     const a = r.add_ons && !Array.isArray(r.add_ons) ? r.add_ons : null;
     return { status: r.status, addOnCode: a?.code ?? null, addOnActive: a?.is_active ?? null };
   });

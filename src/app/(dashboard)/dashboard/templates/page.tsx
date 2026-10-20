@@ -11,7 +11,7 @@ import { listTemplates } from "@/server/templates";
 import { listPremiumTemplates, listPurchasedTemplates } from "@/server/template-purchase";
 
 export const metadata: Metadata = {
-  title: "Template — SnapyOS",
+  title: "Template | SnapyOS",
 };
 
 /** /dashboard/templates — upload & kelola frame (docs/04 §4.10) + marketplace premium. */
@@ -40,22 +40,31 @@ export default async function TemplatesPage() {
 
       <section aria-labelledby="premium-templates" className="flex flex-col gap-4">
         <div className="border-2 border-ink bg-ink p-4">
-          <p id="premium-templates" className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-bg">
+          <p
+            id="premium-templates"
+            className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-bg"
+          >
             {"/// Template Premium (Marketplace)"}
           </p>
           <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.08em] text-bg/70">
-              Frame berbayar dari platform. Beli sekali, lalu gunakan di paket.
+            Frame berbayar dari platform. Beli sekali, lalu gunakan di paket.
           </p>
         </div>
         <PremiumTemplatesGrid templates={premium} />
         {purchased.length > 0 && (
           <div className="border-2 border-ink bg-surface p-4 shadow-[4px_4px_0_0_#111111]">
             <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-              {`/// Sudah dimiliki — ${purchased.length}`}
+              {`/// Sudah dimiliki: ${purchased.length}`}
             </p>
-            <ul className="mt-3 flex flex-col divide-y-2 divide-ink/10" aria-label="Template premium dimiliki">
+            <ul
+              className="mt-3 flex flex-col divide-y-2 divide-ink/10"
+              aria-label="Template premium dimiliki"
+            >
               {purchased.map((p) => (
-                <li key={p.template_id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                <li
+                  key={p.template_id}
+                  className="flex flex-wrap items-center justify-between gap-2 py-2"
+                >
                   <span className="font-mono text-xs uppercase tracking-[0.05em]">{p.name}</span>
                   <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground tabular-nums">
                     {`${formatIDR(p.price)} · ${p.purchased_at.slice(0, 10)}`}

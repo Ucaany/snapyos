@@ -62,11 +62,22 @@ const ITEM_COLUMNS = `id, pos_product_id, name_snapshot, sku_snapshot, unit_pric
 
 function mapOrder(row: unknown): PosOrderRow {
   const r = row as {
-    id: string; number: string; status: string; business_id: string;
-    photobox_id: string; outlet_id: string | null; cashier_user_id: string;
-    gross_amount: number; discount_amount: number; final_amount: number;
-    payment_method: string; paid_at: string | null; created_at: string;
-    photoboxes?: JoinName; outlets?: JoinName; cashier?: JoinName;
+    id: string;
+    number: string;
+    status: string;
+    business_id: string;
+    photobox_id: string;
+    outlet_id: string | null;
+    cashier_user_id: string;
+    gross_amount: number;
+    discount_amount: number;
+    final_amount: number;
+    payment_method: string;
+    paid_at: string | null;
+    created_at: string;
+    photoboxes?: JoinName;
+    outlets?: JoinName;
+    cashier?: JoinName;
   };
   const name = (j?: JoinName) => (j && !Array.isArray(j) ? j.name : null);
   return {
@@ -91,9 +102,13 @@ function mapOrder(row: unknown): PosOrderRow {
 
 function mapItem(row: unknown): PosOrderItemRow {
   const r = row as {
-    id: string; pos_product_id: string | null; name_snapshot: string;
-    sku_snapshot: string | null; unit_price_snapshot: number;
-    quantity: number; subtotal: number;
+    id: string;
+    pos_product_id: string | null;
+    name_snapshot: string;
+    sku_snapshot: string | null;
+    unit_price_snapshot: number;
+    quantity: number;
+    subtotal: number;
   };
   return {
     id: r.id,
@@ -165,7 +180,10 @@ export async function createPosOrder(
     .eq("business_id", businessId)
     .maybeSingle();
   const boothRow = (booth ?? null) as {
-    id: string; name: string; outlet_id: string; pos_enabled: boolean;
+    id: string;
+    name: string;
+    outlet_id: string;
+    pos_enabled: boolean;
   } | null;
   if (!boothRow) throw new ApiError("NOT_FOUND", "Booth tidak ditemukan");
   if (!boothRow.pos_enabled) {
@@ -180,10 +198,17 @@ export async function createPosOrder(
     .eq("business_id", businessId)
     .in("id", productIds);
   const products = new Map(
-    ((productRows ?? []) as {
-      id: string; name: string; sku: string | null; price: number;
-      cost: number | null; stock: number | null; is_active: boolean;
-    }[]).map((p) => [p.id, p])
+    (
+      (productRows ?? []) as {
+        id: string;
+        name: string;
+        sku: string | null;
+        price: number;
+        cost: number | null;
+        stock: number | null;
+        is_active: boolean;
+      }[]
+    ).map((p) => [p.id, p])
   );
 
   const inactive: string[] = [];
@@ -202,8 +227,9 @@ export async function createPosOrder(
   for (const item of parsed.items) {
     const p = products.get(item.productId);
     if (!p || p.stock === null) continue;
-    const totalQty =
-      parsed.items.filter((i) => i.productId === item.productId).reduce((s, i) => s + i.qty, 0);
+    const totalQty = parsed.items
+      .filter((i) => i.productId === item.productId)
+      .reduce((s, i) => s + i.qty, 0);
     if (p.stock < totalQty) {
       shortfalls.push({ productId: p.id, name: p.name, stock: p.stock, qty: totalQty });
     }
@@ -253,11 +279,10 @@ export async function createPosOrder(
     }
   }
   if (!orderId) {
-    throw new ApiError(
-      "INTERNAL",
-      "Gagal membuat order POS (nomor bentrok)",
-      { db_code: lastError?.code, db_message: lastError?.message }
-    );
+    throw new ApiError("INTERNAL", "Gagal membuat order POS (nomor bentrok)", {
+      db_code: lastError?.code,
+      db_message: lastError?.message,
+    });
   }
 
   const { error: itemError } = await supabase.from("pos_order_items").insert(
@@ -306,7 +331,7 @@ export async function cancelPosOrder(
     .update({ status: "cancelled" })
     .eq("id", orderId)
     .eq("business_id", businessId)
-    .eq("status", "pending") // conditional UPDATE — single winner (S8)
+    .eq("status", "pending") // conditional UPDATE: single winner (S8)
     .select("id, number")
     .maybeSingle();
 
@@ -352,14 +377,22 @@ export async function payPosOrderManually(
 
   const { data: orderData } = await supabase
     .from("pos_orders")
-    .select("id, number, status, outlet_id, photobox_id, gross_amount, discount_amount, final_amount, cashier_user_id")
+    .select(
+      "id, number, status, outlet_id, photobox_id, gross_amount, discount_amount, final_amount, cashier_user_id"
+    )
     .eq("id", parsed.orderId)
     .eq("business_id", businessId)
     .maybeSingle();
   const order = (orderData ?? null) as {
-    id: string; number: string; status: string; outlet_id: string | null;
-    photobox_id: string; gross_amount: number; discount_amount: number;
-    final_amount: number; cashier_user_id: string;
+    id: string;
+    number: string;
+    status: string;
+    outlet_id: string | null;
+    photobox_id: string;
+    gross_amount: number;
+    discount_amount: number;
+    final_amount: number;
+    cashier_user_id: string;
   } | null;
   if (!order) throw new ApiError("NOT_FOUND", "Order tidak ditemukan");
   if (order.status !== "pending") {
@@ -414,9 +447,13 @@ export async function payPosOrderManually(
     .from("pos_order_items")
     .select("pos_product_id, quantity, name_snapshot")
     .eq("pos_order_id", order.id);
-  const stockItems = ((items ?? []) as {
-    pos_product_id: string | null; quantity: number; name_snapshot: string;
-  }[]).filter((item) => item.pos_product_id !== null);
+  const stockItems = (
+    (items ?? []) as {
+      pos_product_id: string | null;
+      quantity: number;
+      name_snapshot: string;
+    }[]
+  ).filter((item) => item.pos_product_id !== null);
   await Promise.all(
     stockItems.map(async (item) => {
       const { data: ok } = await supabase.rpc("pos_decrement_stock", {
@@ -438,7 +475,7 @@ export async function payPosOrderManually(
           meta: { product: item.name_snapshot, qty: item.quantity },
         });
       }
-    }),
+    })
   );
 
   await insertAudit({

@@ -62,12 +62,9 @@ export function toErrorResponse(error: unknown): NextResponse {
  * route — bukan bergantung pada callee kebetulan memanggil requireAdmin.
  * Envelope + error handling identik `authRoute`.
  */
-export function adminRoute<
-  T,
-  P extends Record<string, string> = Record<string, string>,
->(
+export function adminRoute<T, P extends Record<string, string> = Record<string, string>>(
   handler: (ctx: { admin: AppUser; request: Request; params: P }) => Promise<T>,
-  options?: { status?: number },
+  options?: { status?: number }
 ) {
   return async (request: Request, ctx: { params: Promise<P> }) => {
     try {
@@ -85,9 +82,9 @@ export function adminRoute<
  * `adminRawRoute` — variant `adminRoute` untuk endpoint admin yang
  * mengembalikan `NextResponse` mentah (bukan JSON envelope).
  */
-export function adminRawRoute<
-  P extends Record<string, string> = Record<string, string>,
->(handler: (ctx: { admin: AppUser; request: Request; params: P }) => Promise<NextResponse>) {
+export function adminRawRoute<P extends Record<string, string> = Record<string, string>>(
+  handler: (ctx: { admin: AppUser; request: Request; params: P }) => Promise<NextResponse>
+) {
   return async (request: Request, ctx: { params: Promise<P> }) => {
     try {
       const admin = await requireAdmin();
@@ -121,12 +118,9 @@ type AuthedContext<P> = {
   params: P;
 };
 
-export function authRoute<
-  T,
-  P extends Record<string, string> = Record<string, string>,
->(
+export function authRoute<T, P extends Record<string, string> = Record<string, string>>(
   handler: (ctx: AuthedContext<P>) => Promise<T>,
-  options?: { status?: number },
+  options?: { status?: number }
 ) {
   return async (request: Request, ctx: { params: Promise<P> }) => {
     try {
@@ -146,9 +140,9 @@ export function authRoute<
  * `NextResponse` mentah (mis. download binary/CSV) — bukan JSON envelope.
  * Wrapper tetap injeksi user + error handling standar.
  */
-export function authRawRoute<
-  P extends Record<string, string> = Record<string, string>,
->(handler: (ctx: AuthedContext<P>) => Promise<NextResponse>) {
+export function authRawRoute<P extends Record<string, string> = Record<string, string>>(
+  handler: (ctx: AuthedContext<P>) => Promise<NextResponse>
+) {
   return async (request: Request, ctx: { params: Promise<P> }) => {
     try {
       const user = await requireUser();

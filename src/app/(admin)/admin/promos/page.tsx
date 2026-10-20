@@ -58,17 +58,35 @@ export default async function AdminPromosPage() {
             className="grid grid-cols-2 gap-4 md:grid-cols-4"
           >
             <div className="flex flex-col gap-1">
-              <label htmlFor="promo-code" className="font-mono text-[10px] uppercase tracking-[0.12em]">
+              <label
+                htmlFor="promo-code"
+                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+              >
                 Kode
               </label>
               <Input id="promo-code" name="code" placeholder="LAUNCH50" required />
             </div>
-            <BrutalistSelect name="type" label="Tipe" defaultValue="percentage" options={TYPE_OPTIONS} />
+            <BrutalistSelect
+              name="type"
+              label="Tipe"
+              defaultValue="percentage"
+              options={TYPE_OPTIONS}
+            />
             <div className="flex flex-col gap-1">
-              <label htmlFor="promo-amount" className="font-mono text-[10px] uppercase tracking-[0.12em]">
+              <label
+                htmlFor="promo-amount"
+                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+              >
                 Nilai (persen atau IDR)
               </label>
-              <Input id="promo-amount" name="amount" type="number" min={1} placeholder="20" required />
+              <Input
+                id="promo-amount"
+                name="amount"
+                type="number"
+                min={1}
+                placeholder="20"
+                required
+              />
             </div>
             <div className="flex flex-col gap-1">
               <label
@@ -77,7 +95,13 @@ export default async function AdminPromosPage() {
               >
                 Min. transaksi (IDR)
               </label>
-              <Input id="promo-min-tx" name="min_transaction" type="number" min={0} defaultValue={0} />
+              <Input
+                id="promo-min-tx"
+                name="min_transaction"
+                type="number"
+                min={0}
+                defaultValue={0}
+              />
             </div>
             <div className="flex flex-col gap-1">
               <label
@@ -86,7 +110,13 @@ export default async function AdminPromosPage() {
               >
                 Max diskon (IDR, opsional)
               </label>
-              <Input id="promo-max" name="max_discount" type="number" min={0} placeholder="Kosong = tanpa cap" />
+              <Input
+                id="promo-max"
+                name="max_discount"
+                type="number"
+                min={0}
+                placeholder="Kosong = tanpa cap"
+              />
             </div>
             <div className="flex flex-col gap-1">
               <label
@@ -98,7 +128,10 @@ export default async function AdminPromosPage() {
               <Input id="promo-start" name="start_date" type="date" />
             </div>
             <div className="flex flex-col gap-1">
-              <label htmlFor="promo-end" className="font-mono text-[10px] uppercase tracking-[0.12em]">
+              <label
+                htmlFor="promo-end"
+                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+              >
                 Berlaku sampai (opsional)
               </label>
               <Input id="promo-end" name="end_date" type="date" />
@@ -110,7 +143,13 @@ export default async function AdminPromosPage() {
               >
                 Batas pemakaian (opsional)
               </label>
-              <Input id="promo-limit" name="usage_limit" type="number" min={0} placeholder="Kosong = tak terbatas" />
+              <Input
+                id="promo-limit"
+                name="usage_limit"
+                type="number"
+                min={0}
+                placeholder="Kosong = tak terbatas"
+              />
             </div>
             <BrutalistCheckbox
               name="is_active"
@@ -129,12 +168,16 @@ export default async function AdminPromosPage() {
           </AdminEmptyState>
         ) : (
           promos.map((p) => {
-            const usageText = p.usage_limit === null
-              ? `${p.used_count} pemakaian (tak terbatas)`
-              : `${p.used_count} / ${p.usage_limit}`;
+            const usageText =
+              p.usage_limit === null
+                ? `${p.used_count} pemakaian (tak terbatas)`
+                : `${p.used_count} / ${p.usage_limit}`;
             const valueText = p.type === "percentage" ? `${p.amount}%` : formatIDR(p.amount);
             return (
-              <div key={p.id} className="border-2 border-ink bg-surface p-4 shadow-[4px_4px_0_0_#111111]">
+              <div
+                key={p.id}
+                className="border-2 border-ink bg-surface p-4 shadow-[4px_4px_0_0_#111111]"
+              >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <span className="flex flex-wrap items-center gap-3">
                     <span className="font-display text-lg uppercase tracking-tight">{p.code}</span>
@@ -166,17 +209,33 @@ export default async function AdminPromosPage() {
                     className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4"
                   >
                     <div className="flex flex-col gap-1">
-                      <label htmlFor={`code-${p.id}`} className="font-mono text-[10px] uppercase tracking-[0.12em]">
+                      <label
+                        htmlFor={`code-${p.id}`}
+                        className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                      >
                         Kode
                       </label>
                       <Input id={`code-${p.id}`} name="code" defaultValue={p.code} />
                     </div>
-                    <BrutalistSelect name="type" label="Tipe" defaultValue={p.type} options={TYPE_OPTIONS} />
+                    <BrutalistSelect
+                      name="type"
+                      label="Tipe"
+                      defaultValue={p.type}
+                      options={TYPE_OPTIONS}
+                    />
                     <div className="flex flex-col gap-1">
-                      <label htmlFor={`amt-${p.id}`} className="font-mono text-[10px] uppercase tracking-[0.12em]">
+                      <label
+                        htmlFor={`amt-${p.id}`}
+                        className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                      >
                         Nilai
                       </label>
-                      <Input id={`amt-${p.id}`} name="amount" type="number" defaultValue={p.amount} />
+                      <Input
+                        id={`amt-${p.id}`}
+                        name="amount"
+                        type="number"
+                        defaultValue={p.amount}
+                      />
                     </div>
                     <div className="flex flex-col gap-1">
                       <label
@@ -185,10 +244,18 @@ export default async function AdminPromosPage() {
                       >
                         Min. transaksi
                       </label>
-                      <Input id={`min-${p.id}`} name="min_transaction" type="number" defaultValue={p.min_transaction} />
+                      <Input
+                        id={`min-${p.id}`}
+                        name="min_transaction"
+                        type="number"
+                        defaultValue={p.min_transaction}
+                      />
                     </div>
                     <div className="flex flex-col gap-1">
-                      <label htmlFor={`max-${p.id}`} className="font-mono text-[10px] uppercase tracking-[0.12em]">
+                      <label
+                        htmlFor={`max-${p.id}`}
+                        className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                      >
                         Max diskon
                       </label>
                       <Input
@@ -213,7 +280,10 @@ export default async function AdminPromosPage() {
                       />
                     </div>
                     <div className="flex flex-col gap-1">
-                      <label htmlFor={`end-${p.id}`} className="font-mono text-[10px] uppercase tracking-[0.12em]">
+                      <label
+                        htmlFor={`end-${p.id}`}
+                        className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                      >
                         Sampai
                       </label>
                       <Input

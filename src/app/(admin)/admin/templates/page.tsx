@@ -79,7 +79,14 @@ export default async function AdminTemplatesPage() {
               >
                 Harga default (IDR, opsional)
               </label>
-              <Input id="cat-price" name="price" type="number" min={0} placeholder="Kosong = gratis" className="w-44" />
+              <Input
+                id="cat-price"
+                name="price"
+                type="number"
+                min={0}
+                placeholder="Kosong = gratis"
+                className="w-44"
+              />
             </div>
           </AdminActionForm>
 
@@ -296,7 +303,12 @@ export default async function AdminTemplatesPage() {
                         >
                           Nama
                         </label>
-                        <Input id={`edit-name-${t.id}`} name="name" defaultValue={t.name} className="w-52" />
+                        <Input
+                          id={`edit-name-${t.id}`}
+                          name="name"
+                          defaultValue={t.name}
+                          className="w-52"
+                        />
                       </div>
                       <div className="flex flex-col gap-1">
                         <label
@@ -362,7 +374,9 @@ export default async function AdminTemplatesPage() {
                     <tr key={p.id} className="border-t-2 border-ink/10">
                       <td className="px-4 py-3 text-sm font-bold">{p.business_name}</td>
                       <td className="px-4 py-3 font-mono text-xs">{p.template_name}</td>
-                      <td className="px-4 py-3 font-mono text-xs font-bold">{formatIDR(p.price)}</td>
+                      <td className="px-4 py-3 font-mono text-xs font-bold">
+                        {formatIDR(p.price)}
+                      </td>
                       <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                         {dateFmt.format(new Date(p.created_at))}
                       </td>

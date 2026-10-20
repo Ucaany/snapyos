@@ -7,7 +7,16 @@
 
 import { revalidatePath } from "next/cache";
 
-import { toFormState, str, num, numDecimal, bool, intOrNull, uuidList, buildSettingsPayload } from "@/lib/form-state";
+import {
+  toFormState,
+  str,
+  num,
+  numDecimal,
+  bool,
+  intOrNull,
+  uuidList,
+  buildSettingsPayload,
+} from "@/lib/form-state";
 import type { AdminSettingsUpdateInput } from "@/lib/validators";
 import type { FormState } from "@/server/auth-actions";
 import {
@@ -89,7 +98,10 @@ export async function deleteUserAction(_prev: FormState, formData: FormData): Pr
   }
 }
 
-export async function updateBusinessAction(_prev: FormState, formData: FormData): Promise<FormState> {
+export async function updateBusinessAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
   try {
     await updateBusiness(str(formData, "businessId"), {
       status: str(formData, "status") === "suspended" ? "suspended" : "active",
@@ -101,7 +113,10 @@ export async function updateBusinessAction(_prev: FormState, formData: FormData)
   }
 }
 
-export async function deleteBusinessAction(_prev: FormState, formData: FormData): Promise<FormState> {
+export async function deleteBusinessAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
   try {
     await deleteBusiness(str(formData, "businessId"));
     refresh("/admin/businesses", "/admin");
@@ -137,9 +152,7 @@ export async function createPlanAction(_prev: FormState, formData: FormData): Pr
       platform_fee_percent: numDecimal(formData, "platform_fee_percent"),
       platform_fee_flat: num(formData, "platform_fee_flat"),
       ...(flagKeys.length > 0 ? { features } : {}),
-      is_active: formData.has("is_active")
-        ? formData.getAll("is_active").includes("true")
-        : true,
+      is_active: formData.has("is_active") ? formData.getAll("is_active").includes("true") : true,
     });
     refresh("/admin/plans", "/admin");
     return {};
@@ -182,7 +195,9 @@ export async function updatePlanAction(_prev: FormState, formData: FormData): Pr
       platform_fee_percent: str(formData, "platform_fee_percent")
         ? numDecimal(formData, "platform_fee_percent")
         : undefined,
-      platform_fee_flat: str(formData, "platform_fee_flat") ? num(formData, "platform_fee_flat") : undefined,
+      platform_fee_flat: str(formData, "platform_fee_flat")
+        ? num(formData, "platform_fee_flat")
+        : undefined,
       // Checkbox + hidden "false" (unchecked tetap terkirim) — H2 audit.
       is_active: formData.getAll("is_active").includes("true"),
       ...(flagKeys.length > 0 ? { features: allOff ? {} : features } : {}),
@@ -227,16 +242,14 @@ export async function updateAddOnAction(_prev: FormState, formData: FormData): P
   }
 }
 
-export async function updateSubscriptionAction(_prev: FormState, formData: FormData): Promise<FormState> {
+export async function updateSubscriptionAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
   try {
     await updateSubscription(str(formData, "subscriptionId"), {
       status: (str(formData, "status") || undefined) as
-        | "trial"
-        | "active"
-        | "past_due"
-        | "cancelled"
-        | "expired"
-        | undefined,
+        "trial" | "active" | "past_due" | "cancelled" | "expired" | undefined,
       extend_days: str(formData, "extend_days") ? num(formData, "extend_days") : undefined,
       cancel: formData.has("cancel"),
     });
@@ -274,7 +287,10 @@ export async function cancelAddOnAction(_prev: FormState, formData: FormData): P
   }
 }
 
-export async function updateSettingsAction(_prev: FormState, formData: FormData): Promise<FormState> {
+export async function updateSettingsAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
   try {
     // Halaman punya DUA form terpisah (global + gateway); buildSettingsPayload
     // hanya mengirim key yang ada di form ini supaya submit satu form tidak
@@ -288,7 +304,10 @@ export async function updateSettingsAction(_prev: FormState, formData: FormData)
   }
 }
 
-export async function createCategoryAction(_prev: FormState, formData: FormData): Promise<FormState> {
+export async function createCategoryAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
   try {
     await createTemplateCategory({
       name: str(formData, "name"),
@@ -301,7 +320,10 @@ export async function createCategoryAction(_prev: FormState, formData: FormData)
   }
 }
 
-export async function deleteCategoryAction(_prev: FormState, formData: FormData): Promise<FormState> {
+export async function deleteCategoryAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
   try {
     await deleteTemplateCategory(str(formData, "categoryId"));
     refresh("/admin/templates");
@@ -311,7 +333,10 @@ export async function deleteCategoryAction(_prev: FormState, formData: FormData)
   }
 }
 
-export async function toggleTemplateAction(_prev: FormState, formData: FormData): Promise<FormState> {
+export async function toggleTemplateAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
   try {
     await setGlobalTemplateActive(str(formData, "templateId"), bool(formData, "active"));
     refresh("/admin/templates");
@@ -353,9 +378,7 @@ export async function createGlobalTemplateAction(
       category_id: str(formData, "category_id"),
       file_url: fileUrl,
       thumbnail_url: fileUrl,
-      is_active: formData.has("is_active")
-        ? formData.getAll("is_active").includes("true")
-        : true,
+      is_active: formData.has("is_active") ? formData.getAll("is_active").includes("true") : true,
       price: str(formData, "price") ? num(formData, "price") : null,
       is_premium: formData.getAll("is_premium").includes("true"),
     });
@@ -447,9 +470,7 @@ export async function createPromoAction(_prev: FormState, formData: FormData): P
       start_date: nullableIsoDate(formData, "start_date"),
       end_date: nullableIsoDate(formData, "end_date"),
       usage_limit: nullableNum(formData, "usage_limit"),
-      is_active: formData.has("is_active")
-        ? formData.getAll("is_active").includes("true")
-        : true,
+      is_active: formData.has("is_active") ? formData.getAll("is_active").includes("true") : true,
     });
     refresh("/admin/promos", "/admin");
     return {};
@@ -588,7 +609,6 @@ export async function updateSupportTicketStatusAction(
   }
 }
 
-
 // ---------------------------------------------------------------------------
 // Broadcast email (marketing/pengumuman) — migration 0057.
 // ---------------------------------------------------------------------------
@@ -602,18 +622,9 @@ export async function createBroadcastAction(
       subject: str(formData, "subject"),
       body: str(formData, "body"),
       kind: (str(formData, "kind") || "announcement") as
-        | "announcement"
-        | "promo"
-        | "newsletter"
-        | "event"
-        | "system",
+        "announcement" | "promo" | "newsletter" | "event" | "system",
       template_key: (str(formData, "template_key") || "default") as
-        | "default"
-        | "announcement"
-        | "promo"
-        | "newsletter"
-        | "event"
-        | "system",
+        "default" | "announcement" | "promo" | "newsletter" | "event" | "system",
       audience: (str(formData, "audience") || "all") as "all" | "users" | "owners",
       max_resend: str(formData, "max_resend") ? num(formData, "max_resend") : 3,
     });

@@ -46,7 +46,10 @@ export default async function AdminSettingsPage() {
             className="grid grid-cols-1 gap-4 md:grid-cols-3"
           >
             <div className="flex flex-col gap-1">
-              <label htmlFor="s-fee-pct" className="font-mono text-[10px] uppercase tracking-[0.12em]">
+              <label
+                htmlFor="s-fee-pct"
+                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+              >
                 Platform fee default (%)
               </label>
               <Input
@@ -61,7 +64,10 @@ export default async function AdminSettingsPage() {
               </p>
             </div>
             <div className="flex flex-col gap-1">
-              <label htmlFor="s-fee-flat" className="font-mono text-[10px] uppercase tracking-[0.12em]">
+              <label
+                htmlFor="s-fee-flat"
+                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+              >
                 Platform fee default flat (IDR)
               </label>
               <Input
@@ -72,7 +78,10 @@ export default async function AdminSettingsPage() {
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label htmlFor="s-retention" className="font-mono text-[10px] uppercase tracking-[0.12em]">
+              <label
+                htmlFor="s-retention"
+                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+              >
                 Default retention (hari)
               </label>
               <Input
@@ -89,14 +98,25 @@ export default async function AdminSettingsPage() {
               </p>
             </div>
             <div className="flex flex-col gap-1">
-              <label htmlFor="s-trial" className="font-mono text-[10px] uppercase tracking-[0.12em]">
+              <label
+                htmlFor="s-trial"
+                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+              >
                 Trial (hari)
               </label>
-              <Input id="s-trial" name="trial_days" type="number" defaultValue={s.trial_days ?? 14} />
+              <Input
+                id="s-trial"
+                name="trial_days"
+                type="number"
+                defaultValue={s.trial_days ?? 14}
+              />
             </div>
 
             <div className="flex flex-col gap-1 md:col-span-3">
-              <label htmlFor="s-maint-msg" className="font-mono text-[10px] uppercase tracking-[0.12em]">
+              <label
+                htmlFor="s-maint-msg"
+                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+              >
                 Pesan maintenance (kustom)
               </label>
               <Input
@@ -132,10 +152,12 @@ export default async function AdminSettingsPage() {
         <CardHeader>
           <CardTitle>Payment Gateway Global</CardTitle>
           <CardDescription>
-            Enable/disable provider secara global. Credential nonaktif → checkout
-            tenant fallback ke aggregator. Pengaturan per-provider ini juga bisa
-            diubah dari{" "}
-            <Link href="/admin/gateways" className="font-bold underline decoration-ink/40 underline-offset-2">
+            Enable/disable provider secara global. Credential nonaktif → checkout tenant fallback ke
+            aggregator. Pengaturan per-provider ini juga bisa diubah dari{" "}
+            <Link
+              href="/admin/gateways"
+              className="font-bold underline decoration-ink/40 underline-offset-2"
+            >
               /admin/gateways
             </Link>
             .

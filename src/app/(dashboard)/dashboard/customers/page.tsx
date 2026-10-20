@@ -61,7 +61,12 @@ export default async function CustomersPage({
         title="Pelanggan"
         description="Data pelanggan ditampilkan berdasarkan informasi yang diberikan saat transaksi."
         right={
-          <form method="get" action="/dashboard/customers" className="flex gap-2" aria-label="Cari pelanggan">
+          <form
+            method="get"
+            action="/dashboard/customers"
+            className="flex gap-2"
+            aria-label="Cari pelanggan"
+          >
             <PreserveSearchParams current={query} except={["q", "page"]} />
             <input
               type="text"

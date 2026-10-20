@@ -26,7 +26,8 @@ import { resolveGatewayFromCredential } from "@/server/payment/providers/gateway
 import { requireFeature } from "@/server/feature-gate";
 import type { GatewayCredential } from "@/server/payment/providers/types";
 
-const CREDENTIAL_FIELDS = "id, business_id, provider, label, merchant_id, server_key_encrypted, client_key, environment, is_active, metadata, created_at, updated_at";
+const CREDENTIAL_FIELDS =
+  "id, business_id, provider, label, merchant_id, server_key_encrypted, client_key, environment, is_active, metadata, created_at, updated_at";
 
 /**
  * Encrypt dengan pesan yang jelas: raw Error dari requireEncryptionKey
@@ -71,7 +72,10 @@ function gatewayCredential(stored: PaymentCredentialStored): GatewayCredential {
   };
 }
 
-export async function listCredentials(userId: string, businessId: string): Promise<PaymentCredentialPublic[]> {
+export async function listCredentials(
+  userId: string,
+  businessId: string
+): Promise<PaymentCredentialPublic[]> {
   await requireOwner(userId, businessId);
   const { data, error } = await createServerClient()
     .from("payment_credentials")
@@ -83,7 +87,11 @@ export async function listCredentials(userId: string, businessId: string): Promi
   return (data ?? []).map((item) => redactPaymentCredential(row(item)));
 }
 
-export async function createCredential(userId: string, businessId: string, input: PaymentCredentialCreateInput) {
+export async function createCredential(
+  userId: string,
+  businessId: string,
+  input: PaymentCredentialCreateInput
+) {
   await requireOwner(userId, businessId);
   await requireFeature(businessId, "direct_payment");
   const parsed = paymentCredentialCreateSchema.parse(input);
@@ -112,14 +120,19 @@ export async function createCredential(userId: string, businessId: string, input
     .select(CREDENTIAL_FIELDS)
     .single();
   if (error || !data) {
-    if (error?.code === "23505") throw new ApiError("VALIDATION_ERROR", "Credential provider dan environment ini sudah ada");
+    if (error?.code === "23505")
+      throw new ApiError("VALIDATION_ERROR", "Credential provider dan environment ini sudah ada");
     throw new ApiError("INTERNAL", "Gagal menyimpan payment gateway");
   }
   return redactPaymentCredential(row(data));
 }
 
-
-export async function updateCredential(userId: string, businessId: string, credentialId: string, input: PaymentCredentialUpdateInput) {
+export async function updateCredential(
+  userId: string,
+  businessId: string,
+  credentialId: string,
+  input: PaymentCredentialUpdateInput
+) {
   await requireOwner(userId, businessId);
   await requireFeature(businessId, "direct_payment");
   const parsed = paymentCredentialUpdateSchema.parse(input);
@@ -154,9 +167,23 @@ export async function updateCredential(userId: string, businessId: string, crede
       ...(parsed.client_key !== undefined ? { client_key: parsed.client_key } : {}),
       ...(parsed.environment !== undefined ? { environment: parsed.environment } : {}),
       ...(parsed.is_active !== undefined ? { is_active: parsed.is_active } : {}),
-      ...(parsed.server_key !== undefined ? { server_key_encrypted: encryptCredential(parsed.server_key) } : {}),
-      ...(parsed.enabled_methods !== undefined || parsed.private_key !== undefined || parsed.webhook_secret !== undefined
-        ? { metadata: credentialMetadata({ provider, enabled_methods: parsed.enabled_methods, private_key: parsed.private_key, webhook_secret: parsed.webhook_secret }, existing.metadata) }
+      ...(parsed.server_key !== undefined
+        ? { server_key_encrypted: encryptCredential(parsed.server_key) }
+        : {}),
+      ...(parsed.enabled_methods !== undefined ||
+      parsed.private_key !== undefined ||
+      parsed.webhook_secret !== undefined
+        ? {
+            metadata: credentialMetadata(
+              {
+                provider,
+                enabled_methods: parsed.enabled_methods,
+                private_key: parsed.private_key,
+                webhook_secret: parsed.webhook_secret,
+              },
+              existing.metadata
+            ),
+          }
         : {}),
     })
     .eq("id", credentialId)
@@ -164,7 +191,8 @@ export async function updateCredential(userId: string, businessId: string, crede
     .select(CREDENTIAL_FIELDS)
     .single();
   if (error || !data) {
-    if (error?.code === "23505") throw new ApiError("VALIDATION_ERROR", "Credential provider dan environment ini sudah ada");
+    if (error?.code === "23505")
+      throw new ApiError("VALIDATION_ERROR", "Credential provider dan environment ini sudah ada");
     throw new ApiError("INTERNAL", "Gagal memperbarui payment gateway");
   }
   return redactPaymentCredential(row(data));
@@ -199,7 +227,10 @@ export async function testCredential(userId: string, businessId: string, credent
     throw new ApiError("VALIDATION_ERROR", "Test koneksi hanya tersedia untuk credential sandbox");
   }
   if (!canTestPaymentCredential(stored.provider)) {
-    throw new ApiError("VALIDATION_ERROR", "Tes otomatis belum tersedia untuk provider ini karena transaksi sandbox tidak bisa dibatalkan dengan aman.");
+    throw new ApiError(
+      "VALIDATION_ERROR",
+      "Tes otomatis belum tersedia untuk provider ini karena transaksi sandbox tidak bisa dibatalkan dengan aman."
+    );
   }
   const gateway = resolveGatewayFromCredential(gatewayCredential(stored));
   // Probe non-destruktif untuk Pakasir/Tripay (tanpa cancel adapter): panggil
@@ -209,7 +240,10 @@ export async function testCredential(userId: string, businessId: string, credent
     try {
       await gateway.getStatus("SnapyOS-TESTCONNECT", 1, null);
     } catch {
-      throw new ApiError("VALIDATION_ERROR", "Koneksi gateway gagal. Periksa credential dan environment.");
+      throw new ApiError(
+        "VALIDATION_ERROR",
+        "Koneksi gateway gagal. Periksa credential dan environment."
+      );
     }
     return { ok: true, provider: stored.provider, environment: stored.environment };
   }
@@ -224,11 +258,18 @@ export async function testCredential(userId: string, businessId: string, credent
       description: "SnapyOS credential connection test",
       callbackUrl: "https://snapyos.invalid/payment-test",
     });
-    if (result.orderId !== orderId || result.amount !== 1 || !(await gateway.cancelTransaction(orderId))) {
+    if (
+      result.orderId !== orderId ||
+      result.amount !== 1 ||
+      !(await gateway.cancelTransaction(orderId))
+    ) {
       throw new Error("Provider gagal membuat atau membatalkan transaksi uji");
     }
   } catch {
-    throw new ApiError("VALIDATION_ERROR", "Koneksi gateway gagal. Periksa credential dan environment.");
+    throw new ApiError(
+      "VALIDATION_ERROR",
+      "Koneksi gateway gagal. Periksa credential dan environment."
+    );
   }
   return { ok: true, provider: stored.provider, environment: stored.environment };
 }

@@ -8,24 +8,24 @@ Dokumen ini adalah hasil audit lengkap struktur routing, API, server actions, da
 
 ## Daftar Isi
 
-| #   | File                                          | Status      | Isi                                                                     |
-| --- | --------------------------------------------- | ----------- | ----------------------------------------------------------------------- |
-| 00  | `00-INDEX.md`                                 | ✅ ada      | Indeks (dokumen ini)                                                    |
-| 01  | `01-ADMIN-CEO-FLOW.md`                        | ✅ ada      | Alur lengkap Admin/CEO platform                                         |
-| 02  | `02-OWNER-DASHBOARD-FLOW.md`                  | ✅ ada      | Alur lengkap Owner dashboard & fitur bisnis                             |
-| 03  | `03-STAFF-FLOW.md`                            | ✅ ada      | Alur Staff (read-only shell)                                            |
-| 04  | `04-KIOSK-CUSTOMER-FLOW.md`                   | ⛔ backlog  | Alur customer kiosk (pay-first, device activation, capture, result)     |
-| 05  | `05-POS-TERMINAL-FLOW.md`                     | ⛔ backlog  | Alur POS terminal (add-on, offline cash, product management)            |
-| 06  | `06-PAYMENT-INTEGRATION.md`                   | ⛔ backlog  | Payment gateway integration (Pakasir/Midtrans/Tripay, webhook, polling) |
-| 07  | `07-SUBSCRIPTION-LIFECYCLE.md`                | ⛔ backlog  | Subscription, invoice, add-on, promo, entitlement                       |
-| 08  | `08-DATABASE-MIGRATIONS.md`                   | ⛔ backlog  | Inventaris migrasi lengkap & changelog schema                           |
-| 09  | `09-API-ROUTING-MAP.md`                       | ⛔ backlog  | Map lengkap API endpoints (63 routes) + HTTP methods                    |
-| 10  | `10-SERVER-ACTIONS-MAP.md`                    | ⛔ backlog  | Map lengkap server actions per domain (99 actions)                      |
-| 11  | `11-FEATURE-FILE-LOCATION.md`                 | ⛔ backlog  | Mapping fitur → file location (pages, actions, API, components)         |
-| 12  | `12-SETTINGS-CONFIGURATION.md`                | ⛔ backlog  | Settings owner (branding, payment, retention, checkout, session timer)  |
-| 13  | `13-FINANCE-WITHDRAWAL-FLOW.md`               | ⛔ obsolete | Finance, balance, ledger, withdrawal, settlement — **alur withdrawal dihapus migrasi `0044`** |
-| 14  | `14-TEMPLATE-BUILDER-FLOW.md`                 | ⛔ backlog  | Template & Frame Builder upload + composite engine                      |
-| 15  | `15-SECURITY-RBAC-ENFORCEMENT.md`             | ⛔ backlog  | Security, RBAC matrix, tenant isolation, audit log                      |
+| #   | File                              | Status      | Isi                                                                                           |
+| --- | --------------------------------- | ----------- | --------------------------------------------------------------------------------------------- |
+| 00  | `00-INDEX.md`                     | ✅ ada      | Indeks (dokumen ini)                                                                          |
+| 01  | `01-ADMIN-CEO-FLOW.md`            | ✅ ada      | Alur lengkap Admin/CEO platform                                                               |
+| 02  | `02-OWNER-DASHBOARD-FLOW.md`      | ✅ ada      | Alur lengkap Owner dashboard & fitur bisnis                                                   |
+| 03  | `03-STAFF-FLOW.md`                | ✅ ada      | Alur Staff (read-only shell)                                                                  |
+| 04  | `04-KIOSK-CUSTOMER-FLOW.md`       | ⛔ backlog  | Alur customer kiosk (pay-first, device activation, capture, result)                           |
+| 05  | `05-POS-TERMINAL-FLOW.md`         | ⛔ backlog  | Alur POS terminal (add-on, offline cash, product management)                                  |
+| 06  | `06-PAYMENT-INTEGRATION.md`       | ⛔ backlog  | Payment gateway integration (Pakasir/Midtrans/Tripay, webhook, polling)                       |
+| 07  | `07-SUBSCRIPTION-LIFECYCLE.md`    | ⛔ backlog  | Subscription, invoice, add-on, promo, entitlement                                             |
+| 08  | `08-DATABASE-MIGRATIONS.md`       | ⛔ backlog  | Inventaris migrasi lengkap & changelog schema                                                 |
+| 09  | `09-API-ROUTING-MAP.md`           | ⛔ backlog  | Map lengkap API endpoints (63 routes) + HTTP methods                                          |
+| 10  | `10-SERVER-ACTIONS-MAP.md`        | ⛔ backlog  | Map lengkap server actions per domain (99 actions)                                            |
+| 11  | `11-FEATURE-FILE-LOCATION.md`     | ⛔ backlog  | Mapping fitur → file location (pages, actions, API, components)                               |
+| 12  | `12-SETTINGS-CONFIGURATION.md`    | ⛔ backlog  | Settings owner (branding, payment, retention, checkout, session timer)                        |
+| 13  | `13-FINANCE-WITHDRAWAL-FLOW.md`   | ⛔ obsolete | Finance, balance, ledger, withdrawal, settlement — **alur withdrawal dihapus migrasi `0044`** |
+| 14  | `14-TEMPLATE-BUILDER-FLOW.md`     | ⛔ backlog  | Template & Frame Builder upload + composite engine                                            |
+| 15  | `15-SECURITY-RBAC-ENFORCEMENT.md` | ⛔ backlog  | Security, RBAC matrix, tenant isolation, audit log                                            |
 
 > **CATATAN AUDIT 2026-10-16**: berkas `04`–`15` pada tabel di atas **tidak ada** di direktori ini
 > (hanya `01`–`03` yang terpasang). Baris bertanda ⛔ adalah **backlog eksplisit** — jangan
@@ -63,6 +63,7 @@ Dokumen ini adalah hasil audit lengkap struktur routing, API, server actions, da
 ## Status Implementasi Global
 
 **TERIMPLEMENTASI PENUH**:
+
 - Admin dashboard (overview, users, businesses, plans, add-ons, promos, subscriptions, payments, templates, settings, support tickets)
 - Owner dashboard (branding, outlets, photoboxes, packages, templates, vouchers, staff, transactions, analytics, subscription, reports)
 - Template Builder (Phase 12)
@@ -76,6 +77,7 @@ Dokumen ini adalah hasil audit lengkap struktur routing, API, server actions, da
 - Neo-Brutalism design system (single aesthetic)
 
 **BACKLOG** (belum ada):
+
 - Booking (§4.14)
 - Event mode (§4.15)
 - Business profile edit + danger zone (§4.17)

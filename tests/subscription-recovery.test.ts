@@ -86,7 +86,7 @@ class FakeDb {
 
   private execInvoices(op: Op) {
     const id = op.filters.find(([c]) => c === "id")?.[1];
-    const invoice = id ? this.invoices.get(String(id)) ?? null : null;
+    const invoice = id ? (this.invoices.get(String(id)) ?? null) : null;
     if (!invoice) return { data: null, error: null as IntentDbError };
     if (op.kind === "select") {
       const biz = op.filters.find(([c]) => c === "business_id");
@@ -107,10 +107,9 @@ class FakeDb {
 
   private execSubscriptions(op: Op) {
     const id = op.filters.find(([c]) => c === "id")?.[1];
-    const sub = id ? this.subscriptions.get(String(id)) ?? null : null;
+    const sub = id ? (this.subscriptions.get(String(id)) ?? null) : null;
     const statusIn = op.ins.find(([c]) => c === "status");
-    const statusOk = (s: SubRow) =>
-      !statusIn || (statusIn[1] as string[]).includes(s.status);
+    const statusOk = (s: SubRow) => !statusIn || (statusIn[1] as string[]).includes(s.status);
 
     if (op.kind === "select") {
       if (!sub || !statusOk(sub)) return { data: null, error: null };
@@ -129,10 +128,7 @@ class FakeDb {
     if (op.kind === "upsert") {
       const row = op.row as AnyRow;
       const dup = this.failures.find(
-        (f) =>
-          f.invoice_id === row.invoice_id &&
-          f.reason === row.reason &&
-          f.status === "pending"
+        (f) => f.invoice_id === row.invoice_id && f.reason === row.reason && f.status === "pending"
       );
       if (dup) return { data: null, error: null };
       this.failures.push({ ...row, id: `failure-${this.failures.length + 1}` });
@@ -168,13 +164,35 @@ class FakeQuery {
     this.table = table;
   }
 
-  select() { return this; }
-  update(patch: AnyRow) { this.op.kind = "update"; this.op.patch = patch; return this; }
-  upsert(row: AnyRow, opts?: AnyRow) { this.op.kind = "upsert"; this.op.row = row; this.op.upsertOpts = opts ?? null; return this; }
-  eq(col: string, val: unknown) { this.op.filters.push([col, val]); return this; }
-  or(cond: string) { this.op.orCond = cond; return this; }
-  in(col: string, vals: unknown[]) { this.op.ins.push([col, vals]); return this; }
-  maybeSingle() { return Promise.resolve(this.db.execute(this.table, this.op)); }
+  select() {
+    return this;
+  }
+  update(patch: AnyRow) {
+    this.op.kind = "update";
+    this.op.patch = patch;
+    return this;
+  }
+  upsert(row: AnyRow, opts?: AnyRow) {
+    this.op.kind = "upsert";
+    this.op.row = row;
+    this.op.upsertOpts = opts ?? null;
+    return this;
+  }
+  eq(col: string, val: unknown) {
+    this.op.filters.push([col, val]);
+    return this;
+  }
+  or(cond: string) {
+    this.op.orCond = cond;
+    return this;
+  }
+  in(col: string, vals: unknown[]) {
+    this.op.ins.push([col, vals]);
+    return this;
+  }
+  maybeSingle() {
+    return Promise.resolve(this.db.execute(this.table, this.op));
+  }
   then<T1 = unknown, T2 = never>(
     onfulfilled?: ((v: unknown) => T1 | PromiseLike<T1>) | null,
     onrejected?: ((r: unknown) => T2 | PromiseLike<T2>) | null
@@ -201,8 +219,7 @@ function seedPaidInvoice(
   intentItems: AnyRow[],
   opts?: { subscriptionId?: string | null }
 ) {
-  const subscriptionId =
-    opts && "subscriptionId" in opts ? (opts.subscriptionId ?? null) : "sub-1";
+  const subscriptionId = opts && "subscriptionId" in opts ? (opts.subscriptionId ?? null) : "sub-1";
   const invoice: InvoiceRow = {
     id: "inv-1",
     business_id: "biz-1",
@@ -236,7 +253,14 @@ test("recovery: expired + plan sama → aktif, periode baru dari now (bukan exte
   const db = new FakeDb();
   seedExpiredSub(db, "plan-growth", "2026-08-01T00:00:00.000Z"); // mati lama
   seedPaidInvoice(db, [
-    { type: "plan_change", plan_id: "plan-growth", code: "growth", name: "GROWTH", amount: 249000, qty: 1 },
+    {
+      type: "plan_change",
+      plan_id: "plan-growth",
+      code: "growth",
+      name: "GROWTH",
+      amount: 249000,
+      qty: 1,
+    },
   ]);
 
   const before = Date.now();
@@ -289,7 +313,14 @@ test("recovery: retry webhook (applied=true) → no-op, periode tidak berubah", 
   const db = new FakeDb();
   seedExpiredSub(db, "plan-growth", "2026-08-01T00:00:00.000Z");
   seedPaidInvoice(db, [
-    { type: "plan_change", plan_id: "plan-growth", code: "growth", name: "GROWTH", amount: 249000, qty: 1 },
+    {
+      type: "plan_change",
+      plan_id: "plan-growth",
+      code: "growth",
+      name: "GROWTH",
+      amount: 249000,
+      qty: 1,
+    },
   ]);
 
   await applyInvoiceIntentWithDeps(makeDeps(db), "biz-1", "inv-1");
@@ -319,7 +350,14 @@ test("past_due dalam grace + plan sama → extend dari period_end, bukan now", a
     cancel_at_period_end: false,
   });
   seedPaidInvoice(db, [
-    { type: "plan_change", plan_id: "plan-growth", code: "growth", name: "GROWTH", amount: 249000, qty: 1 },
+    {
+      type: "plan_change",
+      plan_id: "plan-growth",
+      code: "growth",
+      name: "GROWTH",
+      amount: 249000,
+      qty: 1,
+    },
   ]);
 
   await applyInvoiceIntentWithDeps(makeDeps(db), "biz-1", "inv-1");
@@ -348,7 +386,14 @@ test("cancelled + webhook paid → tetap SUBSCRIPTION_NOT_ACTIVE (bukan recovery
     cancel_at_period_end: false,
   });
   seedPaidInvoice(db, [
-    { type: "plan_change", plan_id: "plan-growth", code: "growth", name: "GROWTH", amount: 249000, qty: 1 },
+    {
+      type: "plan_change",
+      plan_id: "plan-growth",
+      code: "growth",
+      name: "GROWTH",
+      amount: 249000,
+      qty: 1,
+    },
   ]);
 
   await applyInvoiceIntentWithDeps(makeDeps(db), "biz-1", "inv-1");

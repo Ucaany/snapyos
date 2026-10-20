@@ -34,7 +34,7 @@ const ALWAYS_ALLOWED_PREFIXES = [
   "/login",
   "/api/health",
   "/api/auth", // NextAuth callback
-  "/api/webhooks", // provider webhooks (Pakasir) — jangan blokir settlement in-flight
+  "/api/webhooks", // provider webhooks (Pakasir): jangan blokir settlement in-flight
   "/_next",
   "/favicon.ico",
 ];
@@ -64,9 +64,7 @@ export async function proxy(request: NextRequest) {
   // non-allowlist tetap 503 karena session check juga bergantung pada DB.
   if (maintenance === "enabled") {
     const session = await auth();
-    const user = session?.user as
-      | { role?: string | null; email?: string | null }
-      | undefined;
+    const user = session?.user as { role?: string | null; email?: string | null } | undefined;
     if (isAdminUser(user)) return NextResponse.next();
   }
 

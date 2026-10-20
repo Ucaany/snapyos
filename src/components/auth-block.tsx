@@ -8,11 +8,7 @@ import { AtSignIcon, KeyRoundIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-} from "@/components/ui/input-group";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { AuthDivider } from "@/components/auth-divider";
 import { DecorIcon } from "@/components/decor-icon";
 import { TurnstileWidget, type TurnstileHandle } from "@/components/turnstile-widget";
@@ -25,7 +21,11 @@ const initial: FormState = {};
 
 function FieldError({ errors }: { errors?: string[] }) {
   if (!errors?.length) return null;
-  return <p role="alert" className="text-xs text-destructive">{errors[0]}</p>;
+  return (
+    <p role="alert" className="text-xs text-destructive">
+      {errors[0]}
+    </p>
+  );
 }
 
 function FormError({ error }: { error?: string }) {
@@ -68,11 +68,7 @@ export function AuthPage() {
 
   return (
     <div className="relative flex min-h-[100dvh] w-full items-center justify-center overflow-hidden px-6 md:px-8">
-      <div
-        className={cn(
-          "relative flex w-full max-w-sm flex-col justify-between p-6 md:p-8"
-        )}
-      >
+      <div className={cn("relative flex w-full max-w-sm flex-col justify-between p-6 md:p-8")}>
         <div className="absolute -inset-y-6 -left-px w-px bg-border" />
         <div className="absolute -inset-y-6 -right-px w-px bg-border" />
         <div className="absolute -inset-x-6 -top-px h-px bg-border" />
@@ -97,12 +93,7 @@ export function AuthPage() {
             </div>
           </div>
 
-          <form
-            action={submitWithFreshCaptcha}
-            noValidate
-            autoComplete="on"
-            className="space-y-4"
-          >
+          <form action={submitWithFreshCaptcha} noValidate autoComplete="on" className="space-y-4">
             <div className="space-y-2">
               <InputGroup>
                 <InputGroupAddon align="inline-start">
@@ -163,9 +154,7 @@ export function AuthPage() {
                     disabled={pending}
                   />
                 </InputGroup>
-                {fieldErrors.password && (
-                  <FieldError errors={fieldErrors.password} />
-                )}
+                {fieldErrors.password && <FieldError errors={fieldErrors.password} />}
               </div>
             )}
 
@@ -208,7 +197,7 @@ export function AuthPage() {
           <p className="text-muted-foreground text-sm">
             Hubungi admin SnapyOS untuk pembuatan akun.{" "}
             <Link
-              className="underline underline-offset-4 hover:text-primary"
+              className="underline underline-offset-4 hover:text-primary [@media(pointer:coarse)]:inline-flex [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:items-center"
               href="/register"
             >
               Pelajari cara mendaftar

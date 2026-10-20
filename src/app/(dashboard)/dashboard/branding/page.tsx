@@ -9,7 +9,7 @@ import { getBranding } from "@/server/branding";
 import { listPhotoboxes } from "@/server/photoboxes";
 
 export const metadata: Metadata = {
-  title: "Branding & Kiosk — SnapyOS",
+  title: "Branding & Kiosk | SnapyOS",
 };
 
 /** /dashboard/branding — single source of truth kustomisasi kiosk (Branding & Kiosk). */
@@ -34,7 +34,7 @@ export default async function BrandingKioskPage() {
   return (
     <div className="flex flex-col gap-8 p-6 md:p-10">
       <PageHeader
-        eyebrow="BRANDING — KIOSK CUSTOMIZATION"
+        eyebrow="BRANDING: KIOSK CUSTOMIZATION"
         title="Branding & Kiosk"
         description="Satu halaman untuk seluruh tampilan kiosk customer: warna, tipografi, teks tiap layar, tombol, dan video background attract screen. Konfigurasi global berlaku untuk semua booth; tiap booth bisa override sebagian/seluruh tampilannya sendiri."
       />
@@ -54,7 +54,12 @@ export default async function BrandingKioskPage() {
               }
             : null
         }
-        photoboxes={photoboxes.map((p) => ({ id: p.id, name: p.name, slug: p.slug, branding: p.branding }))}
+        photoboxes={photoboxes.map((p) => ({
+          id: p.id,
+          name: p.name,
+          slug: p.slug,
+          branding: p.branding,
+        }))}
         canWrite={canWrite}
       />
     </div>

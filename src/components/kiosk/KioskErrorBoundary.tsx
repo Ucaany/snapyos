@@ -45,8 +45,7 @@ export class KioskErrorBoundary extends Component<Props, State> {
           Kiosk memuat ulang
         </h1>
         <p className="max-w-[52ch] font-mono text-xs uppercase leading-relaxed tracking-[0.08em] text-muted-foreground">
-          Terjadi kesalahan tak terduga. Layar akan dimuat ulang otomatis dan
-          sesi Anda dipulihkan.
+          Terjadi kesalahan tak terduga. Layar akan dimuat ulang otomatis dan sesi Anda dipulihkan.
         </p>
         <button
           type="button"

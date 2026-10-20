@@ -43,10 +43,7 @@ export const R2_BUCKET_ENV_LEGACY = "R2_BUCKET";
  *   1. `R2_BUCKET_<AREA>` (per-area, dipakai produksi).
  *   2. `R2_BUCKET` legacy (satu bucket untuk semua area).
  */
-export function r2BucketName(
-  area: R2Area,
-  env: Record<string, string | undefined>
-): string {
+export function r2BucketName(area: R2Area, env: Record<string, string | undefined>): string {
   const perArea = env[R2_BUCKET_ENV[area]]?.trim();
   if (perArea) return perArea;
   return env[R2_BUCKET_ENV_LEGACY]?.trim() ?? "";

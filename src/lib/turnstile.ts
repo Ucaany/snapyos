@@ -7,8 +7,6 @@
  * tanpa secret: bila NODE_ENV=production dan secret kosong, blokir (fail-closed).
  */
 
-import { ApiError } from "./api-errors.ts";
-
 const VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 const VERIFY_TIMEOUT_MS = 5000;
 
@@ -80,18 +78,5 @@ export async function verifyTurnstile(
   } catch (err) {
     console.error("[turnstile] verify gagal:", err instanceof Error ? err.message : err);
     return false;
-  }
-}
-
-/**
- * Guard route kiosk publik: verifikasi token, lempar ApiError("CAPTCHA_FAILED")
- * bila gagal. `remoteIp` dari getClientIp(request.headers).
- */
-export async function assertTurnstile(
-  token: string | null | undefined,
-  options: TurnstileOptions | string = {}
-): Promise<void> {
-  if (!(await verifyTurnstile(token, options))) {
-    throw new ApiError("CAPTCHA_FAILED", "Verifikasi keamanan gagal. Muat ulang halaman.");
   }
 }

@@ -13,17 +13,17 @@
  * counter dari listing sekali bila baris `storage_usage` bisnis belum ada.
  */
 
-import "server-only"
-import { createServerClient } from "@/lib/supabase/server"
-import { ApiError } from "@/lib/api-errors"
-import { isMissingFunction } from "@/lib/supabase/errors"
-import { isSubscriptionEffective } from "@/lib/subscription-math"
-import { isFeatureEnabled } from "@/lib/feature-gate"
-import { activeStorageProviders } from "@/server/storage"
-import type { StorageBucket, StorageProvider } from "@/server/storage/types"
+import "server-only";
+import { createServerClient } from "@/lib/supabase/server";
+import { ApiError } from "@/lib/api-errors";
+import { isMissingFunction } from "@/lib/supabase/errors";
+import { isSubscriptionEffective } from "@/lib/subscription-math";
+import { isFeatureEnabled } from "@/lib/feature-gate";
+import { activeStorageProviders } from "@/server/storage";
+import type { StorageBucket, StorageProvider } from "@/server/storage/types";
 
-const MB = 1024 * 1024
-const BUCKETS: StorageBucket[] = ["business-assets", "generated-photos"]
+const MB = 1024 * 1024;
+const BUCKETS: StorageBucket[] = ["business-assets", "generated-photos"];
 
 /**
  * Sum + kumpulkan objek (key, bytes) di bawah prefix rekursif — HANYA untuk
@@ -34,28 +34,28 @@ async function collectFolderObjects(
   bucket: StorageBucket,
   prefix: string
 ): Promise<{ key: string; bytes: number }[]> {
-  const out: { key: string; bytes: number }[] = []
-  const stack: string[] = [prefix]
+  const out: { key: string; bytes: number }[] = [];
+  const stack: string[] = [prefix];
   while (stack.length > 0) {
-    const dir = stack.pop()!
-    let offset = 0
-    const limit = 1000
+    const dir = stack.pop()!;
+    let offset = 0;
+    const limit = 1000;
     for (;;) {
-      const { data, error } = await provider.list(bucket, dir, { limit, offset })
+      const { data, error } = await provider.list(bucket, dir, { limit, offset });
       if (error) {
-        console.error(`[storage-usage] list gagal bucket=${bucket} dir=${dir}:`, error.message)
-        break
+        console.error(`[storage-usage] list gagal bucket=${bucket} dir=${dir}:`, error.message);
+        break;
       }
-      const items = data ?? []
+      const items = data ?? [];
       for (const it of items) {
-        if (it.id) out.push({ key: `${dir}/${it.name}`, bytes: it.metadata?.size ?? 0 })
-        else stack.push(`${dir}/${it.name}`)
+        if (it.id) out.push({ key: `${dir}/${it.name}`, bytes: it.metadata?.size ?? 0 });
+        else stack.push(`${dir}/${it.name}`);
       }
-      offset += items.length
-      if (items.length < limit) break
+      offset += items.length;
+      if (items.length < limit) break;
     }
   }
-  return out
+  return out;
 }
 
 /**
@@ -66,18 +66,18 @@ async function collectFolderObjects(
  * tampilan saat baris counter absen.
  */
 async function reconcileUsedBytes(businessId: string): Promise<number> {
-  const providers = activeStorageProviders()
-  let total = 0
+  const providers = activeStorageProviders();
+  let total = 0;
   for (const provider of providers) {
     for (const bucket of BUCKETS) {
-      const objects = await collectFolderObjects(provider, bucket, businessId)
+      const objects = await collectFolderObjects(provider, bucket, businessId);
       for (const obj of objects) {
-        await accountStorageAdd(businessId, bucket, obj.key, obj.bytes)
-        total += obj.bytes
+        await accountStorageAdd(businessId, bucket, obj.key, obj.bytes);
+        total += obj.bytes;
       }
     }
   }
-  return total
+  return total;
 }
 
 /**
@@ -92,23 +92,23 @@ export async function getBusinessUsedBytes(
   failOpen = true,
   reconcileIfMissing = false
 ): Promise<number> {
-  const supabase = createServerClient()
+  const supabase = createServerClient();
   const { data, error } = await supabase
     .from("storage_usage")
     .select("used_bytes")
     .eq("business_id", businessId)
-    .maybeSingle()
+    .maybeSingle();
 
   if (error) {
-    if (!failOpen) throw new Error(`[storage-usage] baca counter gagal: ${error.message}`)
-    console.error(`[storage-usage] baca counter gagal business=${businessId}:`, error.message)
-    return 0
+    if (!failOpen) throw new Error(`[storage-usage] baca counter gagal: ${error.message}`);
+    console.error(`[storage-usage] baca counter gagal business=${businessId}:`, error.message);
+    return 0;
   }
   if (!data) {
-    return reconcileIfMissing ? await reconcileUsedBytes(businessId) : 0
+    return reconcileIfMissing ? await reconcileUsedBytes(businessId) : 0;
   }
-  const used = (data as { used_bytes?: number } | null)?.used_bytes
-  return typeof used === "number" && used > 0 ? used : 0
+  const used = (data as { used_bytes?: number } | null)?.used_bytes;
+  return typeof used === "number" && used > 0 ? used : 0;
 }
 
 /**
@@ -122,15 +122,15 @@ export async function accountStorageAdd(
   key: string,
   bytes: number
 ): Promise<{ ok: boolean; error?: string; missing?: boolean }> {
-  const size = Math.max(0, Math.floor(bytes))
-  if (size === 0) return { ok: true }
-  const supabase = createServerClient()
+  const size = Math.max(0, Math.floor(bytes));
+  if (size === 0) return { ok: true };
+  const supabase = createServerClient();
   const { error } = await supabase.rpc("storage_account_add", {
     p_business: businessId,
     p_key: key,
     p_bucket: bucket,
     p_bytes: size,
-  })
+  });
   if (error) {
     // Accounting gagal tidak boleh menggagalkan upload yang sudah sukses —
     // log; backfill/rekonsiliasi menyusul. ponytail: retry queue bila perlu.
@@ -138,14 +138,14 @@ export async function accountStorageAdd(
     // (retention) dapat menahan finalize; upload-path cukup mengabaikannya.
     // Klasifikasi: fungsi/tabel absen = misconfig (fail-open di pemanggil);
     // selain itu transien (tahan/retry).
-    const missing = isMissingFunction(error)
+    const missing = isMissingFunction(error);
     console.error(
       `[storage-usage] account_add gagal key=${key}${missing ? " (MISCONFIG: fungsi/tabel akuntansi absen)" : ""}:`,
       error.message
-    )
-    return { ok: false, error: error.message, missing }
+    );
+    return { ok: false, error: error.message, missing };
   }
-  return { ok: true }
+  return { ok: true };
 }
 
 /**
@@ -157,13 +157,13 @@ export async function accountStorageSub(
   businessId: string,
   keys: string[]
 ): Promise<{ ok: boolean; error?: string; missing?: boolean }> {
-  const unique = Array.from(new Set(keys.filter((k) => typeof k === "string" && k.length > 0)))
-  if (unique.length === 0) return { ok: true }
-  const supabase = createServerClient()
+  const unique = Array.from(new Set(keys.filter((k) => typeof k === "string" && k.length > 0)));
+  if (unique.length === 0) return { ok: true };
+  const supabase = createServerClient();
   const { error } = await supabase.rpc("storage_account_sub", {
     p_business: businessId,
     p_keys: unique,
-  })
+  });
   if (error) {
     // Kembalikan { ok:false } — pemanggil jalur retention WAJIB menahan
     // finalize agar baris photos + media_cleaned_at tetap ada dan retry run
@@ -172,25 +172,25 @@ export async function accountStorageSub(
     // / "schema cache" = migration belum diterapkan (MISCONFIG), bukan gangguan
     // transien. Tandai `missing` agar retention dapat fail-open (tetap bersihkan
     // media) alih-alih menahan sesi selamanya.
-    const missing = isMissingFunction(error)
+    const missing = isMissingFunction(error);
     console.error(
       `[storage-usage] account_sub gagal business=${businessId}${missing ? " (MISCONFIG: fungsi/tabel akuntansi absen)" : ""}:`,
       error.message
-    )
-    return { ok: false, error: error.message, missing }
+    );
+    return { ok: false, error: error.message, missing };
   }
-  return { ok: true }
+  return { ok: true };
 }
 
 export type StorageLimit = {
-  planMb: number
-  addOnMb: number
-  totalMb: number
-}
+  planMb: number;
+  addOnMb: number;
+  totalMb: number;
+};
 
 /** Kuota storage efektif: plan + add-on storage aktif (date-aware). */
 export async function getStorageLimit(businessId: string): Promise<StorageLimit> {
-  const supabase = createServerClient()
+  const supabase = createServerClient();
   const { data } = await supabase
     .from("subscriptions")
     .select("id, status, trial_ends_at, current_period_end, plans ( storage_limit_mb, features )")
@@ -198,59 +198,59 @@ export async function getStorageLimit(businessId: string): Promise<StorageLimit>
     .in("status", ["trial", "active", "past_due"])
     .order("created_at", { ascending: false })
     .limit(1)
-    .maybeSingle()
+    .maybeSingle();
 
-  type PlanRef = { storage_limit_mb: number | null; features: Record<string, boolean> | null }
+  type PlanRef = { storage_limit_mb: number | null; features: Record<string, boolean> | null };
   const row = data as {
-    id: string
-    status: string
-    trial_ends_at: string | null
-    current_period_end: string | null
-    plans: PlanRef | PlanRef[] | null
-  } | null
+    id: string;
+    status: string;
+    trial_ends_at: string | null;
+    current_period_end: string | null;
+    plans: PlanRef | PlanRef[] | null;
+  } | null;
 
-  let planMb = 0
+  let planMb = 0;
   if (row && isSubscriptionEffective(row.status, row.trial_ends_at, row.current_period_end)) {
-    const plan = row.plans && !Array.isArray(row.plans) ? row.plans : null
+    const plan = row.plans && !Array.isArray(row.plans) ? row.plans : null;
     // `storage` (fitur plan, docs/02 §2.7) hanya meng-gate kuota BASE plan.
     // Add-on `extra_storage` tetap dihitung di bawah — pembelian add-on tidak
     // boleh hangus karena plan tidak menyertakan storage base.
     if (isFeatureEnabled(plan?.features ?? null, "storage")) {
-      if (plan && typeof plan.storage_limit_mb === "number") planMb = plan.storage_limit_mb
+      if (plan && typeof plan.storage_limit_mb === "number") planMb = plan.storage_limit_mb;
     }
   }
 
-  let addOnMb = 0
+  let addOnMb = 0;
   if (row?.id) {
     const { data: addOns } = await supabase
       .from("subscription_add_ons")
       .select("quantity, add_ons!inner(storage_mb)")
       .eq("subscription_id", row.id)
-      .eq("status", "active")
+      .eq("status", "active");
     const addOnRows = addOns as unknown as {
-      quantity: number
-      add_ons: { storage_mb: number | null } | { storage_mb: number | null }[]
-    }[]
+      quantity: number;
+      add_ons: { storage_mb: number | null } | { storage_mb: number | null }[];
+    }[];
     for (const a of addOnRows ?? []) {
-      const addOn = Array.isArray(a.add_ons) ? a.add_ons[0] : a.add_ons
-      const mb = addOn?.storage_mb
-      if (typeof mb === "number" && mb > 0) addOnMb += mb * (a.quantity ?? 1)
+      const addOn = Array.isArray(a.add_ons) ? a.add_ons[0] : a.add_ons;
+      const mb = addOn?.storage_mb;
+      if (typeof mb === "number" && mb > 0) addOnMb += mb * (a.quantity ?? 1);
     }
   }
 
-  return { planMb, addOnMb, totalMb: planMb + addOnMb }
+  return { planMb, addOnMb, totalMb: planMb + addOnMb };
 }
 
 export type StorageUsage = {
-  usedBytes: number
-  limitBytes: number
-  usedMb: number
-  limitMb: number
-  remainingBytes: number
-  remainingMb: number
-  percent: number
-  isFull: boolean
-}
+  usedBytes: number;
+  limitBytes: number;
+  usedMb: number;
+  limitMb: number;
+  remainingBytes: number;
+  remainingMb: number;
+  percent: number;
+  isFull: boolean;
+};
 
 /**
  * Pemakaian + sisa storage untuk tampilan (settings owner / admin).
@@ -262,9 +262,9 @@ export async function getStorageUsage(businessId: string): Promise<StorageUsage>
   const [usedBytes, limit] = await Promise.all([
     getBusinessUsedBytes(businessId, true, true),
     getStorageLimit(businessId),
-  ])
-  const limitBytes = limit.totalMb * MB
-  const hasLimit = limitBytes > 0
+  ]);
+  const limitBytes = limit.totalMb * MB;
+  const hasLimit = limitBytes > 0;
   return {
     usedBytes,
     limitBytes,
@@ -280,7 +280,7 @@ export async function getStorageUsage(businessId: string): Promise<StorageUsage>
         ? 100
         : Math.min(99, Math.round((usedBytes / limitBytes) * 100)),
     isFull: hasLimit && usedBytes >= limitBytes,
-  }
+  };
 }
 
 /**
@@ -292,78 +292,82 @@ export async function getStorageUsage(businessId: string): Promise<StorageUsage>
 export async function getStorageUsageBatch(
   businessIds: string[]
 ): Promise<Map<string, StorageUsage>> {
-  const ids = Array.from(new Set(businessIds.filter((id) => typeof id === "string" && id.length > 0)))
-  const out = new Map<string, StorageUsage>()
-  if (ids.length === 0) return out
+  const ids = Array.from(
+    new Set(businessIds.filter((id) => typeof id === "string" && id.length > 0))
+  );
+  const out = new Map<string, StorageUsage>();
+  if (ids.length === 0) return out;
 
-  const supabase = createServerClient()
+  const supabase = createServerClient();
   const [{ data: usageRows }, { data: subs }] = await Promise.all([
     supabase.from("storage_usage").select("business_id, used_bytes").in("business_id", ids),
     supabase
       .from("subscriptions")
-      .select("id, business_id, status, trial_ends_at, current_period_end, plans ( storage_limit_mb, features )")
+      .select(
+        "id, business_id, status, trial_ends_at, current_period_end, plans ( storage_limit_mb, features )"
+      )
       .in("business_id", ids)
       .in("status", ["trial", "active", "past_due"])
       .order("created_at", { ascending: false }),
-  ])
+  ]);
 
-  const usedByBusiness = new Map<string, number>()
+  const usedByBusiness = new Map<string, number>();
   for (const r of (usageRows ?? []) as { business_id: string; used_bytes: number }[]) {
-    const v = typeof r.used_bytes === "number" && r.used_bytes > 0 ? r.used_bytes : 0
-    usedByBusiness.set(r.business_id, v)
+    const v = typeof r.used_bytes === "number" && r.used_bytes > 0 ? r.used_bytes : 0;
+    usedByBusiness.set(r.business_id, v);
   }
 
   // Ambil subscription terbaru per business (baris pertama menang dari order desc).
-  type PlanRef = { storage_limit_mb: number | null; features: Record<string, boolean> | null }
+  type PlanRef = { storage_limit_mb: number | null; features: Record<string, boolean> | null };
   type SubRow = {
-    id: string
-    business_id: string
-    status: string
-    trial_ends_at: string | null
-    current_period_end: string | null
-    plans: PlanRef | PlanRef[] | null
-  }
-  const latestSub = new Map<string, SubRow>()
+    id: string;
+    business_id: string;
+    status: string;
+    trial_ends_at: string | null;
+    current_period_end: string | null;
+    plans: PlanRef | PlanRef[] | null;
+  };
+  const latestSub = new Map<string, SubRow>();
   for (const s of (subs ?? []) as unknown as SubRow[]) {
-    if (!latestSub.has(s.business_id)) latestSub.set(s.business_id, s)
+    if (!latestSub.has(s.business_id)) latestSub.set(s.business_id, s);
   }
 
-  let addOnMbBySub = new Map<string, number>()
-  const subIds = Array.from(latestSub.values()).map((s) => s.id)
+  let addOnMbBySub = new Map<string, number>();
+  const subIds = Array.from(latestSub.values()).map((s) => s.id);
   if (subIds.length > 0) {
     const { data: addOns } = await supabase
       .from("subscription_add_ons")
       .select("subscription_id, quantity, add_ons!inner(storage_mb)")
       .in("subscription_id", subIds)
-      .eq("status", "active")
-    const tally = new Map<string, number>()
+      .eq("status", "active");
+    const tally = new Map<string, number>();
     for (const a of (addOns ?? []) as unknown as {
-      subscription_id: string
-      quantity: number
-      add_ons: { storage_mb: number | null } | { storage_mb: number | null }[]
+      subscription_id: string;
+      quantity: number;
+      add_ons: { storage_mb: number | null } | { storage_mb: number | null }[];
     }[]) {
-      const addOn = Array.isArray(a.add_ons) ? a.add_ons[0] : a.add_ons
-      const mb = addOn?.storage_mb
+      const addOn = Array.isArray(a.add_ons) ? a.add_ons[0] : a.add_ons;
+      const mb = addOn?.storage_mb;
       if (typeof mb === "number" && mb > 0) {
-        tally.set(a.subscription_id, (tally.get(a.subscription_id) ?? 0) + mb * (a.quantity ?? 1))
+        tally.set(a.subscription_id, (tally.get(a.subscription_id) ?? 0) + mb * (a.quantity ?? 1));
       }
     }
-    addOnMbBySub = tally
+    addOnMbBySub = tally;
   }
 
   for (const id of ids) {
-    const usedBytes = usedByBusiness.get(id) ?? 0
-    const sub = latestSub.get(id)
-    let planMb = 0
+    const usedBytes = usedByBusiness.get(id) ?? 0;
+    const sub = latestSub.get(id);
+    let planMb = 0;
     if (sub && isSubscriptionEffective(sub.status, sub.trial_ends_at, sub.current_period_end)) {
-      const plan = sub.plans && !Array.isArray(sub.plans) ? sub.plans : null
+      const plan = sub.plans && !Array.isArray(sub.plans) ? sub.plans : null;
       if (isFeatureEnabled(plan?.features ?? null, "storage")) {
-        if (plan && typeof plan.storage_limit_mb === "number") planMb = plan.storage_limit_mb
+        if (plan && typeof plan.storage_limit_mb === "number") planMb = plan.storage_limit_mb;
       }
     }
-    const addOnMb = sub ? (addOnMbBySub.get(sub.id) ?? 0) : 0
-    const limitBytes = (planMb + addOnMb) * MB
-    const hasLimit = limitBytes > 0
+    const addOnMb = sub ? (addOnMbBySub.get(sub.id) ?? 0) : 0;
+    const limitBytes = (planMb + addOnMb) * MB;
+    const hasLimit = limitBytes > 0;
     out.set(id, {
       usedBytes,
       limitBytes,
@@ -377,9 +381,9 @@ export async function getStorageUsageBatch(
           ? 100
           : Math.min(99, Math.round((usedBytes / limitBytes) * 100)),
       isFull: hasLimit && usedBytes >= limitBytes,
-    })
+    });
   }
-  return out
+  return out;
 }
 
 /** Hard-block upload/finalize saat kuota akan terlampaui (server-side). */
@@ -387,12 +391,12 @@ export async function assertStorageAvailable(
   businessId: string,
   incomingBytes: number
 ): Promise<void> {
-  const extra = Math.max(0, Math.floor(incomingBytes))
-  if (extra === 0) return
+  const extra = Math.max(0, Math.floor(incomingBytes));
+  if (extra === 0) return;
   const [usedBytes, limit] = await Promise.all([
     getBusinessUsedBytes(businessId, false),
     getStorageLimit(businessId),
-  ])
+  ]);
   // Kuota 0 = storage tak aktif di plan (docs/02 §2.7) — blokir dengan pesan
   // akurat, bukan "penuh" (konsisten dengan getStorageUsage yang menampilkan
   // 0% bukan PENUH saat limit 0).
@@ -400,12 +404,12 @@ export async function assertStorageAvailable(
     throw new ApiError(
       "STORAGE_UNAVAILABLE",
       "Storage tidak termasuk dalam plan Anda. Upgrade subscription untuk mengaktifkan penyimpanan."
-    )
+    );
   }
   if (usedBytes + extra > limit.totalMb * MB) {
     throw new ApiError(
       "STORAGE_FULL",
       "Penyimpanan penuh. Upgrade plan atau tambah add-on storage untuk melanjutkan."
-    )
+    );
   }
 }

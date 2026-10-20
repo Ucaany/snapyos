@@ -15,22 +15,14 @@ import { listPhotoboxes } from "@/server/photoboxes";
 import { listPackages } from "@/server/packages";
 
 export const metadata: Metadata = {
-  title: "Transaksi — SnapyOS",
+  title: "Transaksi | SnapyOS",
 };
 
 const inputClass =
   "h-11 w-full rounded-none border-2 border-ink bg-surface px-3 font-mono text-sm shadow-[2px_2px_0_0_#111111] outline-none focus-visible:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink md:w-auto";
 
 const STATUS_OPTIONS = ["paid", "pending", "failed", "cancelled", "refunded"];
-const METHOD_OPTIONS = [
-  "qris",
-  "cash",
-  "bank_transfer",
-  "other",
-  "offline",
-  "manual",
-  "voucher",
-];
+const METHOD_OPTIONS = ["qris", "cash", "bank_transfer", "other", "offline", "manual", "voucher"];
 const SOURCE_OPTIONS = ["pos", "kiosk"];
 
 /** Query params /dashboard/transactions — mirror `transactionListQuerySchema`
@@ -125,7 +117,14 @@ export default async function TransactionsPage({
           current={query}
           except={["q", "status", "method", "source", "outlet", "page"]}
         />
-        <input type="text" name="q" defaultValue={query.q ?? ""} placeholder="Cari nomor / customer" className={`${inputClass} col-span-2`} aria-label="Cari transaksi" />
+        <input
+          type="text"
+          name="q"
+          defaultValue={query.q ?? ""}
+          placeholder="Cari nomor / customer"
+          className={`${inputClass} col-span-2`}
+          aria-label="Cari transaksi"
+        />
         <Select name="status" defaultValue={query.status ?? ""} aria-label="Filter status">
           <option value="">Semua status</option>
           {STATUS_OPTIONS.map((s) => (

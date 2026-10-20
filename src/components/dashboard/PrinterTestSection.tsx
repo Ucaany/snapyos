@@ -32,7 +32,10 @@ export function PrinterTestSection({
         {"/// PRINTER · " + photoboxName.toUpperCase()}
       </p>
       {error && (
-        <p role="alert" className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink">
+        <p
+          role="alert"
+          className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink"
+        >
           {error}
         </p>
       )}
@@ -47,9 +50,11 @@ export function PrinterTestSection({
           printer
             ? {
                 confirmed: Boolean(printer.confirmed),
-                last_test_at: typeof printer.last_test_at === "string" ? printer.last_test_at : undefined,
+                last_test_at:
+                  typeof printer.last_test_at === "string" ? printer.last_test_at : undefined,
                 mode: typeof printer.mode === "string" ? printer.mode : undefined,
-                device_name: typeof printer.device_name === "string" ? printer.device_name : undefined,
+                device_name:
+                  typeof printer.device_name === "string" ? printer.device_name : undefined,
               }
             : null
         }

@@ -28,10 +28,7 @@ export type DateRangeFields = z.infer<typeof dateFieldsSchema>;
  * error. ZodError dari `.parse()` di RSC akan menjatuhkan halaman via error
  * boundary — perilaku yang tidak diinginkan untuk input URL bebas.
  */
-export function coerceDateFields(query: {
-  from?: unknown;
-  to?: unknown;
-}): DateRangeFields {
+export function coerceDateFields(query: { from?: unknown; to?: unknown }): DateRangeFields {
   const out: DateRangeFields = {};
   const from = isoDate.safeParse(query.from);
   if (from.success) out.from = from.data;
@@ -45,10 +42,7 @@ export const dateRangeSchema = z
     from: isoDate.optional(),
     to: isoDate.optional(),
   })
-  .refine(
-    (v) => !v.from || !v.to || v.from <= v.to,
-    { message: "'from' harus ≤ 'to'" }
-  );
+  .refine((v) => !v.from || !v.to || v.from <= v.to, { message: "'from' harus ≤ 'to'" });
 
 export type DateRangeInput = z.infer<typeof dateRangeSchema>;
 
@@ -197,14 +191,8 @@ export const DEFAULT_TZ = "Asia/Jakarta";
  * ms, atau ISO string. Fallback tz → Asia/Jakarta. Format tetap
  * `dateStyle: "medium"` (docs/11) — jangan ubah.
  */
-export function formatDate(
-  date: Date | number | string,
-  timeZone: string = DEFAULT_TZ
-): string {
-  const value =
-    date instanceof Date
-      ? date
-      : new Date(typeof date === "number" ? date : date);
+export function formatDate(date: Date | number | string, timeZone: string = DEFAULT_TZ): string {
+  const value = date instanceof Date ? date : new Date(typeof date === "number" ? date : date);
   return new Intl.DateTimeFormat("id-ID", {
     dateStyle: "medium",
     timeZone: timeZone || DEFAULT_TZ,

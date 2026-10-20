@@ -25,10 +25,7 @@ export function PaymentGatewaySettings({ initialCredentials }: Props) {
 
       <section className="grid gap-4" aria-labelledby="configured-gateways">
         <div className="flex items-end justify-between gap-4 border-b-2 border-ink pb-3">
-          <h2
-            id="configured-gateways"
-            className="font-display text-2xl uppercase tracking-tight"
-          >
+          <h2 id="configured-gateways" className="font-display text-2xl uppercase tracking-tight">
             Gateway Tersimpan
           </h2>
           <span className="font-mono text-[10px] uppercase tracking-[0.1em]">

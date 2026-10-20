@@ -15,7 +15,13 @@ export async function POST(request: Request, { params }: Params) {
     const rl = await rateLimit(`checkout:${ip}`, 30, 60_000);
     if (!rl.ok) {
       return NextResponse.json(
-        { error: { code: "RATE_LIMITED", message: "Terlalu banyak permintaan. Coba lagi nanti.", details: { retry_after: rl.retryAfterSec } } },
+        {
+          error: {
+            code: "RATE_LIMITED",
+            message: "Terlalu banyak permintaan. Coba lagi nanti.",
+            details: { retry_after: rl.retryAfterSec },
+          },
+        },
         { status: 429, headers: { "retry-after": String(rl.retryAfterSec) } }
       );
     }
@@ -25,7 +31,13 @@ export async function POST(request: Request, { params }: Params) {
     const deviceRl = await rateLimitByDevice("checkout", input.device_token, 30, 60_000);
     if (deviceRl && !deviceRl.ok) {
       return NextResponse.json(
-        { error: { code: "RATE_LIMITED", message: "Terlalu banyak permintaan. Coba lagi nanti.", details: { retry_after: deviceRl.retryAfterSec } } },
+        {
+          error: {
+            code: "RATE_LIMITED",
+            message: "Terlalu banyak permintaan. Coba lagi nanti.",
+            details: { retry_after: deviceRl.retryAfterSec },
+          },
+        },
         { status: 429, headers: { "retry-after": String(deviceRl.retryAfterSec) } }
       );
     }

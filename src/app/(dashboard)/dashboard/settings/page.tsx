@@ -12,7 +12,7 @@ import { getBusinessProfile, getSettings } from "@/server/business";
 import { getStorageUsage } from "@/server/storage-usage";
 
 export const metadata: Metadata = {
-  title: "Pengaturan — SnapyOS",
+  title: "Pengaturan | SnapyOS",
 };
 
 /**
@@ -72,7 +72,7 @@ export default async function SettingsPage() {
   return (
     <div className="flex flex-col gap-8 p-6 md:p-10">
       <PageHeader
-        eyebrow="PENGATURAN — PROFIL, STORAGE & KEBIJAKAN"
+        eyebrow="PENGATURAN: PROFIL, STORAGE & KEBIJAKAN"
         title="Pengaturan"
         description="Profil bisnis, kuota penyimpanan, durasi kedaluwarsa QRIS, dan masa simpan hasil foto (1–3 hari). Kustomisasi tampilan kiosk ada di Branding & Kiosk; chroma key template diatur dari menu Template."
         meta="[ 4 MODUL ] /// PROFIL · STORAGE · CHECKOUT · RETENTION"

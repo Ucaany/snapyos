@@ -66,10 +66,7 @@ test("rangeBoundariesTz: from 00:00 lokal → to 24:00 lokal (UTC+7)", () => {
 });
 
 test("startOfDayTz = awal hari lokal (UTC+7)", () => {
-  assert.equal(
-    new Date(startOfDayTz("2026-08-01", TZ)).toISOString(),
-    "2026-07-31T17:00:00.000Z"
-  );
+  assert.equal(new Date(startOfDayTz("2026-08-01", TZ)).toISOString(), "2026-07-31T17:00:00.000Z");
 });
 
 test("dateRangeSchema menolak from > to PA SCA merge default (guard server-side)", () => {
@@ -103,7 +100,10 @@ test("fillDailySeries zero-fill, urut, jumlah per hari lokal tz", () => {
     series.map((p) => p.amount),
     [0, 50_000, 50_000, 0]
   );
-  assert.equal(series.reduce((s, p) => s + p.amount, 0), 100_000);
+  assert.equal(
+    series.reduce((s, p) => s + p.amount, 0),
+    100_000
+  );
 });
 
 test("localDayKey mengonversi UTC ms ke tanggal lokal", () => {
@@ -145,7 +145,10 @@ test("fillDailySeriesFromDays zero-fill dari bucket SQL, paritas dengan fillDail
 
 test("fillDailySeriesFromDays menjepit negatif dan non-integer", () => {
   const series = fillDailySeriesFromDays(
-    [{ date: "2026-08-01", amount: -5 }, { date: "2026-08-02", amount: 10_000.9 }],
+    [
+      { date: "2026-08-01", amount: -5 },
+      { date: "2026-08-02", amount: 10_000.9 },
+    ],
     "2026-08-01",
     "2026-08-02"
   );

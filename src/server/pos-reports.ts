@@ -2,7 +2,12 @@ import "server-only";
 
 import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
-import { coerceDateFields, todayISO, rangeBoundariesTz, type DateRangeInput } from "@/lib/dashboard-math";
+import {
+  coerceDateFields,
+  todayISO,
+  rangeBoundariesTz,
+  type DateRangeInput,
+} from "@/lib/dashboard-math";
 import { requirePosAccess } from "@/server/pos-entitlement";
 import {
   buildPosRevenue,
@@ -63,10 +68,7 @@ export async function posRevenueReport(
     .eq("business_id", businessId)
     .eq("status", "paid")
     .not("pos_order_id", "is", null);
-  let statusReq = supabase
-    .from("pos_orders")
-    .select("status")
-    .eq("business_id", businessId);
+  let statusReq = supabase.from("pos_orders").select("status").eq("business_id", businessId);
   if (fromIso) paidReq = paidReq.gte("paid_at", fromIso).lt("paid_at", toIso);
   if (fromIso) statusReq = statusReq.gte("created_at", fromIso).lt("created_at", toIso);
   const [paid, statuses] = await Promise.all([paidReq, statusReq]);
@@ -98,7 +100,9 @@ export async function posBreakdownReport(
     // Snapshot name (A9) — bukan nama produk sekarang (docs/pos/05 §4).
     let req = supabase
       .from("pos_order_items")
-      .select("name_snapshot, quantity, subtotal, pos_orders!inner ( business_id, status, paid_at )")
+      .select(
+        "name_snapshot, quantity, subtotal, pos_orders!inner ( business_id, status, paid_at )"
+      )
       .eq("pos_orders.business_id", businessId)
       .eq("pos_orders.status", "paid");
     if (fromIso) req = req.gte("pos_orders.paid_at", fromIso).lt("pos_orders.paid_at", toIso);
@@ -118,14 +122,10 @@ export async function posBreakdownReport(
     if (fromIso) req = req.gte("paid_at", fromIso).lt("paid_at", toIso);
     const { data, error } = await req;
     if (error) throw new ApiError("INTERNAL", "Gagal memuat breakdown harian POS");
-    return buildPosDayBreakdown(
-      (data ?? []) as { paid_at: string; final_amount: number }[],
-      tz
-    );
+    return buildPosDayBreakdown((data ?? []) as { paid_at: string; final_amount: number }[], tz);
   }
 
-  const joinCol =
-    groupBy === "cashier" ? "users" : groupBy === "outlet" ? "outlets" : "photoboxes";
+  const joinCol = groupBy === "cashier" ? "users" : groupBy === "outlet" ? "outlets" : "photoboxes";
   let req = supabase
     .from("pos_orders")
     .select(`final_amount, ${joinCol} ( name )`)
@@ -138,7 +138,7 @@ export async function posBreakdownReport(
   type JoinName = { name: string } | { name: string }[] | null;
   const name = (j?: JoinName) => (j && !Array.isArray(j) ? j.name : null);
   const rows = ((data ?? []) as unknown as Record<string, unknown>[]).map((r) => ({
-    label: name(r[joinCol] as JoinName | undefined) ?? "—",
+    label: name(r[joinCol] as JoinName | undefined) ?? "-",
     final_amount: r.final_amount as number,
   }));
 

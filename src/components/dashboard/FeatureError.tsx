@@ -1,27 +1,27 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { ArrowRight, RotateCcw } from "lucide-react"
+import Link from "next/link";
+import { ArrowRight, RotateCcw } from "lucide-react";
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 
 type FeatureErrorProps = {
-  title: string
-  description: string
-  error: Error & { digest?: string; code?: string; status?: number }
-  reset: () => void
-}
+  title: string;
+  description: string;
+  error: Error & { digest?: string; code?: string; status?: number };
+  reset: () => void;
+};
 
-const FEATURE_DISABLED_RE = /tidak tersedia di plan|butuh upgrade|FEATURE_DISABLED/i
+const FEATURE_DISABLED_RE = /tidak tersedia di plan|butuh upgrade|FEATURE_DISABLED/i;
 
 /**
  * Deteksi error entitlemen plan (FEATURE_DISABLED) dari boundary. `.code`
  * tidak selalu selamat serialisasi server→client, jadi fallback ke pesan.
  */
 function isFeatureDisabled(error: FeatureErrorProps["error"]): boolean {
-  if (error?.code === "FEATURE_DISABLED" || error?.status === 403) return true
-  const msg = typeof error?.message === "string" ? error.message : ""
-  return FEATURE_DISABLED_RE.test(msg)
+  if (error?.code === "FEATURE_DISABLED" || error?.status === 403) return true;
+  const msg = typeof error?.message === "string" ? error.message : "";
+  return FEATURE_DISABLED_RE.test(msg);
 }
 
 /** Shared brutalist error panel; route-level error.tsx tetap menjadi boundary. */
@@ -33,12 +33,15 @@ export function FeatureError({ title, description, error, reset }: FeatureErrorP
           role="alert"
           className="flex max-w-xl flex-col items-start gap-4 border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111]"
         >
+          <h1 className="font-display text-2xl uppercase tracking-tight text-ink">
+            Fitur belum aktif
+          </h1>
           <p className="font-mono text-sm font-bold uppercase tracking-[0.15em] text-destructive">
             {"/// FITUR BUTUH UPGRADE"}
           </p>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Fitur ini tidak termasuk dalam plan Anda saat ini. Upgrade subscription
-            untuk membuka akses.
+            Fitur ini tidak termasuk dalam plan Anda saat ini. Upgrade subscription untuk membuka
+            akses.
           </p>
           <Link
             href="/dashboard/subscription"
@@ -49,7 +52,7 @@ export function FeatureError({ title, description, error, reset }: FeatureErrorP
           </Link>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -58,6 +61,7 @@ export function FeatureError({ title, description, error, reset }: FeatureErrorP
         role="alert"
         className="flex max-w-xl flex-col items-start gap-4 border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111]"
       >
+        <h1 className="font-display text-2xl uppercase tracking-tight text-ink">{title}</h1>
         <p className="font-mono text-sm font-bold uppercase tracking-[0.15em] text-destructive">
           {`/// ${title}`}
         </p>
@@ -71,5 +75,5 @@ export function FeatureError({ title, description, error, reset }: FeatureErrorP
         </Button>
       </div>
     </div>
-  )
+  );
 }

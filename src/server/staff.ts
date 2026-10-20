@@ -22,14 +22,6 @@ import {
 import { hashDevicePin } from "@/lib/device-token";
 import { requireFeature } from "@/server/feature-gate";
 
-type StaffRow = {
-  userId: string;
-  name: string | null;
-  email: string | null;
-  role: string;
-  joinedAt: string;
-};
-
 async function requireOwner(userId: string, businessId: string) {
   const membership = await getMembership(userId, businessId);
   if (!membership) throw new ApiError("NOT_FOUND", "Business tidak ditemukan");
@@ -54,31 +46,11 @@ type MemberRow = {
   user_id: string;
   role: string;
   created_at: string;
-  users: { email: string | null; name: string | null } | { email: string | null; name: string | null }[] | null;
+  users:
+    | { email: string | null; name: string | null }
+    | { email: string | null; name: string | null }[]
+    | null;
 };
-
-export async function listStaff(userId: string, businessId: string): Promise<StaffRow[]> {
-  await requireOwner(userId, businessId);
-  const supabase = createServerClient();
-  const { data, error } = await supabase
-    .from("business_members")
-    .select("user_id, role, created_at, users ( email, name )")
-    .eq("business_id", businessId)
-    .order("created_at", { ascending: true });
-  if (error) throw new ApiError("INTERNAL", "Gagal memuat staff");
-
-  return ((data ?? []) as unknown as MemberRow[]).flatMap((row) => {
-    const user = Array.isArray(row.users) ? row.users[0] : row.users;
-    if (!user) return [];
-    return [{
-      userId: row.user_id,
-      name: user.name,
-      email: user.email,
-      role: row.role,
-      joinedAt: row.created_at,
-    }];
-  });
-}
 
 /**
  * Daftar photobox_id yang di-assign ke user via member_photoboxes (0018).
@@ -124,10 +96,7 @@ export async function listStaffDirectory(
       .select("user_id, role, created_at, users ( email, name )")
       .eq("business_id", businessId)
       .order("created_at", { ascending: true }),
-    supabase
-      .from("member_photoboxes")
-      .select("user_id, photobox_id")
-      .eq("business_id", businessId),
+    supabase.from("member_photoboxes").select("user_id, photobox_id").eq("business_id", businessId),
     // Agregat per booth via RPC (migrasi 0037) — tanpa transfer baris tx.
     supabase.rpc("staff_directory_today", {
       p_business: businessId,
@@ -142,20 +111,24 @@ export async function listStaffDirectory(
   const members = ((memberRes.data ?? []) as unknown as MemberRow[]).flatMap((row) => {
     const user = Array.isArray(row.users) ? row.users[0] : row.users;
     if (!user) return [];
-    return [{
-      userId: row.user_id,
-      name: user.name,
-      email: user.email,
-      role: row.role,
-      joinedAt: row.created_at,
-    }];
+    return [
+      {
+        userId: row.user_id,
+        name: user.name,
+        email: user.email,
+        role: row.role,
+        joinedAt: row.created_at,
+      },
+    ];
   });
 
-  const todayTx = ((txRes.data ?? []) as {
-    photobox_id: string;
-    revenue: number | string;
-    tx_count: number | string;
-  }[]).map((r) => ({
+  const todayTx = (
+    (txRes.data ?? []) as {
+      photobox_id: string;
+      revenue: number | string;
+      tx_count: number | string;
+    }[]
+  ).map((r) => ({
     photobox_id: r.photobox_id,
     revenue: Number(r.revenue ?? 0),
     tx_count: Number(r.tx_count ?? 0),
@@ -214,17 +187,15 @@ export async function setStaffPhotoboxes(
   if (ids.length > 0) {
     const { error: insError } = await supabase
       .from("member_photoboxes")
-      .insert(ids.map((photobox_id) => ({ business_id: businessId, user_id: targetUserId, photobox_id })));
+      .insert(
+        ids.map((photobox_id) => ({ business_id: businessId, user_id: targetUserId, photobox_id }))
+      );
     if (insError) throw new ApiError("INTERNAL", "Gagal menyimpan akses booth");
   }
   return { userId: targetUserId, photoboxIds: ids };
 }
 
-export async function inviteStaff(
-  userId: string,
-  businessId: string,
-  input: StaffInviteInput
-) {
+export async function inviteStaff(userId: string, businessId: string, input: StaffInviteInput) {
   const parsed = staffInviteSchema.parse(input);
   await requireFeature(businessId, "staff");
   await requireOwner(userId, businessId);
@@ -237,9 +208,13 @@ export async function inviteStaff(
     .eq("email", parsed.email)
     .maybeSingle();
   if (!target) {
-    throw new ApiError("NOT_FOUND", "Akun belum terdaftar di SnapyOS. Hubungi admin platform untuk membuatkan akun, lalu coba lagi.", {
-      email: ["Belum terdaftar"],
-    });
+    throw new ApiError(
+      "NOT_FOUND",
+      "Akun belum terdaftar di SnapyOS. Hubungi admin platform untuk membuatkan akun, lalu coba lagi.",
+      {
+        email: ["Belum terdaftar"],
+      }
+    );
   }
 
   const { data: existing } = await supabase
@@ -319,11 +294,7 @@ export async function updateStaffRole(
   return { userId: targetUserId, role: parsed.role };
 }
 
-export async function removeStaff(
-  userId: string,
-  businessId: string,
-  targetUserId: string
-) {
+export async function removeStaff(userId: string, businessId: string, targetUserId: string) {
   await requireOwner(userId, businessId);
 
   const supabase = createServerClient();

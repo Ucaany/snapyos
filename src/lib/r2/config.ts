@@ -13,12 +13,7 @@
 
 import "server-only";
 import { S3Client } from "@aws-sdk/client-s3";
-import {
-  r2BucketName,
-  type R2Area,
-  R2_BUCKET_ENV,
-  R2_BUCKET_ENV_LEGACY,
-} from "./areas";
+import { r2BucketName, type R2Area, R2_BUCKET_ENV, R2_BUCKET_ENV_LEGACY } from "./areas";
 
 const DEFAULT_REGION = "auto";
 

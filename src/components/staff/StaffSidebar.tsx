@@ -1,11 +1,11 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { Camera, Gauge, ImageIcon, Package, Store, type LucideIcon } from "lucide-react"
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Camera, Gauge, ImageIcon, Package, Store, type LucideIcon } from "lucide-react";
 
-import { cn } from "@/lib/utils"
-import { isNavActive } from "@/lib/nav-active"
+import { cn } from "@/lib/utils";
+import { isNavActive } from "@/lib/nav-active";
 
 /**
  * Sidebar khusus role staff, operasional, bukan finansial (docs/04 §4.13).
@@ -15,10 +15,10 @@ import { isNavActive } from "@/lib/nav-active"
  */
 
 type StaffNavItem = {
-  label: string
-  href: string
-  icon: LucideIcon
-}
+  label: string;
+  href: string;
+  icon: LucideIcon;
+};
 
 const STAFF_NAV: StaffNavItem[] = [
   { label: "Overview", href: "/staff", icon: Gauge },
@@ -26,28 +26,28 @@ const STAFF_NAV: StaffNavItem[] = [
   { label: "Outlet", href: "/staff/outlets", icon: Store },
   { label: "Package", href: "/staff/packages", icon: Package },
   { label: "Template", href: "/staff/templates", icon: ImageIcon },
-]
+];
 
 export function StaffSidebar() {
-  const pathname = usePathname()
+  const pathname = usePathname();
 
   const renderItem = (item: StaffNavItem) => {
-    const active = isNavActive(pathname, item.href, "/staff")
+    const active = isNavActive(pathname, item.href, "/staff");
     return (
       <Link
         key={item.label}
         href={item.href}
         aria-current={active ? "page" : undefined}
         className={cn(
-          "flex min-h-11 shrink-0 items-center gap-2 px-3 py-2 font-mono text-xs uppercase tracking-[0.05em] transition-colors md:min-h-0",
+          "flex min-h-11 shrink-0 items-center gap-2 px-3 py-2 font-mono text-xs uppercase tracking-[0.05em] transition-colors",
           active ? "border-2 border-ink bg-accent font-bold text-ink" : "text-ink hover:bg-muted"
         )}
       >
         <item.icon className="size-4" />
         <span className="whitespace-nowrap">{item.label}</span>
       </Link>
-    )
-  }
+    );
+  };
 
   return (
     <nav
@@ -73,5 +73,5 @@ export function StaffSidebar() {
         </div>
       </div>
     </nav>
-  )
+  );
 }

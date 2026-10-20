@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { getActiveBusiness, getMembership, requireUser } from "@/lib/tenant";
 import { listCredentials } from "@/server/payment-credentials";
 
-export const metadata: Metadata = { title: "Payment Gateway — SnapyOS" };
+export const metadata: Metadata = { title: "Payment Gateway | SnapyOS" };
 
 /**
  * /dashboard/payment — credential merchant owner (direct merchant).

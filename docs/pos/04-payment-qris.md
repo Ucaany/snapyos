@@ -16,13 +16,13 @@
 
 ## Konsekuensi yang hilang bersama pembatalan ini
 
-| Risiko v1 | Status |
-|---|---|
-| R1 — `payments.checkout_session_id` nullable | GUGUR (tidak ada perubahan `payments`) |
-| R2 — branch webhook pecah kiosk | GUGUR (tidak ada branch webhook) |
-| R7 — double credit webhook replay | GUGUR (tidak ada credit dari POS) |
-| R3 — role `cashier` baru | GUGUR (staff pakai permission `pos:*` — A6) |
-| R11 — relax NOT NULL `transactions` | GUGUR (outlet/photobox terisi dari booth — A13) |
+| Risiko v1                                    | Status                                          |
+| -------------------------------------------- | ----------------------------------------------- |
+| R1 — `payments.checkout_session_id` nullable | GUGUR (tidak ada perubahan `payments`)          |
+| R2 — branch webhook pecah kiosk              | GUGUR (tidak ada branch webhook)                |
+| R7 — double credit webhook replay            | GUGUR (tidak ada credit dari POS)               |
+| R3 — role `cashier` baru                     | GUGUR (staff pakai permission `pos:*` — A6)     |
+| R11 — relax NOT NULL `transactions`          | GUGUR (outlet/photobox terisi dari booth — A13) |
 
 Idempotency/race kini ditangani di level order (`docs/pos/03` §4): conditional UPDATE single-winner + exists-check `transactions.pos_order_id`.
 

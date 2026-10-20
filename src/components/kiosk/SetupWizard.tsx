@@ -6,7 +6,12 @@ import { PrintTestPanel } from "@/components/print/PrintTestPanel";
 import { resolvePrintMode } from "@/lib/print/print-mode";
 import type { PrintSettings } from "@/lib/kiosk-types";
 import { Button } from "@/components/ui/button";
-import { CAMERA_ERRORS, cameraErrorKind, resolutionLabel, resolutionWarning } from "@/lib/camera-errors";
+import {
+  CAMERA_ERRORS,
+  cameraErrorKind,
+  resolutionLabel,
+  resolutionWarning,
+} from "@/lib/camera-errors";
 import { getDeviceProfile } from "@/lib/device-profile";
 import { apiPost, KioskError } from "@/components/kiosk/api";
 
@@ -104,7 +109,13 @@ export function SetupWizard({ deviceToken, onDone, onAuthError, printSettings = 
     }
     try {
       const constraints: MediaStreamConstraints = deviceId
-        ? { video: { deviceId: { exact: deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } } }
+        ? {
+            video: {
+              deviceId: { exact: deviceId },
+              width: { ideal: 1920 },
+              height: { ideal: 1080 },
+            },
+          }
         : { video: { width: { ideal: 1920 }, height: { ideal: 1080 } } };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       if (generation !== streamGeneration.current) {
@@ -134,7 +145,10 @@ export function SetupWizard({ deviceToken, onDone, onAuthError, printSettings = 
     } catch (e) {
       const kind = cameraErrorKind(e instanceof DOMException ? e.name : null);
       if (kind) {
-        setCameraError({ message: CAMERA_ERRORS[kind].message, action: CAMERA_ERRORS[kind].action });
+        setCameraError({
+          message: CAMERA_ERRORS[kind].message,
+          action: CAMERA_ERRORS[kind].action,
+        });
       } else {
         setCameraError({ message: "Gagal membuka kamera. Coba lagi.", action: "COBA LAGI" });
       }
@@ -225,18 +239,30 @@ export function SetupWizard({ deviceToken, onDone, onAuthError, printSettings = 
                   <div className="flex h-full flex-col items-center justify-center gap-3 bg-bg p-6 text-center">
                     <Camera className="size-8" aria-hidden />
                     <p className="max-w-[42ch] font-mono text-sm">{cameraError.message}</p>
-                    <Button variant="outline" onClick={() => void openStream(selectedId || undefined)}>
+                    <Button
+                      variant="outline"
+                      onClick={() => void openStream(selectedId || undefined)}
+                    >
                       {cameraError.action}
                     </Button>
                   </div>
                 ) : (
-                  <video ref={videoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="h-full w-full object-cover"
+                  />
                 )}
               </div>
 
               {devices.length > 1 && (
                 <div className="flex flex-col gap-2">
-                  <label htmlFor="camera-select" className="font-mono text-xs uppercase tracking-[0.1em]">
+                  <label
+                    htmlFor="camera-select"
+                    className="font-mono text-xs uppercase tracking-[0.1em]"
+                  >
                     Pilih kamera
                   </label>
                   <select
@@ -260,7 +286,9 @@ export function SetupWizard({ deviceToken, onDone, onAuthError, printSettings = 
 
               <div className="flex flex-wrap items-center gap-3 border-2 border-ink bg-surface px-4 py-3 font-mono text-xs uppercase tracking-[0.08em]">
                 <span className="font-bold">Resolusi:</span>
-                <span className={resWarning ? "text-destructive" : "text-ink"}>{resLabel || "-"}</span>
+                <span className={resWarning ? "text-destructive" : "text-ink"}>
+                  {resLabel || "-"}
+                </span>
                 {resWarning && <span className="text-muted-foreground">· {resWarning}</span>}
               </div>
 
@@ -281,8 +309,8 @@ export function SetupWizard({ deviceToken, onDone, onAuthError, printSettings = 
             <div className="flex flex-col gap-4">
               <div className="flex flex-col items-start gap-4 border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111]">
                 <p className="max-w-[46ch] text-sm leading-relaxed text-muted-foreground">
-                  Ponsel tidak mencetak langsung. Hasil dikirim sebagai QR ke halaman
-                  result online. Cetak lewat perangkat booth bila tersedia.
+                  Ponsel tidak mencetak langsung. Hasil dikirim sebagai QR ke halaman result online.
+                  Cetak lewat perangkat booth bila tersedia.
                 </p>
               </div>
               <Button size="lg" onClick={onDone} className="bg-accent">
@@ -322,13 +350,16 @@ export function SetupWizard({ deviceToken, onDone, onAuthError, printSettings = 
                 // wizard tidak pernah selesai dan welcome tidak pernah muncul.
                 <div className="flex flex-col gap-2 border-2 border-dashed border-ink p-4">
                   <p className="font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
-                    Printer belum siap? Setup bisa dilewati. Uji cetak tetap bisa diulang kapan pun dengan memasang ulang perangkat.
+                    Printer belum siap? Setup bisa dilewati. Uji cetak tetap bisa diulang kapan pun
+                    dengan memasang ulang perangkat.
                   </p>
                   <Button
                     variant="outline"
                     onClick={() => {
                       // Tandai printer belum terkonfirmasi di server, lalu selesai.
-                      void report({ printer: { confirmed: false, last_test_at: new Date().toISOString() } });
+                      void report({
+                        printer: { confirmed: false, last_test_at: new Date().toISOString() },
+                      });
                       onDone();
                     }}
                   >

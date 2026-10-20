@@ -195,9 +195,9 @@ requirePosAccess(userId, businessId): Promise<{ membership }>
 
 ```ts
 const PERMISSIONS: Record<BusinessRole, readonly string[]> = {
-  owner:   ["*"],
-  manager: [ /* existing... */, "pos:manage", "pos:sell", "pos:read" ],
-  staff:   [ /* existing read-only... */, "pos:sell", "pos:read" ],
+  owner: ["*"],
+  manager: [, /* existing... */ "pos:manage", "pos:sell", "pos:read"],
+  staff: [, /* existing read-only... */ "pos:sell", "pos:read"],
 };
 ```
 
@@ -233,11 +233,11 @@ Tambah: `POS_NOT_SUBSCRIBED: 403`, `INSUFFICIENT_STOCK: 409`, `POS_ORDER_NOT_PAY
 
 ## 8. Testing
 
-| Test | File | Kasus |
-|---|---|---|
-| RBAC matrix baru | `tests/rbac.test.ts` (extend) | staff: pos:sell/pos:read ✅, pos:manage ❌; manager + pos:*; owner wildcard |
-| Entitlement | `tests/pos-entitlement.test.ts` (mock supabase pola test existing) | trial+active-addon ✅; active+cancelled-addon ❌; past_due ✅; tanpa subscription ❌; add_ons inactive ❌ |
-| Migration | manual di DB dev | `up` bersih; jalankan 2× (idempotent seed); `rollback` (§10) bersih; `db/schema.sql` diff = hanya §3; `\d payments` + `\d business_members` identik |
+| Test             | File                                                               | Kasus                                                                                                                                               |
+| ---------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RBAC matrix baru | `tests/rbac.test.ts` (extend)                                      | staff: pos:sell/pos:read ✅, pos:manage ❌; manager + pos:*; owner wildcard                                                                         |
+| Entitlement      | `tests/pos-entitlement.test.ts` (mock supabase pola test existing) | trial+active-addon ✅; active+cancelled-addon ❌; past_due ✅; tanpa subscription ❌; add_ons inactive ❌                                           |
+| Migration        | manual di DB dev                                                   | `up` bersih; jalankan 2× (idempotent seed); `rollback` (§10) bersih; `db/schema.sql` diff = hanya §3; `\d payments` + `\d business_members` identik |
 
 Perintah: `npm run test && npm run typecheck && npm run lint` (semua hijau).
 
@@ -245,17 +245,17 @@ Perintah: `npm run test && npm run typecheck && npm run lint` (semua hijau).
 
 ## 9. Risk & Mitigasi
 
-| Risiko | Mitigasi |
-|---|---|
-| ~~R1 NULL checkout_session_id~~ | GUGUR — tidak menyentuh `payments` |
-| ~~R2/R7 webhook~~ | GUGUR — tidak ada integrasi webhook |
-| ~~R3 role cashier~~ | GUGUR — tanpa role baru; hanya tambah permission di matrix |
-| ~~R11 nullable outlet/photobox~~ | GUGUR — tidak ada relax; tipe kolom TIDAK berubah |
-| R4 gate terlewat | `requirePosAccess` baris pertama semua export pos-* (checklist review Phase 3) |
-| R5 stock race | Guarded UPDATE `stock >= qty` → `INSUFFICIENT_STOCK`; stock opsional |
-| R6 laporan berubah makna | POS row tetap masuk `transactions`; verifikasi agregasi by-package/by-photobox di Phase 5 |
-| R10 sidebar noise | Nav POS conditional by entitlement+permission |
-| Migration gagal mid-way | Postgres DDL transactional — bungkus `begin/commit` |
+| Risiko                           | Mitigasi                                                                                  |
+| -------------------------------- | ----------------------------------------------------------------------------------------- |
+| ~~R1 NULL checkout_session_id~~  | GUGUR — tidak menyentuh `payments`                                                        |
+| ~~R2/R7 webhook~~                | GUGUR — tidak ada integrasi webhook                                                       |
+| ~~R3 role cashier~~              | GUGUR — tanpa role baru; hanya tambah permission di matrix                                |
+| ~~R11 nullable outlet/photobox~~ | GUGUR — tidak ada relax; tipe kolom TIDAK berubah                                         |
+| R4 gate terlewat                 | `requirePosAccess` baris pertama semua export pos-* (checklist review Phase 3)            |
+| R5 stock race                    | Guarded UPDATE `stock >= qty` → `INSUFFICIENT_STOCK`; stock opsional                      |
+| R6 laporan berubah makna         | POS row tetap masuk `transactions`; verifikasi agregasi by-package/by-photobox di Phase 5 |
+| R10 sidebar noise                | Nav POS conditional by entitlement+permission                                             |
+| Migration gagal mid-way          | Postgres DDL transactional — bungkus `begin/commit`                                       |
 
 ---
 

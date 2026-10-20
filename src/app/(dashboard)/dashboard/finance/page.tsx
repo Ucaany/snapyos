@@ -1,21 +1,21 @@
-import type { Metadata } from "next"
-import { redirect } from "next/navigation"
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import { DateRangeFilter } from "@/components/dashboard/DateRangeFilter"
-import { ExpensesPanel } from "@/components/dashboard/ExpensesPanel"
-import { MetricCard } from "@/components/dashboard/MetricCard"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { EmptyState } from "@/components/ui/empty-state"
-import { PageHeader } from "@/components/ui/page-header"
-import { can } from "@/lib/rbac"
-import { formatBp, formatIDR } from "@/lib/dashboard-math"
-import { getActiveBusiness, requireUser } from "@/lib/tenant"
-import { getFinanceSummary, listExpenses } from "@/server/finance"
-import { listOutlets } from "@/server/outlets"
+import { DateRangeFilter } from "@/components/dashboard/DateRangeFilter";
+import { ExpensesPanel } from "@/components/dashboard/ExpensesPanel";
+import { MetricCard } from "@/components/dashboard/MetricCard";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
+import { can } from "@/lib/rbac";
+import { formatBp, formatIDR } from "@/lib/dashboard-math";
+import { getActiveBusiness, requireUser } from "@/lib/tenant";
+import { getFinanceSummary, listExpenses } from "@/server/finance";
+import { listOutlets } from "@/server/outlets";
 
 export const metadata: Metadata = {
   title: "Keuangan: SnapyOS",
-}
+};
 
 const CATEGORY_LABEL: Record<string, string> = {
   rent: "Sewa",
@@ -28,19 +28,19 @@ const CATEGORY_LABEL: Record<string, string> = {
   equipment: "Equipment",
   advertising: "Iklan",
   other: "Lainnya",
-}
+};
 
 /** /dashboard/finance — income vs expense → estimated profit (docs/04 §4.4). */
 export default async function FinancePage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string }>
+  searchParams: Promise<{ from?: string; to?: string }>;
 }) {
-  const user = await requireUser()
-  if (!user) redirect("/login")
+  const user = await requireUser();
+  if (!user) redirect("/login");
 
-  const active = await getActiveBusiness(user.id)
-  if (!active) redirect("/dashboard")
+  const active = await getActiveBusiness(user.id);
+  if (!active) redirect("/dashboard");
 
   if (!can(active.role, "finance:read")) {
     return (
@@ -54,19 +54,19 @@ export default async function FinancePage({
           </CardHeader>
         </Card>
       </div>
-    )
+    );
   }
-  const canWrite = can(active.role, "expense:write")
+  const canWrite = can(active.role, "expense:write");
 
-  const query = await searchParams
-  const range = { from: query.from, to: query.to }
-  const businessId = active.business.id
+  const query = await searchParams;
+  const range = { from: query.from, to: query.to };
+  const businessId = active.business.id;
 
   const [summary, expenses, outlets] = await Promise.all([
     getFinanceSummary(user.id, businessId, range),
     listExpenses(user.id, businessId, range),
     listOutlets(user.id, businessId),
-  ])
+  ]);
 
   return (
     <div className="flex flex-col gap-8 p-6 md:p-10">
@@ -144,5 +144,5 @@ export default async function FinancePage({
         canWrite={canWrite}
       />
     </div>
-  )
+  );
 }

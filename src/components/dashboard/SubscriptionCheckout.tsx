@@ -5,12 +5,7 @@ import { useRouter } from "next/navigation";
 import { Check, Loader2, Minus, Plus, TicketPercent } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { formatIDR } from "@/lib/dashboard-math";
 import type { AddOnCard, PlanCard } from "@/server/subscription";
 import {
@@ -63,14 +58,13 @@ export function SubscriptionCheckout({
   const isActualPlanChange = recovery || planCode !== currentPlanCode;
 
   const addOnLines = useMemo(
-    () =>
-      addOns
-        .map((a) => ({ addOn: a, qty: qtyById[a.id] ?? 0 }))
-        .filter((l) => l.qty > 0),
+    () => addOns.map((a) => ({ addOn: a, qty: qtyById[a.id] ?? 0 })).filter((l) => l.qty > 0),
     [addOns, qtyById]
   );
   // Match server logic: plan price only charged on actual plan change.
-  const gross = (isActualPlanChange ? (plan?.priceMonthly ?? 0) : 0) + addOnLines.reduce((s, l) => s + l.addOn.priceMonthly * l.qty, 0);
+  const gross =
+    (isActualPlanChange ? (plan?.priceMonthly ?? 0) : 0) +
+    addOnLines.reduce((s, l) => s + l.addOn.priceMonthly * l.qty, 0);
   const total = Math.max(0, gross - (promo?.discount ?? 0));
 
   function setQty(id: string, qty: number) {
@@ -128,11 +122,14 @@ export function SubscriptionCheckout({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
+    >
       <DialogContent className="max-w-2xl">
-        <DialogTitle>
-          Konfirmasi checkout — harga fix setelah Anda konfirmasi
-        </DialogTitle>
+        <DialogTitle>Konfirmasi checkout: harga fix setelah Anda konfirmasi</DialogTitle>
         <DialogDescription className="sr-only">
           Preview harga langganan sebelum bayar
         </DialogDescription>
@@ -175,7 +172,7 @@ export function SubscriptionCheckout({
           {addOns.length > 0 && (
             <section>
               <p className="mb-2 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                {"/// 02. ADD-ON — ATUR JUMLAH SENDIRI"}
+                {"/// 02. ADD-ON: ATUR JUMLAH SENDIRI"}
               </p>
               <ul className="flex flex-col gap-2">
                 {addOns.map((a) => {
@@ -188,7 +185,9 @@ export function SubscriptionCheckout({
                       }`}
                     >
                       <div className="flex flex-col">
-                        <span className="font-mono text-xs uppercase tracking-[0.1em]">{a.name}</span>
+                        <span className="font-mono text-xs uppercase tracking-[0.1em]">
+                          {a.name}
+                        </span>
                         <span className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
                           +{formatIDR(a.priceMonthly)} /bulan per unit
                         </span>
@@ -233,7 +232,7 @@ export function SubscriptionCheckout({
 
           <section>
             <p className="mb-2 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-              {"/// 03. VOUCHER PROMO — OPSIONAL"}
+              {"/// 03. VOUCHER PROMO: OPSIONAL"}
             </p>
             <div className="flex flex-wrap gap-2">
               <input
@@ -254,7 +253,11 @@ export function SubscriptionCheckout({
                 onClick={() => void applyPromo()}
                 disabled={promoBusy || !promoInput.trim()}
               >
-                {promoBusy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <TicketPercent className="size-4" aria-hidden />}
+                {promoBusy ? (
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                ) : (
+                  <TicketPercent className="size-4" aria-hidden />
+                )}
                 Pakai
               </Button>
             </div>
@@ -268,7 +271,7 @@ export function SubscriptionCheckout({
             )}
             {promo && (
               <p className="mt-2 flex items-center gap-1.5 font-mono text-xs font-bold uppercase tracking-[0.05em]">
-                <Check className="size-4" aria-hidden /> {promo.code} — DISKON{" "}
+                <Check className="size-4" aria-hidden /> {promo.code}: DISKON{" "}
                 <span className="tabular-nums">{formatIDR(promo.discount)}</span>
               </p>
             )}
@@ -281,9 +284,11 @@ export function SubscriptionCheckout({
             <dl className="flex flex-col gap-1 text-sm">
               <div className="flex justify-between">
                 <dt className="font-mono text-xs uppercase tracking-[0.05em] text-muted-foreground">
-                  Plan {plan?.name ?? "—"}
+                  Plan {plan?.name ?? "-"}
                 </dt>
-                <dd className="font-mono font-bold tabular-nums">{formatIDR(plan?.priceMonthly ?? 0)}</dd>
+                <dd className="font-mono font-bold tabular-nums">
+                  {formatIDR(plan?.priceMonthly ?? 0)}
+                </dd>
               </div>
               {addOnLines.map((l) => (
                 <div key={l.addOn.id} className="flex justify-between">
@@ -317,16 +322,12 @@ export function SubscriptionCheckout({
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t-2 border-ink/10 pt-4">
           <p className="max-w-[40ch] text-xs text-muted-foreground">
-            Konfirmasi → invoice terbit → bayar QRIS. QR hanya dibuat setelah Anda
-            menekan tombol bayar.
+            Konfirmasi → invoice terbit → bayar QRIS. QR hanya dibuat setelah Anda menekan tombol
+            bayar.
           </p>
-          <Button
-            type="button"
-            onClick={() => void confirm()}
-            disabled={busy || !plan}
-          >
+          <Button type="button" onClick={() => void confirm()} disabled={busy || !plan}>
             {busy && <Loader2 className="size-4 animate-spin" aria-hidden />}
-            Konfirmasi & lanjut bayar — {formatIDR(total)}
+            Konfirmasi & lanjut bayar: {formatIDR(total)}
           </Button>
         </div>
       </DialogContent>

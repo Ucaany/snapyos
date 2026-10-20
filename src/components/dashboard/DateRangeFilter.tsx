@@ -7,11 +7,7 @@ import type { DateRange } from "react-day-picker";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { shiftISO, todayISO } from "@/lib/dashboard-math";
 
 const PRESETS: { label: string; days: number }[] = [
@@ -175,7 +171,11 @@ export function DateRangeFilter({
           </PopoverContent>
         </Popover>
       </div>
-      <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap" role="group" aria-label="Preset periode">
+      <div
+        className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap"
+        role="group"
+        aria-label="Preset periode"
+      >
         {PRESETS.map((p) => (
           <Button
             key={p.days}

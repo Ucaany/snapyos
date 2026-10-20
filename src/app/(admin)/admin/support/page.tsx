@@ -82,9 +82,7 @@ export default async function AdminSupportPage({
             <tbody>
               {items.map((t) => (
                 <tr key={t.id} className="border-t-2 border-ink/10">
-                  <td className="max-w-[280px] px-4 py-3 text-sm font-semibold">
-                    {t.subject}
-                  </td>
+                  <td className="max-w-[280px] px-4 py-3 text-sm font-semibold">{t.subject}</td>
                   <td className="px-4 py-3 text-sm">{t.business_name}</td>
                   <td className="px-4 py-3 font-mono text-[10px] uppercase text-muted-foreground">
                     {t.category} · {t.area}

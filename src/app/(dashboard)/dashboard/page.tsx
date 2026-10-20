@@ -13,17 +13,9 @@ import { PageHeader } from "@/components/ui/page-header";
 import { destinationFor } from "@/lib/destination";
 import { can } from "@/lib/rbac";
 import { formatDate, formatIDR } from "@/lib/dashboard-math";
-import {
-  getActiveBusiness,
-  getUserMemberships,
-  requireUser,
-} from "@/lib/tenant";
+import { getActiveBusiness, getUserMemberships, requireUser } from "@/lib/tenant";
 
-import {
-  getDashboardSummary,
-  getOperationalMetrics,
-  getRevenueSeries,
-} from "@/server/dashboard";
+import { getDashboardSummary, getOperationalMetrics, getRevenueSeries } from "@/server/dashboard";
 import { getTxInsights } from "@/server/analytics";
 import { getActiveSubscription } from "@/server/business";
 
@@ -90,7 +82,8 @@ export default async function DashboardPage({
         meta={
           <span>
             /p/{active.business.slug} · {active.business.timezone} · PLAN{" "}
-            {subscription?.plan?.name ?? "Tidak ada paket"} / {subscription?.status ?? "Tidak diketahui"}
+            {subscription?.plan?.name ?? "Tidak ada paket"} /{" "}
+            {subscription?.status ?? "Tidak diketahui"}
           </span>
         }
         right={
@@ -107,8 +100,8 @@ export default async function DashboardPage({
           <CardHeader>
             <CardTitle>Akses finansial terbatas</CardTitle>
             <CardDescription>
-              Role {active.role.toUpperCase()} tidak melihat data revenue. Hubungi
-              owner untuk akses penuh dashboard.
+              Role {active.role.toUpperCase()} tidak melihat data revenue. Hubungi owner untuk akses
+              penuh dashboard.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -124,12 +117,23 @@ export default async function DashboardPage({
               className="md:col-span-8"
             />
             <div className="grid grid-cols-1 gap-6 md:col-span-4 sm:grid-cols-2 md:grid-cols-1">
-              <MetricCard label="Pendapatan Kotor" value={formatIDR(summary.gross)} sub="Sebelum diskon" />
-              <MetricCard label="Diskon Voucher" value={formatIDR(summary.discount)} sub="Dipotong dari kotor" />
+              <MetricCard
+                label="Pendapatan Kotor"
+                value={formatIDR(summary.gross)}
+                sub="Sebelum diskon"
+              />
+              <MetricCard
+                label="Diskon Voucher"
+                value={formatIDR(summary.discount)}
+                sub="Dipotong dari kotor"
+              />
             </div>
           </div>
 
-          <dl className="grid grid-cols-2 gap-[2px] border-2 border-ink bg-ink shadow-[4px_4px_0_0_#111111] md:grid-cols-4 xl:grid-cols-8" aria-label="Ringkasan metrik">
+          <dl
+            className="grid grid-cols-2 gap-[2px] border-2 border-ink bg-ink shadow-[4px_4px_0_0_#111111] md:grid-cols-4 xl:grid-cols-8"
+            aria-label="Ringkasan metrik"
+          >
             {[
               { label: "Hari Ini", value: formatIDR(summary.revenueToday) },
               { label: "Bulan Ini", value: formatIDR(summary.revenueMonth) },

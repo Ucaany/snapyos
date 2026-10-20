@@ -1,18 +1,18 @@
-"use client"
+"use client";
 
 /**
  * Error inline admin platform (docs/13 §13.4: error = inline, bukan global).
  * Serupai dengan dashboard error boundary - brutalist, tombol reset.
  */
 
-import { FeatureError } from "@/components/dashboard/FeatureError"
+import { FeatureError } from "@/components/dashboard/FeatureError";
 
 export default function AdminError({
   error,
   reset,
 }: {
-  error: Error & { digest?: string }
-  reset: () => void
+  error: Error & { digest?: string };
+  reset: () => void;
 }) {
   return (
     <FeatureError
@@ -21,5 +21,5 @@ export default function AdminError({
       error={error}
       reset={reset}
     />
-  )
+  );
 }

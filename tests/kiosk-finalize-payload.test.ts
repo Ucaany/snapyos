@@ -46,7 +46,10 @@ test("isFinalizeRequestTooLarge: batas 50 MB inklusif", () => {
 
 test("validateFinalizeRequest: kebesaran total vs jumlah foto tidak valid", () => {
   // Total byte kebesaran → pesan kebesaran (dipetakan route ke 413).
-  assert.equal(validateFinalizeRequest(FINALIZE_MAX_REQUEST_BYTES + 1, 3), FINALIZE_TOO_LARGE_MESSAGE);
+  assert.equal(
+    validateFinalizeRequest(FINALIZE_MAX_REQUEST_BYTES + 1, 3),
+    FINALIZE_TOO_LARGE_MESSAGE
+  );
   // Jumlah foto salah → pesan berbeda, tetap 422.
   assert.equal(validateFinalizeRequest(1024, 0), "Jumlah foto tidak valid");
   assert.equal(validateFinalizeRequest(1024, 51), "Jumlah foto tidak valid");
@@ -78,7 +81,13 @@ test("route finalize: tidak ada 422 tersisa di jalur body kebesaran", async () =
   const s = await src(ROUTE);
   // requestTooLarge() adalah satu-satunya respons body kebesaran; ia tidak
   // boleh lagi mengembalikan VALIDATION_ERROR.
-  const helper = s.slice(s.indexOf("function requestTooLarge"), s.indexOf("function uploadInvalid"));
-  assert.ok(!helper.includes("VALIDATION_ERROR"), "requestTooLarge tidak boleh 422/VALIDATION_ERROR");
+  const helper = s.slice(
+    s.indexOf("function requestTooLarge"),
+    s.indexOf("function uploadInvalid")
+  );
+  assert.ok(
+    !helper.includes("VALIDATION_ERROR"),
+    "requestTooLarge tidak boleh 422/VALIDATION_ERROR"
+  );
   assert.ok(helper.includes('"PAYLOAD_TOO_LARGE"'), "requestTooLarge wajib PAYLOAD_TOO_LARGE");
 });

@@ -117,15 +117,12 @@ export async function getDashboardSummary(
   const todayKey = todayISO(range.timeZone);
   const monthKey = todayKey.slice(0, 7);
   const supabase = createServerClient();
-  const { data: dayRows, error: dayError } = await supabase.rpc(
-    "dashboard_daily_revenue",
-    {
-      p_business: businessId,
-      p_start: new Date(startOfDayTz(`${monthKey}-01`, range.timeZone)).toISOString(),
-      p_end: new Date(Date.now() + 3_600_000).toISOString(),
-      p_tz: range.timeZone,
-    }
-  );
+  const { data: dayRows, error: dayError } = await supabase.rpc("dashboard_daily_revenue", {
+    p_business: businessId,
+    p_start: new Date(startOfDayTz(`${monthKey}-01`, range.timeZone)).toISOString(),
+    p_end: new Date(Date.now() + 3_600_000).toISOString(),
+    p_tz: range.timeZone,
+  });
   if (dayError) throw new ApiError("INTERNAL", "Gagal memuat transaksi");
   let revenueToday = 0;
   let revenueMonth = 0;
@@ -218,12 +215,14 @@ export async function getOperationalMetrics(
     p_end: toIso,
   });
   if (error) throw new ApiError("INTERNAL", "Gagal memuat metrik");
-  const row = ((data ?? []) as {
-    sessions: number | string;
-    customers: number | string;
-    active_photoboxes: number | string;
-    active_outlets: number | string;
-  }[])[0];
+  const row = (
+    (data ?? []) as {
+      sessions: number | string;
+      customers: number | string;
+      active_photoboxes: number | string;
+      active_outlets: number | string;
+    }[]
+  )[0];
 
   return {
     range: { from: range.from, to: range.to },

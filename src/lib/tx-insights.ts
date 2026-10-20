@@ -59,16 +59,27 @@ export function buildTxInsights(rows: readonly TxInsightRow[], timeZone: string)
 
   for (const row of rows) {
     statusCounts.total += 1;
-    if (row.status === "pending" || row.status === "paid" || row.status === "failed" || row.status === "cancelled" || row.status === "refunded") {
+    if (
+      row.status === "pending" ||
+      row.status === "paid" ||
+      row.status === "failed" ||
+      row.status === "cancelled" ||
+      row.status === "refunded"
+    ) {
       statusCounts[row.status] += 1;
     }
     hourly[localHour(effectiveIso(row), timeZone)]! += 1;
     if (row.status === "paid") net += Math.max(0, Math.trunc(row.final_amount));
 
     const outletId = row.outlet_id ?? "none";
-    const item =
-      outletAgg.get(outletId) ??
-      { outletId, name: row.outlet_name ?? "Tanpa outlet", count: 0, paidCount: 0, failedCount: 0, net: 0 };
+    const item = outletAgg.get(outletId) ?? {
+      outletId,
+      name: row.outlet_name ?? "Tanpa outlet",
+      count: 0,
+      paidCount: 0,
+      failedCount: 0,
+      net: 0,
+    };
     item.count += 1;
     if (row.status === "paid") {
       item.paidCount += 1;
@@ -136,9 +147,14 @@ export function buildTxInsightsFromGroups(groups: readonly TxInsightGroup[]): Tx
     if (group.status === "paid") net += amount;
 
     const outletId = group.outlet_id ?? "none";
-    const item =
-      outletAgg.get(outletId) ??
-      { outletId, name: group.outlet_name ?? "Tanpa outlet", count: 0, paidCount: 0, failedCount: 0, net: 0 };
+    const item = outletAgg.get(outletId) ?? {
+      outletId,
+      name: group.outlet_name ?? "Tanpa outlet",
+      count: 0,
+      paidCount: 0,
+      failedCount: 0,
+      net: 0,
+    };
     item.count += count;
     if (group.status === "paid") {
       item.paidCount += count;

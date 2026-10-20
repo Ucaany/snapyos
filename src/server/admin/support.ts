@@ -35,10 +35,9 @@ export async function listSupportTicketsAdmin(query: {
   const supabase = createServerClient();
   let req = supabase
     .from("support_tickets")
-    .select(
-      "id, subject, category, area, status, created_at, updated_at, businesses ( name )",
-      { count: "exact" }
-    )
+    .select("id, subject, category, area, status, created_at, updated_at, businesses ( name )", {
+      count: "exact",
+    })
     .order("created_at", { ascending: false })
     .range((page - 1) * limit, page * limit - 1);
   if (query.status) req = req.eq("status", query.status);
@@ -50,7 +49,7 @@ export async function listSupportTicketsAdmin(query: {
   type Row = AdminSupportTicketRow & { businesses: { name: string } | { name: string }[] | null };
   const items = ((data ?? []) as unknown as Row[]).map((r) => ({
     id: r.id,
-    business_name: (Array.isArray(r.businesses) ? r.businesses[0] : r.businesses)?.name ?? "—",
+    business_name: (Array.isArray(r.businesses) ? r.businesses[0] : r.businesses)?.name ?? "-",
     subject: r.subject,
     category: r.category,
     area: r.area,

@@ -5,10 +5,7 @@
 import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
-import {
-  adminSettingsUpdateSchema,
-  type AdminSettingsUpdateInput,
-} from "@/lib/validators";
+import { adminSettingsUpdateSchema, type AdminSettingsUpdateInput } from "@/lib/validators";
 import { RETENTION_MAX_DAYS, RETENTION_MIN_DAYS } from "@/lib/retention";
 import { requireAdmin, audit } from "./guard";
 
@@ -99,10 +96,21 @@ export async function updatePlatformSettings(input: AdminSettingsUpdateInput) {
     }
   }
   if (parsed.chroma_key_default_enabled !== undefined) {
-    const { data: booths, error: boothError } = await supabase.from("photoboxes").select("id, camera_settings");
-    if (boothError) throw new ApiError("INTERNAL", "Gagal menerapkan default chroma key ke photobox");
+    const { data: booths, error: boothError } = await supabase
+      .from("photoboxes")
+      .select("id, camera_settings");
+    if (boothError)
+      throw new ApiError("INTERNAL", "Gagal menerapkan default chroma key ke photobox");
     for (const booth of booths ?? []) {
-      await supabase.from("photoboxes").update({ camera_settings: { ...((booth.camera_settings as Record<string, unknown> | null) ?? {}), chroma_key_enabled: parsed.chroma_key_default_enabled } }).eq("id", booth.id);
+      await supabase
+        .from("photoboxes")
+        .update({
+          camera_settings: {
+            ...((booth.camera_settings as Record<string, unknown> | null) ?? {}),
+            chroma_key_enabled: parsed.chroma_key_default_enabled,
+          },
+        })
+        .eq("id", booth.id);
     }
   }
   await audit(admin.id, "admin.settings.update", "platform_settings", { ...parsed });

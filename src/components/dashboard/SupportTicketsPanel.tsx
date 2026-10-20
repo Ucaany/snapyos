@@ -7,11 +7,7 @@ import { CircleHelp, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
-import {
-  Collapsible,
-  CollapsiblePanel,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
 import {
   STATUS_LABEL,
@@ -39,7 +35,7 @@ export function SupportTicketsPanel({ tickets }: { tickets: SupportTicket[] }) {
           <p className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
             {`TIKET ${String(tickets.length).padStart(2, "0")}`}
           </p>
-          <CollapsibleTrigger className="h-10 px-4" aria-label="Buka form tiket baru">
+          <CollapsibleTrigger className="min-h-11 px-4" aria-label="Buka form tiket baru">
             <Plus aria-hidden />
             Tiket baru
           </CollapsibleTrigger>
@@ -127,9 +123,7 @@ export function SupportTicketsPanel({ tickets }: { tickets: SupportTicket[] }) {
                     <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
                       {`${t.category} · ${t.area}`}
                     </p>
-                    <h3 className="font-display text-lg uppercase tracking-tight">
-                      {t.subject}
-                    </h3>
+                    <h3 className="font-display text-lg uppercase tracking-tight">{t.subject}</h3>
                   </div>
                   <StatusBadge status={t.status} label={STATUS_LABEL[t.status]} />
                 </div>
@@ -137,8 +131,7 @@ export function SupportTicketsPanel({ tickets }: { tickets: SupportTicket[] }) {
                   {t.description}
                 </p>
                 <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                  {dateFmt.format(new Date(t.created_at))} ·{" "}
-                  {STATUS_LABEL[t.status]}
+                  {dateFmt.format(new Date(t.created_at))} · {STATUS_LABEL[t.status]}
                 </p>
               </Link>
             </li>

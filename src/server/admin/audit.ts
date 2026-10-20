@@ -69,7 +69,10 @@ export async function listAuditLogs(query: {
     target: string | null;
     meta: Record<string, unknown>;
     created_at: string;
-    users: { email: string | null; name: string | null } | { email: string | null; name: string | null }[] | null;
+    users:
+      | { email: string | null; name: string | null }
+      | { email: string | null; name: string | null }[]
+      | null;
     businesses: { name: string } | { name: string }[] | null;
   };
 
@@ -102,10 +105,7 @@ export async function listAuditLogs(query: {
  * Opsional `before` (ISO datetime): hanya hapus entry lebih tua dari itu.
  * Bila `ids` diberikan, hapus entry spesifik. Maksimal satu dari dua mode.
  */
-export async function deleteAuditLogs(input: {
-  ids?: string[];
-  before?: string | null;
-}) {
+export async function deleteAuditLogs(input: { ids?: string[]; before?: string | null }) {
   const admin = await requireAdmin();
   const supabase = createServerClient();
 

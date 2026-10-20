@@ -44,13 +44,11 @@ export function Calendar({
       components={defaultComponents}
       className={cn("w-max select-none p-3", className)}
       classNames={{
-        months:
-          "relative flex flex-col gap-6 sm:flex-row sm:gap-8",
+        months: "relative flex flex-col gap-6 sm:flex-row sm:gap-8",
         month: "flex flex-col gap-3",
         nav: "pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between [&>button]:pointer-events-auto",
         month_caption: "flex h-8 items-center justify-center border-b-2 border-ink",
-        caption_label:
-          "font-mono text-xs font-bold uppercase tracking-[0.12em] text-ink",
+        caption_label: "font-mono text-xs font-bold uppercase tracking-[0.12em] text-ink",
         button_previous: NAV_BUTTON,
         button_next: NAV_BUTTON,
         month_grid: "w-full border-collapse",

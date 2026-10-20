@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 /**
  * Error boundary — /dashboard/vouchers.
@@ -7,14 +7,14 @@
  * (bukan error "cek koneksi Supabase" yang menyesatkan).
  */
 
-import { FeatureError } from "@/components/dashboard/FeatureError"
+import { FeatureError } from "@/components/dashboard/FeatureError";
 
 export default function VouchersError({
   error,
   reset,
 }: {
-  error: Error & { digest?: string; code?: string; status?: number }
-  reset: () => void
+  error: Error & { digest?: string; code?: string; status?: number };
+  reset: () => void;
 }) {
   return (
     <FeatureError
@@ -23,5 +23,5 @@ export default function VouchersError({
       error={error}
       reset={reset}
     />
-  )
+  );
 }

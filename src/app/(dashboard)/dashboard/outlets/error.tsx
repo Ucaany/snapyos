@@ -1,17 +1,17 @@
-"use client"
+"use client";
 
 /**
  * Error boundary - /dashboard/outlets.
  */
 
-import { FeatureError } from "@/components/dashboard/FeatureError"
+import { FeatureError } from "@/components/dashboard/FeatureError";
 
 export default function OutletsError({
   error,
   reset,
 }: {
-  error: Error & { digest?: string }
-  reset: () => void
+  error: Error & { digest?: string };
+  reset: () => void;
 }) {
   return (
     <FeatureError
@@ -20,5 +20,5 @@ export default function OutletsError({
       error={error}
       reset={reset}
     />
-  )
+  );
 }

@@ -55,7 +55,9 @@ test("coerceDateFields: format salah dibuang jadi undefined (bukan throw)", () =
   assert.deepEqual(coerceDateFields({ from: "abc", to: "xyz" }), {});
   assert.deepEqual(coerceDateFields({ from: "2026-13-99" }), {});
   assert.deepEqual(coerceDateFields({ from: "10-10-2026" }), {});
-  assert.deepEqual(coerceDateFields({ from: "bukan-tanggal", to: "2026-10-12" }), { to: "2026-10-12" });
+  assert.deepEqual(coerceDateFields({ from: "bukan-tanggal", to: "2026-10-12" }), {
+    to: "2026-10-12",
+  });
 });
 
 test("coerceDateFields: format valid diteruskan apa adanya", () => {

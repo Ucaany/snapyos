@@ -133,7 +133,10 @@ export async function getBusinessMetrics(
       p_start: fromIso,
       p_end: toIso,
     }),
-    supabase.from("customers").select("id", { count: "exact", head: true }).eq("business_id", businessId),
+    supabase
+      .from("customers")
+      .select("id", { count: "exact", head: true })
+      .eq("business_id", businessId),
     supabase
       .from("customers")
       .select("id", { count: "exact", head: true })
@@ -168,9 +171,7 @@ export async function getBusinessMetrics(
   const gross = Number(sum?.gross ?? 0);
   const discount = Number(sum?.discount ?? 0);
   const net = Number(sum?.net ?? 0);
-  const prevNet = Number(
-    ((txPrev.data ?? []) as { net: number }[])[0]?.net ?? 0
-  );
+  const prevNet = Number(((txPrev.data ?? []) as { net: number }[])[0]?.net ?? 0);
 
   const txCounts = { total: 0, paid: 0, pending: 0, failed: 0, cancelled: 0, refunded: 0 };
   for (const row of (txStatus.data ?? []) as { status: string; tx_count: number }[]) {
@@ -209,10 +210,8 @@ export async function getBusinessMetrics(
     ])
   );
 
-  const popularPackage =
-    ((popularPkg.data ?? []) as { name: string }[])[0]?.name ?? null;
-  const popularTemplate =
-    ((popularTpl.data ?? []) as { name: string }[])[0]?.name ?? null;
+  const popularPackage = ((popularPkg.data ?? []) as { name: string }[])[0]?.name ?? null;
+  const popularTemplate = ((popularTpl.data ?? []) as { name: string }[])[0]?.name ?? null;
 
   const booths = ((boothsRaw.data ?? []) as { id: string; name: string }[]).map((b) => ({
     id: b.id,
@@ -230,8 +229,7 @@ export async function getBusinessMetrics(
       completed: Number(sess?.completed ?? 0),
       cancelled: Number(sess?.cancelled ?? 0),
       retakes: Number(sess?.retakes ?? 0),
-      avgDurationSeconds:
-        doneCount > 0 ? Math.round(totalSeconds / doneCount) : 0,
+      avgDurationSeconds: doneCount > 0 ? Math.round(totalSeconds / doneCount) : 0,
     },
     customers: {
       total: customersTotal.count ?? 0,

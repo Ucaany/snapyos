@@ -16,7 +16,10 @@ test("needsSettlementRecovery: transaction_id null → re-run (side effects belu
 
 test("needsSettlementRecovery: transaction_id string kosong → dianggap belum tercatat", () => {
   assert.equal(needsSettlementRecovery({ transaction_id: "", checkout_status: "paid" }), true);
-  assert.equal(needsSettlementRecovery({ transaction_id: undefined, checkout_status: "paid" }), true);
+  assert.equal(
+    needsSettlementRecovery({ transaction_id: undefined, checkout_status: "paid" }),
+    true
+  );
 });
 
 test("needsSettlementRecovery: checkout belum paid → re-run (transisi checkout tertinggal)", () => {

@@ -78,7 +78,10 @@ export default async function AdminOverviewPage() {
         </div>
       </div>
 
-      <dl className="grid grid-cols-2 gap-[2px] border-2 border-ink bg-ink shadow-[4px_4px_0_0_#111111] md:grid-cols-4" aria-label="Metrik platform">
+      <dl
+        className="grid grid-cols-2 gap-[2px] border-2 border-ink bg-ink shadow-[4px_4px_0_0_#111111] md:grid-cols-4"
+        aria-label="Metrik platform"
+      >
         {[
           { label: "Total Sesi", value: String(overview.totalSessions) },
           { label: "Total Transaksi", value: String(overview.totalTransactions) },
@@ -110,14 +113,16 @@ export default async function AdminOverviewPage() {
                   <dt className="truncate font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
                     {t.name}
                   </dt>
-                  <dd className="font-mono text-sm font-bold leading-none tabular-nums">{t.count}</dd>
+                  <dd className="font-mono text-sm font-bold leading-none tabular-nums">
+                    {t.count}
+                  </dd>
                 </div>
               ))}
             </dl>
             <div className="mt-3 flex flex-wrap gap-2">
               <Link
                 href="/admin/subscriptions/pending-review"
-                className="border-2 border-ink bg-surface px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em] hover:bg-muted"
+                className="inline-flex min-h-11 items-center border-2 border-ink bg-surface px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em] hover:bg-muted"
               >
                 Antrian Aktivasi Manual ({health.pendingReview})
               </Link>
@@ -127,8 +132,8 @@ export default async function AdminOverviewPage() {
 
         <Card className="xl:col-span-5">
           <CardHeader>
-          <CardTitle>Rincian User</CardTitle>
-          <CardDescription>Jumlah user pada seluruh platform.</CardDescription>
+            <CardTitle>Rincian User</CardTitle>
+            <CardDescription>Jumlah user pada seluruh platform.</CardDescription>
           </CardHeader>
           <CardContent>
             <dl className="grid grid-cols-2 gap-[2px] border-2 border-ink bg-ink">
@@ -150,7 +155,9 @@ export default async function AdminOverviewPage() {
                   <dt className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
                     {cell.label}
                   </dt>
-                  <dd className="font-mono text-sm font-bold leading-none tabular-nums">{cell.value}</dd>
+                  <dd className="font-mono text-sm font-bold leading-none tabular-nums">
+                    {cell.value}
+                  </dd>
                 </div>
               ))}
             </dl>
@@ -161,8 +168,10 @@ export default async function AdminOverviewPage() {
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
         <Card className="xl:col-span-7">
           <CardHeader>
-          <CardTitle>Monitoring Pembayaran</CardTitle>
-          <CardDescription>Pendapatan kotor, biaya, bersih, dan status seluruh tenant.</CardDescription>
+            <CardTitle>Monitoring Pembayaran</CardTitle>
+            <CardDescription>
+              Pendapatan kotor, biaya, bersih, dan status seluruh tenant.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <dl className="grid grid-cols-2 gap-[2px] border-2 border-ink bg-ink md:grid-cols-4">
@@ -193,14 +202,16 @@ export default async function AdminOverviewPage() {
 
         <Card className="xl:col-span-5">
           <CardHeader>
-          <CardTitle>Pembayaran per Provider</CardTitle>
-          <CardDescription>Volume IDR per gateway pada seluruh tenant.</CardDescription>
+            <CardTitle>Pembayaran per Provider</CardTitle>
+            <CardDescription>Volume IDR per gateway pada seluruh tenant.</CardDescription>
           </CardHeader>
           <CardContent>
             {providerSeries.length ? (
               <BreakdownChart data={providerSeries} />
             ) : (
-              <p className="font-mono text-xs text-muted-foreground">Belum ada data pembayaran untuk ditampilkan.</p>
+              <p className="font-mono text-xs text-muted-foreground">
+                Belum ada data pembayaran untuk ditampilkan.
+              </p>
             )}
           </CardContent>
         </Card>
@@ -210,10 +221,18 @@ export default async function AdminOverviewPage() {
         <Card className="xl:col-span-7">
           <CardHeader>
             <CardTitle>Revenue Harian</CardTitle>
-            <CardDescription>Pendapatan paid (IDR) 30 hari terakhir seluruh tenant.</CardDescription>
+            <CardDescription>
+              Pendapatan paid (IDR) 30 hari terakhir seluruh tenant.
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            {revenueSeries.length ? <RevenueChart data={revenueSeries} /> : <p className="font-mono text-xs text-muted-foreground">Belum ada pendapatan paid dalam 30 hari terakhir.</p>}
+            {revenueSeries.length ? (
+              <RevenueChart data={revenueSeries} />
+            ) : (
+              <p className="font-mono text-xs text-muted-foreground">
+                Belum ada pendapatan paid dalam 30 hari terakhir.
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -223,7 +242,13 @@ export default async function AdminOverviewPage() {
             <CardDescription>Tren 30 hari terakhir seluruh tenant.</CardDescription>
           </CardHeader>
           <CardContent>
-            {analytics.series.length ? <AdminTrendChart data={analytics.series} /> : <p className="font-mono text-xs text-muted-foreground">Belum ada transaksi atau sesi dalam 30 hari terakhir.</p>}
+            {analytics.series.length ? (
+              <AdminTrendChart data={analytics.series} />
+            ) : (
+              <p className="font-mono text-xs text-muted-foreground">
+                Belum ada transaksi atau sesi dalam 30 hari terakhir.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>

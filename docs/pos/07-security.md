@@ -25,24 +25,24 @@ Audit menyeluruh hasil implementasi POS terhadap tabel ancaman `docs/pos/00-audi
 
 ## 2. Checklist Verifikasi
 
-| # | Ancaman | Kontrol | Verifikasi |
-|---|---|---|---|
-| S1 | IDOR produk/order/booth POS lintas tenant | composite `.eq(id).eq(business_id)` → 404 | test negatif per endpoint + probe manual id tenant B |
-| S2 | Akses POS tanpa entitlement | `requirePosAccess` di SEMUA action | grep: setiap export di `pos-*.ts` baris pertama gate; test `POS_NOT_SUBSCRIBED` |
-| S3 | Abuse permission staff baru (`pos:sell/read`) | role dari DB; `can()`; audit hard-check `role==="staff"` / `!== "owner"` | grep list §3; RBAC test matrix penuh |
-| S4 | Manipulasi harga/total | server-compute + snapshot | kirim payload `{items, total: 1}` → diabaikan; ubah harga DB antara cart→submit → total mengikuti DB |
-| S5 | Manipulasi qty | zod 1..999 + stock guarded | qty 0/1000/negatif/float → VALIDATION_ERROR |
-| S6 | Manipulasi `photoboxId` (booth tenant lain / disabled) | scoped fetch + `pos_enabled=true` server-side | submit booth tenant lain → 404; booth off → `POS_BOOTH_DISABLED` |
-| S7 | Double transaction (double-click pay / 2 tab) | exists-check `transactions.pos_order_id` + conditional UPDATE single-winner | pay 2× → 1 row (test) |
-| S8 | Cancel-vs-paid race | conditional UPDATE pending→X single winner | test urutan kedua arah; loser = no-op |
-| S9 | Stock race (2 terminal/booth) | guarded UPDATE `stock >= qty` | shortfall → `pos.stock.shortfall` audit, transaksi tetap paid |
-| S10 | Money leak: POS mengkredit saldo | TIDAK ada `creditBalance` di jalur POS | grep `creditBalance` di `pos-*` = nol pemanggilan; test balances/ledger tidak berubah |
-| S11 | Jalur payment existing tersentuh | POS tidak menyentuh `payments`/webhook | grep `payments` di `src/server/pos-*.ts` = nol; diff `src/server/payment/*` = kosong |
-| S12 | XSS nama produk/deskripsi | React escaping; export CSV guard | payload `<script>` di nama → render escaped; CSV aman |
-| S13 | CSRF | server actions + Auth.js CSRF | probe cross-origin POST action → ditolak |
-| S14 | Session/cookie | JWT + DB revocation (cookie host-only — path-based, Phase 6 skip) | revoke session → action POS 401/redirect |
-| S15 | Upload gambar produk | `upload-validation.ts` (mime/size) + path tenant-scoped | upload HTML-rename-jpg → ditolak; akses path tenant lain → 404 storage |
-| S16 | Info leak existence | non-member/non-entitled → 404 (bukan 403) | probe id valid tenant lain → 404 |
+| #   | Ancaman                                                | Kontrol                                                                     | Verifikasi                                                                                           |
+| --- | ------------------------------------------------------ | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| S1  | IDOR produk/order/booth POS lintas tenant              | composite `.eq(id).eq(business_id)` → 404                                   | test negatif per endpoint + probe manual id tenant B                                                 |
+| S2  | Akses POS tanpa entitlement                            | `requirePosAccess` di SEMUA action                                          | grep: setiap export di `pos-*.ts` baris pertama gate; test `POS_NOT_SUBSCRIBED`                      |
+| S3  | Abuse permission staff baru (`pos:sell/read`)          | role dari DB; `can()`; audit hard-check `role==="staff"` / `!== "owner"`    | grep list §3; RBAC test matrix penuh                                                                 |
+| S4  | Manipulasi harga/total                                 | server-compute + snapshot                                                   | kirim payload `{items, total: 1}` → diabaikan; ubah harga DB antara cart→submit → total mengikuti DB |
+| S5  | Manipulasi qty                                         | zod 1..999 + stock guarded                                                  | qty 0/1000/negatif/float → VALIDATION_ERROR                                                          |
+| S6  | Manipulasi `photoboxId` (booth tenant lain / disabled) | scoped fetch + `pos_enabled=true` server-side                               | submit booth tenant lain → 404; booth off → `POS_BOOTH_DISABLED`                                     |
+| S7  | Double transaction (double-click pay / 2 tab)          | exists-check `transactions.pos_order_id` + conditional UPDATE single-winner | pay 2× → 1 row (test)                                                                                |
+| S8  | Cancel-vs-paid race                                    | conditional UPDATE pending→X single winner                                  | test urutan kedua arah; loser = no-op                                                                |
+| S9  | Stock race (2 terminal/booth)                          | guarded UPDATE `stock >= qty`                                               | shortfall → `pos.stock.shortfall` audit, transaksi tetap paid                                        |
+| S10 | Money leak: POS mengkredit saldo                       | TIDAK ada `creditBalance` di jalur POS                                      | grep `creditBalance` di `pos-*` = nol pemanggilan; test balances/ledger tidak berubah                |
+| S11 | Jalur payment existing tersentuh                       | POS tidak menyentuh `payments`/webhook                                      | grep `payments` di `src/server/pos-*.ts` = nol; diff `src/server/payment/*` = kosong                 |
+| S12 | XSS nama produk/deskripsi                              | React escaping; export CSV guard                                            | payload `<script>` di nama → render escaped; CSV aman                                                |
+| S13 | CSRF                                                   | server actions + Auth.js CSRF                                               | probe cross-origin POST action → ditolak                                                             |
+| S14 | Session/cookie                                         | JWT + DB revocation (cookie host-only — path-based, Phase 6 skip)           | revoke session → action POS 401/redirect                                                             |
+| S15 | Upload gambar produk                                   | `upload-validation.ts` (mime/size) + path tenant-scoped                     | upload HTML-rename-jpg → ditolak; akses path tenant lain → 404 storage                               |
+| S16 | Info leak existence                                    | non-member/non-entitled → 404 (bukan 403)                                   | probe id valid tenant lain → 404                                                                     |
 
 ---
 
@@ -83,10 +83,10 @@ Grep list §3 item 1–7: semua terbukti bersih (item 5 & 7 = nol, seperti di at
 
 Temuan terbuka (bukan kegagalan kontrol, dicatat jujur):
 
-| Tanggal | Temuan | Severity | Perbaikan | Status |
-|---|---|---|---|---|
-| 2026-08-30 | S12–S16 (XSS nama produk, CSRF, session revoke, upload, info-leak 404) diverifikasi hanya via review kode (React escaping default; server actions + Auth.js CSRF; upload via `upload-validation.ts`), TANPA probe manual dua-tenant tiga-role terdokumentasi | Rendah | Jalankan checklist probe manual saat deployment dev berikutnya | TERBUKA |
-| 2026-08-30 | `tests/pos-orders.test.ts` (action negative: scoping 404/403/409, pay 2×) belum ada saat audit; unit murni (schema/math/entitlement) sudah tercakup file test lain | Rendah | Dibuat pada eksekusi docs-sync ini | SELESAI saat eksekusi ini |
+| Tanggal    | Temuan                                                                                                                                                                                                                                                       | Severity | Perbaikan                                                      | Status                    |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- | -------------------------------------------------------------- | ------------------------- |
+| 2026-08-30 | S12–S16 (XSS nama produk, CSRF, session revoke, upload, info-leak 404) diverifikasi hanya via review kode (React escaping default; server actions + Auth.js CSRF; upload via `upload-validation.ts`), TANPA probe manual dua-tenant tiga-role terdokumentasi | Rendah   | Jalankan checklist probe manual saat deployment dev berikutnya | TERBUKA                   |
+| 2026-08-30 | `tests/pos-orders.test.ts` (action negative: scoping 404/403/409, pay 2×) belum ada saat audit; unit murni (schema/math/entitlement) sudah tercakup file test lain                                                                                           | Rendah   | Dibuat pada eksekusi docs-sync ini                             | SELESAI saat eksekusi ini |
 
 ---
 

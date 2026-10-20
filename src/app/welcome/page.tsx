@@ -22,15 +22,13 @@ export default async function WelcomePage() {
           <p className="font-mono text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">
             {"/// SELAMAT DATANG"}
           </p>
-          <p className="mt-3 font-mono text-sm font-bold text-ink">
-            {user.name ?? user.email}
-          </p>
+          <p className="mt-3 font-mono text-sm font-bold text-ink">{user.name ?? user.email}</p>
           <h1 className="mt-4 max-w-[14ch] font-display text-5xl uppercase leading-[.92] tracking-tight text-ink sm:text-7xl">
             Pilih cara Anda masuk ke SnapyOS.
           </h1>
           <p className="mt-5 max-w-[38rem] font-sans text-base leading-7 text-muted-foreground">
-            Buat workspace bila Anda pemilik bisnis. Bila Anda bergabung sebagai
-            staf, mintalah undangan dari owner.
+            Buat workspace bila Anda pemilik bisnis. Bila Anda bergabung sebagai staf, mintalah
+            undangan dari owner.
           </p>
         </header>
         <div className="grid gap-5 md:grid-cols-2">
@@ -46,8 +44,7 @@ export default async function WelcomePage() {
               Saya pemilik bisnis
             </h2>
             <p className="mt-3 max-w-[31rem] font-sans text-base leading-7 text-ink">
-              Buat workspace photobox untuk mengatur booth, paket, dan
-              operasional dari satu tempat.
+              Buat workspace photobox untuk mengatur booth, paket, dan operasional dari satu tempat.
             </p>
             <Link
               href="/onboarding/create-business"
@@ -68,8 +65,8 @@ export default async function WelcomePage() {
               Saya bergabung sebagai staf
             </h2>
             <p className="mt-3 max-w-[31rem] font-sans text-base leading-7 text-muted-foreground">
-              Kirim email akun Anda ke owner, lalu mereka dapat mengundang Anda
-              melalui workspace bisnis.
+              Kirim email akun Anda ke owner, lalu mereka dapat mengundang Anda melalui workspace
+              bisnis.
             </p>
             <p className="mt-6 border-2 border-ink bg-bg px-4 py-3 font-mono text-sm font-bold break-all text-ink">
               {user.email}

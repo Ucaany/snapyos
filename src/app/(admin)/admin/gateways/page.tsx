@@ -44,9 +44,9 @@ export default async function AdminGatewaysPage({
         <CardHeader>
           <CardTitle>Status Provider Global</CardTitle>
           <CardDescription>
-            Nonaktifkan provider → credential aktif tenant dilewati (checkout
-            fallback aggregator). Dana transaksi tidak pernah disimpan di sini -
-            secret credential hanya di dashboard owner.
+            Nonaktifkan provider → credential aktif tenant dilewati (checkout fallback aggregator).
+            Dana transaksi tidak pernah disimpan di sini - secret credential hanya di dashboard
+            owner.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -101,9 +101,11 @@ export default async function AdminGatewaysPage({
             {"/// BELUM ADA CREDENTIAL"}
           </p>
           <p className="max-w-[55ch] text-sm leading-relaxed text-muted-foreground">
-            Belum ada tenant yang memasang credential direct merchant. Owner
-            mengelola dari{" "}
-            <Link href="/dashboard/payment" className="font-bold underline decoration-ink/40 underline-offset-2 hover:bg-muted">
+            Belum ada tenant yang memasang credential direct merchant. Owner mengelola dari{" "}
+            <Link
+              href="/dashboard/payment"
+              className="font-bold underline decoration-ink/40 underline-offset-2 hover:bg-muted"
+            >
               /dashboard/payment
             </Link>
             .

@@ -26,14 +26,14 @@ Konsolidasi seluruh test POS + memastikan nol regresi existing. Semua unit test 
 
 ## 2. Inventory Test POS
 
-| File | Cakupan | Dibuat di |
-|---|---|---|
-| `tests/pos-math.test.ts` | subtotal/gross/discount-hook/qty/number format WIB + retry-on-conflict | Phase 3 |
-| `tests/pos-validators.test.ts` | schema produk/order (photoboxId wajib)/manual-pay (enum cash/bank_transfer/other), qty bound, items min/max | Phase 3 |
-| `tests/pos-entitlement.test.ts` | hasPosEntitlement × status subscription × add-on status; POS_NOT_SUBSCRIBED | Phase 2 |
-| `tests/rbac.test.ts` (extend) | matrix owner/manager/staff + `pos:*` (staff sell/read ✅, manage ❌) | Phase 2 |
-| `tests/pos-orders.test.ts` | create/cancel/pay-manual: scoping 404/403/409, POS_BOOTH_DISABLED, snapshot, stock pre-check, pay 2× → 1 transactions row, balances tak berubah | Phase 3 |
-| `tests/pos-reports.test.ts` | split POS/kiosk, by-product/booth/cashier, snapshot regression, export kolom SUMBER | Phase 5 |
+| File                            | Cakupan                                                                                                                                         | Dibuat di |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| `tests/pos-math.test.ts`        | subtotal/gross/discount-hook/qty/number format WIB + retry-on-conflict                                                                          | Phase 3   |
+| `tests/pos-validators.test.ts`  | schema produk/order (photoboxId wajib)/manual-pay (enum cash/bank_transfer/other), qty bound, items min/max                                     | Phase 3   |
+| `tests/pos-entitlement.test.ts` | hasPosEntitlement × status subscription × add-on status; POS_NOT_SUBSCRIBED                                                                     | Phase 2   |
+| `tests/rbac.test.ts` (extend)   | matrix owner/manager/staff + `pos:*` (staff sell/read ✅, manage ❌)                                                                            | Phase 2   |
+| `tests/pos-orders.test.ts`      | create/cancel/pay-manual: scoping 404/403/409, POS_BOOTH_DISABLED, snapshot, stock pre-check, pay 2× → 1 transactions row, balances tak berubah | Phase 3   |
+| `tests/pos-reports.test.ts`     | split POS/kiosk, by-product/booth/cashier, snapshot regression, export kolom SUMBER                                                             | Phase 5   |
 
 Estimasi total kasus: ±45. Setiap kasus punya nama deskriptif pola existing (`test("...")`).
 
@@ -69,10 +69,10 @@ Status aktual per audit 2026-08-30:
 - **`tests/pos-orders.test.ts`: BELUM ADA saat audit — dibuat pada eksekusi docs-sync ini (lihat hasil update di bawah; unit murni: schema order/manual-pay, `computePosTotals` edge case, `posOrderNumber` WIB, `posDayRange`, evaluator entitlement).** Kasus action negative ber-DB (scoping 404/403/409 live) tetap tidak tercakup — repo tidak punya harness integrasi DB; cakupan via pola "server tipis + lib murni".
 - Regression existing: tidak ada test existing yang dimodifikasi (verifikasi §3 lulus).
 
-| Tanggal | Suite | Pass | Fail | Catatan |
-|---|---|---|---|---|
-| 2026-08-30 | `node --test tests/*.test.ts` (23 file) | 203 | 0 | Audit pra docs-sync; POS math/validators/entitlement/reports + rbac extend hijau |
-| 2026-08-30 | + `tests/pos-orders.test.ts` (baru, eksekusi docs-sync) | lihat laporan akhir eksekusi ini | 0 | Unit murni tanpa network (pola repo) |
+| Tanggal    | Suite                                                   | Pass                             | Fail | Catatan                                                                          |
+| ---------- | ------------------------------------------------------- | -------------------------------- | ---- | -------------------------------------------------------------------------------- |
+| 2026-08-30 | `node --test tests/*.test.ts` (23 file)                 | 203                              | 0    | Audit pra docs-sync; POS math/validators/entitlement/reports + rbac extend hijau |
+| 2026-08-30 | + `tests/pos-orders.test.ts` (baru, eksekusi docs-sync) | lihat laporan akhir eksekusi ini | 0    | Unit murni tanpa network (pola repo)                                             |
 
 ---
 

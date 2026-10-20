@@ -46,12 +46,12 @@ Keputusan: subdomain = **alias murni**. Tidak ada perubahan routing/link app; se
 
 ## 3. File & Perubahan
 
-| File | Perubahan |
-|---|---|
-| `src/middleware.ts` (BARU — repo saat ini tanpa middleware) | Host strict-match `pos.${ROOT_DOMAIN}` + rewrite `/pos/*`; selain itu pass |
-| `src/lib/auth.ts` | `cookies: { sessionToken: { domain: process.env.ROOT_DOMAIN ? "." + process.env.ROOT_DOMAIN : undefined } }` — hanya aktif jika env terpasang |
-| `.env.example` | Tambah `ROOT_DOMAIN=` (kosong = perilaku lama host-only) |
-| `vercel.json` / Vercel dashboard | Wildcard domain `*.rootdomain.com` (ops, di luar repo) |
+| File                                                        | Perubahan                                                                                                                                     |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/middleware.ts` (BARU — repo saat ini tanpa middleware) | Host strict-match `pos.${ROOT_DOMAIN}` + rewrite `/pos/*`; selain itu pass                                                                    |
+| `src/lib/auth.ts`                                           | `cookies: { sessionToken: { domain: process.env.ROOT_DOMAIN ? "." + process.env.ROOT_DOMAIN : undefined } }` — hanya aktif jika env terpasang |
+| `.env.example`                                              | Tambah `ROOT_DOMAIN=` (kosong = perilaku lama host-only)                                                                                      |
+| `vercel.json` / Vercel dashboard                            | Wildcard domain `*.rootdomain.com` (ops, di luar repo)                                                                                        |
 
 ---
 

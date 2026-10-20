@@ -9,22 +9,22 @@
  */
 
 export type VisibilityCandidate = {
-  id: string
+  id: string;
   /** Layout jsonb mentah; null/{} = template legacy. */
-  layout: unknown
-}
+  layout: unknown;
+};
 
 export type VisibilityOptions = {
   /** Template yang di-assign ke paket (null = tanpa filter assignment). */
-  assignedIds: ReadonlySet<string> | null
+  assignedIds: ReadonlySet<string> | null;
   /**
    * `packages.photo_count`. Dipertahankan di signature agar pemanggil tidak
    * perlu berubah; tidak lagi menyaring daftar.
    */
-  photoCount?: number | null
+  photoCount?: number | null;
   /** Jumlah slot template — tidak dipakai untuk menyaring (lihat di atas). */
-  slotCountOf?: (layout: unknown) => number
-}
+  slotCountOf?: (layout: unknown) => number;
+};
 
 /**
  * Assignment package menyempitkan daftar, tapi tidak pernah mengosongkannya:
@@ -36,8 +36,8 @@ export function selectVisibleTemplates<T extends VisibilityCandidate>(
   candidates: readonly T[],
   { assignedIds }: VisibilityOptions
 ): T[] {
-  if (!assignedIds) return [...candidates]
+  if (!assignedIds) return [...candidates];
 
-  const assignedOk = candidates.filter((t) => assignedIds.has(t.id))
-  return assignedOk.length > 0 ? assignedOk : [...candidates]
+  const assignedOk = candidates.filter((t) => assignedIds.has(t.id));
+  return assignedOk.length > 0 ? assignedOk : [...candidates];
 }

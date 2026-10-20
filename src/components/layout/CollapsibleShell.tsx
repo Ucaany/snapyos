@@ -1,13 +1,7 @@
 "use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import {
-  cloneElement,
-  isValidElement,
-  useState,
-  type CSSProperties,
-  type ReactNode,
-} from "react";
+import { cloneElement, isValidElement, useState, type CSSProperties, type ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 import { SIDEBAR_COLLAPSE_COOKIE } from "@/lib/sidebar-collapse";
@@ -63,11 +57,7 @@ export function CollapsibleShell({
             title={collapsed ? "Perluas sidebar" : "Ciutkan sidebar"}
             className="relative flex size-8 items-center justify-center border-2 border-ink bg-surface text-ink transition-colors after:absolute after:-inset-1.5 hover:bg-accent active:translate-y-[2px]"
           >
-            {collapsed ? (
-              <ChevronRight className="size-4" />
-            ) : (
-              <ChevronLeft className="size-4" />
-            )}
+            {collapsed ? <ChevronRight className="size-4" /> : <ChevronLeft className="size-4" />}
           </button>
         </div>
         <div className="min-h-0 flex-1 md:overflow-y-auto">{sidebarEl}</div>

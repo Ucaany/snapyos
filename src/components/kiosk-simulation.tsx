@@ -17,9 +17,9 @@ import {
 } from "lucide-react";
 
 const packages = [
-  { id: "single", label: "Single strip", price: 15000 },
-  { id: "double", label: "Double strip", price: 25000 },
-  { id: "premium", label: "Premium (4 photos)", price: 35000 },
+  { id: "single", label: "Strip tunggal", price: 15000 },
+  { id: "double", label: "Strip ganda", price: 25000 },
+  { id: "premium", label: "Premium (4 foto)", price: 35000 },
 ];
 
 const filters = [
@@ -181,7 +181,7 @@ export function KioskSimulation() {
     if (i === stepIdx + 1) {
       const current = steps[stepIdx];
       if (current?.id === "pay") simulatePayment();
-       if (current?.id === "capture") void startCamera();
+      if (current?.id === "capture") void startCamera();
       setStepIdx(i);
     }
   };
@@ -217,7 +217,7 @@ export function KioskSimulation() {
                         : done
                           ? "border-border bg-background text-foreground"
                           : "border-border bg-background text-muted-foreground",
-                      i > stepIdx + 1 && "cursor-not-allowed opacity-50",
+                      i > stepIdx + 1 && "cursor-not-allowed opacity-50"
                     )}
                   >
                     <div
@@ -227,7 +227,7 @@ export function KioskSimulation() {
                           ? "bg-foreground text-background"
                           : done
                             ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground",
+                            : "bg-muted text-muted-foreground"
                       )}
                     >
                       {done ? <CheckIcon className="size-4" /> : s.icon}
@@ -244,7 +244,7 @@ export function KioskSimulation() {
             {stepIdx === 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-medium text-muted-foreground">
-                  Pilih paket
+                  Pilih paket (harga contoh)
                 </p>
                 <div className="flex flex-col gap-2">
                   {packages.map((p) => (
@@ -252,16 +252,14 @@ export function KioskSimulation() {
                       key={p.id}
                       onClick={() => setSelectedPackage(p.id)}
                       className={cn(
-                        "flex items-center justify-between rounded-none border-2 border-ink px-3 py-2 text-sm transition-colors",
+                        "flex min-h-11 items-center justify-between rounded-none border-2 border-ink px-3 py-2 text-sm transition-colors",
                         selectedPackage === p.id
                           ? "border-foreground bg-foreground text-background"
-                          : "border-border bg-background text-foreground hover:bg-muted",
+                          : "border-border bg-background text-foreground hover:bg-muted"
                       )}
                     >
                       <span className="font-medium">{p.label}</span>
-                      <span className="text-xs opacity-70">
-                        {formatIDR(p.price)}
-                      </span>
+                      <span className="text-xs opacity-70">{formatIDR(p.price)}</span>
                     </button>
                   ))}
                 </div>
@@ -270,9 +268,7 @@ export function KioskSimulation() {
 
             {stepIdx === 1 && (
               <div className="space-y-3">
-                <p className="text-xs font-medium text-muted-foreground">
-                  Pembayaran QRIS
-                </p>
+                <p className="text-xs font-medium text-muted-foreground">Pembayaran QRIS</p>
                 <div className="flex flex-col items-center gap-3 rounded-none border-2 border-ink bg-surface p-4">
                   {!paid ? (
                     <>
@@ -290,10 +286,7 @@ export function KioskSimulation() {
                         Pembayaran berhasil
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {formatIDR(
-                          packages.find((p) => p.id === selectedPackage)
-                            ?.price ?? 0,
-                        )}
+                        {formatIDR(packages.find((p) => p.id === selectedPackage)?.price ?? 0)}
                       </span>
                     </div>
                   )}
@@ -303,9 +296,7 @@ export function KioskSimulation() {
 
             {stepIdx === 2 && (
               <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">
-                  Pilih frame
-                </p>
+                <p className="text-xs font-medium text-muted-foreground">Pilih frame</p>
                 <div className="grid grid-cols-3 gap-2">
                   {frames.map((f) => (
                     <button
@@ -315,35 +306,36 @@ export function KioskSimulation() {
                         "flex min-h-20 flex-col items-center justify-center gap-2 rounded-none border-2 border-ink px-2 py-2 text-xs font-medium transition-colors",
                         selectedFrame === f.id
                           ? "border-foreground bg-foreground text-background"
-                          : "border-border bg-background text-muted-foreground hover:bg-muted",
+                          : "border-border bg-background text-muted-foreground hover:bg-muted"
                       )}
                     >
-                      <span className={cn("box-border block size-9 shrink-0 bg-muted", f.className)} aria-hidden />
+                      <span
+                        className={cn("box-border block size-9 shrink-0 bg-muted", f.className)}
+                        aria-hidden
+                      />
                       {f.label}
                     </button>
                   ))}
                 </div>
                 <p className="pt-1 text-[11px] text-muted-foreground">
-                  Preview di samping berubah saat frame dipilih.
+                  Pratinjau di samping berubah saat frame dipilih.
                 </p>
               </div>
             )}
 
             {stepIdx === 3 && (
               <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">
-                  Pilih filter
-                </p>
+                <p className="text-xs font-medium text-muted-foreground">Pilih filter</p>
                 <div className="flex flex-wrap gap-2">
                   {filters.map((f) => (
                     <button
                       key={f.id}
                       onClick={() => setSelectedFilter(f.id)}
                       className={cn(
-                        "flex items-center gap-1.5 rounded-none border-2 border-ink px-3 py-1.5 text-xs font-medium transition-colors",
+                        "flex min-h-11 items-center gap-1.5 rounded-none border-2 border-ink px-3 py-1.5 text-xs font-medium transition-colors",
                         selectedFilter === f.id
                           ? "border-foreground bg-foreground text-background"
-                          : "border-border bg-background text-muted-foreground hover:bg-muted",
+                          : "border-border bg-background text-muted-foreground hover:bg-muted"
                       )}
                     >
                       {f.id === "original" ? (
@@ -359,14 +351,14 @@ export function KioskSimulation() {
                 <button
                   onClick={() => setMirror((m) => !m)}
                   className={cn(
-                    "mt-2 flex items-center gap-1.5 rounded-none border-2 border-ink px-3 py-1.5 text-xs font-medium transition-colors",
+                    "mt-2 flex min-h-11 items-center gap-1.5 rounded-none border-2 border-ink px-3 py-1.5 text-xs font-medium transition-colors",
                     mirror
                       ? "border-foreground bg-foreground text-background"
-                      : "border-border bg-background text-muted-foreground hover:bg-muted",
+                      : "border-border bg-background text-muted-foreground hover:bg-muted"
                   )}
                 >
                   <ImageIcon className="size-3.5" />
-                  {mirror ? "Mirror aktif" : "Tidak mirror"}
+                  {mirror ? "Cermin aktif" : "Cermin mati"}
                 </button>
               </div>
             )}
@@ -379,22 +371,22 @@ export function KioskSimulation() {
             {stepIdx === 2 ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-background p-5 sm:p-6">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                  Preview frame
+                  Pratinjau frame
                 </p>
                 <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center">
                   <div
                     className={cn(
                       "relative flex aspect-[3/4] max-h-full w-[min(62%,220px)] min-w-[120px] items-center justify-center overflow-hidden bg-muted box-border",
-                      frames.find((f) => f.id === selectedFrame)?.className,
+                      frames.find((f) => f.id === selectedFrame)?.className
                     )}
                   >
                     <div className="flex h-full w-full items-center justify-center border border-dashed border-foreground/30 bg-muted/70">
-                    <div className="text-center">
-                      <ImageIcon className="mx-auto size-8 text-muted-foreground" />
-                      <p className="mt-2 text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
-                        Area foto
-                      </p>
-                    </div>
+                      <div className="text-center">
+                        <ImageIcon className="mx-auto size-8 text-muted-foreground" />
+                        <p className="mt-2 text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
+                          Area foto
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -409,9 +401,9 @@ export function KioskSimulation() {
               <div className="absolute inset-0 flex flex-col p-4">
                 <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden">
                   <div
-                      className={cn(
-                        "box-border max-h-full max-w-full overflow-hidden bg-background",
-                      frames.find((f) => f.id === selectedFrame)?.className,
+                    className={cn(
+                      "box-border max-h-full max-w-full overflow-hidden bg-background",
+                      frames.find((f) => f.id === selectedFrame)?.className
                     )}
                   >
                     <img
@@ -419,7 +411,7 @@ export function KioskSimulation() {
                       alt="Hasil foto"
                       className={cn(
                         "block max-h-full max-w-full object-contain",
-                        filters.find((f) => f.id === selectedFilter)?.className,
+                        filters.find((f) => f.id === selectedFilter)?.className
                       )}
                     />
                   </div>
@@ -430,12 +422,8 @@ export function KioskSimulation() {
                       <QrCodeIcon className="size-7 text-foreground" />
                     </div>
                     <div className="space-y-0.5">
-                      <p className="text-xs font-medium text-foreground">
-                        Ambil hasil digital
-                      </p>
-                      <p className="text-[10px] text-muted-foreground">
-                        Scan QR untuk download
-                      </p>
+                      <p className="text-xs font-medium text-foreground">Ambil hasil digital</p>
+                      <p className="text-[10px] text-muted-foreground">Scan QR untuk mengunduh</p>
                     </div>
                   </div>
                 )}
@@ -451,7 +439,7 @@ export function KioskSimulation() {
                     "absolute inset-0 size-full object-cover",
                     mirror && "-scale-x-100",
                     filters.find((f) => f.id === selectedFilter)?.className,
-                    !cameraOn && "hidden",
+                    !cameraOn && "hidden"
                   )}
                 />
                 {!cameraOn && (
@@ -473,9 +461,7 @@ export function KioskSimulation() {
                       exit={{ opacity: 0, scale: 0.8 }}
                       className="pointer-events-none absolute inset-0 flex items-center justify-center"
                     >
-                      <span className="text-7xl font-semibold text-foreground">
-                        {countdown}
-                      </span>
+                      <span className="text-7xl font-semibold text-foreground">{countdown}</span>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -483,17 +469,17 @@ export function KioskSimulation() {
             )}
 
             {/* Corner brackets */}
-            {["top-2 left-2 border-t-2 border-l-2", "top-2 right-2 border-t-2 border-r-2", "bottom-2 left-2 border-b-2 border-l-2", "bottom-2 right-2 border-b-2 border-r-2"].map(
-              (cls) => (
-                <div
-                  key={cls}
-                  className={cn(
-                    "pointer-events-none absolute size-6 border-foreground/40",
-                    cls,
-                  )}
-                />
-              ),
-            )}
+            {[
+              "top-2 left-2 border-t-2 border-l-2",
+              "top-2 right-2 border-t-2 border-r-2",
+              "bottom-2 left-2 border-b-2 border-l-2",
+              "bottom-2 right-2 border-b-2 border-r-2",
+            ].map((cls) => (
+              <div
+                key={cls}
+                className={cn("pointer-events-none absolute size-6 border-foreground/40", cls)}
+              />
+            ))}
 
             {/* Capture flash */}
             <AnimatePresence>
@@ -526,7 +512,7 @@ export function KioskSimulation() {
                 <Button
                   size="sm"
                   variant="outline"
-                   onClick={() => void startCamera()}
+                  onClick={() => void startCamera()}
                   disabled={cameraOn}
                 >
                   Nyalakan kamera
@@ -537,9 +523,7 @@ export function KioskSimulation() {
               <>
                 <div className="flex items-center gap-2 rounded-none border-2 border-ink bg-surface px-3 py-1.5">
                   <CheckIcon className="size-4 text-foreground" />
-                  <span className="text-xs font-medium text-foreground">
-                    Foto selesai
-                  </span>
+                  <span className="text-xs font-medium text-foreground">Foto selesai</span>
                 </div>
                 <Button size="sm" onClick={() => setStepIdx(4)}>
                   Lihat hasil

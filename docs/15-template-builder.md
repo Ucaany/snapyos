@@ -137,20 +137,20 @@ Output = full resolusi design canvas (PNG/JPEG sesuai pipeline finalize eksistin
 
 | Tahap                | Perubahan                                                                                                                                      |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| §5.4 Choose Template | Thumbnail WebP 480px; semua frame aktif tampil untuk paket mana pun                                                          |
+| §5.4 Choose Template | Thumbnail WebP 480px; semua frame aktif tampil untuk paket mana pun                                                                            |
 | §5.6 Capture         | Jumlah foto = `package.photo_count`; slot berlebih diisi bergiliran (`fillSlots`)                                                              |
 | §5.9 Editor          | Zoom/pan menyesuaikan foto **di dalam slot** (bukan full canvas); zoom minimal = cover-fit; filter/adjust/sticker/text tetap di atas composite |
 | §5.15 Print          | `PrintLayoutRenderer` memakai `composeFrame` — hasil cetak identik dengan preview builder                                                      |
 
 ## 15.6 API (patch `08-api-spec.md` §8.7)
 
-| Endpoint                                              | Perubahan                                                                           |
-| ----------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `GET/POST /api/v1/business/:businessId/templates`     | terima/kembalikan `layout` (server validation §15.2)                                |
-| `POST /api/v1/business/:businessId/templates/upload`  | multipart PNG; response berisi `layout` kosong siap dibuilder                       |
-| `PATCH /api/v1/business/:businessId/templates/:id`    | update `layout` (draft/publish via `is_active`)                                     |
+| Endpoint                                              | Perubahan                                                                |
+| ----------------------------------------------------- | ------------------------------------------------------------------------ |
+| `GET/POST /api/v1/business/:businessId/templates`     | terima/kembalikan `layout` (server validation §15.2)                     |
+| `POST /api/v1/business/:businessId/templates/upload`  | multipart PNG; response berisi `layout` kosong siap dibuilder            |
+| `PATCH /api/v1/business/:businessId/templates/:id`    | update `layout` (draft/publish via `is_active`)                          |
 | `GET /api/v1/public/:businessSlug/templates?package=` | include `layout` + frame signed URL + thumbnail 480px; tanpa filter slot |
-| `POST /sessions`                                      | memastikan `template_id` pilihan tersimpan (behavior eksisting)                     |
+| `POST /sessions`                                      | memastikan `template_id` pilihan tersimpan (behavior eksisting)          |
 
 Tidak ada endpoint baru — CRUD lama cukup.
 

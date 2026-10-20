@@ -144,7 +144,10 @@ test("printSheets: single menggilir foto, copies menggandakan lembar", () => {
 
 test("printSheets: strip menumpuk semua foto dalam satu lembar", () => {
   const plan = printPlan(2, 3, "photostrip", "strip");
-  assert.deepEqual(printSheets(plan, 3, 1), [[0, 1, 2], [0, 1, 2]]);
+  assert.deepEqual(printSheets(plan, 3, 1), [
+    [0, 1, 2],
+    [0, 1, 2],
+  ]);
 });
 
 test("printSheets: digital tidak menghasilkan lembar", () => {

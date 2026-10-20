@@ -26,7 +26,7 @@ function VerticalMarquee({
   useEffect(() => {
     if (onItemsRef && containerRef.current) {
       const items = Array.from(
-        containerRef.current.querySelectorAll(".marquee-item"),
+        containerRef.current.querySelectorAll(".marquee-item")
       ) as HTMLElement[];
       onItemsRef(items);
     }
@@ -46,7 +46,7 @@ function VerticalMarquee({
         className={cn(
           "flex shrink-0 flex-col animate-marquee-vertical",
           reverse && "[animation-direction:reverse]",
-          pauseOnHover && "group-hover:[animation-play-state:paused]",
+          pauseOnHover && "group-hover:[animation-play-state:paused]"
         )}
       >
         {children}
@@ -55,7 +55,7 @@ function VerticalMarquee({
         className={cn(
           "flex shrink-0 flex-col animate-marquee-vertical",
           reverse && "[animation-direction:reverse]",
-          pauseOnHover && "group-hover:[animation-play-state:paused]",
+          pauseOnHover && "group-hover:[animation-play-state:paused]"
         )}
         aria-hidden="true"
       >
@@ -65,13 +65,7 @@ function VerticalMarquee({
   );
 }
 
-const marqueeItems = [
-	"Photobox",
-	"Pembayaran QRIS",
-	"Pendapatan",
-	"Template & Frame",
-	"Voucher",
-];
+const marqueeItems = ["Photobox", "Pembayaran QRIS", "Pendapatan", "Template & Frame", "Voucher"];
 
 export default function CTAWithVerticalMarquee() {
   const marqueeRef = useRef<HTMLDivElement>(null);
@@ -116,16 +110,16 @@ export default function CTAWithVerticalMarquee() {
               Mulai dengan satu booth
             </h2>
             <p className="text-sm text-muted-foreground md:text-base">
-              Jalankan photobox pertama Anda, terima pembayaran QRIS, dan
+              Jalankan photobox pertama Anda, terima pembayaran QRIS di paket Growth ke atas, dan
               pantau pendapatan dari satu dashboard.
             </p>
             <div className="flex flex-wrap gap-3">
-              <a href="/register">
-                <Button size="sm">Buat Bisnis</Button>
+              <a href="#pricing">
+                <Button size="sm">Lihat paket</Button>
               </a>
               <a href="/kontak">
                 <Button size="sm" variant="outline">
-                  Jadwalkan Demo
+                  Diskusi Demo
                 </Button>
               </a>
             </div>

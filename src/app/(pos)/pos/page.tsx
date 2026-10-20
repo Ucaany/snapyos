@@ -9,7 +9,7 @@ import { getActiveBusiness, requireUser } from "@/lib/tenant";
 import { listPosBooths } from "@/server/pos-products";
 
 export const metadata: Metadata = {
-  title: "Terminal POS — SnapyOS",
+  title: "Terminal POS | SnapyOS",
 };
 
 /** /pos — gate: pilih booth aktif (docs/pos/03 §5.2). Booth off tidak tampil;
@@ -21,15 +21,13 @@ export default async function PosGatePage() {
   const active = await getActiveBusiness(user.id);
   if (!active) redirect("/dashboard");
 
-  const booths = (await listPosBooths(user.id, active.business.id)).filter(
-    (b) => b.pos_enabled
-  );
+  const booths = (await listPosBooths(user.id, active.business.id)).filter((b) => b.pos_enabled);
 
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-[1100px] flex-col gap-8 p-6 md:p-10">
       <header>
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {"/// TERMINAL POS — " + active.business.name.toUpperCase()}
+          {"/// TERMINAL POS: " + active.business.name.toUpperCase()}
         </p>
         <h1 className="mt-2 font-display text-4xl uppercase tracking-tight md:text-5xl">
           Pilih booth
@@ -63,11 +61,9 @@ export default async function PosGatePage() {
               >
                 <span className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
                   <Camera className="size-4" aria-hidden />
-                  {booth.outlet_name ?? "—"}
+                  {booth.outlet_name ?? "-"}
                 </span>
-                <span className="font-display text-xl uppercase tracking-tight">
-                  {booth.name}
-                </span>
+                <span className="font-display text-xl uppercase tracking-tight">{booth.name}</span>
                 <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
                   {">>> BUKA TERMINAL"}
                 </span>

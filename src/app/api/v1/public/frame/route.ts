@@ -45,7 +45,8 @@ export async function GET(request: Request) {
     return new NextResponse("Frame too large", { status: 413 });
   }
 
-  const declaredType = (response.headers.get("content-type") ?? "").split(";")[0]?.trim().toLowerCase() ?? "";
+  const declaredType =
+    (response.headers.get("content-type") ?? "").split(";")[0]?.trim().toLowerCase() ?? "";
   if (!ALLOWED_FRAME_MIME.includes(declaredType as (typeof ALLOWED_FRAME_MIME)[number])) {
     return new NextResponse("Frame is not an image", { status: 415 });
   }

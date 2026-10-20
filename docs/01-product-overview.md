@@ -34,7 +34,7 @@ Membantu UMKM Photobox memiliki software Photobox mereka sendiri yang **profesio
 
 SnapyOS membuat satu alur:
 
-> *membuka bisnis Photobox → menjalankan Photobox → menerima pembayaran → mencatat transaksi → melihat pemasukan → mengelola outlet*
+> _membuka bisnis Photobox → menjalankan Photobox → menerima pembayaran → mencatat transaksi → melihat pemasukan → mengelola outlet_
 
 menjadi **satu sistem**.
 
@@ -51,15 +51,15 @@ Pemilik bisnis Photobox menghadapi:
 
 ## 1.4 Product Goals
 
-| # | Goal | Ukuran |
-|---|------|--------|
-| 1 | Owner bisa meluncurkan Photobox pertamanya dengan cepat | < 15 menit dari register → Photobox live |
-| 2 | Customer bisa membayar via QRIS lalu mengambil foto tanpa login | alur mulus pay-first: pilih package → bayar → foto |
-| 3 | Revenue & transaksi tercatat otomatis & real-time | setiap payment sukses → transaction otomatis |
-| 4 | Backend adalah source of truth untuk harga, voucher, & payment | final amount dihitung server-side |
-| 5 | Branding owner muncul di seluruh customer app | welcome screen, template, result memakai identitas owner |
-| 6 | Arsitektur multi-tenant yang aman | business A tidak bisa melihat data business B |
-| 7 | Visual identity Neo-Brutalism yang kuat & konsisten | seluruh aplikasi |
+| #   | Goal                                                            | Ukuran                                                   |
+| --- | --------------------------------------------------------------- | -------------------------------------------------------- |
+| 1   | Owner bisa meluncurkan Photobox pertamanya dengan cepat         | < 15 menit dari register → Photobox live                 |
+| 2   | Customer bisa membayar via QRIS lalu mengambil foto tanpa login | alur mulus pay-first: pilih package → bayar → foto       |
+| 3   | Revenue & transaksi tercatat otomatis & real-time               | setiap payment sukses → transaction otomatis             |
+| 4   | Backend adalah source of truth untuk harga, voucher, & payment  | final amount dihitung server-side                        |
+| 5   | Branding owner muncul di seluruh customer app                   | welcome screen, template, result memakai identitas owner |
+| 6   | Arsitektur multi-tenant yang aman                               | business A tidak bisa melihat data business B            |
+| 7   | Visual identity Neo-Brutalism yang kuat & konsisten             | seluruh aplikasi                                         |
 
 ## 1.5 Non-Goals
 
@@ -95,21 +95,25 @@ SnapyOS fokus pada: **PHOTOBOX + BUSINESS MANAGEMENT + PAYMENT + REVENUE + OPERA
 ## 1.7 User Personas
 
 ### Persona 1 — New Photobox Owner
+
 - **Karakteristik:** Baru memulai bisnis, tidak terlalu paham teknologi, butuh software siap pakai, budget terbatas, ingin setup cepat.
 - **Needs:** Photobox software, branding, template, package, payment, revenue tracking.
 - **Pain:** Takut teknis, tidak mau maintain software, butuh harga terjangkau.
 
 ### Persona 2 — Existing UMKM
+
 - **Karakteristik:** Sudah punya Photobox & customer, transaksi mulai banyak, masih spreadsheet/manual.
 - **Needs:** Dashboard, transactions, revenue, customer data, templates, finance.
 - **Pain:** Rekonsiliasi manual, data tersebar, sulit tahu profit.
 
 ### Persona 3 — Multi-Outlet Owner
+
 - **Karakteristik:** Beberapa outlet, beberapa booth, punya staff.
 - **Needs:** Multi outlet, multi booth, staff, analytics, centralized dashboard, financial reporting.
 - **Pain:** Tidak ada visibilitas per outlet/booth, kontrol staff terbatas.
 
 ### Persona 4 — Event / Agency
+
 - **Karakteristik:** Pakai Photobox untuk event, butuh branding berbeda per event.
 - **Needs:** Event mode, custom branding, custom templates, QR photo delivery, event analytics.
 - **Pain:** Harus re-setup branding per event, butuh hasil cepat & terukur.

@@ -3,10 +3,14 @@ import type { GatewayProvider } from "../server/payment/providers/types.ts";
 
 export function assertPaymentCredentialOwner(role: "owner" | "manager" | "staff" | null): void {
   if (role === null) throw new ApiError("NOT_FOUND", "Business tidak ditemukan");
-  if (role !== "owner") throw new ApiError("FORBIDDEN", "Hanya owner yang mengelola payment gateway");
+  if (role !== "owner")
+    throw new ApiError("FORBIDDEN", "Hanya owner yang mengelola payment gateway");
 }
 
-export function assertPaymentCredentialTenant(row: { business_id: string } | null, businessId: string): void {
+export function assertPaymentCredentialTenant(
+  row: { business_id: string } | null,
+  businessId: string
+): void {
   if (!row || row.business_id !== businessId) {
     throw new ApiError("NOT_FOUND", "Credential payment gateway tidak ditemukan");
   }
@@ -47,7 +51,20 @@ export type PaymentCredentialPublic = {
 };
 
 export const PAYMENT_METHODS: Record<GatewayProvider, readonly string[]> = {
-  midtrans: ["qris", "gopay", "shopeepay", "dana", "ovo", "bca", "bni", "bri", "mandiri", "permata", "alfamart", "indomaret"],
+  midtrans: [
+    "qris",
+    "gopay",
+    "shopeepay",
+    "dana",
+    "ovo",
+    "bca",
+    "bni",
+    "bri",
+    "mandiri",
+    "permata",
+    "alfamart",
+    "indomaret",
+  ],
   tripay: ["QRIS", "BCAVA", "BNIVA", "BRIVA", "MANDIRIVA", "PERMATAVA", "ALFAMART", "INDOMARET"],
   pakasir: ["qris"],
 };
@@ -74,7 +91,10 @@ export function canTestPaymentCredential(provider: GatewayProvider): boolean {
   return provider === "midtrans" || provider === "pakasir" || provider === "tripay";
 }
 
-export function allowedPaymentMethods(provider: GatewayProvider, methods: readonly string[]): string[] {
+export function allowedPaymentMethods(
+  provider: GatewayProvider,
+  methods: readonly string[]
+): string[] {
   const supported = PAYMENT_METHODS[provider];
   return [...new Set(methods)].filter((method) => supported.includes(method));
 }
@@ -104,7 +124,8 @@ export function redactPaymentCredential(row: PaymentCredentialStored): PaymentCr
  * Dipakai registry (resolve credential) + payment-methods (kiosk list).
  */
 export function gatewayEnvironment(): PaymentCredentialEnvironment {
-  return (process.env.PAYMENT_GATEWAY_ENV ?? (process.env.NODE_ENV === "production" ? "production" : "sandbox")) === "production"
+  return (process.env.PAYMENT_GATEWAY_ENV ??
+    (process.env.NODE_ENV === "production" ? "production" : "sandbox")) === "production"
     ? "production"
     : "sandbox";
 }

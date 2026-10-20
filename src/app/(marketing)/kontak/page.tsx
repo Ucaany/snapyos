@@ -29,15 +29,20 @@ export default function ContactPage() {
               Bicarakan kebutuhan booth Anda
             </h1>
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
-              Kirim detail singkat, lanjutkan chat di WhatsApp yang terbuka otomatis.
-              Untuk pertanyaan non-urgent, email juga ditanggapi. Panduan mandiri ada di dokumentasi.
+              Kirim detail singkat, lanjutkan chat di WhatsApp yang terbuka otomatis. Untuk
+              pertanyaan yang tidak mendesak, email juga ditanggapi. Panduan mandiri ada di
+              dokumentasi.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <Button nativeButton={false} render={<Link href="/docs" />}>
                 Baca dokumentasi
                 <ArrowRight data-icon="inline-end" />
               </Button>
-              <Button variant="outline" nativeButton={false} render={<a href="mailto:hello@snapyos.id" />}>
+              <Button
+                variant="outline"
+                nativeButton={false}
+                render={<a href="mailto:hello@snapyos.id" />}
+              >
                 hello@snapyos.id
               </Button>
             </div>
@@ -55,7 +60,9 @@ export default function ContactPage() {
               <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
                 Kirim pesan
               </p>
-              <h2 className="mt-2 text-3xl font-display font-black uppercase tracking-tight sm:text-4xl">Ceritakan booth Anda</h2>
+              <h2 className="mt-2 text-3xl font-display font-black uppercase tracking-tight sm:text-4xl">
+                Ceritakan booth Anda
+              </h2>
               <ContactForm />
             </div>
             <div className="flex flex-col gap-3">
@@ -63,10 +70,12 @@ export default function ContactPage() {
                 <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
                   Langsung
                 </p>
-                <h2 className="mt-2 text-xl font-display font-black uppercase tracking-tight md:text-2xl">Email tim</h2>
+                <h2 className="mt-2 text-xl font-display font-black uppercase tracking-tight md:text-2xl">
+                  Email tim
+                </h2>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
                   <a
-                    className="font-semibold text-ink underline underline-offset-4"
+                    className="font-semibold text-ink underline underline-offset-4 [@media(pointer:coarse)]:inline-flex [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:items-center"
                     href="mailto:hello@snapyos.id"
                   >
                     hello@snapyos.id
@@ -77,7 +86,9 @@ export default function ContactPage() {
                 <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
                   Mandiri
                 </p>
-                <h2 className="mt-2 text-xl font-display font-black uppercase tracking-tight md:text-2xl">Panduan dan perangkat</h2>
+                <h2 className="mt-2 text-xl font-display font-black uppercase tracking-tight md:text-2xl">
+                  Panduan dan perangkat
+                </h2>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
                   Alur sesi foto, setup booth, QRIS, dan troubleshooting ada di satu halaman
                   dokumentasi.

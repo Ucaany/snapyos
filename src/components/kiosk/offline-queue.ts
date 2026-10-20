@@ -53,7 +53,10 @@ function openDb(): Promise<IDBDatabase> {
   });
 }
 
-function tx<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
+function tx<T>(
+  mode: IDBTransactionMode,
+  run: (store: IDBObjectStore) => IDBRequest<T>
+): Promise<T> {
   return openDb().then(
     (db) =>
       new Promise<T>((resolve, reject) => {
@@ -76,7 +79,10 @@ export async function removeQueued(sessionId: string): Promise<void> {
 
 export async function listQueued(): Promise<QueuedFinalize[]> {
   try {
-    const items = await tx<QueuedFinalize[]>("readonly", (store) => store.getAll() as IDBRequest<QueuedFinalize[]>);
+    const items = await tx<QueuedFinalize[]>(
+      "readonly",
+      (store) => store.getAll() as IDBRequest<QueuedFinalize[]>
+    );
     return items ?? [];
   } catch {
     return [];

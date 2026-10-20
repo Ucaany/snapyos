@@ -16,7 +16,13 @@ export function parseHex(hex: string | undefined | null): [number, number, numbe
 }
 
 function toHex(rgb: [number, number, number]): string {
-  return `#${rgb.map((c) => Math.round(Math.min(255, Math.max(0, c))).toString(16).padStart(2, "0")).join("")}`;
+  return `#${rgb
+    .map((c) =>
+      Math.round(Math.min(255, Math.max(0, c)))
+        .toString(16)
+        .padStart(2, "0")
+    )
+    .join("")}`;
 }
 
 export function relativeLuminance(hex: string): number {
@@ -45,11 +51,7 @@ export function mixHex(base: string, overlay: string, weight: number): string {
   const b = parseHex(overlay);
   if (!a || !b) return base;
   const w = Math.min(1, Math.max(0, weight));
-  return toHex([
-    a[0] + (b[0] - a[0]) * w,
-    a[1] + (b[1] - a[1]) * w,
-    a[2] + (b[2] - a[2]) * w,
-  ]);
+  return toHex([a[0] + (b[0] - a[0]) * w, a[1] + (b[1] - a[1]) * w, a[2] + (b[2] - a[2]) * w]);
 }
 
 const AA = 4.5;
@@ -58,12 +60,18 @@ const AA = 4.5;
  * Pilih warna teks yang terbaca di atas `background`: pakai `preferred` bila
  * lolos AA, lalu kandidat cadangan, terakhir hitam/putih mana yang lebih baik.
  */
-export function readableText(background: string, preferred: string, fallbacks: string[] = []): string {
+export function readableText(
+  background: string,
+  preferred: string,
+  fallbacks: string[] = []
+): string {
   const candidates = [preferred, ...fallbacks, "#111111", "#ffffff"];
   for (const candidate of candidates) {
     if (contrastRatio(candidate, background) >= AA) return candidate;
   }
-  return contrastRatio("#111111", background) >= contrastRatio("#ffffff", background) ? "#111111" : "#ffffff";
+  return contrastRatio("#111111", background) >= contrastRatio("#ffffff", background)
+    ? "#111111"
+    : "#ffffff";
 }
 
 /**

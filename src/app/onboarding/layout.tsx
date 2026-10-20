@@ -8,11 +8,7 @@ import { getUserMemberships, requireUser } from "@/lib/tenant";
  * docs/13 §13.6). Wajib login; jika user sudah punya membership, redirect ke
  * destination per role (owner → /dashboard, staff-only → /staff).
  */
-export default async function OnboardingLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function OnboardingLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
   if (!user) redirect("/login");
 

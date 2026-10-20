@@ -28,11 +28,7 @@ export function computeFinalAmount(grossAmount: number, discountAmount: number):
 }
 
 /** Platform fee (docs/06 §6.6): floor(pct) + flat, dipatok final_amount. */
-export function computePlatformFee(
-  finalAmount: number,
-  percent: number,
-  flat: number
-): number {
+export function computePlatformFee(finalAmount: number, percent: number, flat: number): number {
   const fee = Math.floor((finalAmount * percent) / 100) + Math.floor(flat);
   return Math.max(0, Math.min(fee, finalAmount));
 }

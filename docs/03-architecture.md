@@ -2,19 +2,19 @@
 
 ## 3.1 Tech Stack (Keputusan)
 
-| Layer         | Teknologi                                                                                                    |
-| ------------- | ------------------------------------------------------------------------------------------------------------ |
-| Frontend      | Next.js (App Router), React, TypeScript, Tailwind CSS                                                        |
-| UI Components | shadcn/ui (dikustomisasi Neo-Brutalism), shadcn/ui Charts, Lucide Icons                                      |
-| Backend       | Next.js Route Handlers + Server Actions (native, satu repo)                                                  |
-| Data          | **Supabase** — PostgreSQL + Supabase Storage (Realtime TIDAK dipakai — lihat §3.6)                           |
-| Data client   | `@supabase/supabase-js` server-only (service-role)                                                           |
-| Auth          | **Auth.js v5 (NextAuth)** — credential email/password, **JWT + DB revocation** (`auth_sessions`, lihat §3.6) |
-| Camera        | MediaDevices API (`getUserMedia`), Canvas API — kamera internal perangkat (kiosk PWA) |
+| Layer         | Teknologi                                                                                                                                          |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Frontend      | Next.js (App Router), React, TypeScript, Tailwind CSS                                                                                              |
+| UI Components | shadcn/ui (dikustomisasi Neo-Brutalism), shadcn/ui Charts, Lucide Icons                                                                            |
+| Backend       | Next.js Route Handlers + Server Actions (native, satu repo)                                                                                        |
+| Data          | **Supabase** — PostgreSQL + Supabase Storage (Realtime TIDAK dipakai — lihat §3.6)                                                                 |
+| Data client   | `@supabase/supabase-js` server-only (service-role)                                                                                                 |
+| Auth          | **Auth.js v5 (NextAuth)** — credential email/password, **JWT + DB revocation** (`auth_sessions`, lihat §3.6)                                       |
+| Camera        | MediaDevices API (`getUserMedia`), Canvas API — kamera internal perangkat (kiosk PWA)                                                              |
 | Payment       | Direct merchant owner-first: Pakasir, Midtrans, atau Tripay melalui credential business. Pakasir platform hanya untuk invoice subscription SnapyOS |
-| QR render     | `qrcode` / `qrcode.react`                                                                                    |
-| Export        | CSV (bawaan), XLSX (`exceljs`/`xlsx`), PDF (future)                                                          |
-| Deploy        | **Vercel**                                                                                                   |
+| QR render     | `qrcode` / `qrcode.react`                                                                                                                          |
+| Export        | CSV (bawaan), XLSX (`exceljs`/`xlsx`), PDF (future)                                                                                                |
+| Deploy        | **Vercel**                                                                                                                                         |
 
 ## 3.2 System Context (diagram)
 
@@ -85,19 +85,19 @@
 
 Seluruh aplikasi berjalan di **satu domain** yang sama. Setiap area punya **prefix route berbeda** sehingga tidak ada tabrakan:
 
-| Area                                | Route prefix                       | Login                                      | Contoh                             |
-| ----------------------------------- | ---------------------------------- | ------------------------------------------ | ---------------------------------- |
-| Marketing / Landing                 | `/`                                | tidak                                      | `/`                                |
-| Auth                                | `/login`, `/register`              | —                                          | `/login`                           |
-| Pemilih peran (tanpa membership)    | `/welcome`                         | ya                                         | `/welcome`                         |
-| Onboarding buat bisnis              | `/onboarding/create-business`      | ya                                         | `/onboarding/create-business`      |
-| Owner Platform (dashboard photobox) | `/dashboard/*`                     | ya (OWNER/MANAGER/STAFF)                   | `/dashboard`                       |
-| Staff shell operasional (read-only) | `/staff/*`                         | ya (STAFF)                                 | `/staff`                           |
-| POS terminal (add-on)               | `/pos/*`                           | ya (OWNER/MANAGER/STAFF + entitlement POS) | `/pos/terminal`                    |
+| Area                                   | Route prefix                       | Login                                      | Contoh                             |
+| -------------------------------------- | ---------------------------------- | ------------------------------------------ | ---------------------------------- |
+| Marketing / Landing                    | `/`                                | tidak                                      | `/`                                |
+| Auth                                   | `/login`, `/register`              | —                                          | `/login`                           |
+| Pemilih peran (tanpa membership)       | `/welcome`                         | ya                                         | `/welcome`                         |
+| Onboarding buat bisnis                 | `/onboarding/create-business`      | ya                                         | `/onboarding/create-business`      |
+| Owner Platform (dashboard photobox)    | `/dashboard/*`                     | ya (OWNER/MANAGER/STAFF)                   | `/dashboard`                       |
+| Staff shell operasional (read-only)    | `/staff/*`                         | ya (STAFF)                                 | `/staff`                           |
+| POS terminal (add-on)                  | `/pos/*`                           | ya (OWNER/MANAGER/STAFF + entitlement POS) | `/pos/terminal`                    |
 | Admin Platform (CEO / pemilik SnapyOS) | `/admin/*`                         | ya (role `admin`)                          | `/admin`                           |
-| Customer Photobox (kiosk)           | `/p/[businessSlug]/[photoboxSlug]` | tidak                                      | `/p/klik-foto/booth-01`            |
-| Result online                       | `/r/[token]`                       | tidak                                      | `/r/abc123`                        |
-| API & webhook                       | `/api/*`                           | bervariasi                                 | `/api/v1/...`, `/api/webhooks/...` |
+| Customer Photobox (kiosk)              | `/p/[businessSlug]/[photoboxSlug]` | tidak                                      | `/p/klik-foto/booth-01`            |
+| Result online                          | `/r/[token]`                       | tidak                                      | `/r/abc123`                        |
+| API & webhook                          | `/api/*`                           | bervariasi                                 | `/api/v1/...`, `/api/webhooks/...` |
 
 Aturan:
 

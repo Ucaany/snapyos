@@ -60,7 +60,10 @@ try {
     const skipPrint = page.getByRole("button", { name: /lewati uji cetak/i });
     await skipPrint.waitFor({ state: "visible", timeout: 30_000 }).catch(() => undefined);
     if (await skipPrint.isVisible().catch(() => false)) await skipPrint.click();
-    report.record("setup bisa diselesaikan", await welcome.isVisible({ timeout: 20_000 }).catch(() => false));
+    report.record(
+      "setup bisa diselesaikan",
+      await welcome.isVisible({ timeout: 20_000 }).catch(() => false)
+    );
   }
 
   const html = await page.locator("html").getAttribute("lang");

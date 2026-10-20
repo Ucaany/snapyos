@@ -5,11 +5,7 @@ import { Package, Pencil, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import {
-  Collapsible,
-  CollapsiblePanel,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { DeleteConfirmForm } from "@/components/dashboard/DeleteConfirmForm";
 import { PackageFields, type PackageRef } from "@/components/dashboard/PackageFields";
@@ -17,10 +13,7 @@ import { PackageEditForm } from "@/components/dashboard/PackageEditForm";
 import { formatIDR } from "@/lib/dashboard-math";
 import type { PackageRow } from "@/server/packages";
 import type { FormState } from "@/server/auth-actions";
-import {
-  createPackageAction,
-  deletePackageAction,
-} from "@/server/catalog-actions";
+import { createPackageAction, deletePackageAction } from "@/server/catalog-actions";
 
 const initial: FormState = {};
 
@@ -45,7 +38,7 @@ export function PackagesTable({ packages, templates, outlets, photoboxes, canWri
             <p className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
               {`PAKET ${String(packages.length).padStart(2, "0")}`}
             </p>
-            <CollapsibleTrigger className="h-10 px-4" aria-label="Buka form paket baru">
+            <CollapsibleTrigger className="min-h-11 px-4" aria-label="Buka form paket baru">
               <Plus aria-hidden />
               Paket baru
             </CollapsibleTrigger>
@@ -67,7 +60,10 @@ export function PackagesTable({ packages, templates, outlets, photoboxes, canWri
                 pending={creating}
               />
               {createState.error && (
-                <p role="alert" className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink">
+                <p
+                  role="alert"
+                  className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink"
+                >
                   {createState.error}
                 </p>
               )}
@@ -103,15 +99,35 @@ export function PackagesTable({ packages, templates, outlets, photoboxes, canWri
             <caption className="sr-only">Daftar paket</caption>
             <thead>
               <tr className="border-b-2 border-ink bg-ink font-mono text-[10px] uppercase tracking-[0.12em] text-bg">
-                <th scope="col" className="px-4 py-3.5">Paket</th>
-                <th scope="col" className="px-4 py-3.5 text-right">Harga</th>
-                <th scope="col" className="px-4 py-3.5 text-center">Foto</th>
-                <th scope="col" className="px-4 py-3.5 text-center">Cetak</th>
-                <th scope="col" className="px-4 py-3.5 text-center">Digital</th>
-                <th scope="col" className="px-4 py-3.5">Mode</th>
-                <th scope="col" className="px-4 py-3.5">Assign</th>
-                <th scope="col" className="px-4 py-3.5">Status</th>
-                {canWrite && <th scope="col" className="px-4 py-3.5 text-right">Aksi</th>}
+                <th scope="col" className="px-4 py-3.5">
+                  Paket
+                </th>
+                <th scope="col" className="px-4 py-3.5 text-right">
+                  Harga
+                </th>
+                <th scope="col" className="px-4 py-3.5 text-center">
+                  Foto
+                </th>
+                <th scope="col" className="px-4 py-3.5 text-center">
+                  Cetak
+                </th>
+                <th scope="col" className="px-4 py-3.5 text-center">
+                  Digital
+                </th>
+                <th scope="col" className="px-4 py-3.5">
+                  Mode
+                </th>
+                <th scope="col" className="px-4 py-3.5">
+                  Assign
+                </th>
+                <th scope="col" className="px-4 py-3.5">
+                  Status
+                </th>
+                {canWrite && (
+                  <th scope="col" className="px-4 py-3.5 text-right">
+                    Aksi
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -119,15 +135,23 @@ export function PackagesTable({ packages, templates, outlets, photoboxes, canWri
                 <Fragment key={pkg.id}>
                   <tr className="border-b-2 border-ink/10 transition-colors hover:bg-muted/60">
                     <td className="px-4 py-4">
-                      <p className="font-mono text-sm font-bold uppercase tracking-[0.05em]">{pkg.name}</p>
+                      <p className="font-mono text-sm font-bold uppercase tracking-[0.05em]">
+                        {pkg.name}
+                      </p>
                       {pkg.description && (
-                        <p className="mt-1 font-mono text-[11px] text-muted-foreground">{pkg.description}</p>
+                        <p className="mt-1 font-mono text-[11px] text-muted-foreground">
+                          {pkg.description}
+                        </p>
                       )}
                     </td>
-                    <td className="px-4 py-4 text-right font-mono text-sm font-bold">{formatIDR(pkg.price)}</td>
+                    <td className="px-4 py-4 text-right font-mono text-sm font-bold">
+                      {formatIDR(pkg.price)}
+                    </td>
                     <td className="px-4 py-4 text-center font-mono text-sm">{pkg.photo_count}</td>
                     <td className="px-4 py-4 text-center font-mono text-sm">{pkg.print_count}</td>
-                    <td className="px-4 py-4 text-center font-mono text-xs uppercase">{pkg.digital_output ? "YA" : "-"}</td>
+                    <td className="px-4 py-4 text-center font-mono text-xs uppercase">
+                      {pkg.digital_output ? "YA" : "-"}
+                    </td>
                     <td className="px-4 py-4 font-mono text-xs uppercase">{pkg.capture_mode}</td>
                     <td className="px-4 py-4 font-mono text-[11px] text-muted-foreground">
                       {`${pkg.template_count} tpl \u00b7 ${pkg.outlet_count} outlet \u00b7 ${pkg.photobox_count} booth`}

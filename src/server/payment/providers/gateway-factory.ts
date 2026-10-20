@@ -8,9 +8,7 @@ import { createPakasirGateway } from "./pakasir.ts";
 import type { GatewayCredential, PaymentGateway } from "./types.ts";
 
 /** Direct credential adapter; null preserves Pakasir aggregator fallback. */
-export function resolveGatewayFromCredential(
-  credential: GatewayCredential | null
-): PaymentGateway {
+export function resolveGatewayFromCredential(credential: GatewayCredential | null): PaymentGateway {
   if (!credential) return createPakasirGateway(null);
   switch (credential.provider) {
     case "midtrans":

@@ -9,7 +9,7 @@ import { getActiveBusiness, requireUser } from "@/lib/tenant";
 import { getSubscriptionOverview } from "@/server/subscription";
 
 export const metadata: Metadata = {
-  title: "Langganan — SnapyOS",
+  title: "Langganan | SnapyOS",
 };
 
 /** /dashboard/subscription — docs/02 billing, docs/04 §4.16, docs/12 Phase 10. */
@@ -43,7 +43,7 @@ export default async function SubscriptionPage() {
   return (
     <div className="flex flex-col gap-8 p-6 md:p-10">
       <PageHeader
-        eyebrow="SUBSCRIPTION — PLAN & TAGIHAN"
+        eyebrow="SUBSCRIPTION: PLAN & TAGIHAN"
         title="Langganan"
         description="Kelola plan aktif, add-on, dan riwayat invoice."
       />
@@ -62,8 +62,7 @@ export default async function SubscriptionPage() {
           <CardHeader>
             <CardTitle>Subscription tidak ditemukan</CardTitle>
             <CardDescription>
-              Business ini belum punya subscription aktif. Hubungi dukungan bila
-              berlanjut.
+              Business ini belum punya subscription aktif. Hubungi dukungan bila berlanjut.
             </CardDescription>
           </CardHeader>
           <CardContent>

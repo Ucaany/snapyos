@@ -79,7 +79,20 @@ function editSignature(e: PhotoEdit): string {
 }
 
 /** Photo Editor — docs/05 §5.9–5.11 (filter, zoom/pan, adjust, teks & stiker dasar). */
-function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = null, titleText, hintText, kioskStyle, allowZoomPan = true, videoUrl = null, finishRequested = false, chromaKeyEnabled = false }: Props) {
+function EditorInner({
+  photos,
+  finishing,
+  onFinish,
+  layout = null,
+  frameUrl = null,
+  titleText,
+  hintText,
+  kioskStyle,
+  allowZoomPan = true,
+  videoUrl = null,
+  finishRequested = false,
+  chromaKeyEnabled = false,
+}: Props) {
   const [edits, setEdits] = useState<PhotoEdit[]>(() => photos.map(() => defaultEdit()));
   const [active, setActive] = useState(0);
   // Chroma key: hanya ditawarkan bila booth dikonfigurasi dengan layar hijau.
@@ -216,7 +229,9 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
   function slotSources(maxW: number): (HTMLCanvasElement | null)[] {
     if (!layout) return renderPhotoOffscreens(maxW);
     const offscreens = renderPhotoOffscreens(maxW);
-    return fillSlots(layout.slots.length, photos.length).map((photoIndex) => offscreens[photoIndex] ?? null);
+    return fillSlots(layout.slots.length, photos.length).map(
+      (photoIndex) => offscreens[photoIndex] ?? null
+    );
   }
 
   // redraw preview when image or edits change
@@ -230,9 +245,7 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
         layout,
         frameRef.current,
         sources,
-        fillSlots(sources.length, photos.length).map(
-          (photoIndex) => transformsFor(photoIndex)
-        ),
+        fillSlots(sources.length, photos.length).map((photoIndex) => transformsFor(photoIndex)),
         720
       );
       // highlight slot aktif (petunjuk zoom/pan berlaku per slot)
@@ -267,10 +280,7 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
     setEdits((prev) => prev.map((e, i) => (i === active ? patch(e) : e)));
   }
 
-  function patchAdjust<K extends keyof PhotoEdit["adjust"]>(
-    key: K,
-    value: PhotoEdit["adjust"][K]
-  ) {
+  function patchAdjust<K extends keyof PhotoEdit["adjust"]>(key: K, value: PhotoEdit["adjust"][K]) {
     patchEdit((e) => ({ ...e, adjust: { ...e.adjust, [key]: value } }));
   }
 
@@ -313,7 +323,11 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
       const factor = layout.canvas.width / canvas.width;
       patchEdit((e) => ({
         ...e,
-        adjust: { ...e.adjust, panX: e.adjust.panX + acc.x * factor, panY: e.adjust.panY + acc.y * factor },
+        adjust: {
+          ...e.adjust,
+          panX: e.adjust.panX + acc.x * factor,
+          panY: e.adjust.panY + acc.y * factor,
+        },
       }));
       return;
     }
@@ -323,7 +337,11 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
     const scaleY = (img.naturalHeight || 1) / canvas.height;
     patchEdit((e) => ({
       ...e,
-      adjust: { ...e.adjust, panX: e.adjust.panX + acc.x * scaleX, panY: e.adjust.panY + acc.y * scaleY },
+      adjust: {
+        ...e.adjust,
+        panX: e.adjust.panX + acc.x * scaleX,
+        panY: e.adjust.panY + acc.y * scaleY,
+      },
     }));
   }
 
@@ -341,10 +359,12 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
     const width = e.currentTarget.width;
     const height = e.currentTarget.height;
     const candidates = [...edit.overlays].reverse();
-    return candidates.find((o) => {
-      const radius = Math.max(o.size * height * 0.75, 24);
-      return Math.hypot(point.x - o.x * width, point.y - o.y * height) <= radius;
-    }) ?? null;
+    return (
+      candidates.find((o) => {
+        const radius = Math.max(o.size * height * 0.75, 24);
+        return Math.hypot(point.x - o.x * width, point.y - o.y * height) <= radius;
+      }) ?? null
+    );
   }
 
   function onPointerDown(e: React.PointerEvent<HTMLCanvasElement>) {
@@ -373,8 +393,14 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
       lastOverlayPointer.current = point;
       if (selectedOverlay) {
         patchOverlay(selectedOverlay, {
-          x: Math.min(1, Math.max(0, (edit.overlays.find((o) => o.id === selectedOverlay)?.x ?? 0.5) + dx)),
-          y: Math.min(1, Math.max(0, (edit.overlays.find((o) => o.id === selectedOverlay)?.y ?? 0.5) + dy)),
+          x: Math.min(
+            1,
+            Math.max(0, (edit.overlays.find((o) => o.id === selectedOverlay)?.x ?? 0.5) + dx)
+          ),
+          y: Math.min(
+            1,
+            Math.max(0, (edit.overlays.find((o) => o.id === selectedOverlay)?.y ?? 0.5) + dy)
+          ),
         });
       }
       return;
@@ -404,7 +430,8 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
     }
     // Flush sisa delta agar posisi akhir tak hilang saat pointer lepas.
     if (panAccum.current) flushPan();
-    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+    if (e.currentTarget.hasPointerCapture(e.pointerId))
+      e.currentTarget.releasePointerCapture(e.pointerId);
   }
 
   async function finish() {
@@ -490,7 +517,10 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
         }`}
         style={
           kioskStyle
-            ? { backgroundColor: `color-mix(in srgb, ${kioskStyle.text} 8%, ${kioskStyle.bg})`, color: kioskStyle.text }
+            ? {
+                backgroundColor: `color-mix(in srgb, ${kioskStyle.text} 8%, ${kioskStyle.bg})`,
+                color: kioskStyle.text,
+              }
             : undefined
         }
       >
@@ -508,12 +538,21 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
           </p>
           <h1
             className="font-display text-xl uppercase leading-none tracking-tight md:text-2xl"
-            style={kioskStyle ? { fontSize: `${1.5 * kioskStyle.fontScale}rem`, fontFamily: kioskStyle.fontFamily } : undefined}
+            style={
+              kioskStyle
+                ? {
+                    fontSize: `${1.5 * kioskStyle.fontScale}rem`,
+                    fontFamily: kioskStyle.fontFamily,
+                  }
+                : undefined
+            }
           >
             {titleText || "Edit foto"}
           </h1>
           {hintText && (
-            <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">{hintText}</p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+              {hintText}
+            </p>
           )}
         </div>
         {photos.length > 1 && (
@@ -573,9 +612,14 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
             </div>
           )}
 
-          {/* Filters — GLOBAL: satu pilihan berlaku untuk semua foto */}
+          {/* Filters: GLOBAL: satu pilihan berlaku untuk semua foto */}
           <div className="flex flex-col gap-2">
-            <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]" style={{ color: kioskStyle ? kioskStyle.text : undefined }}>Filter</p>
+            <p
+              className="font-mono text-xs font-bold uppercase tracking-[0.15em]"
+              style={{ color: kioskStyle ? kioskStyle.text : undefined }}
+            >
+              Filter
+            </p>
             <div className="grid grid-cols-4 gap-2">
               {FILTER_PRESETS.map((f) => (
                 <button
@@ -596,7 +640,12 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
           {/* Rotasi (tetap per foto) + zoom via drag/pinch di canvas */}
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[10px] uppercase tracking-[0.1em]" style={{ color: kioskStyle ? kioskStyle.text : undefined }}>Putar</span>
+              <span
+                className="font-mono text-[10px] uppercase tracking-[0.1em]"
+                style={{ color: kioskStyle ? kioskStyle.text : undefined }}
+              >
+                Putar
+              </span>
               {[0, 90, 180, 270].map((r) => (
                 <button
                   key={r}
@@ -612,13 +661,18 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
             </div>
           </div>
 
-          {/* Adjustments — exported with the same canvas renderer as preview. */}
+          {/* Adjustments: exported with the same canvas renderer as preview. */}
           <div className="flex flex-col gap-3">
-            <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]" style={{ color: kioskStyle ? kioskStyle.text : undefined }}>
+            <p
+              className="font-mono text-xs font-bold uppercase tracking-[0.15em]"
+              style={{ color: kioskStyle ? kioskStyle.text : undefined }}
+            >
               Penyesuaian
             </p>
             <label className="flex flex-col gap-1">
-              <span className="font-mono text-[10px] uppercase tracking-[0.1em]">Zoom · {edit.adjust.zoom.toFixed(2)}×</span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.1em]">
+                Zoom · {edit.adjust.zoom.toFixed(2)}×
+              </span>
               <input
                 type="range"
                 min={1}
@@ -631,14 +685,16 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
                 aria-label="Zoom foto"
               />
             </label>
-            {([
-              ["brightness", "Kecerahan", 0.5, 1.5, 0.01],
-              ["contrast", "Kontras", 0.5, 1.5, 0.01],
-              ["saturation", "Saturasi", 0, 2, 0.01],
-              ["blur", "Blur", 0, 12, 0.5],
-              ["grain", "Grain", 0, 1, 0.05],
-              ["vignette", "Vignette", 0, 1, 0.05],
-            ] as const).map(([key, label, min, max, step]) => (
+            {(
+              [
+                ["brightness", "Kecerahan", 0.5, 1.5, 0.01],
+                ["contrast", "Kontras", 0.5, 1.5, 0.01],
+                ["saturation", "Saturasi", 0, 2, 0.01],
+                ["blur", "Blur", 0, 12, 0.5],
+                ["grain", "Grain", 0, 1, 0.05],
+                ["vignette", "Vignette", 0, 1, 0.05],
+              ] as const
+            ).map(([key, label, min, max, step]) => (
               <label key={key} className="flex flex-col gap-1">
                 <span className="font-mono text-[10px] uppercase tracking-[0.1em]">
                   {label} · {Number(edit.adjust[key]).toFixed(key === "blur" ? 1 : 2)}
@@ -662,7 +718,12 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
 
           {/* Text */}
           <div className="flex flex-col gap-2">
-            <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]" style={{ color: kioskStyle ? kioskStyle.text : undefined }}>Teks</p>
+            <p
+              className="font-mono text-xs font-bold uppercase tracking-[0.15em]"
+              style={{ color: kioskStyle ? kioskStyle.text : undefined }}
+            >
+              Teks
+            </p>
             <div className="flex gap-2">
               <Input
                 value={text}
@@ -676,7 +737,9 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
                 variant="outline"
                 size="icon"
                 className="min-h-11 min-w-11"
-                onClick={() => text.trim() && addOverlay("text", text.trim(), defaultBrandColors.ink)}
+                onClick={() =>
+                  text.trim() && addOverlay("text", text.trim(), defaultBrandColors.ink)
+                }
                 aria-label="Tambah teks"
               >
                 <Plus className="size-4" aria-hidden />
@@ -764,7 +827,10 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
           )}
 
           {finishError && (
-            <p role="alert" className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink">
+            <p
+              role="alert"
+              className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink"
+            >
               {finishError}
             </p>
           )}
@@ -777,12 +843,19 @@ function EditorInner({ photos, finishing, onFinish, layout = null, frameUrl = nu
 
           <Button
             size="lg"
-            onClick={() => { setFinishError(null); void finish(); }}
+            onClick={() => {
+              setFinishError(null);
+              void finish();
+            }}
             disabled={finishing}
             className="mt-auto bg-accent"
             style={
               kioskStyle
-                ? { borderRadius: kioskStyle.radius, backgroundColor: kioskStyle.accent, color: kioskStyle.accentText }
+                ? {
+                    borderRadius: kioskStyle.radius,
+                    backgroundColor: kioskStyle.accent,
+                    color: kioskStyle.accentText,
+                  }
                 : undefined
             }
           >

@@ -63,9 +63,7 @@ export function RevenueChartInner({
             <ChartTooltipContent
               indicator="dot"
               formatter={(value) => (
-                <span className="font-mono font-bold">
-                  {formatIDR(Number(value))}
-                </span>
+                <span className="font-mono font-bold">{formatIDR(Number(value))}</span>
               )}
               labelFormatter={(_, payload) => {
                 const iso = payload?.[0]?.payload?.date as string | undefined;

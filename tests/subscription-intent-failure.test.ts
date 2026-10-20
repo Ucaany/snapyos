@@ -181,12 +181,10 @@ class FakeDb {
 
   private execSubscriptions(op: Op) {
     const idFilter = op.filters.find(([c]) => c === "id");
-    const sub = idFilter ? this.subscriptions.get(String(idFilter[1])) ?? null : null;
+    const sub = idFilter ? (this.subscriptions.get(String(idFilter[1])) ?? null) : null;
 
     const statusIn = op.ins.find(([c]) => c === "status");
-    const statusOk = sub
-      ? !statusIn || (statusIn[1] as string[]).includes(sub.status)
-      : false;
+    const statusOk = sub ? !statusIn || (statusIn[1] as string[]).includes(sub.status) : false;
 
     if (op.kind === "select") {
       if (!sub || !statusOk) return { data: null, error: null };
@@ -216,9 +214,7 @@ class FakeDb {
     if (op.kind === "select") {
       const subId = op.filters.find(([c]) => c === "subscription_id")?.[1];
       const addOnId = op.filters.find(([c]) => c === "add_on_id")?.[1];
-      const found = this.addOns.find(
-        (a) => a.subscription_id === subId && a.add_on_id === addOnId
-      );
+      const found = this.addOns.find((a) => a.subscription_id === subId && a.add_on_id === addOnId);
       return { data: found ? { ...found } : null, error: null };
     }
     if (op.kind === "update") {
@@ -247,13 +243,15 @@ class FakeDb {
         // Partial unique index (invoice_id, reason) WHERE status='pending'.
         const dup = this.failures.find(
           (f) =>
-            f.invoice_id === row.invoice_id &&
-            f.reason === row.reason &&
-            f.status === "pending"
+            f.invoice_id === row.invoice_id && f.reason === row.reason && f.status === "pending"
         );
         if (dup) return { data: null, error: null };
       }
-      this.failures.push({ ...row, id: this.nextId("failure"), created_at: new Date().toISOString() });
+      this.failures.push({
+        ...row,
+        id: this.nextId("failure"),
+        created_at: new Date().toISOString(),
+      });
       return { data: null, error: null };
     }
     if (op.kind === "update") {
@@ -277,7 +275,11 @@ class FakeDb {
         (p) => p.business_id === row.business_id && p.template_id === row.template_id
       );
       if (dup) return { data: null, error: null };
-      this.purchases.push({ ...row, id: this.nextId("purchase"), created_at: new Date().toISOString() });
+      this.purchases.push({
+        ...row,
+        id: this.nextId("purchase"),
+        created_at: new Date().toISOString(),
+      });
       return { data: null, error: null };
     }
     if (op.kind === "select") {
@@ -356,10 +358,7 @@ class FakeQuery {
     onfulfilled?: ((value: unknown) => TResult1 | PromiseLike<TResult1>) | null,
     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
   ): Promise<TResult1 | TResult2> {
-    return Promise.resolve(this.db.execute(this.table, this.op)).then(
-      onfulfilled,
-      onrejected
-    );
+    return Promise.resolve(this.db.execute(this.table, this.op)).then(onfulfilled, onrejected);
   }
 }
 
@@ -392,8 +391,7 @@ const PLAN_INTENT: AnyRow = {
 function seedPaidPlanInvoice(db: FakeDb, opts?: { subscriptionId?: string | null }) {
   // `in` check, bukan `??` — supaya subscriptionId: null dihormati
   // (nullish coalescing akan jatuh ke default untuk null).
-  const subscriptionId =
-    opts && "subscriptionId" in opts ? (opts.subscriptionId ?? null) : "sub-1";
+  const subscriptionId = opts && "subscriptionId" in opts ? (opts.subscriptionId ?? null) : "sub-1";
   const invoice: InvoiceRow = {
     id: "inv-1",
     number: "SnapyOS-INV-0001",
@@ -428,9 +426,7 @@ test("cancel+cron lalu webhook paid: klaim dirilis, audit + antrean review dibua
   assert.notEqual(db.invoices.get("inv-1")!.intent?.applied, true, "applied harus dirilis");
 
   // (b) Audit tercatat dengan reason benar.
-  const audit = db.auditCalls.find(
-    (a) => a.action === "subscription.intent_activation_failed"
-  );
+  const audit = db.auditCalls.find((a) => a.action === "subscription.intent_activation_failed");
   assert.ok(audit, "audit_logs harus mencatat kegagalan aktivasi");
   assert.equal(audit!.meta?.reason, INTENT_FAILURE_REASON.SUBSCRIPTION_NOT_ACTIVE);
   assert.equal(audit!.target, "inv-1");
@@ -474,9 +470,7 @@ test("retry webhook berulang dengan reason sama: antrean tidak bertambah (partia
 
   assert.equal(db.failures.length, 1, "retry identik harus idempoten di antrean");
   // Audit tetap tercatat per percobaan (jejak lengkap), tapi antrean satu.
-  const audits = db.auditCalls.filter(
-    (a) => a.action === "subscription.intent_activation_failed"
-  );
+  const audits = db.auditCalls.filter((a) => a.action === "subscription.intent_activation_failed");
   assert.equal(audits.length, 3);
 });
 
@@ -539,7 +533,14 @@ test("exception aktivasi: klaim dirilis, failure tercatat, error tetap dilempar"
   });
   db.invoices.get("inv-1")!.intent = {
     items: [
-      { type: "plan_change", plan_id: "plan-growth", code: "growth", name: "GROWTH", amount: 249000, qty: 1 },
+      {
+        type: "plan_change",
+        plan_id: "plan-growth",
+        code: "growth",
+        name: "GROWTH",
+        amount: 249000,
+        qty: 1,
+      },
       { type: "add_on", add_on_id: "a1", code: "extra_session", name: "+1", amount: 49000, qty: 1 },
     ],
   };
@@ -707,7 +708,13 @@ test("template_purchase paid: menulis kepemilikan (idempotent via onConflict)", 
     intent: {
       type: "template_purchase",
       items: [
-        { type: "template_purchase", template_id: "tpl-1", name: "Frame Wedding", amount: 50000, qty: 1 },
+        {
+          type: "template_purchase",
+          template_id: "tpl-1",
+          name: "Frame Wedding",
+          amount: 50000,
+          qty: 1,
+        },
       ],
     },
   };

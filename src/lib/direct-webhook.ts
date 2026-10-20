@@ -34,7 +34,11 @@ export type DirectWebhookDependencies = {
    */
   claimEvent?(log: DirectWebhookLog): Promise<"claimed" | "duplicate" | "retryable">;
   /** H3 — promosikan baris terkklaim ke status authoritative setelah settle. */
-  promoteEvent?(eventId: string, status: "processed" | "ignored" | "error", error?: string): Promise<void>;
+  promoteEvent?(
+    eventId: string,
+    status: "processed" | "ignored" | "error",
+    error?: string
+  ): Promise<void>;
   transitionToPaid(paymentId: string): Promise<boolean>;
   transitionToExpired(paymentId: string): Promise<boolean>;
   loadCheckout(businessId: string, checkoutId: string): Promise<unknown>;
@@ -46,10 +50,7 @@ export type DirectWebhookDependencies = {
    * Bila tidak disediakan → dilewati (mis. unit test), tapi produksi WAJIB
    * menyediakannya agar webhook body tak menjadi satu-satunya sumber kebenaran.
    */
-  verifyPaidWithProvider?(
-    gateway: PaymentGateway,
-    payment: DirectPayment
-  ): Promise<boolean>;
+  verifyPaidWithProvider?(gateway: PaymentGateway, payment: DirectPayment): Promise<boolean>;
 };
 
 export type DirectWebhookInput = {
@@ -168,7 +169,11 @@ export async function processDirectWebhook(
     if (deps.verifyPaidWithProvider) {
       const verified = await deps.verifyPaidWithProvider(gateway, payment);
       if (!verified) {
-        await deps.promoteEvent?.(input.eventId, "error", "status provider tidak terkonfirmasi paid");
+        await deps.promoteEvent?.(
+          input.eventId,
+          "error",
+          "status provider tidak terkonfirmasi paid"
+        );
         return reject(
           input,
           deps,

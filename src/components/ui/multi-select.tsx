@@ -44,8 +44,7 @@ export function MultiSelect({
       {...(controlled
         ? {
             value,
-            onChange: (e) =>
-              onChange?.(Array.from(e.target.selectedOptions, (o) => o.value)),
+            onChange: (e) => onChange?.(Array.from(e.target.selectedOptions, (o) => o.value)),
           }
         : { defaultValue: defaults })}
       disabled={disabled}

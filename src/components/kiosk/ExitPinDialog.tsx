@@ -136,13 +136,16 @@ export function ExitPinDialog({ deviceToken, onSuccess, onCancel }: Props) {
         </div>
 
         <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-muted-foreground">
-          Masukkan PIN keluar yang diatur owner. Sesi foto yang sedang berjalan
-          tidak terputus, kembali ke kiosk untuk melanjutkan.
+          Masukkan PIN keluar yang diatur owner. Sesi foto yang sedang berjalan tidak terputus,
+          kembali ke kiosk untuk melanjutkan.
         </p>
 
         {!deviceToken ? (
           <>
-            <p role="alert" className="border-2 border-ink bg-accent px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.05em]">
+            <p
+              role="alert"
+              className="border-2 border-ink bg-accent px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.05em]"
+            >
               Perangkat belum diaktivasi. Selesaikan aktivasi sebelum keluar kiosk.
             </p>
             <button
@@ -155,7 +158,7 @@ export function ExitPinDialog({ deviceToken, onSuccess, onCancel }: Props) {
           </>
         ) : null}
 
-        {/* Indikator digit PIN — nilai asli tidak ditampilkan */}
+        {/* Indikator digit PIN: nilai asli tidak ditampilkan */}
         <div className="flex justify-center gap-3" aria-live="polite">
           {Array.from({ length: Math.max(4, pin.length) }).map((_, i) => (
             <span
@@ -167,7 +170,10 @@ export function ExitPinDialog({ deviceToken, onSuccess, onCancel }: Props) {
         </div>
 
         {error && (
-          <p role="alert" className="border-2 border-ink bg-accent px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.05em]">
+          <p
+            role="alert"
+            className="border-2 border-ink bg-accent px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.05em]"
+          >
             {error}
           </p>
         )}

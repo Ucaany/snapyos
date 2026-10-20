@@ -102,8 +102,7 @@ export function CashPaymentNotifier({ businessId }: { businessId: string }) {
     >
       <header className="flex items-center justify-between gap-2 border-b-2 border-ink bg-ink px-3 py-2 text-bg">
         <span className="flex items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-[0.18em]">
-          <Banknote className="size-4" aria-hidden />
-          [ BAYAR DI KASIR ] {visible.length}
+          <Banknote className="size-4" aria-hidden />[ BAYAR DI KASIR ] {visible.length}
         </span>
         <button
           type="button"

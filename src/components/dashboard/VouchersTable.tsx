@@ -5,11 +5,7 @@ import { Pencil, Plus, Ticket } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import {
-  Collapsible,
-  CollapsiblePanel,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { DeleteConfirmForm } from "@/components/dashboard/DeleteConfirmForm";
 import { VoucherFields, type VoucherRef } from "@/components/dashboard/VoucherFields";
@@ -17,10 +13,7 @@ import { VoucherEditForm } from "@/components/dashboard/VoucherEditForm";
 import { formatIDR } from "@/lib/dashboard-math";
 import type { VoucherRow } from "@/server/vouchers";
 import type { FormState } from "@/server/auth-actions";
-import {
-  createVoucherAction,
-  deleteVoucherAction,
-} from "@/server/catalog-actions";
+import { createVoucherAction, deleteVoucherAction } from "@/server/catalog-actions";
 
 const initial: FormState = {};
 
@@ -45,7 +38,7 @@ export function VouchersTable({ vouchers, analytics, packages, outlets, canWrite
             <p className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
               {`VOUCHER ${String(vouchers.length).padStart(2, "0")}`}
             </p>
-            <CollapsibleTrigger className="h-10 px-4" aria-label="Buka form voucher baru">
+            <CollapsibleTrigger className="min-h-11 px-4" aria-label="Buka form voucher baru">
               <Plus aria-hidden />
               Voucher baru
             </CollapsibleTrigger>
@@ -59,9 +52,17 @@ export function VouchersTable({ vouchers, analytics, packages, outlets, canWrite
               <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
                 {"/// Voucher baru"}
               </p>
-              <VoucherFields packages={packages} outlets={outlets} state={createState} pending={creating} />
+              <VoucherFields
+                packages={packages}
+                outlets={outlets}
+                state={createState}
+                pending={creating}
+              />
               {createState.error && (
-                <p role="alert" className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink">
+                <p
+                  role="alert"
+                  className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink"
+                >
                   {createState.error}
                 </p>
               )}
@@ -80,7 +81,7 @@ export function VouchersTable({ vouchers, analytics, packages, outlets, canWrite
           icon={Ticket}
           eyebrow="BELUM ADA VOUCHER"
           title="Voucher divalidasi server-side saat dipakai customer."
-          body="Contoh: GRANDOPENING — 20%, min. transaksi Rp50.000, maks. diskon Rp10.000."
+          body="Contoh: GRANDOPENING untuk 20%, min. transaksi Rp50.000, maks. diskon Rp10.000."
         />
       ) : (
         <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
@@ -88,14 +89,32 @@ export function VouchersTable({ vouchers, analytics, packages, outlets, canWrite
             <caption className="sr-only">Daftar voucher</caption>
             <thead>
               <tr className="border-b-2 border-ink bg-ink font-mono text-[10px] uppercase tracking-[0.12em] text-bg">
-                <th scope="col" className="px-4 py-3.5">Kode</th>
-                <th scope="col" className="px-4 py-3.5">Diskon</th>
-                <th scope="col" className="px-4 py-3.5">Syarat</th>
-                <th scope="col" className="px-4 py-3.5 text-right">Usage</th>
-                <th scope="col" className="px-4 py-3.5 text-right">Total Diskon</th>
-                <th scope="col" className="px-4 py-3.5 text-right">Revenue</th>
-                <th scope="col" className="px-4 py-3.5">Status</th>
-                {canWrite && <th scope="col" className="px-4 py-3.5 text-right">Aksi</th>}
+                <th scope="col" className="px-4 py-3.5">
+                  Kode
+                </th>
+                <th scope="col" className="px-4 py-3.5">
+                  Diskon
+                </th>
+                <th scope="col" className="px-4 py-3.5">
+                  Syarat
+                </th>
+                <th scope="col" className="px-4 py-3.5 text-right">
+                  Usage
+                </th>
+                <th scope="col" className="px-4 py-3.5 text-right">
+                  Total Diskon
+                </th>
+                <th scope="col" className="px-4 py-3.5 text-right">
+                  Revenue
+                </th>
+                <th scope="col" className="px-4 py-3.5">
+                  Status
+                </th>
+                {canWrite && (
+                  <th scope="col" className="px-4 py-3.5 text-right">
+                    Aksi
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -160,7 +179,11 @@ export function VouchersTable({ vouchers, analytics, packages, outlets, canWrite
                               }
                               disabled={vcr.usage > 0}
                               triggerLabel={`Hapus voucher ${vcr.code}`}
-                              triggerTitle={vcr.usage > 0 ? "Sudah terpakai \u2014 nonaktifkan saja" : "Hapus voucher"}
+                              triggerTitle={
+                                vcr.usage > 0
+                                  ? "Sudah terpakai \u2014 nonaktifkan saja"
+                                  : "Hapus voucher"
+                              }
                             />
                           </div>
                         </td>

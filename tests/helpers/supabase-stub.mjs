@@ -9,9 +9,7 @@
 export function createServerClient() {
   const factory = globalThis.__SB_STUB;
   if (typeof factory !== "function") {
-    throw new Error(
-      "createServerClient dipanggil tanpa stub — set globalThis.__SB_STUB di tes."
-    );
+    throw new Error("createServerClient dipanggil tanpa stub — set globalThis.__SB_STUB di tes.");
   }
   return factory();
 }

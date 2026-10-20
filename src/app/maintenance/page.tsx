@@ -44,7 +44,9 @@ export default async function MaintenancePage() {
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
             Butuh info lebih lanjut?
           </p>
-          <p className="mt-2 font-mono text-xs text-ink">Hubungi tim SnapyOS via kanal support Anda.</p>
+          <p className="mt-2 font-mono text-xs text-ink">
+            Hubungi tim SnapyOS via kanal support Anda.
+          </p>
         </div>
       </div>
     </main>

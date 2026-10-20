@@ -1,18 +1,18 @@
-"use client"
+"use client";
 
 /**
  * Error boundary - /dashboard/support (tiket bantuan).
  * Menahan owner dari mengira tiketnya hilang: bedakan gagal-muat.
  */
 
-import { FeatureError } from "@/components/dashboard/FeatureError"
+import { FeatureError } from "@/components/dashboard/FeatureError";
 
 export default function SupportError({
   error,
   reset,
 }: {
-  error: Error & { digest?: string }
-  reset: () => void
+  error: Error & { digest?: string };
+  reset: () => void;
 }) {
   return (
     <FeatureError
@@ -21,5 +21,5 @@ export default function SupportError({
       error={error}
       reset={reset}
     />
-  )
+  );
 }

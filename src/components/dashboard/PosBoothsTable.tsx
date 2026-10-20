@@ -10,7 +10,13 @@ import { posToggleBoothAction } from "@/server/pos-actions";
  * PosBoothsTable — toggle POS per booth (A13, docs/pos/03 §3.2).
  * Toggle = server action scoped `.eq(business_id)` — UI bukan pengaman.
  */
-export function PosBoothsTable({ booths, canManage }: { booths: PosBoothRow[]; canManage: boolean }) {
+export function PosBoothsTable({
+  booths,
+  canManage,
+}: {
+  booths: PosBoothRow[];
+  canManage: boolean;
+}) {
   if (booths.length === 0) {
     return (
       <EmptyState
@@ -30,30 +36,43 @@ export function PosBoothsTable({ booths, canManage }: { booths: PosBoothRow[]; c
         <caption className="sr-only">Booth POS</caption>
         <thead>
           <tr className="border-b-2 border-ink bg-ink font-mono text-[10px] uppercase tracking-[0.12em] text-bg">
-            <th scope="col" className="px-4 py-3.5">Booth</th>
-            <th scope="col" className="px-4 py-3.5">Outlet</th>
-            <th scope="col" className="px-4 py-3.5">Status device</th>
-            <th scope="col" className="px-4 py-3.5">POS</th>
-            {canManage && <th scope="col" className="px-4 py-3.5 text-right">Aksi</th>}
+            <th scope="col" className="px-4 py-3.5">
+              Booth
+            </th>
+            <th scope="col" className="px-4 py-3.5">
+              Outlet
+            </th>
+            <th scope="col" className="px-4 py-3.5">
+              Status device
+            </th>
+            <th scope="col" className="px-4 py-3.5">
+              POS
+            </th>
+            {canManage && (
+              <th scope="col" className="px-4 py-3.5 text-right">
+                Aksi
+              </th>
+            )}
           </tr>
         </thead>
         <tbody>
           {booths.map((booth) => (
-            <tr key={booth.id} className="border-b-2 border-ink/10 transition-colors hover:bg-muted/60">
+            <tr
+              key={booth.id}
+              className="border-b-2 border-ink/10 transition-colors hover:bg-muted/60"
+            >
               <td className="px-4 py-4 font-mono text-sm font-bold uppercase tracking-[0.05em]">
                 {booth.name}
               </td>
               <td className="px-4 py-4 font-mono text-xs text-muted-foreground">
-                {booth.outlet_name ?? "—"}
+                {booth.outlet_name ?? "-"}
               </td>
               <td className="px-4 py-4 font-mono text-xs uppercase">{booth.status}</td>
               <td className="px-4 py-4">
                 <span
                   className={cn(
                     "inline-flex h-6 items-center border-2 border-ink px-2 font-mono text-[10px] font-bold uppercase tracking-[0.1em]",
-                    booth.pos_enabled
-                      ? "bg-accent-3 text-ink"
-                      : "bg-muted text-muted-foreground"
+                    booth.pos_enabled ? "bg-accent-3 text-ink" : "bg-muted text-muted-foreground"
                   )}
                 >
                   {booth.pos_enabled ? "aktif" : "off"}

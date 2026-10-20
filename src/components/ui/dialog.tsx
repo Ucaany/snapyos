@@ -77,17 +77,11 @@ function DialogContent({
 /*  Title                                                              */
 /* ------------------------------------------------------------------ */
 
-function DialogTitle({
-  className,
-  ...props
-}: React.ComponentProps<typeof DialogPrimitive.Title>) {
+function DialogTitle({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Title>) {
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn(
-        "font-display text-xl uppercase tracking-tight",
-        className
-      )}
+      className={cn("font-display text-xl uppercase tracking-tight", className)}
       {...props}
     />
   );
@@ -114,23 +108,11 @@ function DialogDescription({
 /*  Structural helpers: Header / Footer                                */
 /* ------------------------------------------------------------------ */
 
-function DialogHeader({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="dialog-header"
-      className={cn("space-y-2", className)}
-      {...props}
-    />
-  );
+function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
+  return <div data-slot="dialog-header" className={cn("space-y-2", className)} {...props} />;
 }
 
-function DialogFooter({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
+function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-footer"

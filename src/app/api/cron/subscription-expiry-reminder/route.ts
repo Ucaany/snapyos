@@ -54,10 +54,7 @@ export async function GET(request: Request) {
     .lt("current_period_end", windowEndIso);
 
   if (error) {
-    console.error(
-      "[cron/subscription-expiry-reminder] query failed: %s",
-      error.message
-    );
+    console.error("[cron/subscription-expiry-reminder] query failed: %s", error.message);
     return Response.json(
       { error: { code: "INTERNAL", message: "Gagal memuat subscription" } },
       { status: 500 }

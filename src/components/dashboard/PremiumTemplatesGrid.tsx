@@ -57,11 +57,17 @@ export function PremiumTemplatesGrid({ templates }: Props) {
   return (
     <div className="flex flex-col gap-4">
       {error && (
-        <p role="alert" className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs uppercase tracking-[0.05em] text-destructive">
+        <p
+          role="alert"
+          className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs uppercase tracking-[0.05em] text-destructive"
+        >
           {error}
         </p>
       )}
-      <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3" aria-label="Template premium">
+      <ul
+        className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3"
+        aria-label="Template premium"
+      >
         {templates.map((tpl) => (
           <li
             key={tpl.id}
@@ -87,7 +93,9 @@ export function PremiumTemplatesGrid({ templates }: Props) {
             <div className="flex flex-1 flex-col gap-3 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="font-mono text-sm font-bold uppercase tracking-[0.05em]">{tpl.name}</p>
+                  <p className="font-mono text-sm font-bold uppercase tracking-[0.05em]">
+                    {tpl.name}
+                  </p>
                   <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
                     {tpl.category_name ?? "Tanpa kategori"} · PREMIUM
                   </p>
@@ -98,7 +106,9 @@ export function PremiumTemplatesGrid({ templates }: Props) {
               </div>
 
               <div className="mt-auto flex items-center justify-between gap-2 border-t-2 border-ink/10 pt-3">
-                <span className="font-mono text-sm font-bold tabular-nums">{formatIDR(tpl.price)}</span>
+                <span className="font-mono text-sm font-bold tabular-nums">
+                  {formatIDR(tpl.price)}
+                </span>
                 {tpl.purchased ? (
                   <span className="flex items-center gap-1.5 font-mono text-xs font-bold uppercase text-muted-foreground">
                     <Check className="size-4" aria-hidden /> Dimiliki

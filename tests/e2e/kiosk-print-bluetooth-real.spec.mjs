@@ -19,7 +19,14 @@
  */
 
 import { config, requireServiceRole } from "./helpers/env.mjs";
-import { createAdmin, resolvePhotobox, mintActivationCode, resetBooth, setPrintSettings, waitForPrintMode } from "./helpers/booth.mjs";
+import {
+  createAdmin,
+  resolvePhotobox,
+  mintActivationCode,
+  resetBooth,
+  setPrintSettings,
+  waitForPrintMode,
+} from "./helpers/booth.mjs";
 import { createReporter } from "./helpers/report.mjs";
 
 import { chromium } from "playwright";
@@ -35,7 +42,11 @@ const { business, photobox } = await resolvePhotobox(sb, cfg.businessSlug, cfg.p
 
 await resetBooth(sb, photobox.id);
 // Booth wajib di mode thermal; kalau tidak, wizard menampilkan jalur dialog OS.
-await setPrintSettings(sb, photobox.id, { mode: "bluetooth", bluetooth_paper_width_mm: 80, enabled: true });
+await setPrintSettings(sb, photobox.id, {
+  mode: "bluetooth",
+  bluetooth_paper_width_mm: 80,
+  enabled: true,
+});
 // Cache config publik 30 detik: tunggu sampai kiosk benar-benar melihat mode ini.
 await waitForPrintMode(cfg.base, cfg.businessSlug, cfg.photoboxSlug, "bluetooth");
 const code = await mintActivationCode(sb, photobox.id, business.id);
@@ -82,7 +93,9 @@ await page.addInitScript(() => {
 });
 
 try {
-  await page.goto(`${cfg.kioskUrl}?code=${encodeURIComponent(code)}`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${cfg.kioskUrl}?code=${encodeURIComponent(code)}`, {
+    waitUntil: "domcontentloaded",
+  });
 
   const setupHeading = page.getByRole("heading", { name: /siapkan kamera/i });
   await setupHeading.waitFor({ timeout: 30_000 });
@@ -93,7 +106,10 @@ try {
   await printHeading.waitFor({ timeout: 20_000 });
   report.record("tahap uji cetak terbuka", true);
 
-  const modeLine = await page.getByText(/Bluetooth thermal/i).first().textContent();
+  const modeLine = await page
+    .getByText(/Bluetooth thermal/i)
+    .first()
+    .textContent();
   report.record("wizard memakai jalur thermal", /bluetooth/i.test(modeLine ?? ""), modeLine ?? "");
 
   console.log(
@@ -139,7 +155,11 @@ try {
     await page.waitForTimeout(800);
     report.record("hasil uji tersimpan dari wizard", true);
   } else if (outcome === "error") {
-    const text = await page.locator("[role=alert]").first().textContent().catch(() => "");
+    const text = await page
+      .locator("[role=alert]")
+      .first()
+      .textContent()
+      .catch(() => "");
     report.record("printer menolak ESC/POS (pakai dialog sistem)", false, text ?? "tanpa pesan");
   }
 

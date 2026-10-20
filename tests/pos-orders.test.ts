@@ -1,15 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import {
-  computePosTotals,
-  posDayRange,
-  posOrderNumber,
-} from "../src/lib/pos-math.ts";
-import {
-  posOrderCreateSchema,
-  posManualPaySchema,
-} from "../src/lib/validators.ts";
+import { computePosTotals, posDayRange, posOrderNumber } from "../src/lib/pos-math.ts";
+import { posOrderCreateSchema, posManualPaySchema } from "../src/lib/validators.ts";
 import { evaluatePosEntitlement } from "../src/lib/pos-entitlement.ts";
 
 /**
@@ -61,10 +54,7 @@ test("order schema: productId bukan uuid ditolak", () => {
 });
 
 test("order schema: photoboxId wajib uuid; items kosong ditolak", () => {
-  assert.ok(
-    !posOrderCreateSchema.safeParse({ items: [{ productId: UUID2, qty: 1 }] })
-      .success
-  );
+  assert.ok(!posOrderCreateSchema.safeParse({ items: [{ productId: UUID2, qty: 1 }] }).success);
   assert.ok(!posOrderCreateSchema.safeParse({ photoboxId: UUID, items: [] }).success);
 });
 
@@ -85,9 +75,7 @@ test("order schema: field total/harga dari client di-strip — tidak pernah masu
 // --- posManualPaySchema ------------------------------------------------------
 
 test("manual pay schema: qris DITOLAK (offline-only — A2)", () => {
-  assert.ok(
-    !posManualPaySchema.safeParse({ orderId: UUID, method: "qris" }).success
-  );
+  assert.ok(!posManualPaySchema.safeParse({ orderId: UUID, method: "qris" }).success);
 });
 
 test("manual pay schema: hanya cash | bank_transfer | other; orderId wajib uuid", () => {
@@ -95,14 +83,9 @@ test("manual pay schema: hanya cash | bank_transfer | other; orderId wajib uuid"
     assert.ok(posManualPaySchema.safeParse({ orderId: UUID, method }).success);
   }
   for (const method of ["offline", "QRIS", "gopay", ""]) {
-    assert.ok(
-      !posManualPaySchema.safeParse({ orderId: UUID, method }).success
-    );
+    assert.ok(!posManualPaySchema.safeParse({ orderId: UUID, method }).success);
   }
-  assert.ok(
-    !posManualPaySchema.safeParse({ orderId: "bukan-uuid", method: "cash" })
-      .success
-  );
+  assert.ok(!posManualPaySchema.safeParse({ orderId: "bukan-uuid", method: "cash" }).success);
 });
 
 // --- computePosTotals --------------------------------------------------------

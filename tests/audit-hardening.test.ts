@@ -78,10 +78,7 @@ test("route device exit/verify/report punya rate limit per IP", async () => {
 
 test("abort session route memvalidasi id sebagai UUID (paritas finalize)", async () => {
   const s = await src("src/app/api/v1/public/[businessSlug]/sessions/[id]/abort/route.ts");
-  assert.ok(
-    s.includes("parseUuidParam("),
-    "abort wajib parseUuidParam sebelum query DB"
-  );
+  assert.ok(s.includes("parseUuidParam("), "abort wajib parseUuidParam sebelum query DB");
 });
 
 // --- Endpoint baca harus bebas efek samping tulis ---

@@ -11,8 +11,7 @@
  * diketahui, bukan "tidak ada" — caller harus memperlakukannya sebagai gagal.
  */
 export function isObjectNotFoundError(error: unknown): boolean {
-  const status = (error as { $metadata?: { httpStatusCode?: number } })?.$metadata
-    ?.httpStatusCode;
+  const status = (error as { $metadata?: { httpStatusCode?: number } })?.$metadata?.httpStatusCode;
   const code = (error as { name?: string; Code?: string })?.name;
   const nestedCode = (error as { Code?: string })?.Code;
   return (

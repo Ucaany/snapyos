@@ -62,10 +62,7 @@ export default async function PosManagementPage({
               : "Hubungi admin platform untuk harga add-on POS."
           }
           cta={
-            <Link
-              href="/dashboard/subscription"
-              className={cn(buttonVariants())}
-            >
+            <Link href="/dashboard/subscription" className={cn(buttonVariants())}>
               Aktifkan add-on POS
             </Link>
           }
@@ -81,9 +78,7 @@ export default async function PosManagementPage({
     listPosProducts(user.id, active.business.id),
     listPosCategories(user.id, active.business.id),
     listPosBooths(user.id, active.business.id),
-    canReadReports
-      ? posRevenueReport(user.id, active.business.id, range)
-      : Promise.resolve(null),
+    canReadReports ? posRevenueReport(user.id, active.business.id, range) : Promise.resolve(null),
     canReadReports ? posVsKioskSplit(user.id, active.business.id, range) : Promise.resolve(null),
     ...(canReadReports
       ? GROUPS.map((g) => posBreakdownReport(user.id, active.business.id, range, g))
@@ -125,24 +120,22 @@ export default async function PosManagementPage({
               aria-label="Filter tanggal laporan POS"
             >
               <div className="flex min-w-[8.5rem] flex-1 flex-col gap-1">
-                <label htmlFor="pos-from" className="font-mono text-[10px] uppercase tracking-[0.12em]">
+                <label
+                  htmlFor="pos-from"
+                  className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                >
                   Dari
                 </label>
-                <DateInput
-                  id="pos-from"
-                  name="from"
-                  defaultValue={query.from ?? ""}
-                />
+                <DateInput id="pos-from" name="from" defaultValue={query.from ?? ""} />
               </div>
               <div className="flex min-w-[8.5rem] flex-1 flex-col gap-1">
-                <label htmlFor="pos-to" className="font-mono text-[10px] uppercase tracking-[0.12em]">
+                <label
+                  htmlFor="pos-to"
+                  className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                >
                   Sampai
                 </label>
-                <DateInput
-                  id="pos-to"
-                  name="to"
-                  defaultValue={query.to ?? ""}
-                />
+                <DateInput id="pos-to" name="to" defaultValue={query.to ?? ""} />
               </div>
               <button
                 type="submit"
@@ -167,7 +160,9 @@ export default async function PosManagementPage({
             }}
           />
           <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-            {"/// revenue selalu dari transactions; breakdown dari pos_orders (snapshot nama produk)"}
+            {
+              "/// revenue selalu dari transactions; breakdown dari pos_orders (snapshot nama produk)"
+            }
           </p>
         </section>
       ) : null}

@@ -11,7 +11,13 @@
  */
 
 import { config, requireServiceRole } from "./helpers/env.mjs";
-import { createAdmin, resolvePhotobox, mintActivationCode, resetBooth, activateDevice } from "./helpers/booth.mjs";
+import {
+  createAdmin,
+  resolvePhotobox,
+  mintActivationCode,
+  resetBooth,
+  activateDevice,
+} from "./helpers/booth.mjs";
 import { launchKiosk, collectConsole, seedDevice } from "./helpers/browser.mjs";
 import { createReporter } from "./helpers/report.mjs";
 
@@ -39,7 +45,11 @@ try {
   );
   const json = await res.json();
   const templates = json?.data ?? [];
-  report.record("endpoint template mengembalikan daftar", Array.isArray(templates), `count=${templates.length}`);
+  report.record(
+    "endpoint template mengembalikan daftar",
+    Array.isArray(templates),
+    `count=${templates.length}`
+  );
 
   const withSlots = templates.filter((t) => t.slot_count > 0);
   const mismatch = withSlots.filter((t) => t.slot_count !== pkg?.photo_count);
@@ -91,15 +101,25 @@ try {
   const reached = await frameHeading.isVisible({ timeout: 30_000 }).catch(() => false);
   if (reached) {
     // Tunggu daftar frame selesai dimuat ("Memuat..." hilang).
-    await page.getByText(/memuat\.\.\./i).waitFor({ state: "hidden", timeout: 20_000 }).catch(() => undefined);
+    await page
+      .getByText(/memuat\.\.\./i)
+      .waitFor({ state: "hidden", timeout: 20_000 })
+      .catch(() => undefined);
     const cards = await page.locator("button[aria-pressed]").count();
     report.record("kartu frame tampil", cards > 1, `kartu=${cards}`);
     const slotBadge = await page.getByText(/FOTO$/).count();
     report.record("kartu menampilkan jumlah slot frame", slotBadge > 0, `badge=${slotBadge}`);
   } else {
     // DEV_SKIP_PAYMENT mati → checkout tampil lebih dulu; bukan kegagalan.
-    const checkout = await page.getByText(/bayar sebelum foto/i).isVisible().catch(() => false);
-    report.record("pemilih frame butuh pembayaran aktif (dilewati)", checkout, `checkout=${checkout}`);
+    const checkout = await page
+      .getByText(/bayar sebelum foto/i)
+      .isVisible()
+      .catch(() => false);
+    report.record(
+      "pemilih frame butuh pembayaran aktif (dilewati)",
+      checkout,
+      `checkout=${checkout}`
+    );
   }
   report.record("tanpa console error", errors.length === 0, errors.slice(0, 3).join(" | "));
 } catch (error) {

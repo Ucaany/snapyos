@@ -221,7 +221,13 @@ export async function updateSubscription(
     .select("id, status, current_period_end, cancel_at_period_end")
     .maybeSingle();
   if (error) throw new ApiError("INTERNAL", "Gagal memperbarui subscription");
-  await audit(admin.id, "admin.subscription.update", subscriptionId, { ...parsed }, current.business_id);
+  await audit(
+    admin.id,
+    "admin.subscription.update",
+    subscriptionId,
+    { ...parsed },
+    current.business_id
+  );
   return data;
 }
 
@@ -360,7 +366,11 @@ export async function cancelSubscriptionAddOn(
   const { values, auditMeta } = planCancelAddOn(mode, parsed.manual_cancel_reason);
   const supabase = createServerClient();
 
-  let req = supabase.from("subscription_add_ons").update(values).eq("id", linkId).eq("status", "active");
+  let req = supabase
+    .from("subscription_add_ons")
+    .update(values)
+    .eq("id", linkId)
+    .eq("status", "active");
   if (mode === "deferred") {
     // CAS guard parity owner cancelAddOn: cancel ulang saat sudah dijadwalkan
     // batal harus error, bukan diam-diam sukses (idempotency ekplisit).

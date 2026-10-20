@@ -11,15 +11,10 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { ChartSkeleton } from "@/components/ui/chart-skeleton";
 import { formatIDR } from "@/lib/dashboard-math";
-import type {
-  PosRevenueReport,
-  PosBreakdownRow,
-  PosVsKioskSplit,
-} from "@/lib/pos-reports-math";
+import type { PosRevenueReport, PosBreakdownRow, PosVsKioskSplit } from "@/lib/pos-reports-math";
 
 const PosReportsDayChart = dynamic(
-  () =>
-    import("./PosReportsDayChartInner").then((mod) => mod.PosReportsDayChartInner),
+  () => import("./PosReportsDayChartInner").then((mod) => mod.PosReportsDayChartInner),
   {
     ssr: false,
     loading: () => <ChartSkeleton height="h-[180px]" className="mt-2" />,
@@ -170,9 +165,13 @@ export function PosReportsPanel({ data, timeZone }: { data: PosReportsData; time
                             : "Booth"}
                   </th>
                   {tab === "product" ? (
-                    <th scope="col" className="px-4 py-3 text-right">Qty</th>
+                    <th scope="col" className="px-4 py-3 text-right">
+                      Qty
+                    </th>
                   ) : null}
-                  <th scope="col" className="px-4 py-3 text-right">Revenue</th>
+                  <th scope="col" className="px-4 py-3 text-right">
+                    Revenue
+                  </th>
                 </tr>
               </thead>
               <tbody>

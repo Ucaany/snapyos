@@ -19,14 +19,10 @@ export function StaffTopbar({
       <div className="flex h-16 w-full items-center gap-3 px-4 md:gap-4 md:px-6">
         <Link
           href="/staff"
-          className="flex min-h-11 shrink-0 items-center gap-2 font-display text-base font-bold uppercase tracking-tight md:min-h-0 md:text-lg"
+          className="flex min-h-11 shrink-0 items-center gap-2 font-display text-base font-bold uppercase tracking-tight md:text-lg"
         >
           {/* eslint-disable-next-line @next/next/no-img-element -- SVG statis 1 file, tidak butuh optimizer next/image */}
-          <img
-            src="/snapyos-mark.png"
-            alt="Logo SnapyOS"
-            className="h-8 w-8 shrink-0"
-          />
+          <img src="/snapyos-mark.png" alt="Logo SnapyOS" className="h-8 w-8 shrink-0" />
           SnapyOS
           <span className="border-2 border-ink bg-accent px-1.5 py-0.5 text-[10px] leading-none tracking-[0.18em]">
             STAFF
@@ -46,7 +42,7 @@ export function StaffTopbar({
           <form action={logoutAction}>
             <button
               type="submit"
-              className="flex min-h-11 items-center border-2 border-ink bg-surface px-2.5 py-2 font-mono text-[10px] uppercase tracking-[0.05em] text-ink transition-colors hover:bg-accent active:translate-y-[2px] md:min-h-0 md:px-3 md:text-xs"
+              className="flex min-h-11 items-center border-2 border-ink bg-surface px-2.5 py-2 font-mono text-[10px] uppercase tracking-[0.05em] text-ink transition-colors hover:bg-accent active:translate-y-[2px] md:px-3 md:text-xs"
             >
               Keluar
             </button>

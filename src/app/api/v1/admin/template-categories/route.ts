@@ -31,8 +31,7 @@ export const POST = adminRawRoute(async ({ request }) => {
         : (() => {
             throw new ApiError("VALIDATION_ERROR", "Field `price` harus number/null");
           })();
-  return NextResponse.json(
-    dataEnvelope(await createTemplateCategory({ name: body.name, price })),
-    { status: 201 }
-  );
+  return NextResponse.json(dataEnvelope(await createTemplateCategory({ name: body.name, price })), {
+    status: 201,
+  });
 });

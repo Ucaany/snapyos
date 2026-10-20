@@ -11,7 +11,10 @@ export default function Loading() {
       <Skeleton className="h-40 w-full border-2 border-ink shadow-[4px_4px_0_0_#111111]" />
       <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
         {Array.from({ length: 3 }).map((_, i) => (
-          <li key={i} className="flex flex-col border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
+          <li
+            key={i}
+            className="flex flex-col border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]"
+          >
             <Skeleton className="h-44 w-full rounded-none border-b-2 border-ink" />
             <div className="flex flex-col gap-3 p-4">
               <Skeleton className="h-4 w-2/3" />

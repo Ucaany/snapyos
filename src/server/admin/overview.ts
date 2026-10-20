@@ -5,11 +5,7 @@
 import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
-import {
-  paymentSummary,
-  sumMrr,
-  type FeePolicy,
-} from "@/lib/admin-math";
+import { paymentSummary, sumMrr, type FeePolicy } from "@/lib/admin-math";
 import { requireAdmin } from "./guard";
 
 // ---------------------------------------------------------------------------
@@ -31,23 +27,15 @@ export type AdminOverview = {
 export async function getAdminOverviewGuarded(): Promise<AdminOverview> {
   await requireAdmin();
   const supabase = createServerClient();
-  const [
-    businesses,
-    subscriptions,
-    outlets,
-    photoboxes,
-    sessions,
-    transactions,
-  ] = await Promise.all([
-    supabase.from("businesses").select("id", { count: "exact", head: true }),
-    supabase
-      .from("subscriptions")
-      .select("status, plans ( price_monthly )"),
-    supabase.from("outlets").select("id", { count: "exact", head: true }),
-    supabase.from("photoboxes").select("id", { count: "exact", head: true }),
-    supabase.from("sessions").select("id", { count: "exact", head: true }),
-    supabase.from("transactions").select("id", { count: "exact", head: true }),
-  ]);
+  const [businesses, subscriptions, outlets, photoboxes, sessions, transactions] =
+    await Promise.all([
+      supabase.from("businesses").select("id", { count: "exact", head: true }),
+      supabase.from("subscriptions").select("status, plans ( price_monthly )"),
+      supabase.from("outlets").select("id", { count: "exact", head: true }),
+      supabase.from("photoboxes").select("id", { count: "exact", head: true }),
+      supabase.from("sessions").select("id", { count: "exact", head: true }),
+      supabase.from("transactions").select("id", { count: "exact", head: true }),
+    ]);
 
   const err =
     businesses.error ||
@@ -133,7 +121,7 @@ export async function listPayments(query: AdminPaymentQuery): Promise<{
   type Row = AdminPaymentRow & { businesses: { name: string } | { name: string }[] | null };
   const items = ((data ?? []) as unknown as Row[]).map((r) => ({
     ...r,
-    business_name: (Array.isArray(r.businesses) ? r.businesses[0] : r.businesses)?.name ?? "—",
+    business_name: (Array.isArray(r.businesses) ? r.businesses[0] : r.businesses)?.name ?? "-",
   }));
   return { items, total: count ?? 0 };
 }
@@ -213,22 +201,19 @@ export async function getDatabaseHealth(): Promise<DatabaseHealth> {
   await requireAdmin();
   const supabase = createServerClient();
 
-  const [userRows, ownerRows, pendingReview, webhookErrors, ...tableCounts] =
-    await Promise.all([
-      supabase.from("users").select("id, role, status, email_verified"),
-      supabase.from("businesses").select("owner_id"),
-      supabase
-        .from("subscription_intent_failures")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "pending"),
-      supabase
-        .from("payment_webhooks")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "error"),
-      ...HEALTH_TABLES.map((t) =>
-        supabase.from(t).select("id", { count: "exact", head: true })
-      ),
-    ]);
+  const [userRows, ownerRows, pendingReview, webhookErrors, ...tableCounts] = await Promise.all([
+    supabase.from("users").select("id, role, status, email_verified"),
+    supabase.from("businesses").select("owner_id"),
+    supabase
+      .from("subscription_intent_failures")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending"),
+    supabase
+      .from("payment_webhooks")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "error"),
+    ...HEALTH_TABLES.map((t) => supabase.from(t).select("id", { count: "exact", head: true })),
+  ]);
 
   const users = (userRows.data ?? []) as unknown as {
     id: string;
@@ -281,10 +266,7 @@ export async function getAdminAnalytics(days = 30): Promise<AdminAnalytics> {
       .from("transactions")
       .select("paid_at, created_at, final_amount, status")
       .or(`created_at.gte.${fromIso}T00:00:00.000Z,paid_at.gte.${fromIso}T00:00:00.000Z`),
-    supabase
-      .from("sessions")
-      .select("created_at")
-      .gte("created_at", `${fromIso}T00:00:00.000Z`),
+    supabase.from("sessions").select("created_at").gte("created_at", `${fromIso}T00:00:00.000Z`),
   ]);
   if (tx.error || ses.error) throw new ApiError("INTERNAL", "Gagal memuat analitik");
 
@@ -337,9 +319,7 @@ export async function getPaymentsSummary(query: {
   const [{ data, error }, fees, hooks] = await Promise.all([
     req,
     feeByBusinessMap(),
-    supabase
-      .from("payment_webhooks")
-      .select("signature_valid, status"),
+    supabase.from("payment_webhooks").select("signature_valid, status"),
   ]);
   if (error) throw new ApiError("INTERNAL", "Gagal memuat ringkasan payment");
 
@@ -352,7 +332,7 @@ export async function getPaymentsSummary(query: {
   };
   const rows = ((data ?? []) as unknown as Row[]).map((r) => ({
     business_id: r.business_id,
-    business_name: (Array.isArray(r.businesses) ? r.businesses[0] : r.businesses)?.name ?? "—",
+    business_name: (Array.isArray(r.businesses) ? r.businesses[0] : r.businesses)?.name ?? "-",
     final_amount: r.final_amount,
     status: r.status,
     provider: r.provider,

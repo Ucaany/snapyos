@@ -146,20 +146,18 @@ export async function getGatewayState(query: {
     updated_at: string;
     businesses: { name: string } | { name: string }[] | null;
   };
-  const credentials: AdminGatewayCredentialRow[] = ((data ?? []) as unknown as Row[]).map(
-    (r) => ({
-      id: r.id,
-      business_id: r.business_id,
-      business_name: (Array.isArray(r.businesses) ? r.businesses[0] : r.businesses)?.name ?? "-",
-      provider: r.provider,
-      label: r.label,
-      merchant_id: r.merchant_id,
-      environment: r.environment,
-      is_active: r.is_active,
-      created_at: r.created_at,
-      updated_at: r.updated_at,
-    })
-  );
+  const credentials: AdminGatewayCredentialRow[] = ((data ?? []) as unknown as Row[]).map((r) => ({
+    id: r.id,
+    business_id: r.business_id,
+    business_name: (Array.isArray(r.businesses) ? r.businesses[0] : r.businesses)?.name ?? "-",
+    provider: r.provider,
+    label: r.label,
+    merchant_id: r.merchant_id,
+    environment: r.environment,
+    is_active: r.is_active,
+    created_at: r.created_at,
+    updated_at: r.updated_at,
+  }));
 
   return { providers, credentials, total: count ?? 0 };
 }

@@ -15,10 +15,7 @@ export default function AdminLoading() {
       </div>
       <div className="flex flex-col gap-3">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div
-            key={i}
-            className="h-12 animate-pulse border-2 border-ink/10 bg-ink/5"
-          />
+          <div key={i} className="h-12 animate-pulse border-2 border-ink/10 bg-ink/5" />
         ))}
       </div>
     </div>

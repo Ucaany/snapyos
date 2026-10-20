@@ -33,7 +33,9 @@ export function ContactForm() {
         role="status"
         className="mt-6 border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111]"
       >
-        <p className="font-mono text-xs font-bold uppercase tracking-[0.08em] text-ink">{"/// Pesan siap dikirim"}</p>
+        <p className="font-mono text-xs font-bold uppercase tracking-[0.08em] text-ink">
+          {"/// Pesan siap dikirim"}
+        </p>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
           WhatsApp konsultasi terbuka di tab baru. Jika tidak terbuka,{" "}
           <a
@@ -53,7 +55,10 @@ export function ContactForm() {
   return (
     <form action={formAction} noValidate className="mt-6 space-y-4">
       <div className="grid gap-2">
-        <label htmlFor="kontak-nama" className="font-mono text-xs font-bold uppercase tracking-[0.08em] text-ink">
+        <label
+          htmlFor="kontak-nama"
+          className="font-mono text-xs font-bold uppercase tracking-[0.08em] text-ink"
+        >
           Nama
         </label>
         <Input
@@ -66,7 +71,10 @@ export function ContactForm() {
         <FieldError error={fieldErrors.name} />
       </div>
       <div className="grid gap-2">
-        <label htmlFor="kontak-email" className="font-mono text-xs font-bold uppercase tracking-[0.08em] text-ink">
+        <label
+          htmlFor="kontak-email"
+          className="font-mono text-xs font-bold uppercase tracking-[0.08em] text-ink"
+        >
           Email
         </label>
         <Input
@@ -83,7 +91,10 @@ export function ContactForm() {
         )}
       </div>
       <div className="grid gap-2">
-        <label htmlFor="kontak-pesan" className="font-mono text-xs font-bold uppercase tracking-[0.08em] text-ink">
+        <label
+          htmlFor="kontak-pesan"
+          className="font-mono text-xs font-bold uppercase tracking-[0.08em] text-ink"
+        >
           Pesan
         </label>
         <Textarea

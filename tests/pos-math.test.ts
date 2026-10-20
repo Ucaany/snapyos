@@ -1,12 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import {
-  computePosTotals,
-  posDayKey,
-  posDayRange,
-  posOrderNumber,
-} from "../src/lib/pos-math.ts";
+import { computePosTotals, posDayKey, posDayRange, posOrderNumber } from "../src/lib/pos-math.ts";
 
 test("computePosTotals: subtotal per item, gross multi item, final = gross − discount", () => {
   const t = computePosTotals([

@@ -7,7 +7,12 @@ import { CAMERA_ERRORS, cameraErrorKind } from "@/lib/camera-errors";
 import { captureFrame, normalizeRotation, normalizeZoom } from "@/lib/camera-capture";
 import { resolveFacingMode } from "@/lib/camera-provider";
 import { getDeviceProfile } from "@/lib/device-profile";
-import { kioskThemeVars, type CameraSettings, type CapturePhoto, type KioskVisualStyle } from "@/lib/kiosk-types";
+import {
+  kioskThemeVars,
+  type CameraSettings,
+  type CapturePhoto,
+  type KioskVisualStyle,
+} from "@/lib/kiosk-types";
 import type { TemplateLayout } from "@/lib/template-layout";
 import { useObjectUrl } from "@/components/kiosk/use-object-url";
 import { FramePreviewPanel } from "@/components/kiosk/FramePreviewPanel";
@@ -37,7 +42,20 @@ type Stage = "preview" | "countdown" | "review";
 
 /** Camera runtime — docs/05 §5.5–5.8 (countdown + capture + review/retake).
  *  2-part kiosk layout: left = camera preview, right = controls/progress. */
-function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, titleText, hintText, kioskStyle, showMirrorToggle = true, videoUrl = null, layout = null, frameUrl = null, onProgress, onComplete }: Props) {
+function CameraCaptureInner({
+  cameraSettings,
+  photoCount,
+  maxRetakes = null,
+  titleText,
+  hintText,
+  kioskStyle,
+  showMirrorToggle = true,
+  videoUrl = null,
+  layout = null,
+  frameUrl = null,
+  onProgress,
+  onComplete,
+}: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [stage, setStage] = useState<Stage>("preview");
@@ -66,7 +84,11 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
   // pemisahan ini, error batas retake (satu-satunya jalur keluar dari review)
   // menampilkan "LANJUTKAN" tapi tombolnya membuka ulang kamera — customer
   // terjebak tanpa cara melanjutkan sesi.
-  const [error, setError] = useState<{ message: string; action: string; onAction?: () => void } | null>(null);
+  const [error, setError] = useState<{
+    message: string;
+    action: string;
+    onAction?: () => void;
+  } | null>(null);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const streamGeneration = useRef(0);
   // Timer reconnect tertunda — dibatalkan saat unmount/sukses agar stream
@@ -121,7 +143,10 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
       setCameraReady(false);
       clearReconnectTimers();
       if (!navigator.mediaDevices?.getUserMedia) {
-        setError({ message: "Browser tidak mendukung kamera. Gunakan Chrome terbaru.", action: "COBA LAGI" });
+        setError({
+          message: "Browser tidak mendukung kamera. Gunakan Chrome terbaru.",
+          action: "COBA LAGI",
+        });
         return;
       }
       stopStream();
@@ -130,10 +155,19 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
       // Setting owner (`camera_settings.facingMode`) menang bila valid;
       // fallback device-profile (tablet kiosk = belakang, phone selfie = depan).
       // deviceId eksplisit menang di atas facing mode.
-      const facing = resolveFacingMode(cameraSettings.facingMode, getDeviceProfile().defaultFacingMode);
+      const facing = resolveFacingMode(
+        cameraSettings.facingMode,
+        getDeviceProfile().defaultFacingMode
+      );
       try {
         const constraints: MediaStreamConstraints = deviceId
-          ? { video: { deviceId: { exact: deviceId }, width: { ideal: ideal }, height: { ideal: idealH } } }
+          ? {
+              video: {
+                deviceId: { exact: deviceId },
+                width: { ideal: ideal },
+                height: { ideal: idealH },
+              },
+            }
           : { video: { facingMode: facing, width: { ideal: ideal }, height: { ideal: idealH } } };
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
         if (generation !== streamGeneration.current) {
@@ -179,14 +213,17 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
         }
       }
     },
-    [cameraSettings.capture_width, cameraSettings.capture_height, cameraSettings.facingMode, onTrackEnded, stopStream]
+    [
+      cameraSettings.capture_width,
+      cameraSettings.capture_height,
+      cameraSettings.facingMode,
+      onTrackEnded,
+      stopStream,
+    ]
   );
 
   useEffect(() => {
-    const t = setTimeout(
-      () => void openStream(cameraSettings.preferred_device_id ?? undefined),
-      0
-    );
+    const t = setTimeout(() => void openStream(cameraSettings.preferred_device_id ?? undefined), 0);
     return () => {
       clearTimeout(t);
       clearReconnectTimers();
@@ -319,7 +356,7 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-ink lg:flex-row lg:overflow-hidden">
-      {/* Left panel — camera preview / review */}
+      {/* Left panel: camera preview / review */}
       <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-ink">
         {videoUrl && stage === "preview" && (
           <video
@@ -348,18 +385,21 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
               // CSS transform tidak memengaruhi drawImage, tapi di sini keduanya
               // harus tampak sama bagi customer.
               style={{
-                transform: [
-                  mirror ? "scaleX(-1)" : "",
-                  rotation ? `rotate(${rotation}deg)` : "",
-                  calibrationZoom !== 1 ? `scale(${calibrationZoom})` : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ") || undefined,
+                transform:
+                  [
+                    mirror ? "scaleX(-1)" : "",
+                    rotation ? `rotate(${rotation}deg)` : "",
+                    calibrationZoom !== 1 ? `scale(${calibrationZoom})` : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ") || undefined,
               }}
             />
             {stage === "countdown" && (
               <div className="absolute inset-0 flex items-center justify-center bg-ink/60">
-                <span className="font-display text-[10rem] leading-none text-accent md:text-[14rem]">{count}</span>
+                <span className="font-display text-[10rem] leading-none text-accent md:text-[14rem]">
+                  {count}
+                </span>
               </div>
             )}
           </>
@@ -401,7 +441,7 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
         </div>
       </div>
 
-      {/* Right panel — controls + progress (chrome mengikuti kustomisasi kiosk;
+      {/* Right panel: controls + progress (chrome mengikuti kustomisasi kiosk;
           area kamera tetap gelap agar kontras preview/retake). bg-ink fallback
           dipakai saat kioskStyle tidak ada (inline style menang bila ada). */}
       <div
@@ -435,7 +475,15 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
           </p>
           <p
             className="font-display text-2xl uppercase leading-none tracking-tight md:text-3xl"
-            style={kioskStyle ? { fontSize: `${2 * kioskStyle.fontScale}rem`, color: kioskStyle.text, fontFamily: kioskStyle.fontFamily } : undefined}
+            style={
+              kioskStyle
+                ? {
+                    fontSize: `${2 * kioskStyle.fontScale}rem`,
+                    color: kioskStyle.text,
+                    fontFamily: kioskStyle.fontFamily,
+                  }
+                : undefined
+            }
           >
             {titleText || `Foto ${slot + 1} / ${photoCount}`}
           </p>
@@ -443,7 +491,8 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
             className="font-mono text-[10px] uppercase tracking-[0.15em]"
             style={{ opacity: 0.5, color: kioskStyle ? kioskStyle.text : undefined }}
           >
-             {hintText || `${photos.length} terambil${retakeCount > 0 ? `, ${retakeCount} ulang` : ""}`}
+            {hintText ||
+              `${photos.length} terambil${retakeCount > 0 ? `, ${retakeCount} ulang` : ""}`}
           </p>
         </div>
 
@@ -471,7 +520,11 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
               className="h-20 bg-accent-2 text-3xl shadow-[6px_6px_0_0_#111111] hover:shadow-[4px_4px_0_0_#111111]"
               style={
                 kioskStyle
-                  ? { borderRadius: kioskStyle.radius, backgroundColor: kioskStyle.accent, color: kioskStyle.accentText }
+                  ? {
+                      borderRadius: kioskStyle.radius,
+                      backgroundColor: kioskStyle.accent,
+                      color: kioskStyle.accentText,
+                    }
                   : undefined
               }
             >
@@ -479,18 +532,34 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
               {cameraReady ? `Ambil foto ${slot + 1}/${photoCount}` : "Menyiapkan kamera"}
             </Button>
             {showMirrorToggle && (
-              <Button type="button" variant="outline" aria-pressed={mirror} onClick={() => setMirror((value) => !value)} className="min-h-11">
-                <FlipHorizontal2 className="size-5" aria-hidden /> Mirror {mirror ? "aktif" : "nonaktif"}
+              <Button
+                type="button"
+                variant="outline"
+                aria-pressed={mirror}
+                onClick={() => setMirror((value) => !value)}
+                className="min-h-11"
+              >
+                <FlipHorizontal2 className="size-5" aria-hidden /> Mirror{" "}
+                {mirror ? "aktif" : "nonaktif"}
               </Button>
             )}
           </div>
         )}
         {stage === "review" && current && (
           <div className="flex flex-col gap-3">
-            <p className="text-center font-mono text-[10px] uppercase tracking-[0.15em]" style={{ opacity: 0.7, color: kioskStyle ? kioskStyle.text : undefined }}>
+            <p
+              className="text-center font-mono text-[10px] uppercase tracking-[0.15em]"
+              style={{ opacity: 0.7, color: kioskStyle ? kioskStyle.text : undefined }}
+            >
               Foto berhasil diambil
             </p>
-            <Button size="lg" variant="outline" onClick={retake} className="flex-1 bg-bg text-ink" style={kioskStyle ? { borderRadius: kioskStyle.radius } : undefined}>
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={retake}
+              className="flex-1 bg-bg text-ink"
+              style={kioskStyle ? { borderRadius: kioskStyle.radius } : undefined}
+            >
               <RotateCcw className="size-6" aria-hidden /> Ulang
             </Button>
             <Button
@@ -499,7 +568,11 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
               className="flex-1 bg-accent-3"
               style={
                 kioskStyle
-                  ? { borderRadius: kioskStyle.radius, backgroundColor: kioskStyle.accent, color: kioskStyle.accentText }
+                  ? {
+                      borderRadius: kioskStyle.radius,
+                      backgroundColor: kioskStyle.accent,
+                      color: kioskStyle.accentText,
+                    }
                   : undefined
               }
             >
@@ -508,19 +581,40 @@ function CameraCaptureInner({ cameraSettings, photoCount, maxRetakes = null, tit
           </div>
         )}
 
-        <div className="flex flex-col gap-1.5 border-t-2 pt-4" style={{ borderColor: kioskStyle ? "color-mix(in srgb, currentColor 20%, transparent)" : undefined }}>
+        <div
+          className="flex flex-col gap-1.5 border-t-2 pt-4"
+          style={{
+            borderColor: kioskStyle
+              ? "color-mix(in srgb, currentColor 20%, transparent)"
+              : undefined,
+          }}
+        >
           {Array.from({ length: photoCount }).map((_, i) => (
             <div key={i} className="flex items-center gap-2">
               <span
                 className={`inline-flex size-6 shrink-0 items-center justify-center border text-[10px] font-bold ${
                   i < photos.length ? "border-accent bg-accent text-ink" : "border-bg/40 text-bg/40"
                 }`}
-                style={kioskStyle && i >= photos.length ? { borderColor: `color-mix(in srgb, ${kioskStyle.text} 40%, transparent)`, color: `color-mix(in srgb, ${kioskStyle.text} 40%, transparent)` } : undefined}
+                style={
+                  kioskStyle && i >= photos.length
+                    ? {
+                        borderColor: `color-mix(in srgb, ${kioskStyle.text} 40%, transparent)`,
+                        color: `color-mix(in srgb, ${kioskStyle.text} 40%, transparent)`,
+                      }
+                    : undefined
+                }
               >
                 {i + 1}
               </span>
-              <span className="font-mono text-[10px] uppercase tracking-[0.1em]" style={{ opacity: 0.5, color: kioskStyle ? kioskStyle.text : undefined }}>
-                {i < photos.length ? "Terambil" : i === slot && stage !== "review" ? "Aktif" : "Menunggu"}
+              <span
+                className="font-mono text-[10px] uppercase tracking-[0.1em]"
+                style={{ opacity: 0.5, color: kioskStyle ? kioskStyle.text : undefined }}
+              >
+                {i < photos.length
+                  ? "Terambil"
+                  : i === slot && stage !== "review"
+                    ? "Aktif"
+                    : "Menunggu"}
               </span>
             </div>
           ))}

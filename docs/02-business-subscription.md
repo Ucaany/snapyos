@@ -26,9 +26,11 @@ Admin dapat mengubah: price, billing cycle, feature limits, outlet limit, **conc
 > §2.9). Yang membedakan plan hanyalah **fitur** (`features` jsonb).
 
 ### STARTER — Rp99.000/month
+
 Target: **New Photobox Owner**.
 
 Fitur (base):
+
 - 1 business workspace
 - 1 outlet, 1 Photobox, 1 perangkat online
 - Basic templates
@@ -37,18 +39,22 @@ Fitur (base):
 - Revenue dashboard
 
 ### GROWTH — Rp249.000/month
+
 Target: **Growing UMKM**.
 
 Fitur (semua Starter +):
+
 - Payment gateway direct-merchant (`direct_payment`)
 - Finance / settlement
 - Staff management (`staff`)
 - POS (add-on terpisah, ditampilkan sebagai fitur tersedia)
 
 ### BUSINESS — Rp499.000+/month
+
 Target: **Multi-outlet / agency**.
 
 Fitur (semua Growth + Starter +):
+
 - Storage (`storage`)
 - Reports / laporan (`reports`)
 - Voucher (`voucher`)
@@ -63,29 +69,30 @@ Fitur (semua Growth + Starter +):
 
 Field pada `plans`:
 
-| Field | Type | Contoh |
-|-------|------|--------|
-| `code` | text unique | `starter`, `growth`, `business` |
-| `name` | text | `STARTER` |
-| `price_monthly` | integer (IDR) | `99000` |
-| `price_yearly` | integer (IDR, nullable) | `990000` |
-| `billing_cycle` | enum | `monthly`, `yearly` |
-| `max_businesses` | integer | `1` |
-| `max_outlets` | integer | `1` (base; tambah via add-on) |
-| `max_photoboxes` | integer | `1` (base; tambah via add-on) |
-| `max_concurrent_sessions` | integer | `1` (base; tambah via add-on) |
-| `max_staff` | integer | `0` starter / `5` growth / `20` business |
-| `storage_limit_mb` | integer | `512` |
-| `platform_fee_percent` | numeric | `0` (fee per plan, configurable) |
-| `platform_fee_flat` | integer | `0` |
-| `features` | jsonb | list fitur & flag (voucher, reports, custom_domain, white_label, event_mode, ...) |
-| `is_active` | boolean | `true` |
+| Field                     | Type                    | Contoh                                                                            |
+| ------------------------- | ----------------------- | --------------------------------------------------------------------------------- |
+| `code`                    | text unique             | `starter`, `growth`, `business`                                                   |
+| `name`                    | text                    | `STARTER`                                                                         |
+| `price_monthly`           | integer (IDR)           | `99000`                                                                           |
+| `price_yearly`            | integer (IDR, nullable) | `990000`                                                                          |
+| `billing_cycle`           | enum                    | `monthly`, `yearly`                                                               |
+| `max_businesses`          | integer                 | `1`                                                                               |
+| `max_outlets`             | integer                 | `1` (base; tambah via add-on)                                                     |
+| `max_photoboxes`          | integer                 | `1` (base; tambah via add-on)                                                     |
+| `max_concurrent_sessions` | integer                 | `1` (base; tambah via add-on)                                                     |
+| `max_staff`               | integer                 | `0` starter / `5` growth / `20` business                                          |
+| `storage_limit_mb`        | integer                 | `512`                                                                             |
+| `platform_fee_percent`    | numeric                 | `0` (fee per plan, configurable)                                                  |
+| `platform_fee_flat`       | integer                 | `0`                                                                               |
+| `features`                | jsonb                   | list fitur & flag (voucher, reports, custom_domain, white_label, event_mode, ...) |
+| `is_active`               | boolean                 | `true`                                                                            |
 
 ## 2.4 Subscription Lifecycle
 
 `subscriptions` status enum: `trial`, `active`, `past_due`, `cancelled`, `expired`.
 
 Transisi:
+
 - **Trial** → (pilih plan + bayar) → **Active**
 - **Active** → (gagal bayar renewal) → **Past Due**
 - **Past Due** → (bayar) → **Active** | (lewat grace period) → **Expired/Cancelled**
@@ -155,17 +162,17 @@ hal:
 3. **Antrean review manual** — baris di `subscription_intent_failures`
    (reason + snapshot intent + amount) agar admin dapat **refund** atau
    **aktivasi manual**. Partial unique index `(invoice_id, reason) WHERE
-   status='pending'` menggabungkan retry berulang menjadi satu tiket;
+status='pending'` menggabungkan retry berulang menjadi satu tiket;
    retry dengan reason berbeda membuat tiket terpisah.
 
 **Reason yang dikenali** (`INTENT_FAILURE_REASON`):
 
-| Reason | Kapan | Tindakan |
-|--------|-------|----------|
-| `SUBSCRIPTION_NOT_ACTIVE` | SELECT subscription `{trial,active,past_due,expired}` → null; kasus owner cancel + cron flip sebelum webhook paid (`cancelled` tidak masuk daftar — expired kini recovery self-service §2.4) | Refund atau aktivasi manual |
-| `UPDATE_NO_ROW` | SELECT lolos tapi UPDATE `.in(status).select()` nol baris (race cron/admin di sela SELECT–UPDATE) | Refund atau aktivasi manual |
-| `MISSING_SUBSCRIPTION_ID` | Invoice berisi add-on tetapi `subscription_id` null | Refund atau attach manual |
-| `INTENT_EXCEPTION` | Throw tak terduga (mis. insert add-on gagal); klaim dilepas agar retry aman | Retry otomatis webhook berikutnya; tiket untuk visibilitas |
+| Reason                    | Kapan                                                                                                                                                                                        | Tindakan                                                   |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `SUBSCRIPTION_NOT_ACTIVE` | SELECT subscription `{trial,active,past_due,expired}` → null; kasus owner cancel + cron flip sebelum webhook paid (`cancelled` tidak masuk daftar — expired kini recovery self-service §2.4) | Refund atau aktivasi manual                                |
+| `UPDATE_NO_ROW`           | SELECT lolos tapi UPDATE `.in(status).select()` nol baris (race cron/admin di sela SELECT–UPDATE)                                                                                            | Refund atau aktivasi manual                                |
+| `MISSING_SUBSCRIPTION_ID` | Invoice berisi add-on tetapi `subscription_id` null                                                                                                                                          | Refund atau attach manual                                  |
+| `INTENT_EXCEPTION`        | Throw tak terduga (mis. insert add-on gagal); klaim dilepas agar retry aman                                                                                                                  | Retry otomatis webhook berikutnya; tiket untuk visibilitas |
 
 **Jaminan uang tidak dilepas:** kegagalan aktivasi **tidak** mengubah
 `invoices.status` (tetap `paid`) dan **tidak** memicu refund otomatis.
@@ -193,6 +200,7 @@ baris pending invoice tersebut otomatis di-`dismissed`
    untuk mencegah dua admin menimpa keputusan satu sama lain.
 
 **Implementasi terkait:**
+
 - Core: `src/lib/subscription-intent-apply.ts`
   (`applyInvoiceIntentWithDeps`, `recordActivationFailure`,
   `INTENT_FAILURE_REASON`, `buildReleasedIntent`).
@@ -206,6 +214,7 @@ baris pending invoice tersebut otomatis di-`dismissed`
 ## 2.5 Owner Subscription View
 
 Owner dapat melihat:
+
 - Current plan
 - Price
 - Billing cycle
@@ -215,6 +224,7 @@ Owner dapat melihat:
 - Invoice history
 
 Owner dapat melakukan:
+
 - **Upgrade** (langsung prorata atau mulai periode baru)
 - **Downgrade** (efektif periode berikutnya)
 - **Cancel** (aktif sampai akhir periode berjalan)
@@ -224,12 +234,14 @@ Owner dapat melakukan:
 Subscription harus **payment-provider agnostic**, konsisten dengan abstraction layer payment (lihat `06-checkout-payment.md`).
 
 Komponen:
+
 - `plan` — definisi paket & limit
 - `subscription` — relasi business ↔ plan + status + periode
 - `invoice` — tagihan per periode (MVP: record, bukan PDF formal)
 - `billing` — integrasi provider subscription (future)
 
 Karena MVP online payment fokus pada QRIS (Pakasir) yang transaksional, **renewal subscription** pada MVP awal dapat menggunakan:
+
 1. **Manual renewal** — owner membayar QRIS invoice tiap periode (paling sederhana, realistis untuk MVP).
 2. **Auto-debit** — future enhancement saat provider subscription tersedia.
 
@@ -286,10 +298,12 @@ SnapyOS mengenakan **platform fee** configurable per plan (default 0). Field: `p
 - `max_concurrent_sessions` efektif = `plans.max_concurrent_sessions + sum(add-ons aktif)`.
 
 **Entity:**
+
 - `add_ons` — `{ id, code, name, price_monthly, unit (session), is_active }`
 - `subscription_add_ons` — m2m `{ subscription_id, add_on_id, quantity, status }`
 
 **Flow:**
+
 1. Owner di halaman Subscription melihat "Perangkat online: 1/3".
 2. Klik `[ TAMBAH SESI ]` → pilih add-on → konfirmasi (langsung efektif, tagihan bulanan).
 3. Saat customer mulai sesi, server cek jumlah device online vs limit efektif.
@@ -297,6 +311,7 @@ SnapyOS mengenakan **platform fee** configurable per plan (default 0). Field: `p
 **Enforcement (server-side):** saat `POST /sessions`, hitung `COUNT(sessions WHERE business_id=X AND status='active')`; jika ≥ limit efektif → `SESSION_LIMIT_REACHED`.
 
 **Acceptance:**
+
 - Owner default bisa jalan 1 sesi.
 - Membeli add-on menambah limit sesi bersamaan.
 - Memulai sesi melebihi limit ditolak.

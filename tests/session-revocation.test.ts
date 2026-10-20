@@ -76,7 +76,11 @@ test("error DB → fail-closed (klaim dibuang), bukan sesi tetap hidup", () => {
     rowError: { message: "fetch failed" },
     now: NOW,
   });
-  assert.deepEqual(out, {}, "outage DB tidak boleh mempertahankan sesi yang mungkin sudah direvoke");
+  assert.deepEqual(
+    out,
+    {},
+    "outage DB tidak boleh mempertahankan sesi yang mungkin sudah direvoke"
+  );
 });
 
 test("user suspended → klaim dibuang", () => {

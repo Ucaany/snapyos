@@ -19,10 +19,7 @@ export type FormState = {
 
 const EMPTY: FormState = {};
 
-export async function loginAction(
-  _prev: FormState,
-  formData: FormData
-): Promise<FormState> {
+export async function loginAction(_prev: FormState, formData: FormData): Promise<FormState> {
   // Field yang absen dari FormData (mis. submit saat input `disabled` karena
   // `pending`) harus jadi string kosong, bukan `null`: `null` membuat Zod
   // membalas pesan mentah berbahasa Inggris ("expected string, received null")

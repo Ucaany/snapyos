@@ -24,19 +24,13 @@ const SRC = path.join(ROOT, "src");
 const EMPTY = `data:text/javascript,export default {};`;
 
 /** Stub supabase — delegasi ke global agar bisa diatur per-tes. */
-const SB_STUB = pathToFileURL(
-  path.join(import.meta.dirname, "supabase-stub.mjs")
-).href;
+const SB_STUB = pathToFileURL(path.join(import.meta.dirname, "supabase-stub.mjs")).href;
 
 /** Stub Next/Auth.js — request context tidak ada di `node --test`. */
-const NEXT_STUBS = pathToFileURL(
-  path.join(import.meta.dirname, "next-stubs.mjs")
-).href;
+const NEXT_STUBS = pathToFileURL(path.join(import.meta.dirname, "next-stubs.mjs")).href;
 
 /** Stub `next-auth` — modul aslinya menarik `next/server` (lihat berkasnya). */
-const NEXTAUTH_STUB = pathToFileURL(
-  path.join(import.meta.dirname, "nextauth-stub.mjs")
-).href;
+const NEXTAUTH_STUB = pathToFileURL(path.join(import.meta.dirname, "nextauth-stub.mjs")).href;
 
 /**
  * Selesaikan `@/x` ke berkas nyata di `src/`, mencoba ekstensi yang lazim.

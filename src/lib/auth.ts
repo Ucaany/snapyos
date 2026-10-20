@@ -56,7 +56,9 @@ async function fetchSessionRow(supabase: ReturnType<typeof createServerClient>, 
     const msg = String(error.message ?? "");
     const transient =
       /^(UND_ERR|ECONN|ENOTFOUND|EAI_AGAIN|ETIMEDOUT|ECONNREFUSED|ECONNRESET)/i.test(code) ||
-      /fetch failed|socket hang up|aborted|network error|other side closed|UND_ERR|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|ECONNREFUSED|timeout/i.test(msg) ||
+      /fetch failed|socket hang up|aborted|network error|other side closed|UND_ERR|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|ECONNREFUSED|timeout/i.test(
+        msg
+      ) ||
       /^5\d\d$/.test(code);
     if (!transient || attempt === SESSION_FETCH_RETRIES) break;
     // jitter [0.5×..1.5×) base × attempt → anti thundering-herd saat outage parsial.

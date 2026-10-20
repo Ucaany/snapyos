@@ -48,8 +48,12 @@ const PLAN_FEATURES: { key: string; label: string }[] = [
 ];
 
 function fmtDate(iso: string | null): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
+  if (!iso) return "-";
+  return new Date(iso).toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 const INVOICE_STATUS_LABEL: Record<string, string> = {
@@ -62,12 +66,24 @@ function invoiceStatusLabel(status: string): string {
   return INVOICE_STATUS_LABEL[status] ?? status;
 }
 
-function UsageRow({ label, used, max, hint }: { label: string; used: number; max: number; hint?: string }) {
+function UsageRow({
+  label,
+  used,
+  max,
+  hint,
+}: {
+  label: string;
+  used: number;
+  max: number;
+  hint?: string;
+}) {
   const pct = usagePercent(used, max);
   return (
     <div className="flex flex-col gap-1 border-b-2 border-ink/10 py-3 last:border-b-0">
       <div className="flex items-baseline justify-between gap-4">
-        <span className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">{label}</span>
+        <span className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
+          {label}
+        </span>
         <span className="font-mono text-xs font-bold tabular-nums">
           {used} / {max}
         </span>
@@ -86,7 +102,9 @@ function UsageRow({ label, used, max, hint }: { label: string; used: number; max
         />
       </div>
       {hint && (
-        <p className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">{hint}</p>
+        <p className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
+          {hint}
+        </p>
       )}
     </div>
   );
@@ -102,9 +120,7 @@ function PlanCardBlock({
   trigger?: ReactNode;
 }) {
   return (
-    <Card
-      className={`h-full ${isCurrent ? "bg-accent" : ""}`}
-    >
+    <Card className={`h-full ${isCurrent ? "bg-accent" : ""}`}>
       <CardHeader>
         <div className="flex items-center justify-between gap-3">
           <CardTitle>{plan.name}</CardTitle>
@@ -118,7 +134,10 @@ function PlanCardBlock({
           <data value={plan.priceMonthly} className="font-mono text-lg font-bold tabular-nums">
             {formatIDR(plan.priceMonthly)}
           </data>
-          <span className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground"> /bulan</span>
+          <span className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
+            {" "}
+            /bulan
+          </span>
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col gap-4">
@@ -155,12 +174,21 @@ function PlanCardBlock({
  * Sebelumnya semua kartu menulis copy sesi (salah untuk storage/POS).
  */
 const ADD_ON_UNIT_COPY: Record<string, { detail: string; cta: string }> = {
-  session: { detail: "+1 perangkat online / unit · atur jumlah di layar konfirmasi", cta: "Tambah sesi" },
-  storage: { detail: "+1 paket storage / unit · atur jumlah di layar konfirmasi", cta: "Tambah storage" },
+  session: {
+    detail: "+1 perangkat online / unit · atur jumlah di layar konfirmasi",
+    cta: "Tambah sesi",
+  },
+  storage: {
+    detail: "+1 paket storage / unit · atur jumlah di layar konfirmasi",
+    cta: "Tambah storage",
+  },
   feature: { detail: "Membuka fitur ini · aktif selama berlangganan", cta: "Aktifkan" },
 };
 
-const ADD_ON_COPY_FALLBACK = { detail: "+1 perangkat online / unit · atur jumlah di layar konfirmasi", cta: "Tambah" };
+const ADD_ON_COPY_FALLBACK = {
+  detail: "+1 perangkat online / unit · atur jumlah di layar konfirmasi",
+  cta: "Tambah",
+};
 
 function addOnCopy(unit: string) {
   return ADD_ON_UNIT_COPY[unit] ?? ADD_ON_COPY_FALLBACK;
@@ -183,7 +211,9 @@ function AddOnCardBlock({
         <div className="flex items-center justify-between gap-3">
           <CardTitle>{addOn.name}</CardTitle>
           {active && (
-            <span className={`rounded-none border-2 border-ink px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.05em] ${active.cancelAtPeriodEnd ? "bg-destructive text-destructive-foreground" : "bg-accent text-ink"}`}>
+            <span
+              className={`rounded-none border-2 border-ink px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.05em] ${active.cancelAtPeriodEnd ? "bg-destructive text-destructive-foreground" : "bg-accent text-ink"}`}
+            >
               ×{active.quantity} {active.cancelAtPeriodEnd ? "batal akhir periode" : "aktif"}
             </span>
           )}
@@ -192,7 +222,10 @@ function AddOnCardBlock({
           <data value={addOn.priceMonthly} className="font-mono text-base font-bold tabular-nums">
             {formatIDR(addOn.priceMonthly)}
           </data>
-          <span className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground"> /bulan</span>
+          <span className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
+            {" "}
+            /bulan
+          </span>
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col gap-3">
@@ -229,28 +262,29 @@ export function SubscriptionPanel({
 
   return (
     <div className="flex flex-col gap-8">
-      <section aria-labelledby="sub-status-heading" className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+      <section
+        aria-labelledby="sub-status-heading"
+        className="grid grid-cols-1 gap-6 lg:grid-cols-12"
+      >
         <Card className="lg:col-span-7">
           <CardHeader>
             <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
               {"Status langganan"}
             </p>
-            <CardTitle id="sub-status-heading">
-              {plan ? plan.name : "Belum berlangganan"}
-            </CardTitle>
+            <CardTitle id="sub-status-heading">{plan ? plan.name : "Belum berlangganan"}</CardTitle>
             <CardDescription>
               {subscription
                 ? subscription.status === "trial"
                   ? `Trial sampai ${fmtDate(subscription.trialEndsAt)}`
                   : subscription.status === "expired"
-                    ? "Langganan kedaluwarsa — aktifkan kembali untuk memulihkan akses."
+                    ? "Langganan kedaluwarsa: aktifkan kembali untuk memulihkan akses."
                     : `Periode berakhir ${fmtDate(subscription.currentPeriodEnd)}`
                 : "Business ini belum punya subscription aktif."}
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <p className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
-              Status: {subscription?.status ?? "—"} ·{" "}
+              Status: {subscription?.status ?? "-"} ·{" "}
               {isCancelled ? "berakhir di akhir periode" : "berlanjut otomatis"}
             </p>
 
@@ -260,19 +294,25 @@ export function SubscriptionPanel({
                   <dt className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
                     Tagihan /bulan
                   </dt>
-                  <dd className="font-mono text-lg font-bold tabular-nums">{formatIDR(monthlyTotal)}</dd>
+                  <dd className="font-mono text-lg font-bold tabular-nums">
+                    {formatIDR(monthlyTotal)}
+                  </dd>
                 </div>
                 <div className="flex flex-col gap-1 bg-surface p-3">
                   <dt className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
                     Plan
                   </dt>
-                  <dd className="font-mono text-lg font-bold tabular-nums">{formatIDR(plan?.priceMonthly ?? 0)}</dd>
+                  <dd className="font-mono text-lg font-bold tabular-nums">
+                    {formatIDR(plan?.priceMonthly ?? 0)}
+                  </dd>
                 </div>
                 <div className="flex flex-col gap-1 bg-surface p-3">
                   <dt className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
                     Add-on aktif
                   </dt>
-                  <dd className="font-mono text-lg font-bold tabular-nums">{formatIDR(addOnTotal)}</dd>
+                  <dd className="font-mono text-lg font-bold tabular-nums">
+                    {formatIDR(addOnTotal)}
+                  </dd>
                 </div>
               </dl>
             )}
@@ -326,10 +366,7 @@ export function SubscriptionPanel({
 
       <section aria-labelledby="sub-plans-heading">
         <div className="mb-4 flex items-end justify-between gap-4 border-b-2 border-ink pb-3">
-          <h2
-            id="sub-plans-heading"
-            className="font-display text-2xl uppercase tracking-tight"
-          >
+          <h2 id="sub-plans-heading" className="font-display text-2xl uppercase tracking-tight">
             Plans
           </h2>
           <span className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
@@ -371,10 +408,7 @@ export function SubscriptionPanel({
 
       <section aria-labelledby="sub-addons-heading">
         <div className="mb-4 flex items-end justify-between gap-4 border-b-2 border-ink pb-3">
-          <h2
-            id="sub-addons-heading"
-            className="font-display text-2xl uppercase tracking-tight"
-          >
+          <h2 id="sub-addons-heading" className="font-display text-2xl uppercase tracking-tight">
             Add-ons
           </h2>
           <span className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
@@ -420,76 +454,74 @@ export function SubscriptionPanel({
 
       <section aria-labelledby="sub-invoices-heading">
         <div className="mb-4 flex items-end justify-between gap-4 border-b-2 border-ink pb-3">
-          <h2
-            id="sub-invoices-heading"
-            className="font-display text-2xl uppercase tracking-tight"
-          >
+          <h2 id="sub-invoices-heading" className="font-display text-2xl uppercase tracking-tight">
             Invoice
           </h2>
           <span className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            {"/// 05. TAGIHAN — BAYAR VIA QRIS"}
+            {"/// 05. TAGIHAN: BAYAR VIA QRIS"}
           </span>
         </div>
         <p className="mb-4 max-w-[70ch] text-xs text-muted-foreground">
-          Pilih plan / beli add-on → invoice pending terbit → bayar di halaman
-          pembayaran (berbatas waktu) → plan & add-on aktif otomatis. Invoice lunas
-          bisa diunduh buktinya.
+          Pilih plan / beli add-on → invoice pending terbit → bayar di halaman pembayaran (berbatas
+          waktu) → plan & add-on aktif otomatis. Invoice lunas bisa diunduh buktinya.
         </p>
         {invoices.length === 0 ? (
           <div className="flex flex-col items-center gap-2 border-2 border-dashed border-ink/40 bg-muted p-8 text-center text-muted-foreground">
             <p className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
-              Belum ada invoice — invoice terbit saat plan diubah / add-on dibeli.
+              Belum ada invoice: invoice terbit saat plan diubah / add-on dibeli.
             </p>
           </div>
         ) : (
-            <Table>
-              <TableCaption className="sr-only">Riwayat invoice subscription</TableCaption>
-              <TableHeader>
-                <TableRow>
-                  <TableHead scope="col">Nomor</TableHead>
-                  <TableHead scope="col">Item</TableHead>
-                  <TableHead scope="col">Jumlah</TableHead>
-                  <TableHead scope="col">Status</TableHead>
-                  <TableHead scope="col">Dibayar</TableHead>
-                  <TableHead scope="col">Aksi</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {invoices.map((inv) => (
-                  <TableRow key={inv.id}>
-                    <TableCell className="tabular-nums">{inv.number}</TableCell>
-                    <TableCell>{inv.intent?.name ?? "—"}</TableCell>
-                    <TableCell className="tabular-nums">{formatIDR(inv.amount)}</TableCell>
-                    <TableCell className="font-mono text-[11px] uppercase tracking-[0.05em]">{invoiceStatusLabel(inv.status)}</TableCell>
-                    <TableCell>{fmtDate(inv.paidAt)}</TableCell>
-                    <TableCell>
-                      {inv.status === "pending" || inv.status === "void" ? (
-                        inv.status === "pending" ? (
-                          <Link
-                            href={`/dashboard/subscription/invoice/${inv.id}`}
-                            className="inline-flex items-center gap-1.5 rounded-none border-2 border-ink bg-accent px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.05em] text-ink shadow-[2px_2px_0_#111] hover:bg-accent/80"
-                          >
-                            <QrCode className="size-4" aria-hidden /> Bayar
-                          </Link>
-                        ) : (
-                          <span className="text-muted-foreground">Dibatalkan</span>
-                        )
-                      ) : inv.status === "paid" ? (
-                        <a
-                          href={`/dashboard/subscription/invoice/${inv.id}/receipt?download=1`}
-                          download={`${inv.number}.pdf`}
-                          className="inline-flex items-center gap-1.5 rounded-none border-2 border-ink px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.05em] hover:bg-muted"
+          <Table>
+            <TableCaption className="sr-only">Riwayat invoice subscription</TableCaption>
+            <TableHeader>
+              <TableRow>
+                <TableHead scope="col">Nomor</TableHead>
+                <TableHead scope="col">Item</TableHead>
+                <TableHead scope="col">Jumlah</TableHead>
+                <TableHead scope="col">Status</TableHead>
+                <TableHead scope="col">Dibayar</TableHead>
+                <TableHead scope="col">Aksi</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {invoices.map((inv) => (
+                <TableRow key={inv.id}>
+                  <TableCell className="tabular-nums">{inv.number}</TableCell>
+                  <TableCell>{inv.intent?.name ?? "-"}</TableCell>
+                  <TableCell className="tabular-nums">{formatIDR(inv.amount)}</TableCell>
+                  <TableCell className="font-mono text-[11px] uppercase tracking-[0.05em]">
+                    {invoiceStatusLabel(inv.status)}
+                  </TableCell>
+                  <TableCell>{fmtDate(inv.paidAt)}</TableCell>
+                  <TableCell>
+                    {inv.status === "pending" || inv.status === "void" ? (
+                      inv.status === "pending" ? (
+                        <Link
+                          href={`/dashboard/subscription/invoice/${inv.id}`}
+                          className="inline-flex min-h-11 items-center gap-1.5 rounded-none border-2 border-ink bg-accent px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.05em] text-ink shadow-[2px_2px_0_#111] hover:bg-accent/80"
                         >
-                          <Download className="size-4" aria-hidden /> Bukti
-                        </a>
+                          <QrCode className="size-4" aria-hidden /> Bayar
+                        </Link>
                       ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                        <span className="text-muted-foreground">Dibatalkan</span>
+                      )
+                    ) : inv.status === "paid" ? (
+                      <a
+                        href={`/dashboard/subscription/invoice/${inv.id}/receipt?download=1`}
+                        download={`${inv.number}.pdf`}
+                        className="inline-flex min-h-11 items-center gap-1.5 rounded-none border-2 border-ink px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.05em] hover:bg-muted"
+                      >
+                        <Download className="size-4" aria-hidden /> Bukti
+                      </a>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </section>
     </div>

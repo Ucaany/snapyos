@@ -34,9 +34,7 @@ export function SupportTicketDetail({ ticket }: { ticket: SupportTicketDetail })
             <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
               {`${ticket.category} · ${ticket.area}`}
             </p>
-            <h2 className="font-display text-2xl uppercase tracking-tight">
-              {ticket.subject}
-            </h2>
+            <h2 className="font-display text-2xl uppercase tracking-tight">{ticket.subject}</h2>
           </div>
           <StatusBadge status={ticket.status} label={STATUS_LABEL[ticket.status]} />
         </div>
@@ -44,8 +42,7 @@ export function SupportTicketDetail({ ticket }: { ticket: SupportTicketDetail })
           {ticket.description}
         </p>
         <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-          {dateFmt.format(new Date(ticket.created_at))} · status{" "}
-          {STATUS_LABEL[ticket.status]}
+          {dateFmt.format(new Date(ticket.created_at))} · status {STATUS_LABEL[ticket.status]}
         </p>
       </div>
 
@@ -62,16 +59,11 @@ export function SupportTicketDetail({ ticket }: { ticket: SupportTicketDetail })
           </div>
         ) : (
           ticket.replies.map((r) => (
-            <div
-              key={r.id}
-              className="border-2 border-ink bg-bg p-4 shadow-[4px_4px_0_0_#111111]"
-            >
+            <div key={r.id} className="border-2 border-ink bg-bg p-4 shadow-[4px_4px_0_0_#111111]">
               <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
                 {r.author_name ?? "Tim SnapyOS"} · {dateFmt.format(new Date(r.created_at))}
               </p>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">
-                {r.body}
-              </p>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{r.body}</p>
             </div>
           ))
         )}
@@ -106,7 +98,7 @@ export function SupportTicketDetail({ ticket }: { ticket: SupportTicketDetail })
         </form>
       ) : (
         <p className="font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
-          {"/// TIKET SELESAI — tidak menerima balasan baru"}
+          {"/// TIKET SELESAI: tidak menerima balasan baru"}
         </p>
       )}
     </div>

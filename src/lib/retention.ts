@@ -43,9 +43,7 @@ export type RetentionStorage = {
    * Hapus key lintas-provider; kembalikan key yang gagal (retry nanti).
    * Prod = `removeResolvedOutcome("generated-photos", keys)`.
    */
-  remove(
-    keys: string[]
-  ): Promise<{ ok: string[]; failures: { key: string; message: string }[] }>;
+  remove(keys: string[]): Promise<{ ok: string[]; failures: { key: string; message: string }[] }>;
 };
 
 export type RetentionDeps = {
@@ -138,7 +136,7 @@ export async function cleanupSessionMedia(
         // backlog media/DB tumbuh tanpa batas. Fail-open: lanjut finalize
         // (media tetap bersih); surfacing misconfig lewat satu log.
         log(
-          `accountSub tidak tersedia (misconfig: fungsi/tabel akuntansi absen) — fail-open, finalize dilanjutkan: ${outcome.error ?? "unknown"}`
+          `accountSub tidak tersedia (misconfig: fungsi/tabel akuntansi absen): fail-open, finalize dilanjutkan: ${outcome.error ?? "unknown"}`
         );
       } else {
         // TRANSIENT (network/5xx): tahan finalize agar counter konsisten saat retry.

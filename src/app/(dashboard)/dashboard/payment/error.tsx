@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 /**
  * Error boundary - /dashboard/payment (credential gateway owner).
@@ -6,14 +6,14 @@
  * "belum ada gateway": itu bisa membuat owner menambah credential ganda.
  */
 
-import { FeatureError } from "@/components/dashboard/FeatureError"
+import { FeatureError } from "@/components/dashboard/FeatureError";
 
 export default function PaymentError({
   error,
   reset,
 }: {
-  error: Error & { digest?: string }
-  reset: () => void
+  error: Error & { digest?: string };
+  reset: () => void;
 }) {
   return (
     <FeatureError
@@ -22,5 +22,5 @@ export default function PaymentError({
       error={error}
       reset={reset}
     />
-  )
+  );
 }

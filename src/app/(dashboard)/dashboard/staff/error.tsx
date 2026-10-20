@@ -1,18 +1,18 @@
-"use client"
+"use client";
 
 /**
  * Error boundary - /dashboard/staff.
  * Manajemen tim: pesan menyebut invite/role karena itu aksi utama halaman.
  */
 
-import { FeatureError } from "@/components/dashboard/FeatureError"
+import { FeatureError } from "@/components/dashboard/FeatureError";
 
 export default function StaffError({
   error,
   reset,
 }: {
-  error: Error & { digest?: string }
-  reset: () => void
+  error: Error & { digest?: string };
+  reset: () => void;
 }) {
   return (
     <FeatureError
@@ -21,5 +21,5 @@ export default function StaffError({
       error={error}
       reset={reset}
     />
-  )
+  );
 }

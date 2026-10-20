@@ -67,11 +67,7 @@ async function requireMembership(userId: string, businessId: string, permission:
   return membership;
 }
 
-async function assertIdsOwned(
-  businessId: string,
-  table: "packages" | "outlets",
-  ids: string[]
-) {
+async function assertIdsOwned(businessId: string, table: "packages" | "outlets", ids: string[]) {
   if (ids.length === 0) return;
   const supabase = createServerClient();
   const { data } = await supabase
@@ -103,10 +99,19 @@ async function syncM2M(
 }
 
 function mapRow(row: {
-  id: string; code: string; type: string; amount: number;
-  start_date: string | null; end_date: string | null; usage_limit: number | null;
-  usage_per_customer: number; min_transaction: number; max_discount: number | null;
-  is_active: boolean; created_at: string; voucher_usages?: CountJoin;
+  id: string;
+  code: string;
+  type: string;
+  amount: number;
+  start_date: string | null;
+  end_date: string | null;
+  usage_limit: number | null;
+  usage_per_customer: number;
+  min_transaction: number;
+  max_discount: number | null;
+  is_active: boolean;
+  created_at: string;
+  voucher_usages?: CountJoin;
   voucher_packages?: PackageJoin;
   voucher_outlets?: OutletJoin;
 }): VoucherRow {
@@ -148,11 +153,7 @@ export async function listVouchers(userId: string, businessId: string): Promise<
   return (data ?? []).map((row) => mapRow(row as Parameters<typeof mapRow>[0]));
 }
 
-export async function createVoucher(
-  userId: string,
-  businessId: string,
-  input: VoucherCreateInput
-) {
+export async function createVoucher(userId: string, businessId: string, input: VoucherCreateInput) {
   const parsed = voucherCreateSchema.parse(input);
   await requireFeature(businessId, "voucher");
   await requireMembership(userId, businessId, "voucher:write");
@@ -262,11 +263,7 @@ export async function updateVoucher(
   return data;
 }
 
-export async function deleteVoucher(
-  userId: string,
-  businessId: string,
-  voucherId: string
-) {
+export async function deleteVoucher(userId: string, businessId: string, voucherId: string) {
   await requireFeature(businessId, "voucher");
   await requireMembership(userId, businessId, "voucher:write");
   const supabase = createServerClient();
@@ -290,7 +287,7 @@ export async function deleteVoucher(
   if ((count ?? 0) > 0) {
     throw new ApiError(
       "VALIDATION_ERROR",
-      "Voucher sudah terpakai — nonaktifkan saja (Switch active)."
+      "Voucher sudah terpakai: nonaktifkan saja (Switch active)."
     );
   }
 
@@ -304,14 +301,6 @@ export async function deleteVoucher(
   if (error) throw new ApiError("INTERNAL", "Gagal menghapus voucher");
   if (!data) throw new ApiError("NOT_FOUND", "Voucher tidak ditemukan");
 }
-
-export type VoucherAnalytics = {
-  voucherId: string;
-  code: string;
-  totalUsage: number;
-  totalDiscount: number;
-  revenueGenerated: number;
-};
 
 export async function getVoucherAnalyticsBatch(
   userId: string,
@@ -334,7 +323,8 @@ export async function getVoucherAnalyticsBatch(
   for (const row of (data ?? []) as {
     voucher_id: string;
     discount_amount: number;
-    transactions: { final_amount: number; status: string } | { final_amount: number; status: string }[] | null;
+    transactions:
+      { final_amount: number; status: string } | { final_amount: number; status: string }[] | null;
   }[]) {
     const item = result[row.voucher_id];
     if (!item) continue;
@@ -344,4 +334,3 @@ export async function getVoucherAnalyticsBatch(
   }
   return result;
 }
-

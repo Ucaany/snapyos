@@ -10,13 +10,15 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { PERMISSIONS, can, canUnchecked, type BusinessRole, type Permission } from "../src/lib/rbac.ts";
+import {
+  PERMISSIONS,
+  can,
+  canUnchecked,
+  type BusinessRole,
+  type Permission,
+} from "../src/lib/rbac.ts";
 
-const OWNER_ONLY = [
-  "expense:write",
-  "subscription:write",
-  "transaction:manual-create",
-] as const;
+const OWNER_ONLY = ["expense:write", "subscription:write", "transaction:manual-create"] as const;
 
 const MANAGER_ALLOWED = [
   "business:read",

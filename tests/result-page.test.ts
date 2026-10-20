@@ -21,7 +21,7 @@ async function src(path: string): Promise<string> {
 test("result page: hanya ApiError NOT_FOUND yang menjadi notFound(), error lain lempar", async () => {
   const s = await src("src/app/r/[token]/page.tsx");
   assert.ok(
-    s.includes("cause instanceof ApiError && cause.code === \"NOT_FOUND\""),
+    s.includes('cause instanceof ApiError && cause.code === "NOT_FOUND"'),
     "page wajib memetakan hanya NOT_FOUND → notFound(); tanpa ini DB down salah dilaporkan sebagai link kedaluwarsa"
   );
   assert.ok(
@@ -46,10 +46,7 @@ test("result page: tombol unduh memakai download_url (Content-Disposition), fall
 
 test("getResult: mengembalikan gif_download_url + download_url per foto", async () => {
   const s = await src("src/server/kiosk-sessions.ts");
-  assert.ok(
-    s.includes("gif_download_url"),
-    "getResult wajib menyediakan gif_download_url"
-  );
+  assert.ok(s.includes("gif_download_url"), "getResult wajib menyediakan gif_download_url");
   assert.ok(
     s.includes("download_url: dlMap.get(p.file_key) ?? null"),
     "photoItems dari getResult wajib membawa download_url"
@@ -78,7 +75,9 @@ test("result page: tidak memakai next/image untuk signed URL", async () => {
 
 test("downloadName: basename key dengan prefix snapyos", async () => {
   const s = await src("src/server/kiosk-sessions.ts");
-  const m = s.match(/function downloadName\(key: string\): string \{[\s\S]*?return `snapyos-\$\{base\}`\n\}/);
+  const m = s.match(
+    /function downloadName\(key: string\): string \{[\s\S]*?return `snapyos-\$\{base\}`;?\n\}/
+  );
   assert.ok(m, "downloadName wajib ada dan mengembalikan snapyos-<basename>");
 });
 
@@ -104,7 +103,7 @@ test("result page: ada loading.tsx (halaman dinamis + presign lambat)", async ()
 test("result page: gerbang NOT_FOUND ada di layout.tsx (di luar Suspense loading)", async () => {
   const s = await src("src/app/r/[token]/layout.tsx");
   assert.ok(
-    s.includes("cause instanceof ApiError && cause.code === \"NOT_FOUND\"") &&
+    s.includes('cause instanceof ApiError && cause.code === "NOT_FOUND"') &&
       s.includes("notFound()"),
     "layout.tsx wajib memetakan NOT_FOUND → notFound(); tanpa gerbang di luar boundary loading.tsx, link kedaluwarsa dijawab 200"
   );

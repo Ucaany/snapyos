@@ -13,7 +13,10 @@ type Props = {
 
 /** Sanitasi kode: hanya A-Z0-9 (anti spasi/karakter aneh dari input/URL). */
 function sanitizeCode(value: string): string {
-  return value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+  return value
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 6);
 }
 
 /** Activation Screen — docs/05 §5.0 (masukkan kode / scan QR via ?code=). */
@@ -63,8 +66,8 @@ export function ActivationScreen({ initialCode, onActivated }: Props) {
           Masukkan kode aktivasi
         </h1>
         <p className="max-w-[46ch] text-sm leading-relaxed text-muted-foreground">
-           Kode 6 karakter dari dashboard pemilik booth ini (menu Photobox, Perangkat).
-          Perangkat hanya perlu diaktifkan sekali.
+          Kode 6 karakter dari dashboard pemilik booth ini (menu Photobox, Perangkat). Perangkat
+          hanya perlu diaktifkan sekali.
         </p>
       </div>
 
@@ -99,13 +102,21 @@ export function ActivationScreen({ initialCode, onActivated }: Props) {
         </div>
 
         {error && (
-          <p role="alert" className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink">
+          <p
+            role="alert"
+            className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink"
+          >
             {error}
           </p>
         )}
 
-        <Button type="submit" size="lg" disabled={pending || code.trim().length !== 6} className="bg-accent">
-           {pending ? "Mengaktifkan..." : "Aktifkan"}
+        <Button
+          type="submit"
+          size="lg"
+          disabled={pending || code.trim().length !== 6}
+          className="bg-accent"
+        >
+          {pending ? "Mengaktifkan..." : "Aktifkan"}
         </Button>
       </form>
     </div>

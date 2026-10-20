@@ -57,7 +57,10 @@ test("adminPlanCreateSchema: price_yearly + billing_cycle opsional", () => {
 });
 
 test("adminPlanUpdateSchema: boleh ubah fee desimal + billing cycle", () => {
-  const parsed = adminPlanUpdateSchema.parse({ platform_fee_percent: 2.5, billing_cycle: "yearly" });
+  const parsed = adminPlanUpdateSchema.parse({
+    platform_fee_percent: 2.5,
+    billing_cycle: "yearly",
+  });
   assert.equal(parsed.platform_fee_percent, 2.5);
   assert.equal(parsed.billing_cycle, "yearly");
 });

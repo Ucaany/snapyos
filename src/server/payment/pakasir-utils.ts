@@ -6,11 +6,11 @@
  * Docs: https://pakasir.com/p/docs (Callback / Transaction Detail).
  */
 
-import { timingSafeEqual } from "node:crypto"
-import { z } from "zod"
-import type { GatewayStatus } from "./providers/types"
-import { parseProviderAmount } from "../../lib/qris-helpers.ts"
-export { parseProviderDateTime } from "../../lib/qris-helpers.ts"
+import { timingSafeEqual } from "node:crypto";
+import { z } from "zod";
+import type { GatewayStatus } from "./providers/types";
+import { parseProviderAmount } from "../../lib/qris-helpers.ts";
+export { parseProviderDateTime } from "../../lib/qris-helpers.ts";
 
 export const pakasirWebhookSchema = z.object({
   order_id: z.string().trim().min(1).max(120),
@@ -19,28 +19,29 @@ export const pakasirWebhookSchema = z.object({
   amount: z.union([z.string(), z.number()]).nullable().optional(),
   payment_date: z.string().trim().max(80).nullable().optional(),
   completed_at: z.string().trim().max(80).nullable().optional(),
-})
+});
 
-export type PakasirWebhookPayload = z.infer<typeof pakasirWebhookSchema>
+export type PakasirWebhookPayload = z.infer<typeof pakasirWebhookSchema>;
 
 export type PakasirCreateResult = {
-  order_id: string
-  txn_id: string
-  amount: number
-  total_amount: number
-  qr_string: string
-  expired_at: string | null
-}
+  order_id: string;
+  txn_id: string;
+  amount: number;
+  total_amount: number;
+  qr_string: string;
+  expired_at: string | null;
+};
 
 export function normalizeCreateResult(value: unknown): PakasirCreateResult | null {
-  if (!value || typeof value !== "object") return null
-  const payment = value as Record<string, unknown>
-  const orderId = typeof payment.order_id === "string" ? payment.order_id.trim() : ""
-  const txnId = typeof payment.txn_id === "string" ? payment.txn_id.trim() : ""
+  if (!value || typeof value !== "object") return null;
+  const payment = value as Record<string, unknown>;
+  const orderId = typeof payment.order_id === "string" ? payment.order_id.trim() : "";
+  const txnId = typeof payment.txn_id === "string" ? payment.txn_id.trim() : "";
   // v2: qr_string (bukan payment_number v1).
-  const qrString = typeof payment.qr_string === "string" ? payment.qr_string.trim() : ""
-  const amount = typeof payment.amount === "number" ? payment.amount : Number.NaN
-  const totalAmount = typeof payment.total_payment === "number" ? payment.total_payment : Number.NaN
+  const qrString = typeof payment.qr_string === "string" ? payment.qr_string.trim() : "";
+  const amount = typeof payment.amount === "number" ? payment.amount : Number.NaN;
+  const totalAmount =
+    typeof payment.total_payment === "number" ? payment.total_payment : Number.NaN;
   if (
     !orderId ||
     !qrString ||
@@ -49,7 +50,7 @@ export function normalizeCreateResult(value: unknown): PakasirCreateResult | nul
     !Number.isInteger(totalAmount) ||
     totalAmount < amount
   ) {
-    return null
+    return null;
   }
   return {
     order_id: orderId,
@@ -59,7 +60,7 @@ export function normalizeCreateResult(value: unknown): PakasirCreateResult | nul
     qr_string: qrString,
     expired_at:
       typeof payment.expired_at === "string" && payment.expired_at ? payment.expired_at : null,
-  }
+  };
 }
 
 /**
@@ -69,11 +70,11 @@ export function normalizeCreateResult(value: unknown): PakasirCreateResult | nul
  * backward-compat legacy in-flight. docs v2: pending|completed|canceled.
  */
 export function mapProviderStatus(status: unknown): "pending" | "paid" | "expired" | null {
-  const value = typeof status === "string" ? status.trim().toUpperCase() : ""
-  if (["SUCCESS", "PAID", "COMPLETED"].includes(value)) return "paid"
-  if (["PENDING", "UNPAID"].includes(value)) return "pending"
-  if (["EXPIRED", "CANCELLED", "CANCELED"].includes(value)) return "expired"
-  return null
+  const value = typeof status === "string" ? status.trim().toUpperCase() : "";
+  if (["SUCCESS", "PAID", "COMPLETED"].includes(value)) return "paid";
+  if (["PENDING", "UNPAID"].includes(value)) return "pending";
+  if (["EXPIRED", "CANCELLED", "CANCELED"].includes(value)) return "expired";
+  return null;
 }
 
 /** Callback Pakasir bukan bukti pembayaran; status provider wajib ikut paid. */
@@ -83,7 +84,7 @@ export function isVerifiedPakasirPayment(
 ): boolean {
   return (
     mapProviderStatus(callbackStatus) === "paid" && mapProviderStatus(providerStatus) === "paid"
-  )
+  );
 }
 
 /**
@@ -91,10 +92,10 @@ export function isVerifiedPakasirPayment(
  * v1 mengirim `payment_date`. Dipakai untuk freshness H2 dan event id.
  */
 export function pakasirEventTimestamp(event: {
-  completed_at?: string | null
-  payment_date?: string | null
+  completed_at?: string | null;
+  payment_date?: string | null;
 }): string | null {
-  return event.completed_at ?? event.payment_date ?? null
+  return event.completed_at ?? event.payment_date ?? null;
 }
 
 /**
@@ -113,10 +114,12 @@ export function pakasirKioskAmountValid(
   eventAmount: unknown,
   payment: { final_amount: number; total_amount: number | null }
 ): boolean {
-  if (eventAmount === undefined || eventAmount === null) return true
-  const parsed = parseProviderAmount(eventAmount)
-  if (parsed === null) return false
-  return parsed === payment.final_amount || parsed === (payment.total_amount ?? payment.final_amount)
+  if (eventAmount === undefined || eventAmount === null) return true;
+  const parsed = parseProviderAmount(eventAmount);
+  if (parsed === null) return false;
+  return (
+    parsed === payment.final_amount || parsed === (payment.total_amount ?? payment.final_amount)
+  );
 }
 
 /**
@@ -129,17 +132,40 @@ export function pakasirKioskAmountValid(
  *   dipertahankan fail-closed untuk payment legacy in-flight saja.
  */
 export async function verifyPakasirPaid(
-  payment: { credential_id: string | null; order_id: string; final_amount: number; provider_ref?: string | null },
+  payment: {
+    credential_id: string | null;
+    order_id: string;
+    final_amount: number;
+    provider_ref?: string | null;
+  },
   gateways: {
-    byCredential: (credentialId: string) => Promise<{ getStatus: (orderId: string, amount?: number, providerRef?: string | null) => Promise<GatewayStatus> } | null>
-    aggregator: () => { getStatus: (orderId: string, amount?: number, providerRef?: string | null) => Promise<GatewayStatus> }
+    byCredential: (credentialId: string) => Promise<{
+      getStatus: (
+        orderId: string,
+        amount?: number,
+        providerRef?: string | null
+      ) => Promise<GatewayStatus>;
+    } | null>;
+    aggregator: () => {
+      getStatus: (
+        orderId: string,
+        amount?: number,
+        providerRef?: string | null
+      ) => Promise<GatewayStatus>;
+    };
   }
 ): Promise<boolean> {
   const gateway = payment.credential_id
     ? await gateways.byCredential(payment.credential_id)
-    : gateways.aggregator()
-  if (!gateway) return false
-  return (await gateway.getStatus(payment.order_id, payment.final_amount, payment.provider_ref ?? null)) === "paid"
+    : gateways.aggregator();
+  if (!gateway) return false;
+  return (
+    (await gateway.getStatus(
+      payment.order_id,
+      payment.final_amount,
+      payment.provider_ref ?? null
+    )) === "paid"
+  );
 }
 
 export function webhookEventId(
@@ -147,7 +173,7 @@ export function webhookEventId(
   status: string,
   paymentDate?: string | null
 ): string {
-  return `${orderId}:${status.toUpperCase()}:${paymentDate ?? ""}`
+  return `${orderId}:${status.toUpperCase()}:${paymentDate ?? ""}`;
 }
 
 /**
@@ -157,14 +183,16 @@ export function webhookEventId(
  * Return null = ditolak; string = secret yang harus dicocokkan (boleh "").
  */
 export function resolvePakasirExpectedSecret(input: {
-  hasCredential: boolean
-  secret: string | null
-  globalSecret: string | null | undefined
+  hasCredential: boolean;
+  secret: string | null;
+  globalSecret: string | null | undefined;
 }): { reject: boolean; expected: string } {
   if (input.hasCredential) {
-    return input.secret ? { reject: false, expected: input.secret } : { reject: true, expected: "" }
+    return input.secret
+      ? { reject: false, expected: input.secret }
+      : { reject: true, expected: "" };
   }
-  return { reject: false, expected: (input.globalSecret ?? "").trim() }
+  return { reject: false, expected: (input.globalSecret ?? "").trim() };
 }
 
 /**
@@ -176,16 +204,16 @@ export function isInvoiceSignatureValid(
   providerSignature: string | null,
   eventSignature: string | null | undefined
 ): boolean {
-  return providerSignature !== null && eventSignature === providerSignature
+  return providerSignature !== null && eventSignature === providerSignature;
 }
 
 /** Provider Pakasir ATAU signature tak tepercaya → wajib server-to-server verify. */
 export function requiresPakasirServerVerify(provider: string, signatureValid: boolean): boolean {
-  return provider === "pakasir" || !signatureValid
+  return provider === "pakasir" || !signatureValid;
 }
 
 /** Default jendela freshness webhook (jam). */
-export const WEBHOOK_FRESHNESS_HOURS = 24
+export const WEBHOOK_FRESHNESS_HOURS = 24;
 
 /**
  * H2 — freshness: tolak webhook dengan payment_date di luar jendela
@@ -199,13 +227,13 @@ export function isWebhookEventFresh(
   parse: (value: string) => string | null,
   windowHours: number = WEBHOOK_FRESHNESS_HOURS
 ): boolean {
-  if (!paymentDate) return true
-  const iso = parse(paymentDate)
-  if (!iso) return true
-  const t = Date.parse(iso)
-  if (Number.isNaN(t)) return true
-  const deltaMs = Math.abs(now.getTime() - t)
-  return deltaMs <= windowHours * 3_600_000
+  if (!paymentDate) return true;
+  const iso = parse(paymentDate);
+  if (!iso) return true;
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return true;
+  const deltaMs = Math.abs(now.getTime() - t);
+  return deltaMs <= windowHours * 3_600_000;
 }
 
 /** Amount webhook cocok (field absen = lewat; ada tapi beda = tolak). */
@@ -218,7 +246,7 @@ export function isInvoiceAmountValid(
     (event.total_amount === undefined ||
       event.total_amount === null ||
       event.total_amount === payment.total_amount)
-  )
+  );
 }
 
 /**
@@ -230,10 +258,10 @@ export function verifyPakasirWebhookSecret(
   received: string | null | undefined,
   expected: string | null | undefined
 ): boolean {
-  const receivedValue = received?.trim() ?? ""
-  const expectedValue = expected?.trim() ?? ""
-  if (!expectedValue || !receivedValue) return false
-  const a = Buffer.from(receivedValue)
-  const b = Buffer.from(expectedValue)
-  return a.length === b.length && timingSafeEqual(a, b)
+  const receivedValue = received?.trim() ?? "";
+  const expectedValue = expected?.trim() ?? "";
+  if (!expectedValue || !receivedValue) return false;
+  const a = Buffer.from(receivedValue);
+  const b = Buffer.from(expectedValue);
+  return a.length === b.length && timingSafeEqual(a, b);
 }

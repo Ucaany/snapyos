@@ -4,7 +4,11 @@ import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { createBroadcastAction, sendBroadcastAction, resendBroadcastAction } from "@/server/admin-actions";
+import {
+  createBroadcastAction,
+  sendBroadcastAction,
+  resendBroadcastAction,
+} from "@/server/admin-actions";
 import { listBroadcasts, getBroadcastStats, listBroadcastRecipients } from "@/server/admin";
 import { BROADCAST_KIND_LABEL } from "@/lib/broadcast-email";
 
@@ -76,16 +80,37 @@ export default async function AdminBroadcastsPage() {
             submitClassName="min-h-11"
             className="grid grid-cols-1 gap-4 md:grid-cols-2"
           >
-            <BrutalistSelect name="kind" label="Jenis Broadcast" defaultValue="announcement" options={KIND_OPTIONS} />
-            <BrutalistSelect name="template_key" label="Template" defaultValue="default" options={TEMPLATE_OPTIONS} />
+            <BrutalistSelect
+              name="kind"
+              label="Jenis Broadcast"
+              defaultValue="announcement"
+              options={KIND_OPTIONS}
+            />
+            <BrutalistSelect
+              name="template_key"
+              label="Template"
+              defaultValue="default"
+              options={TEMPLATE_OPTIONS}
+            />
             <div className="flex flex-col gap-1 md:col-span-2">
-              <label htmlFor="bc-subject" className="font-mono text-[10px] uppercase tracking-[0.12em]">
+              <label
+                htmlFor="bc-subject"
+                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+              >
                 Subjek
               </label>
-              <Input id="bc-subject" name="subject" placeholder="Pengumuman platform / promo" required />
+              <Input
+                id="bc-subject"
+                name="subject"
+                placeholder="Pengumuman platform / promo"
+                required
+              />
             </div>
             <div className="flex flex-col gap-1 md:col-span-2">
-              <label htmlFor="bc-body" className="font-mono text-[10px] uppercase tracking-[0.12em]">
+              <label
+                htmlFor="bc-body"
+                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+              >
                 Isi pesan
               </label>
               <textarea
@@ -97,12 +122,27 @@ export default async function AdminBroadcastsPage() {
                 required
               />
             </div>
-            <BrutalistSelect name="audience" label="Audiens" defaultValue="all" options={AUDIENCE_OPTIONS} />
+            <BrutalistSelect
+              name="audience"
+              label="Audiens"
+              defaultValue="all"
+              options={AUDIENCE_OPTIONS}
+            />
             <div className="flex flex-col gap-1">
-              <label htmlFor="bc-max-resend" className="font-mono text-[10px] uppercase tracking-[0.12em]">
+              <label
+                htmlFor="bc-max-resend"
+                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+              >
                 Limit resend (0–10)
               </label>
-              <Input id="bc-max-resend" name="max_resend" type="number" min={0} max={10} defaultValue={3} />
+              <Input
+                id="bc-max-resend"
+                name="max_resend"
+                type="number"
+                min={0}
+                max={10}
+                defaultValue={3}
+              />
             </div>
           </AdminActionForm>
         </CardContent>
@@ -123,10 +163,15 @@ export default async function AdminBroadcastsPage() {
             const canResend = isTerminal && resendLeft > 0;
             const resendExhausted = isTerminal && resendLeft <= 0;
             return (
-              <details key={b.id} className="border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
+              <details
+                key={b.id}
+                className="border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]"
+              >
                 <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-3 p-4">
                   <span className="flex flex-wrap items-center gap-3">
-                    <span className="font-display text-lg uppercase tracking-tight">{b.subject}</span>
+                    <span className="font-display text-lg uppercase tracking-tight">
+                      {b.subject}
+                    </span>
                     <span className="border-2 border-ink bg-accent px-2 py-0.5 font-mono text-[10px] uppercase">
                       {BROADCAST_KIND_LABEL[b.kind] ?? b.kind}
                     </span>

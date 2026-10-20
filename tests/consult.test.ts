@@ -6,12 +6,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import {
-  waNormalize,
-  waLink,
-  waDisplay,
-  CONSULT_WHATSAPP_DEFAULT,
-} from "../src/lib/consult.ts";
+import { waNormalize, waLink, waDisplay, CONSULT_WHATSAPP_DEFAULT } from "../src/lib/consult.ts";
 
 test("waNormalize: 08… → 62…", () => {
   assert.equal(waNormalize("08983704013"), "628983704013");

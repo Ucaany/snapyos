@@ -117,7 +117,7 @@ Response sukses:
 > **PENTING:** Sistem Pakasir menambahkan fee (kode unik) ke nominal. Selalu
 > gunakan `total_payment` dari response sebagai angka yang ditampilkan ke
 > pembeli. Kode menyimpan: `amount` (asli), `amount_uniq` (`total_payment −
-> amount`), `total_amount` (= `total_payment`) ke table `payments`.
+amount`), `total_amount` (= `total_payment`) ke table `payments`.
 
 **2. Check Status — `GET /api/v2/transaction-status/{project}/{txn_id}`** (header
 `X-Api-Key`) → response `status`: `pending` / `completed` / `canceled` (v2,
@@ -273,14 +273,14 @@ Nominal yang diterima webhook diverifikasi terhadap nilai yang tercatat di
 
 **Schema payload webhook (field & tipe):**
 
-| Field          | Tipe            | Ket                                                                                    |
-| -------------- | --------------- | -------------------------------------------------------------------------------------- |
-| `order_id`     | string          | harus cocok `payments.order_id`                                                        |
-| `txn_id`       | string?         | id transaksi provider (opsional)                                                       |
-| `status`       | string          | v2: `pending` / `completed` / `canceled` (kanonikalisasi toleran `SUCCESS`/`PAID`)     |
-| `amount`       | integer         | nominal DASAR (opsional; wajib cocok `final_amount` atau `total_amount` bila dikirim)   |
-| `completed_at` | string ISO-8601 | waktu bayar v2 (opsional)                                                               |
-| `payment_date` | string datetime | waktu bayar v1/legacy (opsional; dipakai bila `completed_at` absen)                     |
+| Field          | Tipe            | Ket                                                                                   |
+| -------------- | --------------- | ------------------------------------------------------------------------------------- |
+| `order_id`     | string          | harus cocok `payments.order_id`                                                       |
+| `txn_id`       | string?         | id transaksi provider (opsional)                                                      |
+| `status`       | string          | v2: `pending` / `completed` / `canceled` (kanonikalisasi toleran `SUCCESS`/`PAID`)    |
+| `amount`       | integer         | nominal DASAR (opsional; wajib cocok `final_amount` atau `total_amount` bila dikirim) |
+| `completed_at` | string ISO-8601 | waktu bayar v2 (opsional)                                                             |
+| `payment_date` | string datetime | waktu bayar v1/legacy (opsional; dipakai bila `completed_at` absen)                   |
 
 Webhook harus:
 
@@ -357,12 +357,12 @@ Business logic **tidak** tightly coupled ke implementasi provider. Provider dipi
 
 **Env vars (invoice subscription aggregator saja):**
 
-| Var                    | Keterangan                                                    |
-| ---------------------- | ------------------------------------------------------------- |
-| `PAKASIR_API_KEY`      | API key akun Pakasir SnapyOS (invoice subscription)              |
-| `PAKASIR_PROJECT_SLUG` | Project slug Pakasir SnapyOS                                     |
-| `PAKASIR_WEBHOOK_SECRET` | Webhook secret v2 (Detail Proyek Pakasir)                   |
-| `PAKASIR_BASE_URL`     | Base URL API Pakasir (default: `https://app.pakasir.com`)     |
+| Var                      | Keterangan                                                |
+| ------------------------ | --------------------------------------------------------- |
+| `PAKASIR_API_KEY`        | API key akun Pakasir SnapyOS (invoice subscription)       |
+| `PAKASIR_PROJECT_SLUG`   | Project slug Pakasir SnapyOS                              |
+| `PAKASIR_WEBHOOK_SECRET` | Webhook secret v2 (Detail Proyek Pakasir)                 |
+| `PAKASIR_BASE_URL`       | Base URL API Pakasir (default: `https://app.pakasir.com`) |
 
 Credential direct merchant (Pakasir/Midtrans/Tripay per business) disimpan di
 `payment_credentials` — bukan env — dan dana masuk project owner.
@@ -431,11 +431,11 @@ Tiga provider terintegrasi penuh (create → tampil → webhook → settlement).
 mengelola credential di `/dashboard/payment` (server actions
 `src/server/payment-credential-actions.ts`); webhook & log tercatat otomatis.
 
-| Provider | Metode kiosk | Verifikasi webhook | Webhook route |
-| -------- | ------------ | ------------------ | ------------- |
-| **Pakasir** | QRIS dinamis (+kode unik) | header `X-Secret` + server-to-server `GET /api/v2/transaction-status/{project}/{txn_id}` | `POST /api/webhooks/payment/pakasir` |
-| **Midtrans** | QRIS, GoPay, ShopeePay, VA (BCA/BNI/BRI/Permata) | SHA512(`order_id`+`status_code`+`gross_amount`+`server_key`); hanya `capture`/`settlement` + `fraud_status=accept` | `POST /api/webhooks/payment/midtrans` |
-| **Tripay** | QRIS, VA (BCA/BNI/BRI/Mandiri/Permata), Alfamart/Indomaret | HMAC-SHA256 raw body via private key (`X-Callback-Signature`) | `POST /api/webhooks/payment/tripay` |
+| Provider     | Metode kiosk                                               | Verifikasi webhook                                                                                                 | Webhook route                         |
+| ------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------- |
+| **Pakasir**  | QRIS dinamis (+kode unik)                                  | header `X-Secret` + server-to-server `GET /api/v2/transaction-status/{project}/{txn_id}`                           | `POST /api/webhooks/payment/pakasir`  |
+| **Midtrans** | QRIS, GoPay, ShopeePay, VA (BCA/BNI/BRI/Permata)           | SHA512(`order_id`+`status_code`+`gross_amount`+`server_key`); hanya `capture`/`settlement` + `fraud_status=accept` | `POST /api/webhooks/payment/midtrans` |
+| **Tripay**   | QRIS, VA (BCA/BNI/BRI/Mandiri/Permata), Alfamart/Indomaret | HMAC-SHA256 raw body via private key (`X-Callback-Signature`)                                                      | `POST /api/webhooks/payment/tripay`   |
 
 **Alur umum (semua provider):**
 

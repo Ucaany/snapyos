@@ -48,7 +48,10 @@ export function BusinessProfileEditor({ profile, canWrite }: Props) {
         aria-labelledby="business-profile-heading"
       >
         <div className="mb-5 flex items-center justify-between gap-4 border-b-2 border-ink pb-4">
-          <h2 id="business-profile-heading" className="font-display text-lg uppercase tracking-tight">
+          <h2
+            id="business-profile-heading"
+            className="font-display text-lg uppercase tracking-tight"
+          >
             Profil Bisnis
           </h2>
           <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
@@ -94,7 +97,10 @@ export function BusinessProfileEditor({ profile, canWrite }: Props) {
           </div>
 
           <div className="flex flex-col gap-2">
-            <label htmlFor="profile-whatsapp" className="font-mono text-xs uppercase tracking-[0.1em]">
+            <label
+              htmlFor="profile-whatsapp"
+              className="font-mono text-xs uppercase tracking-[0.1em]"
+            >
               Nomor WhatsApp
             </label>
             <Input
@@ -133,7 +139,10 @@ export function BusinessProfileEditor({ profile, canWrite }: Props) {
           </div>
 
           <div className="flex flex-col gap-2 md:col-span-2">
-            <label htmlFor="profile-address" className="font-mono text-xs uppercase tracking-[0.1em]">
+            <label
+              htmlFor="profile-address"
+              className="font-mono text-xs uppercase tracking-[0.1em]"
+            >
               Alamat
             </label>
             <textarea

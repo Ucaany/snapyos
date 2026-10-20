@@ -1,26 +1,29 @@
-import "server-only"
-import { randomUUID } from "node:crypto"
-import { ApiError } from "@/lib/api-errors"
-import { paymentWebhookUrl } from "@/lib/payment-credentials"
-import { encodeKioskPaymentPayload, type KioskPaymentPayload } from "@/server/payment/kiosk-payment"
-import { buildOrderId } from "@/lib/qris-helpers"
-import { computeQrisExpiresAt } from "@/lib/session-timer"
-import { generateResultToken } from "@/lib/device-token"
-import { formatTxNumber, todayISO } from "@/lib/dashboard-math"
-import { createServerClient } from "@/lib/supabase/server"
-import { assertSessionCapacity } from "@/server/session-capacity"
-import { paymentCreateSchema, type PaymentCreateInput } from "@/lib/validators"
-import { resolveGatewayByCredential } from "./providers/registry"
-import type { PaymentRow } from "./checkout-shared"
-import { getQrisExpiryMinutes, loadCheckout, requireDevice } from "./checkout-shared"
-import { resolveKioskPaymentMethod } from "./payment-methods"
-import { transitionPaymentToExpired } from "./settlement"
-import { paymentResponse, type PaymentResponse } from "./payment-response"
+import "server-only";
+import { randomUUID } from "node:crypto";
+import { ApiError } from "@/lib/api-errors";
+import { paymentWebhookUrl } from "@/lib/payment-credentials";
+import {
+  encodeKioskPaymentPayload,
+  type KioskPaymentPayload,
+} from "@/server/payment/kiosk-payment";
+import { buildOrderId } from "@/lib/qris-helpers";
+import { computeQrisExpiresAt } from "@/lib/session-timer";
+import { generateResultToken } from "@/lib/device-token";
+import { formatTxNumber, todayISO } from "@/lib/dashboard-math";
+import { createServerClient } from "@/lib/supabase/server";
+import { assertSessionCapacity } from "@/server/session-capacity";
+import { paymentCreateSchema, type PaymentCreateInput } from "@/lib/validators";
+import { resolveGatewayByCredential } from "./providers/registry";
+import type { PaymentRow } from "./checkout-shared";
+import { getQrisExpiryMinutes, loadCheckout, requireDevice } from "./checkout-shared";
+import { resolveKioskPaymentMethod } from "./payment-methods";
+import { transitionPaymentToExpired } from "./settlement";
+import { paymentResponse, type PaymentResponse } from "./payment-response";
 
-const ref = () => randomUUID().replace(/-/g, "").slice(0, 12)
+const ref = () => randomUUID().replace(/-/g, "").slice(0, 12);
 function inserted(data: unknown, error: unknown): PaymentRow {
-  if (error || !data) throw new ApiError("INTERNAL", "Gagal mencatat payment")
-  return data as PaymentRow
+  if (error || !data) throw new ApiError("INTERNAL", "Gagal mencatat payment");
+  return data as PaymentRow;
 }
 
 /** Server controls the checkout amount, credential, payment method, and expiry. */
@@ -28,21 +31,21 @@ export async function createPayment(
   businessSlug: string,
   input: PaymentCreateInput
 ): Promise<PaymentResponse> {
-  const parsed = paymentCreateSchema.parse(input)
-  const device = await requireDevice(businessSlug, parsed.device_token)
-  const checkout = await loadCheckout(device.businessId, parsed.checkout_session_id)
+  const parsed = paymentCreateSchema.parse(input);
+  const device = await requireDevice(businessSlug, parsed.device_token);
+  const checkout = await loadCheckout(device.businessId, parsed.checkout_session_id);
   if (checkout.status === "paid")
-    throw new ApiError("PAYMENT_ALREADY_PROCESSED", "Checkout sudah dibayar")
+    throw new ApiError("PAYMENT_ALREADY_PROCESSED", "Checkout sudah dibayar");
   if (checkout.status !== "open")
-    throw new ApiError("PAYMENT_EXPIRED", "Checkout sudah berakhir — mulai ulang")
-  const supabase = createServerClient()
+    throw new ApiError("PAYMENT_EXPIRED", "Checkout sudah berakhir: mulai ulang");
+  const supabase = createServerClient();
   // Request yang mati sebelum provider merespons tidak boleh mengunci checkout selamanya.
   await supabase
     .from("payments")
     .update({ status: "expired" })
     .eq("checkout_session_id", checkout.id)
     .eq("status", "creating")
-    .lt("created_at", new Date(Date.now() - 2 * 60_000).toISOString())
+    .lt("created_at", new Date(Date.now() - 2 * 60_000).toISOString());
   const { data: existing } = await supabase
     .from("payments")
     .select("*")
@@ -50,26 +53,30 @@ export async function createPayment(
     .in("status", ["creating", "pending"])
     .order("created_at", { ascending: false })
     .limit(1)
-    .maybeSingle()
-  const pending = (existing ?? null) as unknown as PaymentRow | null
+    .maybeSingle();
+  const pending = (existing ?? null) as unknown as PaymentRow | null;
   if (pending?.status === "creating")
-    throw new ApiError("PAYMENT_ALREADY_PROCESSED", "Payment lain sedang dibuat")
+    throw new ApiError("PAYMENT_ALREADY_PROCESSED", "Payment lain sedang dibuat");
   if (pending?.expires_at && Date.now() < new Date(pending.expires_at).getTime())
-    throw new ApiError("PAYMENT_ALREADY_PROCESSED", "Payment lain masih menunggu pembayaran")
-  if (pending?.status === "pending") await transitionPaymentToExpired(pending.id)
-  let resolved: Awaited<ReturnType<typeof resolveKioskPaymentMethod>>
+    throw new ApiError("PAYMENT_ALREADY_PROCESSED", "Payment lain masih menunggu pembayaran");
+  if (pending?.status === "pending") await transitionPaymentToExpired(pending.id);
+  let resolved: Awaited<ReturnType<typeof resolveKioskPaymentMethod>>;
   try {
-    resolved = await resolveKioskPaymentMethod(device.businessId, device.photobox.id, parsed.method_id)
+    resolved = await resolveKioskPaymentMethod(
+      device.businessId,
+      device.photobox.id,
+      parsed.method_id
+    );
   } catch {
-    throw new ApiError("VALIDATION_ERROR", "Metode pembayaran tidak tersedia")
+    throw new ApiError("VALIDATION_ERROR", "Metode pembayaran tidak tersedia");
   }
-  const { method, credentialId } = resolved
+  const { method, credentialId } = resolved;
   if (method.kind === "voucher" && checkout.final_amount > 0)
-    throw new ApiError("VALIDATION_ERROR", "Voucher belum menutup seluruh pembayaran")
-  await assertSessionCapacity(device.businessId, device.photobox.id)
-  const paymentReference = ref()
-  const orderId = buildOrderId(paymentReference)
-  const expiryMinutes = await getQrisExpiryMinutes(device.businessId)
+    throw new ApiError("VALIDATION_ERROR", "Voucher belum menutup seluruh pembayaran");
+  await assertSessionCapacity(device.businessId, device.photobox.id);
+  const paymentReference = ref();
+  const orderId = buildOrderId(paymentReference);
+  const expiryMinutes = await getQrisExpiryMinutes(device.businessId);
   const base = {
     business_id: device.businessId,
     checkout_session_id: checkout.id,
@@ -82,7 +89,7 @@ export async function createPayment(
     final_amount: checkout.final_amount,
     order_id: orderId,
     payment_reference: paymentReference,
-  }
+  };
   if (method.kind === "voucher") {
     const { data, error } = await supabase.rpc("create_voucher_payment_atomically", {
       p_checkout_id: checkout.id,
@@ -94,19 +101,19 @@ export async function createPayment(
         randomUUID().replace(/-/g, "").slice(0, 6)
       ),
       p_result_token: generateResultToken(),
-    })
-    const result = (data as { payment_id: string | null; reason: string }[] | null)?.[0]
-    if (error || !result) throw new ApiError("INTERNAL", "Gagal memproses voucher")
+    });
+    const result = (data as { payment_id: string | null; reason: string }[] | null)?.[0];
+    if (error || !result) throw new ApiError("INTERNAL", "Gagal memproses voucher");
     if (result.reason === "LIMIT")
-      throw new ApiError("VOUCHER_LIMIT_REACHED", "Kuota voucher sudah habis")
+      throw new ApiError("VOUCHER_LIMIT_REACHED", "Kuota voucher sudah habis");
     if (result.reason !== "OK" || !result.payment_id)
-      throw new ApiError("PAYMENT_ALREADY_PROCESSED", "Checkout sudah diproses")
+      throw new ApiError("PAYMENT_ALREADY_PROCESSED", "Checkout sudah diproses");
     const { data: payment } = await supabase
       .from("payments")
       .select("*")
       .eq("id", result.payment_id)
-      .single()
-    return paymentResponse(inserted(payment, null), null)
+      .single();
+    return paymentResponse(inserted(payment, null), null);
   }
   if (method.kind === "cash") {
     const { data, error } = await supabase
@@ -119,29 +126,29 @@ export async function createPayment(
         expires_at: computeQrisExpiresAt(expiryMinutes, null),
       })
       .select("*")
-      .single()
-    return paymentResponse(inserted(data, error), null)
+      .single();
+    return paymentResponse(inserted(data, error), null);
   }
   // Metode gateway SELALU dipilih dari credential milik business ini
   // (resolveKioskPaymentMethod → credentialId non-null). Jadi credentialId null
   // di sini = bug pemanggil, bukan alasan fallback.
   if (!credentialId)
-    throw new ApiError("VALIDATION_ERROR", "Metode pembayaran tidak punya credential aktif")
+    throw new ApiError("VALIDATION_ERROR", "Metode pembayaran tidak punya credential aktif");
   // Credential tidak bisa dipakai (tidak ada / tidak bisa didekripsi karena key
   // dirotasi / payload rusak) → GAGAL, jangan diam-diam pindah provider.
   // Fallback lintas-provider akan menagih lewat merchant lain (mis. aggregator
   // platform) padahal metode yang dipilih customer milik provider berbeda —
   // dana bisa masuk ke akun yang salah. Owner harus perbaiki credential dulu.
-  const gateway = await resolveGatewayByCredential(credentialId)
+  const gateway = await resolveGatewayByCredential(credentialId);
   if (!gateway)
     throw new ApiError(
       "VALIDATION_ERROR",
       "Credential pembayaran tidak dapat dipakai. Perbarui credential merchant di Settings Payment."
-    )
+    );
   const resolvedCallbackUrl =
-    gateway.provider === "pakasir" ? "" : paymentWebhookUrl(gateway.provider)
+    gateway.provider === "pakasir" ? "" : paymentWebhookUrl(gateway.provider);
   if (gateway.provider !== "pakasir" && !resolvedCallbackUrl)
-    throw new ApiError("INTERNAL", "URL callback gateway belum dikonfigurasi aman")
+    throw new ApiError("INTERNAL", "URL callback gateway belum dikonfigurasi aman");
 
   // Claim sebelum request provider. Tanpa ini dua POST paralel sama-sama dapat
   // membuat QR provider karena keduanya belum melihat payment pending.
@@ -155,21 +162,21 @@ export async function createPayment(
       status: "creating",
     })
     .select("*")
-    .single()
+    .single();
   if (reserveError || !reserved) {
     if ((reserveError as { code?: string } | null)?.code === "23505") {
       throw new ApiError(
         "PAYMENT_ALREADY_PROCESSED",
         "Payment lain sedang dibuat atau menunggu pembayaran"
-      )
+      );
     }
-    throw new ApiError("INTERNAL", "Gagal menyiapkan payment")
+    throw new ApiError("INTERNAL", "Gagal menyiapkan payment");
   }
-  const reservation = reserved as unknown as PaymentRow
-  const callbackUrl = resolvedCallbackUrl ?? ""
+  const reservation = reserved as unknown as PaymentRow;
+  const callbackUrl = resolvedCallbackUrl ?? "";
   const returnUrl = callbackUrl
     ? new URL(`/p/${businessSlug}/${device.photobox.slug}`, callbackUrl).toString()
-    : undefined
+    : undefined;
   try {
     const created = await gateway.createTransaction({
       orderId,
@@ -178,14 +185,14 @@ export async function createPayment(
       callbackUrl,
       returnUrl,
       paymentMethods: method.method ? [method.method] : undefined,
-    })
+    });
     if (
       created.orderId !== orderId ||
       created.amount !== checkout.final_amount ||
       !Number.isInteger(created.totalAmount) ||
       created.totalAmount < created.amount
     ) {
-      throw new ApiError("INTERNAL", "Respons gateway pembayaran tidak valid")
+      throw new ApiError("INTERNAL", "Respons gateway pembayaran tidak valid");
     }
     const display =
       method.display === "redirect" &&
@@ -194,7 +201,7 @@ export async function createPayment(
         ? "qris"
         : method.display === "va" || method.display === "redirect"
           ? method.display
-          : "qris"
+          : "qris";
     const payload: KioskPaymentPayload = {
       display,
       method: method.method ?? "qris",
@@ -202,7 +209,7 @@ export async function createPayment(
       qrImageUrl: created.qrImageUrl,
       paymentUrl: created.paymentUrl,
       vaNumber: created.vaNumber,
-    }
+    };
     const { data, error } = await supabase
       .from("payments")
       .update({
@@ -217,25 +224,25 @@ export async function createPayment(
       .eq("id", reservation.id)
       .eq("status", "creating")
       .select("*")
-      .maybeSingle()
-    if (error) throw new ApiError("INTERNAL", "Gagal menyimpan payment")
-    if (data) return paymentResponse(data as unknown as PaymentRow, payload)
+      .maybeSingle();
+    if (error) throw new ApiError("INTERNAL", "Gagal menyimpan payment");
+    if (data) return paymentResponse(data as unknown as PaymentRow, payload);
 
     // Webhook dapat menyelesaikan reservation sebelum respons create dipersist.
     const { data: settled } = await supabase
       .from("payments")
       .select("*")
       .eq("id", reservation.id)
-      .maybeSingle()
-    const payment = settled as unknown as PaymentRow | null
-    if (payment?.status === "paid") return paymentResponse(payment, payload)
-    throw new ApiError("INTERNAL", "Status payment berubah saat QRIS dibuat")
+      .maybeSingle();
+    const payment = settled as unknown as PaymentRow | null;
+    if (payment?.status === "paid") return paymentResponse(payment, payload);
+    throw new ApiError("INTERNAL", "Status payment berubah saat QRIS dibuat");
   } catch (error) {
     await supabase
       .from("payments")
       .update({ status: "expired" })
       .eq("id", reservation.id)
-      .eq("status", "creating")
-    throw error
+      .eq("status", "creating");
+    throw error;
   }
 }

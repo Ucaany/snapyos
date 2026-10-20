@@ -47,9 +47,7 @@ export default async function ResultPage({ params }: Props) {
 
         {result.gif_url ? (
           <section className="flex flex-col gap-3">
-            <p className="font-mono text-xs font-bold uppercase tracking-[0.2em]">
-              GIF Slideshow
-            </p>
+            <p className="font-mono text-xs font-bold uppercase tracking-[0.2em]">GIF Slideshow</p>
             <div className="border-2 border-ink bg-surface p-3 shadow-[4px_4px_0_0_#111111]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -83,13 +81,9 @@ export default async function ResultPage({ params }: Props) {
                 className="flex flex-col gap-2 border-2 border-ink bg-surface p-2 shadow-[4px_4px_0_0_#111111]"
               >
                 {/* Rasio foto bervariasi per template canvas (2:3, 1:1, dst.),
-                    bukan 2:3 seragam — biarkan rasio asli via aspect-ratio auto. */}
+                    bukan 2:3 seragam: biarkan rasio asli via aspect-ratio auto. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={p.url ?? ""}
-                  alt={`Foto ${i + 1}`}
-                  className="h-auto w-full"
-                />
+                <img src={p.url ?? ""} alt={`Foto ${i + 1}`} className="h-auto w-full" />
                 <a
                   href={p.download_url ?? p.url ?? "#"}
                   download={`snapyos-${i + 1}.jpg`}

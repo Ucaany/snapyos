@@ -18,8 +18,8 @@ export type StorageProviderName = "supabase" | "r2";
 export function r2Configured(env: Record<string, string | undefined>): boolean {
   const hasBucket = Boolean(
     env.R2_BUCKET_BUSINESS_ASSETS?.trim() ||
-      env.R2_BUCKET_GENERATED_PHOTOS?.trim() ||
-      env.R2_BUCKET?.trim()
+    env.R2_BUCKET_GENERATED_PHOTOS?.trim() ||
+    env.R2_BUCKET?.trim()
   );
   const hasKey = Boolean(env.R2_ACCESS_KEY_ID?.trim());
   const hasSecret = Boolean(env.R2_SECRET_ACCESS_KEY?.trim());
@@ -27,7 +27,9 @@ export function r2Configured(env: Record<string, string | undefined>): boolean {
   return hasBucket && hasKey && hasSecret && hasEndpoint;
 }
 
-export function resolveWriteProviderName(env: Record<string, string | undefined>): StorageProviderName {
+export function resolveWriteProviderName(
+  env: Record<string, string | undefined>
+): StorageProviderName {
   const explicit = (env.STORAGE_WRITE_PROVIDER ?? "").trim().toLowerCase();
   if (explicit === "r2" || explicit === "supabase") return explicit;
   const legacy = (env.STORAGE_PROVIDER ?? "").trim().toLowerCase();

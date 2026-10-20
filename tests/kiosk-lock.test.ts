@@ -35,7 +35,11 @@ test("Ctrl+W/N/T/R dan Ctrl+Shift+I/J/C diblokir", () => {
     assert.equal(isBlockedShortcut({ key, ctrlKey: true }), true, `Ctrl+${key}`);
   }
   for (const key of ["i", "j", "c"]) {
-    assert.equal(isBlockedShortcut({ key, ctrlKey: true, shiftKey: true }), true, `Ctrl+Shift+${key}`);
+    assert.equal(
+      isBlockedShortcut({ key, ctrlKey: true, shiftKey: true }),
+      true,
+      `Ctrl+Shift+${key}`
+    );
   }
 });
 

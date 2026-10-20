@@ -24,7 +24,10 @@ export function WorkspaceSwitcher({
   }
 
   return (
-    <form action={switchWorkspaceAction} className="flex min-w-0 flex-1 items-center gap-2 sm:flex-none">
+    <form
+      action={switchWorkspaceAction}
+      className="flex min-w-0 flex-1 items-center gap-2 sm:flex-none"
+    >
       <label htmlFor="workspace" className="sr-only">
         Workspace aktif
       </label>
@@ -34,7 +37,7 @@ export function WorkspaceSwitcher({
           name="businessId"
           defaultValue={activeId ?? businesses[0]!.id}
           onChange={(e) => e.currentTarget.form?.requestSubmit()}
-          className="h-11 w-full min-w-0 max-w-44 appearance-none truncate border-2 border-ink bg-surface pl-3 pr-8 font-mono text-xs uppercase tracking-[0.05em] text-ink outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink sm:h-9 sm:flex-none"
+          className="h-11 w-full min-w-0 max-w-44 appearance-none truncate border-2 border-ink bg-surface pl-3 pr-8 font-mono text-xs uppercase tracking-[0.05em] text-ink outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink sm:h-11 sm:flex-none"
         >
           {businesses.map((b) => (
             <option key={b.id} value={b.id}>

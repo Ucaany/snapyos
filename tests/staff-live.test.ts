@@ -72,6 +72,12 @@ test("sessionProgressPct: null tanpa expires_at valid, 0–100 saat ada", () => 
   assert.equal(sessionProgressPct(start, "2026-10-14T09:00:00.000Z", now), null);
   assert.equal(sessionProgressPct(start, "2026-10-14T10:10:00.000Z", now), 50);
   // Dijepit ke rentang 0–100 walau jam server bergeser.
-  assert.equal(sessionProgressPct(start, "2026-10-14T10:10:00.000Z", Date.parse("2026-10-14T11:00:00.000Z")), 100);
-  assert.equal(sessionProgressPct(start, "2026-10-14T10:10:00.000Z", Date.parse("2026-10-14T09:00:00.000Z")), 0);
+  assert.equal(
+    sessionProgressPct(start, "2026-10-14T10:10:00.000Z", Date.parse("2026-10-14T11:00:00.000Z")),
+    100
+  );
+  assert.equal(
+    sessionProgressPct(start, "2026-10-14T10:10:00.000Z", Date.parse("2026-10-14T09:00:00.000Z")),
+    0
+  );
 });

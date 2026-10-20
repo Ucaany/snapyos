@@ -16,8 +16,7 @@
 const SECRET_KEY_RE =
   /(?:secret|private[_-]?key|server[_-]?key|api[_-]?key|authorization|password|token|signature|qr[_-]?string)/i;
 
-const EMAIL_RE =
-  /\b[A-Za-z0-9._%+-]+@([A-Za-z0-9.-]+\.[A-Za-z]{2,})\b/g;
+const EMAIL_RE = /\b[A-Za-z0-9._%+-]+@([A-Za-z0-9.-]+\.[A-Za-z]{2,})\b/g;
 
 /** Ganti local-part email menjadi `***` — pertahankan domain untuk konteks. */
 export function redactEmailString(value: string): string {

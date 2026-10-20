@@ -45,7 +45,9 @@ test("assignment package menyempitkan daftar tanpa memandang jumlah slot", () =>
   // Regresi: dulu frame 4 slot disembunyikan dari paket 3 foto.
   const rows = [t("a", 4), t("b", 1), t("c", 2)];
   assert.deepEqual(
-    selectVisibleTemplates(rows, { assignedIds: new Set(["a", "b"]), photoCount: 3 }).map((r) => r.id),
+    selectVisibleTemplates(rows, { assignedIds: new Set(["a", "b"]), photoCount: 3 }).map(
+      (r) => r.id
+    ),
     ["a", "b"]
   );
 });

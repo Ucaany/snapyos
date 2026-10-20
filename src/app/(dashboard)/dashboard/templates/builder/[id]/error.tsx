@@ -1,18 +1,18 @@
-"use client"
+"use client";
 
 /**
  * Error boundary — /dashboard/templates/builder/[id] (Fase 5).
  * Style brutalist (docs/11/13): inline, bukan toast; border-2 + shadow blok.
  */
 
-import { FeatureError } from "@/components/dashboard/FeatureError"
+import { FeatureError } from "@/components/dashboard/FeatureError";
 
 export default function TemplateBuilderError({
   error,
   reset,
 }: {
-  error: Error & { digest?: string }
-  reset: () => void
+  error: Error & { digest?: string };
+  reset: () => void;
 }) {
   return (
     <FeatureError
@@ -21,5 +21,5 @@ export default function TemplateBuilderError({
       error={error}
       reset={reset}
     />
-  )
+  );
 }

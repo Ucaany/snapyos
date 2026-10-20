@@ -46,10 +46,7 @@ export function planChangeAllowed(
 /** Limit sesi efektif: plan + sum quantity add-on aktif (docs/02 §2.9). */
 export function effectiveSessions(planMax: number, addOnQuantities: number[]): number {
   if (!Number.isInteger(planMax) || planMax < 0) return 0;
-  const extra = addOnQuantities.reduce(
-    (sum, q) => sum + (Number.isInteger(q) && q > 0 ? q : 0),
-    0
-  );
+  const extra = addOnQuantities.reduce((sum, q) => sum + (Number.isInteger(q) && q > 0 ? q : 0), 0);
   return planMax + extra;
 }
 

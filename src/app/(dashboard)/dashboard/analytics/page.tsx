@@ -1,22 +1,22 @@
-import type { Metadata } from "next"
-import Link from "next/link"
-import { redirect } from "next/navigation"
+import type { Metadata } from "next";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 
-import { BreakdownChart } from "@/components/dashboard/BreakdownChart"
-import { DateRangeFilter } from "@/components/dashboard/DateRangeFilter"
-import { RevenueChart } from "@/components/dashboard/RevenueChart"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { EmptyState } from "@/components/ui/empty-state"
-import { PageHeader } from "@/components/ui/page-header"
-import { can } from "@/lib/rbac"
-import { formatIDR } from "@/lib/dashboard-math"
-import { getActiveBusiness, requireUser } from "@/lib/tenant"
-import { getRevenueSeries } from "@/server/dashboard"
-import { getRevenueBreakdown } from "@/server/analytics"
+import { BreakdownChart } from "@/components/dashboard/BreakdownChart";
+import { DateRangeFilter } from "@/components/dashboard/DateRangeFilter";
+import { RevenueChart } from "@/components/dashboard/RevenueChart";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
+import { can } from "@/lib/rbac";
+import { formatIDR } from "@/lib/dashboard-math";
+import { getActiveBusiness, requireUser } from "@/lib/tenant";
+import { getRevenueSeries } from "@/server/dashboard";
+import { getRevenueBreakdown } from "@/server/analytics";
 
 export const metadata: Metadata = {
   title: "Analitik: SnapyOS",
-}
+};
 
 const TABS = [
   { key: "day", label: "Per Hari" },
@@ -24,23 +24,23 @@ const TABS = [
   { key: "package", label: "Per Package" },
   { key: "photobox", label: "Per Photobox" },
   { key: "method", label: "Per Metode Bayar" },
-] as const
+] as const;
 
-type TabKey = (typeof TABS)[number]["key"]
+type TabKey = (typeof TABS)[number]["key"];
 
 /** /dashboard/analytics — revenue analytics + breakdown (docs/04 §4.2). */
 export default async function AnalyticsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string; tab?: string }>
+  searchParams: Promise<{ from?: string; to?: string; tab?: string }>;
 }) {
-  const user = await requireUser()
-  if (!user) redirect("/login")
+  const user = await requireUser();
+  if (!user) redirect("/login");
 
-  const active = await getActiveBusiness(user.id)
-  if (!active) redirect("/dashboard")
+  const active = await getActiveBusiness(user.id);
+  if (!active) redirect("/dashboard");
 
-  const financialAccess = can(active.role, "transaction:read")
+  const financialAccess = can(active.role, "transaction:read");
   if (!financialAccess) {
     return (
       <div className="p-6 md:p-10">
@@ -53,13 +53,13 @@ export default async function AnalyticsPage({
           </CardHeader>
         </Card>
       </div>
-    )
+    );
   }
 
-  const query = await searchParams
-  const range = { from: query.from, to: query.to }
-  const tab: TabKey = TABS.some((t) => t.key === query.tab) ? (query.tab as TabKey) : "day"
-  const businessId = active.business.id
+  const query = await searchParams;
+  const range = { from: query.from, to: query.to };
+  const tab: TabKey = TABS.some((t) => t.key === query.tab) ? (query.tab as TabKey) : "day";
+  const businessId = active.business.id;
 
   const [series, breakdown] = await Promise.all([
     getRevenueSeries(user.id, businessId, range),
@@ -72,7 +72,7 @@ export default async function AnalyticsPage({
           : tab === "method"
             ? getRevenueBreakdown(user.id, businessId, range, "payment_method")
             : Promise.resolve(null),
-  ])
+  ]);
 
   const base = (next: Partial<{ from: string; to: string; tab: string }>) => {
     const params = new URLSearchParams({
@@ -80,9 +80,9 @@ export default async function AnalyticsPage({
       to: query.to ?? series.range.to,
       tab,
       ...next,
-    })
-    return `/dashboard/analytics?${params.toString()}`
-  }
+    });
+    return `/dashboard/analytics?${params.toString()}`;
+  };
 
   return (
     <div className="flex flex-col gap-8 p-6 md:p-10">
@@ -113,8 +113,8 @@ export default async function AnalyticsPage({
             aria-current={tab === t.key ? "page" : undefined}
             className={
               tab === t.key
-                ? "border-2 border-ink bg-accent px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.08em] shadow-[2px_2px_0_0_#111111]"
-                : "border-2 border-ink bg-surface px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.08em] hover:bg-muted"
+                ? "inline-flex min-h-11 items-center border-2 border-ink bg-accent px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.08em] shadow-[2px_2px_0_0_#111111]"
+                : "inline-flex min-h-11 items-center border-2 border-ink bg-surface px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.08em] hover:bg-muted"
             }
           >
             {t.label}
@@ -142,7 +142,10 @@ export default async function AnalyticsPage({
               body="Belum ada pendapatan pada periode ini. Data muncul setelah customer pertama membayar (QRIS atau dicatat manual)."
             />
           ) : tab === "day" ? (
-            <RevenueChart data={series.series} timeZone={active.business.timezone || "Asia/Jakarta"} />
+            <RevenueChart
+              data={series.series}
+              timeZone={active.business.timezone || "Asia/Jakarta"}
+            />
           ) : (
             <BreakdownChart
               data={(breakdown?.items ?? []).map((i) => ({ label: i.label, amount: i.amount }))}
@@ -180,5 +183,5 @@ export default async function AnalyticsPage({
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

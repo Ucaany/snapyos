@@ -9,20 +9,17 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+import { retentionCutoff, cleanupSessionMedia, type SessionMedia } from "../src/lib/retention.ts";
 import {
-  retentionCutoff,
-  cleanupSessionMedia,
-  type SessionMedia,
-} from "../src/lib/retention.ts";
-import { staleTemplateKeys, staleThumbnailKeys, storageKeysOnly } from "../src/lib/template-cleanup.ts";
+  staleTemplateKeys,
+  staleThumbnailKeys,
+  storageKeysOnly,
+} from "../src/lib/template-cleanup.ts";
 import { StorageResolver } from "../src/lib/r2/resolver.ts";
 
 // --- helpers ---------------------------------------------------------------
 
-function fakeRemove(behavior: {
-  fail?: string[];
-  ok?: string[];
-}) {
+function fakeRemove(behavior: { fail?: string[]; ok?: string[] }) {
   const failSet = new Set(behavior.fail ?? []);
   const calls: string[][] = [];
   return {
@@ -179,11 +176,7 @@ test("missing object: resolver absent → dianggap sukses (idempotent), sesi tet
 
   // Simulasi: object absen sudah masuk `ok` (tidak perlu remove).
   const h = collectDeps(fakeRemove({}));
-  const res = await cleanupSessionMedia(
-    [{ id: "s1", keys: ["gone.jpg"] }],
-    "t",
-    h.deps
-  );
+  const res = await cleanupSessionMedia([{ id: "s1", keys: ["gone.jpg"] }], "t", h.deps);
   assert.equal(res.cleanedSessions, 1);
   assert.equal(res.deferredSessions, 0);
 });
@@ -215,11 +208,7 @@ test("partial failure: satu object gagal → sesi terkait ditahan, sisanya lanju
 test("partial failure: batch TIDAK membatalkan object yang sukses", async () => {
   const storage = fakeRemove({ fail: ["x2"] });
   const h = collectDeps(storage);
-  await cleanupSessionMedia(
-    [{ id: "s1", keys: ["x1", "x2", "x3"] }],
-    "t",
-    h.deps
-  );
+  await cleanupSessionMedia([{ id: "s1", keys: ["x1", "x2", "x3"] }], "t", h.deps);
   // x1 & x3 tercatat di akuntansi meski x2 gagal.
   assert.deepEqual(h.subs.sort(), ["x1", "x3"]);
 });
@@ -243,7 +232,11 @@ test("accountSub gagal transient → finalize DITAHAN, deferredAccounting diisi"
 
 test("accountSub missing (fungsi/tabel absen) → fail-open, finalize TETAP jalan", async () => {
   const storage = fakeRemove({});
-  const h = collectDeps(storage, { ok: false, error: "Could not find the function", missing: true });
+  const h = collectDeps(storage, {
+    ok: false,
+    error: "Could not find the function",
+    missing: true,
+  });
   const sessions: SessionMedia[] = [
     { id: "s1", keys: ["a.jpg"] },
     { id: "s2", keys: ["b.jpg"] },
@@ -273,26 +266,18 @@ test("retry cron: object yang gagal lalu tersedia → sesi tertinggal akhirnya b
     },
   };
   const h1 = collectDeps(fakeRemove({}));
-  const res1 = await cleanupSessionMedia(
-    [{ id: "s1", keys: ["p.jpg", "g.gif"] }],
-    "t1",
-    {
-      storage: { remove: storage1.remove },
-      accountSub: h1.deps.accountSub,
-      finalize: h1.deps.finalize,
-    }
-  );
+  const res1 = await cleanupSessionMedia([{ id: "s1", keys: ["p.jpg", "g.gif"] }], "t1", {
+    storage: { remove: storage1.remove },
+    accountSub: h1.deps.accountSub,
+    finalize: h1.deps.finalize,
+  });
   assert.equal(res1.deferredSessions, 1);
   assert.deepEqual(h1.finalizes, [], "sesi ditahan, tidak difinalisasi di run 1");
 
   // Run kedua: gagal hilang → sukses.
   gifAvailable = true;
   const h2 = collectDeps(fakeRemove({}));
-  const res2 = await cleanupSessionMedia(
-    [{ id: "s1", keys: ["p.jpg", "g.gif"] }],
-    "t2",
-    h2.deps
-  );
+  const res2 = await cleanupSessionMedia([{ id: "s1", keys: ["p.jpg", "g.gif"] }], "t2", h2.deps);
   assert.equal(res2.cleanedSessions, 1);
   assert.deepEqual(h2.finalizes[0]!.ids, ["s1"]);
 });
@@ -305,10 +290,7 @@ test("template replacement: frame lama + thumbnail lama dibersihkan, key baru di
     oldThumbnail: "biz/templates/thumb-old.png",
     newKey: "biz/templates/frame-new.png",
   });
-  assert.deepEqual(stale.sort(), [
-    "biz/templates/frame-old.png",
-    "biz/templates/thumb-old.png",
-  ]);
+  assert.deepEqual(stale.sort(), ["biz/templates/frame-old.png", "biz/templates/thumb-old.png"]);
 });
 
 test("template replacement: thumbnail === frame lama → dedup (hapus sekali)", () => {
@@ -334,10 +316,7 @@ test("template deletion: frame + thumbnail dihapus, null diabaikan", () => {
     oldFile: "biz/templates/frame.png",
     oldThumbnail: "biz/templates/thumb.png",
   });
-  assert.deepEqual(keys.sort(), [
-    "biz/templates/frame.png",
-    "biz/templates/thumb.png",
-  ]);
+  assert.deepEqual(keys.sort(), ["biz/templates/frame.png", "biz/templates/thumb.png"]);
 });
 
 test("template deletion: thumbnail null/undefined diabaikan", () => {
@@ -388,8 +367,5 @@ test("storageKeysOnly: URL absolut dibuang, key storage dipertahankan", () => {
 });
 
 test("storageKeysOnly: hanya URL eksternal → hasil kosong (tanpa probe storage)", () => {
-  assert.deepEqual(
-    storageKeysOnly(["https://cdn.snapyos.biz.id/a.png"]),
-    []
-  );
+  assert.deepEqual(storageKeysOnly(["https://cdn.snapyos.biz.id/a.png"]), []);
 });

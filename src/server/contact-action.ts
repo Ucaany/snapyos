@@ -20,7 +20,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function submitContactAction(
   _prev: ContactState,
-  formData: FormData,
+  formData: FormData
 ): Promise<ContactState> {
   const h = await headers();
   const ip = getClientIp(h);

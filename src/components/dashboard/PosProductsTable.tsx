@@ -4,21 +4,14 @@ import { Fragment, useActionState, useState } from "react";
 import { Pencil, Plus, PowerOff, Tag } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Collapsible,
-  CollapsiblePanel,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DeleteConfirmForm } from "@/components/dashboard/DeleteConfirmForm";
 import { PosProductEditForm } from "@/components/dashboard/PosProductEditForm";
 import { PosProductFields } from "@/components/dashboard/PosProductFields";
 import { formatIDR } from "@/lib/dashboard-math";
 import type { PosProductRow } from "@/server/pos-products";
 import type { FormState } from "@/server/auth-actions";
-import {
-  posCreateProductAction,
-  posDeactivateProductAction,
-} from "@/server/pos-actions";
+import { posCreateProductAction, posDeactivateProductAction } from "@/server/pos-actions";
 import { POS_CATEGORIES } from "@/types/pos";
 
 const initial: FormState = {};
@@ -56,7 +49,7 @@ export function PosProductsTable({
                 {String(products.length).padStart(2, "0")}
               </span>
             </div>
-            <CollapsibleTrigger className="h-10 px-4" aria-label="Buka form produk baru">
+            <CollapsibleTrigger className="min-h-11 px-4" aria-label="Buka form produk baru">
               <Plus aria-hidden />
               Produk baru
             </CollapsibleTrigger>
@@ -73,11 +66,7 @@ export function PosProductsTable({
                   {"/// Produk baru"}
                 </p>
               </div>
-              <PosProductFields
-                categories={allCategories}
-                state={createState}
-                pending={creating}
-              />
+              <PosProductFields categories={allCategories} state={createState} pending={creating} />
               {createState.error && (
                 <p
                   role="alert"
@@ -103,8 +92,8 @@ export function PosProductsTable({
             {"/// Belum ada produk"}
           </p>
           <p className="max-w-[55ch] text-sm leading-relaxed text-muted-foreground">
-            Katalog ini dipakai semua booth POS: keychain, gantungan, cetak tambahan,
-            merchandise. Tambahkan produk pertama untuk mulai menjual di terminal kasir.
+            Katalog ini dipakai semua booth POS: keychain, gantungan, cetak tambahan, merchandise.
+            Tambahkan produk pertama untuk mulai menjual di terminal kasir.
           </p>
         </div>
       ) : (
@@ -113,14 +102,32 @@ export function PosProductsTable({
             <caption className="sr-only">Daftar produk POS</caption>
             <thead>
               <tr className="border-b-2 border-ink bg-ink font-mono text-[10px] uppercase tracking-[0.12em] text-bg">
-                <th scope="col" className="px-4 py-3.5 text-right">No</th>
-                <th scope="col" className="px-4 py-3.5">Produk</th>
-                <th scope="col" className="px-4 py-3.5">SKU</th>
-                <th scope="col" className="px-4 py-3.5">Kategori</th>
-                <th scope="col" className="px-4 py-3.5 text-right">Harga</th>
-                <th scope="col" className="px-4 py-3.5 text-right">Stok</th>
-                <th scope="col" className="px-4 py-3.5">Status</th>
-                {canManage && <th scope="col" className="px-4 py-3.5 text-right">Aksi</th>}
+                <th scope="col" className="px-4 py-3.5 text-right">
+                  No
+                </th>
+                <th scope="col" className="px-4 py-3.5">
+                  Produk
+                </th>
+                <th scope="col" className="px-4 py-3.5">
+                  SKU
+                </th>
+                <th scope="col" className="px-4 py-3.5">
+                  Kategori
+                </th>
+                <th scope="col" className="px-4 py-3.5 text-right">
+                  Harga
+                </th>
+                <th scope="col" className="px-4 py-3.5 text-right">
+                  Stok
+                </th>
+                <th scope="col" className="px-4 py-3.5">
+                  Status
+                </th>
+                {canManage && (
+                  <th scope="col" className="px-4 py-3.5 text-right">
+                    Aksi
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -134,14 +141,14 @@ export function PosProductsTable({
                       {product.name}
                     </td>
                     <td className="px-4 py-4 font-mono text-xs text-muted-foreground">
-                      {product.sku ?? "—"}
+                      {product.sku ?? "-"}
                     </td>
                     <td className="px-4 py-4 font-mono text-xs uppercase">{product.category}</td>
                     <td className="px-4 py-4 text-right font-mono text-sm font-bold">
                       {formatIDR(product.price)}
                     </td>
                     <td className="px-4 py-4 text-right font-mono text-sm">
-                      {product.stock === null ? "—" : product.stock}
+                      {product.stock === null ? "-" : product.stock}
                     </td>
                     <td className="px-4 py-4">
                       <span

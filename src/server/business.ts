@@ -64,10 +64,7 @@ const TRIAL_DAYS_DEFAULT = 14;
 
 async function uniqueSlug(base: string): Promise<string> {
   const supabase = createServerClient();
-  const { data } = await supabase
-    .from("businesses")
-    .select("slug")
-    .like("slug", `${base}%`);
+  const { data } = await supabase.from("businesses").select("slug").like("slug", `${base}%`);
 
   const taken = new Set((data ?? []).map((row) => row.slug));
   if (!taken.has(base)) return base;
@@ -107,13 +104,9 @@ export async function createBusiness(userId: string, input: BusinessCreateInput)
       plans: { max_businesses: number } | { max_businesses: number }[] | null;
     }[];
     const plan = rows[0]?.plans;
-    const max =
-      plan && !Array.isArray(plan) ? (plan.max_businesses as number) : null;
+    const max = plan && !Array.isArray(plan) ? (plan.max_businesses as number) : null;
     if (max !== null && memberships.length >= max) {
-      throw new ApiError(
-        "PLAN_LIMIT_REACHED",
-        "Batas jumlah business untuk plan Anda tercapai"
-      );
+      throw new ApiError("PLAN_LIMIT_REACHED", "Batas jumlah business untuk plan Anda tercapai");
     }
   }
 
@@ -152,12 +145,7 @@ export async function createBusiness(userId: string, input: BusinessCreateInput)
   async function rollbackBusiness() {
     const { error } = await supabase.from("businesses").delete().eq("id", business.id);
     if (error) {
-      console.error(
-        "[business] rollback business gagal:",
-        business.id,
-        error.code,
-        error.message
-      );
+      console.error("[business] rollback business gagal:", business.id, error.code, error.message);
     }
   }
 
@@ -239,13 +227,6 @@ export async function createBusiness(userId: string, input: BusinessCreateInput)
 export async function listBusinesses(userId: string) {
   const memberships = await getUserMemberships(userId);
   return memberships.map((m) => ({ ...m.business, member_role: m.role }));
-}
-
-/** Detail — non-member → 404 (cross-tenant, docs/03 §3.5). */
-export async function getBusiness(userId: string, businessId: string) {
-  const membership = await getMembership(userId, businessId);
-  if (!membership) throw new ApiError("NOT_FOUND", "Business tidak ditemukan");
-  return membership;
 }
 
 export async function updateBusiness(

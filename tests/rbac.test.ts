@@ -4,7 +4,13 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { can, canUnchecked, PERMISSIONS, type BusinessRole, type Permission } from "../src/lib/rbac.ts";
+import {
+  can,
+  canUnchecked,
+  PERMISSIONS,
+  type BusinessRole,
+  type Permission,
+} from "../src/lib/rbac.ts";
 
 test("owner wildcard mengizinkan semua permission POS", () => {
   assert.ok(can("owner", "pos:manage"));
@@ -82,10 +88,7 @@ test("owner wildcard memiliki semua permission yang dipakai", () => {
 });
 
 test("Permission union mencakup seluruh matrix (tanpa string liar)", () => {
-  const declared = new Set<string>([
-    ...PERMISSIONS.manager,
-    ...PERMISSIONS.staff,
-  ]);
+  const declared = new Set<string>([...PERMISSIONS.manager, ...PERMISSIONS.staff]);
   const used = collectUsedPermissions(SRC_ROOT);
   for (const p of used) {
     assert.ok(

@@ -22,7 +22,6 @@ export {
   type AdminUserRow,
   type UserDetail,
   listUsers,
-  getUser,
   getUserDetail,
   updateUser,
   createUser,
@@ -35,18 +34,8 @@ export {
   updateBusiness,
   deleteBusiness,
 } from "./businesses";
-export {
-  type AdminPlanRow,
-  listPlans,
-  createPlan,
-  updatePlan,
-} from "./plans";
-export {
-  type AdminAddOnRow,
-  listAddOns,
-  createAddOn,
-  updateAddOn,
-} from "./addons";
+export { type AdminPlanRow, listPlans, createPlan, updatePlan } from "./plans";
+export { type AdminAddOnRow, listAddOns, createAddOn, updateAddOn } from "./addons";
 export {
   type AdminSubscriptionRow,
   listSubscriptions,
@@ -64,11 +53,7 @@ export {
   markRefunded,
   dismissFailure,
 } from "./subscription-failures";
-export {
-  type PlatformSettings,
-  getPlatformSettings,
-  updatePlatformSettings,
-} from "./settings";
+export { type PlatformSettings, getPlatformSettings, updatePlatformSettings } from "./settings";
 export {
   type AdminTemplateCategoryRow,
   type AdminTemplateRow,
@@ -90,17 +75,8 @@ export {
   type AdminTemplatePurchaseRow,
 } from "./templates";
 export { adminPosRevenueSummary } from "./pos";
-export {
-  type AdminPromoRow,
-  listPromos,
-  createPromo,
-  updatePromo,
-} from "./promos";
-export {
-  type AdminAuditRow,
-  listAuditLogs,
-  deleteAuditLogs,
-} from "./audit";
+export { type AdminPromoRow, listPromos, createPromo, updatePromo } from "./promos";
+export { type AdminAuditRow, listAuditLogs, deleteAuditLogs } from "./audit";
 export {
   type AdminGatewayCredentialRow,
   type AdminGatewayState,
@@ -122,7 +98,6 @@ export {
   type BroadcastStatus,
   type BroadcastTemplateKey,
   listBroadcasts,
-  getBroadcast,
   getBroadcastStats,
   listBroadcastRecipients,
   createBroadcast,

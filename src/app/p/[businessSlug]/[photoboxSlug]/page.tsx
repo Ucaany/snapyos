@@ -5,14 +5,20 @@ import { KioskErrorBoundary } from "@/components/kiosk/KioskErrorBoundary";
 import { ApiError } from "@/lib/api-errors";
 import { getPublicConfig } from "@/server/public-config";
 
-export const metadata: Metadata = {
-  title: "Photobox · SnapyOS",
-};
-
 type Props = {
   params: Promise<{ businessSlug: string; photoboxSlug: string }>;
   searchParams: Promise<{ code?: string }>;
 };
+
+/** Manifest per booth: start_url dan scope menunjuk ke kiosk ini, bukan beranda. */
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { businessSlug, photoboxSlug } = await params;
+  const kioskPath = `/p/${businessSlug}/${photoboxSlug}`;
+  return {
+    title: "Photobox · SnapyOS",
+    manifest: `${kioskPath}/manifest.webmanifest`,
+  };
+}
 
 /** GET /p/[businessSlug]/[photoboxSlug] — kiosk customer app (docs/05 §5.0–5.1). */
 export default async function KioskPage({ params, searchParams }: Props) {

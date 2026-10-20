@@ -155,11 +155,13 @@ export async function getCustomer(
   // Agregat dari RPC yang sama dengan list (paid-only, tanpa limit): hitungan
   // di detail tidak boleh berbeda dari angka di tabel, dan tidak boleh
   // terpotong `.limit(20)` daftar riwayat.
-  const spending = ((agg.data ?? []) as {
-    total_spending: number | string;
-    tx_count: number | string;
-    last_active: string | null;
-  }[])[0];
+  const spending = (
+    (agg.data ?? []) as {
+      total_spending: number | string;
+      tx_count: number | string;
+      last_active: string | null;
+    }[]
+  )[0];
 
   return {
     id: customer.id,
@@ -170,10 +172,16 @@ export async function getCustomer(
     totalSpending: Number(spending?.total_spending ?? 0),
     transactionCount: Number(spending?.tx_count ?? 0),
     lastActive: spending?.last_active ?? null,
-    transactions: ((tx.data ?? []) as {
-      id: string; number: string; final_amount: number; status: string;
-      paid_at: string | null; created_at: string;
-    }[]).map((r) => ({
+    transactions: (
+      (tx.data ?? []) as {
+        id: string;
+        number: string;
+        final_amount: number;
+        status: string;
+        paid_at: string | null;
+        created_at: string;
+      }[]
+    ).map((r) => ({
       id: r.id,
       number: r.number,
       finalAmount: r.final_amount,
@@ -181,10 +189,14 @@ export async function getCustomer(
       paidAt: r.paid_at,
       createdAt: r.created_at,
     })),
-    sessions: ((sessions.data ?? []) as {
-      id: string; status: string; created_at: string;
-      photoboxes: { name: string } | { name: string }[] | null;
-    }[]).map((r) => ({
+    sessions: (
+      (sessions.data ?? []) as {
+        id: string;
+        status: string;
+        created_at: string;
+        photoboxes: { name: string } | { name: string }[] | null;
+      }[]
+    ).map((r) => ({
       id: r.id,
       status: r.status,
       createdAt: r.created_at,

@@ -59,8 +59,8 @@ export default async function AdminAuditPage({
           {"/// HAPUS RIWAYAT (RETENSI)"}
         </p>
         <p className="mt-1 max-w-[60ch] text-xs leading-relaxed text-muted-foreground">
-          Hapus log audit lebih lama dari tanggal batas. Tindakan permanen -
-          pastikan tidak ada investigasi/audit yang sedang berjalan.
+          Hapus log audit lebih lama dari tanggal batas. Tindakan permanen - pastikan tidak ada
+          investigasi/audit yang sedang berjalan.
         </p>
         <AdminActionForm
           action={deleteAuditLogsAction}
@@ -70,7 +70,10 @@ export default async function AdminAuditPage({
           className="mt-4 flex flex-wrap items-end gap-3"
         >
           <div className="flex flex-col gap-1">
-            <label htmlFor="audit-before" className="font-mono text-[10px] uppercase tracking-[0.12em]">
+            <label
+              htmlFor="audit-before"
+              className="font-mono text-[10px] uppercase tracking-[0.12em]"
+            >
               Hapus sebelum tanggal
             </label>
             <Input id="audit-before" name="before" type="date" required className="w-44" />
@@ -89,10 +92,19 @@ export default async function AdminAuditPage({
           ]}
         />
         <div className="flex flex-col gap-1">
-          <label htmlFor="audit-search" className="font-mono text-[10px] uppercase tracking-[0.12em]">
+          <label
+            htmlFor="audit-search"
+            className="font-mono text-[10px] uppercase tracking-[0.12em]"
+          >
             Cari aksi / target
           </label>
-          <Input id="audit-search" name="search" defaultValue={q.search ?? ""} placeholder="admin.user.update" className="w-56" />
+          <Input
+            id="audit-search"
+            name="search"
+            defaultValue={q.search ?? ""}
+            placeholder="admin.user.update"
+            className="w-56"
+          />
         </div>
         <Button type="submit" size="sm" variant="secondary">
           Filter log
@@ -123,9 +135,13 @@ export default async function AdminAuditPage({
                     {dateTimeFmt.format(new Date(log.created_at))}
                   </td>
                   <td className="px-4 py-3">
-                    <span className="font-mono text-xs font-bold">{log.actor_email ?? "system"}</span>
+                    <span className="font-mono text-xs font-bold">
+                      {log.actor_email ?? "system"}
+                    </span>
                     {log.actor_name ? (
-                      <span className="block font-mono text-[10px] text-muted-foreground">{log.actor_name}</span>
+                      <span className="block font-mono text-[10px] text-muted-foreground">
+                        {log.actor_name}
+                      </span>
                     ) : null}
                   </td>
                   <td className="px-4 py-3 font-mono text-xs font-bold break-all">{log.action}</td>

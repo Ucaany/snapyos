@@ -106,7 +106,7 @@ export function renderBroadcastHtml(input: {
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#6b6b6b;">
-                    SnapyOS&reg; platform<br />Email otomatis — jangan balas.
+                    SnapyOS&reg; platform<br />Email otomatis: jangan balas.
                   </td>
                   <td align="right" style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#111111;">
                     ${escapeHtml(input.recipientName)}
@@ -131,5 +131,5 @@ export function renderBroadcastText(input: {
 }): string {
   const kind = resolveKind(input.templateKey, input.kind ?? "announcement");
   const tagline = BROADCAST_KIND_TAGLINE[kind];
-  return `SnapyOS® — ${tagline}\n${input.subject}\n\n${input.body}\n\nEmail otomatis, jangan balas.`;
+  return `SnapyOS®: ${tagline}\n${input.subject}\n\n${input.body}\n\nEmail otomatis, jangan balas.`;
 }

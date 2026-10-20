@@ -10,14 +10,17 @@ import { str, toFormState } from "@/lib/form-state";
 import { requireActiveBusiness } from "@/server/action-utils";
 import { requireEffectiveSubscription } from "@/server/require-subscription";
 import type { FormState } from "@/server/auth-actions";
-import { inviteStaff, removeStaff, setStaffPhotoboxes, setStaffPin, updateStaffRole } from "@/server/staff";
+import {
+  inviteStaff,
+  removeStaff,
+  setStaffPhotoboxes,
+  setStaffPin,
+  updateStaffRole,
+} from "@/server/staff";
 
 // --- STAFF (docs/04 §4.13) ---
 
-export async function inviteStaffAction(
-  _prev: FormState,
-  formData: FormData
-): Promise<FormState> {
+export async function inviteStaffAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const ctx = await requireActiveBusiness();
   if (!ctx) return { error: "Sesi berakhir. Silakan login ulang." };
   await requireEffectiveSubscription(ctx.businessId, "write");
@@ -33,10 +36,7 @@ export async function inviteStaffAction(
   return { error: undefined };
 }
 
-export async function setStaffPinAction(
-  _prev: FormState,
-  formData: FormData
-): Promise<FormState> {
+export async function setStaffPinAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const ctx = await requireActiveBusiness();
   if (!ctx) return { error: "Sesi berakhir. Silakan login ulang." };
   const userId = String(formData.get("user_id") ?? "").trim();
@@ -77,10 +77,7 @@ export async function updateStaffRoleAction(
   return { error: undefined };
 }
 
-export async function removeStaffAction(
-  _prev: FormState,
-  formData: FormData
-): Promise<FormState> {
+export async function removeStaffAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const ctx = await requireActiveBusiness();
   if (!ctx) return { error: "Sesi berakhir. Silakan login ulang." };
   const userId = String(formData.get("user_id") ?? "").trim();
@@ -102,7 +99,10 @@ export async function updateStaffBoothsAction(
   const ctx = await requireActiveBusiness();
   if (!ctx) return { error: "Sesi berakhir. Silakan login ulang." };
   const userId = String(formData.get("user_id") ?? "").trim();
-  const photoboxIds = formData.getAll("photobox_ids").map((v) => String(v).trim()).filter(Boolean);
+  const photoboxIds = formData
+    .getAll("photobox_ids")
+    .map((v) => String(v).trim())
+    .filter(Boolean);
   if (!userId) return { error: "User staff tidak valid." };
   try {
     await requireEffectiveSubscription(ctx.businessId, "write");

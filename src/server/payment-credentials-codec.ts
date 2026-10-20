@@ -2,12 +2,15 @@ import { allowedPaymentMethods } from "../lib/payment-credentials.ts";
 import { encrypt } from "./payment/providers/encrypt.ts";
 import type { GatewayProvider } from "./payment/providers/types.ts";
 
-export function credentialMetadata(input: {
-  provider: GatewayProvider;
-  enabled_methods?: string[];
-  private_key?: string;
-  webhook_secret?: string;
-}, current?: Record<string, unknown> | null): Record<string, unknown> {
+export function credentialMetadata(
+  input: {
+    provider: GatewayProvider;
+    enabled_methods?: string[];
+    private_key?: string;
+    webhook_secret?: string;
+  },
+  current?: Record<string, unknown> | null
+): Record<string, unknown> {
   const next = { ...(current ?? {}) };
   if (input.enabled_methods !== undefined) {
     next.enabled_methods = allowedPaymentMethods(input.provider, input.enabled_methods);

@@ -19,7 +19,8 @@ const COLUMNS = `id, name, price, photo_count, print_count, digital_output, capt
   description, is_active, created_at,
   package_templates ( template_id ), package_outlets ( outlet_id ), package_photoboxes ( photobox_id )`;
 
-type CountJoin = { template_id?: string } | { outlet_id?: string } | { photobox_id?: string } | null;
+type CountJoin =
+  { template_id?: string } | { outlet_id?: string } | { photobox_id?: string } | null;
 
 export type PackageRow = {
   id: string;
@@ -41,9 +42,16 @@ export type PackageRow = {
 };
 
 function mapRow(row: {
-  id: string; name: string; price: number; photo_count: number; print_count: number;
-  digital_output: boolean; capture_mode: string; description: string | null;
-  is_active: boolean; created_at: string;
+  id: string;
+  name: string;
+  price: number;
+  photo_count: number;
+  print_count: number;
+  digital_output: boolean;
+  capture_mode: string;
+  description: string | null;
+  is_active: boolean;
+  created_at: string;
   package_templates?: CountJoin[] | CountJoin;
   package_outlets?: CountJoin[] | CountJoin;
   package_photoboxes?: CountJoin[] | CountJoin;
@@ -100,7 +108,10 @@ async function assertIdsOwned(
   let req = supabase.from(table).select("id, business_id").eq("business_id", businessId);
   if (table === "templates") {
     // Template global platform (business_id null) boleh di-assign.
-    req = supabase.from(table).select("id, business_id").or(`business_id.eq.${businessId},business_id.is.null`);
+    req = supabase
+      .from(table)
+      .select("id, business_id")
+      .or(`business_id.eq.${businessId},business_id.is.null`);
   }
   const { data } = await req.in("id", ids);
   const found = new Set(((data ?? []) as { id: string }[]).map((r) => r.id));
@@ -177,11 +188,7 @@ export async function listPackages(userId: string, businessId: string): Promise<
   return (data ?? []).map((row) => mapRow(row as Parameters<typeof mapRow>[0]));
 }
 
-export async function createPackage(
-  userId: string,
-  businessId: string,
-  input: PackageCreateInput
-) {
+export async function createPackage(userId: string, businessId: string, input: PackageCreateInput) {
   const parsed = packageCreateSchema.parse(input);
   await requireMembership(userId, businessId, "package:write");
   await Promise.all([
@@ -231,17 +238,15 @@ export async function updatePackage(
   if (error) throw new ApiError("INTERNAL", "Gagal memperbarui package");
   if (!data) throw new ApiError("NOT_FOUND", "Package tidak ditemukan");
 
-  if (template_ids) await syncM2M(businessId, packageId, "package_templates", "template_id", template_ids);
+  if (template_ids)
+    await syncM2M(businessId, packageId, "package_templates", "template_id", template_ids);
   if (outlet_ids) await syncM2M(businessId, packageId, "package_outlets", "outlet_id", outlet_ids);
-  if (photobox_ids) await syncM2M(businessId, packageId, "package_photoboxes", "photobox_id", photobox_ids);
+  if (photobox_ids)
+    await syncM2M(businessId, packageId, "package_photoboxes", "photobox_id", photobox_ids);
   return data;
 }
 
-export async function deletePackage(
-  userId: string,
-  businessId: string,
-  packageId: string
-) {
+export async function deletePackage(userId: string, businessId: string, packageId: string) {
   await requireMembership(userId, businessId, "package:write");
   const supabase = createServerClient();
 
@@ -254,7 +259,7 @@ export async function deletePackage(
   if ((count ?? 0) > 0) {
     throw new ApiError(
       "VALIDATION_ERROR",
-      "Package sudah dipakai transaksi — nonaktifkan saja (Switch active)."
+      "Package sudah dipakai transaksi: nonaktifkan saja (Switch active)."
     );
   }
 

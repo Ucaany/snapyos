@@ -58,12 +58,9 @@ export default async function ReportsPage() {
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
           {"/// LAPORAN: EXPORT"}
         </p>
-        <h1 className="mt-2 font-display text-4xl uppercase tracking-tight md:text-5xl">
-          Laporan
-        </h1>
+        <h1 className="mt-2 font-display text-4xl uppercase tracking-tight md:text-5xl">Laporan</h1>
         <p className="mt-3 max-w-[65ch] text-sm leading-relaxed text-muted-foreground">
-          Buat laporan dari data transaksi, biaya, dan voucher. Format
-          CSV &amp; XLSX.
+          Buat laporan dari data transaksi, biaya, dan voucher. Format CSV &amp; XLSX.
         </p>
       </header>
 
@@ -71,8 +68,8 @@ export default async function ReportsPage() {
         <CardHeader>
           <CardTitle>Buat Laporan</CardTitle>
           <CardDescription>
-            Pilih tipe, rentang tanggal, dan format. File diunduh langsung
-            dari server (butuh sesi login aktif).
+            Pilih tipe, rentang tanggal, dan format. File diunduh langsung dari server (butuh sesi
+            login aktif).
           </CardDescription>
         </CardHeader>
         <CardContent>

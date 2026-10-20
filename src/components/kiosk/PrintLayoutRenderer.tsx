@@ -239,7 +239,9 @@ function PrintLayoutRendererInner({ photos, plan, printSettings, onDone }: Props
         {state === "error" ? (
           <>
             <TriangleAlert className="size-12 text-destructive" aria-hidden />
-            <p className="font-display text-2xl uppercase leading-none tracking-tight">Gagal mencetak</p>
+            <p className="font-display text-2xl uppercase leading-none tracking-tight">
+              Gagal mencetak
+            </p>
             <p className="max-w-[40ch] font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
               {errorMsg || "Terjadi kesalahan saat mencetak."}
             </p>
@@ -255,12 +257,16 @@ function PrintLayoutRendererInner({ photos, plan, printSettings, onDone }: Props
         ) : state === "done" ? (
           <>
             <Check className="size-12 text-accent-3" aria-hidden />
-            <p className="font-display text-2xl uppercase leading-none tracking-tight">Permintaan cetak dikirim</p>
+            <p className="font-display text-2xl uppercase leading-none tracking-tight">
+              Permintaan cetak dikirim
+            </p>
           </>
         ) : state === "ready" && !auto ? (
           <>
             <Printer className="size-12" aria-hidden />
-            <p className="font-display text-2xl uppercase leading-none tracking-tight">Siap dicetak</p>
+            <p className="font-display text-2xl uppercase leading-none tracking-tight">
+              Siap dicetak
+            </p>
             <p className="max-w-[44ch] font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
               {`/// ${totalSheets} LEMBAR · DI TABLET PILIH PRINTER FOTO DI DIALOG SISTEM`}
             </p>

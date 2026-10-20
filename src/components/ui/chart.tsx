@@ -152,7 +152,9 @@ function ChartTooltipContent({
         : itemConfig?.label;
 
     if (labelFormatter) {
-      return <div className={cn("font-mono", labelClassName)}>{labelFormatter(value, payload)}</div>;
+      return (
+        <div className={cn("font-mono", labelClassName)}>{labelFormatter(value, payload)}</div>
+      );
     }
 
     if (!value) {
@@ -218,11 +220,15 @@ function ChartTooltipContent({
                   >
                     <div className="grid gap-1.5">
                       {nestLabel ? tooltipLabel : null}
-                      <span className="text-muted-foreground">{itemConfig?.label || item.name}</span>
+                      <span className="text-muted-foreground">
+                        {itemConfig?.label || item.name}
+                      </span>
                     </div>
                     {item.value !== undefined && (
                       <span className="font-mono font-bold">
-                        {typeof item.value === "number" ? item.value.toLocaleString("id-ID") : item.value}
+                        {typeof item.value === "number"
+                          ? item.value.toLocaleString("id-ID")
+                          : item.value}
                       </span>
                     )}
                   </div>
@@ -279,9 +285,7 @@ function ChartLegendContent({
         return (
           <div
             key={item.value}
-            className={cn(
-              "flex items-center gap-1.5 [&>svg]:h-3 [&>svg]:w-3 [&>svg]:shrink-0"
-            )}
+            className={cn("flex items-center gap-1.5 [&>svg]:h-3 [&>svg]:w-3 [&>svg]:shrink-0")}
           >
             {itemConfig?.icon && !hideIcon ? (
               <itemConfig.icon />
@@ -320,11 +324,7 @@ function getPayloadConfigFromPayload(
 
   if (key in payload && typeof payload[key as keyof typeof payload] === "string") {
     configLabelKey = payload[key as keyof typeof payload] as string;
-  } else if (
-    payloadPayload &&
-    key in payloadPayload &&
-    typeof payloadPayload[key] === "string"
-  ) {
+  } else if (payloadPayload && key in payloadPayload && typeof payloadPayload[key] === "string") {
     configLabelKey = payloadPayload[key] as string;
   }
 

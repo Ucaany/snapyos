@@ -6,7 +6,13 @@
  */
 
 import { config, requireServiceRole } from "./helpers/env.mjs";
-import { createAdmin, resolvePhotobox, mintActivationCode, resetBooth, activateDevice } from "./helpers/booth.mjs";
+import {
+  createAdmin,
+  resolvePhotobox,
+  mintActivationCode,
+  resetBooth,
+  activateDevice,
+} from "./helpers/booth.mjs";
 import { launchKiosk, collectConsole, seedDevice } from "./helpers/browser.mjs";
 import { createReporter } from "./helpers/report.mjs";
 
@@ -63,7 +69,11 @@ for (const viewport of VIEWPORTS) {
       Math.abs(metrics.shellHeight - metrics.viewport) <= 1 && metrics.shellOverflow === "hidden",
       `shell=${Math.round(metrics.shellHeight)} viewport=${metrics.viewport} overflow=${metrics.shellOverflow}`
     );
-    report.record(`${viewport.name}: tanpa console error`, errors.length === 0, errors.slice(0, 2).join(" | "));
+    report.record(
+      `${viewport.name}: tanpa console error`,
+      errors.length === 0,
+      errors.slice(0, 2).join(" | ")
+    );
   } catch (error) {
     report.record(`${viewport.name}: kiosk terbuka`, false, error.message);
   } finally {

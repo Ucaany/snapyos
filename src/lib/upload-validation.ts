@@ -5,9 +5,7 @@
 
 export const LOGO_MAX_BYTES = 2 * 1024 * 1024; // 2 MB
 
-export type PhotoValidation =
-  | { ok: true; ext: string }
-  | { ok: false; error: string };
+export type PhotoValidation = { ok: true; ext: string } | { ok: false; error: string };
 
 /** Allowlist tipe → ekstensi final (rename server-side, docs/09 §9.6). */
 export const LOGO_ALLOWED_TYPES: Record<string, string> = {
@@ -16,9 +14,7 @@ export const LOGO_ALLOWED_TYPES: Record<string, string> = {
   "image/webp": "webp",
 };
 
-export type LogoValidation =
-  | { ok: true; ext: string }
-  | { ok: false; error: string };
+export type LogoValidation = { ok: true; ext: string } | { ok: false; error: string };
 
 /**
  * Magic-byte sniff — MIME dari client (file.type) tidak dipercaya (docs/09 §9.6).
@@ -27,9 +23,17 @@ export type LogoValidation =
  * SVG dapat memuat skrip sehingga berisiko XSS bila disajikan inline.
  */
 function hasPngSignature(bytes: Uint8Array): boolean {
-  return bytes.length >= 8 &&
-    bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47 &&
-    bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a;
+  return (
+    bytes.length >= 8 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47 &&
+    bytes[4] === 0x0d &&
+    bytes[5] === 0x0a &&
+    bytes[6] === 0x1a &&
+    bytes[7] === 0x0a
+  );
 }
 
 function hasJpegStructure(bytes: Uint8Array): boolean {
@@ -63,8 +67,14 @@ export function sniffImageType(bytes: Uint8Array): string | null {
   if (hasJpegStructure(bytes)) return "image/jpeg";
   if (
     bytes.length >= 12 &&
-    bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
-    bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50
+    bytes[0] === 0x52 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x46 &&
+    bytes[8] === 0x57 &&
+    bytes[9] === 0x45 &&
+    bytes[10] === 0x42 &&
+    bytes[11] === 0x50
   ) {
     return "image/webp";
   }
@@ -115,9 +125,12 @@ export function validateJpegDimensions(bytes: Uint8Array, maxPixels = 20_000_000
       const widthHigh = bytes[offset + 5];
       const widthLow = bytes[offset + 6];
       if (
-        heightHigh === undefined || heightLow === undefined ||
-        widthHigh === undefined || widthLow === undefined
-      ) return false;
+        heightHigh === undefined ||
+        heightLow === undefined ||
+        widthHigh === undefined ||
+        widthLow === undefined
+      )
+        return false;
       const height = (heightHigh << 8) | heightLow;
       const width = (widthHigh << 8) | widthLow;
       return width > 0 && height > 0 && width * height <= maxPixels;
@@ -198,16 +211,26 @@ export const VIDEO_ALLOWED_TYPES: Record<string, string> = {
   "video/webm": "webm",
 };
 
-export type VideoValidation =
-  | { ok: true; ext: string }
-  | { ok: false; error: string };
+export type VideoValidation = { ok: true; ext: string } | { ok: false; error: string };
 
 /** Magic-byte sniff untuk video: MP4 (ftyp box) dan WebM (EBML). */
 export function sniffVideoType(bytes: Uint8Array): string | null {
-  if (bytes.length >= 12 && bytes[4] === 0x66 && bytes[5] === 0x74 && bytes[6] === 0x79 && bytes[7] === 0x70) {
+  if (
+    bytes.length >= 12 &&
+    bytes[4] === 0x66 &&
+    bytes[5] === 0x74 &&
+    bytes[6] === 0x79 &&
+    bytes[7] === 0x70
+  ) {
     return "video/mp4";
   }
-  if (bytes.length >= 4 && bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3) {
+  if (
+    bytes.length >= 4 &&
+    bytes[0] === 0x1a &&
+    bytes[1] === 0x45 &&
+    bytes[2] === 0xdf &&
+    bytes[3] === 0xa3
+  ) {
     return "video/webm";
   }
   return null;

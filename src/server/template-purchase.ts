@@ -70,7 +70,9 @@ export async function listPremiumTemplates(
   const [{ data: templates }, { data: owned }] = await Promise.all([
     supabase
       .from("templates")
-      .select("id, name, category_id, file_url, thumbnail_url, price, is_active, template_categories(name)")
+      .select(
+        "id, name, category_id, file_url, thumbnail_url, price, is_active, template_categories(name)"
+      )
       .is("business_id", null)
       .eq("is_premium", true)
       .gt("price", 0)
@@ -80,9 +82,7 @@ export async function listPremiumTemplates(
       .select("template_id")
       .eq("business_id", businessId),
   ]);
-  const ownedIds = new Set(
-    ((owned ?? []) as { template_id: string }[]).map((o) => o.template_id)
-  );
+  const ownedIds = new Set(((owned ?? []) as { template_id: string }[]).map((o) => o.template_id));
   type Row = {
     id: string;
     name: string;
@@ -104,9 +104,11 @@ export async function listPremiumTemplates(
     id: t.id,
     name: t.name,
     category_id: t.category_id,
-    category_name: (Array.isArray(t.template_categories) ? t.template_categories[0] : t.template_categories)?.name ?? null,
+    category_name:
+      (Array.isArray(t.template_categories) ? t.template_categories[0] : t.template_categories)
+        ?.name ?? null,
     file_url: urlByKey.get(t.file_url) ?? t.file_url,
-    thumbnail_url: t.thumbnail_url ? urlByKey.get(t.thumbnail_url) ?? null : null,
+    thumbnail_url: t.thumbnail_url ? (urlByKey.get(t.thumbnail_url) ?? null) : null,
     price: t.price,
     is_active: t.is_active,
     purchased: ownedIds.has(t.id),
@@ -159,9 +161,13 @@ export async function purchaseTemplate(
     .eq("id", templateId)
     .is("business_id", null)
     .maybeSingle();
-  const template = (tpl ?? null) as
-    | { id: string; name: string; price: number | null; is_premium: boolean; is_active: boolean }
-    | null;
+  const template = (tpl ?? null) as {
+    id: string;
+    name: string;
+    price: number | null;
+    is_premium: boolean;
+    is_active: boolean;
+  } | null;
   if (!template) throw new ApiError("NOT_FOUND", "Template premium tidak ditemukan");
   if (!template.is_premium || !template.price || template.price <= 0) {
     throw new ApiError("VALIDATION_ERROR", "Template ini tidak berbayar");

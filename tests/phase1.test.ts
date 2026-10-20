@@ -9,12 +9,7 @@ import assert from "node:assert/strict";
 import { slugify, isValidSlug, RESERVED_SLUGS } from "../src/lib/slug.ts";
 import { destinationFor, destinationForUser } from "../src/lib/destination.ts";
 import { can, canUnchecked } from "../src/lib/rbac.ts";
-import {
-  failureCount,
-  rateLimit,
-  registerFailure,
-  resetLimit,
-} from "../src/lib/rate-limit.ts";
+import { failureCount, rateLimit, registerFailure, resetLimit } from "../src/lib/rate-limit.ts";
 import { API_ERRORS, ApiError, listEnvelope } from "../src/lib/api-errors.ts";
 import {
   businessCreateSchema,
@@ -42,10 +37,23 @@ test("slug reserved route ditolak", () => {
 
 // --- validators ---
 test("registerSchema menolak input tidak valid", () => {
-  assert.equal(registerSchema.safeParse({ name: "", email: "x@y.id", password: "12345678" }).success, false);
-  assert.equal(registerSchema.safeParse({ name: "Budi", email: "bukan-email", password: "12345678" }).success, false);
-  assert.equal(registerSchema.safeParse({ name: "Budi", email: "a@b.id", password: "short" }).success, false);
-  const ok = registerSchema.safeParse({ name: " Budi ", email: " A@B.ID ", password: "panjangkan" });
+  assert.equal(
+    registerSchema.safeParse({ name: "", email: "x@y.id", password: "12345678" }).success,
+    false
+  );
+  assert.equal(
+    registerSchema.safeParse({ name: "Budi", email: "bukan-email", password: "12345678" }).success,
+    false
+  );
+  assert.equal(
+    registerSchema.safeParse({ name: "Budi", email: "a@b.id", password: "short" }).success,
+    false
+  );
+  const ok = registerSchema.safeParse({
+    name: " Budi ",
+    email: " A@B.ID ",
+    password: "panjangkan",
+  });
   assert.equal(ok.success, true);
   if (ok.success) {
     assert.equal(ok.data.email, "a@b.id");
@@ -116,12 +124,18 @@ test("normalizeWhatsapp menghasilkan format +62", () => {
 
 test("businessCreateSchema menerima slug opsional yang valid", () => {
   assert.equal(businessCreateSchema.safeParse({ name: "KLIK FOTO" }).success, true);
-  assert.equal(businessCreateSchema.safeParse({ name: "KLIK FOTO", slug: "klik-foto" }).success, true);
+  assert.equal(
+    businessCreateSchema.safeParse({ name: "KLIK FOTO", slug: "klik-foto" }).success,
+    true
+  );
   // slug dinormalisasi ke lowercase sebelum divalidasi (zod v4 chain)
   const normalized = businessCreateSchema.safeParse({ name: "KLIK FOTO", slug: "KLIK" });
   assert.equal(normalized.success, true);
   if (normalized.success) assert.equal(normalized.data.slug, "klik");
-  assert.equal(businessCreateSchema.safeParse({ name: "KLIK FOTO", slug: "klik_foto" }).success, false);
+  assert.equal(
+    businessCreateSchema.safeParse({ name: "KLIK FOTO", slug: "klik_foto" }).success,
+    false
+  );
   assert.equal(businessCreateSchema.safeParse({ name: "KLIK FOTO", slug: "ab" }).success, false);
   assert.equal(businessCreateSchema.safeParse({ name: "K" }).success, false);
 });
@@ -133,13 +147,7 @@ const userMembership = (role: "owner" | "manager" | "staff") => membership(role)
 test("destinationFor membedakan no-membership, staff-only, dan owner/manager", () => {
   assert.equal(destinationFor([]), "/welcome");
   assert.equal(destinationFor([membership("staff")]), "/staff");
-  assert.equal(
-    destinationFor([
-      membership("staff"),
-      membership("manager"),
-    ]),
-    "/dashboard"
-  );
+  assert.equal(destinationFor([membership("staff"), membership("manager")]), "/dashboard");
 });
 
 test("destinationForUser: admin menang, non-admin mengikuti membership", () => {

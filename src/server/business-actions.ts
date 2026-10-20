@@ -8,7 +8,12 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { str, toFormState } from "@/lib/form-state";
-import { ACTIVE_BUSINESS_COOKIE, getActiveBusiness, getMembership, requireUser } from "@/lib/tenant";
+import {
+  ACTIVE_BUSINESS_COOKIE,
+  getActiveBusiness,
+  getMembership,
+  requireUser,
+} from "@/lib/tenant";
 import { createBusiness, updateBusiness } from "@/server/business";
 import type { FormState } from "@/server/auth-actions";
 import { SESSION_MAX_AGE_SECONDS } from "@/lib/constants";

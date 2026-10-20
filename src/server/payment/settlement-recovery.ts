@@ -14,6 +14,7 @@ export type SettlementRecoveryInput = {
 
 /** true = side effects belum lengkap → jalankan ulang (idempotent). */
 export function needsSettlementRecovery(input: SettlementRecoveryInput): boolean {
-  const hasTransaction = typeof input.transaction_id === "string" && input.transaction_id.length > 0;
+  const hasTransaction =
+    typeof input.transaction_id === "string" && input.transaction_id.length > 0;
   return !hasTransaction || input.checkout_status !== "paid";
 }

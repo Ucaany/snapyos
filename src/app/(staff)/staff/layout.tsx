@@ -31,8 +31,8 @@ export default async function StaffLayout({ children }: { children: React.ReactN
 
   const showCashConfirm = Boolean(
     active &&
-      can(active.role, "payment:confirm") &&
-      (await hasFeature(active.business.id, "cash_payment"))
+    can(active.role, "payment:confirm") &&
+    (await hasFeature(active.business.id, "cash_payment"))
   );
 
   return (

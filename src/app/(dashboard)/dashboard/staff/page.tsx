@@ -10,7 +10,7 @@ import { listPhotoboxes } from "@/server/photoboxes";
 import { getPlanLimits } from "@/server/plan-limits";
 
 export const metadata: Metadata = {
-  title: "Tim — SnapyOS",
+  title: "Tim | SnapyOS",
 };
 
 /** /dashboard/staff — RBAC staff management + akses booth (docs/04 §4.13, migrasi 0018). */

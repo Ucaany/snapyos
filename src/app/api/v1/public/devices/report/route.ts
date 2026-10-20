@@ -15,7 +15,13 @@ export async function POST(request: Request) {
     const rl = await rateLimit(`device-report:${ip}`, 30, 60_000);
     if (!rl.ok) {
       return NextResponse.json(
-        { error: { code: "RATE_LIMITED", message: "Terlalu banyak permintaan. Coba lagi nanti.", details: { retry_after: rl.retryAfterSec } } },
+        {
+          error: {
+            code: "RATE_LIMITED",
+            message: "Terlalu banyak permintaan. Coba lagi nanti.",
+            details: { retry_after: rl.retryAfterSec },
+          },
+        },
         { status: 429 }
       );
     }

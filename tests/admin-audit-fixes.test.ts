@@ -21,10 +21,7 @@ test("adminPromoUpdateSchema: amount 1000 + type percentage ditolak (parity crea
     adminPromoUpdateSchema.safeParse({ type: "percentage", amount: 1000 }).success,
     false
   );
-  assert.equal(
-    adminPromoUpdateSchema.safeParse({ type: "percentage", amount: 50 }).success,
-    true
-  );
+  assert.equal(adminPromoUpdateSchema.safeParse({ type: "percentage", amount: 50 }).success, true);
 });
 
 test("adminPromoUpdateSchema: end < start ditolak (parity create)", () => {

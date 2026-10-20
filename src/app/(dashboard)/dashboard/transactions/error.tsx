@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 /**
  * Error boundary - /dashboard/transactions.
@@ -6,14 +6,14 @@
  * konkret (rentang tanggal / koneksi), bukan "terjadi kesalahan" generik.
  */
 
-import { FeatureError } from "@/components/dashboard/FeatureError"
+import { FeatureError } from "@/components/dashboard/FeatureError";
 
 export default function TransactionsError({
   error,
   reset,
 }: {
-  error: Error & { digest?: string }
-  reset: () => void
+  error: Error & { digest?: string };
+  reset: () => void;
 }) {
   return (
     <FeatureError
@@ -22,5 +22,5 @@ export default function TransactionsError({
       error={error}
       reset={reset}
     />
-  )
+  );
 }

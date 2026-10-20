@@ -33,9 +33,7 @@ const activationResponse = z.object({
     expires_at: z.string(),
   }),
 });
-const errorResponse = z
-  .object({ error: z.object({ message: z.string() }).partial() })
-  .partial();
+const errorResponse = z.object({ error: z.object({ message: z.string() }).partial() }).partial();
 
 type Props = {
   businessId: string;
@@ -67,7 +65,13 @@ async function readErrorMessage(res: Response, fallback: string): Promise<string
  * revoke, ulangi setup) + device_status dari setup wizard (§5.0.1).
  * qrcode diimpor dinamis (dalam handler) supaya tidak masuk bundle first-load.
  */
-export function DeviceDialog({ businessId, businessSlug, photobox, canWrite, pwaKioskEnabled = false }: Props) {
+export function DeviceDialog({
+  businessId,
+  businessSlug,
+  photobox,
+  canWrite,
+  pwaKioskEnabled = false,
+}: Props) {
   const [open, setOpen] = useState(false);
   const [devices, setDevices] = useState<DeviceRow[]>([]);
   const [loadingDevices, setLoadingDevices] = useState(false);
@@ -205,21 +209,15 @@ export function DeviceDialog({ businessId, businessSlug, photobox, canWrite, pwa
   const hasActive = devices.some((d) => d.status === "active");
 
   const cameraStatus = photobox.device_status?.camera as
-    | { resolution?: string; error?: string | null }
-    | undefined;
+    { resolution?: string; error?: string | null } | undefined;
   const printerStatus = photobox.device_status?.printer as
-    | { confirmed?: boolean; last_test_at?: string }
-    | undefined;
+    { confirmed?: boolean; last_test_at?: string } | undefined;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
         render={
-          <Button
-            variant="outline"
-            size="icon-sm"
-            aria-label={`Perangkat ${photobox.name}`}
-          >
+          <Button variant="outline" size="icon-sm" aria-label={`Perangkat ${photobox.name}`}>
             <MonitorSmartphone className="size-4" aria-hidden />
           </Button>
         }
@@ -227,7 +225,7 @@ export function DeviceDialog({ businessId, businessSlug, photobox, canWrite, pwa
       <DialogContent className="max-w-[720px]">
         <DialogTitle>
           <span className="block font-mono text-[10px] font-normal uppercase tracking-[0.2em] text-muted-foreground">
-            {`/// PERANGKAT — ${photobox.name.toUpperCase()}`}
+            {`/// PERANGKAT: ${photobox.name.toUpperCase()}`}
           </span>
           Device pairing
         </DialogTitle>
@@ -242,11 +240,11 @@ export function DeviceDialog({ businessId, businessSlug, photobox, canWrite, pwa
           <div className="flex flex-wrap items-center justify-between gap-3 border-2 border-ink bg-accent/20 p-4">
             <div className="flex flex-col gap-1">
               <p className="font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
-                {"/// UNDUH PWA — ANDROID / TABLET / IOS"}
+                {"/// UNDUH PWA: ANDROID / TABLET / IOS"}
               </p>
               <p className="text-sm font-bold leading-tight">
-                Buka pairing di perangkat mobile lalu pasang sebagai aplikasi kiosk
-                (Add to Home Screen) tanpa App Store.
+                Buka pairing di perangkat mobile lalu pasang sebagai aplikasi kiosk (Add to Home
+                Screen) tanpa App Store.
               </p>
             </div>
             <Button
@@ -304,27 +302,33 @@ export function DeviceDialog({ businessId, businessSlug, photobox, canWrite, pwa
               <p className="border-2 border-dashed border-ink/40 bg-muted px-4 py-3 font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
                 {"/// DEVICE AKTIF TERHUBUNG \u2014 cabut dulu untuk memasang perangkat baru"}
               </p>
-            ) : activation && (
-              <div className="flex flex-wrap items-center gap-6 border-2 border-ink bg-bg p-4">
-                <div className="flex flex-col gap-1">
-                  <p
-                    className={`font-mono text-4xl font-bold tracking-[0.2em] ${
-                      expired ? "text-muted-foreground line-through" : ""
-                    }`}
-                  >
-                    {activation.code}
-                  </p>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
-                    {expired
-                      ? "Kedaluwarsa — buat kode baru"
-                      : `Berlaku ${remainingLabel(activation.expires_at, now)}`}
-                  </p>
+            ) : (
+              activation && (
+                <div className="flex flex-wrap items-center gap-6 border-2 border-ink bg-bg p-4">
+                  <div className="flex flex-col gap-1">
+                    <p
+                      className={`font-mono text-4xl font-bold tracking-[0.2em] ${
+                        expired ? "text-muted-foreground line-through" : ""
+                      }`}
+                    >
+                      {activation.code}
+                    </p>
+                    <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+                      {expired
+                        ? "Kedaluwarsa: buat kode baru"
+                        : `Berlaku ${remainingLabel(activation.expires_at, now)}`}
+                    </p>
+                  </div>
+                  {qr && !expired && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={qr}
+                      alt="QR aktivasi perangkat"
+                      className="h-36 w-36 border-2 border-ink"
+                    />
+                  )}
                 </div>
-                {qr && !expired && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={qr} alt="QR aktivasi perangkat" className="h-36 w-36 border-2 border-ink" />
-                )}
-              </div>
+              )
             )}
           </div>
         )}
@@ -355,7 +359,10 @@ export function DeviceDialog({ businessId, businessSlug, photobox, canWrite, pwa
           ) : (
             <ul className="divide-y-2 divide-ink/10 border-2 border-ink">
               {devices.map((d) => (
-                <li key={d.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                <li
+                  key={d.id}
+                  className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+                >
                   <div className="flex flex-col gap-0.5 font-mono text-xs">
                     <p className="font-bold uppercase tracking-[0.05em]">
                       {`${d.name ?? "Kiosk"} \u2014 ${d.photobox_name ?? ""}`}
@@ -390,7 +397,10 @@ export function DeviceDialog({ businessId, businessSlug, photobox, canWrite, pwa
         </div>
 
         {error && (
-          <p role="alert" className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink">
+          <p
+            role="alert"
+            className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink"
+          >
             {error}
           </p>
         )}

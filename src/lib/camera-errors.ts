@@ -4,11 +4,7 @@
  */
 
 export type CameraErrorKind =
-  | "NotAllowedError"
-  | "NotFoundError"
-  | "NotReadableError"
-  | "OverconstrainedError"
-  | "AbortError";
+  "NotAllowedError" | "NotFoundError" | "NotReadableError" | "OverconstrainedError" | "AbortError";
 
 export const CAMERA_ERRORS: Record<CameraErrorKind, { message: string; action: string }> = {
   NotAllowedError: {
@@ -16,7 +12,8 @@ export const CAMERA_ERRORS: Record<CameraErrorKind, { message: string; action: s
     action: "AKTIFKAN KAMERA",
   },
   NotFoundError: {
-    message: "Tidak ada kamera terdeteksi. Pastikan kamera perangkat aktif dan izin kamera diberikan.",
+    message:
+      "Tidak ada kamera terdeteksi. Pastikan kamera perangkat aktif dan izin kamera diberikan.",
     action: "COBA LAGI",
   },
   NotReadableError: {
@@ -35,7 +32,9 @@ export const CAMERA_ERRORS: Record<CameraErrorKind, { message: string; action: s
 
 export function cameraErrorKind(name?: string | null): CameraErrorKind | null {
   if (!name) return null;
-  return Object.prototype.hasOwnProperty.call(CAMERA_ERRORS, name) ? (name as CameraErrorKind) : null;
+  return Object.prototype.hasOwnProperty.call(CAMERA_ERRORS, name)
+    ? (name as CameraErrorKind)
+    : null;
 }
 
 /** Label resolusi untuk CameraStatusBar (docs/05 §5.5.1 langkah 5). */

@@ -25,7 +25,10 @@ export function getClientIp(headers: Headers | null | undefined): string {
   if (vercel) return vercel;
   const forwarded = headers.get("x-forwarded-for");
   if (forwarded) {
-    const parts = forwarded.split(",").map((s) => s.trim()).filter(Boolean);
+    const parts = forwarded
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
     if (parts.length > 0) return parts[parts.length - 1] as string;
   }
   return "local";

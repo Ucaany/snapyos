@@ -22,9 +22,9 @@ export function StorageUsageCard({ usage }: { usage: StorageUsage }) {
         <h2 id="storage-usage-heading" className="font-display text-lg uppercase tracking-tight">
           Storage Penyimpanan
         </h2>
-          <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
-            02 / STORAGE
-          </span>
+        <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+          02 / STORAGE
+        </span>
       </div>
 
       <div className="flex flex-col gap-4">
@@ -34,7 +34,8 @@ export function StorageUsageCard({ usage }: { usage: StorageUsage }) {
               Terpakai / Kuota
             </p>
             <p className="font-display text-2xl uppercase tracking-tight">
-              {fmtMb(usage.usedMb)} <span className="text-muted-foreground">/ {fmtMb(usage.limitMb)}</span>
+              {fmtMb(usage.usedMb)}{" "}
+              <span className="text-muted-foreground">/ {fmtMb(usage.limitMb)}</span>
             </p>
           </div>
           <p className="font-mono text-xs uppercase tracking-[0.1em]">
@@ -43,17 +44,14 @@ export function StorageUsageCard({ usage }: { usage: StorageUsage }) {
         </div>
 
         <div className="h-6 w-full border-2 border-ink bg-bg">
-          <div
-            className="h-full bg-accent"
-            style={{ width: `${usage.percent}%` }}
-          />
+          <div className="h-full bg-accent" style={{ width: `${usage.percent}%` }} />
         </div>
         <p className="font-mono text-xs text-muted-foreground">{usage.percent}% terpakai</p>
 
         {usage.isFull && (
           <div className="flex flex-wrap items-center justify-between gap-3 border-2 border-ink bg-accent-2 p-4">
             <p className="font-mono text-xs font-bold uppercase tracking-[0.08em]">
-              {"/// PENYIMPANAN PENUH — upload frame & hasil foto diblokir"}
+              {"/// PENYIMPANAN PENUH: upload frame & hasil foto diblokir"}
             </p>
             <Button size="sm" nativeButton={false} render={<Link href="/dashboard/subscription" />}>
               Upgrade Storage

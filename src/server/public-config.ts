@@ -74,7 +74,10 @@ async function resolvePhotoboxBySlug(businessId: string, slug: string) {
   return data;
 }
 
-export async function getPublicConfig(businessSlug: string, photoboxSlug: string): Promise<PublicConfig> {
+export async function getPublicConfig(
+  businessSlug: string,
+  photoboxSlug: string
+): Promise<PublicConfig> {
   const business = await resolveBusinessBySlug(businessSlug);
   // Cache per business+photobox (tag business:<id>:public-config). Mutasi
   // branding memanggil updateTag → entri basi dibuang, poll berikutnya segar.
@@ -198,8 +201,8 @@ async function buildPublicConfig(
   };
 
   const offlineEnabled =
-    (settings as { checkout?: { offline_enabled?: boolean } } | null)?.checkout
-      ?.offline_enabled === true;
+    (settings as { checkout?: { offline_enabled?: boolean } } | null)?.checkout?.offline_enabled ===
+    true;
 
   const packages = await listPublicPackages(business.id, photobox.id, photobox.outlet_id);
 
@@ -212,9 +215,11 @@ async function buildPublicConfig(
       slug: photobox.slug,
       name: photobox.name,
       status: photobox.status,
-      camera_settings: (photobox.camera_settings as PublicConfig["photobox"]["camera_settings"]) ?? {},
+      camera_settings:
+        (photobox.camera_settings as PublicConfig["photobox"]["camera_settings"]) ?? {},
       print_settings: (photobox.print_settings as PublicConfig["photobox"]["print_settings"]) ?? {},
-      session_settings: (photobox.session_settings as PublicConfig["photobox"]["session_settings"]) ?? {},
+      session_settings:
+        (photobox.session_settings as PublicConfig["photobox"]["session_settings"]) ?? {},
       device_status: (photobox.device_status as Record<string, unknown>) ?? null,
     },
     packages,
@@ -235,7 +240,9 @@ export async function listPublicPackages(
   const [{ data: packages }, { data: pbLinks }, { data: outletLinks }] = await Promise.all([
     supabase
       .from("packages")
-      .select("id, name, price, photo_count, print_count, digital_output, capture_mode, description")
+      .select(
+        "id, name, price, photo_count, print_count, digital_output, capture_mode, description"
+      )
       .eq("business_id", businessId)
       .eq("is_active", true)
       .order("price", { ascending: true }),
@@ -299,7 +306,10 @@ function frameProxyUrl(url: string): string {
   return `/api/v1/public/frame?url=${encodeURIComponent(url)}`;
 }
 
-export async function listPublicTemplates(businessId: string, packageId?: string): Promise<PublicTemplate[]> {
+export async function listPublicTemplates(
+  businessId: string,
+  packageId?: string
+): Promise<PublicTemplate[]> {
   const supabase = createServerClient();
   const query = supabase
     .from("templates")
@@ -351,11 +361,13 @@ export async function listPublicTemplates(businessId: string, packageId?: string
 
   // Batch signed URL — satu request storage untuk seluruh daftar (bukan N+1).
   const keys = Array.from(
-    new Set(filtered.flatMap((t) => {
-      const ks = [t.file_url];
-      if (t.thumbnail_url) ks.push(t.thumbnail_url);
-      return ks;
-    }))
+    new Set(
+      filtered.flatMap((t) => {
+        const ks = [t.file_url];
+        if (t.thumbnail_url) ks.push(t.thumbnail_url);
+        return ks;
+      })
+    )
   );
   const urlByKey = await signedUrlMap(BRAND_ASSETS_BUCKET, keys, SIGNED_URL_TTL);
 
@@ -368,16 +380,18 @@ export async function listPublicTemplates(businessId: string, packageId?: string
     // Data lama menyimpan thumbnail = frame (tidak ada thumbnail terpisah).
     // Jangan kirim PNG penuh ke grid: minta versi 480px dari proxy frame.
     const thumbUrl = thumb ?? `${fileUrl}${fileUrl.includes("?") ? "&" : "?"}w=480`;
-    return [{
-      id: t.id,
-      name: t.name,
-      category: t.category,
-      file_url: frameProxyUrl(fileUrl),
-      // Thumbnail selalu URL siap pakai; key mentah tidak pernah dikirim
-      // sebagai src (bukan URL, akan 404 di origin kiosk).
-      thumbnail_url: frameProxyUrl(thumbUrl),
-      layout: (slotCount(t.layout) > 0 ? t.layout : null) as TemplateLayout | null,
-      slot_count: slotCount(t.layout),
-    }];
+    return [
+      {
+        id: t.id,
+        name: t.name,
+        category: t.category,
+        file_url: frameProxyUrl(fileUrl),
+        // Thumbnail selalu URL siap pakai; key mentah tidak pernah dikirim
+        // sebagai src (bukan URL, akan 404 di origin kiosk).
+        thumbnail_url: frameProxyUrl(thumbUrl),
+        layout: (slotCount(t.layout) > 0 ? t.layout : null) as TemplateLayout | null,
+        slot_count: slotCount(t.layout),
+      },
+    ];
   });
 }

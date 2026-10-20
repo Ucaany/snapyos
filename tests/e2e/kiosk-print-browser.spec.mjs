@@ -70,12 +70,24 @@ try {
     const sheet = document.querySelector(".print-sheet");
     return sheet ? getComputedStyle(sheet).display : "missing";
   });
-  report.record("lembar memakai display flex (satu foto per halaman)", pageSize === "flex", pageSize);
+  report.record(
+    "lembar memakai display flex (satu foto per halaman)",
+    pageSize === "flex",
+    pageSize
+  );
 
   const pdf = await page.pdf({ printBackground: true, preferCSSPageSize: true });
-  const pages = (Buffer.from(pdf).toString("latin1").match(/\/Type\s*\/Page[^s]/g) || []).length;
+  const pages = (
+    Buffer.from(pdf)
+      .toString("latin1")
+      .match(/\/Type\s*\/Page[^s]/g) || []
+  ).length;
   writeFileSync(join(dir, "out.pdf"), pdf);
-  report.record("PDF berisi dua halaman", pdf.length > 5000 && pages >= 2, `bytes=${pdf.length} pages=${pages}`);
+  report.record(
+    "PDF berisi dua halaman",
+    pdf.length > 5000 && pages >= 2,
+    `bytes=${pdf.length} pages=${pages}`
+  );
   report.record("tanpa console error", errors.length === 0, errors.slice(0, 3).join(" | "));
 } catch (error) {
   report.record("pipeline cetak browser berjalan", false, error.message);

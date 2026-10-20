@@ -110,7 +110,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
       {
         gejala: "Sudah bayar tapi status masih menunggu",
         penyebab: "Webhook atau polling belum sampai",
-        solusi: "Tunggu beberapa detik, jangan reload berulang. Status dipulihkan otomatis dari server.",
+        solusi:
+          "Tunggu beberapa detik, jangan reload berulang. Status dipulihkan otomatis dari server.",
       },
       {
         gejala: "Link hasil tidak terbuka",
@@ -119,21 +120,25 @@ export const HELP_ARTICLES: HelpArticle[] = [
       },
     ],
     nextSteps: [
-      { title: "Alur Foto Customer", slug: "panduan-photobox", desc: "Penjelasan tiap layar kiosk." },
+      {
+        title: "Alur Foto Customer",
+        slug: "panduan-photobox",
+        desc: "Penjelasan tiap layar kiosk.",
+      },
       { title: "Cara Bayar di Kiosk", slug: "panduan-qris", desc: "QRIS, voucher, dan tunai." },
       { title: "Hasil Foto Online", slug: "hasil-foto", desc: "Buka QR result dan unduh file." },
     ],
   },
   {
     slug: "panduan-owner-mulai",
-    title: "Owner: Dari Daftar sampai Booth Live",
+    title: "Owner: Dari Akun sampai Booth Live",
     category: "Owner",
     summary:
-      "Daftar akun, buat business, outlet, photobox, paket, pembayaran, lalu aktivasi device. Target di bawah 15 menit untuk setup dasar.",
+      "Akun dibuat admin, lalu Anda membuat business, outlet, photobox, paket, pembayaran, dan aktivasi device. Target di bawah 15 menit untuk setup dasar setelah akun aktif.",
     audience: "Owner photobooth",
     estimate: "15 menit untuk setup dasar",
     prerequisites: [
-      "Email aktif untuk register dan login.",
+      "Email aktif untuk login setelah akun dibuat admin.",
       "Nama business, slug, dan timezone.",
       "Satu device kiosk (mini PC + webcam, atau tablet) dan satu printer bila paket termasuk cetak.",
     ],
@@ -148,27 +153,32 @@ export const HELP_ARTICLES: HelpArticle[] = [
       {
         heading: "1. Akun dan business",
         paragraphs: [
-          "Register dengan email dan password, lalu login. Anda diarahkan ke welcome pemilih peran. Buat business pertama lewat onboarding create business: isi nama, slug, dan timezone. Slug dipakai di URL publik kiosk.",
-          "Pilih plan Starter Rp99.000, Growth Rp249.000, atau Business Rp499.000 per bulan. Semua plan base berisi 1 outlet, 1 photobox, dan 1 perangkat online. Tambahan perangkat via add on extra session Rp49.000 per bulan.",
+          "Pendaftaran mandiri ditutup. Hubungi tim lewat WhatsApp atau halaman kontak; admin platform membuat akun, lalu Anda login dan diarahkan ke pemilih peran. Buat business pertama lewat onboarding create business: isi nama, slug, dan timezone. Slug dipakai di URL publik kiosk.",
+          "Pilih plan Starter Rp99.000, Growth Rp249.000, atau Business Rp499.000 per bulan. Semua plan base berisi 1 outlet, 1 photobox, dan 1 sesi bersamaan. Tambahan sesi bersamaan lewat add-on Rp49.000 per bulan.",
         ],
         steps: [
-          "Register lalu login dengan email Anda.",
+          "Minta akun ke tim SnapyOS, lalu login dengan email Anda.",
           "Buat business: isi nama, slug huruf kecil, dan timezone.",
           "Pilih plan sesuai kebutuhan. Cek limit outlet, photobox, staff, dan storage sebelum lanjut.",
         ],
         table: {
           head: ["Plan", "Harga per bulan", "Base", "Cocok untuk"],
           rows: [
-            ["Starter", "Rp99.000", "1 outlet, 1 photobox, 1 device", "Booth pertama"],
+            ["Starter", "Rp99.000", "1 outlet, 1 photobox, 1 sesi", "Booth pertama"],
             ["Growth", "Rp249.000", "Base + direct payment, staff, finance", "UMKM bertumbuh"],
-            ["Business", "Rp499.000", "Growth + storage, reports, voucher", "Multi outlet atau agency"],
+            [
+              "Business",
+              "Rp499.000",
+              "Growth + storage, reports, voucher",
+              "Booth dengan laporan lengkap dan voucher",
+            ],
           ],
         },
       },
       {
         heading: "2. Outlet dan photobox",
         paragraphs: [
-          "Outlet adalah lokasi fisik. Photobox adalah booth di dalam outlet. Satu outlet bisa menampung banyak booth. Limit plan di enforce server side: membuat outlet atau booth melebihi max ditolak dengan error plan limit.",
+          "Outlet adalah lokasi fisik. Photobox adalah booth di dalam outlet. Saat ini semua plan base dibatasi 1 outlet dan 1 photobox. Limit plan di enforce server side: membuat outlet atau booth melebihi max ditolak dengan error plan limit.",
           "Atur session settings per booth sejak awal. Default timer 300 detik, warning 60 detik, max retakes kosong berarti unlimited selama timer berjalan. Timer mulai saat webhook paid, bukan saat QR tampil.",
         ],
         steps: [
@@ -235,9 +245,21 @@ export const HELP_ARTICLES: HelpArticle[] = [
       },
     ],
     nextSteps: [
-      { title: "Owner: Kelola Outlet dan Booth", slug: "panduan-photobox-owner", desc: "Device, kamera, printer, timer." },
-      { title: "Owner: Atur QRIS dan Credential", slug: "panduan-payment-setup", desc: "Gateway merchant sendiri." },
-      { title: "Owner: Template dan Frame", slug: "panduan-template", desc: "Slot builder dan assign paket." },
+      {
+        title: "Owner: Kelola Outlet dan Booth",
+        slug: "panduan-photobox-owner",
+        desc: "Device, kamera, printer, timer.",
+      },
+      {
+        title: "Owner: Atur QRIS dan Credential",
+        slug: "panduan-payment-setup",
+        desc: "Gateway merchant sendiri.",
+      },
+      {
+        title: "Owner: Template dan Frame",
+        slug: "panduan-template",
+        desc: "Slot builder dan assign paket.",
+      },
     ],
   },
   {
@@ -248,7 +270,9 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Penjelasan rapi tiap layar kiosk. Apa yang tampil, apa yang perlu Anda lakukan, dan berapa lama waktunya.",
     audience: "Customer (pengunjung booth)",
     estimate: "7 menit baca",
-    prerequisites: ["Berdiri di depan layar kiosk yang sudah aktif (welcome screen brand terlihat)."],
+    prerequisites: [
+      "Berdiri di depan layar kiosk yang sudah aktif (welcome screen brand terlihat).",
+    ],
     sections: [
       {
         heading: "Ringkasan",
@@ -342,8 +366,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     slug: "hasil-foto",
     title: "Hasil Foto Online",
     category: "Customer",
-    summary:
-      "Cara membuka QR result, mengunduh GIF dan foto berframe, dan batas waktu unduhan.",
+    summary: "Cara membuka QR result, mengunduh GIF dan foto berframe, dan batas waktu unduhan.",
     audience: "Customer (pengunjung booth)",
     estimate: "3 menit",
     prerequisites: ["Sesi sudah finalize (paid) dan QR result tampil di layar kiosk."],
@@ -379,8 +402,16 @@ export const HELP_ARTICLES: HelpArticle[] = [
           head: ["Kondisi", "Arti", "Aksi"],
           rows: [
             ["Halaman terbuka normal", "Token valid dan dalam masa simpan", "Unduh segera"],
-            ["Pesan link kedaluwarsa", "Melewati retention", "Minta owner unduh ulang bila sesi masih tersimpan"],
-            ["Halaman tidak ditemukan", "Token salah atau sesi dihapus", "Minta operator cek nomor transaksi"],
+            [
+              "Pesan link kedaluwarsa",
+              "Melewati retention",
+              "Minta owner unduh ulang bila sesi masih tersimpan",
+            ],
+            [
+              "Halaman tidak ditemukan",
+              "Token salah atau sesi dihapus",
+              "Minta operator cek nomor transaksi",
+            ],
           ],
         },
       },
@@ -416,7 +447,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Buat outlet, buat booth, atur kamera printer timer, dan kelola device pairing sampai revoke.",
     audience: "Owner dan manager",
     estimate: "10 menit",
-    prerequisites: ["Business sudah dibuat dan plan aktif.", "Satu outlet minimal sebelum buat booth."],
+    prerequisites: [
+      "Business sudah dibuat dan plan aktif.",
+      "Satu outlet minimal sebelum buat booth.",
+    ],
     sections: [
       {
         heading: "Ringkasan",
@@ -501,8 +535,16 @@ export const HELP_ARTICLES: HelpArticle[] = [
       },
     ],
     nextSteps: [
-      { title: "Owner: Template dan Frame", slug: "panduan-template", desc: "Slot builder dan assign." },
-      { title: "Kamera dan Printer Kompatibel", slug: "perangkat-kompatibel", desc: "Pilih seri yang stabil." },
+      {
+        title: "Owner: Template dan Frame",
+        slug: "panduan-template",
+        desc: "Slot builder dan assign.",
+      },
+      {
+        title: "Kamera dan Printer Kompatibel",
+        slug: "perangkat-kompatibel",
+        desc: "Pilih seri yang stabil.",
+      },
       { title: "Atasi Masalah Umum", slug: "troubleshooting", desc: "Solusi kamera dan print." },
     ],
   },
@@ -514,7 +556,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Upload frame sendiri, atur slot di builder, dan assign ke paket dengan aturan slot yang benar.",
     audience: "Owner dan manager",
     estimate: "10 menit",
-    prerequisites: ["Minimal satu package dengan photo count jelas.", "File frame PNG atau SVG transparan."],
+    prerequisites: [
+      "Minimal satu package dengan photo count jelas.",
+      "File frame PNG atau SVG transparan.",
+    ],
     sections: [
       {
         heading: "Ringkasan",
@@ -574,7 +619,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
       {
         gejala: "Frame punya slot lebih banyak daripada jumlah foto paket",
         penyebab: "Jumlah capture mengikuti paket, bukan jumlah slot",
-        solusi: "Tidak perlu diubah. Slot sisa terisi foto secara bergiliran. Ubah jumlah foto hanya bila paket memang harus menambah capture.",
+        solusi:
+          "Tidak perlu diubah. Slot sisa terisi foto secara bergiliran. Ubah jumlah foto hanya bila paket memang harus menambah capture.",
       },
       {
         gejala: "Hasil print beda dari preview",
@@ -588,7 +634,11 @@ export const HELP_ARTICLES: HelpArticle[] = [
       },
     ],
     nextSteps: [
-      { title: "Owner: Dari Daftar sampai Booth Live", slug: "panduan-owner-mulai", desc: "Urut setup lengkap." },
+      {
+        title: "Owner: Dari Daftar sampai Booth Live",
+        slug: "panduan-owner-mulai",
+        desc: "Urut setup lengkap.",
+      },
       { title: "Owner: Voucher Promo", slug: "panduan-voucher", desc: "Promo paket dan frame." },
       { title: "Alur Foto Customer", slug: "panduan-photobox", desc: "Lihat dari sisi customer." },
     ],
@@ -597,8 +647,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     slug: "panduan-voucher",
     title: "Owner: Voucher Promo",
     category: "Owner",
-    summary:
-      "Buat kode diskon percentage atau fixed, batasi pemakaian, dan baca performanya.",
+    summary: "Buat kode diskon percentage atau fixed, batasi pemakaian, dan baca performanya.",
     audience: "Owner dan manager",
     estimate: "8 menit",
     prerequisites: ["Minimal satu package aktif untuk eligibility."],
@@ -671,7 +720,11 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     nextSteps: [
       { title: "Cara Bayar di Kiosk", slug: "panduan-qris", desc: "Sisi customer pakai voucher." },
-      { title: "Owner: Keuangan dan Laporan", slug: "panduan-finance-laporan", desc: "Baca revenue voucher." },
+      {
+        title: "Owner: Keuangan dan Laporan",
+        slug: "panduan-finance-laporan",
+        desc: "Baca revenue voucher.",
+      },
       { title: "Owner: Baca Dashboard", slug: "panduan-dashboard", desc: "Lihat dampak promo." },
     ],
   },
@@ -754,9 +807,17 @@ export const HELP_ARTICLES: HelpArticle[] = [
       },
     ],
     nextSteps: [
-      { title: "Owner: Keuangan dan Laporan", slug: "panduan-finance-laporan", desc: "Expense, profit, export." },
+      {
+        title: "Owner: Keuangan dan Laporan",
+        slug: "panduan-finance-laporan",
+        desc: "Expense, profit, export.",
+      },
       { title: "Owner: Voucher Promo", slug: "panduan-voucher", desc: "Baca revenue voucher." },
-      { title: "Owner: Kelola Outlet dan Booth", slug: "panduan-photobox-owner", desc: "Cek per outlet." },
+      {
+        title: "Owner: Kelola Outlet dan Booth",
+        slug: "panduan-photobox-owner",
+        desc: "Cek per outlet.",
+      },
     ],
   },
   {
@@ -767,7 +828,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Undang staff dengan role yang tepat dan jalankan POS offline cash per booth untuk merchandise.",
     audience: "Owner dan manager",
     estimate: "10 menit",
-    prerequisites: ["Plan dengan slot staff tersedia (Growth 5, Business 20).", "Add on POS aktif untuk entitlement kasir."],
+    prerequisites: [
+      "Plan dengan slot staff tersedia (Growth 5, Business 20).",
+      "Add on POS aktif untuk entitlement kasir.",
+    ],
     sections: [
       {
         heading: "Ringkasan",
@@ -839,8 +903,16 @@ export const HELP_ARTICLES: HelpArticle[] = [
       },
     ],
     nextSteps: [
-      { title: "Owner: Keuangan dan Laporan", slug: "panduan-finance-laporan", desc: "POS masuk transactions." },
-      { title: "Owner: Dari Daftar sampai Booth Live", slug: "panduan-owner-mulai", desc: "Urut setup." },
+      {
+        title: "Owner: Keuangan dan Laporan",
+        slug: "panduan-finance-laporan",
+        desc: "POS masuk transactions.",
+      },
+      {
+        title: "Owner: Dari Daftar sampai Booth Live",
+        slug: "panduan-owner-mulai",
+        desc: "Urut setup.",
+      },
       { title: "Pertanyaan Umum", slug: "faq", desc: "Jawaban cepat." },
     ],
   },
@@ -848,11 +920,13 @@ export const HELP_ARTICLES: HelpArticle[] = [
     slug: "panduan-finance-laporan",
     title: "Owner: Keuangan dan Laporan",
     category: "Owner",
-    summary:
-      "Catat expense, baca profit, export CSV dan XLSX, dan atur retention serta checkout.",
+    summary: "Catat expense, baca profit, export CSV dan XLSX, dan atur retention serta checkout.",
     audience: "Owner dan manager",
     estimate: "10 menit",
-    prerequisites: ["Transaksi paid tersedia untuk dibaca.", "Kategori expense disepakati internal."],
+    prerequisites: [
+      "Transaksi paid tersedia untuk dibaca.",
+      "Kategori expense disepakati internal.",
+    ],
     sections: [
       {
         heading: "Ringkasan",
@@ -923,8 +997,16 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     nextSteps: [
       { title: "Owner: Baca Dashboard", slug: "panduan-dashboard", desc: "Samakan angka." },
-      { title: "Owner: Staff dan POS Kasir", slug: "panduan-staff-pos", desc: "POS masuk laporan." },
-      { title: "Kamera dan Printer Kompatibel", slug: "perangkat-kompatibel", desc: "Lengkapi operasional." },
+      {
+        title: "Owner: Staff dan POS Kasir",
+        slug: "panduan-staff-pos",
+        desc: "POS masuk laporan.",
+      },
+      {
+        title: "Kamera dan Printer Kompatibel",
+        slug: "perangkat-kompatibel",
+        desc: "Lengkapi operasional.",
+      },
     ],
   },
   {
@@ -960,8 +1042,16 @@ export const HELP_ARTICLES: HelpArticle[] = [
         table: {
           head: ["Provider", "Metode kiosk", "Verifikasi webhook"],
           rows: [
-            ["Pakasir", "QRIS dinamis plus kode unik", "Header X Secret plus status server to server"],
-            ["Midtrans", "QRIS, GoPay, ShopeePay, VA", "SHA512 order id plus status code plus gross amount plus server key"],
+            [
+              "Pakasir",
+              "QRIS dinamis plus kode unik",
+              "Header X Secret plus status server to server",
+            ],
+            [
+              "Midtrans",
+              "QRIS, GoPay, ShopeePay, VA",
+              "SHA512 order id plus status code plus gross amount plus server key",
+            ],
             ["Tripay", "QRIS, VA, gerai retail", "HMAC SHA256 raw body via private key"],
           ],
         },
@@ -995,7 +1085,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
       {
         gejala: "QRIS tidak tampil",
         penyebab: "Koneksi putus atau tanpa credential aktif",
-        solusi: "Cek internet kiosk, reload (status dipulihkan otomatis), atau pakai tunai lalu catat manual.",
+        solusi:
+          "Cek internet kiosk, reload (status dipulihkan otomatis), atau pakai tunai lalu catat manual.",
       },
       {
         gejala: "Sudah bayar tapi pending",
@@ -1014,7 +1105,11 @@ export const HELP_ARTICLES: HelpArticle[] = [
       },
     ],
     nextSteps: [
-      { title: "Owner: Atur QRIS dan Credential", slug: "panduan-payment-setup", desc: "Aktifkan gateway merchant." },
+      {
+        title: "Owner: Atur QRIS dan Credential",
+        slug: "panduan-payment-setup",
+        desc: "Aktifkan gateway merchant.",
+      },
       { title: "Alur Foto Customer", slug: "panduan-photobox", desc: "Lanjut setelah paid." },
       { title: "Hasil Foto Online", slug: "hasil-foto", desc: "Unduh setelah finalize." },
     ],
@@ -1023,11 +1118,13 @@ export const HELP_ARTICLES: HelpArticle[] = [
     slug: "panduan-payment-setup",
     title: "Owner: Atur QRIS dan Credential",
     category: "Owner",
-    summary:
-      "Pasang gateway merchant sendiri agar dana kiosk masuk langsung ke rekening Anda.",
+    summary: "Pasang gateway merchant sendiri agar dana kiosk masuk langsung ke rekening Anda.",
     audience: "Owner",
     estimate: "10 menit",
-    prerequisites: ["Akun merchant Pakasir, Midtrans, atau Tripay.", "Server key dan merchant id siap disalin."],
+    prerequisites: [
+      "Akun merchant Pakasir, Midtrans, atau Tripay.",
+      "Server key dan merchant id siap disalin.",
+    ],
     sections: [
       {
         heading: "Ringkasan",
@@ -1051,7 +1148,11 @@ export const HELP_ARTICLES: HelpArticle[] = [
           head: ["Provider", "Field wajib", "Webhook route"],
           rows: [
             ["Pakasir", "merchant id, server key", "POST /api/webhooks/payment/pakasir"],
-            ["Midtrans", "merchant id, server key, client key", "POST /api/webhooks/payment/midtrans"],
+            [
+              "Midtrans",
+              "merchant id, server key, client key",
+              "POST /api/webhooks/payment/midtrans",
+            ],
             ["Tripay", "merchant code, api key, private key", "POST /api/webhooks/payment/tripay"],
           ],
         },
@@ -1088,8 +1189,16 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     nextSteps: [
       { title: "Cara Bayar di Kiosk", slug: "panduan-qris", desc: "Uji dari sisi customer." },
-      { title: "Owner: Keuangan dan Laporan", slug: "panduan-finance-laporan", desc: "Baca settlement." },
-      { title: "Owner: Dari Daftar sampai Booth Live", slug: "panduan-owner-mulai", desc: "Urut setup." },
+      {
+        title: "Owner: Keuangan dan Laporan",
+        slug: "panduan-finance-laporan",
+        desc: "Baca settlement.",
+      },
+      {
+        title: "Owner: Dari Daftar sampai Booth Live",
+        slug: "panduan-owner-mulai",
+        desc: "Urut setup.",
+      },
     ],
   },
   {
@@ -1115,7 +1224,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
           "Kamera internal tablet/PWA dipakai langsung, tanpa kabel USB. Rekomendasi minimum 720p, ideal 1080p. Deteksi, grant permission, dan pemilihan device terjadi di setup wizard sekali, bukan di flow customer. Runtime memakai preferred device id tersimpan. Error runtime tetap ditangani pesan retry dan dilaporkan ke device status.",
         ],
         steps: [
-          "Kamera depan (selfie) untuk phone, kamera belakang untuk tablet kiosk — bisa diubah dari pengaturan kamera.",
+          "Kamera depan (selfie) untuk phone, kamera belakang untuk tablet kiosk: bisa diubah dari pengaturan kamera.",
         ],
       },
       {
@@ -1163,7 +1272,11 @@ export const HELP_ARTICLES: HelpArticle[] = [
       },
     ],
     nextSteps: [
-      { title: "Owner: Kelola Outlet dan Booth", slug: "panduan-photobox-owner", desc: "Setup wizard dan print test." },
+      {
+        title: "Owner: Kelola Outlet dan Booth",
+        slug: "panduan-photobox-owner",
+        desc: "Setup wizard dan print test.",
+      },
       { title: "Atasi Masalah Umum", slug: "troubleshooting", desc: "Solusi kamera dan print." },
       { title: "Kontak Support", slug: "kontak", desc: "Lapor seri perangkat." },
     ],
@@ -1205,7 +1318,11 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     nextSteps: [
       { title: "Mulai Cepat di Booth", slug: "quick-start", desc: "Alur customer lengkap." },
-      { title: "Owner: Dari Daftar sampai Booth Live", slug: "panduan-owner-mulai", desc: "Setup owner lengkap." },
+      {
+        title: "Owner: Dari Daftar sampai Booth Live",
+        slug: "panduan-owner-mulai",
+        desc: "Setup owner lengkap.",
+      },
       { title: "Kontak Support", slug: "kontak", desc: "Tanya langsung." },
     ],
   },
@@ -1284,7 +1401,11 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     nextSteps: [
       { title: "Kontak Support", slug: "kontak", desc: "Lapor dengan detail lengkap." },
-      { title: "Kamera dan Printer Kompatibel", slug: "perangkat-kompatibel", desc: "Cek seri perangkat." },
+      {
+        title: "Kamera dan Printer Kompatibel",
+        slug: "perangkat-kompatibel",
+        desc: "Cek seri perangkat.",
+      },
       { title: "Cara Bayar di Kiosk", slug: "panduan-qris", desc: "Ulangi alur bayar." },
     ],
   },

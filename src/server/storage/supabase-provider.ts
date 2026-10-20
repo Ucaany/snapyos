@@ -69,11 +69,9 @@ export class SupabaseStorageProvider implements StorageProvider {
     options?: SignedUrlOptions
   ): Promise<StorageResult<{ signedUrl: string }>> {
     const supabase = createServerClient();
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .createSignedUrl(key, ttlSeconds, {
-        ...(options?.download !== undefined ? { download: options.download } : {}),
-      });
+    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(key, ttlSeconds, {
+      ...(options?.download !== undefined ? { download: options.download } : {}),
+    });
     if (error) return { data: null, error: { message: error.message } };
     if (!data?.signedUrl) return { data: null, error: { message: "signed URL kosong" } };
     return { data: { signedUrl: data.signedUrl }, error: null };
@@ -86,11 +84,9 @@ export class SupabaseStorageProvider implements StorageProvider {
     options?: SignedUrlOptions
   ): Promise<StorageResult<SignedUrlEntry[]>> {
     const supabase = createServerClient();
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .createSignedUrls(keys, ttlSeconds, {
-        ...(options?.download !== undefined ? { download: options.download } : {}),
-      });
+    const { data, error } = await supabase.storage.from(bucket).createSignedUrls(keys, ttlSeconds, {
+      ...(options?.download !== undefined ? { download: options.download } : {}),
+    });
     if (error) return { data: null, error: { message: error.message } };
     const entries: SignedUrlEntry[] = (data ?? []).map((s) => ({
       path: s.path ?? "",

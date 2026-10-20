@@ -115,14 +115,21 @@ export async function listBusinesses(query: {
   if (ids.length > 0) {
     const batch = await getStorageUsageBatch(ids);
     for (const [id, s] of batch) {
-      storageById.set(id, { usedMb: s.usedMb, limitMb: s.limitMb, percent: s.percent, isFull: s.isFull });
+      storageById.set(id, {
+        usedMb: s.usedMb,
+        limitMb: s.limitMb,
+        percent: s.percent,
+        isFull: s.isFull,
+      });
     }
   }
 
   const items: AdminBusinessRow[] = [];
   for (const row of rows) {
     const owner = Array.isArray(row.users) ? row.users[0] : row.users;
-    const subs = Array.isArray(row.subscriptions) ? row.subscriptions : [row.subscriptions].filter(Boolean);
+    const subs = Array.isArray(row.subscriptions)
+      ? row.subscriptions
+      : [row.subscriptions].filter(Boolean);
     const latest = subs[0];
     const plan = latest && !Array.isArray(latest.plans) ? latest.plans : null;
     items.push({
@@ -156,9 +163,18 @@ export async function getBusinessUsage(businessId: string) {
   if (!exists) throw new ApiError("NOT_FOUND", "Business tidak ditemukan");
 
   const [outlets, photoboxes, sessions, transactions] = await Promise.all([
-    supabase.from("outlets").select("id", { count: "exact", head: true }).eq("business_id", businessId),
-    supabase.from("photoboxes").select("id", { count: "exact", head: true }).eq("business_id", businessId),
-    supabase.from("sessions").select("id", { count: "exact", head: true }).eq("business_id", businessId),
+    supabase
+      .from("outlets")
+      .select("id", { count: "exact", head: true })
+      .eq("business_id", businessId),
+    supabase
+      .from("photoboxes")
+      .select("id", { count: "exact", head: true })
+      .eq("business_id", businessId),
+    supabase
+      .from("sessions")
+      .select("id", { count: "exact", head: true })
+      .eq("business_id", businessId),
     supabase
       .from("transactions")
       .select("id", { count: "exact", head: true })

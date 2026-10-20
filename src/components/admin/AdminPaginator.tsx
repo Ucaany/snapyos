@@ -37,8 +37,9 @@ export function AdminPaginator({
   const pages = Array.from({ length: end - start + 1 }, (_, i) => start + i);
 
   const cell =
-    "border-2 border-ink bg-surface px-3 py-1.5 font-mono text-xs uppercase tracking-[0.1em] transition-colors duration-150 ease-[var(--ease-brutal)] hover:bg-muted";
-  const activeCell = "border-2 border-ink bg-accent px-3 py-1.5 font-mono text-xs font-bold";
+    "inline-flex min-h-11 min-w-11 items-center justify-center border-2 border-ink bg-surface px-3 py-1.5 font-mono text-xs uppercase tracking-[0.1em] transition-colors duration-150 ease-[var(--ease-brutal)] hover:bg-muted";
+  const activeCell =
+    "inline-flex min-h-11 min-w-11 items-center justify-center border-2 border-ink bg-accent px-3 py-1.5 font-mono text-xs font-bold";
 
   return (
     <nav

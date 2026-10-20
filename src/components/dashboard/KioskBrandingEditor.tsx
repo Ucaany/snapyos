@@ -69,7 +69,16 @@ const cardClass = "border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#11111
 const VIDEO_MAX_SECONDS = 5;
 const VIDEO_MAX_BYTES = 15 * 1024 * 1024;
 
-const PAGE_IDS: KioskPageId[] = ["welcome", "guide", "package", "payment", "template", "capture", "edit", "result"];
+const PAGE_IDS: KioskPageId[] = [
+  "welcome",
+  "guide",
+  "package",
+  "payment",
+  "template",
+  "capture",
+  "edit",
+  "result",
+];
 const PAGE_LABELS: Record<KioskPageId, string> = {
   welcome: "Welcome",
   guide: "Tutorial",
@@ -157,7 +166,10 @@ function AlignPicker({
               selected ? "bg-accent" : "bg-surface hover:bg-muted"
             }`}
           >
-            <span className="flex h-6 w-full flex-col justify-center gap-[3px] border border-ink/40 bg-bg p-1" aria-hidden>
+            <span
+              className="flex h-6 w-full flex-col justify-center gap-[3px] border border-ink/40 bg-bg p-1"
+              aria-hidden
+            >
               {d.widths.map((w, i) => (
                 <span key={i} className={`flex ${d.justify}`}>
                   <span className={`h-[3px] bg-ink ${w}`} />
@@ -226,9 +238,15 @@ const PREVIEW_SCREENS = [
  */
 export function KioskBrandingEditor({ businessName, branding, photoboxes, canWrite }: Props) {
   const k = branding?.kiosk ?? {};
-  const [videoState, videoFormAction, videoPending] = useActionState(uploadKioskVideoAction, initial);
+  const [videoState, videoFormAction, videoPending] = useActionState(
+    uploadKioskVideoAction,
+    initial
+  );
   const [pending, startTransition] = useTransition();
-  const [status, setStatus] = useState<{ kind: "idle" | "saving" | "success" | "error"; message?: string }>({
+  const [status, setStatus] = useState<{
+    kind: "idle" | "saving" | "success" | "error";
+    message?: string;
+  }>({
     kind: "idle",
   });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
@@ -279,7 +297,10 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
   // Per-booth override: booth dipilih + status override aktif/inherit.
   const [activeBoothId, setActiveBoothId] = useState<string | null>(null);
   const [boothUsesOverride, setBoothUsesOverride] = useState(false);
-  const [boothStatus, setBoothStatus] = useState<{ kind: "idle" | "saving" | "success" | "error"; message?: string }>({
+  const [boothStatus, setBoothStatus] = useState<{
+    kind: "idle" | "saving" | "success" | "error";
+    message?: string;
+  }>({
     kind: "idle",
   });
   // Baca langsung dari props: setelah upload sukses + revalidate, prop video_url
@@ -290,12 +311,15 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
   const [pageVideoPending, setPageVideoPending] = useState(false);
   const [pageVideoError, setPageVideoError] = useState<string | null>(null);
   const [videoDeletePending, setVideoDeletePending] = useState(false);
-  const [previewScreen, setPreviewScreen] = useState<(typeof PREVIEW_SCREENS)[number]["id"]>("welcome");
+  const [previewScreen, setPreviewScreen] =
+    useState<(typeof PREVIEW_SCREENS)[number]["id"]>("welcome");
   const [activePage, setActivePage] = useState<KioskPageId>("welcome");
 
   /** Layar yang override tersimpannya harus dihapus saat Save berikutnya. */
   const [resetPages, setResetPages] = useState<KioskPageId[]>([]);
-  const [pageOverrides, setPageOverrides] = useState<Partial<Record<KioskPageId, PageOverrideState>>>(() => {
+  const [pageOverrides, setPageOverrides] = useState<
+    Partial<Record<KioskPageId, PageOverrideState>>
+  >(() => {
     const savedPages = k.pages ?? {};
     const result: Record<string, PageOverrideState> = {};
     for (const id of PAGE_IDS) {
@@ -371,7 +395,11 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
   const videoInputRef = useRef<HTMLInputElement>(null);
 
   /** Set satu field override per layar; kosongkan warna/align = ikut global. */
-  function setPageField(id: KioskPageId, field: keyof PageOverrideState, value: string | number | boolean) {
+  function setPageField(
+    id: KioskPageId,
+    field: keyof PageOverrideState,
+    value: string | number | boolean
+  ) {
     setPageOverrides((prev) => {
       const cur = prev[id] ?? {
         active: false,
@@ -393,7 +421,15 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
       if (!active) {
         delete next[id];
       } else if (!next[id]) {
-        next[id] = { active: true, bg_color: "", text_color: "", font_scale: 1, button_radius: 0, padding: 24, align: "" as const };
+        next[id] = {
+          active: true,
+          bg_color: "",
+          text_color: "",
+          font_scale: 1,
+          button_radius: 0,
+          padding: 24,
+          align: "" as const,
+        };
       } else {
         next[id] = { ...next[id], active: true };
       }
@@ -561,7 +597,12 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
       });
       if (res.ok) {
         setBoothUsesOverride(useOverride);
-        setBoothStatus({ kind: "success", message: useOverride ? "Booth memakai override tersimpan." : "Booth kembali mewarisi konfigurasi global." });
+        setBoothStatus({
+          kind: "success",
+          message: useOverride
+            ? "Booth memakai override tersimpan."
+            : "Booth kembali mewarisi konfigurasi global.",
+        });
       } else {
         setBoothStatus({ kind: "error", message: res.error ?? "Gagal menyimpan override booth." });
       }
@@ -773,12 +814,16 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
         });
       } else {
         setFieldErrors(result.fieldErrors ?? {});
-        setStatus({ kind: "error", message: result.error ?? "Gagal menyimpan. Periksa field bertanda merah." });
+        setStatus({
+          kind: "error",
+          message: result.error ?? "Gagal menyimpan. Periksa field bertanda merah.",
+        });
       }
     });
   }
 
-  const contrastSafe = (hex: string, fallback: string) => (/^#[0-9a-fA-F]{6}$/.test(hex) ? hex : fallback);
+  const contrastSafe = (hex: string, fallback: string) =>
+    /^#[0-9a-fA-F]{6}$/.test(hex) ? hex : fallback;
   const pSafe = contrastSafe(primary, DEFAULTS.primary);
   const sSafe = contrastSafe(secondary, DEFAULTS.secondary);
   const previewTitle = title || businessName;
@@ -788,10 +833,19 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
   // Kelas perataan untuk preview — default tengah (sama dengan layar asli).
   const pvAlign = ps.align ?? "center";
   const pvAlignClass =
-    pvAlign === "left" ? "items-start text-left" : pvAlign === "right" ? "items-end text-right" : "items-center text-center";
+    pvAlign === "left"
+      ? "items-start text-left"
+      : pvAlign === "right"
+        ? "items-end text-right"
+        : "items-center text-center";
   const pvFont = ps.fontFamily;
   // Payment memakai align global (payment_align legacy sudah diserap di state align).
-  const payAlignClass = align === "center" || align === "" ? "items-center text-center" : align === "right" ? "items-end text-right" : "items-start text-left";
+  const payAlignClass =
+    align === "center" || align === ""
+      ? "items-center text-center"
+      : align === "right"
+        ? "items-end text-right"
+        : "items-start text-left";
 
   // Peta key editor → key fieldErrors dari Zod (brandingSchema + kioskBrandingSchema).
   // Editor memakai id pendek ("primary","secondary","bg","text"); Zod memakai
@@ -834,7 +888,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
   const liveContrast = contrastRatio(textColor, bgColor);
   const contrastWarning =
     liveContrast !== null && liveContrast < 4.5
-      ? `Kontras teks/background hanya ${liveContrast.toFixed(2)}:1 — minimal 4.5:1 (WCAG AA).`
+      ? `Kontras teks/background hanya ${liveContrast.toFixed(2)}:1, minimal 4.5:1 (WCAG AA).`
       : null;
 
   return (
@@ -845,34 +899,82 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
             <h2 id="kb-welcome-heading" className="font-display text-lg uppercase tracking-tight">
               Teks &amp; Identitas: Welcome
             </h2>
-            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">01 / TEKS WELCOME</span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+              01 / TEKS WELCOME
+            </span>
           </div>
           <div className="flex flex-col gap-5">
             <div className={fieldClass}>
-              <label htmlFor="kb-title" className={labelClass}>Judul</label>
-              <Input id="kb-title" placeholder={businessName} value={title} onChange={(e) => setTitle(e.target.value)} disabled={pending || !canWrite} maxLength={120} />
+              <label htmlFor="kb-title" className={labelClass}>
+                Judul
+              </label>
+              <Input
+                id="kb-title"
+                placeholder={businessName}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                disabled={pending || !canWrite}
+                maxLength={120}
+              />
             </div>
             <div className={fieldClass}>
-              <label htmlFor="kb-tagline" className={labelClass}>Tagline</label>
-              <Input id="kb-tagline" placeholder="Capture your moment." value={tagline} onChange={(e) => setTagline(e.target.value)} disabled={pending || !canWrite} maxLength={200} />
+              <label htmlFor="kb-tagline" className={labelClass}>
+                Tagline
+              </label>
+              <Input
+                id="kb-tagline"
+                placeholder="Capture your moment."
+                value={tagline}
+                onChange={(e) => setTagline(e.target.value)}
+                disabled={pending || !canWrite}
+                maxLength={200}
+              />
             </div>
             <div className={fieldClass}>
-              <label htmlFor="kb-button" className={labelClass}>Label tombol mulai</label>
-              <Input id="kb-button" placeholder="START" value={button} onChange={(e) => setButton(e.target.value)} disabled={pending || !canWrite} maxLength={24} aria-invalid={Boolean(err("welcome_button"))} />
-              {err("welcome_button") && <p role="alert" className="font-mono text-xs text-destructive">{err("welcome_button")}</p>}
+              <label htmlFor="kb-button" className={labelClass}>
+                Label tombol mulai
+              </label>
+              <Input
+                id="kb-button"
+                placeholder="START"
+                value={button}
+                onChange={(e) => setButton(e.target.value)}
+                disabled={pending || !canWrite}
+                maxLength={24}
+                aria-invalid={Boolean(err("welcome_button"))}
+              />
+              {err("welcome_button") && (
+                <p role="alert" className="font-mono text-xs text-destructive">
+                  {err("welcome_button")}
+                </p>
+              )}
             </div>
             <div className="flex flex-wrap gap-6">
               <label className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.1em]">
-                <input type="checkbox" checked={showLogo} onChange={(e) => setShowLogo(e.target.checked)} disabled={pending || !canWrite} className="size-4 accent-ink" />
+                <input
+                  type="checkbox"
+                  checked={showLogo}
+                  onChange={(e) => setShowLogo(e.target.checked)}
+                  disabled={pending || !canWrite}
+                  className="size-4 accent-ink"
+                />
                 Tampilkan logo
               </label>
               <label className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.1em]">
-                <input type="checkbox" checked={showTagline} onChange={(e) => setShowTagline(e.target.checked)} disabled={pending || !canWrite} className="size-4 accent-ink" />
+                <input
+                  type="checkbox"
+                  checked={showTagline}
+                  onChange={(e) => setShowTagline(e.target.checked)}
+                  disabled={pending || !canWrite}
+                  className="size-4 accent-ink"
+                />
                 Tampilkan tagline
               </label>
             </div>
             <div className="flex flex-col gap-3 border-t-2 border-ink/20 pt-5">
-              <label htmlFor="kb-logo" className={labelClass}>Logo kiosk</label>
+              <label htmlFor="kb-logo" className={labelClass}>
+                Logo kiosk
+              </label>
               <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em] text-muted-foreground">
                 {"/// PNG, JPG, ATAU WEBP · MAKSIMAL 2 MB"}
               </p>
@@ -887,15 +989,36 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                   className="border-2 border-ink bg-bg p-2 font-mono text-xs"
                 />
                 {logoUrl && (
-                  <Button type="button" variant="outline" size="sm" onClick={() => void handleDeleteLogo()} disabled={logoPending || !canWrite}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void handleDeleteLogo()}
+                    disabled={logoPending || !canWrite}
+                  >
                     <Trash2 className="size-3.5" aria-hidden /> Hapus logo
                   </Button>
                 )}
               </div>
-              {logoPending && <p role="status" className="font-mono text-xs">Mengunggah…</p>}
-              {logoError && <p role="alert" className="font-mono text-xs text-destructive">{logoError}</p>}
+              {logoPending && (
+                <p role="status" className="font-mono text-xs">
+                  Mengunggah…
+                </p>
+              )}
+              {logoError && (
+                <p role="alert" className="font-mono text-xs text-destructive">
+                  {logoError}
+                </p>
+              )}
               {logoUrl && !logoPending && (
-                <Image src={logoUrl} alt={`Logo ${businessName}`} width={160} height={48} className="max-h-12 w-auto object-contain border-2 border-ink bg-bg p-2" unoptimized />
+                <Image
+                  src={logoUrl}
+                  alt={`Logo ${businessName}`}
+                  width={160}
+                  height={48}
+                  className="max-h-12 w-auto object-contain border-2 border-ink bg-bg p-2"
+                  unoptimized
+                />
               )}
             </div>
           </div>
@@ -903,21 +1026,29 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
 
         <section className={cardClass} aria-labelledby="kb-color-heading">
           <div className="mb-5 flex items-center justify-between gap-4 border-b-2 border-ink pb-4">
-            <h2 id="kb-color-heading" className="font-display text-lg uppercase tracking-tight">Gaya Global: Semua Layar</h2>
-            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">02 / GLOBAL</span>
+            <h2 id="kb-color-heading" className="font-display text-lg uppercase tracking-tight">
+              Gaya Global: Semua Layar
+            </h2>
+            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+              02 / GLOBAL
+            </span>
           </div>
           <p className="mb-5 font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em] text-muted-foreground">
             {"/// NILAI DASAR SELURUH LAYAR KIOSK · OVERRIDE PER-LAYAR ADA DI BAGIAN 03"}
           </p>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-            {([
-              ["kb-primary", "Utama: tombol/aksen", primary, setPrimary],
-              ["kb-secondary", "Kedua: garis & teks", secondary, setSecondary],
-              ["kb-bg", "Background kiosk", bgColor, setBgColor],
-              ["kb-text", "Teks kiosk", textColor, setTextColor],
-            ] as const).map(([id, label, value, set]) => (
+            {(
+              [
+                ["kb-primary", "Utama: tombol/aksen", primary, setPrimary],
+                ["kb-secondary", "Kedua: garis & teks", secondary, setSecondary],
+                ["kb-bg", "Background kiosk", bgColor, setBgColor],
+                ["kb-text", "Teks kiosk", textColor, setTextColor],
+              ] as const
+            ).map(([id, label, value, set]) => (
               <div key={id} className={fieldClass}>
-                <label htmlFor={id} className={labelClass}>{label}</label>
+                <label htmlFor={id} className={labelClass}>
+                  {label}
+                </label>
                 <div className="flex items-stretch gap-2">
                   <input
                     type="color"
@@ -927,20 +1058,36 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                     disabled={pending || !canWrite}
                     className="size-11 shrink-0 cursor-pointer rounded-none border-2 border-ink bg-surface p-1"
                   />
-                  <Input id={id} value={value} onChange={(e) => set(e.target.value)} disabled={pending || !canWrite} className="font-mono" aria-invalid={Boolean(err(id.replace("kb-", "")))} />
+                  <Input
+                    id={id}
+                    value={value}
+                    onChange={(e) => set(e.target.value)}
+                    disabled={pending || !canWrite}
+                    className="font-mono"
+                    aria-invalid={Boolean(err(id.replace("kb-", "")))}
+                  />
                 </div>
-                {err(id.replace("kb-", "")) && <p role="alert" className="font-mono text-xs text-destructive">{err(id.replace("kb-", ""))}</p>}
+                {err(id.replace("kb-", "")) && (
+                  <p role="alert" className="font-mono text-xs text-destructive">
+                    {err(id.replace("kb-", ""))}
+                  </p>
+                )}
               </div>
             ))}
           </div>
           {contrastWarning && (
-            <p role="alert" className="mt-3 border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink">
+            <p
+              role="alert"
+              className="mt-3 border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink"
+            >
               {contrastWarning}
             </p>
           )}
           <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             <div className={fieldClass}>
-              <label htmlFor="kb-font-family" className={labelClass}>Font family</label>
+              <label htmlFor="kb-font-family" className={labelClass}>
+                Font family
+              </label>
               <select
                 id="kb-font-family"
                 value={fontFamily}
@@ -948,26 +1095,66 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                 disabled={pending || !canWrite}
                 className="border-2 border-ink bg-bg px-2 py-2 font-mono text-xs"
               >
-                {FONT_FAMILY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                {FONT_FAMILY_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
               </select>
               {fontFamily === "mono" && (
                 <p role="status" className="font-mono text-[10px] leading-relaxed text-destructive">
-                  Mono sulit dibaca untuk instruksi customer. Pakai Display untuk judul dan
-                  biarkan Mono untuk metadata.
+                  Mono sulit dibaca untuk instruksi customer. Pakai Display untuk judul dan biarkan
+                  Mono untuk metadata.
                 </p>
               )}
             </div>
             <div className={fieldClass}>
-              <label htmlFor="kb-font" className={labelClass}>Skala font ({fontScale.toFixed(2)}x)</label>
-              <input id="kb-font" type="range" min={0.8} max={1.4} step={0.05} value={fontScale} onChange={(e) => setFontScale(Number(e.target.value))} disabled={pending || !canWrite} className="accent-ink" />
+              <label htmlFor="kb-font" className={labelClass}>
+                Skala font ({fontScale.toFixed(2)}x)
+              </label>
+              <input
+                id="kb-font"
+                type="range"
+                min={0.8}
+                max={1.4}
+                step={0.05}
+                value={fontScale}
+                onChange={(e) => setFontScale(Number(e.target.value))}
+                disabled={pending || !canWrite}
+                className="accent-ink"
+              />
             </div>
             <div className={fieldClass}>
-              <label htmlFor="kb-radius" className={labelClass}>Radius tombol ({radius}px)</label>
-              <input id="kb-radius" type="range" min={0} max={24} step={2} value={radius} onChange={(e) => setRadius(Number(e.target.value))} disabled={pending || !canWrite} className="accent-ink" />
+              <label htmlFor="kb-radius" className={labelClass}>
+                Radius tombol ({radius}px)
+              </label>
+              <input
+                id="kb-radius"
+                type="range"
+                min={0}
+                max={24}
+                step={2}
+                value={radius}
+                onChange={(e) => setRadius(Number(e.target.value))}
+                disabled={pending || !canWrite}
+                className="accent-ink"
+              />
             </div>
             <div className={fieldClass}>
-              <label htmlFor="kb-padding" className={labelClass}>Padding layar ({padding}px)</label>
-              <input id="kb-padding" type="range" min={0} max={96} step={8} value={padding} onChange={(e) => setPadding(Number(e.target.value))} disabled={pending || !canWrite} className="accent-ink" />
+              <label htmlFor="kb-padding" className={labelClass}>
+                Padding layar ({padding}px)
+              </label>
+              <input
+                id="kb-padding"
+                type="range"
+                min={0}
+                max={96}
+                step={8}
+                value={padding}
+                onChange={(e) => setPadding(Number(e.target.value))}
+                disabled={pending || !canWrite}
+                className="accent-ink"
+              />
             </div>
           </div>
           <div className={`mt-5 flex flex-col gap-2 border-t-2 border-ink/20 pt-5`}>
@@ -986,14 +1173,24 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
 
         <section className={cardClass} aria-labelledby="kb-pages-heading">
           <div className="mb-5 flex items-center justify-between gap-4 border-b-2 border-ink pb-4">
-            <h2 id="kb-pages-heading" className="font-display text-lg uppercase tracking-tight">Override Per-Layar</h2>
-            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">03 / OVERRIDE</span>
+            <h2 id="kb-pages-heading" className="font-display text-lg uppercase tracking-tight">
+              Override Per-Layar
+            </h2>
+            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+              03 / OVERRIDE
+            </span>
           </div>
           <p className="mb-5 font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em] text-muted-foreground">
-            {"/// PILIH LAYAR LALU TIMPA GAYA GLOBALNYA · WARNA, PERATAAN, SKALA FONT, RADIUS, PADDING"}
+            {
+              "/// PILIH LAYAR LALU TIMPA GAYA GLOBALNYA · WARNA, PERATAAN, SKALA FONT, RADIUS, PADDING"
+            }
           </p>
 
-          <div role="tablist" aria-label="Pilih layar untuk override" className="mb-5 flex flex-wrap gap-2">
+          <div
+            role="tablist"
+            aria-label="Pilih layar untuk override"
+            className="mb-5 flex flex-wrap gap-2"
+          >
             {PAGE_IDS.map((id) => {
               const p = pageOverrides[id];
               return (
@@ -1031,7 +1228,9 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                   />
                   Timpa nilai global untuk {PAGE_LABELS[id].toLowerCase()} ({PAGE_OVERVIEW[id]})
                 </label>
-                <div className={`grid grid-cols-1 gap-5 sm:grid-cols-2 ${active ? "" : "pointer-events-none opacity-40"}`}>
+                <div
+                  className={`grid grid-cols-1 gap-5 sm:grid-cols-2 ${active ? "" : "pointer-events-none opacity-40"}`}
+                >
                   <div className={fieldClass}>
                     <label className={labelClass}>Warna background (kosong = global)</label>
                     <div className="flex items-center gap-2">
@@ -1059,14 +1258,18 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                       <input
                         type="color"
                         value={p?.text_color || textColor}
-                        onChange={(e) => setPageField(id, "text_color", e.target.value.toUpperCase())}
+                        onChange={(e) =>
+                          setPageField(id, "text_color", e.target.value.toUpperCase())
+                        }
                         disabled={!active || pending || !canWrite}
                         aria-label={`Warna teks ${PAGE_LABELS[id]}`}
                         className="size-11 shrink-0 cursor-pointer rounded-none border-2 border-ink bg-surface p-1"
                       />
                       <Input
                         value={p?.text_color ?? ""}
-                        onChange={(e) => setPageField(id, "text_color", e.target.value.toUpperCase())}
+                        onChange={(e) =>
+                          setPageField(id, "text_color", e.target.value.toUpperCase())
+                        }
                         placeholder={textColor}
                         disabled={!active || pending || !canWrite}
                         aria-label={`Warna teks ${PAGE_LABELS[id]} (hex)`}
@@ -1150,15 +1353,21 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
 
         <section className={cardClass} aria-labelledby="kb-layout-heading">
           <div className="mb-5 flex items-center justify-between gap-4 border-b-2 border-ink pb-4">
-            <h2 id="kb-layout-heading" className="font-display text-lg uppercase tracking-tight">Tata Letak Struktural</h2>
-            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">04 / LAYOUT</span>
+            <h2 id="kb-layout-heading" className="font-display text-lg uppercase tracking-tight">
+              Tata Letak Struktural
+            </h2>
+            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+              04 / LAYOUT
+            </span>
           </div>
           <p className="mb-5 font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em] text-muted-foreground">
             {"/// STRUKTUR KOLOM/PANEL · BERBEDA DARI PERATAAN KONTEN (BAGIAN 02 & 03)"}
           </p>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <div className={fieldClass}>
-              <label htmlFor="kb-welcome-layout" className={labelClass}>Welcome: posisi kolom brand</label>
+              <label htmlFor="kb-welcome-layout" className={labelClass}>
+                Welcome: posisi kolom brand
+              </label>
               <select
                 id="kb-welcome-layout"
                 value={welcomeLayout}
@@ -1166,11 +1375,17 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                 disabled={pending || !canWrite}
                 className="border-2 border-ink bg-bg px-2 py-2 font-mono text-xs"
               >
-                {WELCOME_LAYOUT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                {WELCOME_LAYOUT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
               </select>
             </div>
             <div className={fieldClass}>
-              <label htmlFor="kb-result-layout" className={labelClass}>Result: posisi panel QR</label>
+              <label htmlFor="kb-result-layout" className={labelClass}>
+                Result: posisi panel QR
+              </label>
               <select
                 id="kb-result-layout"
                 value={resultLayout}
@@ -1178,71 +1393,189 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                 disabled={pending || !canWrite}
                 className="border-2 border-ink bg-bg px-2 py-2 font-mono text-xs"
               >
-                {RESULT_LAYOUT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                {RESULT_LAYOUT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
           <p className="mt-4 font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em] text-muted-foreground">
-            {"/// WELCOME = BRAND KIRI/KANAN/TENGAH · RESULT = QR KANAN/KIRI/BAWAH · PERATAAN LAINNYA LIHAT BAGIAN 02"}
+            {
+              "/// WELCOME = BRAND KIRI/KANAN/TENGAH · RESULT = QR KANAN/KIRI/BAWAH · PERATAAN LAINNYA LIHAT BAGIAN 02"
+            }
           </p>
         </section>
 
         <section className={cardClass} aria-labelledby="kb-screens-heading">
           <div className="mb-5 flex items-center justify-between gap-4 border-b-2 border-ink pb-4">
-            <h2 id="kb-screens-heading" className="font-display text-lg uppercase tracking-tight">Teks Layar Lain</h2>
-            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">05 / KONTEN</span>
+            <h2 id="kb-screens-heading" className="font-display text-lg uppercase tracking-tight">
+              Teks Layar Lain
+            </h2>
+            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+              05 / KONTEN
+            </span>
           </div>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <div className={fieldClass}>
-              <label htmlFor="kb-pay-title" className={labelClass}>Judul payment (opsional)</label>
-              <Input id="kb-pay-title" placeholder="Pembayaran" value={paymentTitle} onChange={(e) => setPaymentTitle(e.target.value)} disabled={pending || !canWrite} maxLength={80} />
+              <label htmlFor="kb-pay-title" className={labelClass}>
+                Judul payment (opsional)
+              </label>
+              <Input
+                id="kb-pay-title"
+                placeholder="Pembayaran"
+                value={paymentTitle}
+                onChange={(e) => setPaymentTitle(e.target.value)}
+                disabled={pending || !canWrite}
+                maxLength={80}
+              />
             </div>
             <div className={fieldClass}>
-              <label htmlFor="kb-pay-hint" className={labelClass}>Hint payment (opsional)</label>
-              <Input id="kb-pay-hint" placeholder="Scan QRIS untuk memulai sesi" value={paymentHint} onChange={(e) => setPaymentHint(e.target.value)} disabled={pending || !canWrite} maxLength={160} />
+              <label htmlFor="kb-pay-hint" className={labelClass}>
+                Hint payment (opsional)
+              </label>
+              <Input
+                id="kb-pay-hint"
+                placeholder="Scan QRIS untuk memulai sesi"
+                value={paymentHint}
+                onChange={(e) => setPaymentHint(e.target.value)}
+                disabled={pending || !canWrite}
+                maxLength={160}
+              />
             </div>
             <div className={fieldClass}>
-              <label htmlFor="kb-res-title" className={labelClass}>Judul result (opsional)</label>
-              <Input id="kb-res-title" placeholder="Selesai!" value={resultTitle} onChange={(e) => setResultTitle(e.target.value)} disabled={pending || !canWrite} maxLength={80} />
+              <label htmlFor="kb-res-title" className={labelClass}>
+                Judul result (opsional)
+              </label>
+              <Input
+                id="kb-res-title"
+                placeholder="Selesai!"
+                value={resultTitle}
+                onChange={(e) => setResultTitle(e.target.value)}
+                disabled={pending || !canWrite}
+                maxLength={80}
+              />
             </div>
             <div className={fieldClass}>
-              <label htmlFor="kb-res-hint" className={labelClass}>Hint result (opsional)</label>
-              <Input id="kb-res-hint" placeholder="Scan QR untuk mengambil foto" value={resultHint} onChange={(e) => setResultHint(e.target.value)} disabled={pending || !canWrite} maxLength={160} />
+              <label htmlFor="kb-res-hint" className={labelClass}>
+                Hint result (opsional)
+              </label>
+              <Input
+                id="kb-res-hint"
+                placeholder="Scan QR untuk mengambil foto"
+                value={resultHint}
+                onChange={(e) => setResultHint(e.target.value)}
+                disabled={pending || !canWrite}
+                maxLength={160}
+              />
             </div>
             <div className={fieldClass}>
-              <label htmlFor="kb-cap-title" className={labelClass}>Judul layar foto (opsional)</label>
-              <Input id="kb-cap-title" placeholder="Foto 1 / 3" value={captureTitle} onChange={(e) => setCaptureTitle(e.target.value)} disabled={pending || !canWrite} maxLength={80} />
+              <label htmlFor="kb-cap-title" className={labelClass}>
+                Judul layar foto (opsional)
+              </label>
+              <Input
+                id="kb-cap-title"
+                placeholder="Foto 1 / 3"
+                value={captureTitle}
+                onChange={(e) => setCaptureTitle(e.target.value)}
+                disabled={pending || !canWrite}
+                maxLength={80}
+              />
             </div>
             <div className={fieldClass}>
-              <label htmlFor="kb-cap-hint" className={labelClass}>Hint layar foto (opsional)</label>
-              <Input id="kb-cap-hint" placeholder="Pose terbaikmu!" value={captureHint} onChange={(e) => setCaptureHint(e.target.value)} disabled={pending || !canWrite} maxLength={160} />
+              <label htmlFor="kb-cap-hint" className={labelClass}>
+                Hint layar foto (opsional)
+              </label>
+              <Input
+                id="kb-cap-hint"
+                placeholder="Pose terbaikmu!"
+                value={captureHint}
+                onChange={(e) => setCaptureHint(e.target.value)}
+                disabled={pending || !canWrite}
+                maxLength={160}
+              />
             </div>
             <div className={fieldClass}>
-              <label htmlFor="kb-ed-title" className={labelClass}>Judul layar edit (opsional)</label>
-              <Input id="kb-ed-title" placeholder="Edit foto" value={editorTitle} onChange={(e) => setEditorTitle(e.target.value)} disabled={pending || !canWrite} maxLength={80} />
+              <label htmlFor="kb-ed-title" className={labelClass}>
+                Judul layar edit (opsional)
+              </label>
+              <Input
+                id="kb-ed-title"
+                placeholder="Edit foto"
+                value={editorTitle}
+                onChange={(e) => setEditorTitle(e.target.value)}
+                disabled={pending || !canWrite}
+                maxLength={80}
+              />
             </div>
             <div className={fieldClass}>
-              <label htmlFor="kb-ed-hint" className={labelClass}>Hint layar edit (opsional)</label>
-              <Input id="kb-ed-hint" placeholder="Tambah filter, teks, stiker, lalu simpan" value={editorHint} onChange={(e) => setEditorHint(e.target.value)} disabled={pending || !canWrite} maxLength={160} />
+              <label htmlFor="kb-ed-hint" className={labelClass}>
+                Hint layar edit (opsional)
+              </label>
+              <Input
+                id="kb-ed-hint"
+                placeholder="Tambah filter, teks, stiker, lalu simpan"
+                value={editorHint}
+                onChange={(e) => setEditorHint(e.target.value)}
+                disabled={pending || !canWrite}
+                maxLength={160}
+              />
             </div>
             <div className={fieldClass}>
-              <label htmlFor="kb-guide-title" className={labelClass}>Judul tutorial (opsional)</label>
-              <Input id="kb-guide-title" placeholder="Cara foto" value={guideTitle} onChange={(e) => setGuideTitle(e.target.value)} disabled={pending || !canWrite} maxLength={80} />
+              <label htmlFor="kb-guide-title" className={labelClass}>
+                Judul tutorial (opsional)
+              </label>
+              <Input
+                id="kb-guide-title"
+                placeholder="Cara foto"
+                value={guideTitle}
+                onChange={(e) => setGuideTitle(e.target.value)}
+                disabled={pending || !canWrite}
+                maxLength={80}
+              />
             </div>
             <div className={fieldClass}>
-              <label htmlFor="kb-guide-button" className={labelClass}>Tombol mulai tutorial (opsional)</label>
-              <Input id="kb-guide-button" placeholder="Mulai" value={guideButton} onChange={(e) => setGuideButton(e.target.value)} disabled={pending || !canWrite} maxLength={24} />
+              <label htmlFor="kb-guide-button" className={labelClass}>
+                Tombol mulai tutorial (opsional)
+              </label>
+              <Input
+                id="kb-guide-button"
+                placeholder="Mulai"
+                value={guideButton}
+                onChange={(e) => setGuideButton(e.target.value)}
+                disabled={pending || !canWrite}
+                maxLength={24}
+              />
             </div>
             <div className={fieldClass}>
-              <label htmlFor="kb-package-title" className={labelClass}>Judul paket (opsional)</label>
-              <Input id="kb-package-title" placeholder="Pilih paket kamu" value={packageTitle} onChange={(e) => setPackageTitle(e.target.value)} disabled={pending || !canWrite} maxLength={80} />
+              <label htmlFor="kb-package-title" className={labelClass}>
+                Judul paket (opsional)
+              </label>
+              <Input
+                id="kb-package-title"
+                placeholder="Pilih paket kamu"
+                value={packageTitle}
+                onChange={(e) => setPackageTitle(e.target.value)}
+                disabled={pending || !canWrite}
+                maxLength={80}
+              />
             </div>
             <div className={fieldClass}>
-              <label htmlFor="kb-template-title" className={labelClass}>Judul frame (opsional)</label>
-              <Input id="kb-template-title" placeholder="Pilih frame" value={templateTitle} onChange={(e) => setTemplateTitle(e.target.value)} disabled={pending || !canWrite} maxLength={80} />
+              <label htmlFor="kb-template-title" className={labelClass}>
+                Judul frame (opsional)
+              </label>
+              <Input
+                id="kb-template-title"
+                placeholder="Pilih frame"
+                value={templateTitle}
+                onChange={(e) => setTemplateTitle(e.target.value)}
+                disabled={pending || !canWrite}
+                maxLength={80}
+              />
               <p className="font-mono text-[10px] leading-relaxed text-muted-foreground">
-                Semua frame aktif tampil di semua paket. Slot yang lebih banyak dari jumlah
-                foto paket diisi foto secara bergiliran.
+                Semua frame aktif tampil di semua paket. Slot yang lebih banyak dari jumlah foto
+                paket diisi foto secara bergiliran.
               </p>
             </div>
           </div>
@@ -1250,8 +1583,12 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
 
         <section className={cardClass} aria-labelledby="kb-guide-heading">
           <div className="mb-5 flex items-center justify-between gap-4 border-b-2 border-ink pb-4">
-            <h2 id="kb-guide-heading" className="font-display text-lg uppercase tracking-tight">Tutorial &amp; Kontrol Layar</h2>
-            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">06 / TUTORIAL</span>
+            <h2 id="kb-guide-heading" className="font-display text-lg uppercase tracking-tight">
+              Tutorial &amp; Kontrol Layar
+            </h2>
+            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+              06 / TUTORIAL
+            </span>
           </div>
           <div className="flex flex-col gap-5">
             <div className="flex flex-col gap-2">
@@ -1260,35 +1597,105 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                 {"/// DITAMPILKAN SEBELUM PEMILIHAN PAKET · KOSONG = DILEWATI. MAX 8 LANGKAH."}
               </p>
               {guideSteps.length === 0 ? (
-                <p className="font-mono text-xs text-muted-foreground">Belum ada langkah. Tambahkan di bawah.</p>
+                <p className="font-mono text-xs text-muted-foreground">
+                  Belum ada langkah. Tambahkan di bawah.
+                </p>
               ) : (
                 <ol className="flex flex-col gap-2">
                   {guideSteps.map((step, i) => (
                     <li key={i} className="flex items-center gap-2 border-2 border-ink bg-bg p-2">
-                      <span className="w-8 shrink-0 font-mono text-xs font-bold">{String(i + 1).padStart(2, "0")}</span>
-                      <Input value={step} onChange={(e) => setGuideSteps((prev) => prev.map((s, j) => (j === i ? e.target.value : s)))} disabled={pending || !canWrite} maxLength={160} className="h-9" />
+                      <span className="w-8 shrink-0 font-mono text-xs font-bold">
+                        {String(i + 1).padStart(2, "0")}
+                      </span>
+                      <Input
+                        value={step}
+                        onChange={(e) =>
+                          setGuideSteps((prev) =>
+                            prev.map((s, j) => (j === i ? e.target.value : s))
+                          )
+                        }
+                        disabled={pending || !canWrite}
+                        maxLength={160}
+                        className="h-9"
+                      />
                       <div className="flex shrink-0 gap-1">
-                        <button type="button" onClick={() => moveGuideStep(i, -1)} disabled={pending || !canWrite || i === 0} aria-label="Naikkan" className="relative border-2 border-ink bg-surface p-1.5 after:absolute after:-inset-2 hover:bg-muted disabled:opacity-40"><ArrowUp className="size-3" /></button>
-                        <button type="button" onClick={() => moveGuideStep(i, 1)} disabled={pending || !canWrite || i === guideSteps.length - 1} aria-label="Turunkan" className="relative border-2 border-ink bg-surface p-1.5 after:absolute after:-inset-2 hover:bg-muted disabled:opacity-40"><ArrowDown className="size-3" /></button>
-                        <button type="button" onClick={() => removeGuideStep(i)} disabled={pending || !canWrite} aria-label="Hapus langkah" className="relative border-2 border-ink bg-surface p-1.5 text-destructive after:absolute after:-inset-2 hover:bg-destructive/10"><Trash2 className="size-3" /></button>
+                        <button
+                          type="button"
+                          onClick={() => moveGuideStep(i, -1)}
+                          disabled={pending || !canWrite || i === 0}
+                          aria-label="Naikkan"
+                          className="relative border-2 border-ink bg-surface p-1.5 after:absolute after:-inset-2 hover:bg-muted disabled:opacity-40"
+                        >
+                          <ArrowUp className="size-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveGuideStep(i, 1)}
+                          disabled={pending || !canWrite || i === guideSteps.length - 1}
+                          aria-label="Turunkan"
+                          className="relative border-2 border-ink bg-surface p-1.5 after:absolute after:-inset-2 hover:bg-muted disabled:opacity-40"
+                        >
+                          <ArrowDown className="size-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeGuideStep(i)}
+                          disabled={pending || !canWrite}
+                          aria-label="Hapus langkah"
+                          className="relative border-2 border-ink bg-surface p-1.5 text-destructive after:absolute after:-inset-2 hover:bg-destructive/10"
+                        >
+                          <Trash2 className="size-3" />
+                        </button>
                       </div>
                     </li>
                   ))}
                 </ol>
               )}
               <div className="flex gap-2">
-                <Input value={newStep} onChange={(e) => setNewStep(e.target.value)} placeholder="Tulis langkah tutorial…" disabled={pending || !canWrite || guideSteps.length >= 8} maxLength={160} className="h-9" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addGuideStep(); } }} />
-                <Button type="button" variant="outline" onClick={addGuideStep} disabled={pending || !canWrite || !newStep.trim() || guideSteps.length >= 8}><Plus className="size-4" aria-hidden /> Tambah</Button>
+                <Input
+                  value={newStep}
+                  onChange={(e) => setNewStep(e.target.value)}
+                  placeholder="Tulis langkah tutorial…"
+                  disabled={pending || !canWrite || guideSteps.length >= 8}
+                  maxLength={160}
+                  className="h-9"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addGuideStep();
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addGuideStep}
+                  disabled={pending || !canWrite || !newStep.trim() || guideSteps.length >= 8}
+                >
+                  <Plus className="size-4" aria-hidden /> Tambah
+                </Button>
               </div>
             </div>
 
             <div className="flex flex-wrap gap-6 border-t-2 border-ink/20 pt-5">
               <label className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.1em]">
-                <input type="checkbox" checked={showMirrorToggle} onChange={(e) => setShowMirrorToggle(e.target.checked)} disabled={pending || !canWrite} className="size-4 accent-ink" />
+                <input
+                  type="checkbox"
+                  checked={showMirrorToggle}
+                  onChange={(e) => setShowMirrorToggle(e.target.checked)}
+                  disabled={pending || !canWrite}
+                  className="size-4 accent-ink"
+                />
                 Tampilkan tombol mirror di layar kamera
               </label>
               <label className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.1em]">
-                <input type="checkbox" checked={allowZoomPan} onChange={(e) => setAllowZoomPan(e.target.checked)} disabled={pending || !canWrite} className="size-4 accent-ink" />
+                <input
+                  type="checkbox"
+                  checked={allowZoomPan}
+                  onChange={(e) => setAllowZoomPan(e.target.checked)}
+                  disabled={pending || !canWrite}
+                  className="size-4 accent-ink"
+                />
                 Izinkan customer zoom/pan foto di editor
               </label>
             </div>
@@ -1297,15 +1704,23 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
 
         <section className={cardClass} aria-labelledby="kb-booth-heading">
           <div className="mb-5 flex items-center justify-between gap-4 border-b-2 border-ink pb-4">
-            <h2 id="kb-booth-heading" className="font-display text-lg uppercase tracking-tight">Override Per-Booth</h2>
-            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">07 / BOOTH</span>
+            <h2 id="kb-booth-heading" className="font-display text-lg uppercase tracking-tight">
+              Override Per-Booth
+            </h2>
+            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+              07 / BOOTH
+            </span>
           </div>
           <p className="mb-5 font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em] text-muted-foreground">
-            {"/// BOOTH MEWARISI KONFIGURASI GLOBAL; PILIH BOOTH UNTUK TIMPA SEBAGIAN/SELURUH TAMPILANNYA."}
+            {
+              "/// BOOTH MEWARISI KONFIGURASI GLOBAL; PILIH BOOTH UNTUK TIMPA SEBAGIAN/SELURUH TAMPILANNYA."
+            }
           </p>
           <div className="flex flex-col gap-4">
             <div className={fieldClass}>
-              <label htmlFor="kb-booth-select" className={labelClass}>Pilih booth</label>
+              <label htmlFor="kb-booth-select" className={labelClass}>
+                Pilih booth
+              </label>
               <select
                 id="kb-booth-select"
                 value={activeBoothId ?? ""}
@@ -1315,7 +1730,10 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
               >
                 <option value="">(Semua booth, global)</option>
                 {photoboxes.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}{p.branding ? " (override)" : ""}</option>
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                    {p.branding ? " (override)" : ""}
+                  </option>
                 ))}
               </select>
             </div>
@@ -1327,21 +1745,37 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                     : "/// BOOTH INI MEWARISI KONFIGURASI GLOBAL."}
                 </p>
                 <p className="font-mono text-xs leading-relaxed text-muted-foreground">
-                  Override booth menyimpan snapshot konfigurasi form global saat ini. Setelah disimpan,
-                  booth akan memakai nilai tersimpannya sendiri (tidak lagi ikut perubahan global) sampai di-reset.
+                  Override booth menyimpan snapshot konfigurasi form global saat ini. Setelah
+                  disimpan, booth akan memakai nilai tersimpannya sendiri (tidak lagi ikut perubahan
+                  global) sampai di-reset.
                 </p>
                 <div className="flex flex-wrap gap-3">
-                  <Button type="button" size="sm" onClick={() => void saveBoothOverride(true)} disabled={!canWrite || boothStatus.kind === "saving"}>
-                    <Save className="size-4" aria-hidden /> {boothStatus.kind === "saving" ? "Menyimpan…" : "Simpan override booth ini"}
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => void saveBoothOverride(true)}
+                    disabled={!canWrite || boothStatus.kind === "saving"}
+                  >
+                    <Save className="size-4" aria-hidden />{" "}
+                    {boothStatus.kind === "saving" ? "Menyimpan…" : "Simpan override booth ini"}
                   </Button>
                   {boothUsesOverride && (
-                    <Button type="button" size="sm" variant="outline" onClick={() => void saveBoothOverride(false)} disabled={!canWrite || boothStatus.kind === "saving"}>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void saveBoothOverride(false)}
+                      disabled={!canWrite || boothStatus.kind === "saving"}
+                    >
                       <RotateCcw className="size-4" aria-hidden /> Reset ke inherit global
                     </Button>
                   )}
                 </div>
                 {boothStatus.kind !== "idle" && boothStatus.message && (
-                  <p role={boothStatus.kind === "error" ? "alert" : "status"} className={`border-2 px-3 py-2 font-mono text-xs ${boothStatus.kind === "error" ? "border-destructive bg-destructive/10 text-ink" : "border-ink bg-accent-2 text-ink"}`}>
+                  <p
+                    role={boothStatus.kind === "error" ? "alert" : "status"}
+                    className={`border-2 px-3 py-2 font-mono text-xs ${boothStatus.kind === "error" ? "border-destructive bg-destructive/10 text-ink" : "border-ink bg-accent-2 text-ink"}`}
+                  >
                     {boothStatus.message}
                   </p>
                 )}
@@ -1352,12 +1786,18 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
 
         <section className={cardClass} aria-labelledby="kb-video-heading">
           <div className="mb-5 flex items-center justify-between gap-4 border-b-2 border-ink pb-4">
-            <h2 id="kb-video-heading" className="font-display text-lg uppercase tracking-tight">Video Background</h2>
-            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">08 / VIDEO</span>
+            <h2 id="kb-video-heading" className="font-display text-lg uppercase tracking-tight">
+              Video Background
+            </h2>
+            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+              08 / VIDEO
+            </span>
           </div>
           <form action={videoFormAction} className="flex flex-col gap-4">
             <p className="font-mono text-xs leading-relaxed text-muted-foreground">
-              {"MP4/WebM, maksimal 5 detik, 15 MB. Looping (muted) di kiosk sebelum sesi foto dimulai."}
+              {
+                "MP4/WebM, maksimal 5 detik, 15 MB. Looping (muted) di kiosk sebelum sesi foto dimulai."
+              }
             </p>
             <input
               ref={videoInputRef}
@@ -1368,15 +1808,43 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
               onChange={(e) => handleVideoChange(e.target.files?.[0] ?? null)}
               className="border-2 border-ink bg-bg p-2 font-mono text-xs"
             />
-            {videoPending && <p role="status" className="font-mono text-xs">Mengunggah…</p>}
-            {videoState.error && <p role="alert" className="font-mono text-xs text-destructive">{videoState.error}</p>}
-            {err("video") && <p role="alert" className="font-mono text-xs text-destructive">{err("video")}</p>}
+            {videoPending && (
+              <p role="status" className="font-mono text-xs">
+                Mengunggah…
+              </p>
+            )}
+            {videoState.error && (
+              <p role="alert" className="font-mono text-xs text-destructive">
+                {videoState.error}
+              </p>
+            )}
+            {err("video") && (
+              <p role="alert" className="font-mono text-xs text-destructive">
+                {err("video")}
+              </p>
+            )}
             {videoUrl && !videoPending && (
               <div className="flex flex-col gap-2">
-                <video src={videoUrl} muted loop playsInline autoPlay className="max-h-40 w-auto border-2 border-ink bg-bg" aria-label="Pratinjau video background kiosk" />
+                <video
+                  src={videoUrl}
+                  muted
+                  loop
+                  playsInline
+                  autoPlay
+                  className="max-h-40 w-auto border-2 border-ink bg-bg"
+                  aria-label="Pratinjau video background kiosk"
+                />
                 <div className="flex flex-wrap items-center gap-3">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{"VIDEO AKTIF · LOOPING DI WELCOME SCREEN"}</p>
-                  <Button type="button" variant="outline" size="sm" onClick={() => void handleDeleteVideo()} disabled={videoDeletePending || !canWrite}>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                    {"VIDEO AKTIF · LOOPING DI WELCOME SCREEN"}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void handleDeleteVideo()}
+                    disabled={videoDeletePending || !canWrite}
+                  >
                     <Trash2 className="size-3.5" aria-hidden /> Hapus video
                   </Button>
                 </div>
@@ -1395,7 +1863,9 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                 aria-label="Pilih layar untuk video promo"
               >
                 {PAGE_IDS.map((id) => (
-                  <option key={id} value={id}>{PAGE_LABELS[id]}</option>
+                  <option key={id} value={id}>
+                    {PAGE_LABELS[id]}
+                  </option>
                 ))}
               </select>
               <input
@@ -1406,18 +1876,41 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                 className="border-2 border-ink bg-bg p-2 font-mono text-xs"
               />
             </div>
-            {pageVideoPending && <p role="status" className="font-mono text-xs">Mengunggah…</p>}
-            {pageVideoError && <p role="alert" className="font-mono text-xs text-destructive">{pageVideoError}</p>}
+            {pageVideoPending && (
+              <p role="status" className="font-mono text-xs">
+                Mengunggah…
+              </p>
+            )}
+            {pageVideoError && (
+              <p role="alert" className="font-mono text-xs text-destructive">
+                {pageVideoError}
+              </p>
+            )}
             {k.pages?.[pageVideoPage]?.video_url && (
               <div className="flex flex-wrap items-center gap-3">
-                <video src={k.pages[pageVideoPage]?.video_url ?? undefined} muted loop playsInline className="max-h-32 w-auto border-2 border-ink bg-bg" aria-label={`Pratinjau video layar ${PAGE_LABELS[pageVideoPage]}`} />
-                <Button type="button" variant="outline" size="sm" onClick={() => void handleDeletePageVideo()} disabled={videoDeletePending || !canWrite}>
+                <video
+                  src={k.pages[pageVideoPage]?.video_url ?? undefined}
+                  muted
+                  loop
+                  playsInline
+                  className="max-h-32 w-auto border-2 border-ink bg-bg"
+                  aria-label={`Pratinjau video layar ${PAGE_LABELS[pageVideoPage]}`}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void handleDeletePageVideo()}
+                  disabled={videoDeletePending || !canWrite}
+                >
                   <Trash2 className="size-3.5" aria-hidden /> Hapus video layar ini
                 </Button>
               </div>
             )}
             <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em] text-muted-foreground">
-              {"/// VIDEO LATAR DITAMPILKAN DI LAYAR YANG DIPILIH (WELCOME, TUTORIAL, PAKET, PAYMENT, FRAME, FOTO, EDIT, RESULT)."}
+              {
+                "/// VIDEO LATAR DITAMPILKAN DI LAYAR YANG DIPILIH (WELCOME, TUTORIAL, PAKET, PAYMENT, FRAME, FOTO, EDIT, RESULT)."
+              }
             </p>
           </div>
         </section>
@@ -1443,21 +1936,33 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
               <Save className="size-4" aria-hidden />
               {pending ? "Menyimpan…" : "Simpan"}
             </Button>
-            <Button type="button" variant="outline" size="lg" onClick={reset} disabled={pending || videoPending}>
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              onClick={reset}
+              disabled={pending || videoPending}
+            >
               <RotateCcw className="size-4" aria-hidden />
               Reset
             </Button>
           </div>
         )}
         {!canWrite && (
-          <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">READ-ONLY</p>
+          <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+            READ-ONLY
+          </p>
         )}
       </div>
 
       <aside className="lg:col-span-5 lg:sticky lg:top-[70px]" aria-label="Pratinjau kiosk">
         <div className="mb-3 flex items-center justify-between gap-4">
-          <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-muted-foreground">{"PREVIEW >>> KIOSK"}</p>
-          <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">LIVE</span>
+          <p className="font-mono text-xs font-bold uppercase tracking-[0.15em] text-muted-foreground">
+            {"PREVIEW >>> KIOSK"}
+          </p>
+          <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+            LIVE
+          </span>
         </div>
         <div role="tablist" aria-label="Pilih layar" className="mb-3 flex flex-wrap gap-2">
           {PREVIEW_SCREENS.map((s) => (
@@ -1476,12 +1981,27 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
           ))}
         </div>
 
-        {/* Frame bersama semua layar — border memakai secondary, bg/text memakai kiosk. */}
-        <div className="aspect-[4/3] overflow-hidden border-4 shadow-[8px_8px_0_0_#111111]" style={{ borderColor: sSafe }}>
+        {/* Frame bersama semua layar: border memakai secondary, bg/text memakai kiosk. */}
+        <div
+          className="aspect-[4/3] overflow-hidden border-4 shadow-[8px_8px_0_0_#111111]"
+          style={{ borderColor: sSafe }}
+        >
           {previewScreen === "welcome" && (
-            <div className="relative flex size-full flex-col overflow-hidden" style={{ backgroundColor: ps.bg, color: ps.text, padding: ps.padding }}>
+            <div
+              className="relative flex size-full flex-col overflow-hidden"
+              style={{ backgroundColor: ps.bg, color: ps.text, padding: ps.padding }}
+            >
               {(k.pages?.welcome?.video_url ?? videoUrl) && (
-                <video key={k.pages?.welcome?.video_url ?? videoUrl ?? ""} src={k.pages?.welcome?.video_url ?? videoUrl ?? undefined} muted loop playsInline autoPlay className="absolute inset-0 size-full object-cover opacity-60" aria-hidden />
+                <video
+                  key={k.pages?.welcome?.video_url ?? videoUrl ?? ""}
+                  src={k.pages?.welcome?.video_url ?? videoUrl ?? undefined}
+                  muted
+                  loop
+                  playsInline
+                  autoPlay
+                  className="absolute inset-0 size-full object-cover opacity-60"
+                  aria-hidden
+                />
               )}
               <div
                 className={`relative z-10 grid flex-1 items-center gap-4 text-center ${
@@ -1494,20 +2014,48 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
               >
                 <div className="flex flex-col items-center gap-2">
                   {showLogo && branding?.logo_url ? (
-                    <Image src={branding.logo_url} alt={`Logo ${businessName}`} width={160} height={48} className="max-h-12 w-auto object-contain" unoptimized />
+                    <Image
+                      src={branding.logo_url}
+                      alt={`Logo ${businessName}`}
+                      width={160}
+                      height={48}
+                      className="max-h-12 w-auto object-contain"
+                      unoptimized
+                    />
                   ) : null}
-                  <p className="font-mono text-[8px] uppercase tracking-[0.3em] opacity-70">{businessName.toUpperCase()}</p>
+                  <p className="font-mono text-[8px] uppercase tracking-[0.3em] opacity-70">
+                    {businessName.toUpperCase()}
+                  </p>
                 </div>
                 <div className={`flex flex-col gap-2 ${pvAlignClass}`}>
-                  <h2 className="font-display uppercase leading-none tracking-tight" style={{ color: sSafe, fontSize: `${1.75 * ps.fontScale}rem`, fontFamily: pvFont }}>
+                  <h2
+                    className="font-display uppercase leading-none tracking-tight"
+                    style={{
+                      color: sSafe,
+                      fontSize: `${1.75 * ps.fontScale}rem`,
+                      fontFamily: pvFont,
+                    }}
+                  >
                     {previewTitle || "NAMA BISNIS"}
                   </h2>
                   {showTagline && (
-                    <p className="max-w-[20ch] leading-relaxed opacity-80" style={{ fontSize: `${0.65 * ps.fontScale}rem` }}>
+                    <p
+                      className="max-w-[20ch] leading-relaxed opacity-80"
+                      style={{ fontSize: `${0.65 * ps.fontScale}rem` }}
+                    >
                       {tagline || "Capture your moment."}
                     </p>
                   )}
-                  <span className="mt-2 inline-block border-2 px-6 py-2 font-mono font-bold uppercase tracking-[0.1em]" style={{ backgroundColor: pSafe, borderColor: sSafe, color: sSafe, borderRadius: ps.radius, fontFamily: pvFont }}>
+                  <span
+                    className="mt-2 inline-block border-2 px-6 py-2 font-mono font-bold uppercase tracking-[0.1em]"
+                    style={{
+                      backgroundColor: pSafe,
+                      borderColor: sSafe,
+                      color: sSafe,
+                      borderRadius: ps.radius,
+                      fontFamily: pvFont,
+                    }}
+                  >
                     {button || "START"}
                   </span>
                 </div>
@@ -1516,45 +2064,121 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
           )}
 
           {previewScreen === "guide" && (
-            <div className={`relative flex size-full flex-col justify-center gap-3 overflow-hidden ${pvAlignClass}`} style={{ backgroundColor: ps.bg, color: ps.text, padding: Math.min(ps.padding, 24) }}>
+            <div
+              className={`relative flex size-full flex-col justify-center gap-3 overflow-hidden ${pvAlignClass}`}
+              style={{ backgroundColor: ps.bg, color: ps.text, padding: Math.min(ps.padding, 24) }}
+            >
               {(k.pages?.guide?.video_url ?? null) && (
-                <video key={k.pages?.guide?.video_url ?? ""} src={k.pages?.guide?.video_url ?? undefined} muted loop playsInline autoPlay className="absolute inset-0 size-full object-cover opacity-50" aria-hidden />
+                <video
+                  key={k.pages?.guide?.video_url ?? ""}
+                  src={k.pages?.guide?.video_url ?? undefined}
+                  muted
+                  loop
+                  playsInline
+                  autoPlay
+                  className="absolute inset-0 size-full object-cover opacity-50"
+                  aria-hidden
+                />
               )}
-              <p className="relative z-10 font-mono text-[8px] uppercase tracking-[0.25em] opacity-60">{"/// PETUNJUK"}</p>
-              <h2 className="relative z-10 font-display uppercase leading-none tracking-tight" style={{ fontSize: `${1.4 * ps.fontScale}rem`, fontFamily: pvFont }}>
+              <p className="relative z-10 font-mono text-[8px] uppercase tracking-[0.25em] opacity-60">
+                {"/// PETUNJUK"}
+              </p>
+              <h2
+                className="relative z-10 font-display uppercase leading-none tracking-tight"
+                style={{ fontSize: `${1.4 * ps.fontScale}rem`, fontFamily: pvFont }}
+              >
                 {guideTitle || "Cara foto"}
               </h2>
               <ol className="relative z-10 flex flex-col gap-1.5">
-                {(guideSteps.length > 0 ? guideSteps : ["[LANGKAH 1]", "[LANGKAH 2]", "[LANGKAH 3]"]).slice(0, 3).map((step, i) => (
-                  <li key={`${i}-${step}`} className="flex items-center gap-2 border-2 p-1.5 font-mono text-[8px] uppercase tracking-[0.05em]" style={{ borderColor: ps.text, borderRadius: ps.radius }}>
-                    <span className="font-bold">{String(i + 1).padStart(2, "0")}</span>
-                    <span className="truncate">{step}</span>
-                  </li>
-                ))}
+                {(guideSteps.length > 0
+                  ? guideSteps
+                  : ["[LANGKAH 1]", "[LANGKAH 2]", "[LANGKAH 3]"]
+                )
+                  .slice(0, 3)
+                  .map((step, i) => (
+                    <li
+                      key={`${i}-${step}`}
+                      className="flex items-center gap-2 border-2 p-1.5 font-mono text-[8px] uppercase tracking-[0.05em]"
+                      style={{ borderColor: ps.text, borderRadius: ps.radius }}
+                    >
+                      <span className="font-bold">{String(i + 1).padStart(2, "0")}</span>
+                      <span className="truncate">{step}</span>
+                    </li>
+                  ))}
               </ol>
-              <div className={`relative z-10 mt-1 flex gap-2 ${pvAlign === "center" ? "justify-center" : pvAlign === "right" ? "justify-end" : "justify-start"}`}>
-                <span className="border-2 px-3 py-1 font-mono text-[8px] font-bold uppercase" style={{ borderColor: ps.text, borderRadius: ps.radius }}>Kembali</span>
-                <span className="border-2 px-3 py-1 font-mono text-[8px] font-bold uppercase" style={{ backgroundColor: pSafe, borderColor: sSafe, color: sSafe, borderRadius: ps.radius }}>{guideButton || "Mulai"}</span>
+              <div
+                className={`relative z-10 mt-1 flex gap-2 ${pvAlign === "center" ? "justify-center" : pvAlign === "right" ? "justify-end" : "justify-start"}`}
+              >
+                <span
+                  className="border-2 px-3 py-1 font-mono text-[8px] font-bold uppercase"
+                  style={{ borderColor: ps.text, borderRadius: ps.radius }}
+                >
+                  Kembali
+                </span>
+                <span
+                  className="border-2 px-3 py-1 font-mono text-[8px] font-bold uppercase"
+                  style={{
+                    backgroundColor: pSafe,
+                    borderColor: sSafe,
+                    color: sSafe,
+                    borderRadius: ps.radius,
+                  }}
+                >
+                  {guideButton || "Mulai"}
+                </span>
               </div>
             </div>
           )}
 
           {previewScreen === "package" && (
-            <div className="relative flex size-full flex-col gap-2 overflow-hidden" style={{ backgroundColor: ps.bg, color: ps.text, padding: Math.min(ps.padding, 20) }}>
+            <div
+              className="relative flex size-full flex-col gap-2 overflow-hidden"
+              style={{ backgroundColor: ps.bg, color: ps.text, padding: Math.min(ps.padding, 20) }}
+            >
               <PreviewVideo url={k.pages?.package?.video_url} />
               <div className={`relative z-10 ${pvAlignClass}`}>
-                <p className="font-mono text-[8px] uppercase tracking-[0.25em] opacity-60">{"/// STEP 01 · PILIH PAKET"}</p>
-                <h2 className="font-display uppercase leading-none tracking-tight" style={{ fontSize: `${1.3 * ps.fontScale}rem`, fontFamily: pvFont }}>
+                <p className="font-mono text-[8px] uppercase tracking-[0.25em] opacity-60">
+                  {"/// STEP 01 · PILIH PAKET"}
+                </p>
+                <h2
+                  className="font-display uppercase leading-none tracking-tight"
+                  style={{ fontSize: `${1.3 * ps.fontScale}rem`, fontFamily: pvFont }}
+                >
                   {packageTitle || "Pilih paket"}
                 </h2>
               </div>
               <div className="relative z-10 mt-auto grid grid-cols-3 gap-2">
                 {[0, 1, 2].map((i) => (
-                  <div key={i} className="flex flex-col gap-1 border-2 p-2" style={{ borderColor: ps.text, backgroundColor: i === 0 ? pSafe : "transparent", borderRadius: ps.radius }}>
-                    <p className="font-mono text-[7px] font-bold uppercase tracking-[0.1em]" style={{ opacity: 0.7 }}>{`PKG-${String(i + 1).padStart(2, "0")}`}</p>
-                    <p className="font-display text-[11px] uppercase leading-none" style={{ fontFamily: pvFont }}>{`[PAKET ${i + 1}]`}</p>
-                    <p className="font-mono text-[9px] font-bold" style={{ color: sSafe }}>Rp ...</p>
-                    <span className="mt-auto border-2 px-2 py-1 text-center font-mono text-[7px] font-bold uppercase" style={{ borderColor: ps.text, backgroundColor: i === 0 ? ps.surface : pSafe, borderRadius: ps.radius }}>Pilih</span>
+                  <div
+                    key={i}
+                    className="flex flex-col gap-1 border-2 p-2"
+                    style={{
+                      borderColor: ps.text,
+                      backgroundColor: i === 0 ? pSafe : "transparent",
+                      borderRadius: ps.radius,
+                    }}
+                  >
+                    <p
+                      className="font-mono text-[7px] font-bold uppercase tracking-[0.1em]"
+                      style={{ opacity: 0.7 }}
+                    >{`PKG-${String(i + 1).padStart(2, "0")}`}</p>
+                    <p
+                      className="font-display text-[11px] uppercase leading-none"
+                      style={{ fontFamily: pvFont }}
+                    >{`[PAKET ${i + 1}]`}</p>
+                    <p className="font-mono text-[9px] font-bold" style={{ color: sSafe }}>
+                      Rp ...
+                    </p>
+                    <span
+                      className="mt-auto border-2 px-2 py-1 text-center font-mono text-[7px] font-bold uppercase"
+                      style={{
+                        borderColor: ps.text,
+                        backgroundColor: i === 0 ? ps.surface : pSafe,
+                        borderRadius: ps.radius,
+                      }}
+                    >
+                      Pilih
+                    </span>
                   </div>
                 ))}
               </div>
@@ -1562,42 +2186,105 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
           )}
 
           {previewScreen === "payment" && (
-            <div className={`relative flex size-full flex-col overflow-hidden ${payAlignClass}`} style={{ backgroundColor: ps.bg, color: ps.text, padding: Math.min(ps.padding, 24) }}>
+            <div
+              className={`relative flex size-full flex-col overflow-hidden ${payAlignClass}`}
+              style={{ backgroundColor: ps.bg, color: ps.text, padding: Math.min(ps.padding, 24) }}
+            >
               <PreviewVideo url={k.pages?.payment?.video_url} />
               <div className={`relative z-10 flex w-full flex-col gap-1 ${payAlignClass}`}>
-                <p className="font-mono text-[8px] uppercase tracking-[0.3em] opacity-60">{"/// CHECKOUT"}</p>
-                <h2 className="font-display uppercase leading-none tracking-tight" style={{ fontSize: `${1.25 * ps.fontScale}rem`, fontFamily: pvFont }}>
+                <p className="font-mono text-[8px] uppercase tracking-[0.3em] opacity-60">
+                  {"/// CHECKOUT"}
+                </p>
+                <h2
+                  className="font-display uppercase leading-none tracking-tight"
+                  style={{ fontSize: `${1.25 * ps.fontScale}rem`, fontFamily: pvFont }}
+                >
                   {paymentTitle || "Bayar sebelum foto"}
                 </h2>
-                {paymentHint && <p className="font-mono text-[8px] uppercase tracking-[0.1em] opacity-70">{paymentHint}</p>}
+                {paymentHint && (
+                  <p className="font-mono text-[8px] uppercase tracking-[0.1em] opacity-70">
+                    {paymentHint}
+                  </p>
+                )}
               </div>
               <div className="relative z-10 mt-auto grid w-full grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1 border-2 p-3" style={{ borderColor: ps.text, borderRadius: ps.radius }}>
-                  <p className="font-mono text-[7px] uppercase tracking-[0.1em] opacity-60">[ RINGKASAN ]</p>
-                  <p className="font-display text-[11px] uppercase leading-none" style={{ fontFamily: pvFont }}>[PAKET]</p>
-                  <p className="font-mono text-[10px] font-bold" style={{ color: sSafe }}>Rp ...</p>
+                <div
+                  className="flex flex-col gap-1 border-2 p-3"
+                  style={{ borderColor: ps.text, borderRadius: ps.radius }}
+                >
+                  <p className="font-mono text-[7px] uppercase tracking-[0.1em] opacity-60">
+                    [ RINGKASAN ]
+                  </p>
+                  <p
+                    className="font-display text-[11px] uppercase leading-none"
+                    style={{ fontFamily: pvFont }}
+                  >
+                    [PAKET]
+                  </p>
+                  <p className="font-mono text-[10px] font-bold" style={{ color: sSafe }}>
+                    Rp ...
+                  </p>
                 </div>
-                <div className="flex flex-col items-center justify-center gap-2 border-2 p-3" style={{ borderColor: ps.text, backgroundColor: pSafe, borderRadius: ps.radius }}>
-                  <span className="inline-block size-16 border-2" style={{ borderColor: sSafe }} aria-hidden />
-                  <p className="font-mono text-[8px] font-bold uppercase tracking-[0.1em]" style={{ color: sSafe }}>QRIS</p>
+                <div
+                  className="flex flex-col items-center justify-center gap-2 border-2 p-3"
+                  style={{ borderColor: ps.text, backgroundColor: pSafe, borderRadius: ps.radius }}
+                >
+                  <span
+                    className="inline-block size-16 border-2"
+                    style={{ borderColor: sSafe }}
+                    aria-hidden
+                  />
+                  <p
+                    className="font-mono text-[8px] font-bold uppercase tracking-[0.1em]"
+                    style={{ color: sSafe }}
+                  >
+                    QRIS
+                  </p>
                 </div>
               </div>
             </div>
           )}
 
           {previewScreen === "template" && (
-            <div className="relative flex size-full overflow-hidden" style={{ backgroundColor: ps.bg, color: ps.text }}>
+            <div
+              className="relative flex size-full overflow-hidden"
+              style={{ backgroundColor: ps.bg, color: ps.text }}
+            >
               <PreviewVideo url={k.pages?.template?.video_url} />
-              <div className={`relative z-10 flex w-[38%] shrink-0 flex-col justify-center gap-1.5 border-r-2 p-3 ${pvAlignClass}`} style={{ borderColor: ps.text }}>
-                <p className="font-mono text-[8px] uppercase tracking-[0.25em] opacity-60">{"/// STEP 02 · FRAME"}</p>
-                <h2 className="font-display uppercase leading-none tracking-tight" style={{ fontSize: `${1.3 * ps.fontScale}rem`, fontFamily: pvFont }}>
+              <div
+                className={`relative z-10 flex w-[38%] shrink-0 flex-col justify-center gap-1.5 border-r-2 p-3 ${pvAlignClass}`}
+                style={{ borderColor: ps.text }}
+              >
+                <p className="font-mono text-[8px] uppercase tracking-[0.25em] opacity-60">
+                  {"/// STEP 02 · FRAME"}
+                </p>
+                <h2
+                  className="font-display uppercase leading-none tracking-tight"
+                  style={{ fontSize: `${1.3 * ps.fontScale}rem`, fontFamily: pvFont }}
+                >
                   {templateTitle || "Pilih frame"}
                 </h2>
-                <p className="font-mono text-[7px] uppercase tracking-[0.1em]" style={{ opacity: 0.6 }}>[N] FRAME</p>
+                <p
+                  className="font-mono text-[7px] uppercase tracking-[0.1em]"
+                  style={{ opacity: 0.6 }}
+                >
+                  [N] FRAME
+                </p>
               </div>
-              <div className="relative z-10 grid flex-1 grid-cols-3 gap-1.5 p-3" style={{ backgroundColor: `color-mix(in srgb, ${ps.text} 4%, ${ps.bg})` }}>
+              <div
+                className="relative z-10 grid flex-1 grid-cols-3 gap-1.5 p-3"
+                style={{ backgroundColor: `color-mix(in srgb, ${ps.text} 4%, ${ps.bg})` }}
+              >
                 {[0, 1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="flex aspect-[3/4] items-center justify-center border-2 font-mono text-[7px] uppercase tracking-[0.1em]" style={{ borderColor: ps.text, borderRadius: ps.radius, backgroundColor: i === 0 ? pSafe : ps.surface }}>
+                  <div
+                    key={i}
+                    className="flex aspect-[3/4] items-center justify-center border-2 font-mono text-[7px] uppercase tracking-[0.1em]"
+                    style={{
+                      borderColor: ps.text,
+                      borderRadius: ps.radius,
+                      backgroundColor: i === 0 ? pSafe : ps.surface,
+                    }}
+                  >
                     {i === 0 ? "TANPA" : `FRAME ${i}`}
                   </div>
                 ))}
@@ -1606,18 +2293,55 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
           )}
 
           {previewScreen === "capture" && (
-            <div className="relative flex size-full overflow-hidden" style={{ backgroundColor: ps.bg, color: ps.text }}>
+            <div
+              className="relative flex size-full overflow-hidden"
+              style={{ backgroundColor: ps.bg, color: ps.text }}
+            >
               <PreviewVideo url={k.pages?.capture?.video_url} />
               <div className="relative z-10 flex flex-1 items-center justify-center bg-ink">
-                <span className="font-display text-4xl text-accent" aria-hidden>FOTO 1/3</span>
+                <span className="font-display text-4xl text-accent" aria-hidden>
+                  FOTO 1/3
+                </span>
               </div>
-              <div className={`relative z-10 flex w-[34%] flex-col justify-center gap-2 border-l-2 p-4 ${pvAlignClass}`} style={{ borderColor: ps.text, backgroundColor: ps.bg, color: ps.text, padding: Math.min(ps.padding, 32) }}>
-                <p className="font-mono text-[8px] uppercase tracking-[0.25em]" style={{ opacity: 0.6 }}>{"/// CAPTURE"}</p>
-                <p className="font-display text-base uppercase" style={{ fontSize: `${1 * ps.fontScale}rem`, fontFamily: pvFont }}>
+              <div
+                className={`relative z-10 flex w-[34%] flex-col justify-center gap-2 border-l-2 p-4 ${pvAlignClass}`}
+                style={{
+                  borderColor: ps.text,
+                  backgroundColor: ps.bg,
+                  color: ps.text,
+                  padding: Math.min(ps.padding, 32),
+                }}
+              >
+                <p
+                  className="font-mono text-[8px] uppercase tracking-[0.25em]"
+                  style={{ opacity: 0.6 }}
+                >
+                  {"/// CAPTURE"}
+                </p>
+                <p
+                  className="font-display text-base uppercase"
+                  style={{ fontSize: `${1 * ps.fontScale}rem`, fontFamily: pvFont }}
+                >
                   {captureTitle || "Foto 1 / 3"}
                 </p>
-                {captureHint && <p className="font-mono text-[7px] uppercase tracking-[0.15em]" style={{ opacity: 0.5 }}>{captureHint}</p>}
-                <span className="mt-2 border-2 px-4 py-2 font-mono text-[10px] font-bold uppercase" style={{ backgroundColor: pSafe, borderColor: ps.text, color: sSafe, borderRadius: ps.radius, fontFamily: pvFont }}>
+                {captureHint && (
+                  <p
+                    className="font-mono text-[7px] uppercase tracking-[0.15em]"
+                    style={{ opacity: 0.5 }}
+                  >
+                    {captureHint}
+                  </p>
+                )}
+                <span
+                  className="mt-2 border-2 px-4 py-2 font-mono text-[10px] font-bold uppercase"
+                  style={{
+                    backgroundColor: pSafe,
+                    borderColor: ps.text,
+                    color: sSafe,
+                    borderRadius: ps.radius,
+                    fontFamily: pvFont,
+                  }}
+                >
                   Ambil foto
                 </span>
               </div>
@@ -1625,27 +2349,54 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
           )}
 
           {previewScreen === "editor" && (
-            <div className="relative flex size-full flex-col overflow-hidden" style={{ backgroundColor: ps.bg, color: ps.text }}>
+            <div
+              className="relative flex size-full flex-col overflow-hidden"
+              style={{ backgroundColor: ps.bg, color: ps.text }}
+            >
               <PreviewVideo url={k.pages?.edit?.video_url} />
               <div
                 className={`relative z-10 flex items-center gap-3 border-b-2 px-4 py-2 ${pvAlign === "left" ? "justify-start" : pvAlign === "right" ? "justify-end" : "flex-col justify-center"}`}
-                style={{ borderColor: ps.text, backgroundColor: `color-mix(in srgb, ${ps.text} 8%, ${ps.bg})` }}
+                style={{
+                  borderColor: ps.text,
+                  backgroundColor: `color-mix(in srgb, ${ps.text} 8%, ${ps.bg})`,
+                }}
               >
                 <div className={`flex flex-col ${pvAlignClass}`}>
-                  <p className="font-mono text-[8px] uppercase tracking-[0.2em] opacity-60">{"/// EDIT"}</p>
-                  <h2 className="font-display uppercase leading-none tracking-tight" style={{ fontSize: `${1 * ps.fontScale}rem`, fontFamily: pvFont }}>
+                  <p className="font-mono text-[8px] uppercase tracking-[0.2em] opacity-60">
+                    {"/// EDIT"}
+                  </p>
+                  <h2
+                    className="font-display uppercase leading-none tracking-tight"
+                    style={{ fontSize: `${1 * ps.fontScale}rem`, fontFamily: pvFont }}
+                  >
                     {editorTitle || "Edit foto"}
                   </h2>
-                  {editorHint && <p className="font-mono text-[7px] uppercase tracking-[0.1em] opacity-70">{editorHint}</p>}
+                  {editorHint && (
+                    <p className="font-mono text-[7px] uppercase tracking-[0.1em] opacity-70">
+                      {editorHint}
+                    </p>
+                  )}
                 </div>
                 <div className="flex gap-1">
                   {["FILM", "WARM", "BW"].map((f) => (
-                    <span key={f} className="border-2 px-2 py-1 font-mono text-[7px] font-bold uppercase" style={{ borderColor: ps.text, borderRadius: ps.radius }}>{f}</span>
+                    <span
+                      key={f}
+                      className="border-2 px-2 py-1 font-mono text-[7px] font-bold uppercase"
+                      style={{ borderColor: ps.text, borderRadius: ps.radius }}
+                    >
+                      {f}
+                    </span>
                   ))}
                 </div>
               </div>
-              <div className="relative z-10 flex flex-1 items-center justify-center" style={{ backgroundColor: `color-mix(in srgb, ${ps.text} 4%, ${ps.bg})` }}>
-                <span className="flex h-2/3 w-1/2 items-center justify-center border-2 border-dashed font-mono text-[9px] uppercase tracking-[0.15em]" style={{ borderColor: `color-mix(in srgb, ${ps.text} 30%, transparent)` }}>
+              <div
+                className="relative z-10 flex flex-1 items-center justify-center"
+                style={{ backgroundColor: `color-mix(in srgb, ${ps.text} 4%, ${ps.bg})` }}
+              >
+                <span
+                  className="flex h-2/3 w-1/2 items-center justify-center border-2 border-dashed font-mono text-[9px] uppercase tracking-[0.15em]"
+                  style={{ borderColor: `color-mix(in srgb, ${ps.text} 30%, transparent)` }}
+                >
                   FOTO + FRAME
                 </span>
               </div>
@@ -1653,26 +2404,49 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
           )}
 
           {previewScreen === "result" && (
-            <div className={`relative flex size-full overflow-hidden ${resultLayout === "qr-below" ? "flex-col" : "flex-row"}`} style={{ backgroundColor: ps.bg, color: ps.text }}>
+            <div
+              className={`relative flex size-full overflow-hidden ${resultLayout === "qr-below" ? "flex-col" : "flex-row"}`}
+              style={{ backgroundColor: ps.bg, color: ps.text }}
+            >
               <PreviewVideo url={k.pages?.result?.video_url} />
               <div
                 className={`relative z-10 flex flex-1 flex-col items-center justify-center gap-2 p-3 ${
-                  resultLayout === "qr-below" ? "border-b-2" : resultLayout === "qr-left" ? "border-l-2" : "border-r-2"
+                  resultLayout === "qr-below"
+                    ? "border-b-2"
+                    : resultLayout === "qr-left"
+                      ? "border-l-2"
+                      : "border-r-2"
                 } ${resultLayout === "qr-left" ? "order-2" : ""}`}
                 style={{ borderColor: ps.text, backgroundColor: ps.surface }}
               >
-                <span className="flex h-1/2 w-1/2 items-center justify-center border-2 border-dashed font-mono text-[8px] uppercase tracking-[0.15em]" style={{ borderColor: `color-mix(in srgb, ${ps.text} 30%, transparent)` }}>
+                <span
+                  className="flex h-1/2 w-1/2 items-center justify-center border-2 border-dashed font-mono text-[8px] uppercase tracking-[0.15em]"
+                  style={{ borderColor: `color-mix(in srgb, ${ps.text} 30%, transparent)` }}
+                >
                   HASIL FOTO
                 </span>
               </div>
-              <div className={`relative z-10 flex flex-col justify-center gap-2 p-3 ${resultLayout === "qr-below" ? "w-full" : "w-[38%]"} ${pvAlignClass}`}>
-                <h2 className="font-display uppercase leading-none tracking-tight" style={{ fontSize: `${1.25 * ps.fontScale}rem`, color: sSafe, fontFamily: pvFont }}>
+              <div
+                className={`relative z-10 flex flex-col justify-center gap-2 p-3 ${resultLayout === "qr-below" ? "w-full" : "w-[38%]"} ${pvAlignClass}`}
+              >
+                <h2
+                  className="font-display uppercase leading-none tracking-tight"
+                  style={{
+                    fontSize: `${1.25 * ps.fontScale}rem`,
+                    color: sSafe,
+                    fontFamily: pvFont,
+                  }}
+                >
                   {resultTitle || "Foto kamu jadi!"}
                 </h2>
                 <p className="max-w-[20ch] font-mono text-[7px] uppercase leading-relaxed tracking-[0.1em] opacity-70">
                   {resultHint || "Scan QR untuk mengunduh hasil."}
                 </p>
-                <span className="inline-block size-20 border-2" style={{ borderColor: sSafe }} aria-hidden />
+                <span
+                  className="inline-block size-20 border-2"
+                  style={{ borderColor: sSafe }}
+                  aria-hidden
+                />
               </div>
             </div>
           )}

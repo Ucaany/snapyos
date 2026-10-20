@@ -16,10 +16,7 @@ import { ApiError } from "./api-errors.ts";
 // padahal sah di kolom Postgres `uuid` (source of truth).
 const UUID_SCHEMA = z.string().guid();
 
-export function parseUuidParam(
-  value: string | undefined | null,
-  name = "id"
-): string {
+export function parseUuidParam(value: string | undefined | null, name = "id"): string {
   const parsed = UUID_SCHEMA.safeParse(value ?? "");
   if (!parsed.success) {
     throw new ApiError("NOT_FOUND", `Parameter ${name} tidak valid`);

@@ -115,7 +115,8 @@ export function ResultScreen({
     // Catat platform di sini: Safari iOS hanya menyimpan file pertama, dan
     // customer perlu tahu sebelum menekan tombol berulang kali.
     const ua = navigator.userAgent;
-    const isIos = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    const isIos =
+      /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
     setIosDevice(isIos);
     setDownloading(true);
     urls.forEach((url, i) => {
@@ -156,14 +157,12 @@ export function ResultScreen({
       }
     >
       <KioskVideoBackground videoUrl={videoUrl} />
-      {/* Left panel — photo/GIF preview */}
+      {/* Left panel: photo/GIF preview */}
       <div
         className={`relative z-10 flex flex-1 flex-col items-center justify-center gap-3 overflow-y-auto p-4 lg:min-h-0 lg:gap-4 lg:p-6 ${
           videoUrl ? "bg-transparent" : "bg-surface"
         } ${
-          isBelow
-            ? "border-b-2 border-ink"
-            : "border-b-2 border-ink lg:border-b-0 lg:border-r-2"
+          isBelow ? "border-b-2 border-ink" : "border-b-2 border-ink lg:border-b-0 lg:border-r-2"
         } ${qrFirst && !isBelow ? "lg:order-2 lg:border-r-0 lg:border-l-2" : ""}`}
       >
         <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
@@ -184,7 +183,7 @@ export function ResultScreen({
 
         {hasGif ? (
           <div className="flex flex-wrap items-center justify-center gap-4">
-            {/* GIF ditampilkan seukuran potret hasil capture — thumbnail 48px
+            {/* GIF ditampilkan seukuran potret hasil capture: thumbnail 48px
                 tidak membuktikan GIF-nya bergerak. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -214,7 +213,7 @@ export function ResultScreen({
         )}
       </div>
 
-      {/* QR panel — status + CTA (posisi via result_layout, perataan via align) */}
+      {/* QR panel: status + CTA (posisi via result_layout, perataan via align) */}
       <div
         className={`flex shrink-0 flex-col justify-center gap-4 overflow-y-auto p-5 lg:max-h-[100dvh] lg:gap-5 lg:p-6 ${
           isBelow ? "w-full" : "lg:w-[38%]"
@@ -229,12 +228,15 @@ export function ResultScreen({
         <div className="flex flex-col gap-2">
           <h1
             className="font-display text-3xl uppercase leading-[0.9] tracking-tight md:text-4xl lg:text-5xl"
-            style={ks ? { fontSize: `${1.875 * ks.fontScale}rem`, fontFamily: ks.fontFamily } : undefined}
+            style={
+              ks ? { fontSize: `${1.875 * ks.fontScale}rem`, fontFamily: ks.fontFamily } : undefined
+            }
           >
             {resultTitle || "Foto kamu jadi!"}
           </h1>
           <p className="max-w-[36ch] text-xs leading-relaxed text-muted-foreground md:text-sm">
-            {resultHint || "Pindai QR untuk mengunduh GIF animasi dan foto berframe di ponsel Anda."}
+            {resultHint ||
+              "Pindai QR untuk mengunduh GIF animasi dan foto berframe di ponsel Anda."}
           </p>
         </div>
 
@@ -297,7 +299,9 @@ export function ResultScreen({
                 kioskStyle
                   ? {
                       borderRadius: kioskStyle.radius,
-                      ...(printed ? {} : { backgroundColor: kioskStyle.accent, color: kioskStyle.accentText }),
+                      ...(printed
+                        ? {}
+                        : { backgroundColor: kioskStyle.accent, color: kioskStyle.accentText }),
                     }
                   : undefined
               }
@@ -322,7 +326,10 @@ export function ResultScreen({
                     : "Unduh foto"}
               </Button>
               {photoUrls.length > 1 && iosDevice && (
-                <p role="status" className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-muted-foreground">
+                <p
+                  role="status"
+                  className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-muted-foreground"
+                >
                   Safari hanya menyimpan file pertama. Untuk semua foto, pindai QR di ponsel.
                 </p>
               )}
@@ -334,7 +341,11 @@ export function ResultScreen({
             className="bg-accent-3"
             style={
               kioskStyle
-                ? { borderRadius: kioskStyle.radius, backgroundColor: kioskStyle.accent, color: kioskStyle.accentText }
+                ? {
+                    borderRadius: kioskStyle.radius,
+                    backgroundColor: kioskStyle.accent,
+                    color: kioskStyle.accentText,
+                  }
                 : undefined
             }
           >

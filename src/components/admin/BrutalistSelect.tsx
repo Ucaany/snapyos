@@ -32,10 +32,7 @@ export function BrutalistSelect({
   return (
     <div className={cn("flex flex-col gap-1", wrapperClassName)}>
       {label ? (
-        <label
-          htmlFor={selectId}
-          className="font-mono text-[10px] uppercase tracking-[0.12em]"
-        >
+        <label htmlFor={selectId} className="font-mono text-[10px] uppercase tracking-[0.12em]">
           {label}
         </label>
       ) : null}

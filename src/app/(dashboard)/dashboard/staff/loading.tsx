@@ -10,7 +10,10 @@ export default function Loading() {
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-32 w-full border-2 border-ink shadow-[4px_4px_0_0_#111111]" />
+          <Skeleton
+            key={i}
+            className="h-32 w-full border-2 border-ink shadow-[4px_4px_0_0_#111111]"
+          />
         ))}
       </div>
       <Skeleton className="h-48 w-full border-2 border-ink shadow-[4px_4px_0_0_#111111]" />

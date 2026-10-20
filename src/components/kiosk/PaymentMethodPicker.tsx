@@ -1,7 +1,7 @@
-"use client"
-import { ArrowLeft, Banknote, QrCode, Tag } from "lucide-react"
-import type { KioskPaymentMethod, KioskVisualStyle } from "@/lib/kiosk-types"
-const icon = { qris: QrCode, va: Banknote, redirect: QrCode, voucher: Tag, cash: Banknote }
+"use client";
+import { ArrowLeft, Banknote, QrCode, Tag } from "lucide-react";
+import type { KioskPaymentMethod, KioskVisualStyle } from "@/lib/kiosk-types";
+const icon = { qris: QrCode, va: Banknote, redirect: QrCode, voucher: Tag, cash: Banknote };
 export function PaymentMethodPicker({
   methods,
   disabled,
@@ -11,21 +11,24 @@ export function PaymentMethodPicker({
   onBack,
   kioskStyle,
 }: {
-  methods: KioskPaymentMethod[]
-  disabled?: boolean
+  methods: KioskPaymentMethod[];
+  disabled?: boolean;
   /** Sisa detik kunci RATE_LIMITED (docs/06 §6.3) — 0 = tidak terkunci. */
-  lockLeft?: number
-  error?: string | null
-  onSelect(method: KioskPaymentMethod): void
-  onBack?(): void
+  lockLeft?: number;
+  error?: string | null;
+  onSelect(method: KioskPaymentMethod): void;
+  onBack?(): void;
   /** Palet kiosk: permukaan kartu, aksen CTA, radius tombol. */
-  kioskStyle?: KioskVisualStyle
+  kioskStyle?: KioskVisualStyle;
 }) {
-  const ks = kioskStyle
-  const radius = ks?.radius ?? 0
+  const ks = kioskStyle;
+  const radius = ks?.radius ?? 0;
   return (
     <section className="mx-auto flex w-full max-w-[1000px] flex-1 flex-col justify-center gap-4">
-      <div className="border-2 border-ink bg-surface p-4 shadow-[4px_4px_0_0_#111111]" style={{ borderRadius: radius }}>
+      <div
+        className="border-2 border-ink bg-surface p-4 shadow-[4px_4px_0_0_#111111]"
+        style={{ borderRadius: radius }}
+      >
         <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-ink/70">
           [ PILIH PEMBAYARAN ]
         </p>
@@ -59,14 +62,14 @@ export function PaymentMethodPicker({
       )}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {methods.map((method, index) => {
-          const Icon = icon[method.display]
+          const Icon = icon[method.display];
           return (
             <button
               key={method.id}
               type="button"
               disabled={disabled}
               onClick={() => onSelect(method)}
-               className={`flex min-h-32 flex-col items-start justify-between border-2 border-ink p-4 text-left shadow-[4px_4px_0_0_#111111] transition-transform active:translate-y-[2px] disabled:opacity-50 disabled:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${index === 0 ? "bg-accent" : "bg-surface"}`}
+              className={`flex min-h-32 flex-col items-start justify-between border-2 border-ink p-4 text-left shadow-[4px_4px_0_0_#111111] transition-transform active:translate-y-[2px] disabled:opacity-50 disabled:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${index === 0 ? "bg-accent" : "bg-surface"}`}
               style={
                 index === 0 && ks
                   ? { borderRadius: radius, backgroundColor: ks.accent, color: ks.accentText }
@@ -79,7 +82,7 @@ export function PaymentMethodPicker({
                 <small className="font-mono text-[10px] uppercase">{method.hint}</small>
               </span>
             </button>
-          )
+          );
         })}
       </div>
       {onBack && (
@@ -94,5 +97,5 @@ export function PaymentMethodPicker({
         </button>
       )}
     </section>
-  )
+  );
 }

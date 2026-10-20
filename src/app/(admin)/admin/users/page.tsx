@@ -67,19 +67,27 @@ export default async function AdminUsersPage({
             {total} user terdaftar
           </p>
           <p className="mt-3 max-w-[70ch] text-xs leading-relaxed text-muted-foreground">
-            <span className="font-bold text-ink">ADMIN</span> = kelola platform
-            (halaman ini: users, plans, payments).{" "}
-            <span className="font-bold text-ink">USER</span> = kelola bisnis
-            sendiri (dashboard bisnis, outlet, photobox). Satu akun bisa dua-duanya
-            - admin tinggal buka menu <span className="font-mono">DASHBOARD BISNIS</span>.
+            <span className="font-bold text-ink">ADMIN</span> = kelola platform (halaman ini: users,
+            plans, payments). <span className="font-bold text-ink">USER</span> = kelola bisnis
+            sendiri (dashboard bisnis, outlet, photobox). Satu akun bisa dua-duanya - admin tinggal
+            buka menu <span className="font-mono">DASHBOARD BISNIS</span>.
           </p>
         </div>
         <form method="GET" className="flex items-end gap-2" role="search">
           <div className="flex flex-col gap-1">
-            <label htmlFor="user-search" className="font-mono text-[10px] uppercase tracking-[0.12em]">
+            <label
+              htmlFor="user-search"
+              className="font-mono text-[10px] uppercase tracking-[0.12em]"
+            >
               Cari email / nama
             </label>
-            <Input id="user-search" name="search" defaultValue={q.search ?? ""} className="w-56" placeholder="cth. owner@klik.id" />
+            <Input
+              id="user-search"
+              name="search"
+              defaultValue={q.search ?? ""}
+              className="w-56"
+              placeholder="cth. owner@klik.id"
+            />
           </div>
           <Button type="submit" size="sm" variant="secondary">
             Cari
@@ -87,13 +95,16 @@ export default async function AdminUsersPage({
         </form>
       </header>
 
-      <section aria-labelledby="tambah-user" className="border-2 border-ink bg-muted p-4 shadow-[4px_4px_0_0_#111111]">
+      <section
+        aria-labelledby="tambah-user"
+        className="border-2 border-ink bg-muted p-4 shadow-[4px_4px_0_0_#111111]"
+      >
         <p id="tambah-user" className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
           {"/// TAMBAH USER"}
         </p>
         <p className="mt-1 max-w-[60ch] text-xs leading-relaxed text-muted-foreground">
-          Pendaftaran mandiri ditutup - akun baru hanya dibuat dari sini. Password
-          minimal 8 karakter; bagikan ke user secara aman.
+          Pendaftaran mandiri ditutup - akun baru hanya dibuat dari sini. Password minimal 8
+          karakter; bagikan ke user secara aman.
         </p>
         <AdminActionForm
           action={createUserAction}
@@ -105,19 +116,46 @@ export default async function AdminUsersPage({
             <label htmlFor="new-name" className="font-mono text-[10px] uppercase tracking-[0.12em]">
               Nama
             </label>
-            <Input id="new-name" name="name" required maxLength={80} placeholder="cth. Budi Santoso" />
+            <Input
+              id="new-name"
+              name="name"
+              required
+              maxLength={80}
+              placeholder="cth. Budi Santoso"
+            />
           </div>
           <div className="flex flex-col gap-1">
-            <label htmlFor="new-email" className="font-mono text-[10px] uppercase tracking-[0.12em]">
+            <label
+              htmlFor="new-email"
+              className="font-mono text-[10px] uppercase tracking-[0.12em]"
+            >
               Email
             </label>
-            <Input id="new-email" name="email" type="email" required maxLength={254} placeholder="user@klik.id" />
+            <Input
+              id="new-email"
+              name="email"
+              type="email"
+              required
+              maxLength={254}
+              placeholder="user@klik.id"
+            />
           </div>
           <div className="flex flex-col gap-1">
-            <label htmlFor="new-password" className="font-mono text-[10px] uppercase tracking-[0.12em]">
+            <label
+              htmlFor="new-password"
+              className="font-mono text-[10px] uppercase tracking-[0.12em]"
+            >
               Password
             </label>
-            <Input id="new-password" name="password" type="password" required minLength={8} maxLength={72} placeholder="min. 8 karakter" />
+            <Input
+              id="new-password"
+              name="password"
+              type="password"
+              required
+              minLength={8}
+              maxLength={72}
+              placeholder="min. 8 karakter"
+            />
           </div>
           <div className="flex flex-col gap-1">
             <BrutalistSelect
@@ -164,7 +202,7 @@ export default async function AdminUsersPage({
                   <td className="px-4 py-3 font-mono text-xs font-bold">
                     <Link
                       href={`/admin/users/${u.id}`}
-                      className="underline decoration-ink/40 underline-offset-2 hover:bg-muted"
+                      className="inline-flex min-h-11 items-center underline decoration-ink/40 underline-offset-2 hover:bg-muted"
                     >
                       {u.email}
                     </Link>
@@ -183,7 +221,10 @@ export default async function AdminUsersPage({
                     ) : null}
                   </td>
                   <td className="px-4 py-3">
-                    <RoleBadge role={u.role} envAdmin={u.role !== "admin" && isAdminEmail(u.email)} />
+                    <RoleBadge
+                      role={u.role}
+                      envAdmin={u.role !== "admin" && isAdminEmail(u.email)}
+                    />
                   </td>
                   <td className="px-4 py-3">
                     <StatusBadge status={u.status === "suspended" ? "inactive" : "active"} />
@@ -195,7 +236,7 @@ export default async function AdminUsersPage({
                           <li key={b.id}>
                             <Link
                               href={`/admin/businesses?search=${encodeURIComponent(b.slug)}`}
-                              className="font-mono text-xs font-bold underline decoration-ink/40 underline-offset-2 hover:bg-muted"
+                              className="inline-flex min-h-11 items-center font-mono text-xs font-bold underline decoration-ink/40 underline-offset-2 hover:bg-muted"
                             >
                               {b.name}
                             </Link>
@@ -217,15 +258,16 @@ export default async function AdminUsersPage({
                   </td>
                   <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                     {dateFmt.format(new Date(u.created_at))}
-                    {u.signup_ip ? (
-                      <span className="block text-[10px]">{u.signup_ip}</span>
-                    ) : null}
+                    {u.signup_ip ? <span className="block text-[10px]">{u.signup_ip}</span> : null}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap items-start gap-2">
                       <AdminActionButton
                         action={updateUserAction}
-                        hidden={{ userId: u.id, status: u.status === "suspended" ? "active" : "suspended" }}
+                        hidden={{
+                          userId: u.id,
+                          status: u.status === "suspended" ? "active" : "suspended",
+                        }}
                         submitLabel={u.status === "suspended" ? "Aktifkan" : "Suspend"}
                         variant={u.status === "suspended" ? "secondary" : "destructive"}
                         confirm={

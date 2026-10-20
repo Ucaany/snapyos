@@ -3,7 +3,7 @@
  * override bisa diuji tanpa database.
  */
 
-type PageConfig = Record<string, unknown>
+type PageConfig = Record<string, unknown>;
 
 /**
  * Hapus override visual layar terpilih, sisakan `video_key`.
@@ -18,12 +18,12 @@ export function resetPageOverrides(
   pages: Record<string, PageConfig>,
   resetPages: readonly string[]
 ): Record<string, PageConfig> {
-  if (resetPages.length === 0) return pages
-  const next: Record<string, PageConfig> = { ...pages }
+  if (resetPages.length === 0) return pages;
+  const next: Record<string, PageConfig> = { ...pages };
   for (const key of resetPages) {
-    const videoKey = next[key]?.video_key
-    if (videoKey) next[key] = { video_key: videoKey }
-    else delete next[key]
+    const videoKey = next[key]?.video_key;
+    if (videoKey) next[key] = { video_key: videoKey };
+    else delete next[key];
   }
-  return next
+  return next;
 }

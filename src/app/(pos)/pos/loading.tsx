@@ -8,10 +8,7 @@ export default function PosLoading() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="col-span-2 flex flex-col gap-3">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-14 animate-pulse border-2 border-ink/10 bg-ink/5"
-            />
+            <div key={i} className="h-14 animate-pulse border-2 border-ink/10 bg-ink/5" />
           ))}
         </div>
         <div className="flex flex-col gap-3">

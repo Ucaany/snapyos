@@ -17,7 +17,13 @@ const METHOD_LABEL: Record<string, string> = {
  * ReceiptView — struk siap-cetak (A12: window.print, tanpa printer SDK).
  * Tombol disembunyikan saat print (print:hidden).
  */
-export function ReceiptView({ detail, businessName }: { detail: PosOrderDetail; businessName: string }) {
+export function ReceiptView({
+  detail,
+  businessName,
+}: {
+  detail: PosOrderDetail;
+  businessName: string;
+}) {
   const router = useRouter();
   const { order, items } = detail;
 
@@ -49,19 +55,21 @@ export function ReceiptView({ detail, businessName }: { detail: PosOrderDetail; 
           </div>
           <div>
             <dt className="text-muted-foreground">Metode</dt>
-            <dd className="font-bold">{METHOD_LABEL[order.payment_method] ?? order.payment_method}</dd>
+            <dd className="font-bold">
+              {METHOD_LABEL[order.payment_method] ?? order.payment_method}
+            </dd>
           </div>
           <div>
             <dt className="text-muted-foreground">Booth</dt>
-            <dd className="font-bold">{order.photobox_name ?? "—"}</dd>
+            <dd className="font-bold">{order.photobox_name ?? "-"}</dd>
           </div>
           <div>
             <dt className="text-muted-foreground">Outlet</dt>
-            <dd className="font-bold">{order.outlet_name ?? "—"}</dd>
+            <dd className="font-bold">{order.outlet_name ?? "-"}</dd>
           </div>
           <div>
             <dt className="text-muted-foreground">Kasir</dt>
-            <dd className="font-bold">{order.cashier_name ?? "—"}</dd>
+            <dd className="font-bold">{order.cashier_name ?? "-"}</dd>
           </div>
           <div>
             <dt className="text-muted-foreground">Waktu</dt>
@@ -79,9 +87,15 @@ export function ReceiptView({ detail, businessName }: { detail: PosOrderDetail; 
           <caption className="sr-only">Item pembelian</caption>
           <thead>
             <tr className="border-b-2 border-ink text-left text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-              <th scope="col" className="py-2">Item</th>
-              <th scope="col" className="py-2 text-right">Qty</th>
-              <th scope="col" className="py-2 text-right">Subtotal</th>
+              <th scope="col" className="py-2">
+                Item
+              </th>
+              <th scope="col" className="py-2 text-right">
+                Qty
+              </th>
+              <th scope="col" className="py-2 text-right">
+                Subtotal
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -97,11 +111,15 @@ export function ReceiptView({ detail, businessName }: { detail: PosOrderDetail; 
 
         <dl className="flex flex-col gap-1 border-t-2 border-ink pt-3 font-mono text-sm">
           <div className="flex items-center justify-between">
-            <dt className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground">Subtotal</dt>
+            <dt className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+              Subtotal
+            </dt>
             <dd>{formatIDR(order.gross_amount)}</dd>
           </div>
           <div className="flex items-center justify-between">
-            <dt className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground">Diskon</dt>
+            <dt className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+              Diskon
+            </dt>
             <dd>{formatIDR(order.discount_amount)}</dd>
           </div>
           <div className="flex items-center justify-between border-t-2 border-ink pt-2">
@@ -112,7 +130,7 @@ export function ReceiptView({ detail, businessName }: { detail: PosOrderDetail; 
 
         <footer className="border-t-2 border-dashed border-ink/30 pt-3 text-center">
           <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
-             Terima kasih. SnapyOS POS
+            Terima kasih. SnapyOS POS
           </p>
         </footer>
       </article>

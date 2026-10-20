@@ -38,7 +38,6 @@ cp .env.example .env.local   # isi SUPABASE_*, AUTH_SECRET, dll.
 npm run dev
 ```
 
-
 ## Database (Supabase cloud) & Migrasi
 
 Produksi memakai **Supabase cloud Postgres** (`https://fdpgmkznhduhxwvohlev.supabase.co`), diakses lewat PostgREST via `@supabase/supabase-js` — **tidak ada driver `pg` langsung**. Media storage (foto) disimpan di **Cloudflare R2** (objek, bukan database) dengan fallback Supabase Storage — **Cloudflare R2 ≠ database**, hanya penyimpanan objek.
@@ -58,20 +57,62 @@ psql "postgresql://postgres.<ref>:<DB_PASSWORD>@aws-0-<region>.pooler.supabase.c
 node scripts/backfill-storage-usage.mjs
 ```
 
-- **Belum diterapkan ke cloud (audit 2026-10-07): `0061`, `0062`.** Setelah apply, verifikasi via `GET /rest/v1/storage_usage?select=business_id&limit=1` — harus `200`, bukan `PGRST205`.
+- **Sudah diterapkan ke cloud** (diverifikasi 2026-10-20 lewat probe PostgREST): `0061`, `0062`, `0063`, `0068`, `0069`, `0070`. `0069` menghadirkan RPC kuota atomik (`create_outlet_with_quota`, `create_photobox_with_quota`, `add_business_member_with_quota`) yang dipanggil `src/server/outlets.ts`, `photoboxes.ts`, dan `staff.ts`.
+- **Belum diterapkan (sengaja):** `0071_rpc_search_path_hardening.sql`. Ini keputusan pemilik, lihat `docs/status.md`. Jalankan sebelum mengaktifkan hardening `search_path` di produksi.
 - `0061` = plan device/addon model (DML UPDATE pada `plans`); `0062` = storage_usage accounting (`storage_objects` + `storage_usage` + RPC `storage_account_add`/`storage_account_sub`).
-- Migrasi `0062` **WAJIB diterapkan sebelum mengaktifkan enforcement kuota storage / deploy rilis accounting ini**: jalur tulis (`accountStorageAdd`/`accountStorageSub`) fail-open (error di-log, lanjut), tetapi jalur baca enforcement (`assertStorageAvailable` → `getBusinessUsedBytes(id, failOpen=false)`) **fail-closed — melempar** saat query gagal, dan pemanggilnya (`src/server/branding.ts`, `src/server/kiosk-sessions.ts:402`, `src/server/templates.ts`) `await` tanpa try/catch, sehingga upload/finalize bisa 500 di DB tanpa `0062`.
+- Jalur baca enforcement storage (`assertStorageAvailable` → `getBusinessUsedBytes(id, failOpen=false)`) **fail-closed: melempar** saat query gagal. Pemanggilnya (`src/server/branding.ts`, `src/server/kiosk-sessions.ts`, `src/server/templates.ts`) `await` tanpa try/catch, jadi `0062` wajib ada di setiap environment sebelum upload/finalize dipakai.
 
 ## Scripts
 
 ```bash
-npm run dev          # dev server
-npm run build        # production build
-npm run lint         # eslint
-npm run typecheck    # tsc --noEmit
-npm run test         # unit tests (node:test)
-npm run format       # prettier --write
+npm run dev              # dev server
+npm run build            # production build
+npm run start            # jalankan hasil build (standalone)
+npm run lint             # eslint
+npm run typecheck        # tsc --noEmit
+npm run test             # unit tests (node:test)
+npm run verify           # lint + typecheck + test + build (gate rilis)
+npm run test:e2e         # seluruh suite E2E Playwright
+npm run test:e2e:kiosk   # E2E kiosk (aktivasi, kamera, bayar, hasil, responsif)
+npm run test:e2e:bluetooth  # E2E printer Bluetooth
+npm run test:e2e:print   # E2E cetak standalone
+npm run format           # prettier --write
+npm run format:check     # prettier --check (gate rilis)
 ```
+
+### Audit rilis (2026-10-20)
+
+Gate yang diverifikasi di mesin pengembang sebelum deploy:
+
+```bash
+npm run typecheck        # PASS
+npm run lint             # PASS, 0 error, 12 warning <img> yang disengaja
+npm test                 # PASS 883/883
+npm run build            # PASS (Next.js 16, 93 static pages)
+npm run format:check     # PASS
+npm run test:e2e:print   # PASS 4/4
+npm run test:e2e:bluetooth # PASS 2/2
+```
+
+E2E kiosk dijalankan headed satu suite pada satu waktu:
+
+```bash
+E2E_HEADED=1 node tests/e2e/kiosk-smoke.spec.mjs       # 6/6
+E2E_HEADED=1 node tests/e2e/kiosk-lock.spec.mjs        # 7/7
+E2E_HEADED=1 node tests/e2e/kiosk-frames.spec.mjs      # 5/5
+E2E_HEADED=1 node tests/e2e/kiosk-responsive.spec.mjs  # 15/15
+```
+
+Audit fitur juga mencakup CRUD owner (outlet, paket, photobox, tiket bantuan),
+staff (invite/role), payment credential (enkripsi secret, toggle), dan aksi admin
+(plan, promo, user, settings) — semuanya diverifikasi ke database dan dibersihkan
+setelah tes. Ringkasan temuan ada di `docs/18-audit-report.md`.
+
+Catatan environment: `AUTH_URL` di `.env.local` harus sama dengan origin dev
+(`http://localhost:3000`); jika tidak, login berhasil tetapi redirect kembali ke
+halaman login. `DEV_SKIP_PAYMENT=true` hanya untuk jalur E2E kiosk lokal.
+
+E2E memerlukan dev server berjalan dan data seed booth; lihat `tests/e2e/README.md`.
 
 ## Cron retention (verifikasi dev)
 

@@ -14,7 +14,12 @@ import {
 test("buildPosRevenue: totals + byMethod + byStatus + average (int IDR)", () => {
   const r = buildPosRevenue(
     [
-      { gross_amount: 30_000, discount_amount: 5_000, final_amount: 25_000, payment_method: "cash" },
+      {
+        gross_amount: 30_000,
+        discount_amount: 5_000,
+        final_amount: 25_000,
+        payment_method: "cash",
+      },
       { gross_amount: 20_000, discount_amount: 0, final_amount: 20_000, payment_method: "cash" },
       { gross_amount: 15_000, discount_amount: 0, final_amount: 15_000, payment_method: "other" },
     ],
@@ -31,7 +36,10 @@ test("buildPosRevenue: totals + byMethod + byStatus + average (int IDR)", () => 
   assert.equal(r.totalFinal, 60_000);
   assert.equal(r.count, 3);
   assert.equal(r.average, 20_000);
-  assert.deepEqual(r.byMethod.map((m) => m.key), ["cash", "other"]);
+  assert.deepEqual(
+    r.byMethod.map((m) => m.key),
+    ["cash", "other"]
+  );
   assert.equal(r.byMethod[0]!.amount, 45_000);
   assert.deepEqual(r.byStatus, [
     { key: "paid", count: 3 },

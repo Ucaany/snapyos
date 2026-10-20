@@ -1,18 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  Camera,
-  CircleAlert,
-  FlipHorizontal,
-  Loader2,
-  RotateCcw,
-} from "lucide-react";
+import { Camera, CircleAlert, FlipHorizontal, Loader2, RotateCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { captureFrame } from "@/lib/camera-capture";
 import { useObjectUrl } from "@/components/kiosk/use-object-url";
-import { CAMERA_ERRORS, cameraErrorKind, resolutionLabel, resolutionWarning } from "@/lib/camera-errors";
+import {
+  CAMERA_ERRORS,
+  cameraErrorKind,
+  resolutionLabel,
+  resolutionWarning,
+} from "@/lib/camera-errors";
 import type { CameraSettings } from "@/lib/kiosk-types";
 import { setPhotoboxMirrorAction, setPhotoboxPreferredCameraAction } from "@/server/booth-actions";
 import { normalizeRotation, normalizeZoom } from "@/lib/camera-capture";
@@ -81,7 +80,10 @@ export function CameraTest({ photoboxId, photoboxName, cameraSettings, canWrite 
   const openStream = useCallback(async () => {
     setError(null);
     if (!navigator.mediaDevices?.getUserMedia) {
-      setError({ message: "Browser tidak mendukung kamera. Gunakan Chrome terbaru.", action: "COBA LAGI" });
+      setError({
+        message: "Browser tidak mendukung kamera. Gunakan Chrome terbaru.",
+        action: "COBA LAGI",
+      });
       return;
     }
     stopStream();
@@ -95,7 +97,9 @@ export function CameraTest({ photoboxId, photoboxName, cameraSettings, canWrite 
     // kamera mana pun yang tersedia agar preview SELALU tampil (docs/05 §5.5.3).
     const attempts: MediaStreamConstraints[] = [];
     if (deviceId) {
-      attempts.push({ video: { deviceId: { exact: deviceId }, width: { ideal }, height: { ideal: idealH } } });
+      attempts.push({
+        video: { deviceId: { exact: deviceId }, width: { ideal }, height: { ideal: idealH } },
+      });
       attempts.push({ video: { deviceId: { exact: deviceId } } });
     }
     attempts.push({ video: { width: { ideal }, height: { ideal: idealH } } });
@@ -132,7 +136,12 @@ export function CameraTest({ photoboxId, photoboxName, cameraSettings, canWrite 
     } else {
       setError({ message: "Gagal membuka kamera. Coba lagi.", action: "COBA LAGI" });
     }
-  }, [cameraSettings.capture_width, cameraSettings.capture_height, cameraSettings.preferred_device_id, stopStream]);
+  }, [
+    cameraSettings.capture_width,
+    cameraSettings.capture_height,
+    cameraSettings.preferred_device_id,
+    stopStream,
+  ]);
 
   // Re-open stream saat setting kamera berubah (capture_*, preferred_device_id).
   // `openStream` sudah useCallback dengan dep tepat, `stopStream` stable — deps
@@ -223,7 +232,7 @@ export function CameraTest({ photoboxId, photoboxName, cameraSettings, canWrite 
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_360px] lg:gap-6">
-      {/* KIRI — preview / review (dark, frame kamera) */}
+      {/* KIRI: preview / review (dark, frame kamera) */}
       <div className="relative flex min-h-[60dvh] items-center justify-center overflow-hidden border-2 border-ink bg-ink lg:min-h-[70dvh]">
         <video
           ref={videoRef}
@@ -284,7 +293,7 @@ export function CameraTest({ photoboxId, photoboxName, cameraSettings, canWrite 
         )}
       </div>
 
-      {/* KANAN — controls + status (light) */}
+      {/* KANAN: controls + status (light) */}
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
@@ -298,14 +307,18 @@ export function CameraTest({ photoboxId, photoboxName, cameraSettings, canWrite 
           </p>
         </div>
 
-        {/* Mirror toggle — persist ke kiosk */}
+        {/* Mirror toggle: persist ke kiosk */}
         <div className="flex flex-col gap-2 border-2 border-ink bg-surface p-4">
           <div className="flex items-center gap-2">
             <FlipHorizontal className="size-4" aria-hidden />
             <p className="font-mono text-xs uppercase tracking-[0.1em]">Mirror preview</p>
             {saving && <Loader2 className="size-4 animate-spin" aria-hidden />}
           </div>
-          <div className="grid grid-cols-2 border-2 border-ink" role="group" aria-label="Mirror preview">
+          <div
+            className="grid grid-cols-2 border-2 border-ink"
+            role="group"
+            aria-label="Mirror preview"
+          >
             <button
               type="button"
               onClick={() => void handleMirror(true)}
@@ -330,16 +343,19 @@ export function CameraTest({ photoboxId, photoboxName, cameraSettings, canWrite 
             </button>
           </div>
           {saveError && (
-            <p role="alert" className="font-mono text-[10px] uppercase tracking-[0.05em] text-destructive">
+            <p
+              role="alert"
+              className="font-mono text-[10px] uppercase tracking-[0.05em] text-destructive"
+            >
               {saveError}
             </p>
           )}
           <p className="font-mono text-[10px] leading-relaxed text-muted-foreground">
-            Tampilan mirror preview di kiosk. Disimpan otomatis — kiosk ikut pengaturan ini.
+            Tampilan mirror preview di kiosk. Disimpan otomatis: kiosk ikut pengaturan ini.
           </p>
         </div>
 
-        {/* Pilihan kamera booth — persist ke preferred_device_id */}
+        {/* Pilihan kamera booth: persist ke preferred_device_id */}
         <div className="flex flex-col gap-2 border-2 border-ink bg-surface p-4">
           <p className="font-mono text-xs uppercase tracking-[0.1em]">Kamera booth</p>
           {devices.length === 0 ? (
@@ -366,20 +382,26 @@ export function CameraTest({ photoboxId, photoboxName, cameraSettings, canWrite 
                 ))}
               </select>
               {savingDevice && (
-                <p role="status" className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+                <p
+                  role="status"
+                  className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground"
+                >
                   Menyimpan…
                 </p>
               )}
             </div>
           )}
           {deviceError && (
-            <p role="alert" className="font-mono text-[10px] uppercase tracking-[0.05em] text-destructive">
+            <p
+              role="alert"
+              className="font-mono text-[10px] uppercase tracking-[0.05em] text-destructive"
+            >
               {deviceError}
             </p>
           )}
           <p className="font-mono text-[10px] leading-relaxed text-muted-foreground">
-            Disimpan ke booth dan dipakai kiosk saat sesi foto dimulai. Tanpa pilihan,
-            kiosk memakai kamera default perangkat.
+            Disimpan ke booth dan dipakai kiosk saat sesi foto dimulai. Tanpa pilihan, kiosk memakai
+            kamera default perangkat.
           </p>
         </div>
 
@@ -397,7 +419,7 @@ export function CameraTest({ photoboxId, photoboxName, cameraSettings, canWrite 
           ) : (
             <div className="flex flex-col gap-3">
               <p className="text-center font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
-                Foto berhasil diambil — uji hasil
+                Foto berhasil diambil: uji hasil
               </p>
               <Button size="lg" variant="outline" onClick={handleRetake} className="bg-surface">
                 <RotateCcw className="size-5" aria-hidden /> Retake
@@ -414,7 +436,7 @@ export function CameraTest({ photoboxId, photoboxName, cameraSettings, canWrite 
           <div className="flex items-center justify-between">
             <span className="font-mono text-[11px] uppercase tracking-[0.05em]">Resolusi</span>
             <span className="font-mono text-[11px] font-bold">
-              {resW ? `${resW}×${Math.round((resW * 9) / 16)}` : "—"}
+              {resW ? `${resW}×${Math.round((resW * 9) / 16)}` : "-"}
             </span>
           </div>
           {resWarn && (

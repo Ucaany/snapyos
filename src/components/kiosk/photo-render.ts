@@ -1,8 +1,4 @@
-import {
-  FILTER_PRESETS,
-  type KioskOverlay,
-  type PhotoEdit,
-} from "@/lib/kiosk-types";
+import { FILTER_PRESETS, type KioskOverlay, type PhotoEdit } from "@/lib/kiosk-types";
 import {
   applyChromaKey,
   DEFAULT_CHROMA_KEY,
@@ -109,7 +105,9 @@ export function drawPhoto(
     `contrast(${Math.max(0, a.contrast ?? 1)})`,
     `saturate(${Math.max(0, a.saturation ?? 1)})`,
     a.blur ? `blur(${Math.max(0, a.blur)}px)` : "",
-  ].filter(Boolean).join(" ");
+  ]
+    .filter(Boolean)
+    .join(" ");
   ctx.filter = [base, adjustments].filter(Boolean).join(" ") || "none";
 
   ctx.save();
@@ -146,7 +144,14 @@ export function drawPhoto(
   }
   if ((a.vignette ?? 0) > 0) {
     const amount = Math.min(1, Math.max(0, a.vignette));
-    const gradient = ctx.createRadialGradient(cw / 2, ch / 2, Math.min(cw, ch) * 0.25, cw / 2, ch / 2, Math.max(cw, ch) * 0.72);
+    const gradient = ctx.createRadialGradient(
+      cw / 2,
+      ch / 2,
+      Math.min(cw, ch) * 0.25,
+      cw / 2,
+      ch / 2,
+      Math.max(cw, ch) * 0.72
+    );
     gradient.addColorStop(0, "rgba(0,0,0,0)");
     gradient.addColorStop(1, `rgba(0,0,0,${amount * 0.75})`);
     ctx.save();
@@ -162,10 +167,7 @@ export function drawPhoto(
  * docs/15 §15.1: frame selalu DI ATAS foto). No-op bila frame belum termuat —
  * pemanggil sudah memvalidasinya sebelum render.
  */
-export function drawFrameOverlay(
-  canvas: HTMLCanvasElement,
-  frame: HTMLImageElement | null
-): void {
+export function drawFrameOverlay(canvas: HTMLCanvasElement, frame: HTMLImageElement | null): void {
   if (!frame) return;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;

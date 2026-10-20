@@ -35,7 +35,10 @@ export function RetentionSettingsEditor({ retentionDays, canWrite }: Props) {
         aria-labelledby="retention-settings-heading"
       >
         <div className="mb-5 flex items-center justify-between gap-4 border-b-2 border-ink pb-4">
-          <h2 id="retention-settings-heading" className="font-display text-lg uppercase tracking-tight">
+          <h2
+            id="retention-settings-heading"
+            className="font-display text-lg uppercase tracking-tight"
+          >
             Retensi Hasil Foto
           </h2>
           <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
@@ -70,8 +73,8 @@ export function RetentionSettingsEditor({ retentionDays, canWrite }: Props) {
             </p>
           ) : (
             <p className="max-w-[65ch] font-mono text-xs leading-relaxed text-muted-foreground">
-              Default 3 hari (rentang 1–3). Setelah lewat batas: link hasil (/r/token) otomatis
-              mati dan foto + GIF dihapus permanen oleh sistem — transaksi tetap tercatat.
+              Default 3 hari (rentang 1–3). Setelah lewat batas: link hasil (/r/token) otomatis mati
+              dan foto + GIF dihapus permanen oleh sistem. Transaksi tetap tercatat.
             </p>
           )}
         </div>

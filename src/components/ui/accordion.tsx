@@ -1,9 +1,7 @@
 "use client";
 
 import * as React from "react";
-import {
-  Accordion as AccordionPrimitive,
-} from "@base-ui/react/accordion";
+import { Accordion as AccordionPrimitive } from "@base-ui/react/accordion";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -102,10 +100,7 @@ function AccordionContent({
       {...props}
     >
       <div className="min-h-0 overflow-hidden">
-        <div
-          data-slot="accordion-content-inner"
-          className="pb-4 pt-0 text-muted-foreground"
-        >
+        <div data-slot="accordion-content-inner" className="pb-4 pt-0 text-muted-foreground">
           {children}
         </div>
       </div>
@@ -113,10 +108,4 @@ function AccordionContent({
   );
 }
 
-export {
-  Accordion,
-  AccordionItem,
-  AccordionHeader,
-  AccordionTrigger,
-  AccordionContent,
-};
+export { Accordion, AccordionItem, AccordionHeader, AccordionTrigger, AccordionContent };

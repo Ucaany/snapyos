@@ -11,7 +11,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium } from "playwright";
 
-export async function launchKiosk({ viewport = { width: 1366, height: 768 }, deviceScaleFactor = 1, headed = false, slowMo = 0 } = {}) {
+export async function launchKiosk({
+  viewport = { width: 1366, height: 768 },
+  deviceScaleFactor = 1,
+  headed = false,
+  slowMo = 0,
+} = {}) {
   const profileDir = mkdtempSync(join(tmpdir(), "snapyos-e2e-"));
   // E2E_HEADED=1 → jendela Chrome terlihat, supaya operator bisa melihat
   // langkah yang dijalankan (dan memilih printer di dialog asli).

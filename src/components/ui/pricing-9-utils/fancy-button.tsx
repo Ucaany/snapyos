@@ -22,7 +22,7 @@ const fancyButtonVariants = cva(
       variant: "default",
       size: "default",
     },
-  },
+  }
 );
 
 function FancyButton({

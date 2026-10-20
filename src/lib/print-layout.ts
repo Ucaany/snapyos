@@ -34,8 +34,7 @@ export type PrintPlan =
 
 /** Ukuran kertas foto → mm. 4x6 = 101.6×152.4; A6 = 105×148. Orientasi swap w/h. */
 export function printPageSize(settings?: PrintSettingsInput | null): PrintPageSize {
-  const base =
-    settings?.paper_size === "A6" ? { w: 105, h: 148 } : { w: 101.6, h: 152.4 };
+  const base = settings?.paper_size === "A6" ? { w: 105, h: 148 } : { w: 101.6, h: 152.4 };
   const landscape = settings?.orientation === "landscape";
   const marginRaw = typeof settings?.margins_mm === "number" ? settings.margins_mm : 0;
   const marginMm = Math.min(20, Math.max(0, marginRaw));

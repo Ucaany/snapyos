@@ -16,11 +16,7 @@ export const metadata: Metadata = {
  * Layout Admin Platform - role=admin / ADMIN_EMAILS (docs/10 §10.5, docs/03 §3.3.4).
  * Shell konsisten dengan layout owner: Topbar + grid 240px/1fr full-width.
  */
-export default async function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const admin = await getAdminUser();
   if (!admin) {
     const user = await requireUser();

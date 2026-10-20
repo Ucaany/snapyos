@@ -48,9 +48,7 @@ export function MetricCard({
       <p
         className={cn(
           "font-mono font-bold leading-none tracking-tight",
-          size === "hero"
-            ? "text-3xl md:text-4xl lg:text-5xl"
-            : "text-lg md:text-xl"
+          size === "hero" ? "text-3xl md:text-4xl lg:text-5xl" : "text-lg md:text-xl"
         )}
       >
         {value}

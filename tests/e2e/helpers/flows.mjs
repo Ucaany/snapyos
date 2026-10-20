@@ -38,5 +38,8 @@ export async function captureAll(page, count) {
 
 /** Selesaikan editor dan tunggu layar print/result. */
 export async function finishEditor(page) {
-  await page.getByRole("button", { name: /^selesai$/i }).first().click();
+  await page
+    .getByRole("button", { name: /^selesai$/i })
+    .first()
+    .click();
 }

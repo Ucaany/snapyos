@@ -71,6 +71,6 @@ export function decrypt(payload: string, keyHex?: string): string {
     const decrypted = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
     return decrypted.toString("utf8");
   } catch {
-    throw new Error("Dekripsi gagal — key salah atau payload terkorupsi.");
+    throw new Error("Dekripsi gagal: key salah atau payload terkorupsi.");
   }
 }

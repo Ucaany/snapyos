@@ -58,9 +58,7 @@ const nextConfig: NextConfig = {
   // Vercel file-tracing tidak otomatis menyalin node_modules/pdfkit/js/data/**
   // → receipt 500 di production. Include eksplisit ke route receipt.
   outputFileTracingIncludes: {
-    "/dashboard/subscription/invoice/[id]/receipt": [
-      "./node_modules/pdfkit/js/data/**/*",
-    ],
+    "/dashboard/subscription/invoice/[id]/receipt": ["./node_modules/pdfkit/js/data/**/*"],
   },
   experimental: {
     // Batas klon body proxy (Next 16, `src/proxy.ts` match hampir semua path).

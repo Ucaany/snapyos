@@ -33,7 +33,7 @@ export default async function SupportPage() {
       <div className="flex flex-wrap gap-2">
         <Link
           href="/docs"
-          className="border-2 border-ink bg-surface px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.05em] text-ink transition-colors hover:bg-accent active:translate-y-[2px]"
+          className="inline-flex min-h-11 items-center border-2 border-ink bg-surface px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.05em] text-ink transition-colors hover:bg-accent active:translate-y-[2px]"
         >
           Dokumentasi
         </Link>

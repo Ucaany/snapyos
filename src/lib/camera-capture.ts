@@ -17,7 +17,7 @@ export type CaptureRotation = 0 | 90 | 180 | 270;
 /** Normalisasi derajat bebas ke 0/90/180/270 terdekat. */
 export function normalizeRotation(degrees: number | null | undefined): CaptureRotation {
   const value = typeof degrees === "number" && Number.isFinite(degrees) ? degrees : 0;
-  const normalized = ((Math.round(value / 90) * 90) % 360 + 360) % 360;
+  const normalized = (((Math.round(value / 90) * 90) % 360) + 360) % 360;
   if (normalized === 90 || normalized === 180 || normalized === 270) return normalized;
   return 0;
 }
@@ -34,9 +34,7 @@ export function captureSize(
   height: number,
   rotation: CaptureRotation
 ): { width: number; height: number } {
-  return rotation === 90 || rotation === 270
-    ? { width: height, height: width }
-    : { width, height };
+  return rotation === 90 || rotation === 270 ? { width: height, height: width } : { width, height };
 }
 
 /**

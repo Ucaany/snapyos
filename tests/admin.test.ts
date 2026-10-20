@@ -9,12 +9,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import {
-  extendIsoDays,
-  monthlyEquivalent,
-  paymentSummary,
-  sumMrr,
-} from "../src/lib/admin-math.ts";
+import { extendIsoDays, monthlyEquivalent, paymentSummary, sumMrr } from "../src/lib/admin-math.ts";
 import {
   adminSettingsUpdateSchema,
   adminSubscriptionAddOnUpdateSchema,
@@ -104,10 +99,29 @@ test("adminUserCreateSchema: role default user, email dinormalkan, password min 
     adminUserCreateSchema.parse({ name: "Budi", email: "BUDI@klik.id", password: "rahasia99" }),
     { name: "Budi", email: "budi@klik.id", password: "rahasia99", role: "user" }
   );
-  assert.equal(adminUserCreateSchema.parse({ name: "A", email: "a@b.id", password: "12345678", role: "admin" }).role, "admin");
-  assert.equal(adminUserCreateSchema.safeParse({ name: "A", email: "a@b.id", password: "pendek" }).success, false);
-  assert.equal(adminUserCreateSchema.safeParse({ name: "A", email: "bukan-email", password: "12345678" }).success, false);
-  assert.equal(adminUserCreateSchema.safeParse({ name: "A", email: "a@b.id", password: "12345678", role: "ceo" }).success, false);
+  assert.equal(
+    adminUserCreateSchema.parse({ name: "A", email: "a@b.id", password: "12345678", role: "admin" })
+      .role,
+    "admin"
+  );
+  assert.equal(
+    adminUserCreateSchema.safeParse({ name: "A", email: "a@b.id", password: "pendek" }).success,
+    false
+  );
+  assert.equal(
+    adminUserCreateSchema.safeParse({ name: "A", email: "bukan-email", password: "12345678" })
+      .success,
+    false
+  );
+  assert.equal(
+    adminUserCreateSchema.safeParse({
+      name: "A",
+      email: "a@b.id",
+      password: "12345678",
+      role: "ceo",
+    }).success,
+    false
+  );
 });
 
 test("adminSettingsUpdateSchema: whitelist + uang integer", () => {
@@ -210,8 +224,16 @@ test("M2: GET subscriptions/:id & PATCH subscription-add-ons/:id tersedia (docs/
     new URL("../src/app/api/v1/admin/subscription-add-ons/[id]/route.ts", import.meta.url),
     "utf8"
   );
-  assert.match(linkRoute, /export const PATCH = adminRawRoute/, "PATCH subscription-add-ons/:id wajib ada");
-  assert.match(linkRoute, /export const DELETE = adminRawRoute/, "DELETE subscription-add-ons/:id wajib ada");
+  assert.match(
+    linkRoute,
+    /export const PATCH = adminRawRoute/,
+    "PATCH subscription-add-ons/:id wajib ada"
+  );
+  assert.match(
+    linkRoute,
+    /export const DELETE = adminRawRoute/,
+    "DELETE subscription-add-ons/:id wajib ada"
+  );
 });
 
 test("M2: adminRoute memanggil requireAdmin di lapisan route", async () => {
@@ -227,15 +249,16 @@ test("M2: adminRoute memanggil requireAdmin di lapisan route", async () => {
 // `src/server/admin/settings.ts` menyentuh `server-only`, jadi tak bisa
 // di-import di node:test; pola sama dengan blok M2 di atas (baca sumber sebagai teks).
 test("updatePlatformSettings: tulis default_retention_days dijaga rentang 1–3", async () => {
-  const src = await readFile(
-    new URL("../src/server/admin/settings.ts", import.meta.url),
-    "utf8"
-  );
+  const src = await readFile(new URL("../src/server/admin/settings.ts", import.meta.url), "utf8");
   // Nilai di luar rentang privasi ditolak (VALIDATION_ERROR), bukan ditulis apa adanya.
   assert.match(
     src,
     /RETENTION_MIN_DAYS[\s\S]*?RETENTION_MAX_DAYS[\s\S]*?VALIDATION_ERROR/,
     "write lintas-tenant harus menolak nilai di luar 1–3 dengan VALIDATION_ERROR"
   );
-  assert.match(src, /from "@\/lib\/retention"/, "batas retention wajib dari satu sumber @/lib/retention");
+  assert.match(
+    src,
+    /from "@\/lib\/retention"/,
+    "batas retention wajib dari satu sumber @/lib/retention"
+  );
 });

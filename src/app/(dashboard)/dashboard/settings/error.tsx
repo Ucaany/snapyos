@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 /**
  * Error boundary - /dashboard/settings (profil, storage, kebijakan).
@@ -6,14 +6,14 @@
  * kebijakan checkout, jadi pesannya menahan owner dari menyimpan blind.
  */
 
-import { FeatureError } from "@/components/dashboard/FeatureError"
+import { FeatureError } from "@/components/dashboard/FeatureError";
 
 export default function SettingsError({
   error,
   reset,
 }: {
-  error: Error & { digest?: string }
-  reset: () => void
+  error: Error & { digest?: string };
+  reset: () => void;
 }) {
   return (
     <FeatureError
@@ -22,5 +22,5 @@ export default function SettingsError({
       error={error}
       reset={reset}
     />
-  )
+  );
 }

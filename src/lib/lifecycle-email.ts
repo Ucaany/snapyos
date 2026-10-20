@@ -6,10 +6,7 @@
  * Satu-satunya bahasa visual SnapyOS: Neo-Brutalism.
  */
 
-export type LifecycleEmailKind =
-  | "welcome"
-  | "subscription_started"
-  | "expiry_reminder";
+export type LifecycleEmailKind = "welcome" | "subscription_started" | "expiry_reminder";
 
 const KIND_ACCENT: Record<LifecycleEmailKind, string> = {
   welcome: "#34d399",
@@ -33,9 +30,7 @@ function escapeHtml(s: string): string {
 }
 
 function paragraphs(lines: string[]): string {
-  return lines
-    .map((l) => `<p style="margin:0 0 16px 0;">${escapeHtml(l)}</p>`)
-    .join("");
+  return lines.map((l) => `<p style="margin:0 0 16px 0;">${escapeHtml(l)}</p>`).join("");
 }
 
 export type LifecycleEmailInput = {
@@ -81,7 +76,7 @@ export function renderLifecycleHtml(input: LifecycleEmailInput): string {
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#6b6b6b;">
-                    SnapyOS&reg; platform<br />Email otomatis — jangan balas.
+                    SnapyOS&reg; platform<br />Email otomatis: jangan balas.
                   </td>
                   <td align="right" style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#111111;">
                     ${escapeHtml(input.recipientName)}
@@ -100,5 +95,5 @@ export function renderLifecycleHtml(input: LifecycleEmailInput): string {
 
 export function renderLifecycleText(input: LifecycleEmailInput): string {
   const tagline = KIND_TAGLINE[input.kind];
-  return `SnapyOS® — ${tagline}\n${input.subject}\n\n${input.lines.join("\n\n")}\n\nEmail otomatis, jangan balas.`;
+  return `SnapyOS®: ${tagline}\n${input.subject}\n\n${input.lines.join("\n\n")}\n\nEmail otomatis, jangan balas.`;
 }

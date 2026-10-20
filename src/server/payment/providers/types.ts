@@ -4,46 +4,46 @@
  * NO "server-only" — used by adapters + unit tests.
  */
 
-export type GatewayProvider = "midtrans" | "tripay" | "pakasir"
+export type GatewayProvider = "midtrans" | "tripay" | "pakasir";
 
-export type GatewayStatus = "pending" | "paid" | "expired" | "failed" | "cancelled"
+export type GatewayStatus = "pending" | "paid" | "expired" | "failed" | "cancelled";
 
 export type GatewayCreateResult = {
-  orderId: string
-  amount: number
+  orderId: string;
+  amount: number;
   /** Total termasuk unique code / admin fee. */
-  totalAmount: number
+  totalAmount: number;
   /** Raw QRIS string (untuk render QR di kiosk). */
-  qrString: string | null
+  qrString: string | null;
   /** QR image URL atau base64. */
-  qrImageUrl: string | null
+  qrImageUrl: string | null;
   /** Redirect URL (Midtrans Snap / Tripay checkout). */
-  paymentUrl: string | null
+  paymentUrl: string | null;
   /** Virtual Account number. */
-  vaNumber: string | null
+  vaNumber: string | null;
   /** ISO datetime expiry. */
-  expiresAt: string | null
+  expiresAt: string | null;
   /** Reference ID dari gateway. */
-  providerRef: string
-}
+  providerRef: string;
+};
 
 export interface PaymentGateway {
-  provider: GatewayProvider
+  provider: GatewayProvider;
 
   /** Buat transaksi QRIS/VA/e-wallet. Amount = integer IDR, server-computed. */
   createTransaction(input: {
-    orderId: string
-    amount: number
-    description: string
-    customerName?: string
-    customerEmail?: string
+    orderId: string;
+    amount: number;
+    description: string;
+    customerName?: string;
+    customerEmail?: string;
     /** Provider webhook callback URL. */
-    callbackUrl: string
+    callbackUrl: string;
     /** Customer return/deeplink URL; never used as settlement truth. */
-    returnUrl?: string
+    returnUrl?: string;
     /** Requested gateway method. */
-    paymentMethods?: string[]
-  }): Promise<GatewayCreateResult>
+    paymentMethods?: string[];
+  }): Promise<GatewayCreateResult>;
 
   /**
    * Cek status transaksi di gateway.
@@ -51,13 +51,13 @@ export interface PaymentGateway {
    * @param amount — optional, dibutuhkan Pakasir (API quirk: amount wajib di query).
    * @param providerRef — Pakasir v2: txn_id dari create (dipakai endpoint transaction-status).
    */
-  getStatus(orderId: string, amount?: number, providerRef?: string | null): Promise<GatewayStatus>
+  getStatus(orderId: string, amount?: number, providerRef?: string | null): Promise<GatewayStatus>;
 
   /** Verifikasi webhook signature. */
-  verifyWebhook(payload: unknown, signature: string): boolean
+  verifyWebhook(payload: unknown, signature: string): boolean;
 
   /** Cancel/expire transaksi pending (opsional — tidak semua gateway support). */
-  cancelTransaction?(orderId: string): Promise<boolean>
+  cancelTransaction?(orderId: string): Promise<boolean>;
 }
 
 /**
@@ -65,12 +65,12 @@ export interface PaymentGateway {
  * serverKey = PLAINTEXT — JANGAN pernah dikembalikan ke response API / client.
  */
 export type GatewayCredential = {
-  id: string
-  provider: GatewayProvider
-  merchantId: string
+  id: string;
+  provider: GatewayProvider;
+  merchantId: string;
   /** PLAINTEXT server key — hanya in-memory, NEVER log, NEVER return to client. */
-  serverKey: string
-  clientKey: string | null
-  environment: "sandbox" | "production"
-  metadata: Record<string, unknown>
-}
+  serverKey: string;
+  clientKey: string | null;
+  environment: "sandbox" | "production";
+  metadata: Record<string, unknown>;
+};

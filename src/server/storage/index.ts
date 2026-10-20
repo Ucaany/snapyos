@@ -100,10 +100,7 @@ function getResolver(): StorageResolver {
  * kembalikan write-provider (agar error/URL mengikuti perilaku upload).
  * Logika inti ada di `src/lib/r2/resolver.ts` (pure, teruji).
  */
-export async function resolveStorage(
-  bucket: StorageBucket,
-  key: string
-): Promise<StorageProvider> {
+export async function resolveStorage(bucket: StorageBucket, key: string): Promise<StorageProvider> {
   const provider = await getResolver().resolve(bucket, key);
   return provider as StorageProvider;
 }
@@ -162,12 +159,9 @@ export async function signedUrlMap(
         // per-key (paralel, tetap satu provider per grup).
         const single = await Promise.all(
           groupKeys.map(async (key) => {
-            const { data } = await provider.createSignedUrl(
-              bucket,
-              key,
-              ttlSeconds,
-              { download: downloadBy(key) }
-            );
+            const { data } = await provider.createSignedUrl(bucket, key, ttlSeconds, {
+              download: downloadBy(key),
+            });
             return [key, data?.signedUrl ?? null] as const;
           })
         );

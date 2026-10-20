@@ -12,13 +12,13 @@ SnapyOS adalah platform operasi bisnis untuk photobox. Sistem ini menggabungkan 
 
 SnapyOS memiliki tiga area kerja:
 
-| Area | Pengguna | Route |
-| --- | --- | --- |
-| Owner Platform | Owner dan manager | `/dashboard/*` |
-| Staff Platform | Staff operasional | `/staff/*` |
-| Customer Kiosk | Customer booth | `/p/[businessSlug]/[photoboxSlug]` |
-| Admin Platform | Admin SnapyOS | `/admin/*` |
-| POS Terminal | Owner, manager, staff ber-entitlement POS | `/pos/*` |
+| Area           | Pengguna                                  | Route                              |
+| -------------- | ----------------------------------------- | ---------------------------------- |
+| Owner Platform | Owner dan manager                         | `/dashboard/*`                     |
+| Staff Platform | Staff operasional                         | `/staff/*`                         |
+| Customer Kiosk | Customer booth                            | `/p/[businessSlug]/[photoboxSlug]` |
+| Admin Platform | Admin SnapyOS                             | `/admin/*`                         |
+| POS Terminal   | Owner, manager, staff ber-entitlement POS | `/pos/*`                           |
 
 ## 2. Prasyarat
 
@@ -117,13 +117,13 @@ Package menentukan harga dan jumlah pekerjaan customer.
 
 Field penting:
 
-| Field | Aturan |
-| --- | --- |
-| `name` | Wajib, jelas untuk customer |
-| `price` | Integer IDR, tidak boleh floating-point |
-| `photo_count` | Jumlah slot foto yang dibutuhkan |
-| `print_count` | Jumlah hasil cetak |
-| `is_active` | Hanya package aktif tampil di kiosk |
+| Field         | Aturan                                  |
+| ------------- | --------------------------------------- |
+| `name`        | Wajib, jelas untuk customer             |
+| `price`       | Integer IDR, tidak boleh floating-point |
+| `photo_count` | Jumlah slot foto yang dibutuhkan        |
+| `print_count` | Jumlah hasil cetak                      |
+| `is_active`   | Hanya package aktif tampil di kiosk     |
 
 Server menghitung final amount. Frontend tidak dipercaya untuk harga, diskon, atau voucher.
 

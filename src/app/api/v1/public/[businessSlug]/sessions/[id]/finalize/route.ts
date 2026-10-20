@@ -18,7 +18,13 @@ const MAX_MULTIPART_BYTES = FINALIZE_MAX_REQUEST_BYTES;
 
 function rateLimited(retryAfterSec: number) {
   return NextResponse.json(
-    { error: { code: "RATE_LIMITED", message: "Terlalu banyak permintaan. Coba lagi nanti.", details: { retry_after: retryAfterSec } } },
+    {
+      error: {
+        code: "RATE_LIMITED",
+        message: "Terlalu banyak permintaan. Coba lagi nanti.",
+        details: { retry_after: retryAfterSec },
+      },
+    },
     { status: 429, headers: { "retry-after": String(retryAfterSec) } }
   );
 }

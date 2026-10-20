@@ -42,10 +42,7 @@ export function CreateBusinessForm() {
     <form action={formAction} className="flex flex-col gap-6" noValidate>
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <label
-            htmlFor={nameId}
-            className="font-mono text-[11px] uppercase tracking-[0.16em]"
-          >
+          <label htmlFor={nameId} className="font-mono text-[11px] uppercase tracking-[0.16em]">
             <span className="text-destructive">*</span> Nama bisnis
           </label>
           <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
@@ -79,10 +76,7 @@ export function CreateBusinessForm() {
 
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <label
-            htmlFor={slugId}
-            className="font-mono text-[11px] uppercase tracking-[0.16em]"
-          >
+          <label htmlFor={slugId} className="font-mono text-[11px] uppercase tracking-[0.16em]">
             Slug URL <span className="text-muted-foreground">(opsional)</span>
           </label>
           <button
@@ -125,11 +119,7 @@ export function CreateBusinessForm() {
                   : "border-ink/20 bg-muted text-muted-foreground"
             }`}
           >
-            {slugValidation.state === "ok"
-              ? "OK"
-              : slugValidation.state === "invalid"
-                ? "X"
-                : "·"}
+            {slugValidation.state === "ok" ? "OK" : slugValidation.state === "invalid" ? "X" : "·"}
           </span>
         </div>
         {state.fieldErrors?.slug ? (

@@ -51,9 +51,16 @@ type JoinName = { name: string } | { name: string }[] | null;
 
 function mapProduct(row: unknown): PosProductRow {
   const r = row as {
-    id: string; name: string; sku: string | null; category: string;
-    description: string | null; price: number; cost: number | null;
-    stock: number | null; is_active: boolean; image_url: string | null;
+    id: string;
+    name: string;
+    sku: string | null;
+    category: string;
+    description: string | null;
+    price: number;
+    cost: number | null;
+    stock: number | null;
+    is_active: boolean;
+    image_url: string | null;
     created_at: string;
   };
   return {
@@ -265,18 +272,24 @@ export async function listPosBooths(userId: string, businessId: string): Promise
 
   return (data ?? []).flatMap((row) => {
     const r = row as {
-      id: string; name: string; status: string; pos_enabled: boolean;
-      outlet_id: string; outlets?: JoinName;
+      id: string;
+      name: string;
+      status: string;
+      pos_enabled: boolean;
+      outlet_id: string;
+      outlets?: JoinName;
     };
     const outlet = r.outlets && !Array.isArray(r.outlets) ? r.outlets : null;
-    return [{
-      id: r.id,
-      name: r.name,
-      status: r.status,
-      pos_enabled: r.pos_enabled,
-      outlet_id: r.outlet_id,
-      outlet_name: outlet?.name ?? null,
-    }];
+    return [
+      {
+        id: r.id,
+        name: r.name,
+        status: r.status,
+        pos_enabled: r.pos_enabled,
+        outlet_id: r.outlet_id,
+        outlet_name: outlet?.name ?? null,
+      },
+    ];
   });
 }
 
@@ -326,7 +339,10 @@ export async function setPosBoothEnabled(
   if (error) {
     // 23505 = partial unique index (0056): booth lain sudah aktif lebih dulu.
     if (error.code === "23505") {
-      throw new ApiError("POS_BOOTH_ALREADY_ACTIVE", "Booth POS lain sudah aktif. Nonaktifkan dulu untuk memindahkan POS ke booth ini.");
+      throw new ApiError(
+        "POS_BOOTH_ALREADY_ACTIVE",
+        "Booth POS lain sudah aktif. Nonaktifkan dulu untuk memindahkan POS ke booth ini."
+      );
     }
     throw new ApiError("INTERNAL", "Gagal mengatur booth POS");
   }

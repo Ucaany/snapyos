@@ -46,7 +46,7 @@ export default async function PwaPage() {
       <PageHeader
         eyebrow="PWA MOBILE"
         title="Unduh PWA"
-        description="Pasang SnapyOS sebagai aplikasi kiosk di Android, tablet, atau iOS — tanpa App Store, tanpa install file."
+        description="Pasang SnapyOS sebagai aplikasi kiosk di Android, tablet, atau iOS: tanpa App Store, tanpa install file."
       />
 
       <ol className="grid grid-cols-1 gap-[2px] border-2 border-ink bg-ink md:grid-cols-3">

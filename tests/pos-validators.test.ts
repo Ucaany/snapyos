@@ -33,12 +33,10 @@ test("posOrderCreateSchema: qty 0 / 1000 / float ditolak", () => {
 test("posOrderCreateSchema: items kosong / lebih dari 50 ditolak; photoboxId wajib", () => {
   assert.ok(!posOrderCreateSchema.safeParse({ photoboxId: UUID, items: [] }).success);
   assert.ok(
-    !posOrderCreateSchema
-      .safeParse({
-        photoboxId: UUID,
-        items: Array.from({ length: 51 }, () => ({ productId: UUID2, qty: 1 })),
-      })
-      .success
+    !posOrderCreateSchema.safeParse({
+      photoboxId: UUID,
+      items: Array.from({ length: 51 }, () => ({ productId: UUID2, qty: 1 })),
+    }).success
   );
   assert.ok(!posOrderCreateSchema.safeParse({ items: [{ productId: UUID2, qty: 1 }] }).success);
 });
@@ -68,9 +66,7 @@ test("posProductCreateSchema: stock nullable, cost ≥ 0", () => {
   assert.ok(
     posProductCreateSchema.safeParse({ name: "X", price: 1000, stock: null, cost: 0 }).success
   );
-  assert.ok(
-    !posProductCreateSchema.safeParse({ name: "X", price: 1000, cost: -1 }).success
-  );
+  assert.ok(!posProductCreateSchema.safeParse({ name: "X", price: 1000, cost: -1 }).success);
 });
 
 test("posProductUpdateSchema: minimal satu field + id", () => {

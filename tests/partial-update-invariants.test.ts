@@ -85,7 +85,10 @@ test("adminPromoUpdateSchema: patch parsial tetap menerima amount tanpa type", (
 test("service voucher/promo menerapkan invariant terhadap row tersimpan", async () => {
   const vouchers = await readFile(new URL("src/server/vouchers.ts", root), "utf8");
   assert.match(vouchers, /voucherInvariantError/);
-  assert.match(vouchers, /select\("type, amount, start_date, end_date, min_transaction, max_discount"\)/);
+  assert.match(
+    vouchers,
+    /select\("type, amount, start_date, end_date, min_transaction, max_discount"\)/
+  );
 
   const promos = await readFile(new URL("src/server/admin/promos.ts", root), "utf8");
   assert.match(promos, /promoInvariantError/);

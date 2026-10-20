@@ -11,15 +11,15 @@ Prasyarat: `docs/05-customer-photobox.md` §5.15, `docs/pos/01-architecture.md` 
 
 ## 17.1 Ringkasan keputusan
 
-| Keputusan | Pilihan | Alasan |
-|---|---|---|
-| Jalur cetak | **Print agent lokal + antrean di server** | Satu jalur untuk web, Android, dan iPad. Browser tidak pernah bicara ke printer. |
-| Protokol printer | **ESC/POS** (raster `GS v 0` + teks) | Standar de facto printer thermal 58/80mm. |
-| Lebar kertas | **80mm = 576 dot / 48 karakter**. 58mm didukung sebagai opsi (384 dot / 32 karakter). | Default permintaan; 58mm dipakai sebagian POS. |
-| Transport agent | `lan` (TCP 9100), `serial` (USB-CDC & Bluetooth SPP hasil pairing OS), `usb` (opsional, fase 3) | Pluggable, jadi "belum pasti/campuran" tidak mengunci arsitektur. |
-| Render gambar | **Agent** yang decode + dither, bukan server | VPS dibatasi `MemoryMax=768M`; agent punya CPU sendiri dan hanya satu job sekaligus. |
-| Mode cetak | `print_settings.mode: "browser" \| "thermal"`, default `"browser"` | Jalur printer foto (DNP/Selphy) yang sudah ada tidak boleh rusak. |
-| Web Bluetooth langsung | **Dipakai** untuk mode `print_settings.mode = "bluetooth"` | Chrome desktop/Android saja; iPad/Safari tetap dialog sistem. Lihat §17.10. |
+| Keputusan              | Pilihan                                                                                         | Alasan                                                                               |
+| ---------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Jalur cetak            | **Print agent lokal + antrean di server**                                                       | Satu jalur untuk web, Android, dan iPad. Browser tidak pernah bicara ke printer.     |
+| Protokol printer       | **ESC/POS** (raster `GS v 0` + teks)                                                            | Standar de facto printer thermal 58/80mm.                                            |
+| Lebar kertas           | **80mm = 576 dot / 48 karakter**. 58mm didukung sebagai opsi (384 dot / 32 karakter).           | Default permintaan; 58mm dipakai sebagian POS.                                       |
+| Transport agent        | `lan` (TCP 9100), `serial` (USB-CDC & Bluetooth SPP hasil pairing OS), `usb` (opsional, fase 3) | Pluggable, jadi "belum pasti/campuran" tidak mengunci arsitektur.                    |
+| Render gambar          | **Agent** yang decode + dither, bukan server                                                    | VPS dibatasi `MemoryMax=768M`; agent punya CPU sendiri dan hanya satu job sekaligus. |
+| Mode cetak             | `print_settings.mode: "browser" \| "thermal"`, default `"browser"`                              | Jalur printer foto (DNP/Selphy) yang sudah ada tidak boleh rusak.                    |
+| Web Bluetooth langsung | **Dipakai** untuk mode `print_settings.mode = "bluetooth"`                                      | Chrome desktop/Android saja; iPad/Safari tetap dialog sistem. Lihat §17.10.          |
 
 ---
 
@@ -27,11 +27,11 @@ Prasyarat: `docs/05-customer-photobox.md` §5.15, `docs/pos/01-architecture.md` 
 
 Permintaan "langsung dicetak" (tanpa dialog) tidak bisa dipenuhi browser di ketiga target:
 
-| Target | `window.print()` | Web Bluetooth | Web Serial |
-|---|---|---|---|
-| Chrome desktop | Senyap hanya dengan flag `--kiosk-printing` | Ada, tapi butuh gesture + pilih device tiap sesi | Ada di desktop Chrome |
-| Chrome Android | Selalu dialog sistem | Ada, gesture wajib, tidak ada auto-reconnect | Tidak ada |
-| Safari/iPadOS | Selalu dialog sistem | **Tidak ada sama sekali** (semua browser iOS = WebKit) | Tidak ada |
+| Target         | `window.print()`                            | Web Bluetooth                                          | Web Serial            |
+| -------------- | ------------------------------------------- | ------------------------------------------------------ | --------------------- |
+| Chrome desktop | Senyap hanya dengan flag `--kiosk-printing` | Ada, tapi butuh gesture + pilih device tiap sesi       | Ada di desktop Chrome |
+| Chrome Android | Selalu dialog sistem                        | Ada, gesture wajib, tidak ada auto-reconnect           | Tidak ada             |
+| Safari/iPadOS  | Selalu dialog sistem                        | **Tidak ada sama sekali** (semua browser iOS = WebKit) | Tidak ada             |
 
 Karena iPad harus jalan, jalur browser murni gugur. Agent lokal adalah satu-satunya bentuk yang bekerja identik di ketiganya, karena dari sisi browser hanya ada `fetch()` ke origin sendiri.
 
@@ -172,9 +172,7 @@ Dibangun oleh `src/lib/thermal/receipt.ts` (fungsi murni, unit-testable) dari `P
     ["Kasir", "Rina"],
     ["Waktu", "17/10/26 19.42"]
   ],
-  "items": [
-    { "name": "Cetak Foto 4R", "qty": 2, "subtotal": 30000 }
-  ],
+  "items": [{ "name": "Cetak Foto 4R", "qty": 2, "subtotal": 30000 }],
   "totals": [
     { "label": "Subtotal", "value": 30000 },
     { "label": "Diskon", "value": 0 },
@@ -195,9 +193,7 @@ Agent merender ke ESC/POS. `emphasis` memakai `ESC E 1` (bold) + `GS ! 0x11` (do
   "width_mm": 80,
   "business_name": "Snapy Studio",
   "title": "HASIL SESI",
-  "photos": [
-    { "url": "<signed R2, TTL 5 menit>", "order_index": 0 }
-  ],
+  "photos": [{ "url": "<signed R2, TTL 5 menit>", "order_index": 0 }],
   "layout": "single",
   "copies": 1,
   "footer": ["Kode sesi: 8F2A91", "17/10/26 19.42"],
@@ -220,7 +216,12 @@ Susunan lembar per `sheet` (mengikuti `printPlan` yang sudah ada di `src/lib/pri
 ### 17.5.3 `test`
 
 ```json
-{ "width_mm": 80, "business_name": "Snapy Studio", "lines": ["UJI CETAK", "Agen: booth-1", "17/10/26 19.42"], "cut": true }
+{
+  "width_mm": 80,
+  "business_name": "Snapy Studio",
+  "lines": ["UJI CETAK", "Agen: booth-1", "17/10/26 19.42"],
+  "cut": true
+}
 ```
 
 ---
@@ -284,38 +285,38 @@ Error handling: transport putus → ack `failed` dengan pesan, agent tetap hidup
 
 ### Baru
 
-| File | Isi |
-|---|---|
-| `src/lib/thermal/receipt.ts` | Builder payload struk, murni |
-| `src/lib/thermal/payload.ts` | Tipe payload + builder `photo_result` dan `test` |
-| `src/server/print-jobs.ts` | `createPrintJob`, `claimNextJob`, `ackJob`, `getJobStatus`, `reapStaleJobs` |
-| `src/server/print-agents.ts` | `createAgent`, `listAgents`, `revokeAgent`, `resolveAgentToken` |
-| `src/server/print-agent-actions.ts` | Server action owner: buat/revoke agen, uji cetak |
-| `src/app/api/v1/public/print-jobs/route.ts` | `POST` dengan `device_token` + `session_id` |
-| `src/app/api/v1/public/print-jobs/[id]/route.ts` | `GET` status, scope device |
-| `src/app/api/v1/print-agents/jobs/next/route.ts` | `GET` klaim, Bearer agent |
-| `src/app/api/v1/print-agents/jobs/[id]/ack/route.ts` | `POST` ack |
-| `src/app/api/v1/business/[businessId]/print-agents/route.ts` | Owner list + create |
-| `src/app/api/v1/business/[businessId]/print-agents/[id]/route.ts` | Owner revoke |
-| `src/app/api/cron/print-jobs/route.ts` | Reaper + hapus job lebih dari 24 jam |
-| `src/app/(dashboard)/dashboard/printers/page.tsx` | Halaman pengaturan printer |
-| `src/components/dashboard/PrintAgentPanel.tsx` | Pairing, token, transport, uji cetak, status |
+| File                                                              | Isi                                                                         |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `src/lib/thermal/receipt.ts`                                      | Builder payload struk, murni                                                |
+| `src/lib/thermal/payload.ts`                                      | Tipe payload + builder `photo_result` dan `test`                            |
+| `src/server/print-jobs.ts`                                        | `createPrintJob`, `claimNextJob`, `ackJob`, `getJobStatus`, `reapStaleJobs` |
+| `src/server/print-agents.ts`                                      | `createAgent`, `listAgents`, `revokeAgent`, `resolveAgentToken`             |
+| `src/server/print-agent-actions.ts`                               | Server action owner: buat/revoke agen, uji cetak                            |
+| `src/app/api/v1/public/print-jobs/route.ts`                       | `POST` dengan `device_token` + `session_id`                                 |
+| `src/app/api/v1/public/print-jobs/[id]/route.ts`                  | `GET` status, scope device                                                  |
+| `src/app/api/v1/print-agents/jobs/next/route.ts`                  | `GET` klaim, Bearer agent                                                   |
+| `src/app/api/v1/print-agents/jobs/[id]/ack/route.ts`              | `POST` ack                                                                  |
+| `src/app/api/v1/business/[businessId]/print-agents/route.ts`      | Owner list + create                                                         |
+| `src/app/api/v1/business/[businessId]/print-agents/[id]/route.ts` | Owner revoke                                                                |
+| `src/app/api/cron/print-jobs/route.ts`                            | Reaper + hapus job lebih dari 24 jam                                        |
+| `src/app/(dashboard)/dashboard/printers/page.tsx`                 | Halaman pengaturan printer                                                  |
+| `src/components/dashboard/PrintAgentPanel.tsx`                    | Pairing, token, transport, uji cetak, status                                |
 
 ### Diubah
 
-| File | Perubahan |
-|---|---|
-| `src/lib/validators.ts` | `printSettingsSchema` tambah `mode`, `agent_id`, `paper_width_mm`. Skema baru `printAgentCreateSchema`, `printJobAckSchema` |
-| `src/lib/kiosk-types.ts` | `PrintSettings` mengikuti skema |
-| `src/server/booth-actions.ts` | Parse field baru saat simpan booth |
-| `src/server/photoboxes.ts` | Merge `print_settings` tetap, tidak ada perubahan struktur |
-| `src/components/dashboard/PhotoboxForm.tsx` | Pilihan mode cetak + pilih agen |
-| `src/components/kiosk/KioskApp.tsx` | Arahkan step cetak ke thermal bila mode thermal |
-| `src/components/kiosk/ThermalPrintScreen.tsx` | Komponen baru: enqueue, status, retry, lewati |
-| `src/components/kiosk/SetupWizard.tsx` | Uji cetak thermal menggantikan `window.print()` bila mode thermal |
-| `src/components/pos/ReceiptView.tsx` | Tombol cetak thermal + auto-cetak saat mount |
-| `src/components/dashboard/DeviceDialog.tsx` | Tampilkan status agen |
-| `vercel.json`, `deploy/cron/snapyos.cron` | Jadwal cron baru |
+| File                                          | Perubahan                                                                                                                   |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/validators.ts`                       | `printSettingsSchema` tambah `mode`, `agent_id`, `paper_width_mm`. Skema baru `printAgentCreateSchema`, `printJobAckSchema` |
+| `src/lib/kiosk-types.ts`                      | `PrintSettings` mengikuti skema                                                                                             |
+| `src/server/booth-actions.ts`                 | Parse field baru saat simpan booth                                                                                          |
+| `src/server/photoboxes.ts`                    | Merge `print_settings` tetap, tidak ada perubahan struktur                                                                  |
+| `src/components/dashboard/PhotoboxForm.tsx`   | Pilihan mode cetak + pilih agen                                                                                             |
+| `src/components/kiosk/KioskApp.tsx`           | Arahkan step cetak ke thermal bila mode thermal                                                                             |
+| `src/components/kiosk/ThermalPrintScreen.tsx` | Komponen baru: enqueue, status, retry, lewati                                                                               |
+| `src/components/kiosk/SetupWizard.tsx`        | Uji cetak thermal menggantikan `window.print()` bila mode thermal                                                           |
+| `src/components/pos/ReceiptView.tsx`          | Tombol cetak thermal + auto-cetak saat mount                                                                                |
+| `src/components/dashboard/DeviceDialog.tsx`   | Tampilkan status agen                                                                                                       |
+| `vercel.json`, `deploy/cron/snapyos.cron`     | Jadwal cron baru                                                                                                            |
 
 ### Kontrak API
 
@@ -387,12 +388,12 @@ setStep(shouldPrint ? (mode === "thermal" ? "thermal-print" : "printing") : "res
 
 `ThermalPrintScreen` memakai bahasa visual overlay yang sama dengan `PrintLayoutRenderer`:
 
-| State | Teks |
-|---|---|
-| `pending` | `MENUNGGU PRINTER` |
-| `claimed` | `MENCETAK...` |
-| `printed` | `SELESAI DICETAK` |
-| `failed` | `GAGAL MENCETAK` + tombol `Coba lagi` dan `Lanjut` |
+| State          | Teks                                                 |
+| -------------- | ---------------------------------------------------- |
+| `pending`      | `MENUNGGU PRINTER`                                   |
+| `claimed`      | `MENCETAK...`                                        |
+| `printed`      | `SELESAI DICETAK`                                    |
+| `failed`       | `GAGAL MENCETAK` + tombol `Coba lagi` dan `Lanjut`   |
 | timeout 20 dtk | `PRINTER TIDAK MERESPONS` + `Coba lagi` dan `Lanjut` |
 
 `Lanjut` selalu ada supaya kiosk tidak macet.
@@ -423,14 +424,14 @@ Jadwal: setiap 5 menit. Daftarkan di `vercel.json` dan `deploy/cron/snapyos.cron
 
 ## 17.10 Yang sengaja tidak dibangun
 
-| Ditolak | Alasan |
-|---|---|
-| Web Bluetooth dari browser | Tidak ada di iOS. Tidak bisa auto-reconnect. Butuh gesture tiap sesi. Gagal untuk kiosk unattended. |
-| Web Serial | Tidak ada di Android dan iOS. |
-| Print langsung browser ke IP printer | Mixed content diblokir. Butuh cert profile di iPad. |
-| ESC/POS dari server langsung ke printer | VPS tidak berada di LAN booth. |
-| Cetak saat kiosk offline | Butuh antrean lokal di agent. Ditunda, lihat §17.12. |
-| Email struk | Di luar cakupan. |
+| Ditolak                                 | Alasan                                                                                              |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Web Bluetooth dari browser              | Tidak ada di iOS. Tidak bisa auto-reconnect. Butuh gesture tiap sesi. Gagal untuk kiosk unattended. |
+| Web Serial                              | Tidak ada di Android dan iOS.                                                                       |
+| Print langsung browser ke IP printer    | Mixed content diblokir. Butuh cert profile di iPad.                                                 |
+| ESC/POS dari server langsung ke printer | VPS tidak berada di LAN booth.                                                                      |
+| Cetak saat kiosk offline                | Butuh antrean lokal di agent. Ditunda, lihat §17.12.                                                |
+| Email struk                             | Di luar cakupan.                                                                                    |
 
 ---
 
@@ -470,15 +471,15 @@ Hasil: foto BW 80mm tercetak langsung setelah finalize.
 
 ## 17.12 Risiko dan mitigasi
 
-| Risiko | Mitigasi |
-|---|---|
-| Agent mati, job menumpuk | `expires_at` 10 menit, reaper, status `failed` terlihat di kiosk dan dashboard. |
-| Foto BW terlihat kasar | Dithering Floyd-Steinberg, bukan threshold. Ekspos `dither: "floyd" \| "threshold"` di pengaturan agen. |
-| Printer 58mm dianggap 80mm | `paper_width_mm` eksplisit per agen, memengaruhi 48 vs 32 karakter dan 576 vs 384 dot. |
-| Bluetooth putus | Pairing lewat OS, agent membuka ulang port saat write gagal. Tidak ada state BLE di agent. |
-| Token agen bocor | Hanya hash di DB, bisa dicabut kapan saja, rate limit per token. |
-| Kiosk offline | Job tidak dibuat; kiosk menampilkan `Lewati cetak`. Fase 3 menambah antrean lokal. |
-| Server menambah beban | Tidak ada decode gambar di server. Payload struk kecil. |
+| Risiko                     | Mitigasi                                                                                                |
+| -------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Agent mati, job menumpuk   | `expires_at` 10 menit, reaper, status `failed` terlihat di kiosk dan dashboard.                         |
+| Foto BW terlihat kasar     | Dithering Floyd-Steinberg, bukan threshold. Ekspos `dither: "floyd" \| "threshold"` di pengaturan agen. |
+| Printer 58mm dianggap 80mm | `paper_width_mm` eksplisit per agen, memengaruhi 48 vs 32 karakter dan 576 vs 384 dot.                  |
+| Bluetooth putus            | Pairing lewat OS, agent membuka ulang port saat write gagal. Tidak ada state BLE di agent.              |
+| Token agen bocor           | Hanya hash di DB, bisa dicabut kapan saja, rate limit per token.                                        |
+| Kiosk offline              | Job tidak dibuat; kiosk menampilkan `Lewati cetak`. Fase 3 menambah antrean lokal.                      |
+| Server menambah beban      | Tidak ada decode gambar di server. Payload struk kecil.                                                 |
 
 ---
 
@@ -516,12 +517,12 @@ Regresi yang wajib tetap hijau:
 
 ## 17.14 Dokumentasi yang perlu diperbarui
 
-| File | Perubahan |
-|---|---|
-| `docs/05-customer-photobox.md` §5.15 | Tambah §5.15.6 Thermal printing, mode `browser` vs `thermal` |
-| `docs/pos/01-architecture.md` A12 | A12 diganti: struk browser tetap ada, thermal lewat agent |
-| `docs/pos/01-architecture.md` non-goals | Hapus "printer thermal SDK" dari daftar tolak |
-| `docs/07-database-schema.md` | Tabel `print_agents`, `print_jobs` |
-| `docs/08-api-spec.md` | Endpoint job dan agen |
-| `docs/12-roadmap-mvp.md` | Pindahkan "printer thermal" dari luar cakupan ke fase selesai |
-| `docs/status.md` | Catatan implementasi |
+| File                                    | Perubahan                                                     |
+| --------------------------------------- | ------------------------------------------------------------- |
+| `docs/05-customer-photobox.md` §5.15    | Tambah §5.15.6 Thermal printing, mode `browser` vs `thermal`  |
+| `docs/pos/01-architecture.md` A12       | A12 diganti: struk browser tetap ada, thermal lewat agent     |
+| `docs/pos/01-architecture.md` non-goals | Hapus "printer thermal SDK" dari daftar tolak                 |
+| `docs/07-database-schema.md`            | Tabel `print_agents`, `print_jobs`                            |
+| `docs/08-api-spec.md`                   | Endpoint job dan agen                                         |
+| `docs/12-roadmap-mvp.md`                | Pindahkan "printer thermal" dari luar cakupan ke fase selesai |
+| `docs/status.md`                        | Catatan implementasi                                          |

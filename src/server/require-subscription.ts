@@ -74,10 +74,7 @@ export async function requireEffectiveSubscription(
   _mode: "read" | "write" = "read"
 ): Promise<EffectiveSubscription> {
   const row = await getEffectiveSubscriptionRow(businessId);
-  if (
-    !row ||
-    !isSubscriptionEffective(row.status, row.trialEndsAt, row.currentPeriodEnd)
-  ) {
+  if (!row || !isSubscriptionEffective(row.status, row.trialEndsAt, row.currentPeriodEnd)) {
     throw new ApiError(
       "SUBSCRIPTION_EXPIRED",
       "Langganan bisnis ini sudah kedaluwarsa. Perpanjang langganan untuk melanjutkan."

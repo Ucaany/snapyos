@@ -67,13 +67,13 @@ Smoke produksi (tenant pilot, checklist tertulis):
 
 ## 5. Rollback
 
-| Situasi | Aksi |
-|---|---|
-| Bug fitur POS (non-finance) | Redeploy versi lama — tabel/kolom dibiarkan (harmless, tak dibaca kode lama) |
-| Matikan POS global TANPA deploy | Admin: `add_ons.is_active=false` utk `code='pos'` → semua `requirePosAccess` → `POS_NOT_SUBSCRIBED` |
-| Matikan POS per tenant | Admin: `subscription_add_ons.status='cancelled'` utk tenant itu |
-| Matikan POS per booth | Owner: toggle `pos_enabled=false` di `/dashboard/pos` (atau admin via DB) |
-| Migration bermasalah | Jalankan `0019_pos_addon_rollback.sql` (docs/pos/02 §10) — aman kapan pun (semua objek murni additive, tak ada kolom existing yang berubah) |
+| Situasi                         | Aksi                                                                                                                                        |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Bug fitur POS (non-finance)     | Redeploy versi lama — tabel/kolom dibiarkan (harmless, tak dibaca kode lama)                                                                |
+| Matikan POS global TANPA deploy | Admin: `add_ons.is_active=false` utk `code='pos'` → semua `requirePosAccess` → `POS_NOT_SUBSCRIBED`                                         |
+| Matikan POS per tenant          | Admin: `subscription_add_ons.status='cancelled'` utk tenant itu                                                                             |
+| Matikan POS per booth           | Owner: toggle `pos_enabled=false` di `/dashboard/pos` (atau admin via DB)                                                                   |
+| Migration bermasalah            | Jalankan `0019_pos_addon_rollback.sql` (docs/pos/02 §10) — aman kapan pun (semua objek murni additive, tak ada kolom existing yang berubah) |
 
 ---
 

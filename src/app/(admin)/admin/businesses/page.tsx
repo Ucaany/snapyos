@@ -22,8 +22,7 @@ export default async function AdminBusinessesPage({
 }) {
   const q = await searchParams;
   const page = Math.max(1, Number.parseInt(q.page ?? "1", 10) || 1);
-  const status =
-    q.status === "active" || q.status === "suspended" ? q.status : undefined;
+  const status = q.status === "active" || q.status === "suspended" ? q.status : undefined;
   const { items, total } = await listBusinesses({ search: q.search, status, page, limit: 20 });
 
   const dateFmt = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" });
@@ -45,10 +44,19 @@ export default async function AdminBusinessesPage({
         </div>
         <form method="GET" className="flex flex-wrap items-end gap-2" role="search">
           <div className="flex flex-col gap-1">
-            <label htmlFor="biz-search" className="font-mono text-[10px] uppercase tracking-[0.12em]">
+            <label
+              htmlFor="biz-search"
+              className="font-mono text-[10px] uppercase tracking-[0.12em]"
+            >
               Cari nama / slug
             </label>
-            <Input id="biz-search" name="search" defaultValue={q.search ?? ""} className="w-56" placeholder="cth. klik-foto" />
+            <Input
+              id="biz-search"
+              name="search"
+              defaultValue={q.search ?? ""}
+              className="w-56"
+              placeholder="cth. klik-foto"
+            />
           </div>
           <BrutalistSelect
             id="biz-status"
@@ -112,7 +120,7 @@ export default async function AdminBusinessesPage({
                       <Link
                         href={`/p/${b.slug}`}
                         target="_blank"
-                        className="underline decoration-ink/40 underline-offset-2 hover:bg-muted"
+                        className="inline-flex min-h-11 items-center underline decoration-ink/40 underline-offset-2 hover:bg-muted"
                       >
                         /p/{b.slug}
                       </Link>{" "}
@@ -160,7 +168,10 @@ export default async function AdminBusinessesPage({
                     <div className="flex flex-wrap items-start gap-2">
                       <AdminActionButton
                         action={updateBusinessAction}
-                        hidden={{ businessId: b.id, status: b.status === "suspended" ? "active" : "suspended" }}
+                        hidden={{
+                          businessId: b.id,
+                          status: b.status === "suspended" ? "active" : "suspended",
+                        }}
                         submitLabel={b.status === "suspended" ? "Aktifkan" : "Suspend"}
                         variant={b.status === "suspended" ? "secondary" : "destructive"}
                         confirm={

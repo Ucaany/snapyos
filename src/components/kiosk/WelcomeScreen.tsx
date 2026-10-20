@@ -124,7 +124,7 @@ export function WelcomeScreen({ business, branding, onStart }: Props) {
       className="relative flex min-h-0 flex-1 overflow-y-auto"
       style={{ ...kioskThemeVars(vs), backgroundColor: bg, color: text }}
     >
-      {/* Video background attract loop — muted/autoplay/loop, overlay warna
+      {/* Video background attract loop: muted/autoplay/loop, overlay warna
           supaya teks tetap kontras; fallback = warna background. */}
       <KioskVideoBackground videoUrl={videoUrl} />
       {body}

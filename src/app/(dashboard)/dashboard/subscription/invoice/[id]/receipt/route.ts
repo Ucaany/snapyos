@@ -22,7 +22,7 @@ const CONTENT_W = PAGE_W - M * 2;
 const LABEL_W = 170;
 
 function fmtDate(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   return new Date(iso).toLocaleString("id-ID", {
     day: "2-digit",
     month: "short",
@@ -35,9 +35,7 @@ function fmtDate(iso: string | null): string {
 
 function providerLabel(provider: string | null): string {
   if (!provider) return "QRIS";
-  const name = { pakasir: "Pakasir", midtrans: "Midtrans", tripay: "Tripay" }[
-    provider
-  ];
+  const name = { pakasir: "Pakasir", midtrans: "Midtrans", tripay: "Tripay" }[provider];
   return name ? `QRIS (${name})` : "QRIS";
 }
 
@@ -53,32 +51,54 @@ async function renderPdf(receipt: Receipt): Promise<Buffer> {
   const gross = items.reduce((sum, i) => sum + i.amount, 0);
   const discount = invoice.promo?.discount ?? 0;
 
-  const doc = new PDFDocument({ size: "A4", margin: 0, info: { Title: `Bukti Pembayaran ${invoice.number} — SnapyOS` } });
+  const doc = new PDFDocument({
+    size: "A4",
+    margin: 0,
+    info: { Title: `Bukti Pembayaran ${invoice.number}: SnapyOS` },
+  });
   const chunks: Buffer[] = [];
   doc.on("data", (c: Buffer) => chunks.push(c));
-  const done = new Promise<Buffer>((resolve) => doc.on("end", () => resolve(Buffer.concat(chunks))));
+  const done = new Promise<Buffer>((resolve) =>
+    doc.on("end", () => resolve(Buffer.concat(chunks)))
+  );
 
   // Sheet (border hitam tebal, radius 0).
   doc.lineWidth(3).strokeColor(BLACK).rect(M, M, CONTENT_W, 760).stroke();
 
   // Header.
   let y = M + 28;
-  doc.font("Helvetica-Bold").fontSize(30).fillColor(BLACK)
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(30)
+    .fillColor(BLACK)
     .text("SnapyOS", M + 20, y, { lineBreak: false });
-  doc.font("Courier").fontSize(9).fillColor(GRAY)
+  doc
+    .font("Courier")
+    .fontSize(9)
+    .fillColor(GRAY)
     .text("PHOTOBOX SAAS PLATFORM", M + 20, y + 30, { lineBreak: false });
-  doc.font("Courier").fontSize(9).fillColor(GRAY)
+  doc
+    .font("Courier")
+    .fontSize(9)
+    .fillColor(GRAY)
     .text("BUKTI PEMBAYARAN", M + 20, y + 12, { width: CONTENT_W - 40, align: "right" });
   y += 56;
-  doc.lineWidth(3).strokeColor(BLACK)
-    .moveTo(M, y).lineTo(PAGE_W - M, y).stroke();
+  doc
+    .lineWidth(3)
+    .strokeColor(BLACK)
+    .moveTo(M, y)
+    .lineTo(PAGE_W - M, y)
+    .stroke();
 
   // Banner lunas.
   const bannerY = y + 20;
   doc.fillColor(YELLOW).rect(M, bannerY, CONTENT_W, 40).fill();
   doc.lineWidth(3).strokeColor(BLACK).rect(M, bannerY, CONTENT_W, 40).stroke();
-  doc.font("Helvetica-Bold").fontSize(13).fillColor(BLACK)
-    .text("LUNAS — PEMBAYARAN DITERIMA", M, bannerY + 14, {
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(13)
+    .fillColor(BLACK)
+    .text("LUNAS: PEMBAYARAN DITERIMA", M, bannerY + 14, {
       width: CONTENT_W,
       align: "center",
     });
@@ -86,9 +106,15 @@ async function renderPdf(receipt: Receipt): Promise<Buffer> {
 
   // Baris detail.
   const row = (label: string, value: string) => {
-    doc.font("Courier").fontSize(9).fillColor(GRAY)
+    doc
+      .font("Courier")
+      .fontSize(9)
+      .fillColor(GRAY)
       .text(label.toUpperCase(), M + 20, y, { lineBreak: false });
-    doc.font("Helvetica-Bold").fontSize(10).fillColor(BLACK)
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(10)
+      .fillColor(BLACK)
       .text(value, M + 20 + LABEL_W, y, { width: CONTENT_W - 40 - LABEL_W });
     y = Math.max(y + 15, doc.y + 6);
   };
@@ -107,17 +133,27 @@ async function renderPdf(receipt: Receipt): Promise<Buffer> {
   const itemW = qtyX - (M + 20) - 8;
 
   y += 14;
-  doc.lineWidth(2).strokeColor(BLACK)
-    .moveTo(M, y).lineTo(PAGE_W - M, y).stroke();
+  doc
+    .lineWidth(2)
+    .strokeColor(BLACK)
+    .moveTo(M, y)
+    .lineTo(PAGE_W - M, y)
+    .stroke();
   y += 6;
-  doc.font("Courier").fontSize(8).fillColor(GRAY)
+  doc
+    .font("Courier")
+    .fontSize(8)
+    .fillColor(GRAY)
     .text("ITEM", M + 20, y, { lineBreak: false });
   doc.text("QTY", qtyX, y, { width: 70, align: "right" });
   doc.text("JUMLAH", amtX, y, { width: 160, align: "right" });
   y += 16;
 
   for (const it of items) {
-    doc.font("Courier").fontSize(10).fillColor(BLACK)
+    doc
+      .font("Courier")
+      .fontSize(10)
+      .fillColor(BLACK)
       .text(it.name, M + 20, y, { width: itemW });
     doc.text(String(it.qty), qtyX, y, { width: 70, align: "right" });
     doc.text(formatIDR(it.amount), amtX, y, { width: 160, align: "right" });
@@ -125,14 +161,23 @@ async function renderPdf(receipt: Receipt): Promise<Buffer> {
   }
 
   y += 4;
-  doc.lineWidth(1).strokeColor("#e5e5e5")
-    .moveTo(M + 20, y).lineTo(PAGE_W - M, y).stroke();
+  doc
+    .lineWidth(1)
+    .strokeColor("#e5e5e5")
+    .moveTo(M + 20, y)
+    .lineTo(PAGE_W - M, y)
+    .stroke();
   y += 12;
 
   const moneyRow = (label: string, value: string, bold: boolean) => {
-    doc.font(bold ? "Helvetica-Bold" : "Courier").fontSize(bold ? 12 : 10)
-      .fillColor(BLACK).text(label, M + 20, y, { lineBreak: false });
-    doc.font(bold ? "Helvetica-Bold" : "Courier").fontSize(bold ? 12 : 10)
+    doc
+      .font(bold ? "Helvetica-Bold" : "Courier")
+      .fontSize(bold ? 12 : 10)
+      .fillColor(BLACK)
+      .text(label, M + 20, y, { lineBreak: false });
+    doc
+      .font(bold ? "Helvetica-Bold" : "Courier")
+      .fontSize(bold ? 12 : 10)
       .text(value, amtX, y, { width: 160, align: "right" });
     y += bold ? 24 : 18;
   };
@@ -145,15 +190,26 @@ async function renderPdf(receipt: Receipt): Promise<Buffer> {
       false
     );
   }
-  doc.lineWidth(3).strokeColor(BLACK)
-    .moveTo(M + 20, y - 6).lineTo(PAGE_W - M, y - 6).stroke();
+  doc
+    .lineWidth(3)
+    .strokeColor(BLACK)
+    .moveTo(M + 20, y - 6)
+    .lineTo(PAGE_W - M, y - 6)
+    .stroke();
   moneyRow("Jumlah Dibayar", formatIDR(invoice.amount), true);
 
   // Footer.
   const footY = M + 760 - 60;
-  doc.lineWidth(3).strokeColor(BLACK)
-    .moveTo(M, footY).lineTo(PAGE_W - M, footY).stroke();
-  doc.font("Courier").fontSize(8).fillColor(GRAY)
+  doc
+    .lineWidth(3)
+    .strokeColor(BLACK)
+    .moveTo(M, footY)
+    .lineTo(PAGE_W - M, footY)
+    .stroke();
+  doc
+    .font("Courier")
+    .fontSize(8)
+    .fillColor(GRAY)
     .text(
       [
         "Bukti pembayaran diterbitkan otomatis oleh sistem SnapyOS.",
@@ -169,10 +225,7 @@ async function renderPdf(receipt: Receipt): Promise<Buffer> {
   return done;
 }
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
   if (!user) redirect("/login");
 

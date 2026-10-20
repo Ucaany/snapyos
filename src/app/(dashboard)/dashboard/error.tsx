@@ -1,17 +1,17 @@
-"use client"
+"use client";
 
 /**
  * Error inline dashboard (docs/13 §13.4: error = inline, bukan toast/global).
  */
 
-import { FeatureError } from "@/components/dashboard/FeatureError"
+import { FeatureError } from "@/components/dashboard/FeatureError";
 
 export default function DashboardError({
   error,
   reset,
 }: {
-  error: Error & { digest?: string }
-  reset: () => void
+  error: Error & { digest?: string };
+  reset: () => void;
 }) {
   return (
     <FeatureError
@@ -20,5 +20,5 @@ export default function DashboardError({
       error={error}
       reset={reset}
     />
-  )
+  );
 }

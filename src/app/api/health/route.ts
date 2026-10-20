@@ -38,10 +38,7 @@ async function probeStorage(): Promise<void> {
 }
 
 export async function GET() {
-  const [database, storage] = await Promise.all([
-    probe(probeDatabase),
-    probe(probeStorage),
-  ]);
+  const [database, storage] = await Promise.all([probe(probeDatabase), probe(probeStorage)]);
   const report: HealthReport = buildHealthReport({ database, storage });
   return NextResponse.json(report, {
     status: report.status === "ok" ? 200 : 503,

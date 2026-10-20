@@ -15,7 +15,7 @@ export const defaultBrandColors = {
  * Mirrors tokens.css --color-slot-* values.
  */
 export const slotColors = [
-  "#ffd400", // slot-1 (kuning — mirror accent)
+  "#ffd400", // slot-1 (kuning: mirror accent)
   "#38d9a9", // slot-2 (hijau)
   "#ff5c8a", // slot-3 (pink)
   "#4d6bff", // slot-4 (biru)

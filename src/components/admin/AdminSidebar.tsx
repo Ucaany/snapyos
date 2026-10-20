@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { useState } from "react"
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useState } from "react";
 import {
   AlertOctagon,
   Building2,
@@ -21,10 +21,10 @@ import {
   Tag,
   X,
   Users,
-} from "lucide-react"
+} from "lucide-react";
 
-import { cn } from "@/lib/utils"
-import { isNavActive } from "@/lib/nav-active"
+import { cn } from "@/lib/utils";
+import { isNavActive } from "@/lib/nav-active";
 
 /**
  * Sidebar Admin Platform - docs/10 §10.1–10.4.
@@ -34,12 +34,12 @@ import { isNavActive } from "@/lib/nav-active"
  */
 
 type NavItem = {
-  label: string
-  href: string
-  icon: React.ComponentType<{ className?: string }>
-}
+  label: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+};
 
-export type AdminNavGroup = { label: string; items: NavItem[] }
+export type AdminNavGroup = { label: string; items: NavItem[] };
 
 export const NAV_GROUPS: AdminNavGroup[] = [
   {
@@ -62,7 +62,11 @@ export const NAV_GROUPS: AdminNavGroup[] = [
       { label: "Subscriptions", href: "/admin/subscriptions", icon: Receipt },
       // Antrian review manual aktivasi post-payment - docs/02 §2.4b.
       // Muncul saat webhook paid tiba setelah subscription cancelled.
-      { label: "Antrian Aktivasi Manual", href: "/admin/subscriptions/pending-review", icon: AlertOctagon },
+      {
+        label: "Antrian Aktivasi Manual",
+        href: "/admin/subscriptions/pending-review",
+        icon: AlertOctagon,
+      },
     ],
   },
   {
@@ -92,34 +96,35 @@ export const NAV_GROUPS: AdminNavGroup[] = [
     label: "Sisi Owner",
     items: [{ label: "Buka Dashboard Bisnis", href: "/dashboard", icon: Store }],
   },
-]
+];
 
 export function AdminSidebar({ collapsed = false }: { collapsed?: boolean }) {
-  const pathname = usePathname()
-  const [mobileOpen, setMobileOpen] = useState(false)
+  const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   // Kumpulkan href sub-item yang lebih spesifik dari parent-nya (mis.
   // /admin/subscriptions/pending-review vs /admin/subscriptions). Bila
   // salah satu match tepat, parent-nya jangan ikut aktif - supaya
   // highlight tidak dobel di dua item sekaligus.
-  const allHrefs = NAV_GROUPS.flatMap((g) => g.items.map((i) => i.href))
+  const allHrefs = NAV_GROUPS.flatMap((g) => g.items.map((i) => i.href));
 
   const renderItem = (item: NavItem) => {
     // `/dashboard` = link cross-shell; jangan tandai aktif di admin.
     if (item.href === "/dashboard") {
-      return renderLink(item, false)
+      return renderLink(item, false);
     }
-    let active = isNavActive(pathname, item.href, "/admin")
+    let active = isNavActive(pathname, item.href, "/admin");
     if (active) {
       // Kalau ada item lain yang lebih panjang & lebih spesifik matching
       // pathname, biarkan item tersebut yang aktif (bukan parent).
       const moreSpecific = allHrefs.some(
-        (h) => h !== item.href && h.startsWith(`${item.href}/`) && isNavActive(pathname, h, "/admin")
-      )
-      if (moreSpecific) active = false
+        (h) =>
+          h !== item.href && h.startsWith(`${item.href}/`) && isNavActive(pathname, h, "/admin")
+      );
+      if (moreSpecific) active = false;
     }
-    return renderLink(item, active)
-  }
+    return renderLink(item, active);
+  };
 
   const renderLink = (item: NavItem, active: boolean) => {
     return (
@@ -129,7 +134,7 @@ export function AdminSidebar({ collapsed = false }: { collapsed?: boolean }) {
         title={collapsed ? item.label : undefined}
         aria-current={active ? "page" : undefined}
         className={cn(
-          "flex shrink-0 items-center gap-2 px-3 py-2 font-mono text-xs uppercase tracking-[0.05em] transition-colors duration-150 ease-[var(--ease-brutal)]",
+          "flex min-h-11 shrink-0 items-center gap-2 px-3 py-2 font-mono text-xs uppercase tracking-[0.05em] transition-colors duration-150 ease-[var(--ease-brutal)]",
           // Collapsed: stretch penuh di content-box nav p-2 (46px) + ikon
           // center - border kotak aktif selalu utuh (46 ≥ 4+16), satu sumbu
           // vertikal dengan tombol toggle. Tanpa fit-content/cascade trick.
@@ -141,8 +146,8 @@ export function AdminSidebar({ collapsed = false }: { collapsed?: boolean }) {
         <item.icon className="size-4 shrink-0" />
         <span className={cn("whitespace-nowrap", collapsed && "md:hidden")}>{item.label}</span>
       </Link>
-    )
-  }
+    );
+  };
 
   return (
     <nav
@@ -153,7 +158,9 @@ export function AdminSidebar({ collapsed = false }: { collapsed?: boolean }) {
       )}
     >
       <div className="flex items-center justify-between gap-2 md:hidden">
-        <span className="font-mono text-[10px] font-bold uppercase tracking-[0.15em]">Menu Admin</span>
+        <span className="font-mono text-[10px] font-bold uppercase tracking-[0.15em]">
+          Menu Admin
+        </span>
         <button
           type="button"
           aria-expanded={mobileOpen}
@@ -165,9 +172,15 @@ export function AdminSidebar({ collapsed = false }: { collapsed?: boolean }) {
           {mobileOpen ? <X className="size-4" /> : <Menu className="size-4" />}
         </button>
       </div>
-      <div id="admin-mobile-nav" className={cn("gap-1 md:hidden", mobileOpen ? "flex flex-col" : "hidden")}>
+      <div
+        id="admin-mobile-nav"
+        className={cn("gap-1 md:hidden", mobileOpen ? "flex flex-col" : "hidden")}
+      >
         {NAV_GROUPS.map((group) => (
-          <div key={group.label} className="border-t-2 border-ink/10 pt-2 first:border-t-0 first:pt-0">
+          <div
+            key={group.label}
+            className="border-t-2 border-ink/10 pt-2 first:border-t-0 first:pt-0"
+          >
             <p className="px-3 pb-1 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
               {group.label}
             </p>
@@ -194,5 +207,5 @@ export function AdminSidebar({ collapsed = false }: { collapsed?: boolean }) {
         </div>
       ))}
     </nav>
-  )
+  );
 }

@@ -20,7 +20,8 @@ function whenIdle(run: () => void): () => void {
   if (typeof w.requestIdleCallback === "function") {
     const id = w.requestIdleCallback(run, { timeout: 2000 });
     return () => {
-      const cancel = (w as unknown as { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback;
+      const cancel = (w as unknown as { cancelIdleCallback?: (id: number) => void })
+        .cancelIdleCallback;
       cancel?.(id);
     };
   }
@@ -29,7 +30,10 @@ function whenIdle(run: () => void): () => void {
 }
 
 /** Preload satu gambar; resolve null bila gagal (bukan error yang dilempar). */
-export function preloadFrameAsset(url: string, signal?: AbortSignal): Promise<HTMLImageElement | null> {
+export function preloadFrameAsset(
+  url: string,
+  signal?: AbortSignal
+): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
     if (signal?.aborted) return resolve(null);
     const img = new Image();

@@ -70,14 +70,26 @@ test("RPC kuota: hanya service_role yang boleh execute", () => {
       migration,
       new RegExp(`revoke execute on function ${fn}[\\s\\S]*?from public, anon, authenticated`, "i")
     );
-    assert.match(migration, new RegExp(`grant execute on function ${fn}[\\s\\S]*?to service_role`, "i"));
+    assert.match(
+      migration,
+      new RegExp(`grant execute on function ${fn}[\\s\\S]*?to service_role`, "i")
+    );
     assert.match(schema, new RegExp(`revoke execute on function ${fn}`, "i"));
     assert.match(schema, new RegExp(`grant execute on function ${fn}`, "i"));
   }
 });
 
 test("rollback 0069 menghapus RPC dengan signature yang sama", () => {
-  assert.match(rollback, /drop function if exists create_outlet_with_quota\(uuid, integer, text, text, text, text, text\)/);
-  assert.match(rollback, /drop function if exists create_photobox_with_quota\(uuid, integer, jsonb\)/);
-  assert.match(rollback, /drop function if exists add_business_member_with_quota\(uuid, integer, uuid, text\)/);
+  assert.match(
+    rollback,
+    /drop function if exists create_outlet_with_quota\(uuid, integer, text, text, text, text, text\)/
+  );
+  assert.match(
+    rollback,
+    /drop function if exists create_photobox_with_quota\(uuid, integer, jsonb\)/
+  );
+  assert.match(
+    rollback,
+    /drop function if exists add_business_member_with_quota\(uuid, integer, uuid, text\)/
+  );
 });

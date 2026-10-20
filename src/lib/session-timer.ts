@@ -56,9 +56,7 @@ export const MIN_QRIS_EXPIRY_MINUTES = 1;
 export const MAX_QRIS_EXPIRY_MINUTES = 60;
 
 /** Clamp menit expiry QRIS ke rentang valid (default 3). */
-export function clampQrisExpiryMinutes(
-  minutes: number | null | undefined
-): number {
+export function clampQrisExpiryMinutes(minutes: number | null | undefined): number {
   if (minutes === null || minutes === undefined) return DEFAULT_QRIS_EXPIRY_MINUTES;
   const n = Number(minutes);
   if (!Number.isFinite(n)) return DEFAULT_QRIS_EXPIRY_MINUTES;

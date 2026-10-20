@@ -72,7 +72,10 @@ export default async function AdminSubscriptionsPage({
       ) : (
         <div className="flex flex-col gap-4">
           {items.map((s) => (
-            <div key={s.id} className="border-2 border-ink bg-surface p-4 shadow-[4px_4px_0_0_#111111]">
+            <div
+              key={s.id}
+              className="border-2 border-ink bg-surface p-4 shadow-[4px_4px_0_0_#111111]"
+            >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <span>
                   <span className="block font-display text-lg uppercase tracking-tight">
@@ -93,11 +96,15 @@ export default async function AdminSubscriptionsPage({
                 {[
                   {
                     label: "Periode mulai",
-                    value: s.current_period_start ? dateFmt.format(new Date(s.current_period_start)) : "-",
+                    value: s.current_period_start
+                      ? dateFmt.format(new Date(s.current_period_start))
+                      : "-",
                   },
                   {
                     label: "Periode selesai",
-                    value: s.current_period_end ? dateFmt.format(new Date(s.current_period_end)) : "-",
+                    value: s.current_period_end
+                      ? dateFmt.format(new Date(s.current_period_end))
+                      : "-",
                   },
                   {
                     label: "Trial s/d",

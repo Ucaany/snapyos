@@ -16,10 +16,7 @@ import { LABEL_CLASS as labelClass, fieldError } from "@/lib/form-ui";
 import type { TemplateRow } from "@/server/templates";
 import { TEMPLATE_CATEGORIES } from "@/lib/validators";
 import type { FormState } from "@/server/auth-actions";
-import {
-  deleteTemplateAction,
-  uploadTemplateAction,
-} from "@/server/catalog-actions";
+import { deleteTemplateAction, uploadTemplateAction } from "@/server/catalog-actions";
 
 const initial: FormState = {};
 
@@ -97,7 +94,10 @@ export function TemplatesGrid({ templates, canWrite }: Props) {
             </div>
           </div>
           {uploadState.error && (
-            <p role="alert" className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink">
+            <p
+              role="alert"
+              className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink"
+            >
               {uploadState.error}
             </p>
           )}
@@ -127,9 +127,15 @@ export function TemplatesGrid({ templates, canWrite }: Props) {
           />
         )
       ) : (
-        <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3" aria-label="Daftar template">
+        <ul
+          className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3"
+          aria-label="Daftar template"
+        >
           {templates.map((tpl) => (
-            <li key={tpl.id} className="flex flex-col border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
+            <li
+              key={tpl.id}
+              className="flex flex-col border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]"
+            >
               <div className="flex h-44 items-center justify-center overflow-hidden border-b-2 border-ink bg-[repeating-linear-gradient(45deg,#FFFDF5_0_10px,#F4F4F0_10px_20px)]">
                 {tpl.preview_url ? (
                   <Image
@@ -150,7 +156,9 @@ export function TemplatesGrid({ templates, canWrite }: Props) {
               <div className="flex flex-1 flex-col gap-3 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="font-mono text-sm font-bold uppercase tracking-[0.05em]">{tpl.name}</p>
+                    <p className="font-mono text-sm font-bold uppercase tracking-[0.05em]">
+                      {tpl.name}
+                    </p>
                     <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
                       {`${tpl.category} \u00b7 ${tpl.created_at.slice(0, 10)} \u00b7 ${
                         tpl.file_url.endsWith(".png") ? "PNG" : "FRAME"
@@ -163,9 +171,7 @@ export function TemplatesGrid({ templates, canWrite }: Props) {
                 {/* Status slot + assignment: dua alasan paling sering frame
                     "sudah aktif" tapi tidak muncul di booth (docs/05 §5.4). */}
                 <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-                  {tpl.slot_count > 0
-                    ? `${tpl.slot_count} slot foto`
-                    : "Tanpa slot (frame penuh)"}
+                  {tpl.slot_count > 0 ? `${tpl.slot_count} slot foto` : "Tanpa slot (frame penuh)"}
                 </p>
                 {tpl.is_active && tpl.assigned === false && (
                   <p className="border-2 border-destructive bg-destructive/10 px-2 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.08em]">

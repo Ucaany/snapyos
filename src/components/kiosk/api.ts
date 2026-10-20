@@ -37,7 +37,7 @@ const REQUEST_TIMEOUT_MS = 15_000;
 
 function timeoutSignal(existing?: AbortSignal): AbortSignal | undefined {
   if (typeof AbortSignal === "undefined" || !("timeout" in AbortSignal)) {
-    return existing; // browser kiosk lama tanpa AbortSignal.timeout — tanpa timeout
+    return existing; // browser kiosk lama tanpa AbortSignal.timeout: tanpa timeout
   }
   if (!existing) return AbortSignal.timeout(REQUEST_TIMEOUT_MS);
   const controller = new AbortController();
@@ -56,11 +56,17 @@ async function request<T>(url: string, init: RequestInit): Promise<T> {
   } catch (e) {
     if (e instanceof KioskError) throw e;
     if (e instanceof DOMException && (e.name === "TimeoutError" || e.name === "AbortError")) {
-      throw new KioskError("TIMEOUT", "Koneksi ke server terputus atau terlalu lambat. Periksa internet booth, lalu coba lagi.");
+      throw new KioskError(
+        "TIMEOUT",
+        "Koneksi ke server terputus atau terlalu lambat. Periksa internet booth, lalu coba lagi."
+      );
     }
     if (e instanceof TypeError) {
       // fetch gagal DNS/offline — buat pesan eksplisit, bukan error generik.
-      throw new KioskError("NETWORK", "Tidak dapat terhubung ke server. Periksa koneksi internet booth.");
+      throw new KioskError(
+        "NETWORK",
+        "Tidak dapat terhubung ke server. Periksa koneksi internet booth."
+      );
     }
     throw e;
   }

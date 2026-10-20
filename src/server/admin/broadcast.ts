@@ -130,19 +130,6 @@ export async function listBroadcastRecipients(
   return (data ?? []) as AdminBroadcastRecipientRow[];
 }
 
-/** Satu kampanye (untuk halaman detail). */
-export async function getBroadcast(campaignId: string): Promise<AdminBroadcastRow> {
-  await requireAdmin();
-  const supabase = createServerClient();
-  const { data, error } = await supabase
-    .from("broadcast_campaigns")
-    .select(CAMPAIGN_COLUMNS)
-    .eq("id", campaignId)
-    .single();
-  if (error || !data) throw new ApiError("NOT_FOUND", "Broadcast tidak ditemukan");
-  return data as AdminBroadcastRow;
-}
-
 // ---------------------------------------------------------------------------
 // Create
 // ---------------------------------------------------------------------------
@@ -177,7 +164,13 @@ export async function createBroadcast(input: BroadcastCreateInput): Promise<Admi
 // Audience resolution
 // ---------------------------------------------------------------------------
 
-type Recipient = { email: string; kind: "user" | "business"; name: string; user_id: string | null; business_id: string | null };
+type Recipient = {
+  email: string;
+  kind: "user" | "business";
+  name: string;
+  user_id: string | null;
+  business_id: string | null;
+};
 
 async function resolveAudience(audience: BroadcastAudience): Promise<Recipient[]> {
   const supabase = createServerClient();
@@ -197,7 +190,13 @@ async function resolveAudience(audience: BroadcastAudience): Promise<Recipient[]
       .select("id, email, name")
       .eq("status", "active");
     for (const u of users ?? []) {
-      push({ email: u.email, kind: "user", name: u.name ?? u.email, user_id: u.id, business_id: null });
+      push({
+        email: u.email,
+        kind: "user",
+        name: u.name ?? u.email,
+        user_id: u.id,
+        business_id: null,
+      });
     }
   }
 
@@ -220,7 +219,9 @@ async function resolveAudience(audience: BroadcastAudience): Promise<Recipient[]
       seenBusiness.add(o.business_id);
     }
     // Bisnis tanpa owner di business_members: fallback ke businesses.contact_email.
-    const { data: businesses } = await supabase.from("businesses").select("id, name, contact_email");
+    const { data: businesses } = await supabase
+      .from("businesses")
+      .select("id, name, contact_email");
     for (const b of businesses ?? []) {
       if (seenBusiness.has(b.id) || !b.contact_email) continue;
       push({
@@ -320,7 +321,7 @@ async function deliverCampaign(campaign: AdminBroadcastRow, onlyFailed: boolean)
   if (!hasResendKey()) {
     throw new ApiError(
       "VALIDATION_ERROR",
-      "RESEND_API_KEY belum dikonfigurasi — email tidak dapat dikirim"
+      "RESEND_API_KEY belum dikonfigurasi: email tidak dapat dikirim"
     );
   }
 
@@ -343,7 +344,12 @@ async function deliverCampaign(campaign: AdminBroadcastRow, onlyFailed: boolean)
       kind,
       templateKey,
     });
-    const result = await sendEmailWithResend({ to: row.email, subject: campaign.subject, html, text });
+    const result = await sendEmailWithResend({
+      to: row.email,
+      subject: campaign.subject,
+      html,
+      text,
+    });
     const now = new Date().toISOString();
     if (result.ok) {
       await supabase
@@ -376,7 +382,9 @@ async function deliverCampaign(campaign: AdminBroadcastRow, onlyFailed: boolean)
   return { sent, failed, total: rows.length };
 }
 
-export async function sendBroadcast(campaignId: string): Promise<{ sent: number; failed: number; total: number }> {
+export async function sendBroadcast(
+  campaignId: string
+): Promise<{ sent: number; failed: number; total: number }> {
   const admin = await requireAdmin();
   const supabase = createServerClient();
   const { data, error } = await supabase
@@ -397,10 +405,7 @@ export async function sendBroadcast(campaignId: string): Promise<{ sent: number;
     );
   }
 
-  await supabase
-    .from("broadcast_campaigns")
-    .update({ status: "sending" })
-    .eq("id", campaignId);
+  await supabase.from("broadcast_campaigns").update({ status: "sending" }).eq("id", campaignId);
 
   let result: { sent: number; failed: number; total: number };
   try {
@@ -428,7 +433,9 @@ export async function sendBroadcast(campaignId: string): Promise<{ sent: number;
   return result;
 }
 
-export async function resendBroadcast(campaignId: string): Promise<{ sent: number; failed: number; total: number }> {
+export async function resendBroadcast(
+  campaignId: string
+): Promise<{ sent: number; failed: number; total: number }> {
   const admin = await requireAdmin();
   const supabase = createServerClient();
   const { data, error } = await supabase
@@ -452,10 +459,7 @@ export async function resendBroadcast(campaignId: string): Promise<{ sent: numbe
     );
   }
 
-  await supabase
-    .from("broadcast_campaigns")
-    .update({ status: "sending" })
-    .eq("id", campaignId);
+  await supabase.from("broadcast_campaigns").update({ status: "sending" }).eq("id", campaignId);
 
   let result: { sent: number; failed: number; total: number };
   try {

@@ -56,17 +56,17 @@ psql -f db/migrations/0027_direct_merchant_payment_rollback.sql
 
 ## Migration Chain
 
-| Nomor | File | Deskripsi |
-|-------|------|-----------|
-| baseline | `schema.sql` | Accumulated schema (49+ tabel, RPC, seed) |
-| 0002 | `0002-outlets-province.sql` | Outlets province column |
-| 0003 | `0003-owner-dashboard-indexes.sql` | Dashboard query indexes |
-| … | … | … |
-| 0026 | `0026_session_timer_pos_atomicity.sql` | Session timer + atomic POS payment |
-| 0027 | `0027_direct_merchant_payment.sql` | Payment credentials + Electron device config + device_logs |
-| 0053 | `0053_business_profile_storage.sql` | Profil bisnis (whatsapp/owner/kontak/alamat) + add-on storage |
-| 0054 | `0054_plan_storage_feature.sql` | Feature flag `storage` per plan + data migration default on |
-| 0058 | `0058_broadcast_kind_template_history.sql` | Broadcast email kind + template history |
-| 0059 | `0059_payment_settlement_hardening.sql` | Partial unique 1 payment aktif/checkout + settle RPC hardening + exit-PIN atomic lockout |
-| 0060 | `0060_subscription_lifecycle_email.sql` | Subscription lifecycle email otomatis (Resend) |
-| 0061 | `0061_plan_device_addon_model.sql` | Perangkat base 1 semua plan (tambah via add-on); fitur pembeda plan |
+| Nomor    | File                                       | Deskripsi                                                                                |
+| -------- | ------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| baseline | `schema.sql`                               | Accumulated schema (49+ tabel, RPC, seed)                                                |
+| 0002     | `0002-outlets-province.sql`                | Outlets province column                                                                  |
+| 0003     | `0003-owner-dashboard-indexes.sql`         | Dashboard query indexes                                                                  |
+| …        | …                                          | …                                                                                        |
+| 0026     | `0026_session_timer_pos_atomicity.sql`     | Session timer + atomic POS payment                                                       |
+| 0027     | `0027_direct_merchant_payment.sql`         | Payment credentials + Electron device config + device_logs                               |
+| 0053     | `0053_business_profile_storage.sql`        | Profil bisnis (whatsapp/owner/kontak/alamat) + add-on storage                            |
+| 0054     | `0054_plan_storage_feature.sql`            | Feature flag `storage` per plan + data migration default on                              |
+| 0058     | `0058_broadcast_kind_template_history.sql` | Broadcast email kind + template history                                                  |
+| 0059     | `0059_payment_settlement_hardening.sql`    | Partial unique 1 payment aktif/checkout + settle RPC hardening + exit-PIN atomic lockout |
+| 0060     | `0060_subscription_lifecycle_email.sql`    | Subscription lifecycle email otomatis (Resend)                                           |
+| 0061     | `0061_plan_device_addon_model.sql`         | Perangkat base 1 semua plan (tambah via add-on); fitur pembeda plan                      |

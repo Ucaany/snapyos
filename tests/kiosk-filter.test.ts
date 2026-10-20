@@ -14,16 +14,7 @@ test("FILTER_PRESETS: id unik + css non-kosong + Original = none", () => {
 
 test("FILTER_PRESETS: id canonical tetap (dipakai render + persist)", () => {
   const ids = FILTER_PRESETS.map((f) => f.id);
-  assert.deepEqual(ids, [
-    "original",
-    "film",
-    "warm",
-    "cool",
-    "bw",
-    "retro",
-    "vintage",
-    "y2k",
-  ]);
+  assert.deepEqual(ids, ["original", "film", "warm", "cool", "bw", "retro", "vintage", "y2k"]);
 });
 
 test("defaultEdit: filter default original + tanpa adjust slider lama", () => {

@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { kioskThemeVars, kioskVisualStyle, KIOSK_FONT_FAMILIES, type KioskBrandingConfig } from "../src/lib/kiosk-types.ts";
+import {
+  kioskThemeVars,
+  kioskVisualStyle,
+  KIOSK_FONT_FAMILIES,
+  type KioskBrandingConfig,
+} from "../src/lib/kiosk-types.ts";
 import { brandingContrastIssues } from "../src/lib/validators.ts";
 import { cardSurface, contrastRatio, readableText } from "../src/lib/color.ts";
 
@@ -14,7 +19,13 @@ test("kioskVisualStyle: tanpa page, global defaults", () => {
 });
 
 test("kioskVisualStyle: tanpa page, global override", () => {
-  const k: KioskBrandingConfig = { bg_color: "#000000", text_color: "#ffffff", font_scale: 1.2, button_radius: 8, padding: 48 };
+  const k: KioskBrandingConfig = {
+    bg_color: "#000000",
+    text_color: "#ffffff",
+    font_scale: 1.2,
+    button_radius: 8,
+    padding: 48,
+  };
   const s = kioskVisualStyle(k);
   assert.equal(s.bg, "#000000");
   assert.equal(s.text, "#ffffff");
@@ -39,7 +50,13 @@ test("kioskVisualStyle: page override menimpa global", () => {
     text_color: "#222222",
     font_scale: 1,
     pages: {
-      capture: { bg_color: "#FF0000", text_color: "#00FF00", font_scale: 1.4, button_radius: 12, padding: 64 },
+      capture: {
+        bg_color: "#FF0000",
+        text_color: "#00FF00",
+        font_scale: 1.4,
+        button_radius: 12,
+        padding: 64,
+      },
     },
   };
   const s = kioskVisualStyle(k, "capture");
@@ -139,7 +156,11 @@ test("brandingContrastIssues: menandai pasangan kontras rendah (global + per-lay
 
 test("brandingContrastIssues: kontras cukup tidak menghasilkan issue", () => {
   const issues = brandingContrastIssues({
-    kiosk: { bg_color: "#000000", text_color: "#ffffff", pages: { guide: { bg_color: "#004d00" } } },
+    kiosk: {
+      bg_color: "#000000",
+      text_color: "#ffffff",
+      pages: { guide: { bg_color: "#004d00" } },
+    },
   });
   assert.equal(issues.length, 0);
 });
@@ -152,7 +173,10 @@ test("kioskVisualStyle: surface diturunkan dari bg, bukan putih paksa", () => {
 });
 
 test("kioskVisualStyle: accentText memilih teks yang terbaca di atas accent", () => {
-  const light = kioskVisualStyle(undefined, undefined, { primary: "#ffd400", secondary: "#111111" });
+  const light = kioskVisualStyle(undefined, undefined, {
+    primary: "#ffd400",
+    secondary: "#111111",
+  });
   assert.ok(contrastRatio(light.accentText, light.accent) >= 4.5);
   const dark = kioskVisualStyle(undefined, undefined, { primary: "#111111", secondary: "#111111" });
   assert.ok(contrastRatio(dark.accentText, dark.accent) >= 4.5);

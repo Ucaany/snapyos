@@ -82,5 +82,9 @@ test("M1: storage route cek getMembership + cross-tenant 404", async () => {
   );
   assert.match(src, /getMembership\s*\(\s*user\.id\s*,\s*businessId\s*\)/, "harus cek membership");
   assert.match(src, /ApiError\s*\(\s*["']NOT_FOUND["']/, "cross-tenant → NOT_FOUND (404)");
-  assert.match(src, /can\s*\(\s*membership\.role\s*,\s*["']business:read["']\s*\)/, "harus cek permission");
+  assert.match(
+    src,
+    /can\s*\(\s*membership\.role\s*,\s*["']business:read["']\s*\)/,
+    "harus cek permission"
+  );
 });

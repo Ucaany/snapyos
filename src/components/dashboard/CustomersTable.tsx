@@ -20,9 +20,16 @@ type Props = {
   timeZone?: string;
 };
 
-
 /** CustomersTable — list + detail on-demand via API (docs/04 §4.12). */
-export function CustomersTable({ customers, businessId, page, totalPages, prevHref, nextHref, timeZone }: Props) {
+export function CustomersTable({
+  customers,
+  businessId,
+  page,
+  totalPages,
+  prevHref,
+  nextHref,
+  timeZone,
+}: Props) {
   const [openId, setOpenId] = useState<string | null>(null);
   const [detail, setDetail] = useState<CustomerDetail | null>(null);
   const [loading, setLoading] = useState(false);
@@ -107,12 +114,24 @@ export function CustomersTable({ customers, businessId, page, totalPages, prevHr
             <caption className="sr-only">Daftar pelanggan</caption>
             <thead>
               <tr className="border-b-2 border-ink bg-ink font-mono text-[10px] uppercase tracking-[0.12em] text-bg">
-                <th scope="col" className="px-4 py-3.5">Pelanggan</th>
-                <th scope="col" className="px-4 py-3.5">Kontak</th>
-                <th scope="col" className="px-4 py-3.5">Sejak</th>
-                <th scope="col" className="px-4 py-3.5 text-center">Transaksi</th>
-                <th scope="col" className="px-4 py-3.5 text-right">Total Spending</th>
-                <th scope="col" className="px-4 py-3.5 text-right">Detail</th>
+                <th scope="col" className="px-4 py-3.5">
+                  Pelanggan
+                </th>
+                <th scope="col" className="px-4 py-3.5">
+                  Kontak
+                </th>
+                <th scope="col" className="px-4 py-3.5">
+                  Sejak
+                </th>
+                <th scope="col" className="px-4 py-3.5 text-center">
+                  Transaksi
+                </th>
+                <th scope="col" className="px-4 py-3.5 text-right">
+                  Total Spending
+                </th>
+                <th scope="col" className="px-4 py-3.5 text-right">
+                  Detail
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -125,9 +144,15 @@ export function CustomersTable({ customers, businessId, page, totalPages, prevHr
                     <td className="px-4 py-4 font-mono text-xs text-muted-foreground">
                       {[c.phone, c.email].filter(Boolean).join(" \u00b7 ") || "\u2014"}
                     </td>
-                    <td className="px-4 py-4 font-mono text-xs">{formatDate(c.created_at, timeZone)}</td>
-                    <td className="px-4 py-4 text-center font-mono text-sm">{c.transactionCount}</td>
-                    <td className="px-4 py-4 text-right font-mono text-sm font-bold">{formatIDR(c.totalSpending)}</td>
+                    <td className="px-4 py-4 font-mono text-xs">
+                      {formatDate(c.created_at, timeZone)}
+                    </td>
+                    <td className="px-4 py-4 text-center font-mono text-sm">
+                      {c.transactionCount}
+                    </td>
+                    <td className="px-4 py-4 text-right font-mono text-sm font-bold">
+                      {formatIDR(c.totalSpending)}
+                    </td>
                     <td className="px-4 py-4 text-right">
                       <button
                         type="button"
@@ -143,7 +168,7 @@ export function CustomersTable({ customers, businessId, page, totalPages, prevHr
                     <tr className="border-b-2 border-ink/10 bg-muted">
                       <td colSpan={6} className="px-4 py-4 md:px-6">
                         <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-                          {`/// Riwayat — ${(c.name ?? "PELANGGAN").toUpperCase()}`}
+                          {`/// Riwayat: ${(c.name ?? "PELANGGAN").toUpperCase()}`}
                         </p>
                         {loading && (
                           <div className="mt-4 flex gap-3" aria-label="Memuat detail">
@@ -152,7 +177,10 @@ export function CustomersTable({ customers, businessId, page, totalPages, prevHr
                           </div>
                         )}
                         {error && (
-                          <p role="alert" className="mt-4 border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink">
+                          <p
+                            role="alert"
+                            className="mt-4 border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink"
+                          >
                             {error}
                           </p>
                         )}
@@ -163,13 +191,20 @@ export function CustomersTable({ customers, businessId, page, totalPages, prevHr
                                 Transaksi ({detail.transactions.length})
                               </h3>
                               {detail.transactions.length === 0 ? (
-                                <p className="mt-2 font-mono text-xs text-muted-foreground">Belum ada transaksi.</p>
+                                <p className="mt-2 font-mono text-xs text-muted-foreground">
+                                  Belum ada transaksi.
+                                </p>
                               ) : (
                                 <ul className="mt-2 divide-y-2 divide-ink/10 border-2 border-ink bg-surface">
                                   {detail.transactions.map((t) => (
-                                    <li key={t.id} className="flex items-center justify-between gap-3 px-3 py-2 font-mono text-xs">
+                                    <li
+                                      key={t.id}
+                                      className="flex items-center justify-between gap-3 px-3 py-2 font-mono text-xs"
+                                    >
                                       <span className="font-bold">{t.number}</span>
-                                      <span className="text-muted-foreground">{t.paidAt ? formatDate(t.paidAt, timeZone) : "\u2014"}</span>
+                                      <span className="text-muted-foreground">
+                                        {t.paidAt ? formatDate(t.paidAt, timeZone) : "\u2014"}
+                                      </span>
                                       <span>{formatIDR(t.finalAmount)}</span>
                                       <StatusBadge status={t.status} />
                                     </li>
@@ -182,12 +217,19 @@ export function CustomersTable({ customers, businessId, page, totalPages, prevHr
                                 Sesi foto ({detail.sessions.length})
                               </h3>
                               {detail.sessions.length === 0 ? (
-                                <p className="mt-2 font-mono text-xs text-muted-foreground">Belum ada sesi.</p>
+                                <p className="mt-2 font-mono text-xs text-muted-foreground">
+                                  Belum ada sesi.
+                                </p>
                               ) : (
                                 <ul className="mt-2 divide-y-2 divide-ink/10 border-2 border-ink bg-surface">
                                   {detail.sessions.map((s) => (
-                                    <li key={s.id} className="flex items-center justify-between gap-3 px-3 py-2 font-mono text-xs">
-                                      <span className="text-muted-foreground">{formatDate(s.createdAt, timeZone)}</span>
+                                    <li
+                                      key={s.id}
+                                      className="flex items-center justify-between gap-3 px-3 py-2 font-mono text-xs"
+                                    >
+                                      <span className="text-muted-foreground">
+                                        {formatDate(s.createdAt, timeZone)}
+                                      </span>
                                       <span>{s.photobox ?? "\u2014"}</span>
                                       <StatusBadge status={s.status} />
                                     </li>
@@ -211,7 +253,10 @@ export function CustomersTable({ customers, businessId, page, totalPages, prevHr
       )}
 
       {totalPages > 1 && (
-        <nav aria-label="Navigasi halaman pelanggan" className="flex items-center justify-between gap-3">
+        <nav
+          aria-label="Navigasi halaman pelanggan"
+          className="flex items-center justify-between gap-3"
+        >
           <p className="font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
             {`HALAMAN ${page}/${totalPages}`}
           </p>

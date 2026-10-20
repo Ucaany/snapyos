@@ -45,7 +45,7 @@ export function OutletEditForm({ outlet, onDone }: Props) {
     <form action={action} className="flex flex-col gap-5" noValidate>
       <input type="hidden" name="id" value={outlet.id} />
       <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-        {`/// Ubah — ${outlet.name.toUpperCase()}`}
+        {`/// Ubah: ${outlet.name.toUpperCase()}`}
       </p>
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
         <div className="flex flex-col gap-2">
@@ -102,7 +102,10 @@ export function OutletEditForm({ outlet, onDone }: Props) {
         </p>
       )}
       {state.error && (
-        <p role="alert" className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink">
+        <p
+          role="alert"
+          className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink"
+        >
           {state.error}
         </p>
       )}

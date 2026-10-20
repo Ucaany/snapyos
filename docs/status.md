@@ -2,79 +2,79 @@
 
 Status: active
 Audience: owner, staff, admin, developer, operator
-Last updated: 2026-10-16
-Last verified: 2026-10-16
+Last updated: 2026-10-20
+Last verified: 2026-10-20
 Source of truth: `src/`, `db/schema.sql`, `README.md`
 
 ## Active
 
-| Area | Status | Canonical source |
-| --- | --- | --- |
-| Auth.js credential auth | Active | `src/lib/auth.ts`, `auth_sessions` |
-| Multi-tenant business | Active | `businesses`, `business_members`, tenant helpers |
-| Owner dashboard | Active | `src/app/(dashboard)/dashboard/` |
-| Staff shell | Active, operational read-only | `src/app/(staff)/staff/` |
-| Admin platform | Active | `src/app/(admin)/admin/` |
-| Customer kiosk | Active, pay-first | `src/app/p/[businessSlug]/[photoboxSlug]/` |
-| Online result | Active | `src/app/r/[token]/` |
-| Direct merchant payment | Active | Pakasir, Midtrans, Tripay credentials per business |
-| Voucher payment | Active | public checkout actions and voucher server logic |
-| Offline cash kiosk | Active when owner enables it | `business_settings.checkout.offline_enabled` |
-| POS add-on | Active, offline-only | `src/server/pos-actions.ts`, `photoboxes.pos_enabled` |
-| Template builder | Active | `src/components/dashboard/TemplateBuilder.tsx` |
-| Storage quota | Active when plan feature is enabled | `src/server/storage-usage.ts` (jumlah kedua provider) |
-| Dual storage (R2 write + Supabase read) | Active — Fase 3 | `src/server/storage` (`getWriteStorage`, `resolveStorage`) |
+| Area                                    | Status                              | Canonical source                                           |
+| --------------------------------------- | ----------------------------------- | ---------------------------------------------------------- |
+| Auth.js credential auth                 | Active                              | `src/lib/auth.ts`, `auth_sessions`                         |
+| Multi-tenant business                   | Active                              | `businesses`, `business_members`, tenant helpers           |
+| Owner dashboard                         | Active                              | `src/app/(dashboard)/dashboard/`                           |
+| Staff shell                             | Active, operational read-only       | `src/app/(staff)/staff/`                                   |
+| Admin platform                          | Active                              | `src/app/(admin)/admin/`                                   |
+| Customer kiosk                          | Active, pay-first                   | `src/app/p/[businessSlug]/[photoboxSlug]/`                 |
+| Online result                           | Active                              | `src/app/r/[token]/`                                       |
+| Direct merchant payment                 | Active                              | Pakasir, Midtrans, Tripay credentials per business         |
+| Voucher payment                         | Active                              | public checkout actions and voucher server logic           |
+| Offline cash kiosk                      | Active when owner enables it        | `business_settings.checkout.offline_enabled`               |
+| POS add-on                              | Active, offline-only                | `src/server/pos-actions.ts`, `photoboxes.pos_enabled`      |
+| Template builder                        | Active                              | `src/components/dashboard/TemplateBuilder.tsx`             |
+| Storage quota                           | Active when plan feature is enabled | `src/server/storage-usage.ts` (jumlah kedua provider)      |
+| Dual storage (R2 write + Supabase read) | Active — Fase 3                     | `src/server/storage` (`getWriteStorage`, `resolveStorage`) |
 
 ## Partial or constrained
 
-| Area | Constraint |
-| --- | --- |
-| Camera control | Browser camera (PWA, `getUserMedia`) — kamera internal tablet. Tanpa kontrol kamera USB native. |
-| Printing | Browser print fallback (`window.print()` / media print). Tanpa kontrol printer native. |
-| Subscription REST | Subscription actions use server actions and dashboard pages. No public REST contract is exposed. |
-| Owner CRUD REST | Most owner CRUD uses server actions. Only documented device, customer detail, report, and activation routes remain. |
+| Area              | Constraint                                                                                                          |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Camera control    | Browser camera (PWA, `getUserMedia`) — kamera internal tablet. Tanpa kontrol kamera USB native.                     |
+| Printing          | Browser print fallback (`window.print()` / media print). Tanpa kontrol printer native.                              |
+| Subscription REST | Subscription actions use server actions and dashboard pages. No public REST contract is exposed.                    |
+| Owner CRUD REST   | Most owner CRUD uses server actions. Only documented device, customer detail, report, and activation routes remain. |
 
 ## Security hardening (2026-10-08)
 
 Selesai (migrasi `0064`–`0066`, commit per phase):
 
-| Temuan | Perbaikan | Migrasi/Test |
-| --- | --- | --- |
-| C1 RLS | RLS + policy `svc_all` service_role di semua tabel publik; revoke anon/authenticated | `0064`; `tests/rls-coverage.test.ts` |
-| C2 webhook invoice | `provider_signature` null tidak auto-pass; Pakasir wajib server-to-server | `tests/pakasir-invoice-webhook.test.ts` |
-| C3 cash gate | `confirmCashPaymentAction` gated `requireEffectiveSubscription(write)` | `tests/subscription-gate.test.ts` |
-| C4 offline queue | purge sekali-jalan (flag), antrian survive reload | `tests/kiosk-offline-queue.test.ts` |
-| H1 RPC lock | semua RPC aplikasi service_role-only | `0065`; `tests/rpc-privilege.test.ts` |
-| H2 secret + freshness | secret per-credential wajib; freshness ±24 jam | `tests/pakasir-webhook-credential.test.ts` |
-| H3 idempotency | state-aware `received`→`processed` | `0066`; `tests/webhook-direct.test.ts` |
-| M1 IDOR storage | route storage tenant-scoped (404 cross-tenant) | `tests/parse-uuid-param.test.ts` |
-| M2 adminRoute | guard admin di lapisan route | `tests/admin.test.ts` |
+| Temuan                | Perbaikan                                                                            | Migrasi/Test                               |
+| --------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------ |
+| C1 RLS                | RLS + policy `svc_all` service_role di semua tabel publik; revoke anon/authenticated | `0064`; `tests/rls-coverage.test.ts`       |
+| C2 webhook invoice    | `provider_signature` null tidak auto-pass; Pakasir wajib server-to-server            | `tests/pakasir-invoice-webhook.test.ts`    |
+| C3 cash gate          | `confirmCashPaymentAction` gated `requireEffectiveSubscription(write)`               | `tests/subscription-gate.test.ts`          |
+| C4 offline queue      | purge sekali-jalan (flag), antrian survive reload                                    | `tests/kiosk-offline-queue.test.ts`        |
+| H1 RPC lock           | semua RPC aplikasi service_role-only                                                 | `0065`; `tests/rpc-privilege.test.ts`      |
+| H2 secret + freshness | secret per-credential wajib; freshness ±24 jam                                       | `tests/pakasir-webhook-credential.test.ts` |
+| H3 idempotency        | state-aware `received`→`processed`                                                   | `0066`; `tests/webhook-direct.test.ts`     |
+| M1 IDOR storage       | route storage tenant-scoped (404 cross-tenant)                                       | `tests/parse-uuid-param.test.ts`           |
+| M2 adminRoute         | guard admin di lapisan route                                                         | `tests/admin.test.ts`                      |
 
 ## Hardening lanjutan (2026-10-16, audit rilis VPS)
 
-| Temuan | Perbaikan | Bukti |
-| --- | --- | --- |
-| Isolasi tenant tanpa tes | tes yang benar-benar mengimpor `src/lib/tenant.ts` (404 membership null, cookie lintas-tenant ditolak, filter role) | `tests/tenant-isolation.test.ts` |
-| Revocation sesi tanpa tes | tes jalur `resolveTokenAfterRevocationCheck` (row hilang/kedaluwarsa → claims dibuang; suspended → logout; DB error → fail-closed) | `tests/session-revocation.test.ts` |
-| Idempotensi webhook hanya di-mock | tes langsung `src/server/payment/webhook-log.ts` (`23505` → duplicate/retryable, non-unik → THROW) | `tests/webhook-log.test.ts` |
-| RPC tanpa `search_path` | migrasi `0071_rpc_search_path_hardening.sql` (+ rollback) — **ditulis & diuji statis, BELUM di-apply ke Supabase** | `tests/rpc-search-path.test.ts` |
-| Rollback sebelum forward (`ls \| sort`) | 8 berkas rollback di-rename ke `NNNN_nama_rollback.sql`; guard statis | `tests/migration-integrity.test.ts` |
-| `/api/health` statis (selalu 200) | readiness nyata (DB + storage, timeout 4s, **503** saat gagal, `checks` aditif) | `tests/health.test.ts` |
+| Temuan                                  | Perbaikan                                                                                                                          | Bukti                               |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| Isolasi tenant tanpa tes                | tes yang benar-benar mengimpor `src/lib/tenant.ts` (404 membership null, cookie lintas-tenant ditolak, filter role)                | `tests/tenant-isolation.test.ts`    |
+| Revocation sesi tanpa tes               | tes jalur `resolveTokenAfterRevocationCheck` (row hilang/kedaluwarsa → claims dibuang; suspended → logout; DB error → fail-closed) | `tests/session-revocation.test.ts`  |
+| Idempotensi webhook hanya di-mock       | tes langsung `src/server/payment/webhook-log.ts` (`23505` → duplicate/retryable, non-unik → THROW)                                 | `tests/webhook-log.test.ts`         |
+| RPC tanpa `search_path`                 | migrasi `0071_rpc_search_path_hardening.sql` (+ rollback) — **ditulis & diuji statis, BELUM di-apply ke Supabase**                 | `tests/rpc-search-path.test.ts`     |
+| Rollback sebelum forward (`ls \| sort`) | 8 berkas rollback di-rename ke `NNNN_nama_rollback.sql`; guard statis                                                              | `tests/migration-integrity.test.ts` |
+| `/api/health` statis (selalu 200)       | readiness nyata (DB + storage, timeout 4s, **503** saat gagal, `checks` aditif)                                                    | `tests/health.test.ts`              |
 
 ## Aset brand (2026-10-16)
 
 Logo dan favicon diganti dengan mark produk baru; berkas lama dihapus.
 
-| Berkas | Status | Dipakai di |
-| --- | --- | --- |
-| `public/snapyos-icon-192.png` | diganti | `src/app/layout.tsx` (icons), `src/app/manifest.ts` |
-| `public/snapyos-icon-512.png` | diganti | idem |
-| `public/snapyos-icon-maskable-512.png` | diganti | `src/app/manifest.ts` (`purpose: maskable`) |
-| `public/apple-touch-icon.png` | diganti | `src/app/layout.tsx` (`icons.apple`) |
-| `public/snapyos-mark.png` | **baru** | 9 call-site mark: `header`, `footer`, `auth-block`, `subscribe-form` (2×), `register`, `Topbar`, `AdminTopbar`, `StaffTopbar` |
-| `src/app/favicon.ico` | diganti | konvensi Next (multi-ukuran 16/32/48/64/128/256) |
-| `public/snapyos-icon.svg`, `public/snapyos-icon-maskable.svg` | **dihapus** | tidak ada lagi rujukan |
-| `public/avatar-snappy/4.svg` (raster 1,1 MB) | **dihapus** | digantikan `snapyos-mark.png` |
+| Berkas                                                        | Status      | Dipakai di                                                                                                                    |
+| ------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `public/snapyos-icon-192.png`                                 | diganti     | `src/app/layout.tsx` (icons), `src/app/manifest.ts`                                                                           |
+| `public/snapyos-icon-512.png`                                 | diganti     | idem                                                                                                                          |
+| `public/snapyos-icon-maskable-512.png`                        | diganti     | `src/app/manifest.ts` (`purpose: maskable`)                                                                                   |
+| `public/apple-touch-icon.png`                                 | diganti     | `src/app/layout.tsx` (`icons.apple`)                                                                                          |
+| `public/snapyos-mark.png`                                     | **baru**    | 9 call-site mark: `header`, `footer`, `auth-block`, `subscribe-form` (2×), `register`, `Topbar`, `AdminTopbar`, `StaffTopbar` |
+| `src/app/favicon.ico`                                         | diganti     | konvensi Next (multi-ukuran 16/32/48/64/128/256)                                                                              |
+| `public/snapyos-icon.svg`, `public/snapyos-icon-maskable.svg` | **dihapus** | tidak ada lagi rujukan                                                                                                        |
+| `public/avatar-snappy/4.svg` (raster 1,1 MB)                  | **dihapus** | digantikan `snapyos-mark.png`                                                                                                 |
 
 `public/avatars/5.svg`, `8.svg` dan `public/fiture-avatar/12–14.svg` **dipertahankan** — itu
 ilustrasi karakter marketing, bukan mark brand (isinya dioptimalkan, lihat bawah).
@@ -95,11 +95,11 @@ Supabase, dan URL bertanda tangan tetap tidak pernah di-cache. Dijaga
 
 ### Optimasi aset (T28)
 
-| Aset | Sebelum | Sesudah | Bukti kualitas |
-| --- | --- | --- | --- |
-| `dashboard-preview.png` | 1,85 MB @3024×1716 | 562 KB @2048×1162 (palette) | mean diff 0,32/255; 0,0012% px beda >32 |
-| `payment-logos/pakasir.png` | 248 KB @1080×1080 | 7,8 KB @192×192 | flatten 24px: mean 0,65, 0 px beda >32 |
-| `avatars/5.svg`, `8.svg`, `fiture-avatar/12–14.svg` | 5,46 MB (raster 1235–1536px tertanam) | 463 KB (raster 512px) | render 256px identik: mean ≤0,42, 0 px beda >32 |
+| Aset                                                | Sebelum                               | Sesudah                     | Bukti kualitas                                  |
+| --------------------------------------------------- | ------------------------------------- | --------------------------- | ----------------------------------------------- |
+| `dashboard-preview.png`                             | 1,85 MB @3024×1716                    | 562 KB @2048×1162 (palette) | mean diff 0,32/255; 0,0012% px beda >32         |
+| `payment-logos/pakasir.png`                         | 248 KB @1080×1080                     | 7,8 KB @192×192             | flatten 24px: mean 0,65, 0 px beda >32          |
+| `avatars/5.svg`, `8.svg`, `fiture-avatar/12–14.svg` | 5,46 MB (raster 1235–1536px tertanam) | 463 KB (raster 512px)       | render 256px identik: mean ≤0,42, 0 px beda >32 |
 
 Total `public/` turun dari ~7,5 MB ke 1,4 MB. Dimensi intrinsik di `hero.tsx` dan
 `feature-section.tsx` disinkronkan ke ukuran berkas baru (2048×1162).
@@ -112,25 +112,74 @@ Deferred (known-issue, TIDAK diimplementasikan):
 - H7 god-components (`KioskBrandingEditor` ~1419, `TemplateBuilder` ~955, `KioskApp` ~722).
 - P3 replay-window penuh (dedup event_id berbasis waktu) di luar window set-based.
 - **0071 belum di-apply** ke Supabase (keputusan pemilik: tulis + validasi statis saja).
-- Rehearsal migrasi destruktif (`scripts/verify-migration-rollbacks.mjs`) belum dijalankan —
+- Rehearsal migrasi destruktif (`scripts/verify-migration-rollbacks.mjs`) belum dijalankan:
   butuh Postgres; tidak tersedia di mesin ini.
+
+### Status migrasi cloud (diverifikasi 2026-10-20)
+
+Probe PostgREST terhadap DB cloud mengonfirmasi `0061`, `0062`, `0063`, `0068`,
+`0069`, dan `0070` **sudah diterapkan**. Khusus `0069`, ketiga RPC kuota atomik
+terekspos dan diuji langsung: pemanggilan dengan kuota `0` mengembalikan
+`P0001 PLAN_LIMIT_REACHED`, pemanggilan dengan kuota cukup berhasil membuat row
+lalu row uji dihapus kembali.
+
+`0071` tetap satu-satunya migrasi yang belum di-apply.
 
 ## Baseline gate (2026-10-16, commit `a56483b`)
 
 Titik nol audit rilis VPS. Diukur di mesin pengembang (macOS, Node 24), bukan
 di VPS; gate yang butuh Linux/VPS dicatat terpisah di `docs/18-audit-report.md`.
 
-| Gate | Perintah | Hasil |
-| --- | --- | --- |
-| Lint (repo-wide, dipakai CI) | `npm run lint` | **PASS** 0 error, 12 warning |
-| Typecheck | `npm run typecheck` | **PASS** |
-| Unit/integration | `npm test` | **PASS** 744/744 |
-| Build produksi | `npm run build` | **PASS** |
-| Dependency audit | `npm audit` | 0 critical, 9 high, 2 moderate (dev-time/transitive) |
+| Gate                         | Perintah            | Hasil                                                |
+| ---------------------------- | ------------------- | ---------------------------------------------------- |
+| Lint (repo-wide, dipakai CI) | `npm run lint`      | **PASS** 0 error, 12 warning                         |
+| Typecheck                    | `npm run typecheck` | **PASS**                                             |
+| Unit/integration             | `npm test`          | **PASS** 744/744                                     |
+| Build produksi               | `npm run build`     | **PASS**                                             |
+| Dependency audit             | `npm audit`         | 0 critical, 9 high, 2 moderate (dev-time/transitive) |
 
 Angka suite terkini setelah hardening 2026-10-16: **815 tes lulus, 0 gagal** (dari 744 pada
 titik nol; +6 dari `tests/service-worker-assets.test.ts`). Laporan gate lengkap ada di
 `docs/18-audit-report.md`.
+
+### Gate rilis (2026-10-20)
+
+Diukur ulang di mesin pengembang sebelum deploy. Semua gate lulus:
+
+| Gate             | Perintah                     | Hasil                                                                                     |
+| ---------------- | ---------------------------- | ----------------------------------------------------------------------------------------- |
+| Lint             | `npm run lint`               | **PASS** 0 error, 12 warning (`no-img-element`, sengaja: aset kiosk butuh `<img>` mentah) |
+| Typecheck        | `npm run typecheck`          | **PASS**                                                                                  |
+| Unit/integration | `npm test`                   | **PASS** 883/883, 0 gagal, 0 skip                                                         |
+| Build produksi   | `npm run build`              | **PASS**                                                                                  |
+| Format           | `npm run format:check`       | **PASS** (`.prettierrc` diselaraskan ke `semi: true`)                                     |
+| E2E kiosk smoke  | `kiosk-smoke.spec.mjs`       | **PASS** 6/6 (headed)                                                                     |
+| E2E kiosk lock   | `kiosk-lock.spec.mjs`        | **PASS** 7/7 (headed)                                                                     |
+| E2E kiosk frames | `kiosk-frames.spec.mjs`      | **PASS** 5/5 (headed)                                                                     |
+| E2E responsif    | `kiosk-responsive.spec.mjs`  | **PASS** 15/15 (5 viewport, headed)                                                       |
+| E2E cetak        | `npm run test:e2e:print`     | **PASS** 4/4                                                                              |
+| E2E Bluetooth    | `npm run test:e2e:bluetooth` | **PASS** 2/2 assertion                                                                    |
+
+Temuan UI yang diperbaiki pada gate ini: target sentuh di bawah 44px
+(antislop R-03) pada pointer kasar. Perbaikan: aturan `@media (pointer: coarse)`
+di `src/app/globals.css` untuk tombol, kontrol ber-peran tombol, select/textarea/
+input native, dan label checkbox/radio; `min-h-11`/`min-w-11` pada CTA, brand,
+topbar, paginator admin, tautan tabel admin, toggle analitik, tombol unduh bukti,
+serta trigger form collapsible. Menu mobile marketing diubah menjadi dialog
+terkontrol dengan tombol tutup di dalam panel (sebelumnya trigger menjadi inert
+saat dialog terbuka sehingga hanya Escape yang bisa menutup).
+
+Diverifikasi dengan konteks sentuh nyata (`hasTouch: true`, 390×844) di seluruh
+halaman publik, owner, admin, dan staff: 0 kontrol di bawah 44px, tanpa overflow
+horizontal, tanpa console/page error. Interaksi menu marketing, menu admin,
+kategori dokumentasi, dan toggle Grid/List diuji langsung (38/38 assertion).
+
+Audit fitur ke database (bukan hanya render): CRUD outlet/paket/photobox/tiket
+owner 15/15, staff + payment credential 11/11, aksi admin plan/promo/user/
+settings 12/12. Semua fixture dibersihkan setelah tes; tidak ada data audit yang
+tertinggal. Dead code: ekspor `getBusiness`, `getPhotoboxBranding`, `listStaff`,
+dan `VoucherAnalytics` tidak lagi direferensikan; dependency root `cn` dihapus
+(sisa entri hanya transitive milik `shadcn` dev).
 
 Blocker CI yang ditemukan dan diperbaiki pada titik nol ini:
 `eslint.config.mjs` hanya meng-ignore `.kilo/worktrees/**`, bukan
@@ -150,13 +199,13 @@ diganti menjadi `**/worktrees/**`.
 
 ## Removed or archived
 
-| Item | Replacement or reason |
-| --- | --- |
-| Kiosk aggregator withdrawal flow | Direct merchant owner-first, voucher, and offline cash. |
-| Owner withdrawal and balance flow | Removed in v1.8. Payment settles to owner gateway. |
-| Dashboard-01 dual shell | Single Neo-Brutalist dashboard. |
-| Owner CRUD REST routes | Server actions. |
-| Supabase Realtime | Payment status polling every 3 seconds. |
+| Item                                                | Replacement or reason                                                                                                     |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Kiosk aggregator withdrawal flow                    | Direct merchant owner-first, voucher, and offline cash.                                                                   |
+| Owner withdrawal and balance flow                   | Removed in v1.8. Payment settles to owner gateway.                                                                        |
+| Dashboard-01 dual shell                             | Single Neo-Brutalist dashboard.                                                                                           |
+| Owner CRUD REST routes                              | Server actions.                                                                                                           |
+| Supabase Realtime                                   | Payment status polling every 3 seconds.                                                                                   |
 | Hardware agent / Tauri kiosk / USB camera (gPhoto2) | Kiosk berjalan sebagai PWA dengan kamera internal; direktori `hardware-agent/`, `tauri-kiosk/`, `docs/hardware/` dihapus. |
 
 ## Reading rule

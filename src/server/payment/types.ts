@@ -12,4 +12,4 @@ export type {
   GatewayStatus,
   GatewayCredential,
   GatewayProvider,
-} from "./providers/types"
+} from "./providers/types";

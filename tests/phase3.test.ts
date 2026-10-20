@@ -7,10 +7,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import {
-  DEFAULT_PLAN_LIMITS,
-  planLimitError,
-} from "../src/lib/plan-limits.ts";
+import { DEFAULT_PLAN_LIMITS, planLimitError } from "../src/lib/plan-limits.ts";
 import {
   LOGO_ALLOWED_TYPES,
   LOGO_MAX_BYTES,
@@ -57,13 +54,19 @@ test("validateLogoFile: allowlist tipe + ekstensi dari MIME (anti spoof)", () =>
   // SVG dihapus dari allowlist logo (audit keamanan) → ditolak
   assert.equal(validateLogoFile({ name: "l.svg", type: "image/svg+xml", size: 100 }).ok, false);
   // .png tapi MIME pdf → ditolak
-  assert.equal(validateLogoFile({ name: "evil.png", type: "application/pdf", size: 100 }).ok, false);
+  assert.equal(
+    validateLogoFile({ name: "evil.png", type: "application/pdf", size: 100 }).ok,
+    false
+  );
   assert.equal(validateLogoFile({ name: "x.gif", type: "image/gif", size: 100 }).ok, false);
   assert.equal(validateLogoFile({ name: null, type: "image/png", size: 100 }).ok, false);
 });
 
 test("validateLogoFile: size cap 2 MB + file kosong", () => {
-  assert.equal(validateLogoFile({ name: "l.png", type: "image/png", size: LOGO_MAX_BYTES }).ok, true);
+  assert.equal(
+    validateLogoFile({ name: "l.png", type: "image/png", size: LOGO_MAX_BYTES }).ok,
+    true
+  );
   assert.equal(
     validateLogoFile({ name: "l.png", type: "image/png", size: LOGO_MAX_BYTES + 1 }).ok,
     false
@@ -101,14 +104,8 @@ test("outletCreateSchema: nama wajib 2–80, status enum", () => {
   assert.equal(outletCreateSchema.safeParse({ name: "Malioboro" }).success, true);
   assert.equal(outletCreateSchema.safeParse({ name: "M" }).success, false);
   assert.equal(outletCreateSchema.safeParse({}).success, false);
-  assert.equal(
-    outletCreateSchema.safeParse({ name: "X Mall", status: "active" }).success,
-    true
-  );
-  assert.equal(
-    outletCreateSchema.safeParse({ name: "X Mall", status: "banned" }).success,
-    false
-  );
+  assert.equal(outletCreateSchema.safeParse({ name: "X Mall", status: "active" }).success, true);
+  assert.equal(outletCreateSchema.safeParse({ name: "X Mall", status: "banned" }).success, false);
 });
 
 test("outletCreateSchema: wilayah province + city (nama dari API emsifa)", () => {
@@ -125,10 +122,7 @@ test("outletCreateSchema: wilayah province + city (nama dari API emsifa)", () =>
     outletCreateSchema.safeParse({ name: "X", province: "P".repeat(81) }).success,
     false
   );
-  assert.equal(
-    outletUpdateSchema.safeParse({ province: null, city: null }).success,
-    true
-  );
+  assert.equal(outletUpdateSchema.safeParse({ province: null, city: null }).success, true);
 });
 
 // --- photobox schema ---
@@ -148,10 +142,7 @@ test("photoboxCreateSchema: slug pattern + outlet uuid wajib", () => {
     photoboxCreateSchema.safeParse({ name: "Booth 01", slug: "booth_01" }).success,
     false
   );
-  assert.equal(
-    photoboxCreateSchema.safeParse({ name: "Booth 01", slug: "bo" }).success,
-    false
-  );
+  assert.equal(photoboxCreateSchema.safeParse({ name: "Booth 01", slug: "bo" }).success, false);
   assert.equal(photoboxCreateSchema.safeParse({ name: "Booth 01" }).success, false); // tanpa outlet
   assert.equal(
     photoboxCreateSchema.safeParse({ name: "Booth 01", outlet_id: "not-uuid" }).success,

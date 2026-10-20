@@ -71,7 +71,10 @@ function fakeDevice({
       listeners.set(type, [...(listeners.get(type) ?? []), handler]);
     },
     removeEventListener(type: string, handler: () => void) {
-      listeners.set(type, (listeners.get(type) ?? []).filter((entry) => entry !== handler));
+      listeners.set(
+        type,
+        (listeners.get(type) ?? []).filter((entry) => entry !== handler)
+      );
     },
   };
   return { device: device as unknown as BluetoothDevice, writes, gatt };
@@ -86,7 +89,10 @@ test("write memecah byte per 20 dan urutannya identik", async () => {
   const link = await connectEscPos(device);
   const bytes = Uint8Array.from({ length: 45 }, (_, i) => i + 1);
   await link.write(bytes);
-  assert.deepEqual(writes.map((chunk) => chunk.length), [20, 20, 5]);
+  assert.deepEqual(
+    writes.map((chunk) => chunk.length),
+    [20, 20, 5]
+  );
   assert.deepEqual(writes.flat(), Array.from(bytes));
 });
 
@@ -122,7 +128,11 @@ test("koneksi putus di tengah job menghentikan write berikutnya", async () => {
   disconnect = () => gatt.disconnect();
   const link = await connectEscPos(device);
   await assert.rejects(
-    () => link.write(Uint8Array.from({ length: 10 }, (_, i) => i), { chunkSize: 1 }),
+    () =>
+      link.write(
+        Uint8Array.from({ length: 10 }, (_, i) => i),
+        { chunkSize: 1 }
+      ),
     (error) => error instanceof BluetoothPrintError && error.code === "DISCONNECTED"
   );
 });

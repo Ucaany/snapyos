@@ -6,36 +6,89 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import {
-  nextPeriod,
-  PERIOD_DAYS,
-  effectiveSessions,
-} from "../src/lib/subscription-math.ts";
+import { nextPeriod, PERIOD_DAYS, effectiveSessions } from "../src/lib/subscription-math.ts";
 
 // Inline intentToItems (mirrors server/subscription.ts) — avoids server-only import.
-type Item = { type: "plan_change" | "add_on"; plan_id?: string; add_on_id?: string; code?: string; name?: string; amount: number; qty: number };
-type Intent = { items?: Item[]; type?: string; plan_id?: string; add_on_id?: string; code?: string; name?: string } | null;
+type Item = {
+  type: "plan_change" | "add_on";
+  plan_id?: string;
+  add_on_id?: string;
+  code?: string;
+  name?: string;
+  amount: number;
+  qty: number;
+};
+type Intent = {
+  items?: Item[];
+  type?: string;
+  plan_id?: string;
+  add_on_id?: string;
+  code?: string;
+  name?: string;
+} | null;
 function intentToItems(i: Intent, fb: number): Item[] {
   if (!i) return [];
   if (Array.isArray(i.items) && i.items.length > 0) return i.items;
-  return [{ type: i.type === "add_on" ? "add_on" : "plan_change", plan_id: i.plan_id, add_on_id: i.add_on_id, code: i.code, name: i.name, amount: fb, qty: 1 }];
+  return [
+    {
+      type: i.type === "add_on" ? "add_on" : "plan_change",
+      plan_id: i.plan_id,
+      add_on_id: i.add_on_id,
+      code: i.code,
+      name: i.name,
+      amount: fb,
+      qty: 1,
+    },
+  ];
 }
-
 
 // --- Fix 1: add-on-only checkout items ---
 
 test("intentToItems: add-on-only → no plan_change", () => {
-  const items = intentToItems({ items: [{ type: "add_on", add_on_id: "a", code: "extra_session", name: "+1", amount: 49000, qty: 2 }] }, 98000);
+  const items = intentToItems(
+    {
+      items: [
+        {
+          type: "add_on",
+          add_on_id: "a",
+          code: "extra_session",
+          name: "+1",
+          amount: 49000,
+          qty: 2,
+        },
+      ],
+    },
+    98000
+  );
   assert.equal(items.length, 1);
   assert.equal(items[0]!.type, "add_on");
   assert.equal(items[0]!.amount * items[0]!.qty, 98000);
 });
 
 test("intentToItems: plan+addon → both items", () => {
-  const items = intentToItems({ items: [
-    { type: "plan_change", plan_id: "p1", code: "growth", name: "Growth", amount: 249000, qty: 1 },
-    { type: "add_on", add_on_id: "a1", code: "extra_session", name: "+1", amount: 49000, qty: 1 },
-  ] }, 298000);
+  const items = intentToItems(
+    {
+      items: [
+        {
+          type: "plan_change",
+          plan_id: "p1",
+          code: "growth",
+          name: "Growth",
+          amount: 249000,
+          qty: 1,
+        },
+        {
+          type: "add_on",
+          add_on_id: "a1",
+          code: "extra_session",
+          name: "+1",
+          amount: 49000,
+          qty: 1,
+        },
+      ],
+    },
+    298000
+  );
   assert.equal(items.length, 2);
   assert.equal(items[0]!.type, "plan_change");
   assert.equal(items[1]!.type, "add_on");

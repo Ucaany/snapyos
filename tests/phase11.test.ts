@@ -13,14 +13,8 @@ import { bearerMatches } from "../src/lib/cron-auth.ts";
 
 test("retentionCutoff: now − retention_days (default 3 per keputusan #4)", () => {
   const now = Date.parse("2026-08-19T12:00:00.000Z");
-  assert.equal(
-    retentionCutoff(3, now),
-    new Date("2026-08-16T12:00:00.000Z").toISOString()
-  );
-  assert.equal(
-    retentionCutoff(30, now),
-    new Date("2026-07-20T12:00:00.000Z").toISOString()
-  );
+  assert.equal(retentionCutoff(3, now), new Date("2026-08-16T12:00:00.000Z").toISOString());
+  assert.equal(retentionCutoff(30, now), new Date("2026-07-20T12:00:00.000Z").toISOString());
   assert.equal(DEFAULT_RETENTION_DAYS, 3);
 });
 

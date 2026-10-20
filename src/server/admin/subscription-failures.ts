@@ -38,11 +38,7 @@ import { requireAdmin, audit } from "./guard";
 // Types
 // ---------------------------------------------------------------------------
 
-export type IntentFailureStatus =
-  | "pending"
-  | "activated"
-  | "refunded"
-  | "dismissed";
+export type IntentFailureStatus = "pending" | "activated" | "refunded" | "dismissed";
 
 export type AdminIntentFailureRow = {
   id: string;
@@ -68,12 +64,7 @@ export type AdminIntentFailureRow = {
 // Queries
 // ---------------------------------------------------------------------------
 
-const STATUSES: IntentFailureStatus[] = [
-  "pending",
-  "activated",
-  "refunded",
-  "dismissed",
-];
+const STATUSES: IntentFailureStatus[] = ["pending", "activated", "refunded", "dismissed"];
 
 function isStatus(v: string | undefined): v is IntentFailureStatus {
   return typeof v === "string" && (STATUSES as string[]).includes(v);
@@ -85,14 +76,9 @@ function isStatus(v: string | undefined): v is IntentFailureStatus {
  * server — halaman kosong adalah hasil yang benar (mis. deep-link / bookmark).
  * Dijaga identik dengan src/server/admin/users.ts.
  */
-function isRangeNotSatisfiable(error: {
-  code?: string;
-  message?: string;
-}): boolean {
+function isRangeNotSatisfiable(error: { code?: string; message?: string }): boolean {
   if (String(error.code ?? "") === "PGRST103") return true;
-  return /requested range not satisfiable|range not satisfiable/i.test(
-    String(error.message ?? "")
-  );
+  return /requested range not satisfiable|range not satisfiable/i.test(String(error.message ?? ""));
 }
 
 /**
@@ -109,18 +95,12 @@ export async function listIntentFailures(query: {
   countsByStatus: Record<IntentFailureStatus, number>;
 }> {
   await requireAdmin();
-  const status: IntentFailureStatus = isStatus(query.status)
-    ? query.status
-    : "pending";
+  const status: IntentFailureStatus = isStatus(query.status) ? query.status : "pending";
   const page = Math.max(1, query.page ?? 1);
   const limit = Math.min(100, Math.max(1, query.limit ?? 25));
 
   const supabase = createServerClient();
-  let {
-    data,
-    error,
-    count,
-  } = await supabase
+  let { data, error, count } = await supabase
     .from("subscription_intent_failures")
     .select(
       // Join business name + invoice number + resolver display name so
@@ -144,10 +124,7 @@ export async function listIntentFailures(query: {
     count = recount.count ?? 0;
   }
   if (error) {
-    throw new ApiError(
-      "INTERNAL",
-      `Gagal memuat antrian review: ${error.message}`
-    );
+    throw new ApiError("INTERNAL", `Gagal memuat antrian review: ${error.message}`);
   }
 
   type JoinedRow = {
@@ -181,9 +158,9 @@ export async function listIntentFailures(query: {
     return {
       id: r.id,
       business_id: r.business_id,
-      business_name: biz?.name ?? "—",
+      business_name: biz?.name ?? "-",
       invoice_id: r.invoice_id,
-      invoice_number: inv?.number ?? "—",
+      invoice_number: inv?.number ?? "-",
       subscription_id: r.subscription_id,
       reason: r.reason,
       message: r.message,
@@ -260,7 +237,7 @@ async function transitionFailure(input: {
   if (current.status !== "pending") {
     throw new ApiError(
       "VALIDATION_ERROR",
-      `Kasus sudah berstatus ${current.status} — tidak bisa diubah lagi`
+      `Kasus sudah berstatus ${current.status}: tidak bisa diubah lagi`
     );
   }
 
@@ -281,10 +258,7 @@ async function transitionFailure(input: {
     throw new ApiError("INTERNAL", `Gagal update kasus: ${updateErr.message}`);
   }
   if (!updated) {
-    throw new ApiError(
-      "VALIDATION_ERROR",
-      "Kasus baru saja diubah admin lain — refresh halaman"
-    );
+    throw new ApiError("VALIDATION_ERROR", "Kasus baru saja diubah admin lain: refresh halaman");
   }
 
   await audit(

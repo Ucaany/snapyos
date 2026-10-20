@@ -44,16 +44,16 @@ Dieksekusi 2026-08-28. Yang jadi:
 
 ## 2. Yang Otomatis vs Yang Ditambah
 
-| Report | Status |
-|---|---|
-| `finance/summary` (revenue/tx count by period) | ✅ otomatis (agregasi by status+business) — verifikasi angka dengan data POS |
-| `analytics/revenue/by-outlet` | ✅ otomatis — POS selalu punya outlet (dari booth) → bucket terisi normal |
-| `analytics/revenue/by-package` | ⚠️ otomatis; POS row package NULL → **exclude dari by-package** + footnote `/// termasuk transaksi POS non-paket` |
-| `analytics/revenue/by-payment-method` | ✅ otomatis (cash/bank_transfer/other dari POS masuk bucket masing-masing) |
-| `analytics/revenue/by-photobox` | ✅ otomatis — POS punya photobox_id (booth) → masuk bucket booth |
-| `metrics`, admin `payments/summary` | ✅ otomatis — verifikasi |
-| reports CSV/XLSX | ✅ otomatis (row transactions POS ikut); tambah kolom `sumber` (`POS`/`KIOSK`) |
-| Breakdown by product/cashier/booth; split POS vs kiosk | ❌ BARU — `pos-reports.ts` (§4) |
+| Report                                                 | Status                                                                                                            |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| `finance/summary` (revenue/tx count by period)         | ✅ otomatis (agregasi by status+business) — verifikasi angka dengan data POS                                      |
+| `analytics/revenue/by-outlet`                          | ✅ otomatis — POS selalu punya outlet (dari booth) → bucket terisi normal                                         |
+| `analytics/revenue/by-package`                         | ⚠️ otomatis; POS row package NULL → **exclude dari by-package** + footnote `/// termasuk transaksi POS non-paket` |
+| `analytics/revenue/by-payment-method`                  | ✅ otomatis (cash/bank_transfer/other dari POS masuk bucket masing-masing)                                        |
+| `analytics/revenue/by-photobox`                        | ✅ otomatis — POS punya photobox_id (booth) → masuk bucket booth                                                  |
+| `metrics`, admin `payments/summary`                    | ✅ otomatis — verifikasi                                                                                          |
+| reports CSV/XLSX                                       | ✅ otomatis (row transactions POS ikut); tambah kolom `sumber` (`POS`/`KIOSK`)                                    |
+| Breakdown by product/cashier/booth; split POS vs kiosk | ❌ BARU — `pos-reports.ts` (§4)                                                                                   |
 
 ---
 
@@ -121,22 +121,22 @@ Admin (`src/server/admin.ts` tambah kecil): revenue POS per tenant = agregasi `t
 
 ## 8. Testing
 
-| Test | File | Kasus |
-|---|---|---|
-| Agregasi campuran | `tests/pos-reports.test.ts` (mock) | data kiosk+POS → split benar; by-product pakai snapshot; by-cashier join; by-booth join; day bucket |
-| Snapshot regression | extend test transactions/analytics existing | angka summary data-pure-kiosk identik sebelum/sesudah |
-| Export | extend test reports existing | kolom SUMBER; karakter `=`/`+`/`-`/`@` di name tetap di-escape |
-| Rekon silang manual | dev | Σ pos_orders.paid = Σ transactions(pos_order_id) per hari; saldo/ledger TIDAK berubah oleh POS (offline — A3) |
+| Test                | File                                        | Kasus                                                                                                         |
+| ------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Agregasi campuran   | `tests/pos-reports.test.ts` (mock)          | data kiosk+POS → split benar; by-product pakai snapshot; by-cashier join; by-booth join; day bucket           |
+| Snapshot regression | extend test transactions/analytics existing | angka summary data-pure-kiosk identik sebelum/sesudah                                                         |
+| Export              | extend test reports existing                | kolom SUMBER; karakter `=`/`+`/`-`/`@` di name tetap di-escape                                                |
+| Rekon silang manual | dev                                         | Σ pos_orders.paid = Σ transactions(pos_order_id) per hari; saldo/ledger TIDAK berubah oleh POS (offline — A3) |
 
 ---
 
 ## 9. Risk & Mitigasi
 
-| Risiko | Mitigasi |
-|---|---|
-| R6 laporan berubah makna | Footnote eksplisit + exclude-by-design di by-package; snapshot regression dev |
-| Double count POS (pos_orders + transactions dipakai bareng) | Aturan: REVENUE SELALU dari `transactions`; `pos_orders` hanya untuk breakdown detail |
-| POS dianggap menaikkan saldo | Tidak ada `creditBalance` di jalur POS (A3) — test assert balances/ledger tidak berubah setelah pay |
+| Risiko                                                      | Mitigasi                                                                                            |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| R6 laporan berubah makna                                    | Footnote eksplisit + exclude-by-design di by-package; snapshot regression dev                       |
+| Double count POS (pos_orders + transactions dipakai bareng) | Aturan: REVENUE SELALU dari `transactions`; `pos_orders` hanya untuk breakdown detail               |
+| POS dianggap menaikkan saldo                                | Tidak ada `creditBalance` di jalur POS (A3) — test assert balances/ledger tidak berubah setelah pay |
 
 ---
 
