@@ -12,6 +12,7 @@ import {
   formatStorageMb,
   mbToBytes,
   storageAddOnDisplayName,
+  sumStorageAddOnMb,
 } from "../src/lib/storage-units.ts";
 
 test("1 MB = 1.048.576 bytes (biner, eksplisit)", () => {
@@ -75,4 +76,25 @@ test("normalisasi nama add-on tidak menyentuh non-storage atau nama tanpa label 
     storageAddOnDisplayName({ name: "Tambah Storage 1 GB", unit: "storage", storageMb: null }),
     "Tambah Storage 1 GB"
   );
+});
+
+test("kuota add-on: storage_mb × quantity, add-on non-storage diabaikan", () => {
+  assert.equal(
+    sumStorageAddOnMb([
+      { quantity: 1, addOn: { storage_mb: 1024 } },
+      { quantity: 3, addOn: { storage_mb: 1024 } },
+      { quantity: 2, addOn: { storage_mb: null } },
+    ]),
+    4096
+  );
+});
+
+test("kuota add-on: quantity null/negatif/pecahan tidak menghasilkan kuota negatif", () => {
+  assert.equal(sumStorageAddOnMb([{ quantity: null, addOn: { storage_mb: 1024 } }]), 0);
+  assert.equal(sumStorageAddOnMb([{ quantity: -2, addOn: { storage_mb: 1024 } }]), 0);
+  assert.equal(sumStorageAddOnMb([{ quantity: 2.9, addOn: { storage_mb: 1024 } }]), 2048);
+});
+
+test("kuota add-on: baris tanpa relasi add-on tidak dihitung", () => {
+  assert.equal(sumStorageAddOnMb([{ quantity: 1, addOn: null }]), 0);
 });

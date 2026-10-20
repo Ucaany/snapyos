@@ -44,3 +44,28 @@ export function storageAddOnDisplayName(input: {
   if (!/\bGB\b/i.test(input.name)) return input.name;
   return `Tambah Storage ${formatStorageMb(input.storageMb)}`;
 }
+
+/**
+ * Total MB add-on storage aktif: `storage_mb × quantity` per baris.
+ *
+ * `storage_mb` null/0 = add-on non-storage (sesi, POS) → diabaikan. Quantity
+ * pecahan/negatif dinormalisasi ke 0 supaya kuota tidak pernah negatif.
+ */
+export function sumStorageAddOnMb(
+  rows: Iterable<{
+    quantity?: number | null;
+    addOn?: { storage_mb?: number | null } | null;
+  }>
+): number {
+  let total = 0;
+  for (const row of rows) {
+    const mb = row.addOn?.storage_mb;
+    if (typeof mb !== "number" || !Number.isFinite(mb) || mb <= 0) continue;
+    const quantity =
+      typeof row.quantity === "number" && Number.isFinite(row.quantity)
+        ? Math.max(0, Math.floor(row.quantity))
+        : 0;
+    total += mb * quantity;
+  }
+  return total;
+}

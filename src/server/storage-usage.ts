@@ -21,7 +21,7 @@ import { isSubscriptionEffective } from "@/lib/subscription-math";
 import { isFeatureEnabled } from "@/lib/feature-gate";
 import { activeStorageProviders } from "@/server/storage";
 import type { StorageBucket, StorageProvider } from "@/server/storage/types";
-import { bytesToMb, mbToBytes } from "@/lib/storage-units";
+import { bytesToMb, mbToBytes, sumStorageAddOnMb } from "@/lib/storage-units";
 
 const BUCKETS: StorageBucket[] = ["business-assets", "generated-photos"];
 
@@ -231,11 +231,12 @@ export async function getStorageLimit(businessId: string): Promise<StorageLimit>
       quantity: number;
       add_ons: { storage_mb: number | null } | { storage_mb: number | null }[];
     }[];
-    for (const a of addOnRows ?? []) {
-      const addOn = Array.isArray(a.add_ons) ? a.add_ons[0] : a.add_ons;
-      const mb = addOn?.storage_mb;
-      if (typeof mb === "number" && mb > 0) addOnMb += mb * (a.quantity ?? 1);
-    }
+    addOnMb = sumStorageAddOnMb(
+      (addOnRows ?? []).map((a) => ({
+        quantity: a.quantity,
+        addOn: Array.isArray(a.add_ons) ? (a.add_ons[0] ?? null) : a.add_ons,
+      }))
+    );
   }
 
   return { planMb, addOnMb, totalMb: planMb + addOnMb };
@@ -346,11 +347,9 @@ export async function getStorageUsageBatch(
       quantity: number;
       add_ons: { storage_mb: number | null } | { storage_mb: number | null }[];
     }[]) {
-      const addOn = Array.isArray(a.add_ons) ? a.add_ons[0] : a.add_ons;
-      const mb = addOn?.storage_mb;
-      if (typeof mb === "number" && mb > 0) {
-        tally.set(a.subscription_id, (tally.get(a.subscription_id) ?? 0) + mb * (a.quantity ?? 1));
-      }
+      const addOn = Array.isArray(a.add_ons) ? (a.add_ons[0] ?? null) : a.add_ons;
+      const rowMb = sumStorageAddOnMb([{ quantity: a.quantity, addOn }]);
+      if (rowMb > 0) tally.set(a.subscription_id, (tally.get(a.subscription_id) ?? 0) + rowMb);
     }
     addOnMbBySub = tally;
   }
