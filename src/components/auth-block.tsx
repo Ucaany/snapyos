@@ -11,7 +11,11 @@ import { Button } from "@/components/ui/button";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { AuthDivider } from "@/components/auth-divider";
 import { DecorIcon } from "@/components/decor-icon";
-import { TurnstileWidget, type TurnstileHandle } from "@/components/turnstile-widget";
+import {
+  TurnstileWidget,
+  type TurnstileHandle,
+  type TurnstileStatus,
+} from "@/components/turnstile-widget";
 
 import { loginAction, type FormState } from "@/server/auth-actions";
 
@@ -46,12 +50,13 @@ export function AuthPage() {
 
   const [pinMode, setPinMode] = useState(false);
   const [captchaVerified, setCaptchaVerified] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaStatus, setCaptchaStatus] = useState<TurnstileStatus>("idle");
   const turnstileRef = useRef<TurnstileHandle>(null);
 
   const captchaSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
   // Tanpa site key (dev) → tidak ada gate CAPTCHA.
   const captchaBlocked = Boolean(captchaSiteKey) && !captchaVerified;
+  const captchaFailed = captchaStatus === "error";
 
   // Token Turnstile sekali-pakai: setelah submit apa pun, token lama sudah
   // dikonsumsi server. Tanpa reset, submit berikutnya selalu ditolak
@@ -62,7 +67,6 @@ export function AuthPage() {
     await formAction(formData);
     if (!captchaSiteKey) return;
     setCaptchaVerified(false);
-    setCaptchaToken("");
     void turnstileRef.current?.reset();
   }
 
@@ -176,10 +180,22 @@ export function AuthPage() {
               siteKey={captchaSiteKey}
               action="login"
               onVerified={setCaptchaVerified}
-              onToken={setCaptchaToken}
+              onStatus={setCaptchaStatus}
             />
-            {captchaSiteKey && (
-              <input type="hidden" name="cf-turnstile-response" value={captchaToken} />
+            {captchaFailed && (
+              <div
+                role="alert"
+                className="flex flex-col gap-2 border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs leading-relaxed text-foreground"
+              >
+                <p>Verifikasi keamanan gagal dimuat. Periksa koneksi lalu coba lagi.</p>
+                <button
+                  type="button"
+                  onClick={() => void turnstileRef.current?.reset()}
+                  className="min-h-11 w-full border-2 border-ink bg-surface px-3 font-mono text-xs font-bold uppercase tracking-[0.05em] text-ink shadow-[2px_2px_0_0_#111111] transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+                >
+                  Coba verifikasi lagi
+                </button>
+              </div>
             )}
 
             <Button
@@ -188,7 +204,13 @@ export function AuthPage() {
               type="submit"
               disabled={pending || captchaBlocked}
             >
-              {pending ? "Memproses…" : captchaBlocked ? "Menunggu verifikasi…" : "Masuk"}
+              {pending
+                ? "Memproses…"
+                : captchaFailed
+                  ? "Verifikasi gagal"
+                  : captchaBlocked
+                    ? "Menunggu verifikasi…"
+                    : "Masuk"}
             </Button>
           </form>
 

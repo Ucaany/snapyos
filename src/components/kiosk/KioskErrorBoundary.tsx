@@ -6,14 +6,12 @@ type Props = { children: ReactNode };
 type State = { error: Error | null; retrying: boolean };
 
 /**
- * Error boundary kiosk — auto-restart bila runtime error tak tertangani.
- * Menampilkan layar brutalist + menghitung mundur reload otomatis (kiosk
- * harus selalu hidup, bukan stuck di layar error). Reload memulihkan sesi
- * via verify (token tersimpan localStorage).
+ * Error boundary kiosk — menampilkan layar pemulihan saat runtime error tak
+ * tertangani. Reload sengaja manual: auto-reload berulang menyembunyikan
+ * penyebab error dan membuat booth tidak bisa dipakai.
  */
 export class KioskErrorBoundary extends Component<Props, State> {
   state: State = { error: null, retrying: false };
-  private timer: ReturnType<typeof setTimeout> | null = null;
 
   static getDerivedStateFromError(error: Error): State {
     return { error, retrying: false };
@@ -22,16 +20,6 @@ export class KioskErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, info: ErrorInfo) {
     // ponytail: kirim error ke observability di kemudian hari; sekarang cukup log.
     console.error("[kiosk] runtime error:", error, info.componentStack);
-    this.scheduleRestart();
-  }
-
-  componentWillUnmount() {
-    if (this.timer) clearTimeout(this.timer);
-  }
-
-  scheduleRestart() {
-    if (this.timer) clearTimeout(this.timer);
-    this.timer = setTimeout(() => window.location.reload(), 4000);
   }
 
   render() {
@@ -42,15 +30,15 @@ export class KioskErrorBoundary extends Component<Props, State> {
           {"/// KESALAHAN RUNTIME"}
         </p>
         <h1 className="font-display text-4xl uppercase leading-none tracking-tight md:text-5xl">
-          Kiosk memuat ulang
+          Kiosk perlu dimuat ulang
         </h1>
         <p className="max-w-[52ch] font-mono text-xs uppercase leading-relaxed tracking-[0.08em] text-muted-foreground">
-          Terjadi kesalahan tak terduga. Layar akan dimuat ulang otomatis dan sesi Anda dipulihkan.
+          Terjadi kesalahan tak terduga. Muat ulang untuk memulihkan sesi yang tersimpan.
         </p>
         <button
           type="button"
           onClick={() => window.location.reload()}
-          className="border-2 border-ink bg-accent px-6 py-3 font-display text-lg uppercase tracking-tight shadow-[4px_4px_0_0_#111111] transition-transform active:translate-y-[2px]"
+          className="min-h-11 border-2 border-ink bg-accent px-6 py-3 font-display text-lg uppercase tracking-tight shadow-[4px_4px_0_0_#111111] transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
         >
           Muat ulang sekarang
         </button>

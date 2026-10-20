@@ -86,28 +86,50 @@ export async function requestEscPosDevice(
       "Browser ini tidak mendukung Bluetooth langsung. Gunakan Chrome."
     );
   }
-  const request: BluetoothRequestDeviceOptions = options.acceptAll
-    ? { acceptAllDevices: true, optionalServices: [...ESCPOS_SERVICES] }
-    : {
-        filters: [
-          { services: [...ESCPOS_SERVICES] },
-          // Printer yang tidak mengiklankan service UUID (mis. RPP20N) tetap
-          // bisa dipilih lewat nama; koneksi tetap divalidasi karakteristik.
-          ...THERMAL_NAME_PREFIXES.map((namePrefix) => ({ namePrefix })),
-        ],
-        optionalServices: [...ESCPOS_SERVICES],
-      };
+  const optionalServices = [...ESCPOS_SERVICES];
+  const serviceFilter: BluetoothRequestDeviceOptions = {
+    filters: [{ services: optionalServices }],
+    optionalServices,
+  };
+  const nameFilter: BluetoothRequestDeviceOptions = {
+    filters: THERMAL_NAME_PREFIXES.map((namePrefix) => ({ namePrefix })),
+    optionalServices,
+  };
+  const acceptAll: BluetoothRequestDeviceOptions = {
+    acceptAllDevices: true,
+    optionalServices,
+  };
+
   try {
-    return await bluetooth.requestDevice(request);
+    if (options.acceptAll) return await bluetooth.requestDevice(acceptAll);
+    try {
+      return await bluetooth.requestDevice(serviceFilter);
+    } catch (error) {
+      if (!isChooserEmpty(error)) throw error;
+      // Sebagian printer (mis. RPP20N) tidak mengiklankan service di scan.
+      // Filter service yang kosong tidak selalu membuka chooser nama, jadi
+      // coba filter nama sebelum menyerah.
+      try {
+        return await bluetooth.requestDevice(nameFilter);
+      } catch (nameError) {
+        if (!isChooserEmpty(nameError)) throw nameError;
+        return await bluetooth.requestDevice(acceptAll);
+      }
+    }
   } catch (error) {
-    if (error instanceof DOMException && error.name === "NotFoundError") {
+    if (isChooserEmpty(error)) {
       throw new BluetoothPrintError("NO_DEVICE", "Tidak ada printer dipilih.");
     }
     throw new BluetoothPrintError(
       "NO_DEVICE",
-      "Printer tidak bisa dipilih. Nyalakan printer lalu coba lagi."
+      "Printer tidak bisa dipilih. Nyalakan printer, pastikan Bluetooth aktif, lalu coba lagi."
     );
   }
+}
+
+/** NotFoundError = chooser kosong/dibatalkan; SecurityError = izin diblokir. */
+function isChooserEmpty(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "NotFoundError";
 }
 
 function findWriteCharacteristic(

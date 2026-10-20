@@ -341,6 +341,14 @@ export function PosTerminal({
           <Button size="lg" onClick={() => void submitCart()} disabled={cart.length === 0 || busy}>
             {busy ? "Memproses…" : "Bayar"}
           </Button>
+          {error && (
+            <p
+              role="alert"
+              className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-ink"
+            >
+              {error}
+            </p>
+          )}
         </aside>
       </div>
 

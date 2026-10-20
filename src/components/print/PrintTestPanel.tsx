@@ -4,15 +4,12 @@ import { useCallback, useState } from "react";
 import { Bluetooth, Check, Loader2, Printer, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { encodeEscPos } from "@/lib/print/escpos";
-import { rasterizeTestPattern } from "@/lib/print/photo-bitmap";
-import {
-  BluetoothPrintError,
-  connectEscPos,
-  isBluetoothPrintSupported,
-  requestEscPosDevice,
-} from "@/lib/print/bluetooth";
+import { rasterizePhoto, rasterizeTestPattern } from "@/lib/print/photo-bitmap";
+import { BluetoothPrintError, connectEscPos, requestEscPosDevice } from "@/lib/print/bluetooth";
 import type { PrintMode } from "@/lib/print/print-mode";
 import { THERMAL_WIDTH_DOTS } from "@/lib/print/print-mode";
+import { SerialPrintError, writeEscPosSerial } from "@/lib/print/serial";
+import { usePrintTransport } from "@/hooks/use-print-transport";
 
 export type PrintTestResult = {
   confirmed: boolean;
@@ -37,6 +34,7 @@ type Props = {
 };
 
 type Phase = "idle" | "connecting" | "printing" | "sent" | "error";
+type SampleKind = "pattern" | "photo";
 
 /**
  * Panel uji cetak, SATU implementasi untuk dashboard owner dan SetupWizard.
@@ -58,7 +56,19 @@ export function PrintTestPanel({
   const [deviceName, setDeviceName] = useState<string | null>(lastTest?.device_name ?? null);
   const [reporting, setReporting] = useState(false);
   const [reported, setReported] = useState(false);
+  const [serialBusy, setSerialBusy] = useState(false);
+  const [sampleKind, setSampleKind] = useState<SampleKind>("pattern");
   const widthDots = paperWidthMm === 58 ? THERMAL_WIDTH_DOTS[58] : THERMAL_WIDTH_DOTS[80];
+
+  /** Pola uji bawaan atau foto nyata dari aset marketing. */
+  const buildBitmap = useCallback(async () => {
+    if (sampleKind === "photo") {
+      const response = await fetch("/dashboard-preview.png");
+      if (!response.ok) throw new Error("Foto uji tidak bisa dimuat.");
+      return rasterizePhoto(await response.blob(), widthDots, 1152);
+    }
+    return rasterizeTestPattern(widthDots, sample.lines);
+  }, [sample.lines, sampleKind, widthDots]);
 
   const sendThermal = useCallback(
     async (acceptAll = false) => {
@@ -71,7 +81,7 @@ export function PrintTestPanel({
         const link = await connectEscPos(device);
         try {
           setPhase("printing");
-          const bitmap = await rasterizeTestPattern(widthDots, sample.lines);
+          const bitmap = await buildBitmap();
           const bytes = encodeEscPos([
             { kind: "text", text: sample.title, align: "center", emphasis: true, size: 2 },
             { kind: "text", text: `${deviceName ?? name}`, align: "center" },
@@ -93,8 +103,42 @@ export function PrintTestPanel({
         );
       }
     },
-    [deviceName, sample.lines, sample.title, widthDots]
+    [buildBitmap, deviceName, sample.title]
   );
+
+  /** Printer Classic SPP tidak muncul di Web Bluetooth; Web Serial desktop
+   *  memakai port hasil pairing tanpa driver tambahan. */
+  const sendSerial = useCallback(async () => {
+    setSerialBusy(true);
+    setPhase("printing");
+    setMessage(null);
+    try {
+      const bitmap = await buildBitmap();
+      const bytes = encodeEscPos([
+        { kind: "text", text: sample.title, align: "center", emphasis: true, size: 2 },
+        { kind: "text", text: "WEB SERIAL / SPP", align: "center" },
+        { kind: "raster", bitmap },
+        { kind: "feed", lines: 2 },
+        { kind: "cut", partial: true },
+      ]);
+      await writeEscPosSerial(bytes);
+      setDeviceName((current) => current ?? "Printer serial (SPP)");
+      setPhase("sent");
+    } catch (error) {
+      if (error instanceof SerialPrintError && error.code === "NO_PORT") {
+        setPhase("idle");
+        return;
+      }
+      setPhase("error");
+      setMessage(
+        error instanceof SerialPrintError
+          ? error.message
+          : "Gagal mengirim halaman uji lewat Web Serial."
+      );
+    } finally {
+      setSerialBusy(false);
+    }
+  }, [buildBitmap, sample.title]);
 
   function sendBrowser() {
     // Halaman uji memakai kontrak print yang sama dengan `.print-root`.
@@ -112,7 +156,10 @@ export function PrintTestPanel({
     }
   }
 
-  const supported = typeof navigator !== "undefined" && isBluetoothPrintSupported();
+  const transport = usePrintTransport();
+  const supported = transport.bluetooth;
+  const serialSupported = transport.serial;
+  const busy = phase === "connecting" || phase === "printing" || serialBusy;
 
   return (
     <section
@@ -176,17 +223,53 @@ export function PrintTestPanel({
         </p>
       )}
 
+      {mode === "bluetooth" && (
+        <fieldset className="flex flex-col gap-2 border-2 border-ink/20 p-3">
+          <legend className="px-1 font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+            Isi halaman uji
+          </legend>
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                ["pattern", "Pola & teks"],
+                ["photo", "Foto nyata"],
+              ] as const
+            ).map(([value, label]) => (
+              <label
+                key={value}
+                className={`flex min-h-11 cursor-pointer items-center gap-2 border-2 border-ink px-3 font-mono text-xs font-bold uppercase tracking-[0.08em] ${
+                  sampleKind === value ? "bg-accent text-ink" : "bg-surface text-ink"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="print_sample_kind"
+                  value={value}
+                  checked={sampleKind === value}
+                  onChange={() => setSampleKind(value)}
+                  className="size-4 accent-ink"
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+          <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-muted-foreground">
+            {sampleKind === "photo"
+              ? "Foto dikonversi ke hitam-putih 1-bit; periksa kontras dan tepi gambar pada hasil fisik."
+              : "Pola garis dan teks memverifikasi lebar kertas serta perataan."}
+          </p>
+        </fieldset>
+      )}
+
       <div className="flex flex-wrap items-center gap-3">
         <Button
           type="button"
           size="lg"
           className="bg-accent"
-          disabled={
-            phase === "connecting" || phase === "printing" || (mode === "bluetooth" && !supported)
-          }
+          disabled={busy || (mode === "bluetooth" && !supported)}
           onClick={() => (mode === "bluetooth" ? void sendThermal() : sendBrowser())}
         >
-          {phase === "connecting" || phase === "printing" ? (
+          {busy ? (
             <Loader2 className="size-5 animate-spin" aria-hidden />
           ) : mode === "bluetooth" ? (
             <Bluetooth className="size-5" aria-hidden />
@@ -199,13 +282,23 @@ export function PrintTestPanel({
               ? "Mengirim…"
               : "Cetak halaman uji"}
         </Button>
-        {mode === "bluetooth" && supported && phase !== "connecting" && phase !== "printing" && (
+        {mode === "bluetooth" && supported && !busy && (
           <button
             type="button"
             onClick={() => void sendThermal(true)}
             className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground underline underline-offset-4 hover:text-ink"
           >
             Printer tidak muncul? Cari semua perangkat
+          </button>
+        )}
+        {mode === "bluetooth" && serialSupported && (
+          <button
+            type="button"
+            onClick={() => void sendSerial()}
+            disabled={busy}
+            className="min-h-11 border-2 border-ink bg-surface px-3 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-ink shadow-[2px_2px_0_0_#111111] transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-50"
+          >
+            Printer Classic (SPP) · Web Serial
           </button>
         )}
         {phase === "sent" && (
@@ -217,6 +310,13 @@ export function PrintTestPanel({
           </span>
         )}
       </div>
+
+      {mode === "bluetooth" && serialSupported && (
+        <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-muted-foreground">
+          Printer Classic (RPP/RTP) tidak muncul di Bluetooth? Pair di OS lalu pakai Web Serial
+          (Chrome desktop).
+        </p>
+      )}
 
       {phase === "sent" && canReport && (
         <div className="flex flex-col gap-3 border-t-2 border-ink/20 pt-4">

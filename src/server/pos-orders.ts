@@ -48,15 +48,21 @@ export type PosOrderRow = {
   payment_method: string;
   paid_at: string | null;
   created_at: string;
+  /** Lebar kertas printer thermal booth (58/80mm); null untuk jalur browser. */
+  paper_width_mm: 58 | 80 | null;
 };
 
 export type PosOrderDetail = { order: PosOrderRow; items: PosOrderItemRow[] };
 
 type JoinName = { name: string } | { name: string }[] | null;
+type JoinBooth = {
+  name: string;
+  print_settings?: { bluetooth_paper_width_mm?: number } | null;
+} | null;
 
 const ORDER_COLUMNS = `id, number, status, business_id, photobox_id, outlet_id, cashier_user_id,
   gross_amount, discount_amount, final_amount, payment_method, paid_at, created_at,
-  photoboxes ( name ), outlets ( name ), cashier:users ( name )`;
+  photoboxes ( name, print_settings ), outlets ( name ), cashier:users ( name )`;
 
 const ITEM_COLUMNS = `id, pos_product_id, name_snapshot, sku_snapshot, unit_price_snapshot, quantity, subtotal`;
 
@@ -75,11 +81,14 @@ function mapOrder(row: unknown): PosOrderRow {
     payment_method: string;
     paid_at: string | null;
     created_at: string;
-    photoboxes?: JoinName;
+    photoboxes?: JoinBooth;
     outlets?: JoinName;
     cashier?: JoinName;
   };
   const name = (j?: JoinName) => (j && !Array.isArray(j) ? j.name : null);
+  const booth = Array.isArray(r.photoboxes) ? r.photoboxes[0] : r.photoboxes;
+  const paperWidth =
+    booth?.print_settings?.bluetooth_paper_width_mm === 58 ? 58 : booth ? 80 : null;
   return {
     id: r.id,
     number: r.number,
@@ -97,6 +106,7 @@ function mapOrder(row: unknown): PosOrderRow {
     payment_method: r.payment_method,
     paid_at: r.paid_at,
     created_at: r.created_at,
+    paper_width_mm: paperWidth,
   };
 }
 

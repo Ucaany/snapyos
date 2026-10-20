@@ -14,6 +14,7 @@ import {
   BluetoothPrintError,
   ESCPOS_SERVICES,
   connectEscPos,
+  requestEscPosDevice,
 } from "../src/lib/print/bluetooth.ts";
 
 type FakeOptions = {
@@ -154,5 +155,54 @@ test("gagal tulis dilaporkan sebagai WRITE_FAILED", async () => {
   await assert.rejects(
     () => link.write(Uint8Array.from([1])),
     (error) => error instanceof BluetoothPrintError && error.code === "WRITE_FAILED"
+  );
+});
+
+function withBluetooth<T>(
+  requestDevice: (options: BluetoothRequestDeviceOptions) => Promise<BluetoothDevice>,
+  run: () => Promise<T>
+) {
+  const original = globalThis.navigator;
+  Object.defineProperty(globalThis, "navigator", {
+    configurable: true,
+    value: { bluetooth: { requestDevice } },
+  });
+  return run().finally(() => {
+    Object.defineProperty(globalThis, "navigator", { configurable: true, value: original });
+  });
+}
+
+test("pemilih printer fallback service → nama → semua perangkat", async () => {
+  const calls: BluetoothRequestDeviceOptions[] = [];
+  const device = { id: "rpp", name: "RPPO2N" } as unknown as BluetoothDevice;
+  await withBluetooth(
+    async (options) => {
+      calls.push(options);
+      if (calls.length < 3) throw new DOMException("empty", "NotFoundError");
+      return device;
+    },
+    async () => {
+      assert.equal(await requestEscPosDevice(), device);
+    }
+  );
+  assert.ok(calls[0] && "filters" in calls[0] && Array.isArray(calls[0].filters));
+  assert.ok(calls[1] && "filters" in calls[1] && Array.isArray(calls[1].filters));
+  assert.equal(calls[2]?.acceptAllDevices, true);
+});
+
+test("batal memilih printer → NO_DEVICE tanpa error mentah", async () => {
+  await withBluetooth(
+    async () => {
+      throw new DOMException("cancelled", "NotFoundError");
+    },
+    async () => {
+      await assert.rejects(
+        () => requestEscPosDevice(),
+        (error) =>
+          error instanceof BluetoothPrintError &&
+          error.code === "NO_DEVICE" &&
+          /Tidak ada printer dipilih/.test(error.message)
+      );
+    }
   );
 });

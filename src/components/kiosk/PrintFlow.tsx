@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { PrintLayoutRenderer } from "@/components/kiosk/PrintLayoutRenderer";
 import { BluetoothPrintScreen } from "@/components/kiosk/BluetoothPrintScreen";
-import { isBluetoothPrintSupported } from "@/lib/print/bluetooth";
+import { usePrintTransport } from "@/hooks/use-print-transport";
 import { resolvePrintMode, type PrintModeInput } from "@/lib/print/print-mode";
 import type { PrintPlan } from "@/lib/print-layout";
 
@@ -19,14 +19,22 @@ type Props = {
  * Dispatcher cetak: memilih jalur sesuai `print_settings.mode`.
  *
  * - `browser` (default, termasuk baris lama): dialog print OS.
- * - `bluetooth`: thermal ESC/POS via Web Bluetooth. Bila browser tidak punya
- *   Web Bluetooth (Safari/iPad), jatuh ke dialog OS dengan pemberitahuan,
- *   layar cetak tidak boleh berhenti total hanya karena mode tidak didukung.
+ * - `bluetooth`: thermal ESC/POS via Web Bluetooth (BLE) atau Web Serial
+ *   (Classic SPP, Chrome desktop). Bila browser tidak punya keduanya
+ *   (Safari/iPad), jatuh ke dialog OS dengan pemberitahuan; layar cetak tidak
+ *   boleh berhenti total hanya karena mode tidak didukung.
  */
 export function PrintFlow({ photos, plan, printSettings, onDone }: Props) {
   const mode = resolvePrintMode(printSettings);
-  const btAvailable = typeof navigator !== "undefined" && isBluetoothPrintSupported();
-  const [useBrowser, setUseBrowser] = useState(mode !== "bluetooth" || !btAvailable);
+  // Printer thermal bisa BLE (Web Bluetooth) atau Classic SPP (Web Serial).
+  // Deteksi setelah hidrasi; sebelum itu anggap tersedia agar markup SSR dan
+  // client sama (layar cetak sendiri yang menampilkan fallback).
+  const transport = usePrintTransport();
+  const thermalAvailable = transport.bluetooth || transport.serial;
+  // State turunan: jangan setState di effect (memicu render berantai).
+  // Sebelum hidrasi `ready=false` → perilaku SSR tetap sama dengan client.
+  const [forceBrowser, setForceBrowser] = useState(false);
+  const useBrowser = mode !== "bluetooth" || forceBrowser || (transport.ready && !thermalAvailable);
 
   if (!useBrowser) {
     return (
@@ -35,7 +43,7 @@ export function PrintFlow({ photos, plan, printSettings, onDone }: Props) {
         plan={plan}
         printSettings={printSettings}
         onDone={onDone}
-        onUseBrowserPrint={() => setUseBrowser(true)}
+        onUseBrowserPrint={() => setForceBrowser(true)}
       />
     );
   }

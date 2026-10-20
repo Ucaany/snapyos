@@ -25,23 +25,24 @@
 
 ## 1. Ringkasan gate
 
-| #   | Gate                                | Hasil              | Bukti                                             |
-| --- | ----------------------------------- | ------------------ | ------------------------------------------------- |
-| G1  | `npm run lint`                      | **PASS**           | 0 error, 12 warning (pre-existing)                |
-| G2  | `npm run typecheck`                 | **PASS**           | exit 0                                            |
-| G3  | `npm test`                          | **PASS**           | 883/883 (audit 2026-10-20)                        |
-| G4  | `npm run build`                     | **PASS**           | exit 0, 93 halaman statis                         |
-| G5  | `npm run build` (output standalone) | **PASS**           | exit 0, `.next/standalone/server.js` ada          |
-| G6  | `npm audit`                         | **PASS bersyarat** | 0 critical; 9 high + 2 moderate (§2.5)            |
-| G7  | Uji keamanan (subset)               | **PASS**           | 51/51                                             |
-| G8  | E2E kiosk headed                    | **PASS**           | 33/33 (6+7+5+15)                                  |
-| G9  | Smoke test pasca-deploy             | **PASS**           | 21/21 (skrip lama, sudah dihapus)                 |
-| G10 | Hygiene repo                        | **PASS**           | `.gitignore` + `.env.example` tanpa nilai rahasia |
-| G11 | Verifikasi migrasi + rollback       | **PASS statis**    | 94 berkas, 42 tanpa rollback (§6)                 |
-| G12 | Boot produksi standalone + health   | **PASS**           | 200, `database ok`, `storage ok`                  |
-| G13 | `npm run format:check`              | **PASS**           | seluruh repo, setelah `.prettierrc` `semi: true`  |
-| G14 | Interaksi UI sentuh (headed)        | **PASS**           | 38/38 assertion, 0 kontrol <44px                  |
-| G15 | CRUD fitur ke database              | **PASS**           | 15/15 owner · 11/11 staff/payment · 12/12 admin   |
+| #   | Gate                                | Hasil              | Bukti                                              |
+| --- | ----------------------------------- | ------------------ | -------------------------------------------------- |
+| G1  | `npm run lint`                      | **PASS**           | 0 error, 12 warning (pre-existing)                 |
+| G2  | `npm run typecheck`                 | **PASS**           | exit 0                                             |
+| G3  | `npm test`                          | **PASS**           | 910/910 (audit cetak 2026-10-20)                   |
+| G4  | `npm run build`                     | **PASS**           | exit 0, 93 halaman statis                          |
+| G5  | `npm run build` (output standalone) | **PASS**           | exit 0, `.next/standalone/server.js` ada           |
+| G6  | `npm audit`                         | **PASS bersyarat** | 0 critical; 9 high + 2 moderate (§2.5)             |
+| G7  | Uji keamanan (subset)               | **PASS**           | 51/51                                              |
+| G8  | E2E kiosk headed                    | **PASS**           | 33/33 (6+7+5+15)                                   |
+| G16 | E2E cetak foto/struk (headed)       | **PASS**           | 30/30 (4 browser + 2 BLE + 10 SPP foto + 16 struk) |
+| G9  | Smoke test pasca-deploy             | **PASS**           | 21/21 (skrip lama, sudah dihapus)                  |
+| G10 | Hygiene repo                        | **PASS**           | `.gitignore` + `.env.example` tanpa nilai rahasia  |
+| G11 | Verifikasi migrasi + rollback       | **PASS statis**    | 94 berkas, 42 tanpa rollback (§6)                  |
+| G12 | Boot produksi standalone + health   | **PASS**           | 200, `database ok`, `storage ok`                   |
+| G13 | `npm run format:check`              | **PASS**           | seluruh repo, setelah `.prettierrc` `semi: true`   |
+| G14 | Interaksi UI sentuh (headed)        | **PASS**           | 38/38 assertion, 0 kontrol <44px                   |
+| G15 | CRUD fitur ke database              | **PASS**           | 15/15 owner · 11/11 staff/payment · 12/12 admin    |
 
 Gate G1–G5, G7–G12 dijalankan di mesin ini. G6 lulus syarat kebijakan
 (`AGENTS.md` hanya melarang `critical`). Yang **tidak** dijalankan ada di §8.
@@ -82,15 +83,41 @@ exit 0
 
 ```
 $ npm test
-ℹ tests 821
-ℹ pass 821
+ℹ tests 910
+ℹ pass 910
 ℹ fail 0
-ℹ duration_ms 2201
+ℹ duration_ms 3495
 ```
 
-86 berkas `tests/*.test.ts`. Naik dari 744 (baseline) karena suite keamanan yang
-sebelumnya hilang (isolasi tenant, revocation sesi, idempotensi webhook, RPC
-privilege) ditambahkan selama audit ini.
+Naik dari 883 karena audit cetak menambahkan pengujian encoder struk (lebar fisik
+32/48 kolom, font 2x, potong kertas), transport Web Serial (retry open, chunking,
+abort, cleanup), fallback pemilih printer BLE, dan kontrak widget Turnstile.
+
+### 2.3a Cetak thermal (2026-10-20)
+
+| Suite                                        | Hasil    | Bukti                                                       |
+| -------------------------------------------- | -------- | ----------------------------------------------------------- |
+| `npm run test:e2e:print`                     | **PASS** | 4/4 — dua lembar, PDF 2 halaman, tanpa console error        |
+| `npm run test:e2e:bluetooth`                 | **PASS** | 2/2 suite, 12 assertion (BLE chunking 2, SPP foto nyata 10) |
+| `node tests/e2e/pos-receipt-serial.spec.mjs` | **PASS** | 16/16 — transaksi nyata, 58mm ≤32 kolom, 80mm ≤48 kolom     |
+
+Regresi yang ditemukan dan diperbaiki:
+
+1. **Struk terpotong**: `TOTAL` dan nama bisnis dirender 2x tetapi diukur dengan
+   lebar kolom 1x, sehingga melewati kertas 58mm. Total kini 1x bold penuh;
+   nama bisnis dipotong ke 16/24 kolom efektif.
+2. **Lebar kertas POS hardcoded 58mm**: detail order sekarang membaca
+   `photoboxes.print_settings.bluetooth_paper_width_mm` (58/80).
+3. **Retry struk salah transport**: percobaan ulang kini mengingat apakah job
+   terakhir lewat Bluetooth atau SPP.
+4. **Fixture E2E saling menimpa**: suite Bluetooth mengubah `print_settings` ke
+   80mm saat suite struk 58mm berjalan. Lock print-settings kini dipegang selama
+   browser membaca konfigurasi, bukan hanya selama UPDATE.
+
+**Batas platform (bukan bug):** printer Classic SPP (mis. RPPO2N) tidak bisa
+lewat Web Bluetooth GATT; jalurnya Web Serial di Chrome/Edge desktop setelah
+pairing OS. Android/iOS tidak menyediakan Web Serial. Status UI "terkirim"
+berarti byte sudah ditulis ke port; konfirmasi kertas tetap manual.
 
 ### 2.4 Build
 
@@ -417,7 +444,7 @@ sentuh asli (`hasTouch: true`, 390×844) untuk halaman mobile.
 | --------------------------- | --------- | ------------------------------------------------------------------------- |
 | `npm run typecheck`         | PASS      | setelah seluruh patch                                                     |
 | `npm run lint`              | PASS      | 0 error, 12 warning `no-img-element` yang disengaja                       |
-| `npm test`                  | PASS      | 883/883                                                                   |
+| `npm test`                  | PASS      | 910/910                                                                   |
 | `npm run build`             | PASS      | Next.js 16.4.0, 93 halaman statis                                         |
 | `npm run format:check`      | PASS      | repo-wide; 520+ berkas diformat ulang, tes regex diselaraskan             |
 | `kiosk-smoke` (headed)      | PASS      | 6/6                                                                       |
@@ -425,7 +452,8 @@ sentuh asli (`hasTouch: true`, 390×844) untuk halaman mobile.
 | `kiosk-frames` (headed)     | PASS      | 5/5                                                                       |
 | `kiosk-responsive` (headed) | PASS      | 15/15 — iPad landscape/portrait, mini PC, 800×480, ponsel                 |
 | `test:e2e:print`            | PASS      | 4/4 — dua lembar, PDF 2 halaman, tanpa console error                      |
-| `test:e2e:bluetooth`        | PASS      | 2/2 — chunk 20 byte + disconnect event                                    |
+| `test:e2e:bluetooth`        | PASS      | 2/2 suite, 12 assertion — BLE chunking + SPP foto nyata                   |
+| `pos-receipt-serial`        | PASS      | 16/16 — struk 58mm/80mm, lebar fisik, cleanup fixture                     |
 | `npm audit --omit=dev`      | PASS      | 0 critical, 0 high, 2 moderate                                            |
 | `npm audit` (penuh)         | Bersyarat | 9 high + 2 moderate, seluruhnya dev-time (`eslint`, `shadcn`, `ts-morph`) |
 

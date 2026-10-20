@@ -24,7 +24,7 @@ const SUITES = {
     "kiosk-frames.spec.mjs",
     "kiosk-responsive.spec.mjs",
   ],
-  bluetooth: ["kiosk-print-bluetooth.spec.mjs"],
+  bluetooth: ["kiosk-print-bluetooth.spec.mjs", "kiosk-print-serial.spec.mjs"],
 };
 
 const selected =

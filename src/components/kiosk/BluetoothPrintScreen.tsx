@@ -16,10 +16,11 @@ import { rasterizePhoto } from "@/lib/print/photo-bitmap";
 import {
   BluetoothPrintError,
   connectEscPos,
-  isBluetoothPrintSupported,
   requestEscPosDevice,
   type EscPosLink,
 } from "@/lib/print/bluetooth";
+import { SerialPrintError, writeEscPosSerial } from "@/lib/print/serial";
+import { usePrintTransport } from "@/hooks/use-print-transport";
 
 type Props = {
   photos: { blob: Blob }[];
@@ -61,7 +62,9 @@ export function BluetoothPrintScreen({
   const auto = shouldAutoPrint(printSettings);
   const copies = printCopies(printSettings);
   const widthDots = bluetoothWidthDots(printSettings);
-  const supported = typeof navigator !== "undefined" && isBluetoothPrintSupported();
+  const transport = usePrintTransport();
+  const supported = transport.bluetooth;
+  const serialSupported = transport.serial;
 
   const finish = useCallback(
     (success: boolean) => {
@@ -147,6 +150,31 @@ export function BluetoothPrintScreen({
     [run]
   );
 
+  /** Jalur printer Classic SPP: Web Serial mengirim job yang sama. */
+  const connectAndPrintSerial = useCallback(async () => {
+    setState("connecting");
+    setMessage(null);
+    try {
+      const job = await buildJob();
+      setState("printing");
+      await writeEscPosSerial(job);
+      setPrinterName((current) => current ?? "Printer serial (SPP)");
+      setState("done");
+      setTimeout(() => finish(true), 600);
+    } catch (error) {
+      if (error instanceof SerialPrintError && error.code === "NO_PORT") {
+        setState("idle");
+        return;
+      }
+      setMessage(
+        error instanceof SerialPrintError
+          ? error.message
+          : "Gagal mengirim job ke printer lewat Web Serial."
+      );
+      setState("error");
+    }
+  }, [buildJob, finish]);
+
   const retry = useCallback(async () => {
     const link = linkRef.current;
     if (!link) {
@@ -213,15 +241,15 @@ export function BluetoothPrintScreen({
 
   return (
     <div className="fixed inset-0 z-40 flex flex-col items-center justify-center gap-5 bg-bg p-8 text-center">
-      {!supported ? (
+      {!supported && !serialSupported ? (
         <>
           <TriangleAlert className="size-12 text-destructive" aria-hidden />
           <p className="font-display text-2xl uppercase leading-none tracking-tight">
             Bluetooth tidak tersedia
           </p>
           <p className="max-w-[46ch] font-mono text-xs uppercase leading-relaxed tracking-[0.1em] text-muted-foreground">
-            Browser ini tidak mendukung Web Bluetooth. Gunakan Chrome di Android atau desktop, atau
-            cetak lewat dialog sistem.
+            Browser ini tidak mendukung Web Bluetooth maupun Web Serial. Gunakan Chrome desktop atau
+            Android, atau cetak lewat dialog sistem.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <Button size="lg" variant="outline" onClick={onUseBrowserPrint}>
@@ -293,6 +321,28 @@ export function BluetoothPrintScreen({
             Lanjut
           </Button>
         </>
+      ) : !supported && serialSupported ? (
+        <>
+          <Bluetooth className="size-12" aria-hidden />
+          <p className="font-display text-2xl uppercase leading-none tracking-tight">
+            Cetak ke printer Bluetooth
+          </p>
+          <p className="max-w-[46ch] font-mono text-xs uppercase leading-relaxed tracking-[0.1em] text-muted-foreground">
+            Web Bluetooth tidak tersedia, tetapi Web Serial bisa dipakai untuk printer Classic (SPP)
+            yang sudah di-pair di OS.
+          </p>
+          <div className="flex flex-wrap justify-center gap-3">
+            <Button size="lg" onClick={() => void connectAndPrintSerial()} className="bg-accent">
+              <Printer className="size-5" aria-hidden /> Hubungkan printer (SPP)
+            </Button>
+            <Button size="lg" variant="outline" onClick={onUseBrowserPrint}>
+              Cetak lewat dialog
+            </Button>
+            <Button size="lg" variant="outline" onClick={() => leave(false)}>
+              Lanjut
+            </Button>
+          </div>
+        </>
       ) : (
         <>
           <Bluetooth className="size-12" aria-hidden />
@@ -324,6 +374,15 @@ export function BluetoothPrintScreen({
           >
             Printer tidak muncul? Cari semua perangkat
           </button>
+          {serialSupported && (
+            <button
+              type="button"
+              onClick={() => void connectAndPrintSerial()}
+              className="min-h-11 border-2 border-ink bg-surface px-3 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-ink shadow-[2px_2px_0_0_#111111] transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+            >
+              Printer Classic (SPP) · Web Serial
+            </button>
+          )}
         </>
       )}
     </div>

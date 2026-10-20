@@ -10,7 +10,11 @@ import { slugify } from "@/lib/slug";
 import type { FormState } from "@/server/auth-actions";
 import type { PhotoboxRow } from "@/server/photoboxes";
 import { savePhotoboxAction } from "@/server/booth-actions";
-import { TurnstileWidget } from "@/components/turnstile-widget";
+import {
+  TurnstileWidget,
+  type TurnstileHandle,
+  type TurnstileStatus,
+} from "@/components/turnstile-widget";
 
 const initial: FormState = {};
 
@@ -39,11 +43,13 @@ export function PhotoboxForm({ outlets, photobox, onDone }: Props) {
     photobox?.print_settings.mode === "bluetooth" ? "bluetooth" : "browser"
   );
   const [captchaVerified, setCaptchaVerified] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaStatus, setCaptchaStatus] = useState<TurnstileStatus>("idle");
+  const turnstileRef = useRef<TurnstileHandle>(null);
 
   const captchaSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
   // Gate CAPTCHA hanya untuk CREATE (edit tak butuh) dan saat site key aktif.
   const captchaBlocked = !isEdit && Boolean(captchaSiteKey) && !captchaVerified;
+  const captchaFailed = !isEdit && captchaStatus === "error";
 
   const effectiveSlug = slugEdited ? slug : isEdit ? (photobox?.slug ?? "") : slugify(name);
   const uid = photobox?.id ?? "new";
@@ -660,14 +666,27 @@ export function PhotoboxForm({ outlets, photobox, onDone }: Props) {
 
       {!isEdit && (
         <TurnstileWidget
+          ref={turnstileRef}
           siteKey={captchaSiteKey}
           action="create-photobox"
           onVerified={setCaptchaVerified}
-          onToken={setCaptchaToken}
+          onStatus={setCaptchaStatus}
         />
       )}
-      {!isEdit && captchaSiteKey && (
-        <input type="hidden" name="cf-turnstile-response" value={captchaToken} />
+      {captchaFailed && (
+        <div
+          role="alert"
+          className="flex flex-col gap-2 border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs leading-relaxed text-ink"
+        >
+          <p>Verifikasi keamanan gagal dimuat. Periksa koneksi lalu coba lagi.</p>
+          <button
+            type="button"
+            onClick={() => void turnstileRef.current?.reset()}
+            className="min-h-11 w-full border-2 border-ink bg-surface px-3 font-mono text-xs font-bold uppercase tracking-[0.05em] text-ink shadow-[2px_2px_0_0_#111111] transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+          >
+            Coba verifikasi lagi
+          </button>
+        </div>
       )}
 
       <div className="flex gap-3">
@@ -680,9 +699,11 @@ export function PhotoboxForm({ outlets, photobox, onDone }: Props) {
             ? "Menyimpan…"
             : isEdit
               ? "Simpan perubahan"
-              : captchaBlocked
-                ? "Menunggu verifikasi…"
-                : "Simpan photobox"}
+              : captchaFailed
+                ? "Verifikasi gagal"
+                : captchaBlocked
+                  ? "Menunggu verifikasi…"
+                  : "Simpan photobox"}
         </Button>
         {onDone && (
           <Button type="button" variant="outline" size="sm" onClick={onDone} disabled={pending}>

@@ -1,10 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Printer, RotateCcw } from "lucide-react";
+import { Bluetooth, Loader2, Printer, RotateCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { formatIDR } from "@/lib/dashboard-math";
+import { encodeReceipt } from "@/lib/print/receipt";
+import { BluetoothPrintError, connectEscPos, requestEscPosDevice } from "@/lib/print/bluetooth";
+import { SerialPrintError, writeEscPosSerial } from "@/lib/print/serial";
+import { usePrintTransport } from "@/hooks/use-print-transport";
 import type { PosOrderDetail } from "@/server/pos-orders";
 
 const METHOD_LABEL: Record<string, string> = {
@@ -14,8 +19,11 @@ const METHOD_LABEL: Record<string, string> = {
 };
 
 /**
- * ReceiptView — struk siap-cetak (A12: window.print, tanpa printer SDK).
- * Tombol disembunyikan saat print (print:hidden).
+ * ReceiptView — struk siap-cetak.
+ *
+ * Dua jalur: dialog sistem (`window.print`) dan thermal ESC/POS lewat Web
+ * Bluetooth. Printer Bluetooth hanya mengirim perintah; hasil fisik tetap
+ * dikonfirmasi kasir.
  */
 export function ReceiptView({
   detail,
@@ -26,18 +34,157 @@ export function ReceiptView({
 }) {
   const router = useRouter();
   const { order, items } = detail;
+  const [btState, setBtState] = useState<"idle" | "printing" | "sent" | "error">("idle");
+  const [btMessage, setBtMessage] = useState<string | null>(null);
+  const [lastTransport, setLastTransport] = useState<"bluetooth" | "serial" | null>(null);
+  const transport = usePrintTransport();
+  const btSupported = transport.bluetooth;
+  const serialSupported = transport.serial;
+  const paidAt = new Date(order.paid_at ?? order.created_at).toLocaleString("id-ID", {
+    timeZone: "Asia/Jakarta",
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+  const paperWidthMm = order.paper_width_mm ?? 80;
+
+  function receiptBytes() {
+    return encodeReceipt(
+      {
+        businessName,
+        orderNumber: order.number,
+        methodLabel: METHOD_LABEL[order.payment_method] ?? order.payment_method.toUpperCase(),
+        boothName: order.photobox_name,
+        outletName: order.outlet_name,
+        cashierName: order.cashier_name,
+        paidAt,
+        items: items.map((item) => ({
+          name: item.name_snapshot,
+          quantity: item.quantity,
+          unitPrice: item.unit_price_snapshot,
+          subtotal: item.subtotal,
+        })),
+        grossAmount: order.gross_amount,
+        discountAmount: order.discount_amount,
+        finalAmount: order.final_amount,
+      },
+      paperWidthMm
+    );
+  }
+
+  async function printBluetooth() {
+    setBtState("printing");
+    setBtMessage(null);
+    setLastTransport("bluetooth");
+    try {
+      const device = await requestEscPosDevice();
+      const link = await connectEscPos(device);
+      try {
+        await link.write(receiptBytes());
+        setBtState("sent");
+      } finally {
+        link.disconnect();
+      }
+    } catch (error) {
+      if (error instanceof BluetoothPrintError && error.code === "NO_DEVICE") {
+        setBtState("idle");
+        return;
+      }
+      setBtMessage(
+        error instanceof BluetoothPrintError
+          ? error.message
+          : "Gagal mengirim struk ke printer Bluetooth."
+      );
+      setBtState("error");
+    }
+  }
+
+  /** Printer Classic SPP: koneksi lewat Web Serial (Chrome desktop). */
+  async function printSerial() {
+    setBtState("printing");
+    setBtMessage(null);
+    setLastTransport("serial");
+    try {
+      await writeEscPosSerial(receiptBytes());
+      setBtState("sent");
+    } catch (error) {
+      if (error instanceof SerialPrintError && error.code === "NO_PORT") {
+        setBtState("idle");
+        return;
+      }
+      setBtMessage(
+        error instanceof SerialPrintError ? error.message : "Gagal mengirim struk lewat Web Serial."
+      );
+      setBtState("error");
+    }
+  }
 
   return (
     <div className="print-root mx-auto flex min-h-[100dvh] w-full max-w-md flex-col gap-6 p-4 md:p-8 print:mx-0 print:min-h-0 print:w-full print:max-w-none print:p-0">
-      <div className="flex items-center justify-between gap-3 print:hidden">
-        <Button variant="outline" size="sm" onClick={() => router.push("/pos")}>
-          <RotateCcw aria-hidden />
-          Transaksi baru
-        </Button>
-        <Button size="sm" onClick={() => window.print()}>
-          <Printer aria-hidden />
-          Cetak struk
-        </Button>
+      <div className="flex flex-col gap-3 print:hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Button variant="outline" size="sm" onClick={() => router.push("/pos")}>
+            <RotateCcw aria-hidden />
+            Transaksi baru
+          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={() => window.print()}>
+              <Printer aria-hidden />
+              Cetak dialog
+            </Button>
+            {btSupported && (
+              <Button
+                size="sm"
+                onClick={() => void printBluetooth()}
+                disabled={btState === "printing"}
+              >
+                {btState === "printing" ? (
+                  <Loader2 className="animate-spin" aria-hidden />
+                ) : (
+                  <Bluetooth aria-hidden />
+                )}
+                {btState === "printing" ? "Mengirim…" : "Cetak Bluetooth"}
+              </Button>
+            )}
+            {serialSupported && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void printSerial()}
+                disabled={btState === "printing"}
+              >
+                {btState === "printing" ? (
+                  <Loader2 className="animate-spin" aria-hidden />
+                ) : (
+                  <Bluetooth aria-hidden />
+                )}
+                Cetak SPP
+              </Button>
+            )}
+          </div>
+        </div>
+        {btState === "sent" && (
+          <p
+            role="status"
+            className="border-2 border-accent-3 bg-accent-3/10 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.1em]"
+          >
+            Perintah struk terkirim. Periksa hasil cetak fisik.
+          </p>
+        )}
+        {btState === "error" && (
+          <div
+            role="alert"
+            className="flex flex-col gap-2 border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.1em]"
+          >
+            <p>{btMessage ?? "Printer Bluetooth gagal."}</p>
+            <button
+              type="button"
+              onClick={() => void (lastTransport === "serial" ? printSerial() : printBluetooth())}
+              className="min-h-11 w-full border-2 border-ink bg-surface px-3 font-mono text-xs font-bold uppercase tracking-[0.05em] text-ink shadow-[2px_2px_0_0_#111111] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+            >
+              Coba lagi
+            </button>
+          </div>
+        )}
       </div>
 
       <article className="flex flex-col gap-4 border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111] print:border-0 print:shadow-none">
@@ -73,13 +220,7 @@ export function ReceiptView({
           </div>
           <div>
             <dt className="text-muted-foreground">Waktu</dt>
-            <dd className="font-bold">
-              {new Date(order.paid_at ?? order.created_at).toLocaleString("id-ID", {
-                timeZone: "Asia/Jakarta",
-                dateStyle: "short",
-                timeStyle: "short",
-              })}
-            </dd>
+            <dd className="font-bold">{paidAt}</dd>
           </div>
         </dl>
 

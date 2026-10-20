@@ -202,7 +202,9 @@ export async function savePhotoboxAction(prev: FormState, formData: FormData): P
   const normalized = new FormData();
   for (const [key, value] of formData.entries()) {
     if (key === "0") continue;
-    normalized.append(key.replace(/^_\d+_/, ""), value);
+    // Token CAPTCHA di-inject Cloudflare di luar prefix useActionState.
+    // Jangan ikut di-rename; server action membacanya dengan nama asli.
+    normalized.append(key.startsWith("cf-") ? key : key.replace(/^_\d+_/, ""), value);
   }
   return str(normalized, "id")
     ? updatePhotoboxAction(prev, normalized)

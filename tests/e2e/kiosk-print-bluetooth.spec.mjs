@@ -11,7 +11,6 @@
  */
 
 import { config, requireServiceRole } from "./helpers/env.mjs";
-import { createAdmin, resolvePhotobox, setPrintSettings } from "./helpers/booth.mjs";
 import { launchKiosk } from "./helpers/browser.mjs";
 import { installBluetoothMock } from "./helpers/bluetooth-mock.mjs";
 import { createReporter } from "./helpers/report.mjs";
@@ -19,12 +18,6 @@ import { createReporter } from "./helpers/report.mjs";
 const cfg = config();
 requireServiceRole(cfg);
 const report = createReporter("kiosk-print-bluetooth");
-const sb = createAdmin(cfg.supabaseUrl, cfg.serviceKey);
-const { photobox } = await resolvePhotobox(sb, cfg.businessSlug, cfg.photoboxSlug);
-
-// Halaman uji cetak dashboard memakai komponen yang sama dengan kiosk.
-// Mode dipaksa bluetooth agar jalurnya teruji tanpa menyelesaikan sesi foto.
-await setPrintSettings(sb, photobox.id, { mode: "bluetooth", bluetooth_paper_width_mm: 80 });
 
 const { context } = await launchKiosk();
 const page = await context.newPage();

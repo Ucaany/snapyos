@@ -134,13 +134,14 @@ di VPS; gate yang butuh Linux/VPS dicatat terpisah di `docs/18-audit-report.md`.
 | ---------------------------- | ------------------- | ---------------------------------------------------- |
 | Lint (repo-wide, dipakai CI) | `npm run lint`      | **PASS** 0 error, 12 warning                         |
 | Typecheck                    | `npm run typecheck` | **PASS**                                             |
-| Unit/integration             | `npm test`          | **PASS** 744/744                                     |
+| Unit/integration             | `npm test`          | **PASS** 910/910                                     |
 | Build produksi               | `npm run build`     | **PASS**                                             |
 | Dependency audit             | `npm audit`         | 0 critical, 9 high, 2 moderate (dev-time/transitive) |
 
-Angka suite terkini setelah hardening 2026-10-16: **815 tes lulus, 0 gagal** (dari 744 pada
-titik nol; +6 dari `tests/service-worker-assets.test.ts`). Laporan gate lengkap ada di
-`docs/18-audit-report.md`.
+Angka suite terkini setelah audit cetak 2026-10-20: **910 tes lulus, 0 gagal, 0 skip**.
+Penambahan mencakup encoder struk 58/80mm (`tests/print-receipt.test.ts`), transport
+Web Serial (`tests/print-serial.test.ts`), fallback pemilih printer BLE, dan kontrak
+Turnstile. Laporan gate lengkap ada di `docs/18-audit-report.md`.
 
 ### Gate rilis (2026-10-20)
 
@@ -150,7 +151,7 @@ Diukur ulang di mesin pengembang sebelum deploy. Semua gate lulus:
 | ---------------- | ---------------------------- | ----------------------------------------------------------------------------------------- |
 | Lint             | `npm run lint`               | **PASS** 0 error, 12 warning (`no-img-element`, sengaja: aset kiosk butuh `<img>` mentah) |
 | Typecheck        | `npm run typecheck`          | **PASS**                                                                                  |
-| Unit/integration | `npm test`                   | **PASS** 883/883, 0 gagal, 0 skip                                                         |
+| Unit/integration | `npm test`                   | **PASS** 910/910, 0 gagal, 0 skip                                                         |
 | Build produksi   | `npm run build`              | **PASS**                                                                                  |
 | Format           | `npm run format:check`       | **PASS** (`.prettierrc` diselaraskan ke `semi: true`)                                     |
 | E2E kiosk smoke  | `kiosk-smoke.spec.mjs`       | **PASS** 6/6 (headed)                                                                     |

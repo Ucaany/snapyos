@@ -87,12 +87,28 @@ Gate yang diverifikasi di mesin pengembang sebelum deploy:
 ```bash
 npm run typecheck        # PASS
 npm run lint             # PASS, 0 error, 12 warning <img> yang disengaja
-npm test                 # PASS 883/883
+npm test                 # PASS 910/910
 npm run build            # PASS (Next.js 16, 93 static pages)
 npm run format:check     # PASS
 npm run test:e2e:print   # PASS 4/4
-npm run test:e2e:bluetooth # PASS 2/2
+npm run test:e2e:bluetooth # PASS 2/2 suite (12 assertion: BLE 2, SPP/foto 10)
+node tests/e2e/pos-receipt-serial.spec.mjs # PASS 16/16 (struk 58mm + 80mm)
 ```
+
+### Cetak thermal Bluetooth (2026-10-20)
+
+- **BLE (Web Bluetooth)** untuk printer ESC/POS yang mengiklankan GATT service.
+  Chrome/Edge desktop dan Android; iOS/iPadOS tidak mendukung Web Bluetooth.
+- **Classic SPP (Web Serial)** untuk printer seperti RPPO2N yang hanya punya
+  profil SPP. Pair di OS, lalu pilih **Printer Classic (SPP) · Web Serial**.
+  Web Serial hanya tersedia di Chrome/Edge desktop, bukan Android/iOS.
+- Struk POS mengikuti `print_settings.bluetooth_paper_width_mm` per booth:
+  58mm = 32 kolom, 80mm = 48 kolom. Setiap baris diuji agar lebar fisiknya
+  (termasuk font 2x) tidak melewati kolom.
+- Panel uji printer menyediakan sampel **Foto nyata** (raster 1-bit) selain pola
+  teks, sehingga hasil cetak foto dan struk dapat diverifikasi terpisah.
+- Status "terkirim" berarti byte ESC/POS sudah ditulis ke port, bukan konfirmasi
+  kertas. Hasil fisik tetap harus diperiksa petugas.
 
 E2E kiosk dijalankan headed satu suite pada satu waktu:
 
