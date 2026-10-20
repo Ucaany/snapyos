@@ -571,10 +571,10 @@ pembayaran POS, satuan storage, teks artefak, dan verifikasi deploy produksi.
 
 ### 11.4 Residual & yang belum diverifikasi
 
-| Item                                  | Status                                                                 |
-| ------------------------------------- | ---------------------------------------------------------------------- |
-| Printer Bluetooth fisik               | **BLOCKED / NOT VERIFIED** — tidak ada perangkat; hanya mock BLE + SPP |
-| Kamera fisik                          | **BLOCKED / NOT VERIFIED** — hanya fake device di harness              |
-| Migrasi `0072_storage_addon_mb_label` | Ditulis + rollback tersedia; **belum diterapkan ke DB produksi**       |
-| Advisory dev-time                     | 9 high + 2 moderate; 0 critical (`npm audit`)                          |
-| Rate limit in-memory                  | Efektif = limit × jumlah instance (diterima operator)                  |
+| Item                                  | Status                                                                                                                                                    |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Printer Bluetooth fisik               | **BLOCKED / NOT VERIFIED** — tidak ada printer thermal terkonfirmasi; hanya mock BLE + SPP                                                                |
+| Kamera fisik                          | **PARTIAL** — FaceTime HD Camera (3A71:F4B5): capture `getUserMedia` 1280×720 OK, tetapi frame gelap total (mean 2,71) → kualitas **BELUM TERVERIFIKASI** |
+| Migrasi `0072_storage_addon_mb_label` | Ditulis + rollback tersedia; **belum diterapkan ke DB produksi**                                                                                          |
+| Advisory dev-time                     | 9 high + 2 moderate; 0 critical (`npm audit`)                                                                                                             |
+| Rate limit in-memory                  | Efektif = limit × jumlah instance (diterima operator)                                                                                                     |
