@@ -513,3 +513,68 @@ sentuh asli (`hasTouch: true`, 390×844) untuk halaman mobile.
 | Printer fisik                                      | E2E memverifikasi layout cetak + Bluetooth mock; uji printer fisik tetap manual.             |
 | `R2_*` di produksi Vercel                          | Tidak diset; storage jatuh ke Supabase Storage (fallback terdokumentasi).                    |
 | `npm run test:e2e` gabungan                        | Suite dijalankan satu per satu (headed) agar stabil; belum ada runner gabungan sekali jalan. |
+
+---
+
+## 11. Audit lanjutan 2026-10-20 (auto-print, POS, storage, deploy)
+
+Lanjutan §10 pada working tree yang sama. Fokus: cetak ganda, idempotensi
+pembayaran POS, satuan storage, teks artefak, dan verifikasi deploy produksi.
+
+### 11.1 Gate yang dijalankan ulang
+
+| Gate                         | Hasil     | Bukti                                                     |
+| ---------------------------- | --------- | --------------------------------------------------------- |
+| `npm run typecheck`          | PASS      | exit 0                                                    |
+| `npm run lint`               | PASS      | 0 error, 12 warning `no-img-element` (pre-existing)       |
+| `npm test`                   | PASS      | 939/939                                                   |
+| `npm run build`              | PASS      | Next.js 16.4.0, 93 halaman statis                         |
+| `npm run format:check`       | PASS      | repo-wide                                                 |
+| `npm run test:e2e:print`     | PASS      | 4/4                                                       |
+| `npm run test:e2e:bluetooth` | PASS      | 2/2 suite (BLE 2/2 + SPP 10/10)                           |
+| `npm run test:e2e:kiosk`     | PASS      | 4/4 suite (smoke, lock, frames, responsive 15/15)         |
+| `pos-receipt-serial`         | PASS      | 16/16 — struk 58mm & 80mm                                 |
+| `npm audit`                  | Bersyarat | 0 critical, 9 high + 2 moderate (dev-time)                |
+| Responsive owner/admin/POS   | PASS      | 108/108 — 390/768/1440, tanpa overflow atau console error |
+| Responsive staff             | PASS      | 15/15 — sesi staff nyata, 390/768/1440                    |
+
+### 11.2 Bug yang diperbaiki
+
+| #   | Temuan                                                            | Dampak                                                           | Perbaikan                                                                  |
+| --- | ----------------------------------------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| 1   | Auto-print kiosk tidak punya guard per job                        | Strict Mode/remount/refresh dapat mencetak lembar ganda          | Claim `sessionStorage` + ref sebelum job dikirim; reprint eksplisit bypass |
+| 2   | Tombol "Cetak ulang" diblokir guard auto-print                    | Customer menekan cetak ulang tetapi tidak ada kertas keluar      | `reprintRequested` di `KioskApp` diteruskan ke jalur cetak                 |
+| 3   | Claim terpakai tetap menampilkan "permintaan cetak dikirim"       | UI mengklaim sukses padahal `window.print()` tidak dipanggil     | State `autoBlocked` → tampil "Siap dicetak" + tombol manual                |
+| 4   | Retry manual setelah auto-print gagal ikut terblokir              | Tidak ada jalan pulih tanpa reload                               | `manualRetryRef` mengizinkan retry eksplisit                               |
+| 5   | Auto-print POS memanggil chooser yang butuh gestur                | Auto-print tidak pernah jalan setelah pairing                    | `writeEscPosSerialGranted()` memakai port yang sudah diizinkan             |
+| 6   | Pembayaran manual POS mengecek status sebelum transaksi existing  | Retry setelah timeout jaringan → 409 padahal uang sudah diterima | `classifyPosManualPay()`: transaksi existing menang, retry idempoten       |
+| 7   | Label add-on storage seed masih "1 GB"                            | UI menampilkan GB meski produk memakai MB                        | Normalisasi baca + migrasi `0072`; schema seed memakai MB                  |
+| 8   | Konversi MB tersebar (dua definisi)                               | Risiko selisih kuota vs tampilan                                 | `src/lib/storage-units.ts` = satu sumber 1 MB = 1.048.576 bytes            |
+| 9   | Tally kuota add-on diduplikasi tanpa test                         | Regresi kuota tidak tertangkap                                   | `sumStorageAddOnMb()` + test (multi-baris, non-storage, qty invalid)       |
+| 10  | `/dashboard/vouchers` melempar FEATURE_DISABLED ke error boundary | Plan tanpa voucher mencatat console error pada state normal      | Cek `hasFeature()` sebelum query → `FeatureLockedPanel` inline             |
+| 11  | Prefix `///` tampil sebagai teks di eyebrow/empty state/email     | Artefak teks pada UI                                             | Prefix dihapus dari seluruh copy yang dirender                             |
+| 12  | `BrowserPrintSheet.tsx` hanya re-export tanpa pemakai             | Dead code                                                        | Dihapus; komentar `print-layout.ts` dikoreksi                              |
+| 13  | Tes `extendIsoDays` membandingkan dua `Date.now()`                | Flaky bila beda milidetik                                        | Diubah ke pemeriksaan jendela waktu                                        |
+| 14  | Matcher harga E2E kiosk tidak menerima NBSP                       | `kiosk-frames` gagal palsu                                       | Regex `/Rp\s*\d/`                                                          |
+
+### 11.3 Verifikasi deploy produksi
+
+| Item                          | Hasil                                         |
+| ----------------------------- | --------------------------------------------- |
+| Branch / commit               | `main` @ `d494a74`                            |
+| Push                          | `origin/main` sinkron dengan HEAD lokal       |
+| Vercel deployment             | `READY`, alias `https://snapyos.vercel.app`   |
+| `/api/health`                 | `status: ok`, database & storage `ok`         |
+| `/`, `/login`, `/register`    | HTTP 200, tanpa console error, tanpa overflow |
+| `/p/demo/demo` (kiosk publik) | HTTP 200, tanpa console error, tanpa overflow |
+| Runtime log Vercel            | 0 error pada jendela log yang diperiksa       |
+
+### 11.4 Residual & yang belum diverifikasi
+
+| Item                                  | Status                                                                 |
+| ------------------------------------- | ---------------------------------------------------------------------- |
+| Printer Bluetooth fisik               | **BLOCKED / NOT VERIFIED** — tidak ada perangkat; hanya mock BLE + SPP |
+| Kamera fisik                          | **BLOCKED / NOT VERIFIED** — hanya fake device di harness              |
+| Migrasi `0072_storage_addon_mb_label` | Ditulis + rollback tersedia; **belum diterapkan ke DB produksi**       |
+| Advisory dev-time                     | 9 high + 2 moderate; 0 critical (`npm audit`)                          |
+| Rate limit in-memory                  | Efektif = limit × jumlah instance (diterima operator)                  |
