@@ -1,9 +1,18 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { computePosTotals, posDayRange, posOrderNumber } from "../src/lib/pos-math.ts";
+import {
+  classifyPosManualPay,
+  computePosTotals,
+  posDayRange,
+  posOrderNumber,
+} from "../src/lib/pos-math.ts";
 import { posOrderCreateSchema, posManualPaySchema } from "../src/lib/validators.ts";
 import { evaluatePosEntitlement } from "../src/lib/pos-entitlement.ts";
+import {
+  resolvePosReceiptSettings,
+  shouldAutoPrintReceipt,
+} from "../src/lib/pos-receipt-settings.ts";
 
 /**
  * Unit murni logika order POS (docs/pos/03 §4 — jalur create/pay offline).
@@ -178,4 +187,77 @@ test("entitlement: hanya subscription trial|active|past_due + add-on pos aktif",
   assert.ok(evaluatePosEntitlement("past_due", [posActive]));
   assert.ok(!evaluatePosEntitlement("expired", [posActive]));
   assert.ok(!evaluatePosEntitlement(null, [posActive]));
+});
+
+// --- setelan struk: lebar kertas + auto-print --------------------------------
+
+test("struk: 58mm + bluetooth + auto_print true diteruskan", () => {
+  const s = resolvePosReceiptSettings({
+    mode: "bluetooth",
+    bluetooth_paper_width_mm: 58,
+    auto_print: true,
+  });
+  assert.equal(s.paperWidthMm, 58);
+  assert.equal(s.printMode, "bluetooth");
+  assert.equal(s.autoPrint, true);
+});
+
+test("struk: 80mm default, auto_print default aktif, mode browser", () => {
+  const s = resolvePosReceiptSettings({ mode: "browser" });
+  assert.equal(s.paperWidthMm, 80);
+  assert.equal(s.printMode, "browser");
+  assert.equal(s.autoPrint, true);
+});
+
+test("struk: auto_print=false dihormati (tidak auto-print)", () => {
+  const s = resolvePosReceiptSettings({
+    mode: "bluetooth",
+    bluetooth_paper_width_mm: 80,
+    auto_print: false,
+  });
+  assert.equal(s.autoPrint, false);
+  assert.equal(shouldAutoPrintReceipt({ print_mode: s.printMode, auto_print: s.autoPrint }), false);
+});
+
+test("struk: tanpa booth → paper_width null dan mode browser", () => {
+  const s = resolvePosReceiptSettings(null, false);
+  assert.equal(s.paperWidthMm, null);
+  assert.equal(s.printMode, "browser");
+});
+
+test("struk: auto-print hanya untuk jalur bluetooth", () => {
+  assert.equal(shouldAutoPrintReceipt({ print_mode: "bluetooth", auto_print: true }), true);
+  assert.equal(shouldAutoPrintReceipt({ print_mode: "browser", auto_print: true }), false);
+  assert.equal(shouldAutoPrintReceipt({ print_mode: "bluetooth", auto_print: false }), false);
+});
+
+// --- idempotensi pembayaran manual -------------------------------------------
+
+test("manual pay: transaksi existing menang atas status non-pending (retry RPC)", () => {
+  assert.equal(
+    classifyPosManualPay({ status: "paid", hasExistingTransaction: true }),
+    "already-settled"
+  );
+  assert.equal(
+    classifyPosManualPay({ status: "cancelled", hasExistingTransaction: true }),
+    "already-settled"
+  );
+});
+
+test("manual pay: non-pending tanpa transaksi tetap tidak bisa dibayar", () => {
+  assert.equal(
+    classifyPosManualPay({ status: "paid", hasExistingTransaction: false }),
+    "not-payable"
+  );
+  assert.equal(
+    classifyPosManualPay({ status: "cancelled", hasExistingTransaction: false }),
+    "not-payable"
+  );
+});
+
+test("manual pay: order pending tanpa transaksi → settle", () => {
+  assert.equal(
+    classifyPosManualPay({ status: "pending", hasExistingTransaction: false }),
+    "settle"
+  );
 });

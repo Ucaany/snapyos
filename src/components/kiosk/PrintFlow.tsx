@@ -11,6 +11,10 @@ type Props = {
   photos: { blob: Blob }[];
   plan: PrintPlan;
   printSettings?: PrintModeInput | null;
+  /** ID sesi untuk dedupe auto-print (dipakai jalur thermal). */
+  jobId?: string;
+  /** true = customer menekan "Cetak ulang"; jangan pakai guard auto-print. */
+  reprint?: boolean;
   /** success=true → permintaan cetak terkirim (browser tidak memberi status fisik). */
   onDone: (success: boolean) => void;
 };
@@ -24,7 +28,7 @@ type Props = {
  *   (Safari/iPad), jatuh ke dialog OS dengan pemberitahuan; layar cetak tidak
  *   boleh berhenti total hanya karena mode tidak didukung.
  */
-export function PrintFlow({ photos, plan, printSettings, onDone }: Props) {
+export function PrintFlow({ photos, plan, printSettings, jobId, reprint = false, onDone }: Props) {
   const mode = resolvePrintMode(printSettings);
   // Printer thermal bisa BLE (Web Bluetooth) atau Classic SPP (Web Serial).
   // Deteksi setelah hidrasi; sebelum itu anggap tersedia agar markup SSR dan
@@ -42,6 +46,8 @@ export function PrintFlow({ photos, plan, printSettings, onDone }: Props) {
         photos={photos}
         plan={plan}
         printSettings={printSettings}
+        jobId={jobId}
+        reprint={reprint}
         onDone={onDone}
         onUseBrowserPrint={() => setForceBrowser(true)}
       />
@@ -53,6 +59,8 @@ export function PrintFlow({ photos, plan, printSettings, onDone }: Props) {
       photos={photos}
       plan={plan}
       printSettings={printSettings}
+      jobId={jobId}
+      reprint={reprint}
       onDone={onDone}
     />
   );

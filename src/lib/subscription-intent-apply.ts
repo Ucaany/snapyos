@@ -59,7 +59,13 @@ export type IntentFailureReason =
 /** Normalisasi intent → daftar item (shape baru `items`, legacy single-item). */
 export function intentToItems(intent: IntentShape, fallbackAmount: number): InvoiceIntentItem[] {
   if (!intent) return [];
-  if (Array.isArray(intent.items) && intent.items.length > 0) return intent.items;
+  if (Array.isArray(intent.items) && intent.items.length > 0) {
+    return intent.items.map((item) =>
+      item.type === "add_on" && item.name
+        ? { ...item, name: normalizeLegacyAddOnName(item.name) }
+        : item
+    );
+  }
   return [
     {
       type:
@@ -72,11 +78,20 @@ export function intentToItems(intent: IntentShape, fallbackAmount: number): Invo
       add_on_id: intent.add_on_id,
       template_id: intent.template_id,
       code: intent.code,
-      name: intent.name,
+      name: normalizeLegacyAddOnName(intent.name),
       amount: fallbackAmount,
       qty: 1,
     },
   ];
+}
+
+/**
+ * Label seed lama "Tambah Storage 1 GB" → "Tambah Storage 1.024 MB".
+ * Hanya bentuk seed yang dikenal; nama add-on lain dibiarkan apa adanya.
+ */
+function normalizeLegacyAddOnName(name: string | undefined): string | undefined {
+  if (!name) return name;
+  return /^Tambah Storage\s+1\s*GB$/i.test(name) ? "Tambah Storage 1.024 MB" : name;
 }
 
 // ---------------------------------------------------------------------------

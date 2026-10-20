@@ -7,8 +7,14 @@ import { ApiError } from "@/lib/api-errors";
 import { can } from "@/lib/rbac";
 import { insertAudit } from "@/server/audit";
 import { requirePosAccess } from "@/server/pos-entitlement";
-import { computePosTotals, posOrderNumber, posDayRange } from "@/lib/pos-math";
+import {
+  classifyPosManualPay,
+  computePosTotals,
+  posOrderNumber,
+  posDayRange,
+} from "@/lib/pos-math";
 import { formatTxNumber, todayISO } from "@/lib/dashboard-math";
+import { resolvePosReceiptSettings } from "@/lib/pos-receipt-settings";
 import {
   posOrderCreateSchema,
   posManualPaySchema,
@@ -50,6 +56,10 @@ export type PosOrderRow = {
   created_at: string;
   /** Lebar kertas printer thermal booth (58/80mm); null untuk jalur browser. */
   paper_width_mm: 58 | 80 | null;
+  /** Jalur cetak booth saat transaksi dibuat. */
+  print_mode: "browser" | "bluetooth";
+  /** Auto-print struk saat halaman struk dibuka (sekali per sesi browser). */
+  auto_print: boolean;
 };
 
 export type PosOrderDetail = { order: PosOrderRow; items: PosOrderItemRow[] };
@@ -57,7 +67,11 @@ export type PosOrderDetail = { order: PosOrderRow; items: PosOrderItemRow[] };
 type JoinName = { name: string } | { name: string }[] | null;
 type JoinBooth = {
   name: string;
-  print_settings?: { bluetooth_paper_width_mm?: number } | null;
+  print_settings?: {
+    bluetooth_paper_width_mm?: number;
+    mode?: string;
+    auto_print?: boolean;
+  } | null;
 } | null;
 
 const ORDER_COLUMNS = `id, number, status, business_id, photobox_id, outlet_id, cashier_user_id,
@@ -87,8 +101,7 @@ function mapOrder(row: unknown): PosOrderRow {
   };
   const name = (j?: JoinName) => (j && !Array.isArray(j) ? j.name : null);
   const booth = Array.isArray(r.photoboxes) ? r.photoboxes[0] : r.photoboxes;
-  const paperWidth =
-    booth?.print_settings?.bluetooth_paper_width_mm === 58 ? 58 : booth ? 80 : null;
+  const receiptSettings = resolvePosReceiptSettings(booth?.print_settings, Boolean(booth));
   return {
     id: r.id,
     number: r.number,
@@ -106,7 +119,9 @@ function mapOrder(row: unknown): PosOrderRow {
     payment_method: r.payment_method,
     paid_at: r.paid_at,
     created_at: r.created_at,
-    paper_width_mm: paperWidth,
+    paper_width_mm: receiptSettings.paperWidthMm,
+    print_mode: receiptSettings.printMode,
+    auto_print: receiptSettings.autoPrint,
   };
 }
 
@@ -405,17 +420,24 @@ export async function payPosOrderManually(
     cashier_user_id: string;
   } | null;
   if (!order) throw new ApiError("NOT_FOUND", "Order tidak ditemukan");
-  if (order.status !== "pending") {
-    throw new ApiError("POS_ORDER_NOT_PAYABLE", "Order tidak berstatus pending");
-  }
 
-  // Idempotency: transaksi POS sudah tercatat → no-op.
+  // Idempotency DULU, sebelum cek status. Retry setelah RPC sukses (order
+  // sudah paid) harus mengembalikan sukses yang sama, bukan 409. Ini penting
+  // untuk tombol "Bayar" yang di-retry setelah timeout jaringan: uang sudah
+  // diterima, klien tidak boleh disuruh membayar/membatalkan order.
   const { data: existingTx } = await supabase
     .from("transactions")
     .select("id")
     .eq("pos_order_id", parsed.orderId)
     .maybeSingle();
-  if (existingTx) return { orderId: parsed.orderId };
+  const decision = classifyPosManualPay({
+    status: order.status,
+    hasExistingTransaction: Boolean(existingTx),
+  });
+  if (decision === "already-settled") return { orderId: parsed.orderId };
+  if (decision === "not-payable") {
+    throw new ApiError("POS_ORDER_NOT_PAYABLE", "Order tidak berstatus pending");
+  }
 
   const tz = membership.business.timezone ?? "Asia/Jakarta";
   const number = formatTxNumber(todayISO(tz), randomUUID().replace(/-/g, "").slice(0, 6));

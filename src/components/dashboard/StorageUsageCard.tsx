@@ -2,10 +2,7 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import type { StorageUsage } from "@/server/storage-usage";
-
-function fmtMb(mb: number): string {
-  return new Intl.NumberFormat("id-ID", { maximumFractionDigits: 0 }).format(mb) + " MB";
-}
+import { formatStorageMb } from "@/lib/storage-units";
 
 /**
  * StorageUsageCard — sisa kuota storage per account (0053). Server component
@@ -34,12 +31,12 @@ export function StorageUsageCard({ usage }: { usage: StorageUsage }) {
               Terpakai / Kuota
             </p>
             <p className="font-display text-2xl uppercase tracking-tight">
-              {fmtMb(usage.usedMb)}{" "}
-              <span className="text-muted-foreground">/ {fmtMb(usage.limitMb)}</span>
+              {formatStorageMb(usage.usedMb)}{" "}
+              <span className="text-muted-foreground">/ {formatStorageMb(usage.limitMb)}</span>
             </p>
           </div>
           <p className="font-mono text-xs uppercase tracking-[0.1em]">
-            Sisa <span className="font-bold">{fmtMb(usage.remainingMb)}</span>
+            Sisa <span className="font-bold">{formatStorageMb(usage.remainingMb)}</span>
           </p>
         </div>
 
@@ -51,7 +48,7 @@ export function StorageUsageCard({ usage }: { usage: StorageUsage }) {
         {usage.isFull && (
           <div className="flex flex-wrap items-center justify-between gap-3 border-2 border-ink bg-accent-2 p-4">
             <p className="font-mono text-xs font-bold uppercase tracking-[0.08em]">
-              {"/// PENYIMPANAN PENUH: upload frame & hasil foto diblokir"}
+              {"PENYIMPANAN PENUH: upload frame & hasil foto diblokir"}
             </p>
             <Button size="sm" nativeButton={false} render={<Link href="/dashboard/subscription" />}>
               Upgrade Storage

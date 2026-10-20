@@ -6,6 +6,7 @@
 
 import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
+import { storageAddOnDisplayName } from "@/lib/storage-units";
 
 export type PublicPlan = {
   id: string;
@@ -22,6 +23,7 @@ export type PublicAddOn = {
   name: string;
   price_monthly: number;
   unit: string;
+  storage_mb: number | null;
 };
 
 export async function getPublicPlans(): Promise<PublicPlan[]> {
@@ -44,11 +46,18 @@ export async function getPublicAddOns(): Promise<PublicAddOn[]> {
     const supabase = createServerClient();
     const { data, error } = await supabase
       .from("add_ons")
-      .select("id, code, name, price_monthly, unit")
+      .select("id, code, name, price_monthly, unit, storage_mb")
       .eq("is_active", true)
       .order("price_monthly", { ascending: true });
     if (error) return [];
-    return (data ?? []) as PublicAddOn[];
+    return ((data ?? []) as PublicAddOn[]).map((addOn) => ({
+      ...addOn,
+      name: storageAddOnDisplayName({
+        name: addOn.name,
+        unit: addOn.unit,
+        storageMb: addOn.storage_mb,
+      }),
+    }));
   } catch {
     return [];
   }

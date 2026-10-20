@@ -1082,7 +1082,7 @@ on conflict (code) do nothing;
 insert into add_ons (code, name, price_monthly, unit, is_active, storage_mb) values
   ('extra_session', 'Add-on +1 Sesi', 49000, 'session', true, null),
   ('pos', 'POS Kasir', 99000, 'feature', true, null),
-  ('extra_storage', 'Tambah Storage 1 GB', 49000, 'storage', true, 1024)
+  ('extra_storage', 'Tambah Storage 1.024 MB', 49000, 'storage', true, 1024)
 on conflict (code) do nothing;
 
 insert into platform_settings (key, value) values

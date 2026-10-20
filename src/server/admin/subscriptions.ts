@@ -6,6 +6,7 @@ import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
 import { extendIsoDays } from "@/lib/admin-math";
+import { storageAddOnDisplayName } from "@/lib/storage-units";
 import {
   adminSubscriptionAddOnSchema,
   adminSubscriptionAddOnCancelSchema,
@@ -73,14 +74,19 @@ async function enrichSubscriptionRows(
     add_on_id: string;
     quantity: number;
     status: string;
-    add_ons: { name: string } | { name: string }[] | null;
+    add_ons:
+      | { name: string; unit: string; storage_mb: number | null }
+      | { name: string; unit: string; storage_mb: number | null }[]
+      | null;
   };
   const linksBySub = new Map<string, Link[]>();
   const cancelledBySub = new Map<string, string[]>();
   if (subIds.length > 0) {
     const { data: links } = await supabase
       .from("subscription_add_ons")
-      .select("subscription_id, id, add_on_id, quantity, status, add_ons ( name )")
+      .select(
+        "subscription_id, id, add_on_id, quantity, status, add_ons ( name, unit, storage_mb )"
+      )
       .in("subscription_id", subIds);
     for (const link of (links ?? []) as unknown as Link[]) {
       if (link.status === "cancelled") {
@@ -132,12 +138,21 @@ async function enrichSubscriptionRows(
       current_period_start: row.current_period_start,
       current_period_end: row.current_period_end,
       cancel_at_period_end: row.cancel_at_period_end,
-      add_ons: (linksBySub.get(row.id) ?? []).map((l) => ({
-        id: l.id,
-        add_on_id: l.add_on_id,
-        name: (Array.isArray(l.add_ons) ? l.add_ons[0] : l.add_ons)?.name ?? "-",
-        quantity: l.quantity,
-      })),
+      add_ons: (linksBySub.get(row.id) ?? []).map((l) => {
+        const addOn = Array.isArray(l.add_ons) ? l.add_ons[0] : l.add_ons;
+        return {
+          id: l.id,
+          add_on_id: l.add_on_id,
+          name: addOn
+            ? storageAddOnDisplayName({
+                name: addOn.name,
+                unit: addOn.unit,
+                storageMb: addOn.storage_mb,
+              })
+            : "-",
+          quantity: l.quantity,
+        };
+      }),
       cancelled_add_on_ids: cancelledBySub.get(row.id) ?? [],
       last_invoice: inv
         ? {

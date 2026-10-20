@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { HardDrive } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { formatStorageMb } from "@/lib/storage-units";
 
 type StorageUsage = {
   usedMb: number;
@@ -14,18 +15,11 @@ type StorageUsage = {
   isFull: boolean;
 };
 
-function fmt(mb: number): string {
-  if (mb >= 1024) {
-    const gb = mb / 1024;
-    return `${gb % 1 === 0 ? gb.toFixed(0) : gb.toFixed(1)} GB`;
-  }
-  return `${mb} MB`;
-}
-
 /**
  * StorageIndicator — indikator kuota storage di topbar (kanan-atas).
  * Fetch on-mount ke endpoint ringan; tidak memblokir SSR. Menampilkan
- * `terpakai / kuota` (GB bila besar) + bar mini. Penuh → aksen pink.
+ * `terpakai / kuota` dalam MB (spesifikasi produk tidak memakai GB) + bar mini.
+ * Penuh → aksen pink.
  * Klik → /dashboard/settings. Hidden di <sm (mobile).
  */
 export function StorageIndicator({ businessId }: { businessId: string }) {
@@ -54,7 +48,7 @@ export function StorageIndicator({ businessId }: { businessId: string }) {
       href="/dashboard/settings"
       title={
         hasLimit
-          ? `Storage: ${fmt(usage!.usedMb)} / ${fmt(usage!.limitMb)} terpakai (${usage!.percent}%)`
+          ? `Storage: ${formatStorageMb(usage!.usedMb)} / ${formatStorageMb(usage!.limitMb)} terpakai (${usage!.percent}%)`
           : "Storage penyimpanan"
       }
       className={cn(
@@ -67,8 +61,8 @@ export function StorageIndicator({ businessId }: { businessId: string }) {
       ) : hasLimit ? (
         <span className="flex items-center gap-2">
           <span className={cn(usage.isFull && "font-bold text-destructive")}>
-            {fmt(usage.usedMb)}
-            <span className="text-muted-foreground"> / {fmt(usage.limitMb)}</span>
+            {formatStorageMb(usage.usedMb)}
+            <span className="text-muted-foreground"> / {formatStorageMb(usage.limitMb)}</span>
           </span>
           <span className="hidden h-3 w-10 border border-ink bg-bg lg:block">
             <span

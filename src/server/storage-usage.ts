@@ -21,8 +21,8 @@ import { isSubscriptionEffective } from "@/lib/subscription-math";
 import { isFeatureEnabled } from "@/lib/feature-gate";
 import { activeStorageProviders } from "@/server/storage";
 import type { StorageBucket, StorageProvider } from "@/server/storage/types";
+import { bytesToMb, mbToBytes } from "@/lib/storage-units";
 
-const MB = 1024 * 1024;
 const BUCKETS: StorageBucket[] = ["business-assets", "generated-photos"];
 
 /**
@@ -263,15 +263,15 @@ export async function getStorageUsage(businessId: string): Promise<StorageUsage>
     getBusinessUsedBytes(businessId, true, true),
     getStorageLimit(businessId),
   ]);
-  const limitBytes = limit.totalMb * MB;
+  const limitBytes = mbToBytes(limit.totalMb);
   const hasLimit = limitBytes > 0;
   return {
     usedBytes,
     limitBytes,
-    usedMb: Math.ceil(usedBytes / MB),
+    usedMb: bytesToMb(usedBytes),
     limitMb: limit.totalMb,
     remainingBytes: Math.max(0, limitBytes - usedBytes),
-    remainingMb: Math.max(0, limit.totalMb - Math.ceil(usedBytes / MB)),
+    remainingMb: Math.max(0, limit.totalMb - bytesToMb(usedBytes)),
     // ponytail: tanpa kuota aktif (feature flag off / belum berlangganan),
     // percent=0 & isFull=false — jangan tampil "PENUH" palsu saat limit 0.
     percent: !hasLimit
@@ -366,15 +366,15 @@ export async function getStorageUsageBatch(
       }
     }
     const addOnMb = sub ? (addOnMbBySub.get(sub.id) ?? 0) : 0;
-    const limitBytes = (planMb + addOnMb) * MB;
+    const limitBytes = mbToBytes(planMb + addOnMb);
     const hasLimit = limitBytes > 0;
     out.set(id, {
       usedBytes,
       limitBytes,
-      usedMb: Math.ceil(usedBytes / MB),
+      usedMb: bytesToMb(usedBytes),
       limitMb: planMb + addOnMb,
       remainingBytes: Math.max(0, limitBytes - usedBytes),
-      remainingMb: Math.max(0, planMb + addOnMb - Math.ceil(usedBytes / MB)),
+      remainingMb: Math.max(0, planMb + addOnMb - bytesToMb(usedBytes)),
       percent: !hasLimit
         ? 0
         : usedBytes >= limitBytes
@@ -406,7 +406,7 @@ export async function assertStorageAvailable(
       "Storage tidak termasuk dalam plan Anda. Upgrade subscription untuk mengaktifkan penyimpanan."
     );
   }
-  if (usedBytes + extra > limit.totalMb * MB) {
+  if (usedBytes + extra > mbToBytes(limit.totalMb)) {
     throw new ApiError(
       "STORAGE_FULL",
       "Penyimpanan penuh. Upgrade plan atau tambah add-on storage untuk melanjutkan."

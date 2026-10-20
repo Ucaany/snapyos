@@ -137,6 +137,10 @@ export function KioskApp({
   const [finalPhotos, setFinalPhotos] = useState<FinalPhoto[]>([]);
   const [result, setResult] = useState<ResultState | null>(null);
   const [printed, setPrinted] = useState(false);
+  // Auto-print saat finalize vs. cetak ulang yang diminta customer. Reprint
+  // melewati guard auto-print: guard itu hanya mencegah cetak ganda otomatis,
+  // bukan membungkam permintaan eksplisit dari layar hasil.
+  const [reprintRequested, setReprintRequested] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [finishRequested, setFinishRequested] = useState(false);
@@ -472,6 +476,7 @@ export function KioskApp({
             gif_url: null,
             pendingSync: true,
           });
+          setReprintRequested(false);
           setStep(shouldPrint ? "printing" : "result");
         } catch {
           setNotice("Gagal menyimpan hasil offline. Hubungi petugas.");
@@ -497,6 +502,7 @@ export function KioskApp({
         );
         setFinalPhotos(final);
         setResult(data);
+        setReprintRequested(false);
         setStep(shouldPrint ? "printing" : "result");
       } catch (e) {
         // Grace window lewat (offline terlalu lama) → terminal, bukan menunggu sync.
@@ -507,6 +513,7 @@ export function KioskApp({
             gif_url: null,
             syncFailed: true,
           });
+          setReprintRequested(false);
           setStep(shouldPrint ? "printing" : "result");
         } else {
           setNotice(e instanceof KioskError ? e.message : "Gagal memfinalisasi sesi.");
@@ -571,6 +578,7 @@ export function KioskApp({
     setFinalPhotos([]);
     setResult(null);
     setPrinted(false);
+    setReprintRequested(false);
     setFinishRequested(false);
     setNotice(null);
     setStep("welcome");
@@ -771,6 +779,8 @@ export function KioskApp({
           photos={finalPhotos}
           plan={plan}
           printSettings={currentPhotobox.print_settings}
+          jobId={session?.session_id ?? result?.result_token ?? undefined}
+          reprint={reprintRequested}
           onDone={(success) => {
             setPrinted(success);
             setStep("result");
@@ -795,7 +805,10 @@ export function KioskApp({
           }
           pendingSync={result.pendingSync === true}
           syncFailed={result.syncFailed === true}
-          onPrint={() => setStep("printing")}
+          onPrint={() => {
+            setReprintRequested(true);
+            setStep("printing");
+          }}
           onReset={handleReset}
         />
       )}

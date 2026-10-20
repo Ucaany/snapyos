@@ -4,6 +4,7 @@ import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { formatIDR } from "@/lib/dashboard-math";
+import { storageAddOnDisplayName } from "@/lib/storage-units";
 import { createAddOnAction, updateAddOnAction } from "@/server/admin-actions";
 import { listAddOns } from "@/server/admin";
 
@@ -18,7 +19,7 @@ export default async function AdminAddOnsPage() {
     <div className="flex flex-col gap-8 p-6 md:p-10">
       <header>
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {"/// ADMIN - ADD-ONS"}
+          {"ADMIN - ADD-ONS"}
         </p>
         <h1 className="mt-2 font-display text-3xl uppercase tracking-tight md:text-4xl">
           Manajemen Add-on
@@ -97,7 +98,7 @@ export default async function AdminAddOnsPage() {
 
       <div className="flex flex-col gap-4">
         {addOns.length === 0 ? (
-          <AdminEmptyState heading="/// BELUM ADA ADD-ON">
+          <AdminEmptyState heading="BELUM ADA ADD-ON">
             Buat add-on pertama di atas, dipakai owner untuk menambah limit sesi konkuren.
           </AdminEmptyState>
         ) : (
@@ -108,7 +109,13 @@ export default async function AdminAddOnsPage() {
             >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <span className="flex items-center gap-3">
-                  <span className="font-display text-lg uppercase tracking-tight">{a.name}</span>
+                  <span className="font-display text-lg uppercase tracking-tight">
+                    {storageAddOnDisplayName({
+                      name: a.name,
+                      unit: a.unit,
+                      storageMb: a.storage_mb,
+                    })}
+                  </span>
                   <span className="font-mono text-xs text-muted-foreground">
                     {a.code} · unit {a.unit}
                     {a.storage_mb ? ` · +${a.storage_mb} MB` : ""}
@@ -136,7 +143,15 @@ export default async function AdminAddOnsPage() {
                     >
                       Nama
                     </label>
-                    <Input id={`name-${a.id}`} name="name" defaultValue={a.name} />
+                    <Input
+                      id={`name-${a.id}`}
+                      name="name"
+                      defaultValue={storageAddOnDisplayName({
+                        name: a.name,
+                        unit: a.unit,
+                        storageMb: a.storage_mb,
+                      })}
+                    />
                   </div>
                   <div className="flex flex-col gap-1">
                     <label

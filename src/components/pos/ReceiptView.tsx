@@ -1,14 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bluetooth, Loader2, Printer, RotateCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { formatIDR } from "@/lib/dashboard-math";
+import { shouldAutoPrintReceipt } from "@/lib/pos-receipt-settings";
+import {
+  autoPrintStorageKey,
+  claimAutoPrintAttempt,
+  getAutoPrintStore,
+} from "@/lib/print/auto-print";
 import { encodeReceipt } from "@/lib/print/receipt";
 import { BluetoothPrintError, connectEscPos, requestEscPosDevice } from "@/lib/print/bluetooth";
-import { SerialPrintError, writeEscPosSerial } from "@/lib/print/serial";
+import { SerialPrintError, writeEscPosSerial, writeEscPosSerialGranted } from "@/lib/print/serial";
 import { usePrintTransport } from "@/hooks/use-print-transport";
 import type { PosOrderDetail } from "@/server/pos-orders";
 
@@ -37,6 +43,8 @@ export function ReceiptView({
   const [btState, setBtState] = useState<"idle" | "printing" | "sent" | "error">("idle");
   const [btMessage, setBtMessage] = useState<string | null>(null);
   const [lastTransport, setLastTransport] = useState<"bluetooth" | "serial" | null>(null);
+  const [autoPrintPending, setAutoPrintPending] = useState(false);
+  const autoPrintRan = useRef(false);
   const transport = usePrintTransport();
   const btSupported = transport.bluetooth;
   const serialSupported = transport.serial;
@@ -118,6 +126,68 @@ export function ReceiptView({
     }
   }
 
+  // Auto-print struk: hanya sekali per order per sesi browser. Memakai port
+  // yang sudah diizinkan (Web Serial) atau device BLE yang pernah dipilih;
+  // tanpa izin, tombol manual tetap jadi jalur pairing pertama.
+  useEffect(() => {
+    if (autoPrintRan.current) return;
+    if (!shouldAutoPrintReceipt(order)) return;
+    autoPrintRan.current = true;
+    // Claim SEBELUM mengirim. Reload setelah job terkirim tidak boleh mencetak
+    // ulang otomatis (struk ganda); tombol manual tetap tersedia.
+    if (!claimAutoPrintAttempt(autoPrintStorageKey("pos", order.id), getAutoPrintStore())) return;
+
+    let cancelled = false;
+    void (async () => {
+      setAutoPrintPending(true);
+      setLastTransport("serial");
+      try {
+        const sent = await writeEscPosSerialGranted(receiptBytes());
+        if (cancelled) return;
+        if (sent) {
+          setBtState("sent");
+          return;
+        }
+        if (!transport.bluetooth) {
+          setBtMessage(
+            "Auto-print menunggu izin printer. Klik Cetak SPP sekali untuk menghubungkan."
+          );
+          return;
+        }
+        const { reconnectGranted } = await import("@/lib/print/bluetooth");
+        const device = await reconnectGranted();
+        if (!device || cancelled) {
+          setBtMessage(
+            "Auto-print menunggu izin printer. Klik Cetak Bluetooth sekali untuk menghubungkan."
+          );
+          return;
+        }
+        setLastTransport("bluetooth");
+        const link = await connectEscPos(device);
+        try {
+          await link.write(receiptBytes());
+          if (!cancelled) setBtState("sent");
+        } finally {
+          link.disconnect();
+        }
+      } catch (error) {
+        if (cancelled) return;
+        setBtMessage(
+          error instanceof SerialPrintError || error instanceof BluetoothPrintError
+            ? error.message
+            : "Auto-print gagal. Gunakan tombol cetak manual."
+        );
+      } finally {
+        if (!cancelled) setAutoPrintPending(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Sekali saat struk dibuka; receiptBytes mengikuti detail order.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order.id]);
+
   return (
     <div className="print-root mx-auto flex min-h-[100dvh] w-full max-w-md flex-col gap-6 p-4 md:p-8 print:mx-0 print:min-h-0 print:w-full print:max-w-none print:p-0">
       <div className="flex flex-col gap-3 print:hidden">
@@ -168,6 +238,22 @@ export function ReceiptView({
             className="border-2 border-accent-3 bg-accent-3/10 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.1em]"
           >
             Perintah struk terkirim. Periksa hasil cetak fisik.
+          </p>
+        )}
+        {autoPrintPending && (
+          <p
+            role="status"
+            className="border-2 border-ink/30 bg-surface px-3 py-2 font-mono text-[10px] uppercase tracking-[0.1em]"
+          >
+            Auto-print: mengirim struk ke printer…
+          </p>
+        )}
+        {btMessage && btState !== "error" && (
+          <p
+            role="status"
+            className="border-2 border-accent bg-accent/10 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.1em]"
+          >
+            {btMessage}
           </p>
         )}
         {btState === "error" && (

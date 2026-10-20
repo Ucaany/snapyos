@@ -19,13 +19,23 @@ import {
   requestEscPosDevice,
   type EscPosLink,
 } from "@/lib/print/bluetooth";
-import { SerialPrintError, writeEscPosSerial } from "@/lib/print/serial";
+import { SerialPrintError, writeEscPosSerial, writeEscPosSerialGranted } from "@/lib/print/serial";
+import {
+  autoPrintStorageKey,
+  claimAutoPrintAttempt,
+  getAutoPrintStore,
+  shouldClaimAutoPrint,
+} from "@/lib/print/auto-print";
 import { usePrintTransport } from "@/hooks/use-print-transport";
 
 type Props = {
   photos: { blob: Blob }[];
   plan: PrintPlan;
   printSettings?: PrintSettingsInput | null;
+  /** ID sesi/order untuk dedupe auto-print lintas remount & refresh. */
+  jobId?: string;
+  /** true = cetak ulang eksplisit; lewati claim auto-print. */
+  reprint?: boolean;
   /** success=true → job terkirim penuh ke printer (bukan konfirmasi fisik). */
   onDone: (success: boolean) => void;
   /** Printer bukan ESC/POS: pindah ke dialog OS tanpa mengulang sesi. */
@@ -46,6 +56,8 @@ export function BluetoothPrintScreen({
   photos,
   plan,
   printSettings,
+  jobId,
+  reprint = false,
   onDone,
   onUseBrowserPrint,
 }: Props) {
@@ -58,6 +70,7 @@ export function BluetoothPrintScreen({
   const linkRef = useRef<EscPosLink | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const doneRef = useRef(false);
+  const autoClaimedRef = useRef(false);
 
   const auto = shouldAutoPrint(printSettings);
   const copies = printCopies(printSettings);
@@ -175,6 +188,35 @@ export function BluetoothPrintScreen({
     }
   }, [buildJob, finish]);
 
+  /** Auto-print SPP: pakai port yang sudah diizinkan, tanpa chooser. */
+  const autoPrintSerial = useCallback(async () => {
+    setState("preparing");
+    setMessage(null);
+    try {
+      const job = await buildJob();
+      setState("printing");
+      const sent = await writeEscPosSerialGranted(job);
+      if (!sent) {
+        setState("idle");
+        return;
+      }
+      setPrinterName((current) => current ?? "Printer serial (SPP)");
+      setState("done");
+      setTimeout(() => finish(true), 600);
+    } catch (error) {
+      if (error instanceof SerialPrintError && error.code === "NO_PORT") {
+        setState("idle");
+        return;
+      }
+      setMessage(
+        error instanceof SerialPrintError
+          ? error.message
+          : "Gagal mengirim job ke printer lewat Web Serial."
+      );
+      setState("error");
+    }
+  }, [buildJob, finish]);
+
   const retry = useCallback(async () => {
     const link = linkRef.current;
     if (!link) {
@@ -196,24 +238,43 @@ export function BluetoothPrintScreen({
   // perangkat sudah ada (getDevices). Tanpa izin, Chrome wajib gestur, jadi
   // layar menampilkan tombol "Hubungkan printer".
   useEffect(() => {
-    if (!auto || !supported) return;
-    let cancelled = false;
-    void (async () => {
-      const { reconnectGranted } = await import("@/lib/print/bluetooth");
-      const device = await reconnectGranted();
-      if (!device || cancelled) return;
-      try {
-        const link = await connectEscPos(device);
-        if (cancelled) {
-          link.disconnect();
+    if (!auto) return;
+    // Claim sekali per job SEBELUM menyentuh printer. React Strict Mode
+    // menjalankan effect dua kali; tanpa claim ini satu sesi bisa tercetak dua
+    // kali. jobId kosong = hanya guard ref per mount (tidak ada kunci stabil).
+    // Ref menahan Strict Mode double-effect (instance sama) agar percobaan
+    // kedua tetap jalan tanpa mengklaim ulang; storage menahan remount/refresh.
+    if (!autoClaimedRef.current) {
+      if (jobId && shouldClaimAutoPrint({ auto, reprint, jobId })) {
+        if (!claimAutoPrintAttempt(autoPrintStorageKey("kiosk", jobId), getAutoPrintStore())) {
           return;
         }
-        linkRef.current = link;
-        setPrinterName(device.name ?? "Printer Bluetooth");
-        await run(link);
-      } catch {
-        // Izin ada tetapi printer mati → tombol manual tetap tersedia.
       }
+      autoClaimedRef.current = true;
+    }
+    let cancelled = false;
+    void (async () => {
+      if (supported) {
+        const { reconnectGranted } = await import("@/lib/print/bluetooth");
+        const device = await reconnectGranted();
+        if (cancelled) return;
+        if (device) {
+          try {
+            const link = await connectEscPos(device);
+            if (cancelled) {
+              link.disconnect();
+              return;
+            }
+            linkRef.current = link;
+            setPrinterName(device.name ?? "Printer Bluetooth");
+            await run(link);
+            return;
+          } catch {
+            // Izin ada tetapi printer mati → coba jalur SPP di bawah.
+          }
+        }
+      }
+      if (serialSupported) await autoPrintSerial();
     })();
     return () => {
       cancelled = true;
@@ -267,7 +328,7 @@ export function BluetoothPrintScreen({
             Perintah cetak terkirim
           </p>
           <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
-            {`/// ${printerName ?? "PRINTER BLUETOOTH"}`}
+            {`${printerName ?? "PRINTER BLUETOOTH"}`}
           </p>
         </>
       ) : state === "error" ? (
@@ -315,7 +376,7 @@ export function BluetoothPrintScreen({
                 : "Mencetak"}
           </p>
           <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
-            {progress ? `/// LEMBAR ${progress.sheet} / ${progress.total}` : "/// SIAPKAN KERTAS"}
+            {progress ? `LEMBAR ${progress.sheet} / ${progress.total}` : "SIAPKAN KERTAS"}
           </p>
           <Button size="lg" variant="outline" onClick={() => leave(false)}>
             Lanjut

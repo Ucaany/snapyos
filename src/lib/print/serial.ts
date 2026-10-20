@@ -173,3 +173,63 @@ export async function writeEscPosSerial(
     }
   }
 }
+
+/**
+ * Tulis ke port yang SUDAH diizinkan tanpa membuka chooser.
+ *
+ * Dipakai auto-print: `requestPort()` wajib gestur pengguna, jadi setelah
+ * pairing pertama port tersimpan di origin dan bisa dipakai ulang lewat
+ * `getPorts()`. Bila belum ada port, kembalikan `false` supaya UI menampilkan
+ * tombol manual (bukan error).
+ */
+export async function writeEscPosSerialGranted(
+  bytes: Uint8Array,
+  options: SerialWriteOptions = {}
+): Promise<boolean> {
+  const serial = options.serial ?? getSerialApi();
+  if (!serial) return false;
+  if (options.signal?.aborted) throw abortError();
+
+  let port: SerialPortLike | null = null;
+  try {
+    const ports = await serial.getPorts();
+    port = ports[0] ?? null;
+  } catch {
+    return false;
+  }
+  if (!port) return false;
+
+  try {
+    await openSerialPort(port, options);
+    if (!port.writable) {
+      throw new SerialPrintError("WRITE_FAILED", "Port printer tidak bisa ditulis.");
+    }
+    const writer = port.writable.getWriter();
+    const chunkSize = Math.max(1, options.chunkSize ?? SERIAL_CHUNK_DEFAULT);
+    const sleep = options.sleep ?? defaultSleep;
+    try {
+      for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+        if (options.signal?.aborted) throw abortError();
+        const chunk = bytes.slice(offset, offset + chunkSize);
+        try {
+          await writer.write(chunk);
+        } catch {
+          throw new SerialPrintError("WRITE_FAILED", "Gagal mengirim data ke printer.");
+        }
+        if (offset + chunkSize < bytes.length) {
+          await sleep(options.writeGapMs ?? SERIAL_WRITE_GAP_MS);
+        }
+      }
+      await writer.ready;
+    } finally {
+      writer.releaseLock();
+    }
+  } finally {
+    try {
+      await port.close();
+    } catch {
+      /* port mungkin sudah tertutup setelah error */
+    }
+  }
+  return true;
+}

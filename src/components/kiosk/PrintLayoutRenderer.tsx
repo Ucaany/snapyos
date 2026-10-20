@@ -11,12 +11,22 @@ import {
   shouldAutoPrint,
 } from "@/lib/print-layout";
 import { useObjectUrls } from "@/components/kiosk/use-object-url";
+import {
+  autoPrintStorageKey,
+  claimAutoPrintAttempt,
+  getAutoPrintStore,
+  shouldClaimAutoPrint,
+} from "@/lib/print/auto-print";
 
 type Props = {
   photos: { blob: Blob }[];
   plan: PrintPlan;
   /** Setting cetak owner — ukuran/margin/orientasi/salinan/auto-print. */
   printSettings?: PrintSettingsInput | null;
+  /** ID sesi untuk dedupe auto-print lintas remount & refresh. */
+  jobId?: string;
+  /** true = cetak ulang eksplisit; lewati claim auto-print. */
+  reprint?: boolean;
   /** success=true → permintaan print dikirim; browser tidak memberi status fisik. */
   onDone: (success: boolean) => void;
 };
@@ -46,14 +56,28 @@ function waitForImg(img: HTMLImageElement): Promise<void> {
  * Retry: increments retryKey → useEffect re-runs full pipeline (re-registers listeners).
  * Always renders "Lanjut" button in non-done states to prevent kiosk-stuck.
  */
-function PrintLayoutRendererInner({ photos, plan, printSettings, onDone }: Props) {
+function PrintLayoutRendererInner({
+  photos,
+  plan,
+  printSettings,
+  jobId,
+  reprint = false,
+  onDone,
+}: Props) {
   const [state, setState] = useState<PrintState>("loading");
+  // Claim auto-print sudah terpakai (remount/refresh) → tampilkan tombol
+  // manual, jangan mengaku "permintaan cetak dikirim" tanpa window.print().
+  const [autoBlocked, setAutoBlocked] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [retryKey, setRetryKey] = useState(0);
   const sheetRefs = useRef<(HTMLDivElement | null)[]>([]);
   const doneRef = useRef(false);
   // Guard re-entrancy: "Cetak" dobel-cepat tidak boleh memicu window.print()/listener/onDone dua kali.
   const printingRef = useRef(false);
+  const autoClaimedRef = useRef(false);
+  // Retry manual setelah auto-print gagal: boleh mencetak lagi walau claim
+  // auto-print untuk job ini sudah terpakai.
+  const manualRetryRef = useRef(false);
   const printFnRef = useRef<(() => void) | null>(null);
   const printCleanupRef = useRef<(() => void) | null>(null);
 
@@ -181,7 +205,30 @@ function PrintLayoutRendererInner({ photos, plan, printSettings, onDone }: Props
         await new Promise((r) => setTimeout(r, 150));
         if (cancelled) return;
         // auto_print=false → tunggu tombol "Cetak" (manual, mis. tablet).
-        if (auto) doPrint();
+        if (auto) {
+          // Claim tepat sebelum dialog dibuka. Ref menahan Strict Mode
+          // double-effect (instance sama); storage menahan remount/refresh.
+          const bypassClaim = reprint || manualRetryRef.current;
+          manualRetryRef.current = false;
+          if (!autoClaimedRef.current) {
+            if (jobId && shouldClaimAutoPrint({ auto, reprint: bypassClaim, jobId })) {
+              if (
+                !claimAutoPrintAttempt(autoPrintStorageKey("kiosk", jobId), getAutoPrintStore())
+              ) {
+                setAutoBlocked(true);
+                setState("ready");
+                return;
+              }
+            }
+            autoClaimedRef.current = true;
+            doPrint();
+            return;
+          }
+          // Percobaan auto-print sudah dimulai di mount ini. Jangan ulangi
+          // hanya karena effect Strict Mode berjalan dua kali; retry eksplisit
+          // tetap diizinkan lewat bypassClaim.
+          if (bypassClaim) doPrint();
+        }
       } catch (e) {
         if (cancelled) return;
         setErrorMsg(e instanceof Error ? e.message : "Gagal mencetak.");
@@ -198,7 +245,18 @@ function PrintLayoutRendererInner({ photos, plan, printSettings, onDone }: Props
     };
     // printSettings diobjekkan per render — destructure ke primitif agar stabil.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [retryKey, auto, copies, page.widthMm, page.heightMm, page.marginMm, marginMm, urlsReady]);
+  }, [
+    retryKey,
+    auto,
+    copies,
+    page.widthMm,
+    page.heightMm,
+    page.marginMm,
+    marginMm,
+    urlsReady,
+    jobId,
+    reprint,
+  ]);
 
   if (plan.kind === "digital") {
     return null;
@@ -216,6 +274,8 @@ function PrintLayoutRendererInner({ photos, plan, printSettings, onDone }: Props
 
   function handleRetry() {
     setErrorMsg("");
+    setAutoBlocked(false);
+    manualRetryRef.current = true;
     setState("loading");
     setRetryKey((k) => k + 1);
   }
@@ -261,14 +321,14 @@ function PrintLayoutRendererInner({ photos, plan, printSettings, onDone }: Props
               Permintaan cetak dikirim
             </p>
           </>
-        ) : state === "ready" && !auto ? (
+        ) : state === "ready" && (!auto || autoBlocked) ? (
           <>
             <Printer className="size-12" aria-hidden />
             <p className="font-display text-2xl uppercase leading-none tracking-tight">
               Siap dicetak
             </p>
             <p className="max-w-[44ch] font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
-              {`/// ${totalSheets} LEMBAR · DI TABLET PILIH PRINTER FOTO DI DIALOG SISTEM`}
+              {`${totalSheets} LEMBAR · DI TABLET PILIH PRINTER FOTO DI DIALOG SISTEM`}
             </p>
             <div className="flex gap-3">
               <Button size="lg" className="bg-accent" onClick={handleManualPrint}>
@@ -286,7 +346,7 @@ function PrintLayoutRendererInner({ photos, plan, printSettings, onDone }: Props
               {state === "ready" ? "Mencetak…" : "Menyiapkan…"}
             </p>
             <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
-              {`/// ${totalSheets} LEMBAR: ${plan.kind.toUpperCase()}`}
+              {`${totalSheets} LEMBAR: ${plan.kind.toUpperCase()}`}
             </p>
             <Button size="lg" variant="outline" onClick={handleSkip}>
               Lanjut

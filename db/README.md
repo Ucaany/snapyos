@@ -70,3 +70,4 @@ psql -f db/migrations/0027_direct_merchant_payment_rollback.sql
 | 0059     | `0059_payment_settlement_hardening.sql`    | Partial unique 1 payment aktif/checkout + settle RPC hardening + exit-PIN atomic lockout |
 | 0060     | `0060_subscription_lifecycle_email.sql`    | Subscription lifecycle email otomatis (Resend)                                           |
 | 0061     | `0061_plan_device_addon_model.sql`         | Perangkat base 1 semua plan (tambah via add-on); fitur pembeda plan                      |
+| 0072     | `0072_storage_addon_mb_label.sql`          | Label add-on storage memakai MB (bukan GB)                                               |

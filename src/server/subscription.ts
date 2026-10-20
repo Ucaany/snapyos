@@ -10,6 +10,7 @@ import { insertAudit } from "@/server/audit";
 import { getEffectiveSubscriptionRow } from "@/server/require-subscription";
 import { consumeSubscriptionPromo, releaseSubscriptionPromo } from "@/server/subscription-promo";
 import { sendSubscriptionStartedEmail } from "@/server/lifecycle-email";
+import { storageAddOnDisplayName } from "@/lib/storage-units";
 
 /**
  * Subscription owner — docs/02 (billing), docs/08 §8.15, docs/12 Phase 10.
@@ -200,7 +201,7 @@ export async function getSubscriptionOverview(
         .limit(20),
       supabase
         .from("add_ons")
-        .select("id, code, name, price_monthly, unit")
+        .select("id, code, name, price_monthly, unit, storage_mb")
         .eq("is_active", true)
         .order("price_monthly", { ascending: true }),
       supabase
@@ -261,7 +262,9 @@ export async function getSubscriptionOverview(
   const { data: activeAddOnRows } = subRow
     ? await supabase
         .from("subscription_add_ons")
-        .select("add_on_id, quantity, cancel_at_period_end, add_ons ( code, name, price_monthly )")
+        .select(
+          "add_on_id, quantity, cancel_at_period_end, add_ons ( code, name, price_monthly, unit, storage_mb )"
+        )
         .eq("subscription_id", subRow.id)
         .eq("status", "active")
     : { data: null };
@@ -271,8 +274,20 @@ export async function getSubscriptionOverview(
       quantity: number;
       cancel_at_period_end: boolean;
       add_ons:
-        | { code: string; name: string; price_monthly: number }
-        | { code: string; name: string; price_monthly: number }[]
+        | {
+            code: string;
+            name: string;
+            price_monthly: number;
+            unit: string;
+            storage_mb: number | null;
+          }
+        | {
+            code: string;
+            name: string;
+            price_monthly: number;
+            unit: string;
+            storage_mb: number | null;
+          }[]
         | null;
     }[]
   ).map((r) => {
@@ -280,7 +295,13 @@ export async function getSubscriptionOverview(
     return {
       addOnId: r.add_on_id,
       code: a?.code ?? "",
-      name: a?.name ?? "",
+      name: a
+        ? storageAddOnDisplayName({
+            name: a.name,
+            unit: a.unit,
+            storageMb: a.storage_mb,
+          })
+        : "",
       priceMonthly: a?.price_monthly ?? 0,
       quantity: r.quantity,
       cancelAtPeriodEnd: r.cancel_at_period_end ?? false,
@@ -345,10 +366,23 @@ export async function getSubscriptionOverview(
       maxStaff: p.max_staff,
       features: (p.features as Record<string, boolean>) ?? {},
     })),
-    addOns: (addOnRes.data ?? []).map((a) => ({
+    addOns: (
+      (addOnRes.data ?? []) as unknown as {
+        id: string;
+        code: string;
+        name: string;
+        price_monthly: number;
+        unit: string;
+        storage_mb: number | null;
+      }[]
+    ).map((a) => ({
       id: a.id,
       code: a.code,
-      name: a.name,
+      name: storageAddOnDisplayName({
+        name: a.name,
+        unit: a.unit,
+        storageMb: a.storage_mb,
+      }),
       priceMonthly: a.price_monthly,
       unit: a.unit,
     })),
@@ -482,7 +516,7 @@ export async function createSubscriptionInvoice(
   if (qtyById.size > 0) {
     const { data: addOnRows } = await supabase
       .from("add_ons")
-      .select("id, code, name, price_monthly, is_active")
+      .select("id, code, name, price_monthly, is_active, unit, storage_mb")
       .in("id", [...qtyById.keys()]);
     for (const raw of (addOnRows ?? []) as {
       id: string;
@@ -490,12 +524,18 @@ export async function createSubscriptionInvoice(
       name: string;
       price_monthly: number;
       is_active: boolean;
+      unit: string;
+      storage_mb: number | null;
     }[]) {
       if (!raw.is_active) continue;
       addOnItems.push({
         addOnId: raw.id,
         code: raw.code,
-        name: raw.name,
+        name: storageAddOnDisplayName({
+          name: raw.name,
+          unit: raw.unit,
+          storageMb: raw.storage_mb,
+        }),
         price: raw.price_monthly,
         qty: qtyById.get(raw.id) ?? 0,
       });

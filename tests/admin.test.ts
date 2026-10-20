@@ -83,7 +83,15 @@ test("extendIsoDays: dari periode habis / null, selalu maju dari sekarang", () =
   const past = "2020-01-01T00:00:00.000Z";
   const iso = extendIsoDays(past, 30);
   assert.ok(new Date(iso).getTime() >= Date.now() + 29 * 86_400_000);
-  assert.equal(extendIsoDays(null, 1), extendIsoDays(undefined, 1));
+  // Dua pemanggilan memakai Date.now() masing-masing; jangan bandingkan string
+  // persis (selisih beberapa ms membuat tes flaky). Keduanya harus jatuh di
+  // jendela +1 hari yang sama.
+  const before = Date.now();
+  const fromNull = new Date(extendIsoDays(null, 1)).getTime();
+  const fromUndefined = new Date(extendIsoDays(undefined, 1)).getTime();
+  const day = 86_400_000;
+  assert.ok(fromNull >= before + day && fromNull <= Date.now() + day + 2_000);
+  assert.ok(fromUndefined >= before + day && fromUndefined <= Date.now() + day + 2_000);
 });
 
 // --- Schema admin ---

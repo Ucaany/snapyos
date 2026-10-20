@@ -10,6 +10,7 @@ import {
   SerialPrintError,
   openSerialPort,
   writeEscPosSerial,
+  writeEscPosSerialGranted,
   type SerialLike,
   type SerialPortLike,
 } from "../src/lib/print/serial.ts";
@@ -220,4 +221,70 @@ test("openSerialPort meneruskan baud rate pilihan owner", async () => {
   };
   await openSerialPort(port, { baudRate: 115200, sleep: noSleep });
   assert.equal(seen, 115200);
+});
+
+test("granted: memakai port tersimpan tanpa membuka chooser", async () => {
+  const fake = fakePort();
+  let requested = 0;
+  const serial: SerialLike = {
+    async requestPort() {
+      requested += 1;
+      return fake.port;
+    },
+    async getPorts() {
+      return [fake.port];
+    },
+  };
+  const sent = await writeEscPosSerialGranted(Uint8Array.from([9, 8, 7]), {
+    serial,
+    sleep: noSleep,
+  });
+  assert.equal(sent, true);
+  assert.equal(requested, 0);
+  assert.deepEqual(fake.writes, [[9, 8, 7]]);
+  assert.equal(fake.closes, 1);
+});
+
+test("granted: belum ada port → false tanpa error (fallback manual)", async () => {
+  const serial: SerialLike = {
+    async requestPort() {
+      throw new Error("chooser tidak boleh dibuka saat auto-print");
+    },
+    async getPorts() {
+      return [];
+    },
+  };
+  const sent = await writeEscPosSerialGranted(Uint8Array.from([1]), {
+    serial,
+    sleep: noSleep,
+  });
+  assert.equal(sent, false);
+});
+
+test("granted: abort sebelum tulis tidak membuka port", async () => {
+  const fake = fakePort();
+  const controller = new AbortController();
+  controller.abort();
+  await assert.rejects(
+    () =>
+      writeEscPosSerialGranted(Uint8Array.from([1]), {
+        serial: fakeSerial(fake.port),
+        signal: controller.signal,
+      }),
+    (error) => error instanceof SerialPrintError && error.code === "ABORTED"
+  );
+  assert.equal(fake.openAttempts, 0);
+});
+
+test("granted: write gagal tetap menutup port", async () => {
+  const fake = fakePort({ writeFailures: 1 });
+  await assert.rejects(
+    () =>
+      writeEscPosSerialGranted(Uint8Array.from([1, 2]), {
+        serial: fakeSerial(fake.port),
+        sleep: noSleep,
+      }),
+    (error) => error instanceof SerialPrintError && error.code === "WRITE_FAILED"
+  );
+  assert.equal(fake.closes, 1);
 });

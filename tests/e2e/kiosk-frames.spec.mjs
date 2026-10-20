@@ -85,7 +85,9 @@ try {
   const guideStart = page.getByRole("button", { name: /^mulai$/i }).first();
   if (await guideStart.isVisible({ timeout: 3_000 }).catch(() => false)) await guideStart.click();
 
-  const firstPackage = page.locator("button", { hasText: /Rp/ }).first();
+  // `formatIDR` memakai Intl id-ID: "Rp" dan nominal dipisah NBSP, bukan
+  // spasi biasa. Cocokkan kartu paket lewat nominalnya, bukan regex /Rp/.
+  const firstPackage = page.locator("button", { hasText: /Rp\s*\d/ }).first();
   await firstPackage.waitFor({ timeout: 30_000 });
   await firstPackage.click({ timeout: 15_000 });
 

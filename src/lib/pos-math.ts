@@ -41,3 +41,21 @@ export function posOrderNumber(seq: number, now: Date = new Date()): string {
   const key = posDayKey(now).replace(/-/g, "");
   return `POS-${key}-${String(Math.max(1, Math.trunc(seq))).padStart(4, "0")}`;
 }
+
+export type PosManualPayDecision = "settle" | "already-settled" | "not-payable";
+
+/**
+ * Urutan keputusan pembayaran manual POS.
+ *
+ * Transaksi yang sudah ada SELALU menang atas status order. Retry setelah RPC
+ * sukses (order sudah `paid`, transaksi sudah tercatat) harus idempoten; kalau
+ * status dicek lebih dulu, klien menerima 409 untuk uang yang sudah diterima.
+ */
+export function classifyPosManualPay(input: {
+  status: string;
+  hasExistingTransaction: boolean;
+}): PosManualPayDecision {
+  if (input.hasExistingTransaction) return "already-settled";
+  if (input.status !== "pending") return "not-payable";
+  return "settle";
+}
