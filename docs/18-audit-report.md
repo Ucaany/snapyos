@@ -559,15 +559,15 @@ pembayaran POS, satuan storage, teks artefak, dan verifikasi deploy produksi.
 
 ### 11.3 Verifikasi deploy produksi
 
-| Item                          | Hasil                                         |
-| ----------------------------- | --------------------------------------------- |
-| Branch / commit               | `main` @ `ffa7508` (deploy terakhir)          |
-| Push                          | `origin/main` sinkron dengan HEAD lokal       |
-| Vercel deployment             | `READY`, alias `https://snapyos.vercel.app`   |
-| `/api/health`                 | `status: ok`, database & storage `ok`         |
-| `/`, `/login`, `/register`    | HTTP 200, tanpa console error, tanpa overflow |
-| `/p/demo/demo` (kiosk publik) | HTTP 200, tanpa console error, tanpa overflow |
-| Runtime log Vercel            | 0 error pada jendela log yang diperiksa       |
+| Item                          | Hasil                                                                       |
+| ----------------------------- | --------------------------------------------------------------------------- |
+| Branch / commit               | `main` @ `ffa7508` (kode; commit dokumen setelahnya tidak mengubah runtime) |
+| Push                          | `origin/main` sinkron dengan HEAD lokal                                     |
+| Vercel deployment             | `READY`, alias `https://snapyos.vercel.app`                                 |
+| `/api/health`                 | `status: ok`, database & storage `ok`                                       |
+| `/`, `/login`, `/register`    | HTTP 200, tanpa console error, tanpa overflow                               |
+| `/p/demo/demo` (kiosk publik) | HTTP 200, tanpa console error, tanpa overflow                               |
+| Runtime log Vercel            | 0 error pada jendela log yang diperiksa                                     |
 
 ### 11.4 Residual & yang belum diverifikasi
 
