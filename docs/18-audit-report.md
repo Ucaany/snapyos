@@ -561,7 +561,7 @@ pembayaran POS, satuan storage, teks artefak, dan verifikasi deploy produksi.
 
 | Item                          | Hasil                                         |
 | ----------------------------- | --------------------------------------------- |
-| Branch / commit               | `main` @ `d494a74`                            |
+| Branch / commit               | `main` @ `ffa7508` (deploy terakhir)          |
 | Push                          | `origin/main` sinkron dengan HEAD lokal       |
 | Vercel deployment             | `READY`, alias `https://snapyos.vercel.app`   |
 | `/api/health`                 | `status: ok`, database & storage `ok`         |
