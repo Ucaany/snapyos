@@ -100,7 +100,7 @@ Pilih **satu** archetype dan komit. Untuk SnapyOS default: **Swiss Industrial Pr
 | Micro type        | Mono: Space Mono / JetBrains Mono / IBM Plex Mono, 10–14px, tracking `0.05–0.1em`, uppercase — untuk ID transaksi, metadata, angka               |
 | Grid              | CSS Grid deterministik, `gap:1px` + background kontras untuk garis tipis                                                                         |
 | Border            | Solid 1–2px, radius 0 (atau 4px maks)                                                                                                            |
-| Syntax decoration | `[ ... ]`, `>>>`, `///` untuk framing section/data                                                                                               |
+| Syntax decoration | `[ ... ]`, `>>>` untuk framing section/data; prefix `///` tidak dirender sebagai teks                                                            |
 | Markers           | `®`, `™`, `+` crosshair, barcode stripes, `REV x.x` sebagai dekorasi struktural                                                                  |
 | Texture           | Noise/grain global (fixed, `pointer-events-none`), scanline hanya untuk elemen terminal (opsional)                                               |
 

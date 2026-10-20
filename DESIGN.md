@@ -46,9 +46,9 @@ Dilarang tampak seperti: generic Tailwind dashboard, generic AI SaaS, Linear/Str
 - **Loaders:** Skeletal shimmer matching layout. Bukan spinner generik.
 - **Empty States:** Composed + cara mengisi (CTA).
 - **Error States:** Inline/contextual.
-- **Syntax decoration:** `[ ... ]`, `>>>`, `///`, markers `®`/`™`/`+`, barcode stripes, `REV x.x` sebagai dekorasi struktural.
+- **Syntax decoration:** `[ ... ]`, `>>>`, markers `®`/`™`/`+`, barcode stripes, `REV x.x` sebagai dekorasi struktural.
 - **Motif yang disengaja (punya alasan, bukan default tanpa tujuan):**
-  - **Eyebrow `/// LABEL`** di setiap `PageHeader` + panel (`font-mono`, uppercase, `tracking 0.2em`). Alasan: penanda seksi ala print teknis yang konsisten di seluruh dashboard; ini motif identitas, bukan eyebrow dekoratif yang mengulang headline.
+  - **Eyebrow `LABEL`** di setiap `PageHeader` + panel (`font-mono`, uppercase, `tracking 0.2em`, warna muted). Alasan: penanda seksi ala print teknis yang konsisten di seluruh dashboard; ini motif identitas, bukan eyebrow dekoratif yang mengulang headline. Prefix literal `///` **tidak** dirender — ia terbaca sebagai artefak teks, bukan dekorasi.
   - **Panah `→` / `ArrowRight` pada CTA navigasi** ("Buka halaman transaksi →", "Upgrade Plan"). Alasan: menandai aksi yang meninggalkan halaman/panel saat ini. Bukan dipasang di setiap tombol; hanya pada CTA lintas-section.
   - **Role 4 warna non-netral** (R-29): kuning `--accent` (aksi/highlight), hijau `--accent-3` (status berhasil, mis. paid), merah `--destructive` (error/hapus), pink `--accent-2` (aksen identitas sekunder). Keempatnya punya peran fungsional; tidak boleh dipakai sebagai dekorasi bebas.
 - **Icons:** Lucide (wajib, per PRD).

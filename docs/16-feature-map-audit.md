@@ -125,7 +125,7 @@
 
 - `src/styles/tokens.css` + `src/app/globals.css` §`@layer base`.
 - Primitif UI: `src/components/ui/*` (card, button, input, select, table, dialog, badge, chart, empty-state, page-header, date-input, multi-select, confirm-dialog, …).
-- Eyebrow mono `/// …`, `font-display` uppercase, border 2px ink, hard shadow, radius 0.
+- Eyebrow mono uppercase (tanpa prefix `///`), `font-display` uppercase, border 2px ink, hard shadow, radius 0.
 - Shell: `src/components/layout/CollapsibleShell.tsx`, `dashboard/Sidebar.tsx`, `dashboard/Topbar.tsx`, `admin/AdminSidebar.tsx`, `staff/StaffSidebar.tsx`.
 - **Aset brand** (diganti 2026-10-16): `public/snapyos-icon-192.png`, `public/snapyos-icon-512.png`, `public/snapyos-icon-maskable-512.png`, `public/apple-touch-icon.png`, `public/snapyos-mark.png` (mark topbar/header/footer/auth), `src/app/favicon.ico` (multi-ukuran 16–256). Dirujuk `src/app/layout.tsx` (`icons`) + `src/app/manifest.ts`. Mark lama `public/avatar-snappy/4.svg` (raster 1,1 MB) dihapus; ilustrasi marketing `public/avatars/*` dan `public/fiture-avatar/*` dipertahankan.
 
@@ -139,7 +139,7 @@
 
 ### A1. Overview Platform
 
-- **Page**: `src/app/(admin)/admin/page.tsx` (eyebrow `/// ADMIN - PLATFORM CONTROL`).
+- **Page**: `src/app/(admin)/admin/page.tsx` (eyebrow `ADMIN - PLATFORM CONTROL`).
 - **Data**: `getAdminOverviewGuarded()` + `getAdminAnalytics(30)` + `getDatabaseHealth()` + `getPaymentsSummary()` + `getPlatformSettings()` (`src/server/admin/overview.ts`, `settings.ts`).
 - **API**: `GET /api/v1/admin/overview` (adminRawRoute).
 - **Metrik (8)**: total businesses, active subscribers, total subscriptions, MRR, total outlets, total photoboxes, total sessions, total transactions.
@@ -149,7 +149,7 @@
 
 ### A2. Users Management
 
-- **Page**: `/admin/users` (`/// ADMIN - USERS`) + `/admin/users/[id]` (`/// ADMIN - USERS / DETAIL`).
+- **Page**: `/admin/users` (`ADMIN - USERS`) + `/admin/users/[id]` (`ADMIN - USERS / DETAIL`).
 - **Server actions**: `createUserAction`, `updateUserAction`, `deleteUserAction` (`src/server/admin-actions.ts`).
 - **Data**: `listUsers`, `getUser`, `getUserDetail`, `createUser`, `updateUser`, `deleteUser` (`src/server/admin/users.ts`).
 - **API**: `GET/POST /api/v1/admin/users`, `GET/PATCH/DELETE /api/v1/admin/users/[id]`.
@@ -160,7 +160,7 @@
 
 ### A3. Businesses Management
 
-- **Page**: `/admin/businesses` (`/// ADMIN - BUSINESSES`).
+- **Page**: `/admin/businesses` (`ADMIN - BUSINESSES`).
 - **Actions**: `updateBusinessAction`. **Data**: `listBusinesses`, `getBusinessUsage`, `updateBusiness`, `deleteBusiness`.
 - **API**: `GET/PATCH/DELETE /api/v1/admin/businesses/[id]`, `GET /api/v1/admin/businesses`.
 - **Fitur**: cari (search slug/nama), filter status, lihat usage (outlets/photoboxes/sessions/transactions), suspend/aktifkan, hapus.
@@ -169,7 +169,7 @@
 
 ### A4. Plans Management
 
-- **Page**: `/admin/plans` (`/// ADMIN - PLANS`).
+- **Page**: `/admin/plans` (`ADMIN - PLANS`).
 - **Actions**: `createPlanAction`, `updatePlanAction`. **Data**: `listPlans`, `createPlan`, `updatePlan`.
 - **API**: `GET/POST /api/v1/admin/plans`, `PATCH /api/v1/admin/plans/[id]`.
 - **Field**: kode, nama, harga/bln, harga/thn, max_businesses/outlets/photoboxes/concurrent_sessions/staff, `storage_limit_mb`, `platform_fee_percent`, `platform_fee_flat`, `features` (jsonb), is_active.
@@ -177,7 +177,7 @@
 
 ### A5. Add-ons Management
 
-- **Page**: `/admin/add-ons` (`/// ADMIN - ADD-ONS`).
+- **Page**: `/admin/add-ons` (`ADMIN - ADD-ONS`).
 - **Actions**: `createAddOnAction`, `updateAddOnAction`. **Data**: `listAddOns`, `createAddOn`, `updateAddOn`.
 - **API**: `GET/POST /api/v1/admin/add-ons`, `PATCH /api/v1/admin/add-ons/[id]`.
 - **Field**: kode, nama, `price_monthly`, `unit` (session/feature/…), `storage_mb`, is_active.
@@ -186,7 +186,7 @@
 
 ### A6. Promos Management (subscription)
 
-- **Page**: `/admin/promos` (`/// ADMIN - SUBSCRIPTION PROMOS`).
+- **Page**: `/admin/promos` (`ADMIN - SUBSCRIPTION PROMOS`).
 - **Actions**: `createPromoAction`, `updatePromoAction`. **Data**: `listPromos`, `createPromo`, `updatePromo`.
 - **API**: `GET/POST /api/v1/admin/promos`, `PATCH /api/v1/admin/promos/[id]`.
 - **Field**: kode, tipe (percentage/fixed), amount, `min_transaction`, `max_discount`, start/end date, `usage_limit`, is_active.
@@ -194,7 +194,7 @@
 
 ### A7. Subscriptions Management
 
-- **Page**: `/admin/subscriptions` (`/// ADMIN - SUBSCRIPTIONS`).
+- **Page**: `/admin/subscriptions` (`ADMIN - SUBSCRIPTIONS`).
 - **Actions**: `updateSubscriptionAction`, `attachAddOnAction`, `cancelAddOnAction`.
 - **Data**: `listSubscriptions`, `updateSubscription`, `attachSubscriptionAddOn`, `cancelSubscriptionAddOn` (`src/server/admin/subscriptions.ts`).
 - **API**: `GET/PATCH /api/v1/admin/subscriptions/[id]`, `POST /api/v1/admin/subscriptions/[id]/add-ons`, `PATCH/DELETE /api/v1/admin/subscription-add-ons/[id]`.
@@ -204,7 +204,7 @@
 
 ### A8. Antrian Aktivasi Manual (Subscription Intent Failures)
 
-- **Page**: `/admin/subscriptions/pending-review` (`/// ADMIN - SUBSCRIPTIONS / PENDING REVIEW`).
+- **Page**: `/admin/subscriptions/pending-review` (`ADMIN - SUBSCRIPTIONS / PENDING REVIEW`).
 - **Actions**: `activateIntentFailureAction`, `refundIntentFailureAction`, `dismissIntentFailureAction`.
 - **Data**: `listIntentFailures`, `activateManually`, `markRefunded`, `dismissFailure` (`src/server/admin/subscription-failures.ts`).
 - **Tab status**: PENDING / ACTIVATED / REFUNDED / DISMISSED. Alasan: `SUBSCRIPTION_NOT_ACTIVE`, `UPDATE_NO_ROW`, `MISSING_SUBSCRIPTION_ID`, `INTENT_EXCEPTION`.
@@ -213,7 +213,7 @@
 
 ### A9. Payments Monitoring
 
-- **Page**: `/admin/payments` (`/// ADMIN - PAYMENT MONITORING`).
+- **Page**: `/admin/payments` (`ADMIN - PAYMENT MONITORING`).
 - **Data**: `listPayments`, `getPaymentsSummary`, `adminPosRevenueSummary` (`src/server/admin/overview.ts`, `pos.ts`).
 - **API**: `GET /api/v1/admin/payments`, `GET /api/v1/admin/payments/summary`, `GET /api/v1/admin/payments/pos-revenue`.
 - **UI**: filter rentang tanggal, kartu "Ringkasan", tabel "Gross / Fee / Net per Tenant", kartu "Revenue POS per Tenant" (revenue dari `transactions`, breakdown dari `pos_orders`).
@@ -222,7 +222,7 @@
 
 ### A10. Gateways (Payment Gateway Global)
 
-- **Page**: `/admin/gateways` (`/// ADMIN - PAYMENT GATEWAYS`).
+- **Page**: `/admin/gateways` (`ADMIN - PAYMENT GATEWAYS`).
 - **Actions**: `toggleGatewayAction`. **Data**: `getGatewayState`, `setGatewayEnabled`, `GATEWAY_PROVIDERS` (`src/server/admin/gateways.ts`).
 - **API**: (via `platform_settings` + `payment_credentials`) — halaman + action.
 - **UI**: tabel credential seluruh tenant **redacted** (merchant_id saja, tanpa secret) + toggle global per provider (pakasir/midtrans/tripay).
@@ -231,7 +231,7 @@
 
 ### A11. Templates Global & Kategori
 
-- **Page**: `/admin/templates` (`/// ADMIN - TEMPLATES & CATEGORIES`) + `/admin/templates/builder/[id]`.
+- **Page**: `/admin/templates` (`ADMIN - TEMPLATES & CATEGORIES`) + `/admin/templates/builder/[id]`.
 - **Actions**: `createCategoryAction`, `deleteCategoryAction`, `createGlobalTemplateAction`, `updateGlobalTemplateAction`, `toggleTemplateAction`, `saveGlobalTemplateBuilderAction`.
 - **Data**: `listTemplateCategories`, `createTemplateCategory`, `deleteTemplateCategory`, `listGlobalTemplates`, `createGlobalTemplate`, `updateGlobalTemplate`, `setGlobalTemplateActive`, `getGlobalTemplate`, `updateGlobalTemplateLayout`, `uploadGlobalTemplateThumbnail`, `replaceGlobalTemplateFrame`, `deleteGlobalTemplate`, `listTemplatePurchases`.
 - **API**: `GET/POST /api/v1/admin/templates`, `PATCH/DELETE /api/v1/admin/templates/[id]`, `GET/POST /api/v1/admin/template-categories`, `DELETE /api/v1/admin/template-categories/[id]`.
@@ -242,7 +242,7 @@
 
 ### A12. Tiket Bantuan (Support lintas tenant)
 
-- **Page**: `/admin/support` (`/// ADMIN - SUPPORT TICKETS`).
+- **Page**: `/admin/support` (`ADMIN - SUPPORT TICKETS`).
 - **Actions**: `updateSupportTicketStatusAction`. **Data**: `listSupportTicketsAdmin`, `updateSupportTicketStatus` (`src/server/admin/support.ts`).
 - **UI**: filter status (open/needs_action/resolved), tabel lintas tenant, ubah status.
 - **DB**: `support_tickets, support_ticket_replies, businesses, users`.
@@ -250,7 +250,7 @@
 
 ### A13. Platform Settings
 
-- **Page**: `/admin/settings` (`/// ADMIN - PLATFORM SETTINGS`).
+- **Page**: `/admin/settings` (`ADMIN - PLATFORM SETTINGS`).
 - **Actions**: `updateSettingsAction`. **Data**: `getPlatformSettings`, `updatePlatformSettings` (`src/server/admin/settings.ts`).
 - **API**: `GET/PATCH /api/v1/admin/settings`.
 - **Field**: `platform_fee_percent`, `platform_fee_flat`, `default_retention_days`, `trial_days`, `maintenance_message`, `maintenance_mode`, `chroma_key_default_enabled`, `gateway_<provider>_enabled`.
@@ -259,7 +259,7 @@
 
 ### A14. Audit Log
 
-- **Page**: `/admin/audit` (`/// ADMIN - AUDIT LOG`).
+- **Page**: `/admin/audit` (`ADMIN - AUDIT LOG`).
 - **Actions**: `deleteAuditLogsAction`. **Data**: `listAuditLogs`, `deleteAuditLogs` (`src/server/admin/audit.ts`).
 - **UI**: filter tanggal (required `before`) + action + search, paginator, hapus log lama.
 - **DB**: `audit_logs`.
@@ -267,7 +267,7 @@
 
 ### A15. Broadcast Email
 
-- **Page**: `/admin/broadcasts` (`/// ADMIN - BROADCAST EMAIL`).
+- **Page**: `/admin/broadcasts` (`ADMIN - BROADCAST EMAIL`).
 - **Actions**: `createBroadcastAction`, `sendBroadcastAction`, `resendBroadcastAction`.
 - **Data**: `listBroadcasts`, `getBroadcastStats`, `listBroadcastRecipients`, `getBroadcast`, `createBroadcast`, `sendBroadcast`, `resendBroadcast` (`src/server/admin/broadcast.ts`).
 - **Field**: jenis (announcement/promo/newsletter/event/system), template, audiens (all/users/owners), subject, body.
@@ -420,7 +420,7 @@
 
 ### O15. Laporan (Export)
 
-- **Page**: `/dashboard/reports` · eyebrow `/// LAPORAN: EXPORT` · guard `report:read`.
+- **Page**: `/dashboard/reports` · eyebrow `LAPORAN: EXPORT` · guard `report:read`.
 - **Data**: `generateReport` (`src/server/reports.ts`), diunduh via `GET /api/v1/business/:businessId/reports?type=&from=&to=&format=`.
 - **Tipe**: daily, weekly, monthly, revenue, transactions, outlet, photobox, expenses, voucher.
 - **Format**: CSV & XLSX (ExcelJS; bukan xlsx).
@@ -530,7 +530,7 @@
 
 ### S1. Staff Overview
 
-- **Page**: `src/app/(staff)/staff/page.tsx` · eyebrow `/// STATION.CTL · <ONLINE/OFFLINE>`.
+- **Page**: `src/app/(staff)/staff/page.tsx` · eyebrow `STATION.CTL · <ONLINE/OFFLINE>`.
 - **Data**: `getStaffOverview` (`src/server/staff-overview.ts`).
 - **Guard internal**: bila `can(role,'transaction:read')` → redirect `/dashboard` (staff tidak lihat finansial).
 - **Komponen**: kartu status booth (online/offline/maintenance), sesi aktif + elapsed, link cepat ke 5 modul, jam live zona bisnis (`StationClock` + `LiveSessionMeta`; tick 15 dtk, label WIB/WITA/WIT ikut `businesses.timezone`).
