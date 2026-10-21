@@ -314,9 +314,9 @@ export async function verifyDevice(input: DeviceVerifyInput) {
       : Array.isArray(checkout)
         ? (checkout[0]?.result_token ?? null)
         : null;
-  // Kuota foto paket asli (fix drift): dipakai kiosk untuk menyusun paket
-  // sintetis saat resume pasca-pembayaran — memastikan capture/upload sesuai
-  // yang divalidasi server (`photos.length <= package.photo_count`).
+  // Kuota foto package asli (fix drift): dipakai kiosk untuk menyusun paket
+  // sintetis saat resume pasca-pembayaran. Frame ber-slot dapat mengubah
+  // jumlah capture setelah template dipilih; field ini tetap fallback legacy.
   const pkgJoin = active?.packages ?? null;
   const photoCount =
     pkgJoin && !Array.isArray(pkgJoin)

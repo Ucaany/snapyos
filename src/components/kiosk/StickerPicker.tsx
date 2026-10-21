@@ -78,26 +78,27 @@ export function StickerPicker({ onPick }: Props) {
 
   return (
     <div className="flex flex-col gap-2">
-      <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">Stiker</p>
+      <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em]">Stiker</p>
       <div className="flex items-center gap-2 border-2 border-ink bg-surface px-2">
         <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden />
         <input
           type="text"
           value={query}
           onChange={(e) => onSearch(e.target.value)}
-          placeholder="Cari emoji…"
-          className="h-9 w-full bg-transparent font-mono text-sm outline-none placeholder:text-muted-foreground"
+          placeholder="Cari emoji..."
+          aria-label="Cari emoji"
+          className="h-11 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground focus-visible:outline-none"
         />
       </div>
 
       <div className="max-h-[180px] overflow-y-auto border-2 border-ink bg-surface p-1">
         {loading ? (
-          <div className="flex items-center justify-center py-6">
+          <div className="flex items-center justify-center py-6" role="status" aria-label="Memuat emoji">
             <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden />
           </div>
         ) : showFallback ? (
           <div className="flex flex-col gap-1">
-            <p className="px-1 py-1 font-mono text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
+            <p className="px-1 py-1 text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
               Emoji dasar (API offline)
             </p>
             <div className="grid grid-cols-6 gap-0.5 sm:grid-cols-8">
@@ -106,7 +107,7 @@ export function StickerPicker({ onPick }: Props) {
                   key={`${e.char}-${i}`}
                   type="button"
                   onClick={() => onPick(e.char)}
-                  className="flex min-h-11 min-w-11 items-center justify-center border border-transparent text-xl hover:border-ink hover:bg-accent/30 active:scale-95"
+                  className="flex min-h-11 min-w-11 items-center justify-center border border-transparent text-xl hover:border-ink hover:bg-accent/30 focus-visible:border-ink focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ink active:scale-95"
                   title={e.name}
                   aria-label={e.name}
                 >
@@ -116,7 +117,7 @@ export function StickerPicker({ onPick }: Props) {
             </div>
           </div>
         ) : emojis.length === 0 ? (
-          <p className="px-2 py-4 text-center font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+          <p className="px-2 py-4 text-center text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
             Tidak ada emoji ditemukan.
           </p>
         ) : (
@@ -126,7 +127,7 @@ export function StickerPicker({ onPick }: Props) {
                 key={`${e.char}-${i}`}
                 type="button"
                 onClick={() => onPick(e.char)}
-                className="flex min-h-11 min-w-11 items-center justify-center border border-transparent text-xl hover:border-ink hover:bg-accent/30 active:scale-95"
+                className="flex min-h-11 min-w-11 items-center justify-center border border-transparent text-xl hover:border-ink hover:bg-accent/30 focus-visible:border-ink focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ink active:scale-95"
                 title={e.name}
                 aria-label={e.name}
               >

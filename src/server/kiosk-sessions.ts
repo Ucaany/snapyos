@@ -16,6 +16,7 @@ import { resolveActiveDevice } from "@/server/devices";
 import { getOfflineEnabled } from "@/server/business";
 import { generateResultToken } from "@/lib/device-token";
 import { computeExpiresAt, OFFLINE_FINALIZE_GRACE_MS } from "@/lib/session-timer";
+import { MAX_SLOTS, slotCount } from "@/lib/template-layout";
 import { validatePhotoFile } from "@/lib/upload-validation";
 import { todayISO, formatTxNumber } from "@/lib/dashboard-math";
 import { generateSlideshowGif } from "@/server/gif";
@@ -398,8 +399,9 @@ export async function abortSession(
 /**
  * Buang semua objek hasil sesi yang ditinggalkan jalur abort (foto parsial dari
  * finalize yang gagal, atau GIF yatim) — storage + ledger. Key deterministik
- * `photo-00..photo-NN` (N = kuota paket) + `result.gif`; key absen = no-op, jadi
- * aman dipanggil walau tak ada objek. Best-effort: kegagalan hanya di-log.
+ * `photo-00..photo-NN` (N = batas maksimum frame/paket) + `result.gif`; key
+ * absen = no-op, jadi aman dipanggil walau tak ada objek. Best-effort:
+ * kegagalan hanya di-log.
  */
 async function discardSessionMedia(businessId: string, session: SessionRow): Promise<void> {
   const supabase = createServerClient();
@@ -409,7 +411,12 @@ async function discardSessionMedia(businessId: string, session: SessionRow): Pro
     .eq("id", session.package_id)
     .eq("business_id", businessId)
     .maybeSingle();
-  const slots = Math.max(0, (pkgRow as { photo_count: number } | null)?.photo_count ?? 0);
+  // A frame can require more captures than the package photo quota. Sessions
+  // do not persist template_id, so clean the safe maximum for both contracts.
+  const slots = Math.max(
+    MAX_SLOTS,
+    Math.max(0, (pkgRow as { photo_count: number } | null)?.photo_count ?? 0)
+  );
   const uploadKey = `${businessId}/sessions/${session.id}`;
   const keys = [
     ...Array.from(
@@ -471,19 +478,54 @@ export async function finalizeSession(
     throw new ApiError("VALIDATION_ERROR", "Belum ada foto untuk difinalisasi");
   }
 
-  // Enforce photo count vs package.photo_count (docs/05) — kiosk tidak boleh
-  // menembak foto lebih banyak dari jumlah yang dibayar.
+  // Enforce capture count sesuai kontrak frame. Untuk template legacy, jumlah
+  // Template legacy tetap mengikuti package.photo_count; frame ber-slot
+  // mengganti ekspektasi capture setelah template tervalidasi.
   const { data: pkgRow } = await supabase
     .from("packages")
     .select("photo_count")
     .eq("id", session.package_id)
     .eq("business_id", device.businessId)
     .maybeSingle();
-  const photoCount = (pkgRow as { photo_count: number } | null)?.photo_count;
-  if (typeof photoCount === "number" && photos.length > photoCount) {
+  const packagePhotoCount = (pkgRow as { photo_count: number } | null)?.photo_count;
+  let expectedCaptureCount = packagePhotoCount;
+  let templateSlotCount = 0;
+  if (parsed.template_id) {
+    const { data: template } = await supabase
+      .from("templates")
+      .select("id, layout, business_id, is_active")
+      .eq("id", parsed.template_id)
+      .eq("is_active", true)
+      .or(`business_id.eq.${device.businessId},business_id.is.null`)
+      .maybeSingle();
+    if (!template) throw new ApiError("VALIDATION_ERROR", "Frame tidak tersedia");
+    templateSlotCount = slotCount(template.layout);
+    if (templateSlotCount > 0) expectedCaptureCount = templateSlotCount;
+  }
+  // Template ber-slot dikirim sebagai satu composite final, tetapi `gifPhotos`
+  // tetap membawa seluruh capture mentah. Validasi jumlah slot harus memakai
+  // capture mentah agar frame 6-slot tidak ditolak karena final hanya 1 file.
+  if (
+    templateSlotCount > 0 &&
+    typeof expectedCaptureCount === "number" &&
+    gifPhotos.length !== expectedCaptureCount
+  ) {
     throw new ApiError(
       "VALIDATION_ERROR",
-      `Jumlah foto (${photos.length}) melebihi kuota paket (${photoCount})`
+      `Jumlah capture harus ${expectedCaptureCount} sesuai frame/paket, bukan ${gifPhotos.length}`
+    );
+  }
+  if (templateSlotCount > 0 && photos.length !== 1) {
+    throw new ApiError("VALIDATION_ERROR", "Frame ber-slot harus menghasilkan satu composite");
+  }
+  if (
+    templateSlotCount === 0 &&
+    typeof packagePhotoCount === "number" &&
+    photos.length > packagePhotoCount
+  ) {
+    throw new ApiError(
+      "VALIDATION_ERROR",
+      `Jumlah foto (${photos.length}) melebihi kuota paket (${packagePhotoCount})`
     );
   }
 
@@ -510,11 +552,14 @@ export async function finalizeSession(
 
   const uploadKey = `${device.businessId}/sessions/${sessionId}`;
   // Semua key yang mungkin pernah dibuat percobaan finalize mana pun untuk sesi
-  // ini: `photo-00..photo-NN` (N = kuota paket) + GIF. Dipakai untuk resync
+  // ini: `photo-00..photo-NN` (N = batas frame/paket) + GIF. Dipakai untuk resync
   // akuntansi — idempotent per key, key absen = no-op — sehingga retry yang
   // mengirim foto LEBIH SEDIKIT dari percobaan sebelumnya tetap membebaskan
   // ledger key sisa (tanpa ini counter storage membengkak permanen).
-  const maxSlots = Math.max(typeof photoCount === "number" ? photoCount : 0, photos.length);
+  const maxSlots = Math.max(
+    typeof expectedCaptureCount === "number" ? expectedCaptureCount : 0,
+    photos.length
+  );
   const photoKeys = Array.from(
     { length: maxSlots },
     (_, i) => `${uploadKey}/photo-${String(i).padStart(2, "0")}.jpg`

@@ -81,7 +81,7 @@ ALTER TABLE templates ADD COLUMN layout jsonb NOT NULL DEFAULT '{}';
 - Slot: `width > 0`, `height > 0`, `x ≥ 0`, `y ≥ 0`, `x + width ≤ canvas.width`, `y + height ≤ canvas.height`, `rotation` −180..180, `shape` enum valid, `radius ≥ 0`.
 - Max slot per template: **8**.
 - `slot_count = layout.slots.length` (layout kosong = 0).
-- **Assign template → package tidak dibatasi jumlah slot (2026-10-19).** Paket 3 foto boleh memakai frame 6 slot; slot sisa diisi foto bergiliran di editor. Jumlah capture tetap `packages.photo_count`.
+- **Assign template → package tidak dibatasi jumlah slot (2026-10-19).** Paket 3 foto boleh memakai frame 6 slot; runtime mengambil 6 foto untuk mengisi frame 6 slot. `packages.photo_count` menjadi fallback untuk template legacy tanpa slot, sedangkan `print_count` menentukan jumlah lembar.
 - Upload PNG: validasi tipe & max size mengikuti §4.10 `04-owner-dashboard.md`. Warning "PNG tanpa alpha channel" **belum diimplementasikan**; kandidat, bukan perilaku saat ini.
 
 ### Deliberate simplifications (ponytail)
@@ -138,7 +138,7 @@ Output = full resolusi design canvas (PNG/JPEG sesuai pipeline finalize eksistin
 | Tahap                | Perubahan                                                                                                                                      |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | §5.4 Choose Template | Thumbnail WebP 480px; semua frame aktif tampil untuk paket mana pun                                                                            |
-| §5.6 Capture         | Jumlah foto = `package.photo_count`; slot berlebih diisi bergiliran (`fillSlots`)                                                              |
+| §5.6 Capture         | Frame ber-slot: jumlah capture = `template.slot_count`; legacy: `package.photo_count`; slot yang perlu mengulang foto diisi bergiliran (`fillSlots`) |
 | §5.9 Editor          | Zoom/pan menyesuaikan foto **di dalam slot** (bukan full canvas); zoom minimal = cover-fit; filter/adjust/sticker/text tetap di atas composite |
 | §5.15 Print          | `PrintLayoutRenderer` memakai `composeFrame` — hasil cetak identik dengan preview builder                                                      |
 
@@ -169,7 +169,7 @@ Tidak ada endpoint baru — CRUD lama cukup.
 
 1. Owner upload PNG + tambah ≥1 slot + publish tanpa training (< 2 menit).
 2. Customer memilih frame → foto hasil capture muncul pas di setiap slot (cover-fit, rasio tidak terdistorsi).
-3. Template dengan `slot_count ≠ package.photo_count` tidak bisa di-assign dan tidak muncul di pilihan customer.
+3. Semua template aktif yang valid dapat di-assign lintas package; frame ber-slot menentukan jumlah capture, sedangkan template legacy tanpa slot memakai `package.photo_count`.
 4. Hasil print & result online identik dengan preview builder (satu engine composite).
 5. Template legacy (layout kosong) tetap berfungsi — backward compatible.
 6. Validasi layout di-enforce server-side (request dengan layout invalid ditolak 4xx).

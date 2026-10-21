@@ -11,11 +11,15 @@ export type PrintSettingsInput = {
   copies?: number | null;
   margins_mm?: number | null;
   /** Jalur cetak (baris lama tanpa `mode` = browser). */
-  mode?: "browser" | "bluetooth" | null;
+  mode?: "browser" | "bluetooth" | "cups" | null;
   /** Lebar kertas thermal (58/80mm). */
   bluetooth_paper_width_mm?: 58 | 80 | null;
   /** Nama printer Bluetooth (informasi untuk petugas). */
   bluetooth_device_name?: string | null;
+  /** URL bridge CUPS lokal, default http://127.0.0.1:17777. */
+  bridge_url?: string | null;
+  /** Nama printer CUPS; kosong = printer default OS. */
+  printer_name?: string | null;
 };
 
 export type PrintPageSize = { widthMm: number; heightMm: number; marginMm: number };
@@ -25,7 +29,7 @@ export type PrintPageSize = { widthMm: number; heightMm: number; marginMm: numbe
  * Dipakai CSS fallback (globals.css @page/--print-margin) dan
  * PrintLayoutRenderer saat owner tidak menyetel margin. Jaga sinkron.
  */
-export const PRINT_DEFAULT_MARGIN_MM = 8;
+export const PRINT_DEFAULT_MARGIN_MM = 0;
 
 export type PrintPlan =
   | { kind: "digital"; sheets: 0 }
@@ -43,6 +47,11 @@ export function printPageSize(settings?: PrintSettingsInput | null): PrintPageSi
     heightMm: landscape ? Math.min(base.w, base.h) : Math.max(base.w, base.h),
     marginMm,
   };
+}
+
+/** Tinggi area konten setelah margin @page diterapkan. */
+export function printContentHeightMm(page: PrintPageSize): number {
+  return Math.max(1, page.heightMm - page.marginMm * 2);
 }
 
 /** Salinan cetak 1–20; di luar itu clamp ke 1 (data lama aman). */

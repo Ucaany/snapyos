@@ -662,7 +662,7 @@
 - **Lib**: `src/lib/camera-capture.ts`, `camera-provider.ts`, `camera-errors.ts`, `photo-render.ts`.
 - **API**: `POST /api/v1/public/devices/report` (status).
 - **DB**: tidak langsung; hasil disimpan di state sampai finalize.
-- **Batasan**: `camera_settings` (deviceId, mirror, countdown, resolution, rotasi/zoom kalibrasi, chroma key); kuota capture = `package.photo_count`; slot template berlebih diisi bergiliran; finalize menolak `photos.length > package.photo_count`; `max_retakes` opsional dari `session_settings` (tidak diset = retake tak terbatas, docs/05 §5.5.2).
+- **Batasan**: `camera_settings` (deviceId, mirror, countdown, resolution, rotasi/zoom kalibrasi, chroma key); frame ber-slot menentukan kuota capture, template legacy memakai `package.photo_count`; slot lebih banyak dari foto yang tersedia diisi bergiliran; finalize memvalidasi capture mentah terhadap frame/paket dan menyimpan composite final; `max_retakes` opsional dari `session_settings` (tidak diset = retake tak terbatas, docs/05 §5.5.2).
 
 ### K10. Editor (Edit Foto)
 

@@ -30,7 +30,7 @@ const FLOW = [
   {
     no: "03",
     title: "Pilih frame",
-    desc: "Hanya frame yang slotnya sama dengan jumlah foto paket yang tampil.",
+    desc: "Semua frame aktif dapat dipilih; jumlah capture mengikuti slot frame.",
   },
   {
     no: "04",

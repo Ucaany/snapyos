@@ -2,6 +2,8 @@
 import { ArrowLeft, Tag } from "lucide-react";
 import type { KioskVisualStyle } from "@/lib/kiosk-types";
 import { OnScreenKeyboard } from "./OnScreenKeyboard";
+import { KioskAction, KioskCard, KioskEyebrow } from "@/components/kiosk/ui";
+
 export function VoucherPayment({
   code,
   onCode,
@@ -20,21 +22,32 @@ export function VoucherPayment({
   kioskStyle?: KioskVisualStyle;
 }) {
   const ks = kioskStyle;
+  const radius = ks?.radius ?? 0;
   return (
-    <div
-      className="mx-auto flex w-full max-w-[700px] flex-1 flex-col justify-center gap-4 border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111]"
-      style={ks ? { borderRadius: ks.radius } : undefined}
+    <KioskCard
+      elevated
+      className="mx-auto flex w-full max-w-[720px] flex-col gap-4 p-5 md:p-6"
+      style={{ borderRadius: radius }}
     >
-      <Tag className="size-8" />
-      <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em]">[ VOUCHER SESI ]</p>
-      <h2 className="font-display text-3xl uppercase leading-[0.9]">Masukkan kode voucher</h2>
-      <label className="font-mono text-xs font-bold uppercase">
-        Kode voucher
+      <div className="flex items-center gap-3">
+        <Tag className="size-6 shrink-0" aria-hidden />
+        <KioskEyebrow>{"VOUCHER SESI"}</KioskEyebrow>
+      </div>
+      <h2 className="font-display text-2xl uppercase leading-[0.95] tracking-[-0.02em] md:text-3xl">
+        Masukkan kode voucher
+      </h2>
+      <label className="flex flex-col gap-2">
+        <span className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]">
+          Kode voucher
+        </span>
         <input
           value={code}
           onChange={(event) => onCode(event.target.value.toUpperCase())}
-          className="mt-2 w-full border-2 border-ink bg-bg px-3 py-3 font-mono text-lg uppercase focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+          className="w-full border-2 border-ink bg-bg px-3 py-3 text-center font-mono text-lg font-bold uppercase tracking-[0.16em] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+          style={{ borderRadius: radius }}
           autoComplete="off"
+          spellCheck={false}
+          aria-invalid={Boolean(error)}
         />
       </label>
       <OnScreenKeyboard
@@ -43,34 +56,35 @@ export function VoucherPayment({
         onBackspace={() => onCode(code.slice(0, -1))}
       />
       {error && (
-        <p role="alert" className="font-mono text-xs font-bold uppercase">
+        <p
+          role="alert"
+          className="border-2 border-destructive bg-destructive/10 px-3 py-2 text-xs font-bold uppercase leading-relaxed tracking-[0.04em]"
+        >
           {error}
         </p>
       )}
       <div className="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
+        <KioskAction
+          tone="primary"
+          size="lg"
           onClick={onApply}
           disabled={busy || !code.trim()}
-          className="w-fit border-2 border-ink bg-accent px-5 py-3 font-display text-lg uppercase shadow-[4px_4px_0_0_#111111] active:translate-y-[2px] disabled:opacity-50"
-          style={
-            ks
-              ? { borderRadius: ks.radius, backgroundColor: ks.accent, color: ks.accentText }
-              : undefined
-          }
+          kioskStyle={ks}
         >
           {busy ? "Memeriksa" : "Gunakan voucher"}
-        </button>
-        <button
-          type="button"
+        </KioskAction>
+        <KioskAction
+          tone="secondary"
+          size="md"
           onClick={onBack}
           disabled={busy}
-          className="inline-flex min-h-11 w-fit items-center gap-2 border-2 border-ink bg-bg px-4 py-3 font-mono text-xs font-bold uppercase shadow-[3px_3px_0_0_#111111] active:translate-y-[2px] disabled:opacity-50"
+          kioskStyle={ks}
+          className="font-mono tracking-[0.1em]"
         >
-          <ArrowLeft className="size-4" />
+          <ArrowLeft className="size-4" aria-hidden />
           Kembali
-        </button>
+        </KioskAction>
       </div>
-    </div>
+    </KioskCard>
   );
 }

@@ -2,6 +2,13 @@
 
 import { kioskThemeVars, type KioskVisualStyle } from "@/lib/kiosk-types";
 import { KioskVideoBackground } from "@/components/kiosk/KioskVideoBackground";
+import {
+  KioskAction,
+  KioskCard,
+  KioskHeader,
+  kioskFont,
+  kioskGutter,
+} from "@/components/kiosk/ui";
 
 type Props = {
   steps: string[];
@@ -24,92 +31,81 @@ export function GuideScreen({
   onBack,
 }: Props) {
   const align = kioskStyle.align ?? "left";
-  const alignClass =
-    align === "center"
-      ? "items-center text-center"
-      : align === "right"
-        ? "items-end text-right"
-        : "items-start text-left";
-  const stepAlignClass =
-    align === "center"
-      ? "items-center text-center"
-      : align === "right"
-        ? "flex-row-reverse text-right"
-        : "items-start text-left";
+  const gutter = kioskGutter(kioskStyle.padding);
   return (
     <main
-      className="relative flex min-h-0 flex-1 flex-col items-center justify-center gap-6 overflow-y-auto p-5 md:gap-8 md:p-6"
+      className="relative flex min-h-0 flex-1 flex-col overflow-y-auto"
       style={{
         ...kioskThemeVars(kioskStyle),
         backgroundColor: kioskStyle.bg,
         color: kioskStyle.text,
-        paddingLeft: kioskStyle.padding,
-        paddingRight: kioskStyle.padding,
         fontFamily: kioskStyle.fontFamily,
       }}
     >
       <KioskVideoBackground videoUrl={videoUrl} />
-      <div className={`relative z-10 flex w-full max-w-2xl flex-col ${alignClass}`}>
-        <p className="font-mono text-xs uppercase tracking-[0.25em] opacity-60">{"PETUNJUK"}</p>
-        <h1
-          className="mt-3 font-display uppercase leading-none tracking-tight"
-          style={{ fontFamily: kioskStyle.fontFamily, fontSize: `${3 * kioskStyle.fontScale}rem` }}
-        >
-          {titleText || "Cara foto"}
-        </h1>
-
-        <ol className="mt-8 grid w-full gap-3">
-          {steps.map((step, index) => (
-            <li
-              key={`${index}-${step}`}
-              className={`flex gap-4 border-2 p-4 ${stepAlignClass}`}
-              style={{ borderColor: kioskStyle.text, borderRadius: kioskStyle.radius }}
+      <div
+        className="relative z-10 mx-auto flex w-full max-w-[1040px] flex-1 flex-col justify-center gap-7 py-8 md:gap-9 md:py-10"
+        style={{ paddingLeft: gutter, paddingRight: gutter }}
+      >
+        <KioskHeader
+          eyebrow="PETUNJUK"
+          title={titleText || "Cara foto"}
+          description="Ikuti urutan ini supaya hasil foto rapi dan tidak perlu diulang."
+          align={align}
+          scale={kioskStyle.fontScale}
+          actions={
+            <KioskAction
+              tone="secondary"
+              size="md"
+              onClick={onBack}
+              kioskStyle={kioskStyle}
+              className="font-mono tracking-[0.1em]"
             >
-              <span
-                className="font-display text-lg font-bold leading-none"
-                style={{ color: kioskStyle.text, opacity: 0.5 }}
+              Kembali
+            </KioskAction>
+          }
+        />
+
+        <ol className="grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {steps.map((step, index) => (
+            <li key={`${index}-${step}`}>
+              <KioskCard
+                className="flex h-full flex-col gap-3 p-4 md:p-5"
+                style={{ borderRadius: kioskStyle.radius }}
               >
-                {String(index + 1).padStart(2, "0")}
-              </span>
-              <span
-                className="text-base leading-relaxed"
-                style={{ fontSize: `${1 * kioskStyle.fontScale}rem` }}
-              >
-                {step}
-              </span>
+                <span
+                  className="font-display leading-none tracking-[-0.03em]"
+                  style={{
+                    fontSize: kioskFont(1.4, 2.1, kioskStyle.fontScale, 2.2),
+                    opacity: 0.35,
+                  }}
+                >
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <span
+                  className="text-sm leading-relaxed md:text-base"
+                  style={{ fontSize: `${1 * kioskStyle.fontScale}rem` }}
+                >
+                  {step}
+                </span>
+              </KioskCard>
             </li>
           ))}
         </ol>
 
-        <div
-          className={`mt-8 flex flex-wrap gap-3 ${align === "center" ? "justify-center" : align === "right" ? "justify-end" : ""}`}
-        >
-          <button
-            type="button"
-            onClick={onBack}
-            className="min-h-14 border-2 px-6 py-3 font-mono text-sm font-bold uppercase tracking-[0.1em] transition-transform active:translate-y-[2px]"
-            style={{
-              borderColor: kioskStyle.text,
-              color: kioskStyle.text,
-              backgroundColor: "transparent",
-              borderRadius: kioskStyle.radius,
-            }}
-          >
-            Kembali
-          </button>
-          <button
-            type="button"
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <KioskAction
+            tone="primary"
+            size="lg"
             onClick={onStart}
-            className="min-h-14 border-2 px-8 py-3 font-display text-lg font-bold uppercase tracking-tight shadow-[4px_4px_0_0_#111111] transition-transform active:translate-y-[2px] active:shadow-none"
-            style={{
-              borderColor: kioskStyle.text,
-              color: kioskStyle.accentText,
-              backgroundColor: kioskStyle.accent,
-              borderRadius: kioskStyle.radius,
-            }}
+            kioskStyle={kioskStyle}
+            className="sm:min-w-[220px]"
           >
             {buttonLabel || "Mulai"}
-          </button>
+          </KioskAction>
+          <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em] text-muted-foreground">
+            Kamera siap di langkah berikutnya
+          </p>
         </div>
       </div>
     </main>

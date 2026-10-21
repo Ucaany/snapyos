@@ -2,6 +2,8 @@
 import { ArrowLeft, Banknote } from "lucide-react";
 import { formatIDR } from "@/lib/dashboard-math";
 import type { KioskVisualStyle } from "@/lib/kiosk-types";
+import { KioskAction, KioskCard, KioskEyebrow } from "@/components/kiosk/ui";
+
 export function CashPayment({
   amount,
   left,
@@ -14,34 +16,44 @@ export function CashPayment({
   kioskStyle?: KioskVisualStyle;
 }) {
   const ks = kioskStyle;
+  const radius = ks?.radius ?? 0;
   const time = `${String(Math.floor(left / 60)).padStart(2, "0")}:${String(left % 60).padStart(2, "0")}`;
   return (
-    <div
-      className="mx-auto flex w-full max-w-[700px] flex-1 flex-col justify-center gap-4 border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111]"
-      style={ks ? { borderRadius: ks.radius } : undefined}
+    <KioskCard
+      elevated
+      className="mx-auto flex w-full max-w-[720px] flex-col gap-4 p-5 md:p-6"
+      style={{ borderRadius: radius }}
       aria-live="polite"
     >
-      <Banknote className="size-9" />
-      <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
-        [ BAYAR DI KASIR ]
+      <div className="flex items-center gap-3">
+        <Banknote className="size-7 shrink-0" aria-hidden />
+        <KioskEyebrow>{"BAYAR DI KASIR"}</KioskEyebrow>
+      </div>
+      <h2 className="font-display text-2xl uppercase leading-[0.95] tracking-[-0.02em] md:text-3xl">
+        Hubungi petugas
+      </h2>
+      <p className="max-w-[52ch] text-sm leading-relaxed text-muted-foreground md:text-base">
+        Bayarkan <strong className="text-ink">{formatIDR(amount)}</strong> kepada petugas. Sesi foto
+        dibuka setelah petugas mengonfirmasi pembayaran.
       </p>
-      <h2 className="font-display text-4xl uppercase leading-[0.9]">Hubungi petugas</h2>
-      <p>
-        Bayarkan <strong>{formatIDR(amount)}</strong> kepada petugas. Sesi foto dibuka setelah
-        petugas mengonfirmasi pembayaran.
-      </p>
-      <p className="font-mono text-sm font-bold uppercase" aria-live="polite">
+      <p className="font-mono text-xs font-bold uppercase leading-relaxed tracking-[0.08em]">
         Menunggu konfirmasi operator. Jangan tutup layar.
       </p>
-      {left > 0 && <p className="font-mono text-sm font-bold uppercase">Berakhir {time}</p>}
-      <button
-        type="button"
+      {left > 0 && (
+        <p className="font-mono text-xs font-bold uppercase tracking-[0.08em]">
+          Berakhir {time}
+        </p>
+      )}
+      <KioskAction
+        tone="secondary"
+        size="md"
         onClick={onCancel}
-        className="inline-flex min-h-11 w-fit items-center gap-2 border-2 border-ink bg-bg px-4 py-2 font-mono text-xs font-bold uppercase shadow-[3px_3px_0_0_#111111] active:translate-y-[2px]"
+        kioskStyle={ks}
+        className="w-fit font-mono tracking-[0.1em]"
       >
-        <ArrowLeft className="size-4" />
+        <ArrowLeft className="size-4" aria-hidden />
         Batalkan
-      </button>
-    </div>
+      </KioskAction>
+    </KioskCard>
   );
 }

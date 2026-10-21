@@ -4,6 +4,8 @@
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { formatIDR } from "@/lib/dashboard-math";
 import type { KioskVisualStyle } from "@/lib/kiosk-types";
+import { KioskAction, KioskCard, KioskEyebrow } from "@/components/kiosk/ui";
+
 export type PendingPayment = {
   status: "pending" | "paid" | "expired";
   payment_reference: string;
@@ -19,6 +21,11 @@ export type PendingPayment = {
   va_number: string | null;
   method: string;
 };
+
+function mmss(left: number): string {
+  return `${String(Math.floor(left / 60)).padStart(2, "0")}:${String(left % 60).padStart(2, "0")}`;
+}
+
 export function QrisPayment({
   payment,
   qrSrc,
@@ -35,82 +42,109 @@ export function QrisPayment({
   kioskStyle?: KioskVisualStyle;
 }) {
   const ks = kioskStyle;
-  const time = `${String(Math.floor(left / 60)).padStart(2, "0")}:${String(left % 60).padStart(2, "0")}`;
+  const radius = ks?.radius ?? 0;
+  const accentStyle = ks
+    ? { borderRadius: radius, backgroundColor: ks.accent, color: ks.accentText }
+    : { borderRadius: radius };
   return (
-    <div className="mx-auto grid w-full max-w-[1000px] flex-1 grid-cols-1 content-center gap-3 pb-14 md:grid-cols-2 md:content-center md:gap-4 md:pb-0">
-      <section
-        className="flex flex-col justify-center gap-3 border-2 border-ink bg-surface p-4 shadow-[4px_4px_0_0_#111111] md:p-5"
-        style={ks ? { borderRadius: ks.radius } : undefined}
-      >
-        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em]">[ SCAN QRIS ]</p>
-        {qrSrc ? (
-          <img
-            src={qrSrc}
-            alt="Kode QR pembayaran"
-            className="mx-auto max-h-[30vh] w-auto max-w-full border-2 border-ink bg-surface p-3 md:max-h-[42vh]"
-          />
-        ) : (
-          <p className="border-2 border-ink p-5 font-mono text-xs uppercase">QR tidak tersedia</p>
-        )}
-        <p className="font-mono text-3xl font-bold">{formatIDR(payment.total_amount)}</p>
-        {payment.total_amount > payment.amount && (
-          <p className="font-mono text-[10px] uppercase tracking-[0.05em]">
-            Termasuk kode unik {formatIDR(payment.total_amount - payment.amount)}. Transfer tepat
-            sesuai nominal.
+    <div className="grid w-full gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:items-start">
+      <KioskCard elevated className="flex flex-col gap-4 p-4 md:p-5" style={{ borderRadius: radius }}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-col gap-1.5">
+            <KioskEyebrow>{"PINDAI QRIS"}</KioskEyebrow>
+            <p className="font-display text-lg uppercase leading-none tracking-[-0.02em] md:text-xl">
+              Scan dengan aplikasi bank
+            </p>
+          </div>
+          <span className="shrink-0 border-2 border-ink bg-bg px-2 py-1 font-mono text-[10px] font-bold uppercase leading-none tracking-[0.08em]">
+            {payment.method}
+          </span>
+        </div>
+
+        <div className="flex flex-col items-center gap-3">
+          {qrSrc ? (
+            <img
+              src={qrSrc}
+              alt="Kode QR pembayaran"
+              className="h-auto w-full max-w-[300px] border-2 border-ink bg-surface p-3"
+            />
+          ) : (
+            <p className="border-2 border-dashed border-ink/40 p-6 text-center font-mono text-xs uppercase tracking-[0.08em]">
+              QR tidak tersedia
+            </p>
+          )}
+          <p className="font-mono text-2xl font-bold leading-none tracking-[-0.02em] md:text-3xl">
+            {formatIDR(payment.total_amount)}
           </p>
-        )}
-      </section>
-      <section
-        className="flex flex-col justify-center gap-3 border-2 border-ink bg-accent p-4 shadow-[4px_4px_0_0_#111111] md:gap-4 md:p-5"
-        style={
-          ks
-            ? { borderRadius: ks.radius, backgroundColor: ks.accent, color: ks.accentText }
-            : undefined
-        }
+          {payment.total_amount > payment.amount && (
+            <p className="max-w-[44ch] text-center text-xs leading-relaxed text-muted-foreground">
+              Termasuk kode unik {formatIDR(payment.total_amount - payment.amount)}. Transfer tepat
+              sesuai nominal.
+            </p>
+          )}
+        </div>
+      </KioskCard>
+
+      <KioskCard
+        className="flex flex-col justify-center gap-4 p-4 md:p-5"
+        style={accentStyle}
       >
-        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em]">[ STATUS ]</p>
-        <p className="font-mono text-sm font-bold uppercase" aria-live="polite">
+        <KioskEyebrow className="opacity-70">{"STATUS PEMBAYARAN"}</KioskEyebrow>
+        <p className="flex items-center gap-2 font-display text-base uppercase leading-none tracking-[-0.01em] md:text-lg">
           <span
-            className={`mr-2 inline-block size-3 border-2 border-ink ${online ? "animate-pulse bg-bg" : "bg-ink/40"}`}
+            className={`inline-block size-2.5 shrink-0 rounded-full border-2 ${
+              online ? "animate-pulse border-current bg-current" : "border-current"
+            }`}
+            aria-hidden
           />
-          {online ? "Menunggu pembayaran" : "Menunggu koneksi"}
+          <span aria-live="polite">
+            {online ? "Menunggu pembayaran" : "Menunggu koneksi"}
+          </span>
         </p>
         {payment.expires_at && (
-          <p className="font-mono text-sm font-bold uppercase">Berakhir {time}</p>
+          <p className="font-mono text-xs font-bold uppercase tracking-[0.08em]">
+            Berakhir {mmss(left)}
+          </p>
         )}
-        <p>Sesi foto terbuka setelah pembayaran terverifikasi.</p>
-        <button
-          type="button"
+        <p className="max-w-[40ch] text-sm leading-relaxed opacity-85">
+          Sesi foto terbuka otomatis begitu pembayaran terverifikasi. Jangan tutup layar.
+        </p>
+        <KioskAction
+          tone="secondary"
+          size="md"
           onClick={onBack}
-          className="inline-flex min-h-11 w-fit items-center gap-2 border-2 border-ink bg-bg px-4 py-2 font-mono text-xs font-bold uppercase shadow-[3px_3px_0_0_#111111] active:translate-y-[2px]"
+          className="w-fit border-current bg-transparent font-mono tracking-[0.1em]"
+          style={{ borderRadius: radius }}
         >
-          <ArrowLeft className="size-4" />
+          <ArrowLeft className="size-4" aria-hidden />
           Kembali
-        </button>
-      </section>
+        </KioskAction>
+      </KioskCard>
     </div>
   );
 }
+
 export function PaidNotice({
   onRetry,
   busy,
   kioskStyle,
 }: { onRetry?(): void; busy?: boolean; kioskStyle?: KioskVisualStyle } = {}) {
+  const radius = kioskStyle?.radius ?? 0;
   return (
     <div
-      className="mx-auto flex min-h-[50dvh] w-full max-w-[1000px] flex-1 flex-col items-center justify-center gap-4 border-2 border-ink bg-accent p-6 text-center shadow-[4px_4px_0_0_#111111]"
+      className="flex min-h-[46dvh] flex-col items-center justify-center gap-4 border-2 border-ink bg-accent p-6 text-center shadow-[4px_4px_0_0_#111111]"
       style={
         kioskStyle
           ? {
-              borderRadius: kioskStyle.radius,
+              borderRadius: radius,
               backgroundColor: kioskStyle.accent,
               color: kioskStyle.accentText,
             }
-          : undefined
+          : { borderRadius: radius }
       }
     >
-      <Loader2 className="size-8 animate-spin" />
-      <p className="font-mono text-sm font-bold uppercase">
+      <Loader2 className="size-7 animate-spin" aria-hidden />
+      <p className="font-display text-lg uppercase leading-none tracking-[-0.01em] md:text-xl">
         {busy ? "Pembayaran berhasil. Membuka sesi foto" : "Pembayaran berhasil."}
       </p>
       {/* Uang customer sudah masuk di titik ini. Layar yang hanya berputar
@@ -118,16 +152,18 @@ export function PaidNotice({
           kegagalan membuka sesi harus punya tombol ulang, bukan jalan buntu. */}
       {!busy && onRetry && (
         <>
-          <p className="max-w-[44ch] font-mono text-xs uppercase tracking-[0.1em]">
+          <p className="max-w-[44ch] text-sm leading-relaxed opacity-85">
             Sesi foto belum terbuka. Tekan tombol di bawah untuk mencoba lagi.
           </p>
-          <button
-            type="button"
+          <KioskAction
+            tone="secondary"
+            size="md"
             onClick={onRetry}
-            className="inline-flex min-h-11 items-center justify-center border-2 border-ink bg-bg px-5 py-3 font-mono text-xs font-bold uppercase shadow-[3px_3px_0_0_#111111] active:translate-y-[2px]"
+            className="border-current bg-transparent"
+            style={{ borderRadius: radius }}
           >
             Buka sesi foto
-          </button>
+          </KioskAction>
         </>
       )}
     </div>

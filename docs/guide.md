@@ -29,7 +29,8 @@ SnapyOS memiliki tiga area kerja:
 - Minimal satu outlet.
 - Minimal satu photobox.
 - Package aktif dengan harga integer IDR.
-- Template dengan jumlah slot sama dengan `package.photo_count`.
+- Template aktif; frame ber-slot menentukan jumlah capture, sedangkan template legacy tanpa slot
+  memakai `package.photo_count` sebagai fallback.
 - Payment credential direct merchant, voucher, atau offline cash.
 - Device kiosk sudah dipasangkan.
 
@@ -121,7 +122,7 @@ Field penting:
 | ------------- | --------------------------------------- |
 | `name`        | Wajib, jelas untuk customer             |
 | `price`       | Integer IDR, tidak boleh floating-point |
-| `photo_count` | Jumlah slot foto yang dibutuhkan        |
+| `photo_count` | Fallback jumlah capture untuk template legacy tanpa slot |
 | `print_count` | Jumlah hasil cetak                      |
 | `is_active`   | Hanya package aktif tampil di kiosk     |
 
@@ -135,9 +136,9 @@ Server menghitung final amount. Frontend tidak dipercaya untuk harga, diskon, at
 4. Simpan layout dalam unit design yang disepakati builder.
 5. Generate thumbnail preview.
 6. Assign template ke package.
-7. Pastikan jumlah slot sama dengan `photo_count`.
+7. Uji frame lintas paket; frame ber-slot menentukan jumlah capture saat kiosk berjalan.
 
-Assignment ditolak jika `slot_count != package.photo_count`. Jangan mengakali validasi dengan mengubah data dari browser.
+Assignment lintas jumlah slot diperbolehkan; frame ber-slot menentukan capture, sedangkan template legacy memakai photo_count package.
 
 ## 9. Payment Customer
 
@@ -262,7 +263,7 @@ Cron menolak request tanpa secret. `RETENTION_CRON_OPEN=1` hanya untuk mode deve
 
 - Pastikan template aktif.
 - Pastikan template di-assign ke package.
-- Pastikan jumlah slot sama dengan `photo_count`.
+- Frame ber-slot tetap dapat dipakai lintas paket; periksa layout dan URL frame bila tidak tampil.
 - Periksa response public template dan error server.
 
 ### Payment tidak berubah menjadi paid

@@ -75,13 +75,13 @@ body::after {
   /* Fallback FE default — hanya untuk jalur tanpa PrintLayoutRenderer.
      PrintLayoutRenderer meng-override @page (size + margin) via style#snapyos-print-css
      dan menyetel ulang --print-margin dari nilai yang sama (PRINT_DEFAULT_MARGIN_MM).
-     Default 8mm di sini harus tetap sinkron dengan konstanta itu. */
+     Default 0mm di sini harus tetap sinkron dengan konstanta itu. */
   @page {
-    margin: 8mm;
+    margin: 0;
   }
-  /* Margin aktif cetak, diset oleh renderer; fallback 8mm. */
+  /* Margin aktif cetak, diset oleh renderer; fallback 0mm. */
   :root {
-    --print-margin: 8mm;
+    --print-margin: 0mm;
   }
   body:has(.print-sheet) *,
   body:has(.print-root) * {
@@ -109,9 +109,15 @@ body::after {
     max-width: 100%;
     /* Fit satu halaman: @page margin × 2. Tanpa ini, composite portrait
        (cth. 2:3) meluber ke halaman berikutnya. Ikut --print-margin milik
-       renderer (fallback 8mm), bukan angka hardcoded. */
-    max-height: calc(100vh - (2 * var(--print-margin, 8mm)));
+       renderer (fallback 0mm), bukan angka hardcoded. */
+    max-height: var(--print-content-height, calc(100vh - (2 * var(--print-margin, 0mm))));
     object-fit: contain;
+  }
+  .print-sheet[data-sheet-kind="strip"] {
+    --print-photo-count: 1;
+  }
+  .print-sheet[data-sheet-kind="strip"] .print-photo {
+    max-height: calc(var(--print-content-height, 100vh) / var(--print-photo-count));
   }
 }
 

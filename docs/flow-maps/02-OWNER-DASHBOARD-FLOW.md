@@ -536,7 +536,7 @@ Owner ubah settings → updatePhotoboxSettings(businessId, photoboxId, { camera_
 
 - `createPackage`, `updatePackage`, `deletePackage`
 
-**Fields**: name, price (int IDR), photo_count (int >= 1), print_count (int >= 0), digital_output (boolean), description (text), is_active (boolean), applicable outlets (m2m), applicable photoboxes (m2m), available templates (m2m — constraint: `template.slot_count == package.photo_count`).
+**Fields**: name, price (int IDR), photo_count (int >= 1), print_count (int >= 0), digital_output (boolean), description (text), is_active (boolean), applicable outlets (m2m), applicable photoboxes (m2m), available templates (m2m — slot frame menentukan capture; template legacy memakai photo_count package).
 
 **Data Flow (Create)**:
 
@@ -554,7 +554,7 @@ Owner tekan [ BUAT PACKAGE ]
 
 ```
 Edit package → multi-select templates
-   ↓ filter: templates where slot_count == package.photo_count (atau template legacy layout kosong)
+   ↓ filter assignment template; semua slot valid, template legacy layout kosong memakai photo_count package
    ↓ submit → updatePackage with template_ids[]
       ↓ delete package_templates where package_id
       ↓ insert package_templates (package_id, template_id) bulk
@@ -573,9 +573,9 @@ Edit package → multi-select outlets/photoboxes
 
 **Components**: `DataTable`, `Dialog` form, multi-select (`Combobox`), `Switch` active, price input (integer IDR, Space Mono font).
 
-**Validation**: price > 0; photo_count >= 1; print_count >= 0; name wajib; template assignment ditolak jika `slot_count ≠ photo_count`.
+**Validation**: price > 0; photo_count >= 1; print_count >= 0; name wajib; template assignment tidak dibatasi oleh slot_count.
 
-**Backend Logic**: package adalah dasar perhitungan final amount di checkout (server-side); photo_count menentukan jumlah capture kiosk.
+**Backend Logic**: package adalah dasar perhitungan final amount di checkout (server-side); frame ber-slot menentukan jumlah capture kiosk, sedangkan `photo_count` hanya menjadi fallback untuk template legacy tanpa slot. `print_count` menentukan jumlah lembar cetak.
 
 **Permission**: OWNER, MANAGER. STAFF read-only.
 
@@ -653,7 +653,7 @@ Delete template → deleteTemplate(businessId, templateId)
 
 **Components**: grid preview, `Dialog` upload/create, `Select` kategori, `Switch` active, `Tabs` assign package.
 
-**Validation**: file type valid; max size; nama wajib; layout valid (schema `15-template-builder.md` §15.2); assign template→package ditolak kecuali `slot_count == photo_count`.
+**Validation**: file type valid; max size; nama wajib; layout valid (schema `15-template-builder.md` §15.2); assign template→package tidak dibatasi slot_count.
 
 **Security**: upload divalidasi (type, size, malicious payload); preview pakai signed URL jika private; `layout` divalidasi server-side (trust boundary).
 
@@ -735,7 +735,7 @@ Delete template → deleteTemplate(businessId, templateId)
 - Rotation −180..180, radius >= 0
 - Shape enum valid
 - Max 8 slots per template
-- Assign template→package DITOLAK kecuali `slot_count == package.photo_count`
+- Assign template→package tidak dibatasi slot_count; frame menentukan capture
 
 **Aturan Builder**:
 
@@ -774,7 +774,7 @@ Delete template → deleteTemplate(businessId, templateId)
 
 1. Owner upload PNG + tambah ≥1 slot + publish tanpa training (< 2 menit)
 2. Customer memilih frame → foto hasil capture muncul pas di setiap slot (cover-fit, rasio tidak terdistorsi)
-3. Template dengan `slot_count ≠ package.photo_count` tidak bisa di-assign dan tidak muncul di pilihan customer
+3. Template dengan slot berbeda dari package tetap dapat di-assign; slot frame menentukan capture dan template legacy memakai photo_count package
 4. Hasil print & result online identik dengan preview builder (satu engine composite)
 5. Template legacy (layout kosong) tetap berfungsi — backward compatible
 6. Validasi layout di-enforce server-side (request dengan layout invalid ditolak 4xx)

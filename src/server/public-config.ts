@@ -290,16 +290,9 @@ export async function listPublicPackages(
  * Template aktif milik business/global untuk kiosk (docs/05 §5.4,
  * docs/15 §15.6).
  *
- * Aturan pilih: assignment package Mempersempit daftar, tapi tidak pernah
- * mengosongkannya. Bila package punya template ter-assign yang slot-nya cocok,
- * hanya itu yang tampil. Bila tidak ada satu pun yang cocok (data lama: paket
- * belum di-assign, atau assignment dibuat sebelum validasi slot), daftar jatuh
- * ke seluruh template aktif yang slot-nya cocok — booth tetap bisa dipakai
- * tanpa menunggu owner memperbaiki assignment.
- *
- * Slot tetap wajib cocok dengan `package.photo_count` (legacy slot 0 lolos):
- * jumlah capture mengikuti slot template, jadi template 4-slot pada paket
- * 3 foto akan membuat finalize ditolak kuota.
+ * Aturan pilih: assignment package mempersempit daftar, tapi tidak pernah
+ * mengosongkannya. Semua slot template valid untuk package; template legacy
+ * tanpa slot memakai `package.photo_count` sebagai fallback capture.
  */
 function frameProxyUrl(url: string): string {
   if (!/^https?:\/\//i.test(url)) return url;
@@ -355,8 +348,8 @@ export async function listPublicTemplates(
     allowed = new Set((links ?? []).map((l) => l.template_id));
   }
 
-  // Semua frame aktif tampil untuk paket mana pun; jumlah slot tidak lagi
-  // menyaring (slot berlebih diisi bergiliran di editor).
+  // Semua frame aktif tampil untuk paket mana pun. Runtime menentukan jumlah
+  // capture dari slot frame; `photo_count` hanya fallback untuk legacy.
   const filtered = selectVisibleTemplates(visible, { assignedIds: allowed });
 
   // Batch signed URL — satu request storage untuk seluruh daftar (bukan N+1).

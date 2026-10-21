@@ -39,7 +39,7 @@ export function CollapsibleShell({
 
   return (
     <div
-      className="grid w-full flex-1 grid-cols-1 md:grid-cols-[var(--sidebar-w)_minmax(0,1fr)] md:transition-[grid-template-columns] md:duration-200 md:ease-in-out motion-reduce:transition-none"
+      className="grid w-full flex-1 content-start grid-cols-1 md:content-stretch md:grid-cols-[var(--sidebar-w)_minmax(0,1fr)] md:transition-[grid-template-columns] md:duration-200 md:ease-in-out motion-reduce:transition-none"
       style={{ "--sidebar-w": collapsed ? "64px" : "240px" } as CSSProperties}
     >
       <div className="md:sticky md:top-16 md:flex md:max-h-[calc(100dvh-4rem)] md:flex-col md:overflow-hidden md:border-r-2 md:border-ink">

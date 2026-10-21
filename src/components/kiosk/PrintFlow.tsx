@@ -4,6 +4,7 @@ import { useState } from "react";
 import { PrintLayoutRenderer } from "@/components/kiosk/PrintLayoutRenderer";
 import { BluetoothPrintScreen } from "@/components/kiosk/BluetoothPrintScreen";
 import { usePrintTransport } from "@/hooks/use-print-transport";
+import { CupsPrintScreen } from "@/components/kiosk/CupsPrintScreen";
 import { resolvePrintMode, type PrintModeInput } from "@/lib/print/print-mode";
 import type { PrintPlan } from "@/lib/print-layout";
 
@@ -38,6 +39,18 @@ export function PrintFlow({ photos, plan, printSettings, jobId, reprint = false,
   // State turunan: jangan setState di effect (memicu render berantai).
   // Sebelum hidrasi `ready=false` → perilaku SSR tetap sama dengan client.
   const [forceBrowser, setForceBrowser] = useState(false);
+  if (mode === "cups") {
+    return (
+      <CupsPrintScreen
+        photos={photos}
+        plan={plan}
+        printSettings={printSettings}
+        jobId={jobId}
+        reprint={reprint}
+        onDone={onDone}
+      />
+    );
+  }
   const useBrowser = mode !== "bluetooth" || forceBrowser || (transport.ready && !thermalAvailable);
 
   if (!useBrowser) {

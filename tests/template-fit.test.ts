@@ -5,7 +5,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { fillSlots, hasRepeatedSlots } from "../src/lib/template-fit.ts";
+import { fillSlots, hasRepeatedSlots, resolveCaptureCount } from "../src/lib/template-fit.ts";
+
+test("resolveCaptureCount: slot frame mengalahkan jumlah foto package", () => {
+  assert.equal(resolveCaptureCount(3, 6), 6);
+  assert.equal(resolveCaptureCount(6, 0), 6);
+  assert.equal(resolveCaptureCount(Number.NaN, Number.NaN), 1);
+});
 
 test("slot sama dengan foto: satu-satu, tanpa pengulangan", () => {
   assert.deepEqual(fillSlots(3, 3), [0, 1, 2]);

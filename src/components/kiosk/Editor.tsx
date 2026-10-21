@@ -487,7 +487,10 @@ function EditorInner({
   }, [finishRequested, imgVersion, frameVersion, frameUrl]);
 
   const sliderClass =
-    "min-h-11 w-full cursor-pointer appearance-none rounded-none border border-ink bg-bg accent-ink";
+    "h-11 w-full cursor-pointer appearance-none rounded-none border border-ink/30 bg-bg accent-ink";
+
+  const panelClass = "flex flex-col gap-3 border-2 border-ink bg-surface p-3.5 md:p-4";
+  const sectionLabel = "font-mono text-[10px] font-bold uppercase tracking-[0.18em]";
 
   return (
     <div
@@ -500,72 +503,57 @@ function EditorInner({
               ...kioskThemeVars(kioskStyle),
               backgroundColor: kioskStyle.bg,
               color: kioskStyle.text,
-              paddingLeft: kioskStyle.padding,
-              paddingRight: kioskStyle.padding,
             }
           : undefined
       }
     >
       <KioskVideoBackground videoUrl={videoUrl} />
+
       <header
-        className={`relative z-10 flex shrink-0 flex-wrap items-center justify-between gap-2 border-b-2 border-ink px-4 py-2.5 md:gap-3 md:px-6 md:py-3 ${
-          kioskStyle?.align === "left"
-            ? ""
-            : kioskStyle?.align === "right"
-              ? "text-right"
-              : "flex-col text-center"
-        }`}
+        className="relative z-10 flex shrink-0 flex-wrap items-center justify-between gap-3 border-b-2 border-ink/15 px-4 py-3 md:px-6"
         style={
           kioskStyle
             ? {
-                backgroundColor: `color-mix(in srgb, ${kioskStyle.text} 8%, ${kioskStyle.bg})`,
+                backgroundColor: `color-mix(in srgb, ${kioskStyle.text} 5%, ${kioskStyle.bg})`,
                 color: kioskStyle.text,
               }
             : undefined
         }
       >
-        <div
-          className={`flex flex-col gap-1 ${
-            kioskStyle?.align === "left"
-              ? "items-start"
-              : kioskStyle?.align === "right"
-                ? "items-end"
-                : "items-center"
-          }`}
-        >
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            {"LANGKAH 03: EDIT FOTO"}
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className={sectionLabel} style={{ opacity: 0.6 }}>
+            {"LANGKAH 03 · EDIT FOTO"}
           </p>
           <h1
-            className="font-display text-xl uppercase leading-none tracking-tight md:text-2xl"
-            style={
-              kioskStyle
-                ? {
-                    fontSize: `${1.5 * kioskStyle.fontScale}rem`,
-                    fontFamily: kioskStyle.fontFamily,
-                  }
-                : undefined
-            }
+            className="font-display uppercase leading-none tracking-[-0.02em]"
+            style={{
+              fontSize: `calc(clamp(1.15rem, 2.2vw, 1.5rem) * ${kioskStyle?.fontScale ?? 1})`,
+              fontFamily: kioskStyle?.fontFamily,
+            }}
           >
             {titleText || "Edit foto"}
           </h1>
           {hintText && (
-            <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+            <p
+              className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.1em]"
+              style={{ opacity: 0.6 }}
+            >
               {hintText}
             </p>
           )}
         </div>
         {photos.length > 1 && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Pilih foto">
             {photos.map((_, i) => (
               <button
                 key={i}
                 type="button"
                 onClick={() => setActive(i)}
-                className={`h-11 w-11 border-2 border-ink font-mono text-xs font-bold md:h-11 md:w-11 md:text-sm ${
+                className={`size-11 border-2 border-ink font-mono text-xs font-bold transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${
                   i === active ? "bg-accent" : "bg-surface"
                 }`}
                 aria-label={`Foto ${i + 1}`}
+                aria-pressed={i === active}
               >
                 {i + 1}
               </button>
@@ -577,36 +565,34 @@ function EditorInner({
       {/* Baris grid dikunci ke tinggi sisa layar (`minmax(0,1fr)`). Tanpa itu
           baris mengikuti tinggi kanvas (mis. strip 1:3 setinggi 2160px) dan
           `max-h-full` tidak punya acuan, jadi frame terpotong di bawah. */}
-      <div className="relative z-10 grid flex-1 grid-cols-1 gap-4 p-4 md:grid-cols-[1fr_340px] md:gap-6 md:p-6 lg:min-h-0 lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden">
-        <div className="relative flex min-h-[38vh] items-center justify-center overflow-hidden md:min-h-0">
+      <div className="relative z-10 grid flex-1 grid-cols-1 gap-4 p-3 sm:p-4 md:gap-5 md:p-5 lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_360px] lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden">
+        <div className="relative flex min-h-[34vh] items-center justify-center overflow-hidden sm:min-h-[40vh] lg:min-h-0">
           <canvas
             ref={canvasRef}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
-            className="relative max-h-[52vh] max-w-full border-2 border-ink bg-ink shadow-[4px_4px_0_0_#111111] lg:max-h-full"
+            className="relative max-h-[46vh] max-w-full border-2 border-ink bg-ink shadow-[4px_4px_0_0_#111111] sm:max-h-[52vh] lg:max-h-full"
             style={{ cursor: edit.adjust.zoom > 1.01 ? "grab" : "default", touchAction: "none" }}
           />
         </div>
 
-        <div className="flex min-h-0 flex-col gap-4 overflow-y-auto pr-1">
+        <div className="flex min-h-0 flex-col gap-3 overflow-y-auto pb-1 pr-1 lg:pb-2">
           {/* Layar hijau booth: hapus latar agar frame transparan terlihat. */}
           {chromaKeyEnabled && (
-            <div className="flex flex-col gap-2 border-2 border-ink bg-surface p-3">
-              <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-                Latar layar hijau
-              </p>
+            <div className={panelClass}>
+              <p className={sectionLabel}>Latar layar hijau</p>
               <button
                 type="button"
                 onClick={() => setChromaOn((value) => !value)}
                 aria-pressed={chromaOn}
-                className={`min-h-11 border-2 border-ink px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.08em] ${
+                className={`min-h-11 border-2 border-ink px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.08em] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${
                   chromaOn ? "bg-accent-3" : "bg-surface"
                 }`}
               >
                 {chromaOn ? "Latar dihapus" : "Hapus latar hijau"}
               </button>
-              <p className="font-mono text-[10px] leading-relaxed text-muted-foreground">
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
                 Warna latar diambil dari sudut foto. Nyalakan bila booth memakai layar hijau.
               </p>
             </div>
@@ -614,21 +600,18 @@ function EditorInner({
 
           {/* Filters: GLOBAL: satu pilihan berlaku untuk semua foto */}
           <div className="flex flex-col gap-2">
-            <p
-              className="font-mono text-xs font-bold uppercase tracking-[0.15em]"
-              style={{ color: kioskStyle ? kioskStyle.text : undefined }}
-            >
+            <p className={sectionLabel} style={{ color: kioskStyle ? kioskStyle.text : undefined }}>
               Filter
             </p>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-4 gap-1.5">
               {FILTER_PRESETS.map((f) => (
                 <button
                   key={f.id}
                   type="button"
                   onClick={() => setFilterId(f.id)}
                   aria-pressed={filterId === f.id}
-                  className={`min-h-11 border-2 border-ink px-2 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.05em] ${
-                    filterId === f.id ? "bg-accent" : "bg-surface"
+                  className={`min-h-11 border-2 border-ink px-1.5 py-2 text-[10px] font-bold uppercase leading-tight tracking-[0.02em] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${
+                    filterId === f.id ? "bg-accent text-ink" : "bg-surface text-ink"
                   }`}
                 >
                   {f.label}
@@ -638,22 +621,23 @@ function EditorInner({
           </div>
 
           {/* Rotasi (tetap per foto) + zoom via drag/pinch di canvas */}
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <span
-                className="font-mono text-[10px] uppercase tracking-[0.1em]"
-                style={{ color: kioskStyle ? kioskStyle.text : undefined }}
-              >
-                Putar
-              </span>
+          <div className="flex items-center gap-2">
+            <span
+              className="shrink-0 font-mono text-[10px] uppercase tracking-[0.1em]"
+              style={{ color: kioskStyle ? kioskStyle.text : undefined }}
+            >
+              Putar
+            </span>
+            <div className="flex flex-1 gap-1.5">
               {[0, 90, 180, 270].map((r) => (
                 <button
                   key={r}
                   type="button"
                   onClick={() => patchAdjust("rotation", r)}
-                  className={`h-11 w-11 border-2 border-ink font-mono text-xs font-bold ${
-                    edit.adjust.rotation === r ? "bg-accent" : "bg-surface"
+                  className={`h-11 flex-1 border-2 border-ink font-mono text-[11px] font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${
+                    edit.adjust.rotation === r ? "bg-accent text-ink" : "bg-surface text-ink"
                   }`}
+                  aria-pressed={edit.adjust.rotation === r}
                 >
                   {r}°
                 </button>
@@ -662,55 +646,54 @@ function EditorInner({
           </div>
 
           {/* Adjustments: exported with the same canvas renderer as preview. */}
-          <div className="flex flex-col gap-3">
-            <p
-              className="font-mono text-xs font-bold uppercase tracking-[0.15em]"
-              style={{ color: kioskStyle ? kioskStyle.text : undefined }}
-            >
+          <div className={panelClass}>
+            <p className={sectionLabel} style={{ color: kioskStyle ? kioskStyle.text : undefined }}>
               Penyesuaian
             </p>
-            <label className="flex flex-col gap-1">
-              <span className="font-mono text-[10px] uppercase tracking-[0.1em]">
-                Zoom · {edit.adjust.zoom.toFixed(2)}×
-              </span>
-              <input
-                type="range"
-                min={1}
-                max={3}
-                step={0.05}
-                value={edit.adjust.zoom}
-                disabled={!allowZoomPan}
-                onChange={(e) => patchAdjust("zoom", Number(e.target.value))}
-                className={sliderClass}
-                aria-label="Zoom foto"
-              />
-            </label>
-            {(
-              [
-                ["brightness", "Kecerahan", 0.5, 1.5, 0.01],
-                ["contrast", "Kontras", 0.5, 1.5, 0.01],
-                ["saturation", "Saturasi", 0, 2, 0.01],
-                ["blur", "Blur", 0, 12, 0.5],
-                ["grain", "Grain", 0, 1, 0.05],
-                ["vignette", "Vignette", 0, 1, 0.05],
-              ] as const
-            ).map(([key, label, min, max, step]) => (
-              <label key={key} className="flex flex-col gap-1">
+            <div className="flex flex-col gap-2.5">
+              <label className="flex flex-col gap-1">
                 <span className="font-mono text-[10px] uppercase tracking-[0.1em]">
-                  {label} · {Number(edit.adjust[key]).toFixed(key === "blur" ? 1 : 2)}
+                  Zoom · {edit.adjust.zoom.toFixed(2)}×
                 </span>
                 <input
                   type="range"
-                  min={min}
-                  max={max}
-                  step={step}
-                  value={edit.adjust[key]}
-                  onChange={(e) => patchAdjust(key, Number(e.target.value))}
+                  min={1}
+                  max={3}
+                  step={0.05}
+                  value={edit.adjust.zoom}
+                  disabled={!allowZoomPan}
+                  onChange={(e) => patchAdjust("zoom", Number(e.target.value))}
                   className={sliderClass}
-                  aria-label={label}
+                  aria-label="Zoom foto"
                 />
               </label>
-            ))}
+              {(
+                [
+                  ["brightness", "Kecerahan", 0.5, 1.5, 0.01],
+                  ["contrast", "Kontras", 0.5, 1.5, 0.01],
+                  ["saturation", "Saturasi", 0, 2, 0.01],
+                  ["blur", "Blur", 0, 12, 0.5],
+                  ["grain", "Grain", 0, 1, 0.05],
+                  ["vignette", "Vignette", 0, 1, 0.05],
+                ] as const
+              ).map(([key, label, min, max, step]) => (
+                <label key={key} className="flex flex-col gap-1">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.1em]">
+                    {label} · {Number(edit.adjust[key]).toFixed(key === "blur" ? 1 : 2)}
+                  </span>
+                  <input
+                    type="range"
+                    min={min}
+                    max={max}
+                    step={step}
+                    value={edit.adjust[key]}
+                    onChange={(e) => patchAdjust(key, Number(e.target.value))}
+                    className={sliderClass}
+                    aria-label={label}
+                  />
+                </label>
+              ))}
+            </div>
           </div>
 
           {/* Stickers */}
@@ -718,25 +701,22 @@ function EditorInner({
 
           {/* Text */}
           <div className="flex flex-col gap-2">
-            <p
-              className="font-mono text-xs font-bold uppercase tracking-[0.15em]"
-              style={{ color: kioskStyle ? kioskStyle.text : undefined }}
-            >
+            <p className={sectionLabel} style={{ color: kioskStyle ? kioskStyle.text : undefined }}>
               Teks
             </p>
             <div className="flex gap-2">
               <Input
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder="Tulis teks…"
+                placeholder="Tulis teks..."
                 maxLength={24}
-                className="h-9"
+                className="h-11"
+                aria-label="Teks yang akan ditambahkan"
               />
               <Button
                 type="button"
                 variant="outline"
                 size="icon"
-                className="min-h-11 min-w-11"
                 onClick={() =>
                   text.trim() && addOverlay("text", text.trim(), defaultBrandColors.ink)
                 }
@@ -749,8 +729,8 @@ function EditorInner({
 
           {/* Selected overlay editor */}
           {selectedOverlay && (
-            <div className="flex flex-col gap-3 border-2 border-ink bg-surface p-3">
-              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.15em]">
+            <div className={panelClass}>
+              <p className={sectionLabel}>
                 {`UBAH ${edit.overlays.find((o) => o.id === selectedOverlay)?.kind === "text" ? "TEKS" : "STIKER"}`}
               </p>
               {edit.overlays
@@ -758,15 +738,18 @@ function EditorInner({
                 .map((o) => (
                   <div key={o.id} className="flex flex-col gap-3">
                     {o.kind === "text" && (
-                      <div className="flex gap-1">
+                      <div className="flex flex-wrap gap-1.5">
                         {TEXT_COLORS.map((c) => (
                           <button
                             key={c}
                             type="button"
                             onClick={() => patchOverlay(o.id, { color: c })}
-                            className="h-7 w-7 border-2 border-ink"
+                            className={`size-9 border-2 ${
+                              o.color === c ? "border-ink outline-2 outline-offset-1 outline-ink" : "border-ink/30"
+                            }`}
                             style={{ background: c }}
                             aria-label={`Warna ${c}`}
+                            aria-pressed={o.color === c}
                           />
                         ))}
                       </div>
@@ -783,6 +766,7 @@ function EditorInner({
                         value={o.size}
                         onChange={(e) => patchOverlay(o.id, { size: Number(e.target.value) })}
                         className={sliderClass}
+                        aria-label="Ukuran teks"
                       />
                     </label>
                     <label className="flex flex-col gap-1">
@@ -797,16 +781,17 @@ function EditorInner({
                         value={o.rotation}
                         onChange={(e) => patchOverlay(o.id, { rotation: Number(e.target.value) })}
                         className={sliderClass}
+                        aria-label="Rotasi teks"
                       />
                     </label>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1.5">
                       {POSITIONS.map((p) => (
                         <button
                           key={p.id}
                           type="button"
                           onClick={() => patchOverlay(o.id, { y: p.y })}
-                          className={`flex-1 border-2 border-ink px-2 py-1 font-mono text-[10px] font-bold uppercase ${
-                            Math.abs(o.y - p.y) < 0.01 ? "bg-accent" : "bg-surface"
+                          className={`min-h-11 flex-1 border-2 border-ink px-2 py-1 text-[10px] font-bold uppercase tracking-[0.04em] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${
+                            Math.abs(o.y - p.y) < 0.01 ? "bg-accent text-ink" : "bg-surface text-ink"
                           }`}
                         >
                           {p.label}
@@ -829,7 +814,7 @@ function EditorInner({
           {finishError && (
             <p
               role="alert"
-              className="border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink"
+              className="border-2 border-destructive bg-destructive/10 px-3 py-2 text-xs leading-relaxed text-ink"
             >
               {finishError}
             </p>
@@ -848,7 +833,7 @@ function EditorInner({
               void finish();
             }}
             disabled={finishing}
-            className="mt-auto bg-accent"
+            className="mt-auto min-h-14 bg-accent"
             style={
               kioskStyle
                 ? {
@@ -860,7 +845,7 @@ function EditorInner({
             }
           >
             <Check className="size-5" aria-hidden />
-            {finishing ? "Menyimpan…" : "Selesai"}
+            {finishing ? "Menyimpan..." : "Selesai"}
           </Button>
         </div>
       </div>

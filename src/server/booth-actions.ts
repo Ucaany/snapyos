@@ -110,6 +110,8 @@ function photoboxInput(formData: FormData) {
     chroma_key_enabled: formData.get("chroma_key_enabled") === "on",
     payment_mode: (str(formData, "payment_mode") || null) as "gateway" | "voucher" | null,
     camera_settings: {
+      provider: str(formData, "camera_provider") === "gphoto2" ? ("gphoto2" as const) : ("browser" as const),
+      bridge_url: str(formData, "camera_bridge_url") || undefined,
       countdown_seconds: number("countdown_seconds", 3),
       mirror_preview: formData.get("mirror_preview") === "on",
       fullscreen: formData.get("fullscreen") === "on",
@@ -142,10 +144,16 @@ function photoboxInput(formData: FormData) {
       copies: number("copies", 1),
       margins_mm: number("margins_mm", 0),
       mode:
-        str(formData, "print_mode") === "bluetooth" ? ("bluetooth" as const) : ("browser" as const),
+        str(formData, "print_mode") === "bluetooth"
+          ? ("bluetooth" as const)
+          : str(formData, "print_mode") === "cups"
+            ? ("cups" as const)
+            : ("browser" as const),
       bluetooth_paper_width_mm:
         number("bluetooth_paper_width_mm", 80) === 58 ? (58 as const) : (80 as const),
       bluetooth_device_name: str(formData, "bluetooth_device_name") || undefined,
+      bridge_url: str(formData, "print_bridge_url") || undefined,
+      printer_name: str(formData, "printer_name") || undefined,
     },
     // Perangkat (kamera/printer/display) tidak diisi manual —
     // auto-detect saat device pairing (docs/05 §5.0.1, Phase 4).
@@ -289,7 +297,7 @@ export async function setPhotoboxPreferredCameraAction(
 
 export type PrintTestReport = {
   confirmed: boolean;
-  mode: "browser" | "bluetooth";
+  mode: "browser" | "bluetooth" | "cups";
   device_name?: string;
 };
 

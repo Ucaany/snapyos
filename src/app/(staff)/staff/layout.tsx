@@ -41,7 +41,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
         user={{ name: user.name, email: user.email }}
         businessName={active?.business.name ?? null}
       />
-      <div className="grid w-full flex-1 grid-cols-1 md:grid-cols-[240px_1fr]">
+      <div className="grid w-full flex-1 content-start grid-cols-1 md:content-stretch md:grid-cols-[240px_1fr]">
         <StaffSidebar />
         <main className="min-w-0">{children}</main>
       </div>

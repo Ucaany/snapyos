@@ -206,6 +206,10 @@ export type BrandingConfig = {
 };
 
 export type CameraSettings = {
+  /** browser = getUserMedia, gphoto2 = kamera DSLR melalui bridge lokal. */
+  provider?: "browser" | "gphoto2";
+  /** URL bridge lokal, default http://127.0.0.1:17777. */
+  bridge_url?: string;
   countdown_seconds?: number;
   mirror_preview?: boolean;
   chroma_key_enabled?: boolean;
@@ -231,12 +235,16 @@ export type PrintSettings = {
   auto_print?: boolean;
   copies?: number;
   margins_mm?: number;
-  /** "browser" (dialog OS, default) atau "bluetooth" (thermal ESC/POS). */
-  mode?: "browser" | "bluetooth";
+  /** "browser" (dialog OS), "cups" (bridge lokal), atau bluetooth thermal. */
+  mode?: "browser" | "bluetooth" | "cups";
   /** Lebar kertas thermal 58/80 mm. */
   bluetooth_paper_width_mm?: 58 | 80;
   /** Nama printer Bluetooth terakhir (informasi petugas). */
   bluetooth_device_name?: string;
+  /** URL bridge lokal untuk kamera GPhoto2 atau CUPS print. */
+  bridge_url?: string;
+  /** Nama printer CUPS; kosong memakai default printer OS. */
+  printer_name?: string;
 };
 
 export type SessionSettings = {

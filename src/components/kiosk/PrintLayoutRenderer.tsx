@@ -1,13 +1,14 @@
 "use client";
 
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState, type CSSProperties } from "react";
 import { Check, Printer, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { PrintPlan, PrintSettingsInput } from "@/lib/print-layout";
 import {
-  PRINT_DEFAULT_MARGIN_MM,
   printCopies,
+  printContentHeightMm,
   printPageSize,
+  printSheets,
   shouldAutoPrint,
 } from "@/lib/print-layout";
 import { useObjectUrls } from "@/components/kiosk/use-object-url";
@@ -96,9 +97,8 @@ function PrintLayoutRendererInner({
     const u = objectUrls[i];
     if (u) urlByBlob.set(p.blob, u);
   });
-  // marginMm bisa 0 (owner set 0) → bedakan dari "tidak diset" untuk fallback.
-  const marginMm =
-    typeof printSettings?.margins_mm === "number" ? page.marginMm : PRINT_DEFAULT_MARGIN_MM;
+  // Nol adalah konfigurasi borderless yang valid dan juga default kontrak.
+  const marginMm = page.marginMm;
 
   useEffect(() => {
     if (plan.kind === "digital") {
@@ -116,13 +116,13 @@ function PrintLayoutRendererInner({
 
     // @page presisi per setting owner — SATU sumber geometry (size + margin);
     // meng-override fallback margin-only di globals.css. --print-margin dipakai
-    // globals.css untuk max-height (calc(100vh - 2*margin)); default 8mm bila
+    // globals.css untuk max-height (calc(100vh - 2*margin)); default 0mm bila
     // renderer tak ter-mount. Nilai default dari PRINT_DEFAULT_MARGIN_MM (sinkron).
     const style = document.createElement("style");
     style.id = "snapyos-print-css";
     style.textContent =
       `@page { size: ${page.widthMm}mm ${page.heightMm}mm; margin: ${page.marginMm}mm; }` +
-      ` :root { --print-margin: ${marginMm}mm; }`;
+      ` :root { --print-margin: ${marginMm}mm; --print-content-height: ${printContentHeightMm(page)}mm; }`;
     document.head.appendChild(style);
 
     function cleanup() {
@@ -262,13 +262,11 @@ function PrintLayoutRendererInner({
     return null;
   }
 
-  const baseSheets =
-    plan.kind === "strip"
-      ? Array.from({ length: plan.sheets }, () => photos.slice(0, plan.photosPerStrip))
-      : plan.photoIndexes.map((idx) => [photos[idx]!]).filter((sheet) => sheet.length > 0);
-
-  // Salinan owner (copies 1–20): duplikasi set lembar N kali.
-  const sheetPhotos = Array.from({ length: copies }, () => baseSheets).flat();
+  // Satu mapping dipakai browser dan ESC/POS. `print_count` menghasilkan
+  // jumlah sheet; `copies` hanya menggandakan sheet yang sama.
+  const sheetPhotos = printSheets(plan, photos.length, copies).map((indexes) =>
+    indexes.map((index) => photos[index]).filter((photo): photo is { blob: Blob } => Boolean(photo))
+  );
 
   const totalSheets = sheetPhotos.length;
 
@@ -295,17 +293,17 @@ function PrintLayoutRendererInner({
 
   return (
     <>
-      <div className="fixed inset-0 z-40 flex flex-col items-center justify-center gap-5 bg-bg p-8 text-center">
+      <div className="fixed inset-0 z-40 flex flex-col items-center justify-center gap-5 overflow-y-auto bg-bg p-6 text-center md:p-8">
         {state === "error" ? (
           <>
-            <TriangleAlert className="size-12 text-destructive" aria-hidden />
-            <p className="font-display text-2xl uppercase leading-none tracking-tight">
+            <TriangleAlert className="size-10 shrink-0 text-destructive" aria-hidden />
+            <p className="font-display text-xl uppercase leading-none tracking-[-0.02em] md:text-2xl">
               Gagal mencetak
             </p>
-            <p className="max-w-[40ch] font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
+            <p className="max-w-[44ch] text-sm leading-relaxed text-muted-foreground">
               {errorMsg || "Terjadi kesalahan saat mencetak."}
             </p>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap justify-center gap-2.5">
               <Button variant="outline" size="lg" onClick={handleRetry}>
                 Coba lagi
               </Button>
@@ -316,21 +314,21 @@ function PrintLayoutRendererInner({
           </>
         ) : state === "done" ? (
           <>
-            <Check className="size-12 text-accent-3" aria-hidden />
-            <p className="font-display text-2xl uppercase leading-none tracking-tight">
+            <Check className="size-10 shrink-0 text-accent-3" aria-hidden />
+            <p className="font-display text-xl uppercase leading-none tracking-[-0.02em] md:text-2xl">
               Permintaan cetak dikirim
             </p>
           </>
         ) : state === "ready" && (!auto || autoBlocked) ? (
           <>
-            <Printer className="size-12" aria-hidden />
-            <p className="font-display text-2xl uppercase leading-none tracking-tight">
+            <Printer className="size-10 shrink-0" aria-hidden />
+            <p className="font-display text-xl uppercase leading-none tracking-[-0.02em] md:text-2xl">
               Siap dicetak
             </p>
-            <p className="max-w-[44ch] font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+            <p className="max-w-[44ch] text-[10px] uppercase leading-relaxed tracking-[0.14em] text-muted-foreground">
               {`${totalSheets} LEMBAR · DI TABLET PILIH PRINTER FOTO DI DIALOG SISTEM`}
             </p>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap justify-center gap-2.5">
               <Button size="lg" className="bg-accent" onClick={handleManualPrint}>
                 <Printer className="size-5" aria-hidden /> Cetak {totalSheets} lembar
               </Button>
@@ -341,12 +339,12 @@ function PrintLayoutRendererInner({
           </>
         ) : (
           <>
-            <Printer className="size-12 animate-pulse" aria-hidden />
-            <p className="font-display text-2xl uppercase leading-none tracking-tight">
-              {state === "ready" ? "Mencetak…" : "Menyiapkan…"}
+            <Printer className="size-10 shrink-0 animate-pulse" aria-hidden />
+            <p className="font-display text-xl uppercase leading-none tracking-[-0.02em] md:text-2xl">
+              {state === "ready" ? "Mencetak..." : "Menyiapkan..."}
             </p>
-            <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
-              {`${totalSheets} LEMBAR: ${plan.kind.toUpperCase()}`}
+            <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+              {`${totalSheets} LEMBAR · ${plan.kind.toUpperCase()}`}
             </p>
             <Button size="lg" variant="outline" onClick={handleSkip}>
               Lanjut
@@ -363,6 +361,8 @@ function PrintLayoutRendererInner({
               sheetRefs.current[i] = el;
             }}
             className="print-sheet"
+            data-sheet-kind={plan.kind}
+            style={{ "--print-photo-count": sheet.length } as CSSProperties}
           >
             {sheet.map((p, j) => (
               // eslint-disable-next-line @next/next/no-img-element

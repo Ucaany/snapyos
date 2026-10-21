@@ -7,7 +7,7 @@
 
 import type { PrintSettingsInput } from "@/lib/print-layout";
 
-export type PrintMode = "browser" | "bluetooth";
+export type PrintMode = "browser" | "bluetooth" | "cups";
 
 /** Lebar kertas thermal dalam dot (203 dpi = 8 dot/mm). */
 export const THERMAL_WIDTH_DOTS = { 58: 384, 80: 576 } as const;
@@ -21,7 +21,9 @@ export type PrintModeInput = PrintSettingsInput & {
 };
 
 export function resolvePrintMode(settings?: PrintModeInput | null): PrintMode {
-  return settings?.mode === "bluetooth" ? "bluetooth" : "browser";
+  if (settings?.mode === "bluetooth") return "bluetooth";
+  if (settings?.mode === "cups") return "cups";
+  return "browser";
 }
 
 /** Lebar dot untuk mode thermal; 80mm default (paling umum di booth foto). */

@@ -4,6 +4,7 @@ import type { BrandingConfig, KioskBrandingConfig } from "@/lib/kiosk-types";
 import { kioskThemeVars, kioskVisualStyle } from "@/lib/kiosk-types";
 import { defaultBrandColors } from "@/lib/brand-defaults";
 import { KioskVideoBackground } from "@/components/kiosk/KioskVideoBackground";
+import { KioskAction, KioskHeading, kioskGutter } from "@/components/kiosk/ui";
 
 type Props = {
   business: { name: string; logo_url: string | null };
@@ -11,10 +12,21 @@ type Props = {
   onStart: () => void;
 };
 
+/** Inisial monogram dari nama bisnis (maks 2 huruf) — bukan aset rekaan. */
+function initials(name: string): string {
+  const words = name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (words.length === 0) return "SF";
+  if (words.length === 1) return words[0]!.slice(0, 2).toUpperCase();
+  return `${words[0]![0] ?? ""}${words[1]![0] ?? ""}`.toUpperCase();
+}
+
 /**
- * Welcome Screen — docs/05 §5.2. Layout 2 kolom (kiri brand, kanan judul+CTA),
- * touch-friendly, mengikuti kustomisasi branding.kiosk (warna, font scale,
- * radius, padding, visibilitas, video background looping ≤5s).
+ * Welcome Screen — docs/05 §5.2. Satu layar penuh tanpa scroll di desktop;
+ * di layar pendek konten tetap bisa digulir. Branding owner (warna, font scale,
+ * radius, padding, visibilitas, video background looping ≤5s) dihormati.
  */
 export function WelcomeScreen({ business, branding, onStart }: Props) {
   const k: KioskBrandingConfig = branding.kiosk ?? {};
@@ -23,19 +35,13 @@ export function WelcomeScreen({ business, branding, onStart }: Props) {
   const button = branding.welcome_button || "Mulai";
   const showLogo = k.show_logo !== false;
   const showTagline = k.show_tagline !== false;
-  // Gaya per layar: nilai global kiosk + override pages.welcome.
   const vs = kioskVisualStyle(k, "welcome");
   const fontScale = vs.fontScale;
-  const radius = vs.radius;
-  const padding = vs.padding;
+  const padding = kioskGutter(vs.padding);
   const secondary = branding.secondary_color || defaultBrandColors.ink;
   const primary = branding.primary_color || defaultBrandColors.accent;
-  const bg = vs.bg;
-  const text = vs.text;
   const layout = k.welcome_layout ?? "split-left";
-  // Video: override per-layar (pages.welcome) menang atas video global.
   const videoUrl = k.pages?.welcome?.video_url ?? k.video_url ?? null;
-  // Perataan konten (full element): default tengah; page override ?? global.
   const contentAlign = vs.align ?? "center";
   const alignClass =
     contentAlign === "left"
@@ -45,88 +51,112 @@ export function WelcomeScreen({ business, branding, onStart }: Props) {
         : "items-center text-center";
 
   const brandCol = (
-    <div className="flex flex-col items-center justify-center gap-5 text-center md:gap-6">
-      {showLogo && business.logo_url && (
+    <div className="flex w-full flex-col items-center justify-center gap-5 text-center">
+      {showLogo && business.logo_url ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={business.logo_url}
           alt={`Logo ${business.name}`}
-          className="max-h-24 w-auto object-contain md:max-h-32"
+          className="max-h-24 w-auto max-w-[260px] object-contain md:max-h-32"
         />
+      ) : (
+        // Tanpa logo: monogram inisial dari nama bisnis sendiri (bukan aset
+        // rekaan) supaya kolom brand punya jangkar visual, bukan ruang kosong.
+        <span
+          aria-hidden
+          className="flex size-24 items-center justify-center border-2 border-ink font-display text-3xl font-bold uppercase leading-none tracking-[-0.04em] shadow-[6px_6px_0_0_#111111] md:size-32 md:text-4xl"
+          style={{ backgroundColor: primary, color: secondary, borderRadius: vs.radius }}
+        >
+          {initials(business.name)}
+        </span>
       )}
-      <p
-        className="font-mono font-bold uppercase tracking-[0.3em] opacity-70"
-        style={{ fontSize: `${0.75 * fontScale}rem` }}
-      >
-        {"" + business.name.toUpperCase()}
-      </p>
+      {showLogo && business.logo_url ? (
+        <p className="font-mono text-[10px] font-bold uppercase leading-none tracking-[0.3em] opacity-70">
+          {business.name.toUpperCase()}
+        </p>
+      ) : null}
     </div>
   );
 
+  // Judul default = nama bisnis; jika begitu, nama tidak diulang di kolom brand
+  // (dua teks identik di satu layar hanya menambah noise).
+  const titleIsBusiness = title.trim().toLowerCase() === business.name.trim().toLowerCase();
+
   const contentCol = (
-    <div className={`flex flex-col justify-center gap-6 md:gap-8 ${alignClass}`}>
-      <h1
-        className="max-w-[14ch] font-display font-bold uppercase leading-[0.95] tracking-tight"
-        style={{ color: secondary, fontSize: `${3.5 * fontScale}rem`, fontFamily: vs.fontFamily }}
-      >
-        {title}
-      </h1>
-      {showTagline && (
-        <p
-          className="max-w-[36ch] leading-relaxed opacity-80"
-          style={{ fontSize: `${1.125 * fontScale}rem` }}
-        >
-          {tagline}
+    <div className={`flex min-w-0 flex-col justify-center gap-5 md:gap-6 ${alignClass}`}>
+      {titleIsBusiness ? null : (
+        <p className="font-mono text-[10px] font-bold uppercase leading-none tracking-[0.28em] opacity-60">
+          {business.name.toUpperCase()}
         </p>
       )}
-      <button
-        type="button"
+      <KioskHeading
+        size="lg"
+        scale={fontScale}
+        className="max-w-[16ch]"
+        style={{ color: secondary, fontFamily: vs.fontFamily }}
+      >
+        {title}
+      </KioskHeading>
+      {showTagline && (
+        <p className="max-w-[40ch] text-base leading-relaxed opacity-80 md:text-lg">{tagline}</p>
+      )}
+      <KioskAction
+        tone="primary"
+        size="xl"
         onClick={onStart}
-        className="min-h-16 border-2 px-12 py-4 font-display text-xl font-bold uppercase tracking-tight transition-transform active:translate-y-[2px] md:min-h-20 md:px-16 md:py-5 md:text-2xl"
+        className="mt-1 min-w-[220px] tracking-[-0.02em]"
         style={{
           backgroundColor: primary,
           borderColor: secondary,
           color: secondary,
-          borderRadius: radius,
+          borderRadius: vs.radius,
           fontFamily: vs.fontFamily,
           boxShadow: `6px 6px 0 0 ${defaultBrandColors.ink}`,
         }}
       >
         {button}
-      </button>
+      </KioskAction>
     </div>
   );
 
-  const padStyle = { paddingLeft: padding, paddingRight: padding };
   const body =
     layout === "center" ? (
       <div
-        className="relative z-10 mx-auto flex w-full max-w-[1400px] flex-1 flex-col items-center justify-center gap-8 py-16 text-center md:py-20"
-        style={padStyle}
+        className="relative z-10 mx-auto flex w-full max-w-[1100px] flex-1 flex-col items-center justify-center gap-8 py-12 text-center md:gap-10 md:py-16"
+        style={{ paddingLeft: padding, paddingRight: padding }}
       >
         {brandCol}
         {contentCol}
       </div>
     ) : (
       <div
-        className={`relative z-10 mx-auto grid w-full max-w-[1400px] flex-1 grid-cols-1 items-center gap-8 py-10 md:grid-cols-2 md:gap-12 md:py-14 lg:gap-16 ${
-          layout === "split-right" ? "md:[&>*:first-child]:order-2" : ""
-        }`}
-        style={padStyle}
+        className="relative z-10 mx-auto grid w-full max-w-[1280px] flex-1 grid-cols-1 content-center items-center gap-8 py-10 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] md:gap-10 md:py-12 lg:gap-16"
+        style={{ paddingLeft: padding, paddingRight: padding }}
       >
-        {brandCol}
-        {contentCol}
+        <div
+          className={`flex items-center justify-center ${
+            layout === "split-right" ? "md:order-2" : ""
+          }`}
+        >
+          {brandCol}
+        </div>
+        <div className={layout === "split-right" ? "md:order-1" : ""}>{contentCol}</div>
       </div>
     );
 
   return (
     <div
       className="relative flex min-h-0 flex-1 overflow-y-auto"
-      style={{ ...kioskThemeVars(vs), backgroundColor: bg, color: text }}
+      style={{ ...kioskThemeVars(vs), backgroundColor: vs.bg, color: vs.text }}
     >
-      {/* Video background attract loop: muted/autoplay/loop, overlay warna
-          supaya teks tetap kontras; fallback = warna background. */}
       <KioskVideoBackground videoUrl={videoUrl} />
+      {videoUrl ? (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 z-[1]"
+          style={{ backgroundColor: `color-mix(in srgb, ${vs.bg} 62%, transparent)` }}
+        />
+      ) : null}
       {body}
     </div>
   );

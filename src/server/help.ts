@@ -316,7 +316,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       {
         heading: "Layar 3: pilih frame dan sesi foto",
         paragraphs: [
-          "Grid preview menampilkan thumbnail frame dengan slot terisi foto contoh. Hanya template yang di assign ke paket dan slot count sama dengan photo count yang tampil.",
+          "Grid preview menampilkan thumbnail frame dengan slot terisi foto contoh. Template aktif dapat dipakai lintas paket; frame ber-slot menentukan jumlah capture dan template legacy memakai photo_count package.",
           "Jumlah foto mengikuti template terpilih. Photos order index mengikuti urutan slot z. Retake unlimited selama timer sesi berjalan, max retakes opsional via session settings.",
         ],
         steps: [
@@ -342,7 +342,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     troubleshooting: [
       {
         gejala: "Frame yang dicari tidak muncul",
-        penyebab: "Frame tidak di assign ke paket, atau slot tidak sama dengan photo count",
+        penyebab: "Frame tidak aktif/ter-assign, URL frame gagal, atau respons public template error",
         solusi: "Pilih frame yang tampil, atau tanya operator.",
       },
       {
@@ -558,31 +558,31 @@ export const HELP_ARTICLES: HelpArticle[] = [
     estimate: "10 menit",
     prerequisites: [
       "Minimal satu package dengan photo count jelas.",
-      "File frame PNG atau SVG transparan.",
+      "File frame PNG, JPG, atau WebP; PNG paling cocok untuk transparansi.",
     ],
     sections: [
       {
         heading: "Ringkasan",
         paragraphs: [
           "Template adalah frame yang menampung foto customer. Dua tipe: template legacy (layout kosong, overlay full canvas, backward compatible) dan template slot (layout canvas plus slots array, foto masuk pas per slot).",
-          "Customer hanya melihat template yang di assign ke paket yang ia beli dan slot count sama dengan photo count. Satu engine composeFrame dipakai di builder preview, editor kiosk, print renderer, dan result online.",
+          "Customer melihat template aktif yang tersedia untuk paketnya. Frame ber-slot menentukan jumlah capture; template legacy tanpa slot memakai photo_count package. Satu engine composeFrame dipakai di builder preview, editor kiosk, print renderer, dan result online.",
         ],
       },
       {
         heading: "Upload frame",
         paragraphs: [
-          "Desain di Canva, Figma, atau Photoshop, ekspor PNG atau SVG transparan. Upload divalidasi tipe dan ukuran di server sebagai trust boundary.",
+          "Desain di Canva, Figma, atau Photoshop, ekspor PNG, JPG, atau WebP. Upload divalidasi tipe, magic byte, dan ukuran di server sebagai trust boundary.",
         ],
         steps: [
           "Buka Templates, tekan Upload.",
           "Isi nama dan kategori: Minimal, Cute, Retro, Y2K, Wedding, Birthday, Graduation, Event, Custom.",
-          "Upload file maksimal 5 MB (PNG, JPG, WebP, SVG).",
+          "Upload file maksimal 5 MB (PNG, JPG, WebP).",
           "Aktifkan toggle is active bila siap tampil.",
         ],
         table: {
           head: ["Aturan", "Nilai", "Keterangan"],
           rows: [
-            ["Tipe file", "PNG, JPG, WebP, SVG", "Frame transparan disarankan PNG atau SVG"],
+            ["Tipe file", "PNG, JPG, WebP", "PNG transparan disarankan untuk frame"],
             ["Ukuran maks", "5 MB", "Kompres sebelum upload"],
             ["Thumbnail", "Otomatis", "Dari preview builder"],
           ],
@@ -618,7 +618,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     troubleshooting: [
       {
         gejala: "Frame punya slot lebih banyak daripada jumlah foto paket",
-        penyebab: "Jumlah capture mengikuti paket, bukan jumlah slot",
+        penyebab: "Jumlah capture mengikuti slot frame; package photo_count hanya fallback template legacy",
         solusi:
           "Tidak perlu diubah. Slot sisa terisi foto secara bergiliran. Ubah jumlah foto hanya bila paket memang harus menambah capture.",
       },

@@ -354,6 +354,8 @@ const photoboxStatus = z.enum(["online", "offline", "maintenance"]);
 const photoboxPaymentMode = z.enum(["gateway", "voucher"]);
 
 export const cameraSettingsSchema = z.object({
+  provider: z.enum(["browser", "gphoto2"]).optional(),
+  bridge_url: z.string().trim().url().max(300).optional(),
   countdown_seconds: z.number().int().min(1).max(10).optional(),
   mirror_preview: z.boolean().optional(),
   chroma_key_enabled: z.boolean().optional(),
@@ -377,11 +379,13 @@ export const printSettingsSchema = z.object({
   copies: z.number().int().min(1).max(20).optional(),
   margins_mm: z.number().int().min(0).max(20).optional(),
   /** Jalur cetak: dialog OS (browser) atau thermal ESC/POS lewat Web Bluetooth. */
-  mode: z.enum(["browser", "bluetooth"]).optional(),
+  mode: z.enum(["browser", "bluetooth", "cups"]).optional(),
   /** Lebar kertas thermal 58/80 mm. */
   bluetooth_paper_width_mm: z.union([z.literal(58), z.literal(80)]).optional(),
   /** Nama printer Bluetooth (informasi petugas, bukan kredensial). */
   bluetooth_device_name: z.string().trim().max(60).optional(),
+  bridge_url: z.string().trim().url().max(300).optional(),
+  printer_name: z.string().trim().max(128).optional(),
 });
 
 export const sessionSettingsSchema = z

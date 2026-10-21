@@ -26,19 +26,19 @@ export class KioskErrorBoundary extends Component<Props, State> {
     if (!this.state.error) return this.props.children;
     return (
       <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-6 bg-bg p-6 text-center">
-        <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground">
+        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.24em] text-muted-foreground">
           {"KESALAHAN RUNTIME"}
         </p>
-        <h1 className="font-display text-4xl uppercase leading-none tracking-tight md:text-5xl">
+        <h1 className="max-w-[18ch] font-display text-3xl uppercase leading-none tracking-[-0.02em] md:text-4xl">
           Kiosk perlu dimuat ulang
         </h1>
-        <p className="max-w-[52ch] font-mono text-xs uppercase leading-relaxed tracking-[0.08em] text-muted-foreground">
+        <p className="max-w-[52ch] text-sm leading-relaxed text-muted-foreground">
           Terjadi kesalahan tak terduga. Muat ulang untuk memulihkan sesi yang tersimpan.
         </p>
         <button
           type="button"
           onClick={() => window.location.reload()}
-          className="min-h-11 border-2 border-ink bg-accent px-6 py-3 font-display text-lg uppercase tracking-tight shadow-[4px_4px_0_0_#111111] transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+          className="min-h-14 border-2 border-ink bg-accent px-6 py-3 font-display text-base font-bold uppercase tracking-[-0.01em] shadow-[4px_4px_0_0_#111111] transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
         >
           Muat ulang sekarang
         </button>

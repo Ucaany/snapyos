@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Camera } from "lucide-react";
 import { PrintTestPanel } from "@/components/print/PrintTestPanel";
 import { resolvePrintMode } from "@/lib/print/print-mode";
-import type { PrintSettings } from "@/lib/kiosk-types";
+import type { CameraSettings, PrintSettings } from "@/lib/kiosk-types";
 import { Button } from "@/components/ui/button";
 import {
   CAMERA_ERRORS,
@@ -13,6 +13,12 @@ import {
   resolutionWarning,
 } from "@/lib/camera-errors";
 import { getDeviceProfile } from "@/lib/device-profile";
+import {
+  cameraBridgeUrl,
+  captureGphoto2,
+  checkCameraBridge,
+  resolveCameraProvider,
+} from "@/lib/camera-provider";
 import { apiPost, KioskError } from "@/components/kiosk/api";
 
 type Props = {
@@ -22,12 +28,19 @@ type Props = {
   onAuthError?: () => void;
   /** Setelan cetak booth: menentukan mode uji (dialog OS vs thermal Bluetooth). */
   printSettings?: PrintSettings;
+  cameraSettings?: CameraSettings;
 };
 
 type Stage = "camera" | "print";
 
 /** Setup Wizard sekali — docs/05 §5.0.1 (permission kamera + detection + print test). */
-export function SetupWizard({ deviceToken, onDone, onAuthError, printSettings = {} }: Props) {
+export function SetupWizard({
+  deviceToken,
+  onDone,
+  onAuthError,
+  printSettings = {},
+  cameraSettings = {},
+}: Props) {
   const [stage, setStage] = useState<Stage>("camera");
 
   // camera state
@@ -45,11 +58,13 @@ export function SetupWizard({ deviceToken, onDone, onAuthError, printSettings = 
   // tombol "Lanjut" bisa diklik sebelum `<video>` menerima data (race saat
   // wizard dibuka), lalu wizard terlihat "gagal" padahal kamera normal.
   const [cameraLive, setCameraLive] = useState(false);
+  const [cameraCaptureTested, setCameraCaptureTested] = useState(false);
 
   // print state
   const [printConfirmed, setPrintConfirmed] = useState(false);
 
   const profile = getDeviceProfile();
+  const cameraProvider = resolveCameraProvider(cameraSettings);
 
   // Copy dinamis per kelas perangkat — tablet kiosk tanpa sebut USB, phone
   // selfie mode, iPad instruksi "Add to Home Screen" (lihat device-profile).
@@ -157,14 +172,69 @@ export function SetupWizard({ deviceToken, onDone, onAuthError, printSettings = 
     }
   }
 
+  async function checkGphoto2() {
+    setCameraError(null);
+    setCameraLive(false);
+    setCameraCaptureTested(false);
+    try {
+      const result = await checkCameraBridge(cameraSettings);
+      if (!result.ok || !result.camera)
+        throw new Error(result.message || "Kamera GPhoto2 tidak terdeteksi.");
+      setResLabel("GPHOTO2");
+      setCameraLive(true);
+      await report({
+        camera: { provider: "gphoto2", status: "ok", bridge_url: cameraBridgeUrl(cameraSettings) },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "GPhoto2 tidak siap.";
+      setCameraError({ message, action: "COBA LAGI" });
+      await report({ camera: { provider: "gphoto2", status: "error", error: message } });
+    }
+  }
+
+  async function testGphoto2Capture() {
+    setCameraError(null);
+    setCameraCaptureTested(false);
+    try {
+      const result = await checkCameraBridge(cameraSettings);
+      if (!result.ok || !result.camera) {
+        throw new Error(result.message || "Kamera GPhoto2 tidak terdeteksi.");
+      }
+      const photo = await captureGphoto2(cameraSettings);
+      if (photo.size === 0) throw new Error("GPhoto2 tidak mengembalikan foto.");
+      setResLabel("GPHOTO2 · CAPTURE OK");
+      setCameraLive(true);
+      setCameraCaptureTested(true);
+      await report({
+        camera: {
+          provider: "gphoto2",
+          status: "ok",
+          capture_test: "ok",
+          bridge_url: cameraBridgeUrl(cameraSettings),
+        },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "GPhoto2 gagal mengambil foto.";
+      setCameraError({ message, action: "COBA LAGI" });
+      await report({ camera: { provider: "gphoto2", status: "error", capture_test: message } });
+    }
+  }
+
   useEffect(() => {
+    if (cameraProvider === "gphoto2") {
+      const timer = setTimeout(() => void checkGphoto2(), 0);
+      return () => {
+        clearTimeout(timer);
+        stopStream();
+      };
+    }
     const t = setTimeout(() => void openStream(), 0);
     return () => {
       clearTimeout(t);
       stopStream();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [cameraProvider]);
 
   async function onCameraNext() {
     const live =
@@ -197,30 +267,76 @@ export function SetupWizard({ deviceToken, onDone, onAuthError, printSettings = 
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col items-center gap-8 overflow-y-auto bg-bg px-6 py-10">
-      <header className="flex flex-col items-center gap-2 text-center">
-        <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground">
-          {`SETUP PERANGKAT: ${stage === "camera" ? "KAMERA" : "PRINTER"} (SEKALI SAJA)`}
+    <div className="flex min-h-0 flex-1 flex-col items-center gap-7 overflow-y-auto bg-bg px-5 py-8 md:px-8 md:py-10">
+      <header className="flex w-full max-w-[760px] flex-col items-start gap-2 border-b-2 border-ink/15 pb-5">
+        <p className="font-mono text-[10px] font-bold uppercase leading-none tracking-[0.24em] text-muted-foreground">
+          {`SETUP PERANGKAT · ${stage === "camera" ? "KAMERA" : "PRINTER"} · SEKALI SAJA`}
         </p>
-        <h1 className="font-display text-4xl uppercase leading-[0.95] tracking-tight md:text-5xl">
+        <h1 className="font-display text-3xl uppercase leading-[0.95] tracking-[-0.02em] md:text-4xl">
           {stage === "camera" ? "Siapkan kamera" : "Uji cetak"}
         </h1>
         {stage === "camera" && (
-          <p className="max-w-[52ch] font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
+          <p className="max-w-[56ch] text-sm leading-relaxed text-muted-foreground">
             {deviceCopy.hint}
           </p>
         )}
       </header>
 
       {stage === "camera" ? (
-        <div className="flex w-full max-w-[760px] flex-col gap-6">
-          {!supported ? (
+        <div className="flex w-full max-w-[760px] flex-col gap-5">
+          {cameraProvider === "gphoto2" ? (
+            <div className="flex flex-col gap-4 border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111] md:p-6">
+              <p className="max-w-[56ch] text-sm leading-relaxed text-muted-foreground">
+                Mode GPhoto2 memakai kamera DSLR melalui bridge lokal. Pastikan `gphoto2` terpasang,
+                kamera terhubung USB, dan `npm run bridge:gphoto2` sedang berjalan di komputer
+                kiosk.
+              </p>
+              <p className="font-mono text-xs uppercase tracking-[0.08em]">
+                Bridge: {cameraBridgeUrl(cameraSettings)}
+              </p>
+              <Button
+                size="lg"
+                onClick={() => void testGphoto2Capture()}
+                className="w-fit bg-accent"
+              >
+                <Camera className="size-5" aria-hidden /> Uji capture GPhoto2
+              </Button>
+              {cameraLive && !cameraCaptureTested && (
+                <p role="status" className="font-mono text-xs font-bold uppercase">
+                  Kamera terdeteksi · capture uji belum dilakukan
+                </p>
+              )}
+              {cameraCaptureTested && (
+                <p role="status" className="font-mono text-xs font-bold uppercase">
+                  Kamera GPhoto2 siap · capture berhasil
+                </p>
+              )}
+              {cameraError && (
+                <p
+                  role="alert"
+                  className="border-2 border-destructive bg-destructive/10 p-3 text-sm"
+                >
+                  {cameraError.message}
+                </p>
+              )}
+              <Button
+                size="lg"
+                onClick={() => void onCameraNext()}
+                disabled={Boolean(cameraError) || !cameraCaptureTested}
+                className="min-h-14 bg-accent-2"
+              >
+                {cameraCaptureTested ? "Lanjut ke uji cetak" : "Uji capture sebelum lanjut"}
+              </Button>
+            </div>
+          ) : !supported ? (
             // Tanpa jalur keluar, wizard berhenti di sini selamanya dan welcome
             // tidak pernah muncul. Laporkan ke server untuk diagnostik, lalu
             // biarkan lanjut — error kamera yang sesungguhnya tampil di layar
             // capture dengan tombol ulang + ajakan panggil petugas.
-            <div className="flex flex-col gap-4 border-2 border-ink bg-destructive/10 p-6 font-mono text-sm">
-              <p>Browser tidak mendukung kamera. Gunakan Chrome terbaru di perangkat kiosk.</p>
+            <div className="flex flex-col gap-4 border-2 border-ink bg-destructive/10 p-5 md:p-6">
+              <p className="text-sm leading-relaxed">
+                Browser tidak mendukung kamera. Gunakan Chrome terbaru di perangkat kiosk.
+              </p>
               <Button
                 variant="outline"
                 className="w-fit"
@@ -238,7 +354,7 @@ export function SetupWizard({ deviceToken, onDone, onAuthError, printSettings = 
                 {cameraError ? (
                   <div className="flex h-full flex-col items-center justify-center gap-3 bg-bg p-6 text-center">
                     <Camera className="size-8" aria-hidden />
-                    <p className="max-w-[42ch] font-mono text-sm">{cameraError.message}</p>
+                    <p className="max-w-[42ch] text-sm leading-relaxed">{cameraError.message}</p>
                     <Button
                       variant="outline"
                       onClick={() => void openStream(selectedId || undefined)}
@@ -261,7 +377,7 @@ export function SetupWizard({ deviceToken, onDone, onAuthError, printSettings = 
                 <div className="flex flex-col gap-2">
                   <label
                     htmlFor="camera-select"
-                    className="font-mono text-xs uppercase tracking-[0.1em]"
+                    className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]"
                   >
                     Pilih kamera
                   </label>
@@ -273,7 +389,7 @@ export function SetupWizard({ deviceToken, onDone, onAuthError, printSettings = 
                       setSelectedId(id);
                       void openStream(id);
                     }}
-                    className="h-11 w-full rounded-none border-2 border-ink bg-surface px-3 font-mono text-sm outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+                    className="h-12 w-full rounded-none border-2 border-ink bg-surface px-3 font-mono text-sm outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
                   >
                     {devices.map((d, i) => (
                       <option key={d.deviceId} value={d.deviceId}>
@@ -284,9 +400,11 @@ export function SetupWizard({ deviceToken, onDone, onAuthError, printSettings = 
                 </div>
               )}
 
-              <div className="flex flex-wrap items-center gap-3 border-2 border-ink bg-surface px-4 py-3 font-mono text-xs uppercase tracking-[0.08em]">
-                <span className="font-bold">Resolusi:</span>
-                <span className={resWarning ? "text-destructive" : "text-ink"}>
+              <div className="flex flex-wrap items-center gap-3 border-2 border-ink/20 bg-surface px-4 py-3 text-xs">
+                <span className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]">
+                  Resolusi
+                </span>
+                <span className={`font-mono font-bold ${resWarning ? "text-destructive" : ""}`}>
                   {resLabel || "-"}
                 </span>
                 {resWarning && <span className="text-muted-foreground">· {resWarning}</span>}
@@ -296,24 +414,24 @@ export function SetupWizard({ deviceToken, onDone, onAuthError, printSettings = 
                 size="lg"
                 onClick={() => void onCameraNext()}
                 disabled={Boolean(cameraError) || !cameraLive}
-                className="bg-accent-2"
+                className="min-h-14 bg-accent-2"
               >
-                {cameraLive ? "Lanjut ke uji cetak" : "Menyiapkan kamera…"}
+                {cameraLive ? "Lanjut ke uji cetak" : "Menyiapkan kamera..."}
               </Button>
             </>
           )}
         </div>
       ) : (
-        <div className="print-root flex w-full max-w-[560px] flex-col gap-6">
+        <div className="print-root flex w-full max-w-[560px] flex-col gap-5">
           {!profile.supportsPrint ? (
             <div className="flex flex-col gap-4">
-              <div className="flex flex-col items-start gap-4 border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111]">
+              <div className="flex flex-col items-start gap-4 border-2 border-ink bg-surface p-5 md:p-6">
                 <p className="max-w-[46ch] text-sm leading-relaxed text-muted-foreground">
                   Ponsel tidak mencetak langsung. Hasil dikirim sebagai QR ke halaman result online.
                   Cetak lewat perangkat booth bila tersedia.
                 </p>
               </div>
-              <Button size="lg" onClick={onDone} className="bg-accent">
+              <Button size="lg" onClick={onDone} className="min-h-14 bg-accent">
                 Selesai. Mulai
               </Button>
             </div>
@@ -323,15 +441,16 @@ export function SetupWizard({ deviceToken, onDone, onAuthError, printSettings = 
                 mode={resolvePrintMode(printSettings)}
                 paperWidthMm={printSettings.bluetooth_paper_width_mm === 58 ? 58 : 80}
                 sample={{ title: "UJI CETAK", lines: ["SETUP BOOTH", "SNAP YOS"] }}
+                printSettings={printSettings}
                 canReport={false}
                 onReport={() => undefined}
               />
 
               <div className="flex flex-col gap-3">
-                <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]">
                   Apakah test print berhasil?
                 </p>
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-2.5">
                   <Button onClick={() => void confirmPrint(true)} className="bg-accent-3">
                     Ya, berhasil
                   </Button>
@@ -342,19 +461,20 @@ export function SetupWizard({ deviceToken, onDone, onAuthError, printSettings = 
               </div>
 
               {printConfirmed ? (
-                <Button size="lg" onClick={onDone} className="bg-accent">
+                <Button size="lg" onClick={onDone} className="min-h-14 bg-accent">
                   Selesai. Mulai
                 </Button>
               ) : (
                 // Jalur keluar untuk booth tanpa printer berfungsi — tanpa ini
                 // wizard tidak pernah selesai dan welcome tidak pernah muncul.
-                <div className="flex flex-col gap-2 border-2 border-dashed border-ink p-4">
-                  <p className="font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
+                <div className="flex flex-col gap-3 border-2 border-dashed border-ink/40 p-4">
+                  <p className="text-xs leading-relaxed text-muted-foreground">
                     Printer belum siap? Setup bisa dilewati. Uji cetak tetap bisa diulang kapan pun
                     dengan memasang ulang perangkat.
                   </p>
                   <Button
                     variant="outline"
+                    className="w-fit"
                     onClick={() => {
                       // Tandai printer belum terkonfirmasi di server, lalu selesai.
                       void report({

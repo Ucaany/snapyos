@@ -60,12 +60,16 @@ export function preloadFrameAsset(
 export function preloadFrameAssets(templates: PublicTemplate[], signal?: AbortSignal): () => void {
   let cancelled = false;
   const cancelIdle = whenIdle(() => {
-    for (const template of templates) {
-      if (cancelled || signal?.aborted) return;
-      // `file_url` = proxy frame penuh. Tidak di-await: semua berjalan paralel
-      // dan hasilnya tinggal di HTTP cache browser untuk editor.
-      void preloadFrameAsset(template.file_url, signal);
-    }
+    const urls = Array.from(new Set(templates.map((template) => template.file_url)));
+    let next = 0;
+    const worker = async () => {
+      while (!cancelled && !signal?.aborted) {
+        const url = urls[next++];
+        if (!url) return;
+        await preloadFrameAsset(url, signal);
+      }
+    };
+    void Promise.all(Array.from({ length: Math.min(2, urls.length) }, () => worker()));
   });
   return () => {
     cancelled = true;

@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { OutletsTable } from "@/components/dashboard/OutletsTable";
-import { PageHeader } from "@/components/ui/page-header";
+import { StaffCatalogShell, StaffOutletsBoard } from "@/components/staff/StaffCatalog";
+import { StaffPageHeader } from "@/components/staff/StaffPrimitives";
 import { getActiveBusiness, requireUser } from "@/lib/tenant";
 import { listOutlets } from "@/server/outlets";
 import { listPhotoboxes } from "@/server/photoboxes";
-import { getPlanLimits } from "@/server/plan-limits";
 
 export const metadata: Metadata = {
   title: "Outlet: SnapyOS Staff",
@@ -21,10 +20,9 @@ export default async function StaffOutletsPage() {
   const active = await getActiveBusiness(user.id);
   if (!active) redirect("/staff");
 
-  const [outlets, photoboxes, limits] = await Promise.all([
+  const [outlets, photoboxes] = await Promise.all([
     listOutlets(user.id, active.business.id),
     listPhotoboxes(user.id, active.business.id),
-    getPlanLimits(active.business.id),
   ]);
 
   const boothsByOutlet = new Map<string, number>();
@@ -36,13 +34,28 @@ export default async function StaffOutletsPage() {
     .map((outlet) => ({ ...outlet, photobox_count: boothsByOutlet.get(outlet.id) ?? 0 }));
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
-      <PageHeader
-        eyebrow="OUTLET: READ ONLY"
+    <div className="flex flex-col gap-6 p-4 pb-10 sm:gap-8 sm:p-6 md:p-8 lg:p-10">
+      <StaffPageHeader
+        eyebrow="OUTLET · READ ONLY"
         title="Outlet"
         description="Lokasi photobox yang bisa Anda akses. Tambah/ubah outlet dikontrol owner."
+        aside={
+          <div className="border-2 border-ink bg-bg px-3 py-2">
+            <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">
+              LOKASI AKSES
+            </p>
+            <p className="font-mono text-xl font-bold leading-none">
+              {String(visibleOutlets.length).padStart(2, "0")} OUTLET
+            </p>
+          </div>
+        }
       />
-      <OutletsTable outlets={visibleOutlets} canWrite={false} maxOutlets={limits.max_outlets} />
+      <StaffCatalogShell
+        title="OUTLET.REGISTER"
+        meta={`${String(visibleOutlets.length).padStart(2, "0")} LOKASI`}
+      >
+        <StaffOutletsBoard outlets={visibleOutlets} />
+      </StaffCatalogShell>
     </div>
   );
 }

@@ -19,6 +19,8 @@ type Props = {
   activeSlot: number;
   /** Elemen <video> kamera yang sedang hidup (null saat review/unmount). */
   videoEl: HTMLVideoElement | null;
+  /** URL preview still-frame dari bridge GPhoto2. */
+  liveImageUrl?: string | null;
   /** Hasil baru yang belum dikonfirmasi (tampil saat stage review). */
   activeOverride: Blob | null;
   /** Preview kiosk di-mirror; hasil capture juga di-mirror di piksel. */
@@ -38,6 +40,7 @@ export function FramePreviewPanel({
   captured,
   activeSlot,
   videoEl,
+  liveImageUrl = null,
   activeOverride,
   mirror,
   kioskStyle,
@@ -46,6 +49,7 @@ export function FramePreviewPanel({
   const frameRef = useRef<HTMLImageElement | null>(null);
   const photoRef = useRef<(HTMLImageElement | null)[]>([]);
   const overrideRef = useRef<HTMLImageElement | null>(null);
+  const liveImageRef = useRef<HTMLImageElement | null>(null);
   const mirrorCanvasRef = useRef<HTMLCanvasElement | null>(null);
   // Konteks offscreen dipakai ulang; getContext("2d") tiap frame = lookup baru
   // 60x/detik hanya untuk menggambar ulang canvas yang sama.
@@ -133,6 +137,27 @@ export function FramePreviewPanel({
     };
   }, [activeOverride, overrideUrl]);
 
+  useEffect(() => {
+    if (!liveImageUrl) {
+      liveImageRef.current = null;
+      return;
+    }
+    let cancelled = false;
+    const img = new Image();
+    img.onload = () => {
+      if (cancelled) return;
+      liveImageRef.current = img;
+      setAssetVersion((v) => v + 1);
+    };
+    img.onerror = () => {
+      if (!cancelled) liveImageRef.current = null;
+    };
+    img.src = liveImageUrl;
+    return () => {
+      cancelled = true;
+    };
+  }, [liveImageUrl]);
+
   /**
    * Layout efektif untuk preview. Template legacy (tanpa slot) tidak punya
    * canvas tersimpan; frame PNG-nya sendiri yang menjadi kanvas, dengan satu
@@ -167,7 +192,8 @@ export function FramePreviewPanel({
     if (!canvas) return;
 
     const maxW = 420;
-    const live = Boolean(videoEl && videoEl.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA);
+    const liveVideo = Boolean(videoEl && videoEl.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA);
+    const live = Boolean(liveImageRef.current || liveVideo);
     // Legacy hanya punya satu slot penuh: kamera/hasil review selalu di slot 0,
     // bukan di indeks slot capture (yang bisa 1..n).
     const liveSlot = layout ? activeSlot : 0;
@@ -176,6 +202,7 @@ export function FramePreviewPanel({
     const sourceAt = (i: number): ComposeSource | null => {
       if (i === liveSlot) {
         if (overrideRef.current) return overrideRef.current;
+        if (liveImageRef.current) return liveImageRef.current;
         if (!live || !videoEl) return null;
         if (!mirror) return videoEl;
         // CSS scaleX(-1) tidak memengaruhi drawImage — mirror di piksel agar
@@ -212,7 +239,7 @@ export function FramePreviewPanel({
 
     paint();
     // Slot aktif berisi view kamera hidup → repaint tiap frame.
-    if (!live || overrideRef.current) return;
+    if (!liveVideo || overrideRef.current) return;
     let raf = 0;
     const loop = () => {
       paint();
@@ -220,7 +247,7 @@ export function FramePreviewPanel({
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [previewLayout, layout, activeSlot, videoEl, mirror, assetVersion]);
+  }, [previewLayout, layout, activeSlot, videoEl, liveImageUrl, mirror, assetVersion]);
 
   if (!previewLayout) return null;
 

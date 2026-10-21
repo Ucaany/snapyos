@@ -59,6 +59,7 @@ export function PrinterTestSection({
             : null
         }
         canReport={canWrite}
+        printSettings={printSettings}
         onReport={async (result) => {
           setError(null);
           const response = await reportPrintTestAction(photoboxId, result);

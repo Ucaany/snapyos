@@ -301,14 +301,14 @@ export function BluetoothPrintScreen({
   const busy = state === "connecting" || state === "preparing" || state === "printing";
 
   return (
-    <div className="fixed inset-0 z-40 flex flex-col items-center justify-center gap-5 bg-bg p-8 text-center">
+    <div className="fixed inset-0 z-40 flex flex-col items-center justify-center gap-5 overflow-y-auto bg-bg p-6 text-center md:p-8">
       {!supported && !serialSupported ? (
         <>
-          <TriangleAlert className="size-12 text-destructive" aria-hidden />
-          <p className="font-display text-2xl uppercase leading-none tracking-tight">
+          <TriangleAlert className="size-10 shrink-0 text-destructive" aria-hidden />
+          <p className="font-display text-xl uppercase leading-none tracking-[-0.02em] md:text-2xl">
             Bluetooth tidak tersedia
           </p>
-          <p className="max-w-[46ch] font-mono text-xs uppercase leading-relaxed tracking-[0.1em] text-muted-foreground">
+          <p className="max-w-[46ch] text-sm leading-relaxed text-muted-foreground">
             Browser ini tidak mendukung Web Bluetooth maupun Web Serial. Gunakan Chrome desktop atau
             Android, atau cetak lewat dialog sistem.
           </p>
@@ -323,21 +323,21 @@ export function BluetoothPrintScreen({
         </>
       ) : state === "done" ? (
         <>
-          <Check className="size-12 text-accent-3" aria-hidden />
-          <p className="font-display text-2xl uppercase leading-none tracking-tight">
+          <Check className="size-10 shrink-0 text-accent-3" aria-hidden />
+          <p className="font-display text-xl uppercase leading-none tracking-[-0.02em] md:text-2xl">
             Perintah cetak terkirim
           </p>
-          <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+          <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
             {`${printerName ?? "PRINTER BLUETOOTH"}`}
           </p>
         </>
       ) : state === "error" ? (
         <>
-          <TriangleAlert className="size-12 text-destructive" aria-hidden />
-          <p className="font-display text-2xl uppercase leading-none tracking-tight">
+          <TriangleAlert className="size-10 shrink-0 text-destructive" aria-hidden />
+          <p className="font-display text-xl uppercase leading-none tracking-[-0.02em] md:text-2xl">
             Gagal mencetak
           </p>
-          <p className="max-w-[48ch] font-mono text-xs uppercase leading-relaxed tracking-[0.1em] text-muted-foreground">
+          <p className="max-w-[48ch] text-sm leading-relaxed text-muted-foreground">
             {message ?? "Printer tidak merespons."}
           </p>
           {message?.includes("dialog cetak sistem") ? (
@@ -351,7 +351,7 @@ export function BluetoothPrintScreen({
             </div>
           ) : (
             <>
-              <p className="max-w-[48ch] font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-muted-foreground">
+              <p className="max-w-[48ch] text-xs leading-relaxed text-muted-foreground">
                 Sebagian lembar mungkin sudah tercetak. Periksa printer sebelum mencoba lagi.
               </p>
               <div className="flex flex-wrap justify-center gap-3">
@@ -367,15 +367,15 @@ export function BluetoothPrintScreen({
         </>
       ) : busy ? (
         <>
-          <Loader2 className="size-12 animate-spin" aria-hidden />
-          <p className="font-display text-2xl uppercase leading-none tracking-tight">
+          <Loader2 className="size-10 shrink-0 animate-spin" aria-hidden />
+          <p className="font-display text-xl uppercase leading-none tracking-[-0.02em] md:text-2xl">
             {state === "connecting"
               ? "Menghubungkan printer"
               : state === "preparing"
                 ? "Menyiapkan lembar"
                 : "Mencetak"}
           </p>
-          <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+          <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
             {progress ? `LEMBAR ${progress.sheet} / ${progress.total}` : "SIAPKAN KERTAS"}
           </p>
           <Button size="lg" variant="outline" onClick={() => leave(false)}>
@@ -384,11 +384,11 @@ export function BluetoothPrintScreen({
         </>
       ) : !supported && serialSupported ? (
         <>
-          <Bluetooth className="size-12" aria-hidden />
-          <p className="font-display text-2xl uppercase leading-none tracking-tight">
+          <Bluetooth className="size-10 shrink-0" aria-hidden />
+          <p className="font-display text-xl uppercase leading-none tracking-[-0.02em] md:text-2xl">
             Cetak ke printer Bluetooth
           </p>
-          <p className="max-w-[46ch] font-mono text-xs uppercase leading-relaxed tracking-[0.1em] text-muted-foreground">
+          <p className="max-w-[46ch] text-sm leading-relaxed text-muted-foreground">
             Web Bluetooth tidak tersedia, tetapi Web Serial bisa dipakai untuk printer Classic (SPP)
             yang sudah di-pair di OS.
           </p>
@@ -406,11 +406,11 @@ export function BluetoothPrintScreen({
         </>
       ) : (
         <>
-          <Bluetooth className="size-12" aria-hidden />
-          <p className="font-display text-2xl uppercase leading-none tracking-tight">
+          <Bluetooth className="size-10 shrink-0" aria-hidden />
+          <p className="font-display text-xl uppercase leading-none tracking-[-0.02em] md:text-2xl">
             Cetak ke printer Bluetooth
           </p>
-          <p className="max-w-[46ch] font-mono text-xs uppercase leading-relaxed tracking-[0.1em] text-muted-foreground">
+          <p className="max-w-[46ch] text-sm leading-relaxed text-muted-foreground">
             {printerName
               ? `Printer terakhir: ${printerName}. Nyalakan printer lalu hubungkan.`
               : "Nyalakan printer thermal, aktifkan Bluetooth, lalu hubungkan."}
@@ -431,7 +431,7 @@ export function BluetoothPrintScreen({
           <button
             type="button"
             onClick={() => void connectAndPrint(true)}
-            className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground underline underline-offset-4 hover:text-ink"
+            className="min-h-11 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground underline underline-offset-4 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
           >
             Printer tidak muncul? Cari semua perangkat
           </button>

@@ -39,8 +39,12 @@ export function PhotoboxForm({ outlets, photobox, onDone }: Props) {
   const [unlimitedRetakes, setUnlimitedRetakes] = useState(
     photobox?.session_settings.max_retakes == null
   );
-  const [printMode, setPrintMode] = useState<"browser" | "bluetooth">(
-    photobox?.print_settings.mode === "bluetooth" ? "bluetooth" : "browser"
+  const [printMode, setPrintMode] = useState<"browser" | "bluetooth" | "cups">(
+    photobox?.print_settings.mode === "bluetooth"
+      ? "bluetooth"
+      : photobox?.print_settings.mode === "cups"
+        ? "cups"
+        : "browser"
   );
   const [captchaVerified, setCaptchaVerified] = useState(false);
   const [captchaStatus, setCaptchaStatus] = useState<TurnstileStatus>("idle");
@@ -270,6 +274,39 @@ export function PhotoboxForm({ outlets, photobox, onDone }: Props) {
           <legend className="px-2 font-mono text-xs font-bold uppercase tracking-[0.1em]">
             Sesi &amp; retake
           </legend>
+          <div className="flex flex-col gap-2">
+            <label
+              htmlFor={`pb-provider-${uid}`}
+              className="font-mono text-xs uppercase tracking-[0.1em]"
+            >
+              Provider kamera
+            </label>
+            <Select
+              id={`pb-provider-${uid}`}
+              name="camera_provider"
+              defaultValue={photobox?.camera_settings.provider ?? "browser"}
+              disabled={pending}
+            >
+              <option value="browser">Browser / webcam</option>
+              <option value="gphoto2">GPhoto2 / DSLR bridge lokal</option>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-2 md:col-span-2">
+            <label htmlFor={`pb-camera-bridge-${uid}`} className="font-mono text-xs uppercase tracking-[0.1em]">
+              URL bridge kamera
+            </label>
+            <Input
+              id={`pb-camera-bridge-${uid}`}
+              name="camera_bridge_url"
+              defaultValue={photobox?.camera_settings.bridge_url ?? "http://127.0.0.1:17777"}
+              placeholder="http://127.0.0.1:17777"
+              maxLength={300}
+              disabled={pending}
+            />
+            <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-muted-foreground">
+              Dipakai saat provider GPhoto2. Jalankan `npm run bridge:local` di komputer kiosk.
+            </p>
+          </div>
           <div className="flex flex-col gap-2">
             <label
               htmlFor={`pb-timer-${uid}`}
@@ -536,6 +573,7 @@ export function PhotoboxForm({ outlets, photobox, onDone }: Props) {
               }
             >
               <option value="browser">Dialog sistem (printer foto)</option>
+              <option value="cups">CUPS bridge lokal (auto-print)</option>
               <option value="bluetooth">Bluetooth thermal (ESC/POS)</option>
             </Select>
           </div>
@@ -576,6 +614,39 @@ export function PhotoboxForm({ outlets, photobox, onDone }: Props) {
             </>
           ) : (
             <>
+              {printMode === "cups" && (
+                <>
+                  <div className="flex flex-col gap-2 md:col-span-1">
+                    <label htmlFor={`pb-cups-bridge-${uid}`} className="font-mono text-xs uppercase">
+                      URL bridge CUPS
+                    </label>
+                    <Input
+                      id={`pb-cups-bridge-${uid}`}
+                      name="print_bridge_url"
+                      defaultValue={photobox?.print_settings.bridge_url ?? "http://127.0.0.1:17777"}
+                      placeholder="http://127.0.0.1:17777"
+                      maxLength={300}
+                      disabled={pending}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2 md:col-span-1">
+                    <label htmlFor={`pb-cups-printer-${uid}`} className="font-mono text-xs uppercase">
+                      Nama printer CUPS
+                    </label>
+                    <Input
+                      id={`pb-cups-printer-${uid}`}
+                      name="printer_name"
+                      defaultValue={photobox?.print_settings.printer_name ?? ""}
+                      placeholder="Kosong = default OS"
+                      maxLength={128}
+                      disabled={pending}
+                    />
+                  </div>
+                  <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-muted-foreground md:col-span-2">
+                    CUPS bridge mencetak PDF langsung tanpa dialog browser. Jalankan `npm run bridge:local` di komputer kiosk.
+                  </p>
+                </>
+              )}
               <div className="flex flex-col gap-2">
                 <label htmlFor={`pb-paper-${uid}`} className="font-mono text-xs uppercase">
                   Ukuran kertas

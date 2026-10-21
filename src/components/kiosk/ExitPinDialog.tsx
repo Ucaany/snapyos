@@ -14,7 +14,7 @@ type Props = {
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
 
 const keyBtn =
-  "border-2 border-ink bg-bg py-4 font-display text-2xl uppercase tracking-tight shadow-[4px_4px_0_0_#111111] transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
+  "min-h-14 border-2 border-ink bg-bg font-display text-xl font-bold uppercase tracking-tight shadow-[3px_3px_0_0_#111111] transition-transform duration-150 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-50";
 
 /**
  * Dialog PIN keluar kiosk — petugas memasukkan PIN (diatur owner di dashboard
@@ -116,26 +116,26 @@ export function ExitPinDialog({ deviceToken, onSuccess, onCancel }: Props) {
       role="dialog"
       aria-modal="true"
       aria-label="Keluar mode kiosk"
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-ink/40 p-4"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-ink/40 p-3 sm:p-4"
     >
       <div
         ref={dialogRef}
         tabIndex={-1}
-        className="flex w-full max-w-[420px] flex-col gap-5 border-4 border-ink bg-bg p-6 shadow-[8px_8px_0_0_#111111] outline-none"
+        className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[400px] flex-col gap-4 overflow-y-auto border-2 border-ink bg-bg p-4 shadow-[6px_6px_0_0_#111111] outline-none sm:max-h-[calc(100dvh-2rem)] sm:p-5 md:p-6"
       >
         <div className="flex items-center gap-3">
           <LockKeyhole className="size-6 shrink-0" aria-hidden />
-          <div className="flex min-w-0 flex-col">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-muted-foreground">
+          <div className="flex min-w-0 flex-col gap-1">
+            <p className="font-mono text-[10px] font-bold uppercase leading-none tracking-[0.24em] text-muted-foreground">
               {"AKSES PETUGAS"}
             </p>
-            <h2 className="font-display text-2xl uppercase leading-none tracking-tight">
+            <h2 className="font-display text-xl uppercase leading-none tracking-[-0.02em] md:text-2xl">
               Keluar mode kiosk
             </h2>
           </div>
         </div>
 
-        <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-muted-foreground">
+        <p className="text-xs leading-relaxed text-muted-foreground">
           Masukkan PIN keluar yang diatur owner. Sesi foto yang sedang berjalan tidak terputus,
           kembali ke kiosk untuk melanjutkan.
         </p>
@@ -144,14 +144,14 @@ export function ExitPinDialog({ deviceToken, onSuccess, onCancel }: Props) {
           <>
             <p
               role="alert"
-              className="border-2 border-ink bg-accent px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.05em]"
+              className="border-2 border-ink bg-accent px-3 py-2 text-xs font-bold uppercase leading-relaxed tracking-[0.04em]"
             >
               Perangkat belum diaktivasi. Selesaikan aktivasi sebelum keluar kiosk.
             </p>
             <button
               type="button"
               onClick={onCancel}
-              className="self-center border-2 border-ink bg-surface px-5 py-2 font-mono text-xs font-bold uppercase tracking-[0.1em] shadow-[3px_3px_0_0_#111111] transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+              className="min-h-12 self-center border-2 border-ink bg-surface px-5 py-2 font-mono text-xs font-bold uppercase tracking-[0.1em] shadow-[3px_3px_0_0_#111111] transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
             >
               Kembali
             </button>
@@ -159,11 +159,11 @@ export function ExitPinDialog({ deviceToken, onSuccess, onCancel }: Props) {
         ) : null}
 
         {/* Indikator digit PIN: nilai asli tidak ditampilkan */}
-        <div className="flex justify-center gap-3" aria-live="polite">
+        <div className="flex justify-center gap-2.5" aria-live="polite">
           {Array.from({ length: Math.max(4, pin.length) }).map((_, i) => (
             <span
               key={i}
-              className={`size-5 border-2 border-ink ${i < pin.length ? "bg-ink" : "bg-surface"}`}
+              className={`size-4 border-2 border-ink ${i < pin.length ? "bg-ink" : "bg-surface"}`}
               aria-hidden
             />
           ))}
@@ -172,7 +172,7 @@ export function ExitPinDialog({ deviceToken, onSuccess, onCancel }: Props) {
         {error && (
           <p
             role="alert"
-            className="border-2 border-ink bg-accent px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.05em]"
+            className="border-2 border-ink bg-accent px-3 py-2 text-xs font-bold uppercase leading-relaxed tracking-[0.04em]"
           >
             {error}
           </p>
@@ -180,7 +180,7 @@ export function ExitPinDialog({ deviceToken, onSuccess, onCancel }: Props) {
 
         {deviceToken && (
           <>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-2.5">
               {KEYS.map((k) => (
                 <button key={k} type="button" onClick={() => press(k)} className={keyBtn}>
                   {k}
@@ -204,9 +204,9 @@ export function ExitPinDialog({ deviceToken, onSuccess, onCancel }: Props) {
                 type="button"
                 onClick={() => void submit(pin)}
                 disabled={busy || pin.length < 4}
-                className="border-2 border-ink bg-accent py-4 font-display text-lg uppercase tracking-tight shadow-[4px_4px_0_0_#111111] transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-50 disabled:shadow-none disabled:active:translate-y-0"
+                className="min-h-14 border-2 border-ink bg-accent font-display text-base font-bold uppercase tracking-[-0.01em] shadow-[3px_3px_0_0_#111111] transition-transform active:translate-y-[2px] active:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-50"
               >
-                {busy ? <Loader2 className="mx-auto size-6 animate-spin" aria-hidden /> : "Keluar"}
+                {busy ? <Loader2 className="mx-auto size-5 animate-spin" aria-hidden /> : "Keluar"}
               </button>
             </div>
 
@@ -218,7 +218,7 @@ export function ExitPinDialog({ deviceToken, onSuccess, onCancel }: Props) {
               type="button"
               onClick={onCancel}
               disabled={busy}
-              className="self-center border-2 border-ink bg-surface px-5 py-2 font-mono text-xs font-bold uppercase tracking-[0.1em] shadow-[3px_3px_0_0_#111111] transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-50"
+              className="min-h-12 self-center border-2 border-ink bg-surface px-5 py-2 font-mono text-xs font-bold uppercase tracking-[0.1em] shadow-[3px_3px_0_0_#111111] transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-50"
             >
               Batal. Kembali ke kiosk
             </button>

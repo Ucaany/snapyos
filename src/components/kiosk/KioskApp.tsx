@@ -12,6 +12,7 @@ import type {
 } from "@/lib/kiosk-types";
 import { kioskVisualStyle } from "@/lib/kiosk-types";
 import { printPlan } from "@/lib/print-layout";
+import { resolveCaptureCount } from "@/lib/template-fit";
 import { apiForm, apiPost, KioskError } from "@/components/kiosk/api";
 import { useConfigSync } from "@/components/kiosk/use-config-sync";
 import { useKioskLock, useHoldExit } from "@/components/kiosk/use-kiosk-lock";
@@ -586,8 +587,8 @@ export function KioskApp({
 
   const plan = useMemo(() => {
     if (!selectedPackage) return null;
-    // Template ber-slot → hasil final = SATU composite (docs/15 §5.15):
-    // tiap lembar cetak composite penuh, bukan foto terpisah.
+    // Template ber-slot menghasilkan satu composite penuh. Package hanya
+    // menentukan berapa lembar composite tersebut dicetak.
     const hasLayout = Boolean(selectedTemplate?.layout);
     return printPlan(
       selectedPackage.print_count,
@@ -597,9 +598,13 @@ export function KioskApp({
     );
   }, [selectedPackage, selectedTemplate, currentPhotobox.print_settings.layout]);
 
-  // Jumlah capture = kuota paket. Frame berapa pun slotnya dipakai lintas paket;
-  // slot yang lebih banyak diisi bergiliran di editor (template-fit.ts).
-  const captureCount = selectedPackage?.photo_count ?? 1;
+  // Frame ber-slot adalah kontrak capture. Package tetap mengatur harga dan
+  // print_count, tetapi tidak boleh memotong frame 6 slot menjadi 3 capture.
+  // Template legacy tanpa layout tetap memakai photo_count package.
+  const captureCount = resolveCaptureCount(
+    selectedPackage?.photo_count ?? 1,
+    selectedTemplate?.slot_count ?? 0
+  );
 
   const sessionSettings = currentPhotobox.session_settings;
   // Gaya visual per layar — global kiosk + override per-layar (kioskVisualStyle).
@@ -631,11 +636,18 @@ export function KioskApp({
     >
       {notice && (
         <div
-          className="fixed inset-x-0 top-0 z-50 flex items-start justify-between gap-3 border-b-2 border-ink bg-accent px-4 py-3"
+          className="fixed inset-x-0 top-0 z-50 flex items-start justify-between gap-3 border-b-2 border-ink bg-accent px-4 py-3 shadow-[0_2px_0_0_#111111]"
           style={{ paddingTop: "calc(env(safe-area-inset-top) + 0.75rem)" }}
+          role="status"
+          aria-live="polite"
         >
-          <p className="font-mono text-xs font-bold uppercase tracking-[0.05em]">{notice}</p>
-          <button type="button" onClick={() => setNotice(null)} aria-label="Tutup pesan">
+          <p className="text-xs font-bold uppercase leading-relaxed tracking-[0.03em]">{notice}</p>
+          <button
+            type="button"
+            onClick={() => setNotice(null)}
+            aria-label="Tutup pesan"
+            className="flex size-8 shrink-0 items-center justify-center border-2 border-ink bg-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+          >
             <X className="size-4" aria-hidden />
           </button>
         </div>
@@ -647,7 +659,7 @@ export function KioskApp({
           className="fixed inset-x-0 bottom-0 z-50 flex items-center justify-center gap-2 border-t-2 border-ink bg-accent-2 px-4 py-2"
         >
           <WifiOff className="size-4 shrink-0" aria-hidden />
-          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.1em]">
+          <p className="text-[10px] font-bold uppercase leading-snug tracking-[0.08em]">
             {syncing
               ? "Sinkronisasi hasil offline..."
               : "Offline. Sesi tetap berjalan, hasil disinkronkan otomatis saat online."}
@@ -655,17 +667,11 @@ export function KioskApp({
         </div>
       )}
 
-      {/* Timer turun saat banner notice terbuka: dulu keduanya fixed di
-          kanan-atas dan banner menutupi hitungan waktu sesi. */}
+      {/* Timer ikut alur layout (bukan overlay fixed): sebelumnya badge fixed
+          menutupi eyebrow/judul layar di kanan-atas. Strip ini menyusutkan
+          tinggi layar sedikit, tetapi tidak pernah menutupi teks. */}
       {session && ["template", "capture", "editor"].includes(step) && (
-        <div
-          className="fixed right-3 z-40"
-          style={{
-            top: notice
-              ? "calc(env(safe-area-inset-top) + 4.25rem)"
-              : "calc(env(safe-area-inset-top) + 0.75rem)",
-          }}
-        >
+        <div className="relative z-40 flex shrink-0 justify-end px-3 pt-2">
           <SessionTimer
             expiresAt={session.expires_at}
             warningSeconds={sessionSettings?.warning_seconds ?? 60}
@@ -682,6 +688,7 @@ export function KioskApp({
           deviceToken={deviceToken}
           onDone={handleSetupDone}
           onAuthError={handleSetupAuthError}
+          cameraSettings={currentPhotobox.camera_settings}
           printSettings={currentPhotobox.print_settings}
         />
       )}
@@ -734,8 +741,9 @@ export function KioskApp({
       {step === "template" && selectedPackage && (
         <TemplatePicker
           packageId={selectedPackage.id}
+          packagePhotoCount={selectedPackage.photo_count}
+          packagePrintCount={selectedPackage.print_count}
           businessSlug={businessSlug}
-          photoCount={selectedPackage.photo_count}
           kioskStyle={pageStyle("template")}
           titleText={kioskBranding?.template_title}
           videoUrl={kioskBranding?.pages?.template?.video_url ?? null}
@@ -830,7 +838,7 @@ export function KioskApp({
           // editor memindahkannya ke kanan-atas dan bertabrakan dengan header
           // foto + timer sesi; sudut kiri-bawah tidak dipakai kontrol mana pun.
           aria-describedby="kiosk-exit-help"
-          className="fixed left-3 z-40 flex size-14 items-center justify-center border-2 border-ink/20 bg-surface/60 text-muted-foreground opacity-40 active:opacity-100 lg:left-4"
+          className="fixed left-3 z-40 flex size-12 items-center justify-center border-2 border-ink/20 bg-surface/60 text-muted-foreground opacity-40 transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink lg:left-4"
           style={{
             marginLeft: "env(safe-area-inset-left)",
             bottom: online
@@ -838,7 +846,7 @@ export function KioskApp({
               : "calc(env(safe-area-inset-bottom) + 3.25rem)",
           }}
         >
-          <Lock className="size-5" aria-hidden />
+          <Lock className="size-4" aria-hidden />
         </button>
       )}
       {/* Teks prosedur untuk pembaca layar; tidak terlihat (bukan teks visual). */}
@@ -851,24 +859,24 @@ export function KioskApp({
           penuh; keluar kiosk butuh PIN petugas (server-verified). */}
       {reengage && step !== "activation" && (
         <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center gap-5 border-4 border-ink bg-bg p-6 text-center">
-          <Maximize2 className="size-12" aria-hidden />
-          <h2 className="font-display text-3xl uppercase leading-none tracking-tight">
+          <Maximize2 className="size-10" aria-hidden />
+          <h2 className="font-display text-2xl uppercase leading-none tracking-[-0.02em] md:text-3xl">
             Mode kiosk terkunci
           </h2>
-          <p className="max-w-[46ch] font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
+          <p className="max-w-[46ch] text-sm leading-relaxed text-muted-foreground">
             Layar kembali ke mode penuh untuk melanjutkan sesi.
           </p>
           <button
             type="button"
             onClick={() => requestFullscreen()}
-            className="border-2 border-ink bg-accent px-6 py-3 font-display text-lg uppercase tracking-tight shadow-[4px_4px_0_0_#111111] transition-transform active:translate-y-[2px]"
+            className="min-h-14 border-2 border-ink bg-accent px-6 py-3 font-display text-base font-bold uppercase tracking-[-0.01em] shadow-[4px_4px_0_0_#111111] transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
           >
             Kembali ke kiosk
           </button>
           <button
             type="button"
             onClick={() => setExitPrompt(true)}
-            className="border-2 border-ink bg-surface px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground shadow-[3px_3px_0_0_#111111] transition-transform active:translate-y-[2px]"
+            className="min-h-11 border-2 border-ink bg-surface px-4 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground shadow-[3px_3px_0_0_#111111] transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
           >
             Petugas: keluar kiosk
           </button>

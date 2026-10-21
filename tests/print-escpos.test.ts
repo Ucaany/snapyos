@@ -20,7 +20,7 @@ import {
 import { floydSteinberg, packMono, rgbaToGray, thresholdBitmap } from "../src/lib/print/dither.ts";
 import { bluetoothWidthDots, resolvePrintMode } from "../src/lib/print/print-mode.ts";
 import { qrBitmap } from "../src/lib/print/qr.ts";
-import { printSheets, printPlan } from "../src/lib/print-layout.ts";
+import { printPageSize, printSheets, printPlan } from "../src/lib/print-layout.ts";
 
 test("command dasar sesuai byte ESC/POS", () => {
   assert.deepEqual(Array.from(escInit()), [0x1b, 0x40]);
@@ -153,4 +153,22 @@ test("printSheets: strip menumpuk semua foto dalam satu lembar", () => {
 test("printSheets: digital tidak menghasilkan lembar", () => {
   assert.deepEqual(printSheets(printPlan(0, 3, "single"), 3, 1), []);
   assert.deepEqual(printSheets(printPlan(2, 0, "single"), 0, 1), []);
+});
+
+test("frame composite 6-slot dengan print_count 2 menghasilkan 2 lembar yang sama", () => {
+  const plan = printPlan(2, 1, "single");
+  assert.deepEqual(printSheets(plan, 1, 1), [[0], [0]]);
+});
+
+test("printPageSize mengikuti ukuran kertas, orientasi, dan margin", () => {
+  assert.deepEqual(printPageSize({ paper_size: "4x6", margins_mm: 3 }), {
+    widthMm: 101.6,
+    heightMm: 152.4,
+    marginMm: 3,
+  });
+  assert.deepEqual(printPageSize({ paper_size: "A6", orientation: "landscape", margins_mm: 50 }), {
+    widthMm: 148,
+    heightMm: 105,
+    marginMm: 20,
+  });
 });

@@ -43,10 +43,7 @@ export async function GET(request: Request) {
 
   const apiKey = process.env.EMOJI_API_KEY;
   if (!apiKey) {
-    return NextResponse.json(
-      { error: { code: "SERVICE_UNAVAILABLE", message: "Emoji API belum dikonfigurasi." } },
-      { status: 503 }
-    );
+    return NextResponse.json({ data: [] });
   }
 
   const base = "https://emoji-api.com/emojis";

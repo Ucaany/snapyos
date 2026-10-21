@@ -125,9 +125,10 @@ async function assertIdsOwned(
 
 /**
  * Template boleh di-assign lintas paket berapa pun jumlah slotnya. Aturan
- * "slot_count == photo_count" dihapus 2026-10-19: slot yang lebih banyak dari
- * foto diisi bergiliran (`src/lib/template-fit.ts`), dan jumlah capture tetap
- * mengikuti `packages.photo_count`.
+ * "slot_count == photo_count" dihapus 2026-10-19: slot frame menentukan
+ * jumlah capture runtime, sedangkan `packages.photo_count` menjadi fallback
+ * untuk template legacy tanpa slot. Slot yang perlu mengulang foto diisi
+ * bergiliran (`src/lib/template-fit.ts`).
  */
 
 /**

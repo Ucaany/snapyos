@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { PackagesTable } from "@/components/dashboard/PackagesTable";
-import { PageHeader } from "@/components/ui/page-header";
+import { StaffCatalogShell, StaffPackagesBoard } from "@/components/staff/StaffCatalog";
+import { StaffPageHeader } from "@/components/staff/StaffPrimitives";
 import { getActiveBusiness, requireUser } from "@/lib/tenant";
 import { listPackages } from "@/server/packages";
-import { listTemplates } from "@/server/templates";
-import { listOutlets } from "@/server/outlets";
 import { listPhotoboxes } from "@/server/photoboxes";
 
 export const metadata: Metadata = {
@@ -24,10 +22,8 @@ export default async function StaffPackagesPage() {
   const active = await getActiveBusiness(user.id);
   if (!active) redirect("/staff");
 
-  const [packages, templates, outlets, photoboxes] = await Promise.all([
+  const [packages, photoboxes] = await Promise.all([
     listPackages(user.id, active.business.id),
-    listTemplates(user.id, active.business.id),
-    listOutlets(user.id, active.business.id),
     listPhotoboxes(user.id, active.business.id),
   ]);
 
@@ -40,21 +36,31 @@ export default async function StaffPackagesPage() {
         );
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
-      <PageHeader
-        eyebrow="PACKAGE: READ ONLY"
+    <div className="flex flex-col gap-6 p-4 pb-10 sm:gap-8 sm:p-6 md:p-8 lg:p-10">
+      <StaffPageHeader
+        eyebrow="PACKAGE · READ ONLY"
         title="Package"
         description="Daftar harga & isi paket di booth yang Anda akses. Harga dikunci owner."
+        aside={
+          <div className="border-2 border-ink bg-bg px-3 py-2">
+            <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">
+              PAKET TERSEDIA
+            </p>
+            <p className="font-mono text-xl font-bold leading-none">
+              {String(visiblePackages.length).padStart(2, "0")} PAKET
+            </p>
+          </div>
+        }
       />
-      <PackagesTable
-        packages={visiblePackages}
-        templates={templates.map((t) => ({ id: t.id, name: `${t.name} (${t.category})` }))}
-        outlets={outlets
-          .filter((outlet) => photoboxes.some((booth) => booth.outlet_id === outlet.id))
-          .map((o) => ({ id: o.id, name: o.name }))}
-        photoboxes={photoboxes.map((b) => ({ id: b.id, name: b.name }))}
-        canWrite={false}
-      />
+      <StaffCatalogShell
+        title="PACKAGE.REGISTER"
+        meta={`${String(visiblePackages.length).padStart(2, "0")} PAKET`}
+      >
+        <StaffPackagesBoard
+          packages={visiblePackages}
+          timeZone={active.business.timezone || "Asia/Jakarta"}
+        />
+      </StaffCatalogShell>
     </div>
   );
 }

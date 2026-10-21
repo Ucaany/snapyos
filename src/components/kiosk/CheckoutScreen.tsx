@@ -17,6 +17,13 @@ import { PaidNotice, QrisPayment, type PendingPayment } from "./QrisPayment";
 import { VaPayment } from "./VaPayment";
 import { VoucherPayment } from "./VoucherPayment";
 import { KioskVideoBackground } from "./KioskVideoBackground";
+import {
+  KioskAction,
+  KioskCard,
+  KioskEyebrow,
+  KioskHeader,
+  kioskGutter,
+} from "@/components/kiosk/ui";
 
 type Amounts = {
   checkout_session_id: string;
@@ -54,10 +61,6 @@ type Props = {
   onPaid(checkoutId: string): Promise<boolean>;
   onBack(): void;
 };
-const button =
-  "inline-flex min-h-11 items-center justify-center border-2 border-ink bg-bg px-4 py-2 font-mono text-xs font-bold uppercase shadow-[3px_3px_0_0_#111111] transition-transform active:translate-y-[2px] disabled:opacity-50 disabled:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
-const backButton = `w-fit gap-2 ${button}`;
-const surfaceCard = "border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111]";
 
 export function CheckoutScreen({
   businessSlug,
@@ -270,233 +273,254 @@ export function CheckoutScreen({
         ...kioskThemeVars(kioskStyle),
         backgroundColor: kioskStyle.bg,
         color: kioskStyle.text,
-        paddingLeft: kioskStyle.padding,
-        paddingRight: kioskStyle.padding,
         fontFamily: kioskStyle.fontFamily,
       }
     : undefined;
   // Perataan mengikuti `align` (payment_align legacy sudah diserap di
   // kioskVisualStyle), sehingga kontrol perataan global benar-benar berlaku.
-  const align =
-    kioskStyle?.align === "right"
-      ? "items-end text-right"
-      : kioskStyle?.align === "left"
-        ? "items-start text-left"
-        : "items-center text-center";
+  const align = kioskStyle?.align ?? "left";
+  const gutter = kioskGutter(kioskStyle?.padding);
   const radius = kioskStyle?.radius ?? 0;
   /** Gaya tombol CTA utama: aksen brand + teks yang kontras. */
   const ctaStyle = kioskStyle
     ? { borderRadius: radius, backgroundColor: kioskStyle.accent, color: kioskStyle.accentText }
     : undefined;
+
+  const inner = "mx-auto flex w-full max-w-[980px] flex-1 flex-col gap-5";
+
   return (
     <div
-      className="relative flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto bg-bg px-4 pt-5 pb-16"
-      style={style}
+      className="relative flex min-h-0 flex-1 flex-col overflow-y-auto py-6 md:py-7"
+      style={{ ...style, paddingLeft: gutter, paddingRight: gutter }}
     >
       <KioskVideoBackground videoUrl={videoUrl} />
-      <header
-        className={`relative z-10 mx-auto flex w-full max-w-[1000px] flex-col gap-1 ${align}`}
-      >
-        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] opacity-70">
-          [ CHECKOUT ]
-        </p>
-        <h1
-          className="font-display text-3xl uppercase leading-[0.9] tracking-tight"
-          style={
-            kioskStyle
-              ? {
-                  fontFamily: kioskStyle.fontFamily,
-                  fontSize: `${1.875 * kioskStyle.fontScale}rem`,
-                }
-              : undefined
-          }
-        >
-          {paymentTitle || "Bayar sebelum foto"}
-        </h1>
-        {paymentHint && <p>{paymentHint}</p>}
-      </header>
-      {!online && phase !== "loading" && (
-        <div className="mx-auto flex w-full max-w-[1000px] items-center gap-2 border-2 border-ink bg-accent-2 p-2">
-          <WifiOff className="size-4" />
-          <p className="font-mono text-[10px] font-bold uppercase">
-            Offline. Status akan dicek saat koneksi kembali.
-          </p>
-        </div>
-      )}
-      {phase === "loading" && (
-        <div className="mx-auto flex min-h-[50dvh] w-full max-w-[1000px] flex-1 items-center gap-3 border-2 border-dashed border-ink/40 bg-surface p-6">
-          <Loader2 className="size-6 animate-spin" />
-          <p className="font-mono text-sm font-bold uppercase">[ MENYIAPKAN PEMBAYARAN ]</p>
-        </div>
-      )}
-      {phase === "error" && (
-        <div className="mx-auto flex min-h-[50dvh] w-full max-w-[1000px] flex-1 flex-col justify-center gap-4 border-2 border-ink bg-accent-2 p-6 shadow-[4px_4px_0_0_#111111]">
-          <p className="font-mono text-sm font-bold uppercase">[ ERROR ]</p>
-          <p>{error}</p>
-          <div className="flex gap-3">
-            <button type="button" onClick={() => void load()} className={button}>
-              Coba lagi
-            </button>
-            <button type="button" onClick={onBack} className={button}>
-              Kembali
-            </button>
-          </div>
-        </div>
-      )}
-      {phase === "summary" && amounts && (
-        <section
-          className={`mx-auto flex w-full max-w-[700px] flex-1 flex-col justify-center gap-4 ${surfaceCard}`}
-          style={{ borderRadius: radius }}
-        >
-          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
-            [ RINGKASAN PESANAN ]
-          </p>
-          <h2 className="font-display text-3xl uppercase leading-[0.9]">{pkg.name}</h2>
-          <dl className="border-y-2 border-ink py-3 font-mono text-sm uppercase">
-            <div className="flex justify-between">
-              <dt>Subtotal</dt>
-              <dd>{formatIDR(amounts.gross_amount)}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt>Diskon</dt>
-              <dd>-{formatIDR(amounts.discount_amount)}</dd>
-            </div>
-            <div className="mt-2 flex justify-between border-t-2 border-ink pt-2 text-xl font-bold">
-              <dt>Total</dt>
-              <dd>{formatIDR(amounts.final_amount)}</dd>
-            </div>
-          </dl>
-          <button
-            type="button"
-            onClick={() => setPhase("method-picker")}
-            className="w-fit border-2 border-ink bg-accent px-5 py-3 font-display text-lg uppercase shadow-[4px_4px_0_0_#111111] active:translate-y-[2px]"
-            style={ctaStyle}
-          >
-            Pilih pembayaran
-          </button>
-          <div className="flex flex-wrap gap-3">
-            {offlineEnabled && onOffline && (
-              <button type="button" onClick={onOffline} className={`${button} w-fit`}>
-                Lanjut offline
-              </button>
-            )}
-            <button type="button" onClick={onBack} className={backButton}>
-              <ArrowLeft className="size-4" />
-              Kembali
-            </button>
-          </div>
-        </section>
-      )}
-      {phase === "method-picker" && amounts && (
-        <PaymentMethodPicker
-          methods={amounts.payment_methods}
-          disabled={busy || lockLeft > 0}
-          lockLeft={lockLeft}
-          error={error}
-          onSelect={(method) => {
-            setError(null);
-            // Kartu voucher → layar input kode; metode lain → buat payment.
-            if (method.kind === "voucher") {
-              setPhase("voucher");
-              return;
-            }
-            void create(method);
-          }}
-          onBack={() => {
-            setError(null);
-            setPhase("summary");
-          }}
-          kioskStyle={kioskStyle}
-        />
-      )}
-      {phase === "voucher" && (
-        <VoucherPayment
-          code={voucherCode}
-          onCode={setVoucherCode}
-          onApply={() => void applyVoucher()}
-          onBack={() => {
-            setError(null);
-            setPhase("method-picker");
-          }}
-          busy={busy}
-          error={error}
-          kioskStyle={kioskStyle}
-        />
-      )}
-      {phase === "cash-waiting" && payment && (
-        <CashPayment
-          amount={payment.total_amount}
-          left={left}
-          onCancel={() => {
-            stopTimers();
-            setPayment(null);
-            setError(null);
-            setPhase("method-picker");
-          }}
-          kioskStyle={kioskStyle}
-        />
-      )}
-      {phase === "qris" && payment && (
-        <QrisPayment
-          payment={payment}
-          qrSrc={qrSrc}
-          left={left}
-          online={online}
-          onBack={backToMethods}
-          kioskStyle={kioskStyle}
-        />
-      )}
-      {phase === "va" && payment && (
-        <VaPayment payment={payment} left={left} onBack={backToMethods} kioskStyle={kioskStyle} />
-      )}
-      {phase === "redirect" && payment && (
-        <div
-          className={`mx-auto flex w-full max-w-[700px] flex-1 flex-col justify-center gap-4 ${surfaceCard}`}
-          style={{ borderRadius: radius }}
-        >
-          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
-            [ LANJUTKAN PEMBAYARAN ]
-          </p>
-          <h2 className="font-display text-3xl uppercase leading-[0.9]">
-            Buka aplikasi pembayaran
-          </h2>
-          {payment.payment_url ? (
-            <a
-              href={payment.payment_url}
-              className="w-fit border-2 border-ink bg-accent px-5 py-3 font-display text-lg uppercase shadow-[4px_4px_0_0_#111111]"
-              style={ctaStyle}
+      <div className={`relative z-10 ${inner}`}>
+        <KioskHeader
+          eyebrow="CHECKOUT"
+          title={paymentTitle || "Bayar sebelum foto"}
+          description={paymentHint || "Sesi foto terbuka otomatis setelah pembayaran terverifikasi."}
+          align={align}
+          scale={kioskStyle?.fontScale ?? 1}
+          actions={
+            <KioskAction
+              tone="secondary"
+              size="md"
+              onClick={onBack}
+              kioskStyle={kioskStyle}
+              className="font-mono tracking-[0.1em]"
             >
-              Lanjut bayar
-            </a>
-          ) : (
-            <p>Link pembayaran tidak tersedia.</p>
-          )}
-          <button type="button" onClick={backToMethods} className={backButton}>
-            <ArrowLeft className="size-4" />
-            Kembali
-          </button>
-        </div>
-      )}
-      {phase === "expired" && (
-        <div
-          className={`mx-auto flex min-h-[50dvh] w-full max-w-[700px] flex-1 flex-col justify-center gap-4 ${surfaceCard}`}
-          style={{ borderRadius: radius }}
-        >
-          <p className="font-mono text-sm font-bold uppercase">[ WAKTU HABIS ]</p>
-          <h2 className="font-display text-3xl uppercase">Pembayaran kedaluwarsa</h2>
-          <button type="button" onClick={onBack} className={`${button} w-fit`}>
-            <ArrowLeft className="mr-2 inline size-4" />
-            Kembali
-          </button>
-        </div>
-      )}
-      {phase === "paid" && (
-        <PaidNotice
-          busy={!paidFailed}
-          kioskStyle={kioskStyle}
-          onRetry={paidCheckoutId ? () => void openPaidSession(paidCheckoutId) : undefined}
+              <ArrowLeft className="size-4" aria-hidden />
+              Kembali
+            </KioskAction>
+          }
         />
-      )}
+
+        {!online && phase !== "loading" && (
+          <div className="flex items-center gap-2 border-2 border-ink bg-accent-2/20 px-3 py-2">
+            <WifiOff className="size-4 shrink-0" aria-hidden />
+            <p className="font-mono text-[10px] font-bold uppercase leading-tight tracking-[0.08em]">
+              Offline. Status akan dicek saat koneksi kembali.
+            </p>
+          </div>
+        )}
+
+        {phase === "loading" && (
+          <div
+            className="flex min-h-[46dvh] items-center justify-center gap-3 border-2 border-dashed border-ink/30 bg-surface p-6"
+            style={{ borderRadius: radius }}
+            role="status"
+            aria-live="polite"
+          >
+            <Loader2 className="size-5 animate-spin" aria-hidden />
+            <p className="font-mono text-xs font-bold uppercase tracking-[0.12em]">
+              Menyiapkan pembayaran
+            </p>
+          </div>
+        )}
+
+        {phase === "error" && (
+          <KioskCard className="flex min-h-[42dvh] flex-col justify-center gap-4 p-6">
+            <KioskEyebrow className="text-destructive">{"CHECKOUT GAGAL"}</KioskEyebrow>
+            <p className="max-w-[52ch] text-sm leading-relaxed text-muted-foreground">{error}</p>
+            <div className="flex flex-wrap gap-3">
+              <KioskAction tone="primary" size="md" onClick={() => void load()}>
+                Coba lagi
+              </KioskAction>
+              <KioskAction tone="secondary" size="md" onClick={onBack}>
+                Kembali
+              </KioskAction>
+            </div>
+          </KioskCard>
+        )}
+
+        {phase === "summary" && amounts && (
+          <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+            <KioskCard elevated className="flex flex-col gap-4 p-5 md:p-6">
+              <KioskEyebrow>{"RINGKASAN PESANAN"}</KioskEyebrow>
+              <h2 className="font-display text-2xl uppercase leading-[0.95] tracking-[-0.02em] md:text-3xl">
+                {pkg.name}
+              </h2>
+              <dl className="divide-y-2 divide-ink/10 border-y-2 border-ink/15 font-mono text-sm">
+                <div className="flex items-baseline justify-between gap-4 py-3">
+                  <dt className="text-muted-foreground">Subtotal</dt>
+                  <dd className="font-bold">{formatIDR(amounts.gross_amount)}</dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-4 py-3">
+                  <dt className="text-muted-foreground">Diskon</dt>
+                  <dd className="font-bold">-{formatIDR(amounts.discount_amount)}</dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-4 py-3">
+                  <dt className="font-display text-base uppercase tracking-[-0.01em]">Total</dt>
+                  <dd className="font-display text-xl font-bold tracking-[-0.02em] md:text-2xl">
+                    {formatIDR(amounts.final_amount)}
+                  </dd>
+                </div>
+              </dl>
+            </KioskCard>
+
+            <div className="flex flex-col gap-3">
+              <KioskAction
+                tone="primary"
+                size="xl"
+                onClick={() => setPhase("method-picker")}
+                full
+                kioskStyle={kioskStyle}
+              >
+                Pilih pembayaran
+              </KioskAction>
+              {offlineEnabled && onOffline && (
+                <KioskAction
+                  tone="secondary"
+                  size="md"
+                  onClick={onOffline}
+                  full
+                  kioskStyle={kioskStyle}
+                >
+                  Lanjut offline
+                </KioskAction>
+              )}
+              <p className="text-center text-xs leading-relaxed text-muted-foreground">
+                Metode pembayaran mengikuti yang diaktifkan owner booth.
+              </p>
+            </div>
+          </section>
+        )}
+
+        {phase === "method-picker" && amounts && (
+          <PaymentMethodPicker
+            methods={amounts.payment_methods}
+            disabled={busy || lockLeft > 0}
+            lockLeft={lockLeft}
+            error={error}
+            onSelect={(method) => {
+              setError(null);
+              // Kartu voucher → layar input kode; metode lain → buat payment.
+              if (method.kind === "voucher") {
+                setPhase("voucher");
+                return;
+              }
+              void create(method);
+            }}
+            onBack={() => {
+              setError(null);
+              setPhase("summary");
+            }}
+            kioskStyle={kioskStyle}
+          />
+        )}
+
+        {phase === "voucher" && (
+          <VoucherPayment
+            code={voucherCode}
+            onCode={setVoucherCode}
+            onApply={() => void applyVoucher()}
+            onBack={() => {
+              setError(null);
+              setPhase("method-picker");
+            }}
+            busy={busy}
+            error={error}
+            kioskStyle={kioskStyle}
+          />
+        )}
+
+        {phase === "cash-waiting" && payment && (
+          <CashPayment
+            amount={payment.total_amount}
+            left={left}
+            onCancel={() => {
+              stopTimers();
+              setPayment(null);
+              setError(null);
+              setPhase("method-picker");
+            }}
+            kioskStyle={kioskStyle}
+          />
+        )}
+
+        {phase === "qris" && payment && (
+          <QrisPayment
+            payment={payment}
+            qrSrc={qrSrc}
+            left={left}
+            online={online}
+            onBack={backToMethods}
+            kioskStyle={kioskStyle}
+          />
+        )}
+
+        {phase === "va" && payment && (
+          <VaPayment payment={payment} left={left} onBack={backToMethods} kioskStyle={kioskStyle} />
+        )}
+
+        {phase === "redirect" && payment && (
+          <KioskCard elevated className="flex min-h-[42dvh] flex-col justify-center gap-4 p-6">
+            <KioskEyebrow>{"LANJUTKAN PEMBAYARAN"}</KioskEyebrow>
+            <h2 className="font-display text-2xl uppercase leading-[0.95] tracking-[-0.02em] md:text-3xl">
+              Buka aplikasi pembayaran
+            </h2>
+            {payment.payment_url ? (
+              <a
+                href={payment.payment_url}
+                className="inline-flex min-h-14 w-fit items-center justify-center border-2 border-ink px-6 py-3 font-display text-base font-bold uppercase tracking-[-0.01em] shadow-[4px_4px_0_0_#111111]"
+                style={ctaStyle}
+              >
+                Lanjut bayar
+              </a>
+            ) : (
+              <p className="text-sm text-muted-foreground">Link pembayaran tidak tersedia.</p>
+            )}
+            <KioskAction tone="secondary" size="md" onClick={backToMethods} className="w-fit">
+              <ArrowLeft className="size-4" aria-hidden />
+              Kembali
+            </KioskAction>
+          </KioskCard>
+        )}
+
+        {phase === "expired" && (
+          <KioskCard elevated className="flex min-h-[42dvh] flex-col justify-center gap-4 p-6">
+            <KioskEyebrow className="text-destructive">{"WAKTU HABIS"}</KioskEyebrow>
+            <h2 className="font-display text-2xl uppercase leading-[0.95] tracking-[-0.02em] md:text-3xl">
+              Pembayaran kedaluwarsa
+            </h2>
+            <p className="max-w-[52ch] text-sm leading-relaxed text-muted-foreground">
+              Sesi belum terpakai. Pilih paket lagi untuk membuat pembayaran baru.
+            </p>
+            <KioskAction tone="primary" size="md" onClick={onBack} className="w-fit">
+              <ArrowLeft className="size-4" aria-hidden />
+              Kembali ke paket
+            </KioskAction>
+          </KioskCard>
+        )}
+
+        {phase === "paid" && (
+          <PaidNotice
+            busy={!paidFailed}
+            kioskStyle={kioskStyle}
+            onRetry={paidCheckoutId ? () => void openPaidSession(paidCheckoutId) : undefined}
+          />
+        )}
+      </div>
     </div>
   );
 }

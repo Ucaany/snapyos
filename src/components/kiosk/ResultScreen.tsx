@@ -8,6 +8,7 @@ import { defaultBrandColors } from "@/lib/brand-defaults";
 import { kioskThemeVars, type KioskVisualStyle } from "@/lib/kiosk-types";
 import { useObjectUrls } from "@/components/kiosk/use-object-url";
 import { KioskVideoBackground } from "@/components/kiosk/KioskVideoBackground";
+import { KioskEyebrow, kioskGutter } from "@/components/kiosk/ui";
 
 type FinalPhoto = { blob: Blob };
 
@@ -35,8 +36,7 @@ type Props = {
   onReset: () => void;
 };
 
-/** Kiosk Result — docs/05 §5.13 (QR ke halaman result online).
- *  2-part layout: left = photo/GIF preview, right = QR + CTA. */
+/** Kiosk Result — docs/05 §5.13 (QR ke halaman result online). */
 export function ResultScreen({
   resultToken,
   gifUrl,
@@ -140,101 +140,171 @@ export function ResultScreen({
   const isBelow = resultLayout === "qr-below";
   const qrFirst = resultLayout === "qr-left";
   const ks = kioskStyle;
+  const radius = ks?.radius ?? 0;
+  const gutter = kioskGutter(ks?.padding);
+  const alignClass =
+    ks?.align === "left"
+      ? "items-start text-left"
+      : ks?.align === "right"
+        ? "items-end text-right"
+        : "items-center text-center";
+
+  const actionButtons = (
+    <div className="flex w-full max-w-[320px] flex-col gap-2.5">
+      {canPrint && (
+        // Setelah cetak pertama, tombol tetap ada sebagai cetak ulang
+        // (docs/05 §5.15.5) — kertas macet / hasil pudar tidak boleh
+        // memaksa customer mengulang seluruh sesi.
+        <Button
+          size="lg"
+          variant={printed ? "outline" : "default"}
+          onClick={onPrint}
+          className={printed ? "min-h-14" : "min-h-14 bg-accent"}
+          style={
+            ks
+              ? {
+                  borderRadius: radius,
+                  ...(printed ? {} : { backgroundColor: ks.accent, color: ks.accentText }),
+                }
+              : undefined
+          }
+        >
+          <Printer className="size-5" aria-hidden /> {printed ? "Cetak ulang" : "Cetak"}
+        </Button>
+      )}
+      {photoUrls.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <Button
+            size="lg"
+            variant="outline"
+            onClick={downloadAll}
+            disabled={downloading}
+            className="min-h-14"
+            style={ks ? { borderRadius: radius } : undefined}
+          >
+            <Download className="size-5" aria-hidden />
+            {downloading
+              ? "Mengunduh..."
+              : photoUrls.length > 1
+                ? `Unduh ${photoUrls.length} foto`
+                : "Unduh foto"}
+          </Button>
+          {photoUrls.length > 1 && iosDevice && (
+            <p
+              role="status"
+              className="text-[11px] leading-relaxed text-muted-foreground"
+            >
+              Safari hanya menyimpan file pertama. Untuk semua foto, pindai QR di ponsel.
+            </p>
+          )}
+        </div>
+      )}
+      <Button
+        size="lg"
+        onClick={onReset}
+        className="min-h-14 bg-accent-3"
+        style={
+          ks
+            ? {
+                borderRadius: radius,
+                backgroundColor: ks.accent,
+                color: ks.accentText,
+              }
+            : undefined
+        }
+      >
+        <Check className="size-5" aria-hidden /> Selesai
+      </Button>
+    </div>
+  );
 
   return (
     <div
-      className={`relative flex min-h-0 flex-1 overflow-y-auto bg-bg ${isBelow ? "flex-col" : "flex-col lg:flex-row lg:overflow-hidden"}`}
+      className={`relative flex min-h-0 flex-1 overflow-y-auto ${isBelow ? "flex-col" : "flex-col lg:flex-row lg:overflow-hidden"}`}
       style={
         ks
           ? {
               ...kioskThemeVars(ks),
               backgroundColor: ks.bg,
               color: ks.text,
-              paddingLeft: ks.padding,
-              paddingRight: ks.padding,
             }
           : undefined
       }
     >
       <KioskVideoBackground videoUrl={videoUrl} />
-      {/* Left panel: photo/GIF preview */}
+
+      {/* Panel kiri: preview hasil. Latar permukaan membuat foto menonjol. */}
       <div
-        className={`relative z-10 flex flex-1 flex-col items-center justify-center gap-3 overflow-y-auto p-4 lg:min-h-0 lg:gap-4 lg:p-6 ${
+        className={`relative z-10 flex flex-1 flex-col items-center justify-center gap-4 py-5 lg:min-h-0 lg:overflow-y-auto lg:py-6 ${
           videoUrl ? "bg-transparent" : "bg-surface"
         } ${
-          isBelow ? "border-b-2 border-ink" : "border-b-2 border-ink lg:border-b-0 lg:border-r-2"
+          isBelow ? "border-b-2 border-ink/15" : "border-b-2 border-ink/15 lg:border-b-0 lg:border-r-2"
         } ${qrFirst && !isBelow ? "lg:order-2 lg:border-r-0 lg:border-l-2" : ""}`}
+        style={{ paddingLeft: gutter, paddingRight: gutter }}
       >
-        <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-          {"" + businessName.toUpperCase()}
-        </p>
+        <KioskEyebrow>{businessName}</KioskEyebrow>
         {previewPhoto ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={previewPhoto}
             alt="Hasil foto berframe"
-            className="max-h-[50vh] max-w-full border-2 border-ink shadow-[4px_4px_0_0_#111111] lg:max-h-[64vh]"
+            className="max-h-[46vh] max-w-full border-2 border-ink object-contain shadow-[4px_4px_0_0_#111111] lg:max-h-[62vh]"
           />
         ) : (
-          <div className="flex h-[40vh] w-[min(50vh,80vw)] items-center justify-center border-2 border-dashed border-ink/30 bg-muted">
+          <div className="flex h-[38vh] w-[min(46vh,78vw)] items-center justify-center border-2 border-dashed border-ink/30 bg-muted">
             <Loader2 className="size-8 animate-spin text-muted-foreground" aria-hidden />
           </div>
         )}
 
         {hasGif ? (
-          <div className="flex flex-wrap items-center justify-center gap-4">
+          <div className="flex flex-wrap items-center justify-center gap-3">
             {/* GIF ditampilkan seukuran potret hasil capture: thumbnail 48px
                 tidak membuktikan GIF-nya bergerak. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={gifUrl ?? undefined}
               alt="Preview GIF"
-              className="h-[clamp(140px,20vh,200px)] w-auto border-2 border-ink object-contain"
-              style={ks ? { borderRadius: ks.radius } : undefined}
+              className="h-[clamp(120px,18vh,180px)] w-auto border-2 border-ink object-contain"
+              style={ks ? { borderRadius: radius } : undefined}
               onError={() => setGifError(true)}
             />
-            <div className="flex flex-col gap-1">
-              <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
-                GIF Slideshow
-              </p>
+            <div className="flex flex-col gap-1.5">
+              <KioskEyebrow>GIF slideshow</KioskEyebrow>
               <a
                 href={gifUrl ?? "#"}
                 download="snapyos-slideshow.gif"
-                className="inline-flex items-center gap-1.5 border-2 border-ink bg-accent-2/10 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em] hover:bg-accent-2/20"
+                className="inline-flex min-h-11 items-center gap-1.5 border-2 border-ink bg-bg px-3 py-2 text-[11px] font-bold uppercase tracking-[0.06em] hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+                style={ks ? { borderRadius: radius } : undefined}
               >
-                <Download className="size-3" aria-hidden /> Unduh GIF
+                <Download className="size-3.5" aria-hidden /> Unduh GIF
               </a>
             </div>
           </div>
         ) : (
-          <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+          <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
             GIF belum tersedia
           </p>
         )}
       </div>
 
-      {/* QR panel: status + CTA (posisi via result_layout, perataan via align) */}
+      {/* Panel QR: status + CTA (posisi via result_layout, perataan via align) */}
       <div
-        className={`flex shrink-0 flex-col justify-center gap-4 overflow-y-auto p-5 lg:max-h-[100dvh] lg:gap-5 lg:p-6 ${
-          isBelow ? "w-full" : "lg:w-[38%]"
-        } ${qrFirst && !isBelow ? "lg:order-1" : ""} ${
-          ks?.align === "left"
-            ? "items-start text-left"
-            : ks?.align === "right"
-              ? "items-end text-right"
-              : "items-center text-center"
-        }`}
+        className={`flex shrink-0 flex-col justify-center gap-4 overflow-y-auto py-5 lg:max-h-[100dvh] lg:py-6 ${
+          isBelow ? "w-full" : "lg:w-[40%]"
+        } ${qrFirst && !isBelow ? "lg:order-1" : ""} ${alignClass}`}
+        style={{ paddingLeft: gutter, paddingRight: gutter }}
       >
         <div className="flex flex-col gap-2">
           <h1
-            className="font-display text-3xl uppercase leading-[0.9] tracking-tight md:text-4xl lg:text-5xl"
-            style={
-              ks ? { fontSize: `${1.875 * ks.fontScale}rem`, fontFamily: ks.fontFamily } : undefined
-            }
+            className="font-display uppercase leading-[0.92] tracking-[-0.02em]"
+            style={{
+              fontSize: `calc(clamp(1.6rem, 3.4vw, 2.6rem) * ${ks?.fontScale ?? 1})`,
+              fontFamily: ks?.fontFamily,
+            }}
           >
             {resultTitle || "Foto kamu jadi!"}
           </h1>
-          <p className="max-w-[36ch] text-xs leading-relaxed text-muted-foreground md:text-sm">
+          <p className="max-w-[38ch] text-sm leading-relaxed text-muted-foreground md:text-base">
             {resultHint ||
               "Pindai QR untuk mengunduh GIF animasi dan foto berframe di ponsel Anda."}
           </p>
@@ -242,27 +312,27 @@ export function ResultScreen({
 
         <div
           className="flex flex-col items-center gap-3 border-2 border-ink bg-surface p-4 shadow-[4px_4px_0_0_#111111] md:p-5"
-          style={ks ? { borderRadius: ks.radius } : undefined}
+          style={ks ? { borderRadius: radius } : undefined}
         >
-          <p className="inline-flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.1em]">
+          <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase leading-none tracking-[0.1em]">
             <Check className="size-4 text-accent-3" aria-hidden />
             {printed ? "Permintaan print dikirim" : "Hasil digital siap"}
           </p>
           {pendingSync && (
-            <p className="inline-flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
-              <RefreshCcw className="size-4 animate-spin" aria-hidden />
+            <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase leading-snug tracking-[0.08em] text-muted-foreground">
+              <RefreshCcw className="size-4 shrink-0 animate-spin" aria-hidden />
               Menunggu sinkronisasi. Hasil online aktif setelah koneksi kembali
             </p>
           )}
           {syncFailed && (
-            <p className="inline-flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.1em]">
-              <TriangleAlert className="size-4 text-destructive" aria-hidden />
+            <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase leading-snug tracking-[0.08em]">
+              <TriangleAlert className="size-4 shrink-0 text-destructive" aria-hidden />
               Sesi berakhir sebelum sinkron. Hubungi petugas untuk hasil foto
             </p>
           )}
 
           {!qrUsable ? (
-            <div className="max-w-[28ch] border-2 border-ink bg-accent-2/10 p-4 text-center font-mono text-xs font-bold uppercase tracking-[0.08em]">
+            <div className="max-w-[30ch] border-2 border-ink bg-accent-2/10 p-4 text-center text-xs font-bold uppercase leading-relaxed tracking-[0.04em]">
               {syncFailed
                 ? "Hasil online tidak tersedia. Hubungi petugas untuk salinan foto."
                 : "Hasil tersimpan di perangkat. QR aktif setelah sinkronisasi selesai."}
@@ -285,73 +355,7 @@ export function ResultScreen({
           )}
         </div>
 
-        <div className="flex w-full max-w-[280px] flex-col gap-3">
-          {canPrint && (
-            // Setelah cetak pertama, tombol tetap ada sebagai cetak ulang
-            // (docs/05 §5.15.5) — kertas macet / hasil pudar tidak boleh
-            // memaksa customer mengulang seluruh sesi.
-            <Button
-              size="lg"
-              variant={printed ? "outline" : "default"}
-              onClick={onPrint}
-              className={printed ? undefined : "bg-accent"}
-              style={
-                kioskStyle
-                  ? {
-                      borderRadius: kioskStyle.radius,
-                      ...(printed
-                        ? {}
-                        : { backgroundColor: kioskStyle.accent, color: kioskStyle.accentText }),
-                    }
-                  : undefined
-              }
-            >
-              <Printer className="size-5" aria-hidden /> {printed ? "Cetak ulang" : "Cetak"}
-            </Button>
-          )}
-          {photoUrls.length > 0 && (
-            <div className="flex flex-col gap-2">
-              <Button
-                size="lg"
-                variant="outline"
-                onClick={downloadAll}
-                disabled={downloading}
-                style={kioskStyle ? { borderRadius: kioskStyle.radius } : undefined}
-              >
-                <Download className="size-5" aria-hidden />
-                {downloading
-                  ? "Mengunduh…"
-                  : photoUrls.length > 1
-                    ? `Unduh ${photoUrls.length} foto`
-                    : "Unduh foto"}
-              </Button>
-              {photoUrls.length > 1 && iosDevice && (
-                <p
-                  role="status"
-                  className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-muted-foreground"
-                >
-                  Safari hanya menyimpan file pertama. Untuk semua foto, pindai QR di ponsel.
-                </p>
-              )}
-            </div>
-          )}
-          <Button
-            size="lg"
-            onClick={onReset}
-            className="bg-accent-3"
-            style={
-              kioskStyle
-                ? {
-                    borderRadius: kioskStyle.radius,
-                    backgroundColor: kioskStyle.accent,
-                    color: kioskStyle.accentText,
-                  }
-                : undefined
-            }
-          >
-            <Check className="size-5" aria-hidden /> Selesai
-          </Button>
-        </div>
+        {actionButtons}
       </div>
     </div>
   );

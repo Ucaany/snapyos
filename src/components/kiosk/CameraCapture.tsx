@@ -2,10 +2,15 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Camera, FlipHorizontal2, RotateCcw } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { CAMERA_ERRORS, cameraErrorKind } from "@/lib/camera-errors";
 import { captureFrame, normalizeRotation, normalizeZoom } from "@/lib/camera-capture";
-import { resolveFacingMode } from "@/lib/camera-provider";
+import {
+  captureGphoto2,
+  checkCameraBridge,
+  fetchGphoto2Preview,
+  resolveCameraProvider,
+  resolveFacingMode,
+} from "@/lib/camera-provider";
 import { getDeviceProfile } from "@/lib/device-profile";
 import {
   kioskThemeVars,
@@ -16,6 +21,7 @@ import {
 import type { TemplateLayout } from "@/lib/template-layout";
 import { useObjectUrl } from "@/components/kiosk/use-object-url";
 import { FramePreviewPanel } from "@/components/kiosk/FramePreviewPanel";
+import { KioskAction, kioskGutter } from "@/components/kiosk/ui";
 
 type Props = {
   cameraSettings: CameraSettings;
@@ -80,6 +86,9 @@ function CameraCaptureInner({
   const rotation = normalizeRotation(cameraSettings.rotation_degrees);
   const calibrationZoom = normalizeZoom(cameraSettings.zoom);
   const [cameraReady, setCameraReady] = useState(false);
+  const [gphotoPreviewBlob, setGphotoPreviewBlob] = useState<Blob | null>(null);
+  const gphotoPreviewUrl = useObjectUrl(gphotoPreviewBlob);
+  const cameraProvider = resolveCameraProvider(cameraSettings);
   // `action` = label tombol; `onAction` = yang benar-benar dijalankan. Tanpa
   // pemisahan ini, error batas retake (satu-satunya jalur keluar dari review)
   // menampilkan "LANJUTKAN" tapi tombolnya membuka ulang kamera — customer
@@ -141,6 +150,19 @@ function CameraCaptureInner({
       const generation = ++streamGeneration.current;
       setError(null);
       setCameraReady(false);
+      if (cameraProvider === "gphoto2") {
+        try {
+          const result = await checkCameraBridge(cameraSettings);
+          if (!result.ok || !result.camera) throw new Error(result.message || "Kamera GPhoto2 tidak terdeteksi.");
+          setCameraReady(true);
+        } catch (e) {
+          setError({
+            message: e instanceof Error ? e.message : "Bridge GPhoto2 tidak siap.",
+            action: "COBA LAGI",
+          });
+        }
+        return;
+      }
       clearReconnectTimers();
       if (!navigator.mediaDevices?.getUserMedia) {
         setError({
@@ -214,9 +236,8 @@ function CameraCaptureInner({
       }
     },
     [
-      cameraSettings.capture_width,
-      cameraSettings.capture_height,
-      cameraSettings.facingMode,
+      cameraSettings,
+      cameraProvider,
       onTrackEnded,
       stopStream,
     ]
@@ -262,12 +283,13 @@ function CameraCaptureInner({
     return () => navigator.mediaDevices?.removeEventListener("devicechange", handleDeviceChange);
     // Tanpa daftar deps, listener dicopot-dipasang tiap render — di sesi foto
     // yang progress-nya berubah terus, itu ribuan pasang-copot per menit.
-  }, [openStream, cameraSettings.preferred_device_id]);
+  }, [cameraProvider, openStream, cameraSettings.preferred_device_id]);
 
   // Watchdog: track mati di tengah sesi (USB goyang, power save) → reconnect
   // otomatis tanpa menunggu event devicechange (yang kadang tak ter-pause).
   // Tidak berlaku saat error tampil (permission denied dsb.) — hindari loop.
   useEffect(() => {
+    if (cameraProvider === "gphoto2") return;
     const id = setInterval(() => {
       if (stage !== "preview" || error) return;
       const track = streamRef.current?.getVideoTracks()[0];
@@ -277,7 +299,31 @@ function CameraCaptureInner({
     }, 3000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, error]);
+  }, [cameraProvider, stage, error]);
+
+  useEffect(() => {
+    if (cameraProvider !== "gphoto2" || stage === "review" || error) return;
+    let cancelled = false;
+    let previewInFlight = false;
+    const refresh = async () => {
+      if (previewInFlight) return;
+      previewInFlight = true;
+      try {
+        const blob = await fetchGphoto2Preview(cameraSettings);
+        if (!cancelled) setGphotoPreviewBlob(blob);
+      } catch {
+        if (!cancelled) setGphotoPreviewBlob(null);
+      } finally {
+        previewInFlight = false;
+      }
+    };
+    void refresh();
+    const timer = setInterval(() => void refresh(), 1500);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [cameraProvider, cameraSettings, stage, error]);
 
   function startCountdown() {
     if (!cameraReady) return;
@@ -301,15 +347,18 @@ function CameraCaptureInner({
   async function doCapture() {
     // Guard: countdown terhenti (kamera reconnect di tengah hitung) → jangan
     // ambil frame dari stream yang baru/baru tersambung.
-    if (!videoRef.current || stageRef.current !== "countdown") return;
+    if (stageRef.current !== "countdown") return;
     try {
-      const photo = await captureFrame(
-        videoRef.current,
-        cameraSettings.jpeg_quality || 0.92,
-        mirror,
-        normalizeRotation(cameraSettings.rotation_degrees),
-        normalizeZoom(cameraSettings.zoom)
-      );
+      const photo =
+        cameraProvider === "gphoto2"
+          ? { blob: await captureGphoto2(cameraSettings) }
+          : await captureFrame(
+              videoRef.current!,
+              cameraSettings.jpeg_quality || 0.92,
+              mirror,
+              normalizeRotation(cameraSettings.rotation_degrees),
+              normalizeZoom(cameraSettings.zoom)
+            );
       setCurrent(photo);
       setFlash(true);
       if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
@@ -356,8 +405,9 @@ function CameraCaptureInner({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-ink lg:flex-row lg:overflow-hidden">
-      {/* Left panel: camera preview / review */}
-      <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-ink">
+      {/* Panel kamera: selalu mengisi sisa tinggi. Di layar sempit tinggi
+          minimum dipertahankan agar preview tidak gepeng. */}
+      <div className="relative flex min-h-[52dvh] flex-1 items-center justify-center overflow-hidden bg-ink lg:min-h-0">
         {videoUrl && stage === "preview" && (
           <video
             src={videoUrl}
@@ -365,13 +415,29 @@ function CameraCaptureInner({
             muted
             loop
             playsInline
-            className="pointer-events-none absolute inset-0 size-full object-cover opacity-25"
+            className="pointer-events-none absolute inset-0 size-full object-cover opacity-20"
             aria-hidden
           />
         )}
         {stage === "review" && current && currentUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={currentUrl} alt="Hasil foto" className="max-h-full max-w-full object-contain" />
+        ) : cameraProvider === "gphoto2" ? (
+          gphotoPreviewUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={gphotoPreviewUrl}
+              alt="Preview kamera GPhoto2"
+              className="max-h-full max-w-full object-contain"
+            />
+          ) : (
+            <div className="flex max-w-[34ch] flex-col items-center gap-3 px-6 text-center text-bg">
+              <Camera className="size-9" aria-hidden />
+              <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.1em]">
+                Preview live DSLR tidak tersedia. Kamera tetap siap untuk mengambil foto.
+              </p>
+            </div>
+          )
         ) : (
           <>
             <video
@@ -395,24 +461,30 @@ function CameraCaptureInner({
                     .join(" ") || undefined,
               }}
             />
-            {stage === "countdown" && (
-              <div className="absolute inset-0 flex items-center justify-center bg-ink/60">
-                <span className="font-display text-[10rem] leading-none text-accent md:text-[14rem]">
-                  {count}
-                </span>
-              </div>
-            )}
           </>
+        )}
+
+        {stage === "countdown" && (
+          <div className="absolute inset-0 flex items-center justify-center bg-ink/60">
+            <span
+              className="font-display leading-none text-accent"
+              style={{ fontSize: "clamp(6rem, 22vw, 14rem)" }}
+              aria-live="polite"
+            >
+              {count}
+            </span>
+          </div>
         )}
 
         {flash && <div className="pointer-events-none absolute inset-0 bg-white" />}
 
         {error && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-bg p-6 text-center">
-            <Camera className="size-10" aria-hidden />
-            <p className="max-w-[42ch] font-mono text-sm">{error.message}</p>
-            <Button
-              variant="outline"
+            <Camera className="size-9" aria-hidden />
+            <p className="max-w-[42ch] text-sm leading-relaxed">{error.message}</p>
+            <KioskAction
+              tone="secondary"
+              size="md"
               onClick={() => {
                 if (error.onAction) {
                   error.onAction();
@@ -422,30 +494,34 @@ function CameraCaptureInner({
               }}
             >
               {error.action}
-            </Button>
-            <p className="max-w-[42ch] font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+            </KioskAction>
+            <p className="max-w-[42ch] font-mono text-[10px] uppercase leading-relaxed tracking-[0.1em] text-muted-foreground">
               Masih gagal? Panggil petugas untuk mereset sesi.
             </p>
           </div>
         )}
 
         {/* Progress dots overlay (bottom of preview) */}
-        <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-2">
+        <div
+          className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-2"
+          role="status"
+          aria-label={`Foto ${photos.length} dari ${photoCount} terambil`}
+        >
           {Array.from({ length: photoCount }).map((_, i) => (
             <span
               key={i}
-              className={`h-2.5 w-2.5 border border-bg ${i < photos.length ? "bg-accent" : "bg-transparent"}`}
+              className={`h-2 w-6 border border-bg/80 ${i < photos.length ? "bg-accent" : "bg-ink/40"}`}
               aria-hidden
             />
           ))}
         </div>
       </div>
 
-      {/* Right panel: controls + progress (chrome mengikuti kustomisasi kiosk;
-          area kamera tetap gelap agar kontras preview/retake). bg-ink fallback
-          dipakai saat kioskStyle tidak ada (inline style menang bila ada). */}
+      {/* Panel kontrol: chrome mengikuti kustomisasi kiosk; area kamera tetap
+          gelap agar kontras preview/retake. bg-ink fallback dipakai saat
+          kioskStyle tidak ada (inline style menang bila ada). */}
       <div
-        className={`flex shrink-0 flex-col gap-4 overflow-y-auto border-t-2 border-bg bg-ink p-5 lg:w-[38%] lg:border-l-2 lg:border-t-0 lg:justify-center lg:gap-5 lg:p-6 ${
+        className={`flex shrink-0 flex-col gap-5 border-t-2 border-bg/20 bg-ink p-5 lg:w-[38%] lg:border-l-2 lg:border-t-0 lg:justify-center lg:overflow-y-auto lg:p-6 ${
           kioskStyle
             ? kioskStyle.align === "left"
               ? "items-start text-left"
@@ -460,36 +536,32 @@ function CameraCaptureInner({
                 ...kioskThemeVars(kioskStyle),
                 backgroundColor: kioskStyle.bg,
                 color: kioskStyle.text,
-                padding: kioskStyle.padding,
+                padding: kioskGutter(kioskStyle.padding),
                 borderColor: "currentColor",
               }
             : undefined
         }
       >
-        <div className="flex flex-col gap-1">
+        <div className="flex w-full flex-col gap-1.5">
           <p
-            className="font-mono text-[10px] uppercase tracking-[0.25em]"
+            className="font-mono text-[10px] font-bold uppercase leading-none tracking-[0.24em]"
             style={{ opacity: 0.6, color: kioskStyle ? kioskStyle.text : undefined }}
           >
-            {"CAPTURE"}
+            {stage === "review" ? "CEK HASIL" : "AMBIL FOTO"}
           </p>
           <p
-            className="font-display text-2xl uppercase leading-none tracking-tight md:text-3xl"
-            style={
-              kioskStyle
-                ? {
-                    fontSize: `${2 * kioskStyle.fontScale}rem`,
-                    color: kioskStyle.text,
-                    fontFamily: kioskStyle.fontFamily,
-                  }
-                : undefined
-            }
+            className="font-display uppercase leading-[0.95] tracking-[-0.02em]"
+            style={{
+              fontSize: `calc(clamp(1.35rem, 2.6vw, 1.9rem) * ${kioskStyle?.fontScale ?? 1})`,
+              color: kioskStyle ? kioskStyle.text : undefined,
+              fontFamily: kioskStyle?.fontFamily,
+            }}
           >
             {titleText || `Foto ${slot + 1} / ${photoCount}`}
           </p>
           <p
-            className="font-mono text-[10px] uppercase tracking-[0.15em]"
-            style={{ opacity: 0.5, color: kioskStyle ? kioskStyle.text : undefined }}
+            className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em]"
+            style={{ opacity: 0.55, color: kioskStyle ? kioskStyle.text : undefined }}
           >
             {hintText ||
               `${photos.length} terambil${retakeCount > 0 ? `, ${retakeCount} ulang` : ""}`}
@@ -505,6 +577,9 @@ function CameraCaptureInner({
             captured={capturedBlobs}
             activeSlot={slot}
             videoEl={stage === "review" ? null : videoEl}
+            liveImageUrl={
+              stage === "review" || cameraProvider !== "gphoto2" ? null : gphotoPreviewUrl
+            }
             activeOverride={stage === "review" && current ? current.blob : null}
             mirror={mirror}
             kioskStyle={kioskStyle}
@@ -512,12 +587,14 @@ function CameraCaptureInner({
         )}
 
         {stage === "preview" && !error && (
-          <div className="flex w-full flex-col gap-3">
-            <Button
-              size="lg"
+          <div className="flex w-full flex-col gap-2.5">
+            <KioskAction
+              tone="primary"
+              size="xl"
               onClick={startCountdown}
               disabled={!cameraReady}
-              className="h-20 bg-accent-2 text-3xl shadow-[6px_6px_0_0_#111111] hover:shadow-[4px_4px_0_0_#111111]"
+              full
+              className="text-xl"
               style={
                 kioskStyle
                   ? {
@@ -528,61 +605,66 @@ function CameraCaptureInner({
                   : undefined
               }
             >
-              <Camera className="size-8" aria-hidden />
+              <Camera className="size-7" aria-hidden />
               {cameraReady ? `Ambil foto ${slot + 1}/${photoCount}` : "Menyiapkan kamera"}
-            </Button>
+            </KioskAction>
             {showMirrorToggle && (
-              <Button
+              <KioskAction
+                tone="secondary"
+                size="md"
                 type="button"
-                variant="outline"
                 aria-pressed={mirror}
                 onClick={() => setMirror((value) => !value)}
-                className="min-h-11"
+                className="min-h-12"
+                style={kioskStyle ? { borderRadius: kioskStyle.radius } : undefined}
               >
                 <FlipHorizontal2 className="size-5" aria-hidden /> Mirror{" "}
                 {mirror ? "aktif" : "nonaktif"}
-              </Button>
+              </KioskAction>
             )}
           </div>
         )}
         {stage === "review" && current && (
-          <div className="flex flex-col gap-3">
+          <div className="flex w-full flex-col gap-2.5">
             <p
-              className="text-center font-mono text-[10px] uppercase tracking-[0.15em]"
+              className="font-mono text-[10px] uppercase tracking-[0.14em]"
               style={{ opacity: 0.7, color: kioskStyle ? kioskStyle.text : undefined }}
             >
               Foto berhasil diambil
             </p>
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={retake}
-              className="flex-1 bg-bg text-ink"
-              style={kioskStyle ? { borderRadius: kioskStyle.radius } : undefined}
-            >
-              <RotateCcw className="size-6" aria-hidden /> Ulang
-            </Button>
-            <Button
-              size="lg"
-              onClick={continueNext}
-              className="flex-1 bg-accent-3"
-              style={
-                kioskStyle
-                  ? {
-                      borderRadius: kioskStyle.radius,
-                      backgroundColor: kioskStyle.accent,
-                      color: kioskStyle.accentText,
-                    }
-                  : undefined
-              }
-            >
-              {slot + 1 >= photoCount ? "Lanjut edit" : "Lanjut"}
-            </Button>
+            <div className="flex gap-2.5">
+              <KioskAction
+                tone="secondary"
+                size="lg"
+                onClick={retake}
+                className="flex-1"
+                style={kioskStyle ? { borderRadius: kioskStyle.radius } : undefined}
+              >
+                <RotateCcw className="size-5" aria-hidden /> Ulang
+              </KioskAction>
+              <KioskAction
+                tone="primary"
+                size="lg"
+                onClick={continueNext}
+                className="flex-1"
+                style={
+                  kioskStyle
+                    ? {
+                        borderRadius: kioskStyle.radius,
+                        backgroundColor: kioskStyle.accent,
+                        color: kioskStyle.accentText,
+                      }
+                    : undefined
+                }
+              >
+                {slot + 1 >= photoCount ? "Lanjut edit" : "Lanjut"}
+              </KioskAction>
+            </div>
           </div>
         )}
 
         <div
-          className="flex flex-col gap-1.5 border-t-2 pt-4"
+          className="flex w-full flex-col gap-1.5 border-t-2 pt-4"
           style={{
             borderColor: kioskStyle
               ? "color-mix(in srgb, currentColor 20%, transparent)"
@@ -590,9 +672,9 @@ function CameraCaptureInner({
           }}
         >
           {Array.from({ length: photoCount }).map((_, i) => (
-            <div key={i} className="flex items-center gap-2">
+            <div key={i} className="flex items-center gap-2.5">
               <span
-                className={`inline-flex size-6 shrink-0 items-center justify-center border text-[10px] font-bold ${
+                className={`inline-flex size-6 shrink-0 items-center justify-center border-2 text-[10px] font-bold ${
                   i < photos.length ? "border-accent bg-accent text-ink" : "border-bg/40 text-bg/40"
                 }`}
                 style={
@@ -607,8 +689,8 @@ function CameraCaptureInner({
                 {i + 1}
               </span>
               <span
-                className="font-mono text-[10px] uppercase tracking-[0.1em]"
-                style={{ opacity: 0.5, color: kioskStyle ? kioskStyle.text : undefined }}
+                className="font-mono text-[10px] uppercase leading-none tracking-[0.1em]"
+                style={{ opacity: 0.6, color: kioskStyle ? kioskStyle.text : undefined }}
               >
                 {i < photos.length
                   ? "Terambil"

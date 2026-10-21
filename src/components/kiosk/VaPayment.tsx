@@ -3,6 +3,8 @@ import { ArrowLeft, Copy } from "lucide-react";
 import { formatIDR } from "@/lib/dashboard-math";
 import type { KioskVisualStyle } from "@/lib/kiosk-types";
 import type { PendingPayment } from "./QrisPayment";
+import { KioskAction, KioskCard, KioskEyebrow } from "@/components/kiosk/ui";
+
 export function VaPayment({
   payment,
   left,
@@ -15,43 +17,54 @@ export function VaPayment({
   kioskStyle?: KioskVisualStyle;
 }) {
   const ks = kioskStyle;
+  const radius = ks?.radius ?? 0;
   const copy = () => {
     if (payment.va_number) void navigator.clipboard.writeText(payment.va_number);
   };
   return (
-    <div
-      className="mx-auto flex w-full max-w-[700px] flex-1 flex-col justify-center gap-4 border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111]"
-      style={ks ? { borderRadius: ks.radius } : undefined}
+    <KioskCard
+      elevated
+      className="mx-auto flex w-full max-w-[720px] flex-col gap-4 p-5 md:p-6"
+      style={{ borderRadius: radius }}
     >
-      <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em]">
-        [ VIRTUAL ACCOUNT ]
-      </p>
-      <h2 className="font-display text-3xl uppercase leading-[0.9]">{payment.method}</h2>
-      <p className="break-all border-2 border-ink bg-accent p-4 font-mono text-2xl font-bold">
+      <KioskEyebrow>{"VIRTUAL ACCOUNT"}</KioskEyebrow>
+      <h2 className="font-display text-2xl uppercase leading-[0.95] tracking-[-0.02em] md:text-3xl">
+        {payment.method}
+      </h2>
+      <p
+        className="break-all border-2 border-ink bg-accent px-4 py-4 font-mono text-xl font-bold leading-tight tracking-[0.02em] md:text-2xl"
+        style={{ borderRadius: radius }}
+      >
         {payment.va_number ?? "Nomor VA tidak tersedia"}
       </p>
-      <button
-        type="button"
-        onClick={copy}
-        disabled={!payment.va_number}
-        className="inline-flex w-fit items-center gap-2 border-2 border-ink bg-bg px-4 py-2 font-mono text-xs font-bold uppercase shadow-[3px_3px_0_0_#111111] active:translate-y-[2px]"
-      >
-        <Copy className="size-4" />
-        Salin nomor
-      </button>
-      <p className="font-mono text-xl font-bold">{formatIDR(payment.total_amount)}</p>
-      <p className="font-mono text-xs font-bold uppercase">
-        Selesaikan transfer dalam {String(Math.floor(left / 60)).padStart(2, "0")}:
-        {String(left % 60).padStart(2, "0")}
+      <div className="flex flex-wrap items-center gap-3">
+        <KioskAction
+          tone="secondary"
+          size="md"
+          onClick={copy}
+          disabled={!payment.va_number}
+          kioskStyle={ks}
+        >
+          <Copy className="size-4" aria-hidden />
+          Salin nomor
+        </KioskAction>
+        <p className="font-mono text-lg font-bold leading-none">{formatIDR(payment.total_amount)}</p>
+      </div>
+      <p className="font-mono text-xs font-bold uppercase tracking-[0.08em]">
+        {`Selesaikan transfer dalam ${String(Math.floor(left / 60)).padStart(2, "0")}:${String(
+          left % 60
+        ).padStart(2, "0")}`}
       </p>
-      <button
-        type="button"
+      <KioskAction
+        tone="secondary"
+        size="md"
         onClick={onBack}
-        className="inline-flex min-h-11 w-fit items-center gap-2 border-2 border-ink bg-bg px-4 py-2 font-mono text-xs font-bold uppercase shadow-[3px_3px_0_0_#111111] active:translate-y-[2px]"
+        kioskStyle={ks}
+        className="w-fit font-mono tracking-[0.1em]"
       >
-        <ArrowLeft className="size-4" />
+        <ArrowLeft className="size-4" aria-hidden />
         Kembali
-      </button>
-    </div>
+      </KioskAction>
+    </KioskCard>
   );
 }

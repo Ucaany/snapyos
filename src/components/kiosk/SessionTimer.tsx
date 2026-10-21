@@ -38,16 +38,16 @@ export function SessionTimer({ expiresAt, warningSeconds, onExpired }: Props) {
 
   return (
     <div
-      className={`inline-flex items-center gap-2 border-2 border-ink px-3 py-1.5 font-mono text-sm font-bold shadow-[2px_2px_0_0_#111111] ${
-        warning ? "bg-destructive text-ink" : "bg-bg text-ink"
+      className={`inline-flex items-center gap-2 border-2 border-ink px-3 py-2 font-mono text-sm font-bold leading-none shadow-[2px_2px_0_0_#111111] ${
+        warning ? "bg-destructive text-destructive-foreground" : "bg-surface text-ink"
       }`}
       role="timer"
       aria-live={warning ? "polite" : "off"}
     >
-      <span className="text-[10px] uppercase tracking-[0.2em]">
-        {warning ? "Sisa · SEGERA" : "Sisa"}
+      <span className="text-[10px] uppercase tracking-[0.18em]">
+        {warning ? "Segera" : "Sisa"}
       </span>
-      {fmt(left)}
+      <span className="tabular-nums">{fmt(left)}</span>
     </div>
   );
 }

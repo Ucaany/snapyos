@@ -166,7 +166,7 @@ Konfigurasi kiosk (`branding.kiosk`) mencakup:
 
 ## 5.3 Choose Package
 
-**Purpose:** Customer memilih layanan — package menentukan **harga**, **jumlah foto** (`photo_count`) & cetak (`print_count`).
+**Purpose:** Customer memilih layanan — package menentukan **harga**, kuota foto legacy (`photo_count`), dan jumlah cetak (`print_count`). Jika customer memilih frame ber-slot, jumlah capture mengikuti jumlah slot frame.
 
 **UI:** daftar `Card` package (nama, harga, detail foto/print/digital). Package yang `active` dan berlaku untuk photobox/outlet yang sedang dipakai saja yang tampil.
 
@@ -184,7 +184,7 @@ Konfigurasi kiosk (`branding.kiosk`) mencakup:
 
 > v2: tahap ini terjadi **setelah pembayaran sukses (paid)** — bagian dari sesi foto yang sudah dibayar.
 
-**UI:** grid preview template — thumbnail = **preview frame dengan slot terisi foto sample** (render engine composite, `15-template-builder.md`). Semua template aktif tampil untuk paket mana pun. Jumlah capture tetap `package.photo_count`; bila template punya slot lebih banyak, slot sisa diisi foto secara bergiliran (`src/lib/template-fit.ts`).
+**UI:** grid preview template — thumbnail = **preview frame dengan slot terisi foto sample** (render engine composite, `15-template-builder.md`). Semua template aktif tampil untuk paket mana pun. Bila template memiliki slot, jumlah capture mengikuti `template.slot_count`; template legacy tanpa slot memakai `package.photo_count`. Slot yang perlu mengulang foto diisi bergiliran (`src/lib/template-fit.ts`).
 
 **Data:** `templates` (+ `layout` slot) via `package_templates` join.
 
@@ -194,15 +194,17 @@ Konfigurasi kiosk (`branding.kiosk`) mencakup:
 
 ## 5.5 Camera System
 
-**Purpose:** Capture foto via kamera browser. Target: **Chrome kiosk** (mini PC + USB webcam).
+**Purpose:** Capture foto via kamera browser atau DSLR GPhoto2. Target: **Chrome kiosk** (mini PC + USB webcam/DSLR).
 
 **Target platform:** Chrome/Chromium browser (versi 80+) di kiosk mode (`--kiosk --kiosk-printing`). Semua API MediaDevices & Canvas tersedia penuh.
 
-**Kamera yang didukung:** semua USB webcam standar yang terdeteksi OS kiosk (Logitech C920/C270/C922, Razer Kiyo, ELGATO Facecam, kamera laptop/tablet). Rekomendasi minimum **720p**, ideal **1080p**.
+**Kamera yang didukung:** semua USB webcam standar yang terdeteksi OS kiosk (Logitech C920/C270/C922, Razer Kiyo, ELGATO Facecam, kamera laptop/tablet), atau DSLR yang didukung `gphoto2`. Rekomendasi webcam minimum **720p**, ideal **1080p**.
 
 > v2: **deteksi kamera, grant permission, dan pemilihan device terjadi di Setup Wizard (§5.0.1), sekali**, bukan di flow customer. Saat sesi berjalan, app langsung membuka stream memakai `preferred_device_id` tersimpan. Error runtime (kamera dicabut/dipakai app lain) tetap ditangani dengan pesan retry (tabel §5.5.3) dan dilaporkan ke `device_status`.
 
 ### 5.5.1 Camera Detection Flow (berjalan saat Setup Wizard)
+
+Jika `camera_settings.provider = "gphoto2"`, Setup Wizard memeriksa bridge lokal (`GET /health`) dan `gphoto2 --auto-detect`. Runtime memakai `POST /camera/capture`; preview DSLR memakai `--capture-preview --stdout` bila kamera mendukungnya. Bridge mengunci request kamera agar preview dan capture tidak berjalan bersamaan. Bila kamera tidak mendukung live preview, capture tetap dapat dipakai dan UI menampilkan status siap tanpa memblokir tombol foto.
 
 ```
 Setup Wizard (§5.0.1) setelah aktivasi device
@@ -215,7 +217,7 @@ Setup Wizard (§5.0.1) setelah aktivasi device
    ├─ Tidak → "Harus diakses via HTTPS (localhost ok untuk development)."
    └─ Ya → lanjut
    ↓
-3. getUserMedia({ video: { width: { ideal: 1920 }, height: { ideal: 1080 } } })
+3. Browser: getUserMedia({ video: { width: { ideal: 1920 }, height: { ideal: 1080 } } })
    ├─ NotAllowedError → "Izinkan akses kamera untuk mulai berfoto." + [ AKTIFKAN KAMERA ]
    ├─ NotFoundError → "Tidak ada kamera terdeteksi. Hubungkan USB webcam."
    ├─ NotReadableError → "Kamera sedang dipakai aplikasi lain. Tutup aplikasi lain."
@@ -234,6 +236,8 @@ Setup Wizard (§5.0.1) setelah aktivasi device
    ├─ width ≥ 1280 → HD (720p) — OK
    ├─ width < 1280 → warning "Kualitas kamera rendah. Gunakan webcam HD."
    └─ Catat di device_status (report ke owner dashboard)
+
+Untuk DSLR GPhoto2, pastikan JPG/JPEG aktif, kamera tidak sedang dipakai proses lain, baterai/USB stabil, dan SD card serta capture target siap bila model kamera membutuhkannya. Bila `--capture-image-and-download` gagal, bridge mencoba urutan kompatibel `--capture-image-and-download` lalu `--trigger-capture --wait-event-and-download=FILEADDED`. Set `GPHOTO2_CAPTURE_TARGET` hanya jika kamera memerlukan `capturetarget` tertentu.
    ↓
 6. SELESAI SETUP — preferred_device_id tersimpan di camera_settings
    (customer tidak pernah melihat langkah-langkah ini)
@@ -290,7 +294,7 @@ Mirror preview & fullscreen mengikuti owner settings (camera_settings)
 
 **Minimal modes:** Single Photo, Multiple Photo / Burst, Photostrip (3/4/5 foto).
 
-Jumlah foto mengikuti **template terpilih** — jumlah slot pada `templates.layout` (§5.4; harus sama dengan `package.photo_count`, di-enforce saat assign). `photos.order_index` → slot sesuai urutan `z` (lihat `15-template-builder.md`).
+Jumlah foto mengikuti **template terpilih** — jumlah slot pada `templates.layout`; template legacy tanpa slot memakai `package.photo_count`. `photos.order_index` → slot sesuai urutan `z` (lihat `15-template-builder.md`).
 
 **UI/Components:** `ModeSelector` (jika package mengizinkan), `PhotostripPreview` (grid slot).
 
@@ -462,9 +466,9 @@ App render print layout (canvas):
    - 1 foto 4x6"  ATAU  2 strip 2x6" (photostrip dari satu kertas 4x6")
    - Gambar + template frame + branding owner
    ↓
-print_count menentukan jumlah cetak (loop)
+print_count menentukan jumlah lembar cetak. `copies` pada konfigurasi booth menggandakan set lembar bila diperlukan.
    ↓
-window.print() otomatis (Chrome kiosk --kiosk-printing → langsung cetak tanpa dialog)
+Bridge CUPS lokal mencetak PDF langsung tanpa dialog; `window.print()` tetap tersedia sebagai fallback (Chrome kiosk `--kiosk-printing` dapat silent-print).
    ↓
 [ PRINT TEST ] tersedia di Setup Wizard (§5.0.1) & dashboard owner
    ↓
@@ -483,7 +487,10 @@ Status printer: tercatat di photoboxes.device_status (owner lihat di dashboard)
   "orientation": "portrait",
   "auto_print": true,
   "copies": 1,
-  "margins_mm": 0
+  "margins_mm": 0,
+  "mode": "cups",
+  "bridge_url": "http://127.0.0.1:17777",
+  "printer_name": ""
 }
 ```
 
@@ -493,8 +500,8 @@ Status printer: tercatat di photoboxes.device_status (owner lihat di dashboard)
 | ------------------- | ------------------------------------------------------ |
 | 0                   | digital only (download/QR)                             |
 | 1                   | 1 lembar 4x6" single (atau 1 strip)                    |
-| 2                   | 2 cetak (2 lembar single ATAU 1 lembar berisi 2 strip) |
-| 3                   | 3 cetak / photostrip 3 kolom                           |
+| 2                   | 2 lembar (single atau photostrip, sesuai layout booth) |
+| 3                   | 3 lembar (single atau photostrip, sesuai layout booth) |
 
 Layout ditentukan `print_settings.layout` + `package.print_count`.
 
@@ -502,8 +509,9 @@ Layout ditentukan `print_settings.layout` + `package.print_count`.
 
 Browser **tidak bisa** enumerate printer (standar web). Jadi "deteksi" dilakukan:
 
-1. **Print Test di Setup Wizard (§5.0.1)** & dashboard owner → generate halaman test → `window.print()` di kiosk → owner konfirmasi fisik ("Test print berhasil?" Ya/Tidak).
-2. **Printer default OS** harus di-set di kiosk (dokumentasi di Bantuan).
+1. **Print Test di Setup Wizard (§5.0.1)** & dashboard owner → mode CUPS mengirim PDF langsung ke bridge lokal, mode browser membuka `window.print()`, mode thermal mengirim ESC/POS → owner konfirmasi fisik ("Test print berhasil?" Ya/Tidak).
+2. **Printer default OS** harus di-set di kiosk, atau isi `printer_name` CUPS. Bridge CUPS memakai `lp`/`lpstat` dan opsi media custom sesuai ukuran kertas, orientasi, margin, serta `fit-to-page`.
+   Ukuran `4x6` = `101.6 × 152.4 mm`, `A6` = `105 × 148 mm`; driver harus menerima media custom atau profile kertas yang ekuivalen. Print Test menggambar kotak batas pada margin aktif, sehingga ukuran, orientasi, dan area aman bisa diverifikasi secara fisik.
 3. Status disimpan ke `photoboxes.device_status.printer = { status, last_test_at, confirmed }`.
 
 ### 5.15.5 Error Handling (print)

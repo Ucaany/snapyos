@@ -22,6 +22,7 @@ const SUITES = {
     "kiosk-smoke.spec.mjs",
     "kiosk-lock.spec.mjs",
     "kiosk-frames.spec.mjs",
+    "kiosk-full-frame-flow.spec.mjs",
     "kiosk-responsive.spec.mjs",
   ],
   bluetooth: ["kiosk-print-bluetooth.spec.mjs", "kiosk-print-serial.spec.mjs"],

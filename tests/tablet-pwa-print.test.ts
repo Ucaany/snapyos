@@ -2,7 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { resolveFacingMode } from "../src/lib/camera-provider.ts";
-import { printCopies, printPageSize, printPlan, shouldAutoPrint } from "../src/lib/print-layout.ts";
+import {
+  printCopies,
+  printContentHeightMm,
+  printPageSize,
+  printPlan,
+  printSheets,
+  shouldAutoPrint,
+} from "../src/lib/print-layout.ts";
 
 test("resolveFacingMode: setting owner valid menang, invalid → fallback device", () => {
   assert.equal(resolveFacingMode("user", "environment"), "user");
@@ -49,7 +56,27 @@ test("printPlan existing tidak regresi (copies tidak ubah mapping lembar)", () =
   });
 });
 
+test("frame 6 slot tidak menambah jumlah cetak package", () => {
+  const plan = printPlan(2, 1, "single");
+  assert.equal(plan.kind, "single");
+  assert.deepEqual(printSheets(plan, 1, 1), [[0], [0]]);
+  assert.equal(printContentHeightMm(printPageSize({ paper_size: "4x6", margins_mm: 4 })), 144.4);
+});
+
+test("printSheets: composite frame diulang sesuai print_count", () => {
+  const plan = printPlan(2, 1, "single");
+  assert.deepEqual(printSheets(plan, 1, 1), [[0], [0]]);
+  assert.deepEqual(printSheets(plan, 1, 2), [[0], [0], [0], [0]]);
+});
+
 test("printPlan: jumlah foto kosong tidak membuat sheet palsu", () => {
   assert.deepEqual(printPlan(2, 0, "single"), { kind: "digital", sheets: 0 });
   assert.deepEqual(printPlan(2, 0, "photostrip"), { kind: "digital", sheets: 0 });
+});
+
+test("print mode: CUPS lokal dikenali tanpa mengubah fallback browser", async () => {
+  const { resolvePrintMode } = await import("../src/lib/print/print-mode.ts");
+  assert.equal(resolvePrintMode({ mode: "cups" }), "cups");
+  assert.equal(resolvePrintMode({ mode: "browser" }), "browser");
+  assert.equal(resolvePrintMode({}), "browser");
 });

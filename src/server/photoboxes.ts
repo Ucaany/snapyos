@@ -418,7 +418,7 @@ export async function updatePhotoboxCameraConfig(
 export type PrinterTestStatus = {
   confirmed: boolean;
   last_test_at: string;
-  mode?: "browser" | "bluetooth";
+  mode?: "browser" | "bluetooth" | "cups";
   device_name?: string;
 };
 

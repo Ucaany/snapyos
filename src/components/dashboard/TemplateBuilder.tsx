@@ -1032,7 +1032,7 @@ export function TemplateBuilder({
             />
             <p className="font-mono text-xs uppercase tracking-[0.1em]">Simpan</p>
             <p className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
-              {`Slot: ${slotCount(roundedLayout)}. Assign ke package butuh photo_count sama (docs/15).`}
+              {`Slot: ${slotCount(roundedLayout)}. Frame ber-slot dapat dipakai lintas package; jumlah capture mengikuti slot.`}
             </p>
             {saveState.error && (
               <p

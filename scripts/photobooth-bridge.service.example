@@ -1,0 +1,21 @@
+[Unit]
+Description=SnapyOS local camera and CUPS bridge
+After=network-online.target cups.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/snapyos
+Environment=NODE_ENV=production
+Environment=PHOTOBOOTH_BRIDGE_HOST=127.0.0.1
+Environment=PHOTOBOOTH_BRIDGE_PORT=17777
+Environment=PHOTOBOOTH_BRIDGE_ORIGINS=https://snapyos.example
+Environment=GPHOTO2_BIN=/usr/bin/gphoto2
+ExecStart=/usr/bin/node /opt/snapyos/scripts/photobooth-bridge.mjs
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

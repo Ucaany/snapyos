@@ -6,12 +6,19 @@ import { apiGet } from "@/components/kiosk/api";
 import { kioskThemeVars, type KioskVisualStyle, type PublicTemplate } from "@/lib/kiosk-types";
 import { KioskVideoBackground } from "@/components/kiosk/KioskVideoBackground";
 import { preloadFrameAssets } from "@/components/kiosk/frame-preload";
+import {
+  KioskAction,
+  KioskChip,
+  KioskEyebrow,
+  KioskHeading,
+  kioskGutter,
+} from "@/components/kiosk/ui";
 
 type Props = {
   packageId: string;
+  packagePhotoCount?: number;
+  packagePrintCount?: number;
   businessSlug: string;
-  /** Jumlah foto paket — untuk pesan kosong yang menyebut angka slot. */
-  photoCount: number;
   onSelect: (template: PublicTemplate | null) => void;
   /** Gaya visual kustom (Branding & Kiosk) — warna/font/radius mengikuti. */
   kioskStyle?: KioskVisualStyle;
@@ -19,27 +26,29 @@ type Props = {
   videoUrl?: string | null;
 };
 
-/** Choose Template/Frame — docs/05 §5.4 + docs/15 §5.5 (post-paid, slot-filtered).
- *  2-part kiosk layout: left = context/branding, right = template grid (scroll). */
+/** Choose Template/Frame — docs/05 §5.4 + docs/15 §5.5 (post-paid). */
 export function TemplatePicker({
   packageId,
+  packagePhotoCount = 1,
+  packagePrintCount = 0,
   businessSlug,
-  photoCount,
   onSelect,
   kioskStyle,
   titleText,
   videoUrl = null,
 }: Props) {
   const ks = kioskStyle;
+  const align = ks?.align ?? "left";
   const alignClass =
-    ks?.align === "center"
+    align === "center"
       ? "items-center text-center"
-      : ks?.align === "right"
+      : align === "right"
         ? "items-end text-right"
         : "items-start text-left";
   const accentStyle = ks
     ? { backgroundColor: ks.accent, color: ks.accentText, borderRadius: ks.radius }
     : undefined;
+  const gutter = kioskGutter(ks?.padding);
   const [templates, setTemplates] = useState<PublicTemplate[]>([]);
   const [selected, setSelected] = useState<PublicTemplate | null | undefined>(undefined);
   const [loading, setLoading] = useState(true);
@@ -94,58 +103,58 @@ export function TemplatePicker({
 
   return (
     <div
-      className="relative flex min-h-0 flex-1 flex-col overflow-y-auto bg-bg lg:flex-row lg:overflow-hidden"
+      className="relative flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden"
       style={ks ? { ...kioskThemeVars(ks), backgroundColor: ks.bg, color: ks.text } : undefined}
     >
       <KioskVideoBackground videoUrl={videoUrl} />
-      {/* Left panel: context + instructions */}
-      <div
-        className={`relative z-10 flex shrink-0 flex-col justify-center gap-3 border-b-2 border-ink p-6 lg:w-[42%] lg:gap-5 lg:overflow-y-auto lg:border-b-0 lg:border-r-2 lg:p-8 ${
-          videoUrl ? "bg-transparent" : "bg-surface"
-        } ${alignClass}`}
-        style={ks ? { paddingLeft: ks.padding, paddingRight: ks.padding } : undefined}
-      >
-        <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-          {"STEP 02 · PILIH FRAME"}
-        </p>
-        <h1
-          className="font-display text-3xl uppercase leading-[0.9] tracking-tight md:text-5xl lg:text-6xl"
-          style={ks ? { fontFamily: ks.fontFamily, fontSize: `${2 * ks.fontScale}rem` } : undefined}
-        >
-          {titleText || "Pilih frame"}
-        </h1>
-        <p className="max-w-[40ch] text-sm leading-relaxed text-muted-foreground md:text-base">
-          Pilih frame foto. Setiap frame memiliki slot yang otomatis terisi hasil pengambilan foto.
-        </p>
-        <div className="mt-2 flex items-center gap-2">
-          <span
-            className="inline-flex items-center gap-1.5 border-2 border-ink bg-accent-2/10 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.1em]"
-            style={ks ? { borderRadius: ks.radius } : undefined}
-          >
-            <Frame className="size-3" aria-hidden />{" "}
-            {loading ? "Memuat..." : `${templates.length} frame`}
-          </span>
-        </div>
-      </div>
 
-      {/* Right panel: template grid (scrollable) */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4 lg:items-center lg:p-8">
-        <div className="flex w-full max-w-[720px] flex-col gap-5">
-          {/* Kartu "tanpa frame" setinggi kartu frame tertinggi di grid, jadi
-              baris pertama tetap rata walau frame lain berbentuk strip. */}
-          <div className="grid grid-cols-2 items-start gap-3 md:grid-cols-3 lg:gap-4">
+      {/* Panel kiri: konteks + status. Di layar sempit ikut mengalir di atas grid. */}
+      <aside
+        className="relative z-10 flex shrink-0 flex-col gap-4 border-b-2 border-ink/15 py-6 lg:w-[36%] lg:justify-center lg:overflow-y-auto lg:border-b-0 lg:border-r-2 lg:border-ink/15 lg:py-8"
+        style={{ paddingLeft: gutter, paddingRight: gutter }}
+      >
+        <div className={`flex flex-col gap-2.5 ${alignClass}`}>
+          <KioskEyebrow>{"LANGKAH 02 · PILIH FRAME"}</KioskEyebrow>
+          <KioskHeading size="md" scale={ks?.fontScale ?? 1}>
+            {titleText || "Pilih frame"}
+          </KioskHeading>
+          <p className="max-w-[44ch] text-sm leading-relaxed text-muted-foreground md:text-base">
+            Setiap frame punya slot yang terisi otomatis oleh hasil foto. Pilih satu, atau lanjut
+            tanpa frame.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <KioskChip style={{ borderRadius: ks?.radius ?? 0 }}>
+            <Frame className="size-3" aria-hidden />
+            {loading ? "Memuat..." : `${templates.length} frame`}
+          </KioskChip>
+          <KioskChip style={{ borderRadius: ks?.radius ?? 0 }}>Slot mengikuti frame</KioskChip>
+        </div>
+      </aside>
+
+      {/* Panel kanan: grid frame (scroll sendiri). */}
+      <div
+        className="relative z-10 flex min-h-0 flex-1 flex-col overflow-y-auto py-6 lg:py-8"
+        style={{ paddingLeft: gutter, paddingRight: gutter }}
+      >
+        <div className="mx-auto flex w-full max-w-[880px] flex-col gap-5">
+          <div className="grid grid-cols-2 items-start gap-3 sm:grid-cols-3 lg:gap-4">
             <button
               type="button"
               aria-pressed={selected === null}
               onClick={() => setSelected(null)}
-              className="flex aspect-[3/4] w-full flex-col items-center justify-center gap-3 border-2 border-ink bg-surface p-3 shadow-[4px_4px_0_0_#111111] transition-transform hover:-translate-y-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink active:translate-y-[2px]"
+              className={`flex aspect-[3/4] w-full flex-col items-center justify-center gap-3 border-2 p-3 transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink active:translate-y-[2px] ${
+                selected === null
+                  ? "border-ink bg-accent shadow-[4px_4px_0_0_#111111]"
+                  : "border-ink/30 bg-surface shadow-[4px_4px_0_0_#111111]"
+              }`}
               style={{
-                width: "min(100%, calc(min(58vh, 520px) * 0.75))",
-                ...(ks ? { borderRadius: ks.radius } : {}),
+                width: "min(100%, calc(min(52vh, 460px) * 0.75))",
+                borderRadius: ks?.radius ?? 0,
               }}
             >
               <Frame className="size-8" aria-hidden />
-              <span className="font-mono text-xs font-bold uppercase tracking-[0.1em]">
+              <span className="font-display text-xs font-bold uppercase tracking-[-0.01em]">
                 Tanpa frame
               </span>
             </button>
@@ -155,37 +164,34 @@ export function TemplatePicker({
                 {Array.from({ length: 3 }).map((_, i) => (
                   <div
                     key={i}
-                    className="aspect-[3/4] animate-pulse border-2 border-ink bg-muted"
+                    className="aspect-[3/4] animate-pulse border-2 border-ink/20 bg-muted"
+                    style={{ borderRadius: ks?.radius ?? 0 }}
                     aria-hidden
                   />
                 ))}
               </>
             ) : error ? (
-              <div className="col-span-full flex flex-col items-start gap-3 border-2 border-destructive bg-destructive/10 p-5">
-                <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-                  Gagal memuat frame
+              <div
+                className="col-span-full flex flex-col items-start gap-3 border-2 border-destructive bg-destructive/10 p-5"
+                style={{ borderRadius: ks?.radius ?? 0 }}
+              >
+                <KioskEyebrow className="text-ink">{"GAGAL MEMUAT FRAME"}</KioskEyebrow>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  Periksa koneksi booth, lalu coba lagi.
                 </p>
-                <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                  Periksa koneksi, lalu coba lagi.
-                </p>
-                <button
-                  type="button"
-                  onClick={loadTemplates}
-                  className="min-h-11 border-2 border-ink bg-accent px-4 py-2 font-mono text-xs font-bold uppercase shadow-[3px_3px_0_0_#111111]"
-                  style={accentStyle}
-                >
+                <KioskAction tone="primary" size="md" onClick={loadTemplates} style={accentStyle}>
                   Coba lagi
-                </button>
+                </KioskAction>
               </div>
             ) : templates.length === 0 ? (
-              <div className="col-span-full flex flex-col items-start gap-2 border-2 border-dashed border-ink/40 bg-muted p-5">
-                <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-                  {"BELUM ADA FRAME UNTUK PAKET INI"}
-                </p>
-                <p className="max-w-[50ch] font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                  Owner perlu mengaktifkan minimal satu template di dashboard. Paket ini memakai{" "}
-                  {`${photoCount} foto`}; tanpa frame, hasil tetap bisa diambil dengan kartu Tanpa
-                  frame.
+              <div
+                className="col-span-full flex flex-col items-start gap-2 border-2 border-dashed border-ink/40 bg-muted p-5"
+                style={{ borderRadius: ks?.radius ?? 0 }}
+              >
+                <KioskEyebrow className="text-ink">{"BELUM ADA FRAME UNTUK PAKET INI"}</KioskEyebrow>
+                <p className="max-w-[54ch] text-sm leading-relaxed text-muted-foreground">
+                  Owner perlu mengaktifkan minimal satu template di dashboard. Tanpa frame, hasil
+                  tetap bisa diambil dengan kartu Tanpa frame.
                 </p>
               </div>
             ) : (
@@ -195,19 +201,22 @@ export function TemplatePicker({
                 // sepertiga frame dan tidak bisa menilai bentuk aslinya.
                 const cw = t.layout?.canvas.width ?? 3;
                 const ch = t.layout?.canvas.height ?? 4;
+                const active = selected?.id === t.id;
                 return (
                   <button
                     key={t.id}
                     type="button"
-                    aria-pressed={selected?.id === t.id}
+                    aria-pressed={active}
                     onClick={() => setSelected(t)}
-                    className="group relative mx-auto overflow-hidden border-2 border-ink bg-muted shadow-[4px_4px_0_0_#111111] transition-transform hover:-translate-y-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink active:translate-y-[2px]"
+                    className={`group relative mx-auto overflow-hidden border-2 bg-muted shadow-[4px_4px_0_0_#111111] transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink active:translate-y-[2px] ${
+                      active ? "border-ink" : "border-ink/30 hover:border-ink"
+                    }`}
                     // Lebar dibatasi lebar sel DAN tinggi kartu; `aspect-ratio`
                     // saja akan memaksa lebar penuh lalu memotong tinggi di strip.
                     style={{
                       aspectRatio: `${cw} / ${ch}`,
-                      width: `min(100%, calc(min(58vh, 520px) * ${cw / ch}))`,
-                      ...(ks ? { borderRadius: ks.radius } : {}),
+                      width: `min(100%, calc(min(52vh, 460px) * ${cw / ch}))`,
+                      borderRadius: ks?.radius ?? 0,
                     }}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -221,15 +230,19 @@ export function TemplatePicker({
                       className="h-full w-full object-contain"
                     />
                     {t.slot_count > 0 && (
-                      <span className="absolute left-0 top-0 border-b-2 border-r-2 border-ink bg-accent-2 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.08em]">
+                      <span className="absolute left-0 top-0 border-b-2 border-r-2 border-ink bg-bg px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase leading-none tracking-[0.08em]">
                         {`${t.slot_count} FOTO`}
                       </span>
                     )}
-                    <span className="absolute inset-x-0 bottom-0 border-t-2 border-ink bg-bg px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.1em]">
+                    <span className="absolute inset-x-0 bottom-0 truncate border-t-2 border-ink bg-bg px-2 py-1 text-center font-display text-[11px] font-bold uppercase leading-tight tracking-[-0.01em]">
                       {t.name}
                     </span>
-                    {selected?.id === t.id && (
-                      <span className="absolute inset-0 border-4 border-accent" aria-hidden />
+                    {active && (
+                      <span
+                        className="pointer-events-none absolute inset-0 border-4"
+                        style={{ borderColor: ks?.accent ?? undefined }}
+                        aria-hidden
+                      />
                     )}
                   </button>
                 );
@@ -240,15 +253,15 @@ export function TemplatePicker({
           {selected !== undefined && (
             <div
               className="grid gap-4 border-2 border-ink bg-surface p-4 shadow-[4px_4px_0_0_#111111] md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
-              style={ks ? { borderRadius: ks.radius } : undefined}
+              style={{ borderRadius: ks?.radius ?? 0 }}
             >
-              <div className="flex items-center gap-4">
+              <div className="flex min-w-0 items-center gap-4">
                 <div
-                  className="relative h-28 shrink-0 overflow-hidden border-2 border-ink bg-muted"
+                  className="relative h-24 shrink-0 overflow-hidden border-2 border-ink bg-muted"
                   // Panel konfirmasi memakai tinggi tetap; lebar mengikuti rasio
                   // frame supaya strip 1:3 tidak tampil gepeng atau terpotong.
                   style={{
-                    width: `calc(7rem * ${(selected?.layout?.canvas.width ?? 3) / (selected?.layout?.canvas.height ?? 4)})`,
+                    width: `calc(6rem * ${(selected?.layout?.canvas.width ?? 3) / (selected?.layout?.canvas.height ?? 4)})`,
                   }}
                 >
                   {selected ? (
@@ -262,26 +275,27 @@ export function TemplatePicker({
                     <Frame className="absolute inset-0 m-auto size-8" aria-hidden />
                   )}
                 </div>
-                <div>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                    Preview frame
-                  </p>
-                  <p className="font-display text-xl uppercase leading-none">
+                <div className="min-w-0">
+                  <KioskEyebrow>{"FRAME TERPILIH"}</KioskEyebrow>
+                  <p className="mt-1 truncate font-display text-lg font-bold uppercase leading-none tracking-[-0.02em]">
                     {selected?.name ?? "Tanpa frame"}
                   </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Frame akan ikut di preview editor dan hasil akhir.
+                  <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground md:text-sm">
+                    {selected
+                      ? `${selected.slot_count} foto akan diambil dari slot frame. ${packagePrintCount} cetak tetap mengikuti paket.`
+                      : `${packagePhotoCount} foto mengikuti paket saat tanpa frame. ${packagePrintCount} cetak tetap mengikuti paket.`}
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
+              <KioskAction
+                tone="primary"
+                size="lg"
                 onClick={() => onSelect(selected)}
-                className="min-h-11 border-2 border-ink bg-accent px-5 py-3 font-mono text-xs font-bold uppercase tracking-[0.1em] shadow-[3px_3px_0_0_#111111] transition-transform active:translate-y-[2px]"
+                className="w-full md:w-auto md:min-w-[180px]"
                 style={accentStyle}
               >
                 Gunakan frame
-              </button>
+              </KioskAction>
             </div>
           )}
         </div>

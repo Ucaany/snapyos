@@ -8,8 +8,11 @@ import { rasterizePhoto, rasterizeTestPattern } from "@/lib/print/photo-bitmap";
 import { BluetoothPrintError, connectEscPos, requestEscPosDevice } from "@/lib/print/bluetooth";
 import type { PrintMode } from "@/lib/print/print-mode";
 import { THERMAL_WIDTH_DOTS } from "@/lib/print/print-mode";
+import { printContentHeightMm, printPageSize } from "@/lib/print-layout";
 import { SerialPrintError, writeEscPosSerial } from "@/lib/print/serial";
 import { usePrintTransport } from "@/hooks/use-print-transport";
+import type { PrintSettingsInput } from "@/lib/print-layout";
+import { submitCupsTest } from "@/lib/print/cups";
 
 export type PrintTestResult = {
   confirmed: boolean;
@@ -31,6 +34,7 @@ type Props = {
   onReport: (result: PrintTestResult) => Promise<void> | void;
   /** Tampilkan tombol konfirmasi hasil fisik (dashboard), wizard memakai copy sendiri. */
   canReport?: boolean;
+  printSettings?: PrintSettingsInput | null;
 };
 
 type Phase = "idle" | "connecting" | "printing" | "sent" | "error";
@@ -50,6 +54,7 @@ export function PrintTestPanel({
   lastTest,
   onReport,
   canReport = true,
+  printSettings,
 }: Props) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [message, setMessage] = useState<string | null>(null);
@@ -140,10 +145,49 @@ export function PrintTestPanel({
     }
   }, [buildBitmap, sample.title]);
 
-  function sendBrowser() {
-    // Halaman uji memakai kontrak print yang sama dengan `.print-root`.
-    window.print();
-    setPhase("sent");
+  async function sendBrowser() {
+    if (mode === "cups") {
+      setPhase("printing");
+      setMessage(null);
+      try {
+        await submitCupsTest(printSettings, sample);
+        setPhase("sent");
+      } catch (error) {
+        setPhase("error");
+        setMessage(error instanceof Error ? error.message : "Gagal mengirim uji cetak ke CUPS.");
+      }
+      return;
+    }
+    const page = printPageSize(printSettings);
+    const style = document.createElement("style");
+    style.id = "snapyos-print-test-css";
+    style.textContent = `
+      @page { size: ${page.widthMm}mm ${page.heightMm}mm; margin: ${page.marginMm}mm; }
+      @media print {
+        body:has(.snapyos-print-test) * { visibility: hidden !important; }
+        .snapyos-print-test, .snapyos-print-test * { visibility: visible !important; }
+        .snapyos-print-test { display: block !important; position: fixed; inset: 0; }
+        .snapyos-print-test-page {
+          box-sizing: border-box; width: 100%; height: ${printContentHeightMm(page)}mm;
+          display: flex; flex-direction: column; border: 1px solid #111; padding: 0;
+          color: #111; font-family: monospace;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    const cleanup = () => {
+      style.remove();
+      window.removeEventListener("afterprint", cleanup);
+    };
+    window.addEventListener("afterprint", cleanup);
+    try {
+      window.print();
+      setPhase("sent");
+    } catch {
+      cleanup();
+      setPhase("error");
+      setMessage("Dialog cetak gagal dibuka.");
+    }
   }
 
   async function report(confirmed: boolean) {
@@ -176,7 +220,9 @@ export function PrintTestPanel({
         <p className="max-w-[60ch] text-sm leading-relaxed text-muted-foreground">
           {mode === "bluetooth"
             ? `Booth memakai printer thermal Bluetooth ${paperWidthMm}mm (ESC/POS). Cetak halaman uji, lalu konfirmasi hasil fisiknya.`
-            : "Booth memakai dialog cetak sistem. Pastikan printer foto default sudah terpasang, lalu cetak halaman uji dan konfirmasi hasil fisiknya."}
+            : mode === "cups"
+              ? "Booth memakai bridge CUPS lokal. Pastikan bridge berjalan, CUPS aktif, dan printer sudah terpasang."
+              : "Booth memakai dialog cetak sistem. Pastikan printer foto default sudah terpasang, lalu cetak halaman uji dan konfirmasi hasil fisiknya."}
         </p>
       </header>
 
@@ -184,7 +230,11 @@ export function PrintTestPanel({
         <div className="flex flex-col gap-1 border-2 border-ink/20 p-3">
           <dt className="text-muted-foreground">Mode cetak</dt>
           <dd className="font-bold">
-            {mode === "bluetooth" ? "Bluetooth thermal" : "Dialog sistem"}
+            {mode === "bluetooth"
+              ? "Bluetooth thermal"
+              : mode === "cups"
+                ? "CUPS lokal"
+                : "Dialog sistem"}
           </dd>
         </div>
         <div className="flex flex-col gap-1 border-2 border-ink/20 p-3">
@@ -267,7 +317,7 @@ export function PrintTestPanel({
           size="lg"
           className="bg-accent"
           disabled={busy || (mode === "bluetooth" && !supported)}
-          onClick={() => (mode === "bluetooth" ? void sendThermal() : sendBrowser())}
+          onClick={() => (mode === "bluetooth" ? void sendThermal() : void sendBrowser())}
         >
           {busy ? (
             <Loader2 className="size-5 animate-spin" aria-hidden />
@@ -309,6 +359,16 @@ export function PrintTestPanel({
             <Check className="size-4 text-accent-3" aria-hidden /> Perintah cetak terkirim
           </span>
         )}
+      </div>
+
+      <div aria-hidden className="snapyos-print-test hidden print:block">
+        <div className="snapyos-print-test-page">
+          <h1>{sample.title}</h1>
+          {sample.lines.map((line) => (
+            <p key={line}>{line}</p>
+          ))}
+          <div style={{ marginTop: "auto", height: 6, background: "#111" }} />
+        </div>
       </div>
 
       {mode === "bluetooth" && serialSupported && (
