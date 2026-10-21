@@ -7,6 +7,7 @@ import { test } from "node:test";
 
 import {
   SERIAL_CHUNK_DEFAULT,
+  SERIAL_WRITE_GAP_MS,
   SerialPrintError,
   openSerialPort,
   writeEscPosSerial,
@@ -75,8 +76,10 @@ function fakeSerial(port: SerialPortLike, requestError?: Error): SerialLike {
 
 const noSleep = async () => {};
 
-test("chunk default 512 byte untuk serial", () => {
-  assert.equal(SERIAL_CHUNK_DEFAULT, 512);
+test("chunk default 256 byte + jeda 480ms mengikuti laju RPPO2N", () => {
+  // Terukur di hardware: printer mengonsumsi ±550 B/s; pacing ini ≈525 B/s.
+  assert.equal(SERIAL_CHUNK_DEFAULT, 256);
+  assert.equal(SERIAL_WRITE_GAP_MS, 480);
 });
 
 test("job serial dipecah per chunk dan byte identik", async () => {
@@ -287,4 +290,81 @@ test("granted: write gagal tetap menutup port", async () => {
     (error) => error instanceof SerialPrintError && error.code === "WRITE_FAILED"
   );
   assert.equal(fake.closes, 1);
+});
+
+test("open yang menggantung dihentikan oleh timeout", async () => {
+  const port: SerialPortLike = {
+    getInfo: () => ({}),
+    open: () => new Promise<void>(() => undefined),
+    async close() {},
+    writable: new WritableStream<Uint8Array>(),
+  };
+  await assert.rejects(
+    () =>
+      openSerialPort(port, {
+        sleep: noSleep,
+        openRetries: 1,
+        openTimeoutMs: 20,
+      }),
+    (error) => error instanceof SerialPrintError && error.code === "OPEN_FAILED"
+  );
+});
+
+test("write yang menggantung dihentikan oleh timeout dan port ditutup", async () => {
+  let closes = 0;
+  const port: SerialPortLike = {
+    getInfo: () => ({}),
+    async open() {},
+    async close() {
+      closes += 1;
+    },
+    get writable() {
+      return new WritableStream<Uint8Array>({
+        write: () => new Promise<void>(() => undefined),
+      });
+    },
+  };
+  const serial: SerialLike = {
+    async requestPort() {
+      return port;
+    },
+    async getPorts() {
+      return [port];
+    },
+  };
+  await assert.rejects(
+    () =>
+      writeEscPosSerialGranted(Uint8Array.from([1, 2, 3]), {
+        serial,
+        sleep: noSleep,
+        writeTimeoutMs: 20,
+      }),
+    (error) => error instanceof SerialPrintError && error.code === "WRITE_FAILED"
+  );
+  assert.equal(closes, 1);
+});
+
+test("close yang menggantung tidak menahan hasil cetak", async () => {
+  const port: SerialPortLike = {
+    getInfo: () => ({}),
+    async open() {},
+    close: () => new Promise<void>(() => undefined),
+    get writable() {
+      return new WritableStream<Uint8Array>();
+    },
+  };
+  const serial: SerialLike = {
+    async requestPort() {
+      return port;
+    },
+    async getPorts() {
+      return [port];
+    },
+  };
+  const sent = await writeEscPosSerialGranted(Uint8Array.from([1]), {
+    serial,
+    sleep: noSleep,
+    closeTimeoutMs: 20,
+  });
+  assert.equal(sent, true);
 });

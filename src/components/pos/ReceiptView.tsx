@@ -45,6 +45,17 @@ export function ReceiptView({
   const [lastTransport, setLastTransport] = useState<"bluetooth" | "serial" | null>(null);
   const [autoPrintPending, setAutoPrintPending] = useState(false);
   const autoPrintRan = useRef(false);
+  // Strict Mode me-mount effect dua kali: cleanup run pertama menandai job
+  // "cancelled" padahal write sudah terkirim, sehingga status `sent` tidak
+  // pernah dirender dan banner "Mengirim…" menggantung selamanya. Ref alive
+  // hanya false saat komponen benar-benar unmount.
+  const aliveRef = useRef(true);
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+    };
+  }, []);
   const transport = usePrintTransport();
   const btSupported = transport.bluetooth;
   const serialSupported = transport.serial;
@@ -137,13 +148,13 @@ export function ReceiptView({
     // ulang otomatis (struk ganda); tombol manual tetap tersedia.
     if (!claimAutoPrintAttempt(autoPrintStorageKey("pos", order.id), getAutoPrintStore())) return;
 
-    let cancelled = false;
     void (async () => {
       setAutoPrintPending(true);
       setLastTransport("serial");
       try {
         const sent = await writeEscPosSerialGranted(receiptBytes());
-        if (cancelled) return;
+        // Status terminal HARUS selalu dirender: kalau write sudah terkirim,
+        // banner "Mengirim…" yang tertinggal membuat kasir mengira job macet.
         if (sent) {
           setBtState("sent");
           return;
@@ -156,7 +167,7 @@ export function ReceiptView({
         }
         const { reconnectGranted } = await import("@/lib/print/bluetooth");
         const device = await reconnectGranted();
-        if (!device || cancelled) {
+        if (!device || !aliveRef.current) {
           setBtMessage(
             "Auto-print menunggu izin printer. Klik Cetak Bluetooth sekali untuk menghubungkan."
           );
@@ -166,24 +177,23 @@ export function ReceiptView({
         const link = await connectEscPos(device);
         try {
           await link.write(receiptBytes());
-          if (!cancelled) setBtState("sent");
+          if (aliveRef.current) setBtState("sent");
         } finally {
           link.disconnect();
         }
       } catch (error) {
-        if (cancelled) return;
+        // Auto-print yang gagal harus terlihat sebagai error + tombol coba lagi;
+        // sebelumnya hanya pesan status sehingga kasir tidak tahu job berhenti.
+        setBtState("error");
         setBtMessage(
           error instanceof SerialPrintError || error instanceof BluetoothPrintError
             ? error.message
             : "Auto-print gagal. Gunakan tombol cetak manual."
         );
       } finally {
-        if (!cancelled) setAutoPrintPending(false);
+        setAutoPrintPending(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
     // Sekali saat struk dibuka; receiptBytes mengikuti detail order.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order.id]);

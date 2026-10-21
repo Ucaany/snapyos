@@ -47,12 +47,22 @@ export class SerialPrintError extends Error {
 }
 
 export const SERIAL_DEFAULT_BAUD = 9600;
-export const SERIAL_CHUNK_DEFAULT = 512;
-/** Printer SPP sering menolak open pertama setelah idle; jeda ini terbukti
- *  cukup pada RPPO2N tanpa membuat UI terasa macet. */
+/**
+ * RPPO2N terukur: konsumsi nyata ±550 B/s (9600 baud, 8N1). Menulis lebih
+ * cepat hanya menumpuk di buffer printer; buffer penuh membuat write berhenti
+ * di ~8-16KB lalu link putus (job terpotong). Chunk 256 + jeda 480ms ≈ 525 B/s
+ * terverifikasi mengirim job foto 10.431 byte utuh tanpa overflow.
+ */
+export const SERIAL_CHUNK_DEFAULT = 256;
 export const SERIAL_OPEN_RETRIES = 4;
 export const SERIAL_RETRY_DELAY_MS = 1200;
-export const SERIAL_WRITE_GAP_MS = 25;
+export const SERIAL_WRITE_GAP_MS = 480;
+/** Batas tunggu per operasi port. Link SPP yang putus di tengah job bisa
+ *  menggantung `open()`/`write()` tanpa pernah reject — tanpa batas ini UI
+ *  berhenti di "Mengirim…" selamanya dan customer tidak bisa retry. */
+export const SERIAL_OPEN_TIMEOUT_MS = 8_000;
+export const SERIAL_WRITE_TIMEOUT_MS = 20_000;
+export const SERIAL_CLOSE_TIMEOUT_MS = 4_000;
 
 export function getSerialApi(): SerialLike | null {
   if (typeof navigator === "undefined") return null;
@@ -71,6 +81,9 @@ export type SerialWriteOptions = {
   openRetries?: number;
   retryDelayMs?: number;
   writeGapMs?: number;
+  openTimeoutMs?: number;
+  writeTimeoutMs?: number;
+  closeTimeoutMs?: number;
   serial?: SerialLike | null;
   sleep?: (ms: number) => Promise<void>;
 };
@@ -81,6 +94,31 @@ function abortError(): SerialPrintError {
   return new SerialPrintError("ABORTED", "Cetak dibatalkan.");
 }
 
+/** Batasi promise port yang bisa menggantung saat Bluetooth putus. */
+function withTimeout<T>(promise: Promise<T>, ms: number, error: () => Error): Promise<T> {
+  if (!Number.isFinite(ms) || ms <= 0) return promise;
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(error()), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (reason) => {
+        clearTimeout(timer);
+        reject(reason);
+      }
+    );
+  });
+}
+
+function writeTimeoutError(): SerialPrintError {
+  return new SerialPrintError(
+    "WRITE_FAILED",
+    "Printer berhenti merespons saat mencetak. Periksa koneksi Bluetooth, lalu cetak ulang."
+  );
+}
+
 /** Buka port dengan retry; port SPP dapat menjawab NetworkError sekali. */
 export async function openSerialPort(
   port: SerialPortLike,
@@ -89,16 +127,25 @@ export async function openSerialPort(
   const sleep = options.sleep ?? defaultSleep;
   const retries = Math.max(1, options.openRetries ?? SERIAL_OPEN_RETRIES);
   const baudRate = options.baudRate ?? SERIAL_DEFAULT_BAUD;
+  const openTimeoutMs = options.openTimeoutMs ?? SERIAL_OPEN_TIMEOUT_MS;
   let lastError: unknown = null;
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      await port.open({
-        baudRate,
-        dataBits: 8,
-        stopBits: 1,
-        parity: "none",
-        flowControl: "none",
-      });
+      await withTimeout(
+        port.open({
+          baudRate,
+          dataBits: 8,
+          stopBits: 1,
+          parity: "none",
+          flowControl: "none",
+        }),
+        openTimeoutMs,
+        () =>
+          new SerialPrintError(
+            "OPEN_FAILED",
+            "Printer tidak merespons. Pastikan printer menyala dan Bluetooth tersambung."
+          )
+      );
       return;
     } catch (error) {
       lastError = error;
@@ -149,25 +196,37 @@ export async function writeEscPosSerial(
     const chunkSize = Math.max(1, options.chunkSize ?? SERIAL_CHUNK_DEFAULT);
     const sleep = options.sleep ?? defaultSleep;
     try {
+      const writeTimeoutMs = options.writeTimeoutMs ?? SERIAL_WRITE_TIMEOUT_MS;
       for (let offset = 0; offset < bytes.length; offset += chunkSize) {
         if (options.signal?.aborted) throw abortError();
         const chunk = bytes.slice(offset, offset + chunkSize);
         try {
-          await writer.write(chunk);
-        } catch {
+          await withTimeout(writer.write(chunk), writeTimeoutMs, writeTimeoutError);
+        } catch (error) {
+          if (error instanceof SerialPrintError) throw error;
           throw new SerialPrintError("WRITE_FAILED", "Gagal mengirim data ke printer.");
         }
         if (offset + chunkSize < bytes.length) {
           await sleep(options.writeGapMs ?? SERIAL_WRITE_GAP_MS);
         }
       }
-      await writer.ready;
+      await withTimeout(writer.ready, writeTimeoutMs, writeTimeoutError);
     } finally {
-      writer.releaseLock();
+      try {
+        writer.releaseLock();
+      } catch {
+        /* writer masih menggantung setelah timeout — kunci dilepas saat stream tutup */
+      }
     }
   } finally {
     try {
-      await port.close();
+      // `close()` pada link SPP yang sudah putus bisa menggantung; jangan
+      // sampai hasil cetak (dan tombol retry) menunggu selamanya.
+      await withTimeout(
+        port.close(),
+        options.closeTimeoutMs ?? SERIAL_CLOSE_TIMEOUT_MS,
+        () => new Error("close timeout")
+      );
     } catch {
       /* port mungkin sudah tertutup setelah error */
     }
@@ -208,25 +267,37 @@ export async function writeEscPosSerialGranted(
     const chunkSize = Math.max(1, options.chunkSize ?? SERIAL_CHUNK_DEFAULT);
     const sleep = options.sleep ?? defaultSleep;
     try {
+      const writeTimeoutMs = options.writeTimeoutMs ?? SERIAL_WRITE_TIMEOUT_MS;
       for (let offset = 0; offset < bytes.length; offset += chunkSize) {
         if (options.signal?.aborted) throw abortError();
         const chunk = bytes.slice(offset, offset + chunkSize);
         try {
-          await writer.write(chunk);
-        } catch {
+          await withTimeout(writer.write(chunk), writeTimeoutMs, writeTimeoutError);
+        } catch (error) {
+          if (error instanceof SerialPrintError) throw error;
           throw new SerialPrintError("WRITE_FAILED", "Gagal mengirim data ke printer.");
         }
         if (offset + chunkSize < bytes.length) {
           await sleep(options.writeGapMs ?? SERIAL_WRITE_GAP_MS);
         }
       }
-      await writer.ready;
+      await withTimeout(writer.ready, writeTimeoutMs, writeTimeoutError);
     } finally {
-      writer.releaseLock();
+      try {
+        writer.releaseLock();
+      } catch {
+        /* writer masih menggantung setelah timeout — kunci dilepas saat stream tutup */
+      }
     }
   } finally {
     try {
-      await port.close();
+      // `close()` pada link SPP yang sudah putus bisa menggantung; jangan
+      // sampai hasil cetak (dan tombol retry) menunggu selamanya.
+      await withTimeout(
+        port.close(),
+        options.closeTimeoutMs ?? SERIAL_CLOSE_TIMEOUT_MS,
+        () => new Error("close timeout")
+      );
     } catch {
       /* port mungkin sudah tertutup setelah error */
     }
