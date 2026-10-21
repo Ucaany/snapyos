@@ -67,7 +67,8 @@ node scripts/backfill-storage-usage.mjs
 ```bash
 npm run dev              # dev server
 npm run build            # production build
-npm run start            # jalankan hasil build (standalone)
+npm run start            # jalankan hasil build (standalone; memuat .env.local bila ada)
+# `build` otomatis menyiapkan `.next/standalone` beserta asset static/public
 npm run lint             # eslint
 npm run typecheck        # tsc --noEmit
 npm run test             # unit tests (node:test)

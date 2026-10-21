@@ -339,9 +339,10 @@ karena ia melakukan `DROP SCHEMA`. Rehearsal destruktif **belum dijalankan**
 ## 7. Model deploy
 
 Deploy memakai checkout Git di VPS, bukan arsip rilis. `deploy/deploy.sh`
-menjalankan `git pull --ff-only`, `npm ci`, `npm run build`, menyalin
-`.next/static` dan `public` ke bundel standalone, lalu restart systemd dan
-menunggu `/api/health`.
+menjalankan `git pull --ff-only`, `npm ci`, `npm run build`, memvalidasi bundel
+standalone yang sudah disiapkan oleh hook `postbuild`, lalu restart systemd dan
+menunggu `/api/health`. Hook lintas platform itu menyalin `.next/static` dan
+`public` ke lokasi runtime agar asset tidak 404 saat `npm run start`.
 
 | Berkas                      | Fungsi                                                       |
 | --------------------------- | ------------------------------------------------------------ |

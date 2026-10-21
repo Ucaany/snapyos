@@ -49,18 +49,12 @@ npm run build
 [ -f "$APP_DIR/.next/standalone/server.js" ] \
   || die ".next/standalone/server.js tidak ada. Pastikan next.config.ts memakai output: 'standalone'"
 
-# --- 4. Susun bundel runtime ------------------------------------------------
-# `output: standalone` tidak menyalin static dan public; keduanya wajib ada di
-# samping server.js atau CSS/JS/aset akan 404.
-log "salin .next/static dan public ke bundel standalone"
-mkdir -p "$APP_DIR/.next/standalone/.next"
-rm -rf "$APP_DIR/.next/standalone/.next/static"
-cp -a "$APP_DIR/.next/static" "$APP_DIR/.next/standalone/.next/static"
-
-rm -rf "$APP_DIR/.next/standalone/public"
-if [ -d "$APP_DIR/public" ]; then
-  cp -a "$APP_DIR/public" "$APP_DIR/.next/standalone/public"
-fi
+# --- 4. Siapkan runtime -----------------------------------------------------
+# `npm run build` menjalankan postbuild dan menyalin asset ke bundel standalone.
+[ -d "$APP_DIR/.next/standalone/.next/static" ] \
+  || die ".next/standalone/.next/static tidak ada setelah postbuild"
+[ ! -d "$APP_DIR/public" ] || [ -d "$APP_DIR/.next/standalone/public" ] \
+  || die ".next/standalone/public tidak ada setelah postbuild"
 
 # Cache ISR ditulis runtime; pastikan bisa ditulis user service.
 mkdir -p "$APP_DIR/.next/standalone/.next/cache"
