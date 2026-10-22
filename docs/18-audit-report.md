@@ -33,7 +33,7 @@
 | G1  | `npm run lint`                      | **PASS**           | 0 error, 12 warning — diulang 2026-10-22 (§12.1)   |
 | G2  | `npm run typecheck`                 | **PASS**           | exit 0 — diulang 2026-10-22 (§12.1)                |
 | G3  | `npm test`                          | **PASS**           | 958/958 — diulang 2026-10-22 (§12.1)               |
-| G4  | `npm run build`                     | **PASS**           | exit 0, 93 halaman statis — diulang 2026-10-22     |
+| G4  | `npm run build`                     | **PASS**           | exit 0, Next 16.4.2, 93 halaman statis — 2026-10-22 |
 | G5  | `npm run build` (output standalone) | **PASS**           | exit 0, `.next/standalone/server.js` ada           |
 | G6  | `npm audit`                         | **PASS bersyarat** | 0 critical; 9 high + 2 moderate (§2.5)             |
 | G7  | Uji keamanan (subset)               | **PASS**           | 51/51                                              |
@@ -617,7 +617,7 @@ laporan otomatis yang tidak terbukti **ditolak**, bukan dikutip.
 $ npm run typecheck              exit 0
 $ npm run lint                   exit 0  (0 error, 12 warning no-img-element)
 $ npm test                       exit 0  (958/958, 0 fail)
-$ npm run build                  exit 0  (standalone assets prepared)
+$ npm run build                  exit 0  (Next.js 16.4.2, 93 halaman, standalone assets prepared)
 $ npx prettier --check <file scope audit>   All matched files use Prettier code style!
 $ npm audit --omit=dev           0 critical, 0 high, 2 moderate (runtime)
 $ npm audit                      0 critical, 9 high, 2 moderate (seluruhnya dev-time)

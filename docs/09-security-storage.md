@@ -256,7 +256,7 @@ Sumber: audit keamanan 2026-10-09. Status: **fixed**, **documented-residual**, a
 
 | ID   | Severity       | Temuan                                                                                                                            | Status                                                                                        | Bukti                                                |
 | ---- | -------------- | --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| P0-1 | critical       | `next` 16.3.3 rentan RCE `next/og` ImageResponse, SSRF Image Optimization, cache poisoning SSG/ISR, metadata dynamicParams bypass | **fixed** — `next` ^16.3.8 (terpasang 16.4.0)                                                 | `npm audit` (0 critical next)                        |
+| P0-1 | critical       | `next` 16.3.3 rentan RCE `next/og` ImageResponse, SSRF Image Optimization, cache poisoning SSG/ISR, metadata dynamicParams bypass | **fixed** — `next` ^16.4.2 (terpasang 16.4.2)                                                 | `npm audit` (0 critical next)                        |
 | P0-2 | high           | `xlsx@0.18.5` prototype pollution + ReDoS (no-fix). Hanya dipakai **generate** (bukan parse input tak terpercaya)                 | **fixed** — diganti `exceljs@^4.4.0` di `src/server/reports.ts`                               | `tests/` + build                                     |
 | P1-a | high           | Injeksi key storage via `page` kiosk → `kiosk-page-${page}` (`src/server/branding.ts:309`)                                        | **fixed** — allowlist `KIOSK_PAGE_IDS` divalidasi di sink + action                            | `tests/phase3.test.ts`                               |
 | P1-b | high           | Path traversal key R2                                                                                                             | **fixed** — guard `..`/backslash di `r2Key` (`src/lib/r2/areas.ts`)                           | `tests/storage-abstraction.test.ts`                  |
@@ -279,7 +279,7 @@ Sumber: audit keamanan 2026-10-09. Status: **fixed**, **documented-residual**, a
 
 ### Residual risk
 
-- `next` terpasang via `^16.3.8` → resolve ke 16.4.0; advisory baru pasca-16.4.0
+- `next` terpasang via `^16.4.2` → resolve ke 16.4.2; advisory baru pasca-16.4.2
   harus ditinjau berkala (`npm audit`).
 - Rate limit berjalan **per instance**. Di deployment multi-instance, penyerang
   yang tersebar ke beberapa instance bisa melewati limit sebanyak jumlah
