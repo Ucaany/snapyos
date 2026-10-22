@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 import { isAllowedFrameTarget, type FrameProxyEnv } from "@/lib/frame-proxy";
 import { clampResizeWidth } from "@/lib/frame-resize";
+import { rateLimit } from "@/lib/rate-limit";
+import { getClientIp } from "@/lib/request-ip";
 import { sniffImageType } from "@/lib/upload-validation";
 
 const MAX_FRAME_BYTES = 8 * 1024 * 1024;
@@ -19,6 +21,15 @@ function frameEnv(): FrameProxyEnv {
 }
 
 export async function GET(request: Request) {
+  const ip = getClientIp(request.headers);
+  const rl = await rateLimit(`frame:${ip}`, 60, 60_000);
+  if (!rl.ok) {
+    return new NextResponse("Too many requests", {
+      status: 429,
+      headers: { "Retry-After": String(rl.retryAfterSec) },
+    });
+  }
+
   const params = new URL(request.url).searchParams;
   const raw = params.get("url");
   if (!raw) return new NextResponse("Missing frame URL", { status: 400 });
