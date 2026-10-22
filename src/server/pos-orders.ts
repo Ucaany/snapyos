@@ -76,9 +76,25 @@ type JoinBooth = {
 
 const ORDER_COLUMNS = `id, number, status, business_id, photobox_id, outlet_id, cashier_user_id,
   gross_amount, discount_amount, final_amount, payment_method, paid_at, created_at,
+  paper_width_mm, print_mode, auto_print,
   photoboxes ( name, print_settings ), outlets ( name ), cashier:users ( name )`;
 
 const ITEM_COLUMNS = `id, pos_product_id, name_snapshot, sku_snapshot, unit_price_snapshot, quantity, subtotal`;
+
+function posReceiptMigrationError(): ApiError {
+  return new ApiError(
+    "INTERNAL",
+    "Database POS belum diperbarui. Jalankan migration 0073 sebelum memakai terminal POS."
+  );
+}
+
+function isPosReceiptMigrationError(error: { code?: string; message?: string } | null): boolean {
+  return (
+    error?.code === "PGRST202" ||
+    error?.code === "42703" ||
+    /pos_create_order_with_items|paper_width_mm|print_mode|auto_print/i.test(error?.message ?? "")
+  );
+}
 
 function mapOrder(row: unknown): PosOrderRow {
   const r = row as {
@@ -95,11 +111,17 @@ function mapOrder(row: unknown): PosOrderRow {
     payment_method: string;
     paid_at: string | null;
     created_at: string;
+    paper_width_mm?: number | null;
+    print_mode?: string | null;
+    auto_print?: boolean | null;
     photoboxes?: JoinBooth;
     outlets?: JoinName;
     cashier?: JoinName;
   };
-  const name = (j?: JoinName) => (j && !Array.isArray(j) ? j.name : null);
+  const name = (j?: JoinName) => {
+    if (!j) return null;
+    return Array.isArray(j) ? (j[0]?.name ?? null) : j.name;
+  };
   const booth = Array.isArray(r.photoboxes) ? r.photoboxes[0] : r.photoboxes;
   const receiptSettings = resolvePosReceiptSettings(booth?.print_settings, Boolean(booth));
   return {
@@ -119,9 +141,15 @@ function mapOrder(row: unknown): PosOrderRow {
     payment_method: r.payment_method,
     paid_at: r.paid_at,
     created_at: r.created_at,
-    paper_width_mm: receiptSettings.paperWidthMm,
-    print_mode: receiptSettings.printMode,
-    auto_print: receiptSettings.autoPrint,
+    paper_width_mm:
+      r.paper_width_mm === 58 || r.paper_width_mm === 80
+        ? r.paper_width_mm
+        : receiptSettings.paperWidthMm,
+    print_mode:
+      r.print_mode === "bluetooth" || r.print_mode === "browser"
+        ? r.print_mode
+        : receiptSettings.printMode,
+    auto_print: typeof r.auto_print === "boolean" ? r.auto_print : receiptSettings.autoPrint,
   };
 }
 
@@ -157,7 +185,11 @@ async function fetchOrderDetail(
     .eq("id", orderId)
     .eq("business_id", businessId)
     .maybeSingle();
-  if (error) throw new ApiError("INTERNAL", "Gagal memuat order POS");
+  if (error) {
+    throw isPosReceiptMigrationError(error)
+      ? posReceiptMigrationError()
+      : new ApiError("INTERNAL", "Gagal memuat order POS");
+  }
   if (!data) return null;
 
   const { data: items, error: itemError } = await supabase
@@ -175,12 +207,13 @@ async function nextPosOrderNumber(
   businessId: string
 ): Promise<string> {
   const { start, end } = posDayRange();
-  const { count } = await supabase
+  const { count, error } = await supabase
     .from("pos_orders")
     .select("id", { count: "exact", head: true })
     .eq("business_id", businessId)
     .gte("created_at", start.toISOString())
     .lt("created_at", end.toISOString());
+  if (error) throw new ApiError("INTERNAL", "Gagal menentukan nomor order POS");
   return posOrderNumber((count ?? 0) + 1);
 }
 
@@ -198,17 +231,19 @@ export async function createPosOrder(
   const supabase = createServerClient();
 
   // Booth wajib milik tenant + pos_enabled (A13) — cross-tenant = 404.
-  const { data: booth } = await supabase
+  const { data: booth, error: boothError } = await supabase
     .from("photoboxes")
-    .select("id, name, outlet_id, pos_enabled")
+    .select("id, name, outlet_id, pos_enabled, print_settings")
     .eq("id", parsed.photoboxId)
     .eq("business_id", businessId)
     .maybeSingle();
+  if (boothError) throw new ApiError("INTERNAL", "Gagal memuat booth POS");
   const boothRow = (booth ?? null) as {
     id: string;
     name: string;
     outlet_id: string;
     pos_enabled: boolean;
+    print_settings?: NonNullable<JoinBooth>["print_settings"];
   } | null;
   if (!boothRow) throw new ApiError("NOT_FOUND", "Booth tidak ditemukan");
   if (!boothRow.pos_enabled) {
@@ -217,11 +252,12 @@ export async function createPosOrder(
 
   // Produk di-fetch ulang dari DB — harga/total TIDAK pernah dari client (A8).
   const productIds = [...new Set(parsed.items.map((i) => i.productId))];
-  const { data: productRows } = await supabase
+  const { data: productRows, error: productError } = await supabase
     .from("pos_products")
     .select("id, name, sku, price, cost, stock, is_active")
     .eq("business_id", businessId)
     .in("id", productIds);
+  if (productError) throw new ApiError("INTERNAL", "Gagal memuat produk POS");
   const products = new Map(
     (
       (productRows ?? []) as {
@@ -269,36 +305,51 @@ export async function createPosOrder(
       qty: i.qty,
     }))
   );
+  const receiptSettings = resolvePosReceiptSettings(boothRow.print_settings ?? null, true);
+  const orderItems = parsed.items.map((i) => {
+    const p = products.get(i.productId)!;
+    return {
+      pos_product_id: p.id,
+      name_snapshot: p.name,
+      sku_snapshot: p.sku,
+      unit_price_snapshot: p.price,
+      cost_snapshot: p.cost,
+      quantity: i.qty,
+      subtotal: p.price * i.qty,
+    };
+  });
 
-  // Insert order + items; retry saat nomor bentrok (race antar kasir) — A14.
+  // Order + item dibuat dalam satu RPC transaction agar kegagalan item tidak
+  // meninggalkan order pending tanpa isi.
   let orderId: string | null = null;
   let orderNumber = "";
   let lastError: { code?: string; message?: string } | null = null;
   for (let attempt = 0; attempt < 3 && !orderId; attempt++) {
     const number = await nextPosOrderNumber(supabase, businessId);
-    const { data: orderRow, error: orderError } = await supabase
-      .from("pos_orders")
-      .insert({
-        business_id: businessId,
-        photobox_id: boothRow.id,
-        outlet_id: boothRow.outlet_id,
-        cashier_user_id: userId,
-        number,
-        status: "pending",
-        gross_amount: totals.gross,
-        discount_amount: totals.discount,
-        final_amount: totals.final,
-        payment_method: "cash",
-      })
-      .select("id")
-      .single();
-    const row = (orderRow ?? null) as { id: string } | null;
-    if (row) {
-      orderId = row.id;
+    const { data: createdOrderId, error: orderError } = await supabase.rpc(
+      "pos_create_order_with_items",
+      {
+        p_business: businessId,
+        p_photobox: boothRow.id,
+        p_outlet: boothRow.outlet_id,
+        p_cashier: userId,
+        p_number: number,
+        p_gross: totals.gross,
+        p_discount: totals.discount,
+        p_final: totals.final,
+        p_paper_width: receiptSettings.paperWidthMm,
+        p_print_mode: receiptSettings.printMode,
+        p_auto_print: receiptSettings.autoPrint,
+        p_items: orderItems,
+      }
+    );
+    if (createdOrderId) {
+      orderId = String(createdOrderId);
       orderNumber = number;
       break;
     }
     lastError = orderError ?? null;
+    if (isPosReceiptMigrationError(orderError)) throw posReceiptMigrationError();
     if (orderError?.code !== "23505") {
       throw new ApiError("INTERNAL", "Gagal membuat order POS");
     }
@@ -309,23 +360,6 @@ export async function createPosOrder(
       db_message: lastError?.message,
     });
   }
-
-  const { error: itemError } = await supabase.from("pos_order_items").insert(
-    parsed.items.map((i) => {
-      const p = products.get(i.productId)!;
-      return {
-        pos_order_id: orderId,
-        pos_product_id: p.id,
-        name_snapshot: p.name,
-        sku_snapshot: p.sku,
-        unit_price_snapshot: p.price,
-        cost_snapshot: p.cost,
-        quantity: i.qty,
-        subtotal: p.price * i.qty,
-      };
-    })
-  );
-  if (itemError) throw new ApiError("INTERNAL", "Gagal menyimpan item order POS");
 
   await insertAudit({
     actorId: userId,
@@ -363,12 +397,13 @@ export async function cancelPosOrder(
   if (error) throw new ApiError("INTERNAL", "Gagal membatalkan order POS");
   if (!data) {
     // 0 rows: bukan milik tenant (=404) atau bukan pending (=409).
-    const { data: exists } = await supabase
+    const { data: exists, error: existsError } = await supabase
       .from("pos_orders")
       .select("id")
       .eq("id", orderId)
       .eq("business_id", businessId)
       .maybeSingle();
+    if (existsError) throw new ApiError("INTERNAL", "Gagal memeriksa order POS");
     if (!exists) throw new ApiError("NOT_FOUND", "Order tidak ditemukan");
     throw new ApiError("POS_ORDER_NOT_PAYABLE", "Order tidak berstatus pending");
   }
@@ -400,7 +435,7 @@ export async function payPosOrderManually(
 
   const supabase = createServerClient();
 
-  const { data: orderData } = await supabase
+  const { data: orderData, error: orderError } = await supabase
     .from("pos_orders")
     .select(
       "id, number, status, outlet_id, photobox_id, gross_amount, discount_amount, final_amount, cashier_user_id"
@@ -408,6 +443,7 @@ export async function payPosOrderManually(
     .eq("id", parsed.orderId)
     .eq("business_id", businessId)
     .maybeSingle();
+  if (orderError) throw new ApiError("INTERNAL", "Gagal memuat order POS");
   const order = (orderData ?? null) as {
     id: string;
     number: string;
@@ -425,11 +461,12 @@ export async function payPosOrderManually(
   // sudah paid) harus mengembalikan sukses yang sama, bukan 409. Ini penting
   // untuk tombol "Bayar" yang di-retry setelah timeout jaringan: uang sudah
   // diterima, klien tidak boleh disuruh membayar/membatalkan order.
-  const { data: existingTx } = await supabase
+  const { data: existingTx, error: existingTxError } = await supabase
     .from("transactions")
     .select("id")
     .eq("pos_order_id", parsed.orderId)
     .maybeSingle();
+  if (existingTxError) throw new ApiError("INTERNAL", "Gagal memeriksa status pembayaran POS");
   const decision = classifyPosManualPay({
     status: order.status,
     hasExistingTransaction: Boolean(existingTx),
@@ -459,56 +496,91 @@ export async function payPosOrderManually(
   });
   if (rpcError) {
     // 23505 = unique violation on idx_tx_pos_order_unique → already processed (race).
-    if ((rpcError as { code?: string }).code === "23505") return { orderId: parsed.orderId };
+    if ((rpcError as { code?: string }).code === "23505") {
+      const { data: raceTx, error: raceTxError } = await supabase
+        .from("transactions")
+        .select("id")
+        .eq("pos_order_id", parsed.orderId)
+        .maybeSingle();
+      if (raceTxError) throw new ApiError("INTERNAL", "Gagal memeriksa pembayaran POS");
+      if (raceTx) return { orderId: parsed.orderId };
+    }
     throw new ApiError("INTERNAL", "Gagal menyelesaikan pembayaran POS");
   }
   if (!txId) {
     // RPC returned NULL: order no longer pending (race or already processed).
-    const { data: winnerTx } = await supabase
+    const { data: winnerTx, error: winnerTxError } = await supabase
       .from("transactions")
       .select("id")
       .eq("pos_order_id", parsed.orderId)
       .maybeSingle();
+    if (winnerTxError) throw new ApiError("INTERNAL", "Gagal memeriksa pembayaran POS");
     if (winnerTx) return { orderId: parsed.orderId };
     throw new ApiError("POS_ORDER_NOT_PAYABLE", "Order sudah tidak pending");
   }
 
   // Stock decrement guarded (RPC atomic) — shortfall TIDAK membatalkan order
   // yang sudah paid: kasir menerima uang; dicatat untuk rekonsiliasi (R5).
-  const { data: items } = await supabase
+  const { data: items, error: itemsError } = await supabase
     .from("pos_order_items")
     .select("pos_product_id, quantity, name_snapshot")
     .eq("pos_order_id", order.id);
-  const stockItems = (
-    (items ?? []) as {
-      pos_product_id: string | null;
-      quantity: number;
-      name_snapshot: string;
-    }[]
-  ).filter((item) => item.pos_product_id !== null);
-  await Promise.all(
-    stockItems.map(async (item) => {
-      const { data: ok } = await supabase.rpc("pos_decrement_stock", {
-        p_business: businessId,
-        p_product: item.pos_product_id!,
-        p_qty: item.quantity,
-      });
-      if (ok !== true) {
-        console.warn("[pos] stock shortfall:", {
-          orderId: order.id,
-          product: item.name_snapshot,
-          qty: item.quantity,
+  if (itemsError) {
+    console.error("[pos] loading stock items failed after payment:", itemsError.message);
+    await insertAudit({
+      actorId: null,
+      businessId,
+      action: "pos.stock.decrement_failed",
+      target: order.id,
+      meta: { reason: "load_items", db_code: itemsError.code ?? null },
+    });
+  } else {
+    const stockItems = (
+      (items ?? []) as {
+        pos_product_id: string | null;
+        quantity: number;
+        name_snapshot: string;
+      }[]
+    ).filter((item) => item.pos_product_id !== null);
+    await Promise.all(
+      stockItems.map(async (item) => {
+        const { data: ok, error: stockError } = await supabase.rpc("pos_decrement_stock", {
+          p_business: businessId,
+          p_product: item.pos_product_id!,
+          p_qty: item.quantity,
         });
-        await insertAudit({
-          actorId: null,
-          businessId,
-          action: "pos.stock.shortfall",
-          target: order.id,
-          meta: { product: item.name_snapshot, qty: item.quantity },
-        });
-      }
-    })
-  );
+        if (stockError) {
+          console.error("[pos] stock decrement failed after payment:", stockError.message);
+          await insertAudit({
+            actorId: null,
+            businessId,
+            action: "pos.stock.decrement_failed",
+            target: order.id,
+            meta: {
+              product: item.name_snapshot,
+              qty: item.quantity,
+              db_code: stockError.code ?? null,
+            },
+          });
+          return;
+        }
+        if (ok !== true) {
+          console.warn("[pos] stock shortfall:", {
+            orderId: order.id,
+            product: item.name_snapshot,
+            qty: item.quantity,
+          });
+          await insertAudit({
+            actorId: null,
+            businessId,
+            action: "pos.stock.shortfall",
+            target: order.id,
+            meta: { product: item.name_snapshot, qty: item.quantity },
+          });
+        }
+      })
+    );
+  }
 
   await insertAudit({
     actorId: userId,
@@ -533,5 +605,6 @@ export async function getPosOrder(
   const supabase = createServerClient();
   const detail = await fetchOrderDetail(supabase, businessId, orderId);
   if (!detail) throw new ApiError("NOT_FOUND", "Order tidak ditemukan");
+  if (detail.order.status !== "paid") throw new ApiError("NOT_FOUND", "Struk belum tersedia");
   return detail;
 }

@@ -58,6 +58,7 @@ node scripts/backfill-storage-usage.mjs
 ```
 
 - **Sudah diterapkan ke cloud** (diverifikasi 2026-10-20 lewat probe PostgREST): `0061`, `0062`, `0063`, `0068`, `0069`, `0070`. `0069` menghadirkan RPC kuota atomik (`create_outlet_with_quota`, `create_photobox_with_quota`, `add_business_member_with_quota`) yang dipanggil `src/server/outlets.ts`, `photoboxes.ts`, dan `staff.ts`.
+- **Belum diterapkan:** `0073_pos_receipt_snapshot_and_untracked_stock.sql` lalu `0074_pos_payment_idempotency_race.sql` — wajib sebelum deploy kode POS terbaru; menambah kolom snapshot struk, RPC order/item atomic, RPC toggle booth atomic, mencegah pembayaran retry mengurangi stok dua kali, dan menandai transaksi POS offline `withdrawable=false`. Setelah menjalankan SQL, refresh schema cache PostgREST lalu ulangi E2E transaksi POS.
 - **Belum diterapkan (sengaja):** `0071_rpc_search_path_hardening.sql`. Ini keputusan pemilik, lihat `docs/status.md`. Jalankan sebelum mengaktifkan hardening `search_path` di produksi.
 - `0061` = plan device/addon model (DML UPDATE pada `plans`); `0062` = storage_usage accounting (`storage_objects` + `storage_usage` + RPC `storage_account_add`/`storage_account_sub`).
 - Jalur baca enforcement storage (`assertStorageAvailable` → `getBusinessUsedBytes(id, failOpen=false)`) **fail-closed: melempar** saat query gagal. Pemanggilnya (`src/server/branding.ts`, `src/server/kiosk-sessions.ts`, `src/server/templates.ts`) `await` tanpa try/catch, jadi `0062` wajib ada di setiap environment sebelum upload/finalize dipakai.
@@ -81,19 +82,19 @@ npm run format           # prettier --write
 npm run format:check     # prettier --check (gate rilis)
 ```
 
-### Audit rilis (2026-10-20)
+### Audit rilis (2026-10-21)
 
 Gate yang diverifikasi di mesin pengembang sebelum deploy:
 
 ```bash
 npm run typecheck        # PASS
 npm run lint             # PASS, 0 error, 12 warning <img> yang disengaja
-npm test                 # PASS 910/910
+npm test                 # PASS 957/957
 npm run build            # PASS (Next.js 16, 93 static pages)
-npm run format:check     # PASS
+npm run format:check     # PASS untuk file scope audit; repo-wide masih memiliki 34 file legacy tidak terformat
 npm run test:e2e:print   # PASS 4/4
 npm run test:e2e:bluetooth # PASS 2/2 suite (12 assertion: BLE 2, SPP/foto 10)
-node tests/e2e/pos-receipt-serial.spec.mjs # PASS 16/16 (struk 58mm + 80mm)
+node tests/e2e/pos-receipt-serial.spec.mjs # BLOCKED sampai migration 0073–0074 diterapkan
 ```
 
 ### Cetak thermal Bluetooth (2026-10-20)

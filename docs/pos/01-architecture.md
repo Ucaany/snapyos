@@ -137,7 +137,7 @@ src/app/(dashboard)/dashboard/pos/page.tsx
 | `src/lib/api-errors.ts`                                    | 2     | `POS_NOT_SUBSCRIBED`, `INSUFFICIENT_STOCK`, `POS_ORDER_NOT_PAYABLE`, `POS_PRODUCT_INACTIVE`, `POS_BOOTH_DISABLED` |
 | `src/lib/pos-math.ts`                                      | 3     | `computePosTotals` (integer, discount hook = 0), `posOrderNumber` (WIB, retry 3×)                                 |
 | `src/server/pos-products.ts`                               | 3     | CRUD produk (scoped `.eq(business_id)`)                                                                           |
-| `src/server/pos-orders.ts`                                 | 3     | createPosOrder, cancelPosOrder, payPosOrderManually (transactions insert + stock), listPosBooths                  |
+| `src/server/pos-orders.ts`                                 | 3     | createPosOrder, cancelPosOrder, payPosOrderManually, getPosOrder (transactions insert + stock)                   |
 | `src/server/pos-actions.ts`                                | 3     | server actions terminal + manajemen (binding tipis)                                                               |
 | `src/components/pos/*`                                     | 3     | ProductGrid, CartPanel, ProductForm, ProductsTable, BoothPicker, PayMethodDialog, ReceiptView                     |
 | `src/server/pos-reports.ts`                                | 5     | agregasi by product/cashier/outlet/booth/status/tanggal                                                           |
@@ -164,7 +164,6 @@ src/app/(dashboard)/dashboard/pos/page.tsx
 | `posCancelOrder`     | `pos:sell`   | `{ orderId }`                                                               | —                                             | pending→cancelled                          |
 | `posPayManually`     | `pos:sell`   | `{ orderId, method: cash\|bank_transfer\|other }`                           | order paid                                    | insert transactions (tanpa credit) + stock |
 | `posGetOrder`        | `pos:read`   | `{ orderId }`                                                               | order + items                                 | scoped                                     |
-| `posListOrders`      | `pos:read`   | `{ status?, from?, to?, photoboxId?, page }`                                | page orders                                   | scoped                                     |
 | `posReports`         | `pos:read`   | `{ from, to, groupBy: product\|cashier\|outlet\|booth\|method\|day }`       | agregasi int IDR                              | dari `pos_orders`+items+`transactions`     |
 
 - **REST mirror: TIDAK dibuat** (YAGNI — terminal web ter-authentikasi, tidak ada device-token POS).
@@ -176,7 +175,7 @@ src/app/(dashboard)/dashboard/pos/page.tsx
 
 | Action                                                                                         | owner | manager | staff |
 | ---------------------------------------------------------------------------------------------- | ----- | ------- | ----- |
-| posListBooths / posListProducts / posListCategories / posGetOrder / posListOrders / posReports | ✅    | ✅      | ✅    |
+| posListBooths / posListProducts / posListCategories / posGetOrder / posReports             | ✅    | ✅      | ✅    |
 | posCreateProduct / posUpdateProduct / posDeleteProduct / posSetBoothEnabled                    | ✅    | ✅      | ❌    |
 | posCreateOrder / posCancelOrder / posPayManually                                               | ✅    | ✅      | ✅    |
 

@@ -527,6 +527,10 @@ create table pos_orders (
     check (payment_method in ('cash', 'bank_transfer', 'other')),           -- offline-only (A2)
   payment_reference text,
   paid_at timestamptz,
+  paper_width_mm integer not null default 80 check (paper_width_mm in (58, 80)),
+  print_mode text not null default 'browser'
+    check (print_mode in ('browser', 'bluetooth')),
+  auto_print boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint pos_orders_business_number_key unique (business_id, number),
@@ -554,6 +558,89 @@ create table pos_order_items (
 create index idx_pos_order_items_order on pos_order_items (pos_order_id);
 create index idx_pos_order_items_product on pos_order_items (pos_product_id);
 
+-- Atomic order + item creation: prevents orphan pending orders when item insert fails.
+create or replace function pos_create_order_with_items(
+  p_business uuid,
+  p_photobox uuid,
+  p_outlet uuid,
+  p_cashier uuid,
+  p_number text,
+  p_gross integer,
+  p_discount integer,
+  p_final integer,
+  p_paper_width integer,
+  p_print_mode text,
+  p_auto_print boolean,
+  p_items jsonb
+) returns uuid
+language plpgsql
+set search_path = public, pg_temp
+as $$
+declare
+  v_order_id uuid;
+begin
+  insert into pos_orders (
+    business_id, photobox_id, outlet_id, cashier_user_id, number, status,
+    gross_amount, discount_amount, final_amount, payment_method,
+    paper_width_mm, print_mode, auto_print
+  ) values (
+    p_business, p_photobox, p_outlet, p_cashier, p_number, 'pending',
+    p_gross, p_discount, p_final, 'cash',
+    p_paper_width, p_print_mode, p_auto_print
+  ) returning id into v_order_id;
+
+  insert into pos_order_items (
+    pos_order_id, pos_product_id, name_snapshot, sku_snapshot,
+    unit_price_snapshot, cost_snapshot, quantity, subtotal
+  )
+  select
+    v_order_id,
+    nullif(item->>'pos_product_id', '')::uuid,
+    item->>'name_snapshot',
+    nullif(item->>'sku_snapshot', ''),
+    (item->>'unit_price_snapshot')::integer,
+    nullif(item->>'cost_snapshot', '')::integer,
+    (item->>'quantity')::integer,
+    (item->>'subtotal')::integer
+  from jsonb_array_elements(p_items) as item;
+
+  return v_order_id;
+end;
+$$;
+
+-- Atomic booth switch: one POS booth per business, serialized per tenant.
+create or replace function pos_set_booth_enabled(
+  p_business uuid,
+  p_photobox uuid,
+  p_enabled boolean
+) returns boolean
+language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+  perform pg_advisory_xact_lock(hashtext(p_business::text));
+  if not exists (
+    select 1 from photoboxes where id = p_photobox and business_id = p_business
+  ) then
+    return false;
+  end if;
+
+  if p_enabled then
+    update photoboxes
+       set pos_enabled = false
+     where business_id = p_business
+       and id <> p_photobox
+       and pos_enabled = true;
+  end if;
+
+  update photoboxes
+     set pos_enabled = p_enabled
+   where id = p_photobox
+     and business_id = p_business;
+  return found;
+end;
+$$;
+
 -- Atomic POS payment (0026): conditional UPDATE pos_orders + INSERT transactions
 -- in one DB transaction. Returns new transaction id or NULL (not pending / already exists).
 create or replace function pos_complete_payment(
@@ -579,7 +666,7 @@ begin
    where pos_order_id = p_order_id
    limit 1;
   if v_existing is not null then
-    return v_existing;
+    return null;
   end if;
 
   update pos_orders
@@ -597,11 +684,11 @@ begin
   insert into transactions (
     business_id, outlet_id, photobox_id, session_id, package_id,
     payment_method, gross_amount, discount_amount, final_amount,
-    status, number, pos_order_id, cashier_user_id, paid_at
+    status, number, pos_order_id, cashier_user_id, paid_at, withdrawable
   ) values (
     p_business, p_outlet_id, p_photobox_id, null, null,
     p_method, p_gross, p_discount, p_final,
-    'paid', p_tx_number, p_order_id, p_cashier, now()
+    'paid', p_tx_number, p_order_id, p_cashier, now(), false
   )
   returning id into v_tx_id;
 
@@ -617,15 +704,26 @@ create or replace function pos_decrement_stock(
 ) returns boolean
 language plpgsql
 as $$
+declare
+  v_stock integer;
 begin
   if p_qty is null or p_qty <= 0 then
+    return true;
+  end if;
+  select stock into v_stock
+    from pos_products
+   where id = p_product
+     and business_id = p_business;
+  if not found then
+    return false;
+  end if;
+  if v_stock is null then
     return true;
   end if;
   update pos_products
      set stock = stock - p_qty, updated_at = now()
    where id = p_product
      and business_id = p_business
-     and stock is not null
      and stock >= p_qty;
   return found;
 end;
@@ -2088,6 +2186,12 @@ grant execute on function pos_complete_payment(uuid, uuid, text, uuid, text, uui
 
 revoke execute on function pos_decrement_stock(uuid, uuid, integer) from public, anon, authenticated;
 grant execute on function pos_decrement_stock(uuid, uuid, integer) to service_role;
+
+revoke execute on function pos_create_order_with_items(uuid, uuid, uuid, uuid, text, integer, integer, integer, integer, text, boolean, jsonb) from public, anon, authenticated;
+grant execute on function pos_create_order_with_items(uuid, uuid, uuid, uuid, text, integer, integer, integer, integer, text, boolean, jsonb) to service_role;
+
+revoke execute on function pos_set_booth_enabled(uuid, uuid, boolean) from public, anon, authenticated;
+grant execute on function pos_set_booth_enabled(uuid, uuid, boolean) to service_role;
 
 revoke execute on function storage_account_add(uuid, text, text, bigint) from public, anon, authenticated;
 grant execute on function storage_account_add(uuid, text, text, bigint) to service_role;

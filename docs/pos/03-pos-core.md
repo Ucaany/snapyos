@@ -12,7 +12,7 @@
 Dieksekusi 2026-08-28. Yang jadi, sesuai spesifikasi §1–§6:
 
 - `src/lib/pos-math.ts` (`computePosTotals`, `posOrderNumber`, `posDayKey`, `posDayRange` — murni, integer, WIB).
-- `src/server/pos-products.ts` (CRUD produk + toggle booth + kategori), `src/server/pos-orders.ts` (`createPosOrder`/`cancelPosOrder`/`payPosOrderManually`/`getPosOrder`/`listPosOrders`), `src/server/pos-actions.ts` (binding tipis + `revalidatePath`).
+- `src/server/pos-products.ts` (CRUD produk + toggle booth + kategori), `src/server/pos-orders.ts` (`createPosOrder`/`cancelPosOrder`/`payPosOrderManually`/`getPosOrder`), `src/server/pos-actions.ts` (binding tipis + `revalidatePath`).
 - Route: `src/app/(pos)/pos/{page,layout,terminal,receipt/[orderId]}`, `src/app/(dashboard)/dashboard/pos/page.tsx`.
 - UI: komponen terminal di route `(pos)`; komponen dashboard POS di `src/components/dashboard/Pos*` — **deviasi dari §5.4**: `PosProductsTable`/`PosBoothsTable`/`PosReportsPanel` tidak di `src/components/pos/`.
 - Test: `tests/pos-math.test.ts`, `tests/pos-validators.test.ts`.
@@ -162,7 +162,7 @@ payPosOrderManually(userId, businessId, orderId, method)   // cash | bank_transf
      gross/discount/final dari order, number (generator existing `transactions.number`
      di src/server/transactions.ts — JANGAN bikin scheme baru), pos_order_id,
      cashier_user_id, paid_at=now()
-     → TANPA creditBalance (A3 — konsisten kebijakan 0016; saldo tak berubah)
+     → `withdrawable=false`, TANPA creditBalance (A3 — konsisten kebijakan 0016; saldo tak berubah)
   6. decrementPosStock(items) — guarded per item:
      update pos_products set stock = stock - qty where id=? and business_id=? and stock >= qty
      rows=0 → shortfall: log + audit `pos.stock.shortfall` — TIDAK throw
@@ -170,7 +170,7 @@ payPosOrderManually(userId, businessId, orderId, method)   // cash | bank_transf
   7. insertAudit("pos.order.paid.manual")
   → return { orderId }
 
-getPosOrder / listPosOrders  → requirePosAccess + can(pos:read); scoped; join booth/outlet/cashier names
+getPosOrder  → requirePosAccess + can(pos:read); scoped; join booth/outlet/cashier names
 ```
 
 - Idempotency pay: langkah 3 (exists-check) + langkah 4 (conditional UPDATE single-winner) — double-click / dua tab → tepat 1 transactions row.

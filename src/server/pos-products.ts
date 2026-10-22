@@ -312,30 +312,22 @@ export async function setPosBoothEnabled(
   const supabase = createServerClient();
 
   // Konfirmasi booth target milik tenant (cross-tenant = 404) sebelum mutasi.
-  const { data: target } = await supabase
+  const { data: target, error: targetError } = await supabase
     .from("photoboxes")
     .select("id, name")
     .eq("id", photoboxId)
     .eq("business_id", businessId)
     .maybeSingle();
+  if (targetError) throw new ApiError("INTERNAL", "Gagal memuat booth POS");
   if (!target) throw new ApiError("NOT_FOUND", "Booth tidak ditemukan");
 
-  if (enabled) {
-    // 1 booth aktif saja: nonaktifkan semua booth lain milik tenant.
-    const { error: clearError } = await supabase
-      .from("photoboxes")
-      .update({ pos_enabled: false })
-      .eq("business_id", businessId)
-      .neq("id", photoboxId)
-      .eq("pos_enabled", true);
-    if (clearError) throw new ApiError("INTERNAL", "Gagal mengatur booth POS");
-  }
-
-  const { error } = await supabase
-    .from("photoboxes")
-    .update({ pos_enabled: enabled })
-    .eq("id", photoboxId)
-    .eq("business_id", businessId); // cross-tenant = 0 rows = 404
+  // Perpindahan booth berjalan dalam satu transaksi DB; tanpa RPC, kegagalan
+  // update kedua dapat membuat seluruh booth POS tenant menjadi nonaktif.
+  const { data: updated, error } = await supabase.rpc("pos_set_booth_enabled", {
+    p_business: businessId,
+    p_photobox: photoboxId,
+    p_enabled: enabled,
+  });
   if (error) {
     // 23505 = partial unique index (0056): booth lain sudah aktif lebih dulu.
     if (error.code === "23505") {
@@ -346,6 +338,7 @@ export async function setPosBoothEnabled(
     }
     throw new ApiError("INTERNAL", "Gagal mengatur booth POS");
   }
+  if (updated !== true) throw new ApiError("NOT_FOUND", "Booth tidak ditemukan");
 
   await insertAudit({
     actorId: userId,

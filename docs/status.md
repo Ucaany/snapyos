@@ -115,7 +115,7 @@ Deferred (known-issue, TIDAK diimplementasikan):
 - Rehearsal migrasi destruktif (`scripts/verify-migration-rollbacks.mjs`) belum dijalankan:
   butuh Postgres; tidak tersedia di mesin ini.
 
-### Status migrasi cloud (diverifikasi 2026-10-20)
+### Status migrasi cloud (diverifikasi 2026-10-21)
 
 Probe PostgREST terhadap DB cloud mengonfirmasi `0061`, `0062`, `0063`, `0068`,
 `0069`, dan `0070` **sudah diterapkan**. Khusus `0069`, ketiga RPC kuota atomik
@@ -123,7 +123,7 @@ terekspos dan diuji langsung: pemanggilan dengan kuota `0` mengembalikan
 `P0001 PLAN_LIMIT_REACHED`, pemanggilan dengan kuota cukup berhasil membuat row
 lalu row uji dihapus kembali.
 
-`0071` tetap satu-satunya migrasi yang belum di-apply.
+`0071`, `0073`, dan `0074` belum di-apply. `0073` lalu `0074` wajib diterapkan sebelum deploy kode POS terbaru karena menambah snapshot setting struk, RPC atomic order/item dan toggle booth, menutup race pembayaran yang dapat menggandakan decrement stok, serta memastikan transaksi POS offline `withdrawable=false`.
 
 ## Baseline gate (2026-10-16, commit `a56483b`)
 
@@ -134,11 +134,11 @@ di VPS; gate yang butuh Linux/VPS dicatat terpisah di `docs/18-audit-report.md`.
 | ---------------------------- | ------------------- | ---------------------------------------------------- |
 | Lint (repo-wide, dipakai CI) | `npm run lint`      | **PASS** 0 error, 12 warning                         |
 | Typecheck                    | `npm run typecheck` | **PASS**                                             |
-| Unit/integration             | `npm test`          | **PASS** 910/910                                     |
+| Unit/integration             | `npm test`          | **PASS** 957/957                                     |
 | Build produksi               | `npm run build`     | **PASS**                                             |
 | Dependency audit             | `npm audit`         | 0 critical, 9 high, 2 moderate (dev-time/transitive) |
 
-Angka suite terkini setelah audit cetak 2026-10-20: **910 tes lulus, 0 gagal, 0 skip**.
+Angka suite terkini setelah audit POS/cetak 2026-10-21: **957 tes lulus, 0 gagal, 0 skip**.
 Penambahan mencakup encoder struk 58/80mm (`tests/print-receipt.test.ts`), transport
 Web Serial (`tests/print-serial.test.ts`), fallback pemilih printer BLE, dan kontrak
 Turnstile. Laporan gate lengkap ada di `docs/18-audit-report.md`.
@@ -151,9 +151,9 @@ Diukur ulang di mesin pengembang sebelum deploy. Semua gate lulus:
 | ---------------- | ---------------------------- | ----------------------------------------------------------------------------------------- |
 | Lint             | `npm run lint`               | **PASS** 0 error, 12 warning (`no-img-element`, sengaja: aset kiosk butuh `<img>` mentah) |
 | Typecheck        | `npm run typecheck`          | **PASS**                                                                                  |
-| Unit/integration | `npm test`                   | **PASS** 910/910, 0 gagal, 0 skip                                                         |
+| Unit/integration | `npm test`                   | **PASS** 957/957, 0 gagal, 0 skip                                                         |
 | Build produksi   | `npm run build`              | **PASS**                                                                                  |
-| Format           | `npm run format:check`       | **PASS** (`.prettierrc` diselaraskan ke `semi: true`)                                     |
+| Format           | `npm run format:check`       | **PASS SCOPE**; 34 file legacy repo-wide belum terformat                                     |
 | E2E kiosk smoke  | `kiosk-smoke.spec.mjs`       | **PASS** 6/6 (headed)                                                                     |
 | E2E kiosk lock   | `kiosk-lock.spec.mjs`        | **PASS** 7/7 (headed)                                                                     |
 | E2E kiosk frames | `kiosk-frames.spec.mjs`      | **PASS** 5/5 (headed)                                                                     |

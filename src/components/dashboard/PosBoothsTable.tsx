@@ -1,10 +1,9 @@
-import { Camera, Power, PowerOff } from "lucide-react";
+import { Camera } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 import type { PosBoothRow } from "@/server/pos-products";
-import { posToggleBoothAction } from "@/server/pos-actions";
+import { PosBoothToggleForm } from "@/components/dashboard/PosBoothToggleForm";
 
 /**
  * PosBoothsTable — toggle POS per booth (A13, docs/pos/03 §3.2).
@@ -43,7 +42,7 @@ export function PosBoothsTable({
               Outlet
             </th>
             <th scope="col" className="px-4 py-3.5">
-              Status device
+              Status booth
             </th>
             <th scope="col" className="px-4 py-3.5">
               POS
@@ -81,40 +80,12 @@ export function PosBoothsTable({
               {canManage && (
                 <td className="px-4 py-4">
                   <div className="flex flex-col items-end gap-1">
-                    <form action={posToggleBoothAction}>
-                      <input type="hidden" name="photoboxId" value={booth.id} />
-                      <input
-                        type="hidden"
-                        name="enabled"
-                        value={booth.pos_enabled ? "false" : "true"}
-                      />
-                      <Button
-                        type="submit"
-                        variant={booth.pos_enabled ? "outline" : "default"}
-                        size="sm"
-                        disabled={!booth.pos_enabled && hasActive}
-                        title={
-                          !booth.pos_enabled && hasActive
-                            ? "Nonaktifkan booth aktif dulu untuk memindahkan POS"
-                            : undefined
-                        }
-                        aria-label={
-                          booth.pos_enabled
-                            ? `Nonaktifkan POS di booth ${booth.name}`
-                            : `Aktifkan POS di booth ${booth.name}`
-                        }
-                      >
-                        {booth.pos_enabled ? (
-                          <>
-                            <PowerOff aria-hidden /> Nonaktifkan
-                          </>
-                        ) : (
-                          <>
-                            <Power aria-hidden /> Aktifkan POS
-                          </>
-                        )}
-                      </Button>
-                    </form>
+                    <PosBoothToggleForm
+                      photoboxId={booth.id}
+                      boothName={booth.name}
+                      enabled={!booth.pos_enabled}
+                      disabled={!booth.pos_enabled && hasActive}
+                    />
                     {!booth.pos_enabled && hasActive ? (
                       <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
                         1 booth saja

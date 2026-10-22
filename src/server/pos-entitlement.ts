@@ -18,7 +18,7 @@ export const hasPosEntitlement = cache(async (businessId: string): Promise<boole
   const supabase = createServerClient();
 
   // Subscription aktif terbaru (trial/active/past_due) — pola loadActiveSubscription.
-  const { data: sub } = await supabase
+  const { data: sub, error: subError } = await supabase
     .from("subscriptions")
     .select("id, status, trial_ends_at, current_period_end")
     .eq("business_id", businessId)
@@ -26,6 +26,7 @@ export const hasPosEntitlement = cache(async (businessId: string): Promise<boole
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+  if (subError) throw new ApiError("INTERNAL", "Gagal memeriksa entitlement POS");
   if (!sub) return false;
 
   const subRow = sub as {
@@ -40,10 +41,11 @@ export const hasPosEntitlement = cache(async (businessId: string): Promise<boole
     return false;
   }
 
-  const { data: rows } = await supabase
+  const { data: rows, error: addOnError } = await supabase
     .from("subscription_add_ons")
     .select("status, add_ons ( code, is_active )")
     .eq("subscription_id", subRow.id);
+  if (addOnError) throw new ApiError("INTERNAL", "Gagal memeriksa add-on POS");
 
   const addOnRows = (
     (rows ?? []) as unknown as {
@@ -67,11 +69,12 @@ export async function getPosAddOnInfo(): Promise<{
   isActive: boolean;
 } | null> {
   const supabase = createServerClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("add_ons")
     .select("price_monthly, is_active")
     .eq("code", "pos")
     .maybeSingle();
+  if (error) throw new ApiError("INTERNAL", "Gagal memuat harga add-on POS");
   if (!data) return null;
   return {
     priceMonthly: (data as { price_monthly: number }).price_monthly,

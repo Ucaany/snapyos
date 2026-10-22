@@ -1,6 +1,6 @@
 # 7. Database Schema
 
-> **Sinkron dengan `db/schema.sql` aktual per audit 2026-09-14, diperbarui hardening 2026-10-08 & 2026-10-16** (55 tabel + 29 fungsi; migrasi terakhir `0071_rpc_search_path_hardening.sql` — ditulis & diuji statis, **belum di-apply**). Tabel/kolom di bawah = realita schema; deviasi dari draft awal ditandai.
+> **Sinkron dengan `db/schema.sql` aktual per audit 2026-10-21** (55 tabel + 31 fungsi; migration terbaru POS `0074_pos_payment_idempotency_race.sql`; `0071_rpc_search_path_hardening.sql`, `0073`, dan `0074` disiapkan, **belum di-apply** ke cloud). Tabel/kolom di bawah = realita schema; deviasi dari draft awal ditandai.
 >
 > **RLS (C1, migrasi 0064):** setiap tabel `public.*` punya `alter table ... enable row level security` + policy `svc_all` (`for all to service_role using (true) with check (true)`); `anon`/`authenticated` di-revoke, `service_role` di-grant. Tidak ada policy `to public/anon/authenticated`.
 >
@@ -566,6 +566,9 @@ Log perangkat Electron. Auto-cleanup 30 hari via cron retention. **TIDAK** menyi
 | payment_method                                | text                 | `cash`/`bank_transfer`/`other` (offline-only)            |
 | payment_reference                             | text                 | nullable                                                 |
 | paid_at                                       | timestamptz          | nullable                                                 |
+| paper_width_mm                                | integer              | `58`/`80`; snapshot lebar printer thermal saat order dibuat |
+| print_mode                                    | text                 | `browser`/`bluetooth`; snapshot jalur cetak saat order dibuat |
+| auto_print                                    | boolean              | snapshot izin auto-print saat order dibuat               |
 | created_at / updated_at                       | timestamptz          |                                                          |
 
 ### pos_order_items (snapshot)
@@ -583,7 +586,7 @@ Log perangkat Electron. Auto-cleanup 30 hari via cron retention. **TIDAK** menyi
 
 RPC `pos_decrement_stock(p_business, p_product, p_qty)` — decrement atomic `stock >= qty`, return false saat shortfall.
 
-RPC `pos_complete_payment(p_order_id, p_business, p_method, p_cashier, p_tx_number, p_outlet_id, p_photobox_id, p_gross, p_discount, p_final)` — atomic UPDATE pos_orders pending→paid + INSERT transactions dalam satu DB transaction (0026). Return UUID transaction baru atau NULL (order bukan pending / sudah diproses). Menghilangkan window kegagalan parsial dimana order paid tanpa baris transactions.
+RPC `pos_complete_payment(p_order_id, p_business, p_method, p_cashier, p_tx_number, p_outlet_id, p_photobox_id, p_gross, p_discount, p_final)` — atomic UPDATE pos_orders pending→paid + INSERT transactions dalam satu DB transaction (0026). Return UUID transaction baru atau NULL (order bukan pending / sudah diproses). Menulis `transactions.withdrawable=false` untuk penjualan POS offline, menghilangkan window kegagalan parsial dimana order paid tanpa baris transactions, dan dibuat idempoten terhadap retry.
 
 ---
 

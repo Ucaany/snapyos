@@ -1,7 +1,7 @@
 # POS Add-on — Phase 9: Deployment Runbook (REVISI v2)
 
 > Status: **RUNBOOK — eksekusi setelah Phase 8 hijau.**
-> Revisi v2: migration `0019_pos_addon.sql` (0018 terpakai); tanpa integrasi payment → tidak ada monitoring webhook; off-switch ganda (add-on + per booth).
+> Revisi v4: migration `0019_pos_addon.sql` (0018 terpakai) + migration `0073_pos_receipt_snapshot_and_untracked_stock.sql` + `0074_pos_payment_idempotency_race.sql`; tanpa integrasi payment → tidak ada monitoring webhook; off-switch ganda (add-on + per booth).
 > Prinsip: migration additive aman sebelum deploy kode; fitur off-switch tanpa deploy.
 
 ---
@@ -22,6 +22,7 @@
 - [ ] Phase 8 hijau (test/lint/typecheck/build).
 - [ ] Backup DB produksi (snapshot Supabase) — rutin, meski migration murni additive.
 - [ ] Verifikasi migration hanya additive: grep `drop\|alter column .* not null` di `0019_pos_addon.sql` → nol hasil (kecuali default).
+- [ ] Pastikan migration `0073_pos_receipt_snapshot_and_untracked_stock.sql` dan `0074_pos_payment_idempotency_race.sql` siap diterapkan setelah `0019`–`0072`; keduanya wajib untuk kode POS terbaru.
 - [ ] `ROOT_DOMAIN` env TIDAK diset (Phase 6 skip default).
 
 ---
@@ -29,14 +30,18 @@
 ## 2. Urutan Eksekusi
 
 ```
-1. Terapkan db/migrations/0019_pos_addon.sql di produksi
+1. Terapkan `db/migrations/0019_pos_addon.sql` di produksi
    → additive: tabel baru + kolom photoboxes.pos_enabled + kolom transactions POS + seed.
      Kode lama tidak membaca kolom/tabel baru → aman sebelum deploy.
-2. Deploy Vercel (branch → production).
-3. Admin: verifikasi add-on POS muncul di /admin/add-ons; set harga final produksi.
-4. (Tenant pilot) Owner: aktifkan add-on POS via /dashboard/subscription → bayar invoice QRIS
+2. Terapkan `db/migrations/0073_pos_receipt_snapshot_and_untracked_stock.sql` di produksi.
+   → menambah snapshot struk, RPC order/item atomic, dan RPC toggle booth atomic.
+3. Terapkan `db/migrations/0074_pos_payment_idempotency_race.sql` di produksi.
+   → mencegah retry pembayaran mengurangi stok dua kali, memaksa transaksi POS `withdrawable=false`; refresh schema cache PostgREST.
+4. Deploy Vercel (branch → production).
+5. Admin: verifikasi add-on POS muncul di /admin/add-ons; set harga final produksi.
+6. (Tenant pilot) Owner: aktifkan add-on POS via /dashboard/subscription → bayar invoice QRIS
    (billing add-on tetap pakai alur subscription existing — ini BUKAN pembayaran POS).
-5. (Tenant pilot) Owner: toggle pos_enabled=true pada booth pilot di /dashboard/pos.
+7. (Tenant pilot) Owner: toggle pos_enabled=true pada booth pilot di /dashboard/pos.
 ```
 
 ---
@@ -53,6 +58,7 @@ Smoke produksi (tenant pilot, checklist tertulis):
 6. Tenant lain (tanpa add-on): menu POS tidak tampil; akses langsung → redirect aktivasi; action → 403.
 7. Kiosk regresi: satu sesi kiosk end-to-end (checkout → QRIS → paid) normal; `\d payments` di produksi identik (POS tidak menyentuhnya).
 8. Admin: revenue POS muncul di summary per tenant.
+9. Jalankan `node tests/e2e/pos-receipt-serial.spec.mjs` terhadap DB target; 58mm dan 80mm harus lulus.
 
 ---
 
@@ -73,7 +79,7 @@ Smoke produksi (tenant pilot, checklist tertulis):
 | Matikan POS global TANPA deploy | Admin: `add_ons.is_active=false` utk `code='pos'` → semua `requirePosAccess` → `POS_NOT_SUBSCRIBED`                                         |
 | Matikan POS per tenant          | Admin: `subscription_add_ons.status='cancelled'` utk tenant itu                                                                             |
 | Matikan POS per booth           | Owner: toggle `pos_enabled=false` di `/dashboard/pos` (atau admin via DB)                                                                   |
-| Migration bermasalah            | Jalankan `0019_pos_addon_rollback.sql` (docs/pos/02 §10) — aman kapan pun (semua objek murni additive, tak ada kolom existing yang berubah) |
+| Migration 0073/0074 bermasalah | Hentikan deploy, ambil snapshot DB, lalu rollback hanya setelah review operator; 0074 melakukan backfill `transactions.withdrawable=false` yang tidak boleh dibalik otomatis |
 
 ---
 
@@ -84,4 +90,4 @@ Smoke produksi (tenant pilot, checklist tertulis):
 3. Monitoring bersih 24 jam.
 4. Runbook ini dilampirkan hasil eksekusi (§Lampiran diisi).
 
-**STATUS: RUNBOOK REVISI v2 — eksekusi terakhir setelah semua fase hijau.**
+**STATUS: RUNBOOK REVISI v4 — migration 0073, 0074, dan E2E transaksi POS wajib lulus sebelum rilis.**

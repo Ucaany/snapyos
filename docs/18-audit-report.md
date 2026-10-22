@@ -3,8 +3,8 @@
 > **Status**: laporan akhir audit menyeluruh + status kesiapan rilis.
 > **Basis**: kode `src/`, `db/schema.sql`, `db/migrations/`, `tests/`, `deploy/`.
 > **Peta verifikasi**: `docs/16-feature-map-audit.md`.
-> **Tanggal ukur**: 2026-10-20 · **Commit dasar**: `8d4e995` · **Branch**: `main`
-> · **Working tree**: audit 2026-10-20 (lihat §10 untuk hasil gate terbaru).
+> **Tanggal ukur**: 2026-10-21 · **Commit dasar**: `8d4e995` · **Branch**: `main`
+> · **Working tree**: audit 2026-10-21 (lihat §11 untuk hasil gate terbaru).
 > **Aturan yang dipegang**: hanya gate yang **benar-benar dijalankan** yang ditulis PASS.
 > Gate yang butuh VPS Linux atau DB produksi ditulis **"prepared, not executed"** , bukan PASS.
 > **Kesimpulan**: lihat [§9 Status rilis](#9-status-rilis).
@@ -29,18 +29,18 @@
 | --- | ----------------------------------- | ------------------ | -------------------------------------------------- |
 | G1  | `npm run lint`                      | **PASS**           | 0 error, 12 warning (pre-existing)                 |
 | G2  | `npm run typecheck`                 | **PASS**           | exit 0                                             |
-| G3  | `npm test`                          | **PASS**           | 910/910 (audit cetak 2026-10-20)                   |
+| G3  | `npm test`                          | **PASS**           | 957/957 (audit POS + cetak 2026-10-21)             |
 | G4  | `npm run build`                     | **PASS**           | exit 0, 93 halaman statis                          |
 | G5  | `npm run build` (output standalone) | **PASS**           | exit 0, `.next/standalone/server.js` ada           |
 | G6  | `npm audit`                         | **PASS bersyarat** | 0 critical; 9 high + 2 moderate (§2.5)             |
 | G7  | Uji keamanan (subset)               | **PASS**           | 51/51                                              |
 | G8  | E2E kiosk headed                    | **PASS**           | 33/33 (6+7+5+15)                                   |
-| G16 | E2E cetak foto/struk (headed)       | **PASS**           | 30/30 (4 browser + 2 BLE + 10 SPP foto + 16 struk) |
+| G16 | E2E cetak foto/struk (headed)       | **PASS PARSIAL**    | 16/16 foto + BLE/Serial; POS struk blocked oleh migration 0073–0074 |
 | G9  | Smoke test pasca-deploy             | **PASS**           | 21/21 (skrip lama, sudah dihapus)                  |
 | G10 | Hygiene repo                        | **PASS**           | `.gitignore` + `.env.example` tanpa nilai rahasia  |
 | G11 | Verifikasi migrasi + rollback       | **PASS statis**    | 94 berkas, 42 tanpa rollback (§6)                  |
 | G12 | Boot produksi standalone + health   | **PASS**           | 200, `database ok`, `storage ok`                   |
-| G13 | `npm run format:check`              | **PASS**           | seluruh repo, setelah `.prettierrc` `semi: true`   |
+| G13 | `npm run format:check`              | **PASS SCOPE**     | file scope audit lulus; 34 file legacy repo-wide belum terformat |
 | G14 | Interaksi UI sentuh (headed)        | **PASS**           | 38/38 assertion, 0 kontrol <44px                   |
 | G15 | CRUD fitur ke database              | **PASS**           | 15/15 owner · 11/11 staff/payment · 12/12 admin    |
 
@@ -83,8 +83,8 @@ exit 0
 
 ```
 $ npm test
-ℹ tests 910
-ℹ pass 910
+ℹ tests 957
+ℹ pass 957
 ℹ fail 0
 ℹ duration_ms 3495
 ```
@@ -99,7 +99,7 @@ abort, cleanup), fallback pemilih printer BLE, dan kontrak widget Turnstile.
 | -------------------------------------------- | -------- | ----------------------------------------------------------- |
 | `npm run test:e2e:print`                     | **PASS** | 4/4 — dua lembar, PDF 2 halaman, tanpa console error        |
 | `npm run test:e2e:bluetooth`                 | **PASS** | 2/2 suite, 12 assertion (BLE chunking 2, SPP foto nyata 10) |
-| `node tests/e2e/pos-receipt-serial.spec.mjs` | **PASS** | 16/16 — transaksi nyata, 58mm ≤32 kolom, 80mm ≤48 kolom     |
+| `node tests/e2e/pos-receipt-serial.spec.mjs` | **BLOCKED** | 2/4 scenario cleanup PASS; submit order timeout karena migration 0073–0074 belum ada |
 
 Regresi yang ditemukan dan diperbaiki:
 
@@ -293,7 +293,7 @@ Bukti boot produksi:
 ### 5.5 Drift dokumen vs kode, **DIPERBAIKI**
 
 `docs/16` melaporkan angka yang tertinggal migrasi 0069/0070. Diukur ulang dari
-kode dan disegarkan: route API 61→**63**, cron 4→**5**, fungsi SQL 26→**29**,
+kode dan disegarkan: route API 61→**63**, cron 4→**5**, fungsi SQL 26→**31**,
 berkas uji 60→**86**, komponen 160→**159**.
 
 Dua angka di §0 juga **salah** dan kini dikoreksi: `src/lib` tertulis 72
@@ -393,16 +393,28 @@ body tidak disalin, jadi tidak ada risiko drift. **Idempotent, aman diulang.**
 
 ## 9. Status rilis
 
-### **NOT READY TO DEPLOY**, belum diverifikasi di VPS
+### **NOT READY TO DEPLOY**, migration POS 0073–0074 belum diterapkan
 
-Semua gate yang **bisa** dijalankan di mesin ini **PASS**, dan tidak ada blocker
-kode yang tersisa:
+Semua gate statis, typecheck, build, dan printer mock yang bisa dijalankan di
+mesin ini **PASS**. Namun database yang dipakai server lokal belum menjalankan
+`db/migrations/0073_pos_receipt_snapshot_and_untracked_stock.sql` dan
+`db/migrations/0074_pos_payment_idempotency_race.sql`:
 
-- lint 0 error · typecheck exit 0 · 821/821 unit · build exit 0 (93 halaman)
+- `pos_orders.paper_width_mm`, `print_mode`, dan `auto_print` belum ada (`42703`).
+- RPC `pos_create_order_with_items` dan `pos_set_booth_enabled` belum ada di schema cache (`PGRST202`).
+- E2E transaksi POS nyata berhenti saat submit order; fixture dibersihkan `12→12`.
+
+Karena itu ada blocker deployment nyata, bukan hanya verifikasi VPS:
+kode POS baru tidak boleh dirilis ke database tersebut sebelum migration 0073 dan
+0074 diterapkan dan E2E transaksi diulang. RPC pembayaran juga menulis
+`transactions.withdrawable=false`, sehingga penjualan offline POS tidak masuk
+saldo penarikan.
+
+- lint 0 error · typecheck exit 0 · 957/957 unit · build exit 0 (93 halaman)
 - standalone VPS build exit 0 + boot produksi health 200 (DB & storage ok)
 - uji keamanan 51/51 · E2E kiosk **23/23** · smoke **21/21**
 - `npm audit` 0 critical · hygiene repo bersih
-- satu-satunya temuan E2E (404 vs 200) **diperbaiki** + dijaga tes regresi
+- E2E Bluetooth/Serial **lulus 2/2**; E2E transaksi POS blocked sampai migration 0073–0074
 
 Namun **9 langkah wajib (§8 P1–P9) belum dijalankan** karena butuh VPS Linux,
 domain, dan connection string produksi. Menyatakan "READY TO DEPLOY" sekarang
@@ -418,6 +430,7 @@ yang harus dihindari.
 5. Jadwalkan backup database; uji sekali dan verifikasi isi dump.
 6. Jalankan satu endpoint cron manual dengan `CRON_SECRET`.
 7. Putuskan migrasi 0071 (§8 P9).
+8. Jalankan migration POS 0073 lalu 0074 pada database target, refresh schema cache, lalu ulangi `node tests/e2e/pos-receipt-serial.spec.mjs`.
 
 Setelah langkah 1–6 lulus dengan bukti yang dikutip, status berubah menjadi
 **READY TO DEPLOY**.
@@ -445,16 +458,16 @@ sentuh asli (`hasTouch: true`, 390×844) untuk halaman mobile.
 | --------------------------- | --------- | ------------------------------------------------------------------------- |
 | `npm run typecheck`         | PASS      | setelah seluruh patch                                                     |
 | `npm run lint`              | PASS      | 0 error, 12 warning `no-img-element` yang disengaja                       |
-| `npm test`                  | PASS      | 910/910                                                                   |
+| `npm test`                  | PASS      | 957/957                                                                   |
 | `npm run build`             | PASS      | Next.js 16.4.0, 93 halaman statis                                         |
-| `npm run format:check`      | PASS      | repo-wide; 520+ berkas diformat ulang, tes regex diselaraskan             |
+| `npm run format:check`      | PASS SCOPE | file scope audit lulus; 34 file legacy repo-wide belum terformat          |
 | `kiosk-smoke` (headed)      | PASS      | 6/6                                                                       |
 | `kiosk-lock` (headed)       | PASS      | 7/7                                                                       |
 | `kiosk-frames` (headed)     | PASS      | 5/5                                                                       |
 | `kiosk-responsive` (headed) | PASS      | 15/15 — iPad landscape/portrait, mini PC, 800×480, ponsel                 |
 | `test:e2e:print`            | PASS      | 4/4 — dua lembar, PDF 2 halaman, tanpa console error                      |
 | `test:e2e:bluetooth`        | PASS      | 2/2 suite, 12 assertion — BLE chunking + SPP foto nyata                   |
-| `pos-receipt-serial`        | PASS      | 16/16 — struk 58mm/80mm, lebar fisik, cleanup fixture                     |
+| `pos-receipt-serial`        | BLOCKED   | 2/4 cleanup checks pass; 58/80mm submit menunggu migration 0073–0074       |
 | `npm audit --omit=dev`      | PASS      | 0 critical, 0 high, 2 moderate                                            |
 | `npm audit` (penuh)         | Bersyarat | 9 high + 2 moderate, seluruhnya dev-time (`eslint`, `shadcn`, `ts-morph`) |
 
@@ -528,13 +541,13 @@ pembayaran POS, satuan storage, teks artefak, dan verifikasi deploy produksi.
 | ---------------------------- | --------- | --------------------------------------------------------- |
 | `npm run typecheck`          | PASS      | exit 0                                                    |
 | `npm run lint`               | PASS      | 0 error, 12 warning `no-img-element` (pre-existing)       |
-| `npm test`                   | PASS      | 939/939                                                   |
+| `npm test`                   | PASS      | 957/957                                                   |
 | `npm run build`              | PASS      | Next.js 16.4.0, 93 halaman statis                         |
-| `npm run format:check`       | PASS      | repo-wide                                                 |
+| `npm run format:check`       | PASS SCOPE | file scope audit lulus; 34 file legacy belum terformat     |
 | `npm run test:e2e:print`     | PASS      | 4/4                                                       |
 | `npm run test:e2e:bluetooth` | PASS      | 2/2 suite (BLE 2/2 + SPP 10/10)                           |
 | `npm run test:e2e:kiosk`     | PASS      | 4/4 suite (smoke, lock, frames, responsive 15/15)         |
-| `pos-receipt-serial`         | PASS      | 16/16 — struk 58mm & 80mm                                 |
+| `pos-receipt-serial`         | BLOCKED   | 58mm/80mm submit timeout; fixture tetap bersih 12→12       |
 | `npm audit`                  | Bersyarat | 0 critical, 9 high + 2 moderate (dev-time)                |
 | Responsive owner/admin/POS   | PASS      | 108/108 — 390/768/1440, tanpa overflow atau console error |
 | Responsive staff             | PASS      | 15/15 — sesi staff nyata, 390/768/1440                    |

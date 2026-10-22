@@ -1,14 +1,14 @@
-# SnapyOS — Peta Fitur Menyeluruh (Audit Kode 2026-10-11, angka disegarkan 2026-10-16)
+# SnapyOS — Peta Fitur Menyeluruh (Audit Kode 2026-10-11, angka disegarkan 2026-10-21)
 
 > **Status**: audit berbasis kode berjalan (`src/`, `db/schema.sql`, `tests/`) + knowledge graph
 > `codebase-memory` (proyek `Users-ucaany-Downloads-PT-SNAPY-OS`, mode `moderate`, generasi 2026-10-11).
-> **Metode**: Scout→Verify. Graf (4.167 node / 14.341 edge, snapshot 2026-10-11), 55 tabel `create table`, 29 fungsi SQL,
+> **Metode**: Scout→Verify. Graf (4.167 node / 14.341 edge, snapshot 2026-10-11), 55 tabel `create table`, 31 fungsi SQL,
 > 63 route API, 65 page, 7 layout, 17 modul `"use server"` (99 aksi ter-export), 159 komponen, 86 berkas uji (`tests/*.test.ts`).
 > **Bukan** dokumen PRD — dokumen ini merekam **apa yang benar-benar terpasang** di kode.
 > Sumber kebenaran tetap `src/`, lalu `db/schema.sql`, lalu `docs/07`+`docs/08`.
 > **Cakupan**: seluruh fitur per kategori (Admin, Owner, Staff, Kiosk, POS, Marketing/Auth, Result, API, Cron, DB).
 >
-> **Segarkan angka 2026-10-16:** hitungan §0/§11/§13 diukur ulang dari kode (lihat `docs/18-audit-report.md`).
+> **Segarkan angka 2026-10-21:** hitungan §0/§11/§13 diukur ulang dari kode (lihat `docs/18-audit-report.md`).
 > Angka lama (26 fungsi / 61 route / 160 komponen / 60 uji) tertinggal oleh migrasi 0069 dan route
 > `device-cleanup` + `/v1/public/frame` yang masuk setelah audit 2026-10-11.
 
@@ -31,7 +31,7 @@
 | 10  | [Pembayaran & Webhook](#10-pembayaran--webhook)                                                                                          |
 | 11  | [API Routes](#11-api-routes-63) — daftar ekshaustif 63 route                                                                             |
 | 12  | [Cron & Lifecycle](#12-cron--lifecycle-verceljson)                                                                                       |
-| 13  | [Database](#13-database-55-tabel--29-fungsi)                                                                                             |
+| 13  | [Database](#13-database-55-tabel--31-fungsi)                                                                                             |
 | 14  | [Storage](#14-storage-dual-provider)                                                                                                     |
 | 15  | [Ringkasan Audit](#15-ringkasan-audit) — temuan, backlog, batasan                                                                        |
 
@@ -49,7 +49,7 @@
 | Modul lib (`src/lib`)       | 73                       | pure/util (65 di akar + `r2/` 6 + `supabase/` 2)                                                |
 | Komponen (`src/components`) | 159 `.tsx`               | 64 dashboard, 24 kiosk (+7 `.ts`), 3 pos, 7 admin                                               |
 | Tabel DB                    | 55                       | `db/schema.sql`                                                                                 |
-| Fungsi SQL/RPC              | 29                       | 27 dipakai app (4 SECURITY DEFINER) + 2 trigger                                                 |
+| Fungsi SQL/RPC              | 31                       | 29 dipakai app (4 SECURITY DEFINER) + 2 trigger                                                 |
 | Berkas uji                  | 86                       | `node --test` (naik dari 83 setelah suite keamanan ditambahkan — `docs/18` §3)                  |
 | Knowledge graph             | 4.167 node / 14.341 edge | snapshot 2026-10-11                                                                             |
 
@@ -750,7 +750,7 @@
 ### P3. Struk POS
 
 - **Page**: `/pos/receipt/[orderId]` · **Komponen**: `ReceiptView` (`window.print`, media print).
-- **Data**: `getPosOrder`, `listPosOrders` (`src/server/pos-orders.ts`).
+- **Data**: `getPosOrder` (`src/server/pos-orders.ts`). Riwayat dan laporan POS dibaca melalui halaman laporan (`posRevenueReport`, `posBreakdownReport`, `posVsKioskSplit`); tidak ada export `listPosOrders` yang aktif.
 - **DB**: `pos_orders, pos_order_items, pos_products, photoboxes, outlets, users, transactions`.
 - **Isi**: nomor order, metode, booth, outlet, kasir, waktu, item, subtotal.
 
@@ -995,7 +995,7 @@
 
 ---
 
-## 13. DATABASE (55 tabel + 29 fungsi)
+## 13. DATABASE (55 tabel + 31 fungsi)
 
 **Identity & Tenant**: `users`, `auth_sessions`, `businesses`, `business_members`, `business_settings`.
 **Billing**: `plans`, `subscriptions`, `invoices`, `add_ons`, `subscription_add_ons`, `subscription_promos`, `subscription_intent_failures`, `lifecycle_emails`, `payment_credentials`.
@@ -1010,10 +1010,10 @@
 **Support & Marketing**: `support_tickets`, `support_ticket_replies`, `broadcast_campaigns`, `broadcast_recipients`.
 **Storage**: `storage_objects`, `storage_usage`.
 
-**Fungsi SQL/RPC (29)**:
-`set_updated_at` (trigger) · `activate_device_atomically` · `pos_complete_payment` · `pos_decrement_stock` · `settle_paid_payment_atomically` · `create_voucher_payment_atomically` · `exit_pin_register_failure` · `dashboard_tx_summary` · `dashboard_daily_revenue` · `finance_expense_summary` · `revenue_breakdown` · `tx_insights_summary` · `metrics_tx_status` · `metrics_returning_customers` · `metrics_revenue_per_booth` · `metrics_sessions_per_booth` · `metrics_session_summary` · `metrics_popular_package` · `metrics_popular_template` · `staff_directory_today` · `customer_spending` · `operational_metrics` · `tg_subscription_intent_failures_touch` · `storage_account_add` · `storage_account_sub` · `bootstrap_admin` (promosi eksplisit satu user ke role admin, migration 0052; service_role-only) · **`create_outlet_with_quota` · `create_photobox_with_quota` · `add_business_member_with_quota`** (kuota atomik 0069 — advisory lock per `(business, jenis)`, `SECURITY DEFINER`, `PLAN_LIMIT_REACHED` bila lewat limit).
+**Fungsi SQL/RPC (31)**:
+`set_updated_at` (trigger) · `activate_device_atomically` · `pos_complete_payment` · `pos_decrement_stock` · `pos_create_order_with_items` · `pos_set_booth_enabled` · `settle_paid_payment_atomically` · `create_voucher_payment_atomically` · `exit_pin_register_failure` · `dashboard_tx_summary` · `dashboard_daily_revenue` · `finance_expense_summary` · `revenue_breakdown` · `tx_insights_summary` · `metrics_tx_status` · `metrics_returning_customers` · `metrics_revenue_per_booth` · `metrics_sessions_per_booth` · `metrics_session_summary` · `metrics_popular_package` · `metrics_popular_template` · `staff_directory_today` · `customer_spending` · `operational_metrics` · `tg_subscription_intent_failures_touch` · `storage_account_add` · `storage_account_sub` · `bootstrap_admin` (promosi eksplisit satu user ke role admin, migration 0052; service_role-only) · **`create_outlet_with_quota` · `create_photobox_with_quota` · `add_business_member_with_quota`** (kuota atomik 0069 — advisory lock per `(business, jenis)`, `SECURITY DEFINER`, `PLAN_LIMIT_REACHED` bila lewat limit).
 
-**Konvensi**: uang integer IDR; RLS + policy `svc_all` service_role di semua tabel publik (0064); semua RPC `revoke` anon/authenticated + `grant` service_role (0065); `search_path` dipin `public, pg_temp` pada seluruh RPC aplikasi (0071 — **ditulis & diuji statis, BELUM di-apply**); migration terakhir `0071_rpc_search_path_hardening`.
+**Konvensi**: uang integer IDR; RLS + policy `svc_all` service_role di semua tabel publik (0064); semua RPC `revoke` anon/authenticated + `grant` service_role (0065); `search_path` dipin `public, pg_temp` pada seluruh RPC aplikasi (0071 — **ditulis & diuji statis, BELUM di-apply**); migration POS 0073 menambah snapshot setting struk, RPC order/item atomic, dan RPC toggle booth atomic; 0074 menutup race retry pembayaran terhadap decrement stok.
 
 **Tabel tanpa UI aktif** (dormant/backlog): `bookings` (+anti-overlap gist), `events`, `event_templates`, `stickers`, `device_logs`, `storage_objects` (dipakai akuntansi).
 
@@ -1045,7 +1045,7 @@
 - **Pembayaran/Webhook**: 3 provider + invoice aggregator + recovery.
 - **Cron**: 5 job.
 - **API**: 63 route.
-- **DB**: 55 tabel, 29 fungsi.
+- **DB**: 55 tabel, 31 fungsi.
 
 ### 15.2 Temuan (kode = kenyataan)
 

@@ -155,7 +155,7 @@ export function PosTerminal({
         </p>
       </header>
 
-      {error && (
+      {error && !pendingOrder && (
         <p
           role="alert"
           className="border-b-2 border-ink bg-destructive/10 px-4 py-3 font-mono text-xs font-bold uppercase tracking-[0.05em] text-ink md:px-6"
@@ -357,6 +357,7 @@ export function PosTerminal({
           orderNumber={pendingOrder.number}
           finalAmount={pendingOrder.finalAmount}
           busy={busy}
+          error={error}
           onPay={pay}
           onCancel={cancelPending}
         />

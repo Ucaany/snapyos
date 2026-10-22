@@ -16,12 +16,14 @@ export function PayMethodDialog({
   orderNumber,
   finalAmount,
   busy,
+  error,
   onPay,
   onCancel,
 }: {
   orderNumber: string;
   finalAmount: number;
   busy: boolean;
+  error?: string | null;
   onPay: (method: "cash" | "bank_transfer" | "other") => void | Promise<void>;
   onCancel: () => void | Promise<void>;
 }) {
@@ -48,6 +50,15 @@ export function PayMethodDialog({
           <p className="mt-3 text-sm text-muted-foreground">
             Terima pembayaran dari customer, lalu pilih metode:
           </p>
+
+          {error && (
+            <p
+              role="alert"
+              className="mt-4 border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-[10px] font-bold uppercase leading-relaxed tracking-[0.08em] text-ink"
+            >
+              {error}
+            </p>
+          )}
 
           <div className="mt-6 flex flex-col gap-3">
             <Button size="lg" disabled={busy} onClick={() => void onPay("cash")}>

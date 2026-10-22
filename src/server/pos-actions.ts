@@ -35,9 +35,9 @@ export async function posCreateProductAction(
 ): Promise<FormState> {
   const ctx = await requireActiveBusiness();
   if (!ctx) return { error: "Sesi berakhir. Silakan login ulang." };
-  await requireEffectiveSubscription(ctx.businessId, "write");
 
   try {
+    await requireEffectiveSubscription(ctx.businessId, "write");
     await createPosProduct(ctx.user.id, ctx.businessId, {
       name: str(formData, "name"),
       sku: str(formData, "sku") || null,
@@ -62,12 +62,12 @@ export async function posUpdateProductAction(
 ): Promise<FormState> {
   const ctx = await requireActiveBusiness();
   if (!ctx) return { error: "Sesi berakhir. Silakan login ulang." };
-  await requireEffectiveSubscription(ctx.businessId, "write");
 
   const id = str(formData, "id");
   if (!id) return { error: "Produk tidak valid" };
 
   try {
+    await requireEffectiveSubscription(ctx.businessId, "write");
     await updatePosProduct(ctx.user.id, ctx.businessId, {
       id,
       name: str(formData, "name") || undefined,
@@ -104,21 +104,24 @@ export async function posDeactivateProductAction(formData: FormData): Promise<Fo
 
 // --- TOGGLE BOOTH (owner/manager — pos:manage) ---
 
-export async function posToggleBoothAction(formData: FormData): Promise<void> {
+export async function posToggleBoothAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
   const ctx = await requireActiveBusiness();
   const photoboxId = String(formData.get("photoboxId") ?? "");
   const enabled = String(formData.get("enabled") ?? "") === "true";
-  if (!ctx || !photoboxId) return;
+  if (!ctx) return { error: "Sesi berakhir. Silakan login ulang." };
+  if (!photoboxId) return { error: "Booth tidak valid." };
   try {
     await requireEffectiveSubscription(ctx.businessId, "write");
     await setPosBoothEnabled(ctx.user.id, ctx.businessId, photoboxId, enabled);
-  } catch {
-    // Toggle booth: kegagalan tidak ditampilkan (bukan alur hapus),
-    // ditelan agar tidak jadi unhandled rejection.
-    return;
+  } catch (error) {
+    return toFormState(error, "Gagal mengatur booth POS. Coba lagi.");
   }
   revalidatePath("/dashboard/pos");
   revalidatePath("/pos");
+  return {};
 }
 
 // --- TERMINAL KASIR (owner/manager/staff — pos:sell) ---

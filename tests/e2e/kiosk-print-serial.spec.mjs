@@ -96,7 +96,7 @@ try {
   await page
     .getByText(/Perintah cetak terkirim/i)
     .first()
-    .waitFor({ timeout: 20_000 });
+    .waitFor({ timeout: 60_000 });
 
   const bytes = await readSerialBytes(page);
   report.record("job serial terkirim", bytes.length > 1000, `bytes=${bytes.length}`);

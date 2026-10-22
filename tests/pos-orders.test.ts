@@ -202,6 +202,15 @@ test("struk: 58mm + bluetooth + auto_print true diteruskan", () => {
   assert.equal(s.autoPrint, true);
 });
 
+test("struk: setting tidak dikenal tetap fail-safe ke browser 80mm", () => {
+  const s = resolvePosReceiptSettings({
+    mode: "unknown",
+    bluetooth_paper_width_mm: 57,
+    auto_print: false,
+  });
+  assert.deepEqual(s, { paperWidthMm: 80, printMode: "browser", autoPrint: false });
+});
+
 test("struk: 80mm default, auto_print default aktif, mode browser", () => {
   const s = resolvePosReceiptSettings({ mode: "browser" });
   assert.equal(s.paperWidthMm, 80);
@@ -253,6 +262,37 @@ test("manual pay: non-pending tanpa transaksi tetap tidak bisa dibayar", () => {
     classifyPosManualPay({ status: "cancelled", hasExistingTransaction: false }),
     "not-payable"
   );
+});
+
+test("manual pay: kegagalan RPC stok bukan shortfall biasa", async () => {
+  const source = await (
+    await import("node:fs/promises")
+  ).readFile(new URL("../src/server/pos-orders.ts", import.meta.url), "utf8");
+  assert.match(
+    source,
+    /const \{ data: ok, error: stockError \} = await supabase\.rpc\("pos_decrement_stock"/
+  );
+  assert.match(source, /action: "pos\.stock\.decrement_failed"/);
+  assert.match(source, /if \(ok !== true\) \{/);
+});
+
+test("manual pay: kegagalan memuat item setelah payment tetap direkonsiliasi", async () => {
+  const source = await (
+    await import("node:fs/promises")
+  ).readFile(new URL("../src/server/pos-orders.ts", import.meta.url), "utf8");
+  assert.match(source, /if \(itemsError\) \{[\s\S]*action: "pos\.stock\.decrement_failed"/);
+  assert.match(source, /meta: \{ reason: "load_items", db_code: itemsError\.code/);
+  assert.match(source, /return \{ orderId: order\.id \};/);
+});
+
+test("manual pay: unique error hanya idempoten jika transaksi pemenang ada", async () => {
+  const source = await (
+    await import("node:fs/promises")
+  ).readFile(new URL("../src/server/pos-orders.ts", import.meta.url), "utf8");
+  assert.match(source, /if \(\(rpcError as \{ code\?: string \}\)\.code === "23505"\)/);
+  assert.match(source, /const \{ data: raceTx, error: raceTxError \} = await supabase/);
+  assert.match(source, /if \(raceTx\) return \{ orderId: parsed\.orderId \};/);
+  assert.match(source, /throw new ApiError\("INTERNAL", "Gagal menyelesaikan pembayaran POS"\)/);
 });
 
 test("manual pay: order pending tanpa transaksi → settle", () => {
