@@ -10,9 +10,9 @@ type Params = { params: Promise<{ resultToken: string }> };
 /** GET /api/v1/public/results/:resultToken (docs/08 §8.14). */
 export async function GET(request: Request, { params }: Params) {
   try {
-    // Token = kapabilitas bearer 128-bit: rate-limit per IP agar tidak bisa
-    // di-scrape (enumerasi token). 60 req/60s per IP, idiom sama dgn route
-    // public lain (sessions/route.ts).
+    // Token = kapabilitas bearer (12 base36 ≈ 62 bit, token lama 32 hex = 128
+    // bit): rate-limit per IP agar tidak bisa di-scrape (enumerasi token).
+    // 60 req/60s per IP, idiom sama dgn route public lain (sessions/route.ts).
     const ip = getClientIp(request.headers);
     const rl = await rateLimit(`result:${ip}`, 60, 60_000);
     if (!rl.ok) {

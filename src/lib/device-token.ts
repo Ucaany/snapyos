@@ -48,9 +48,23 @@ export function activationExpiresAt(now = Date.now()): string {
   return new Date(now + ACTIVATION_TTL_MS).toISOString();
 }
 
-/** Token result online (docs/05 §5.13) — 32 hex chars, di-issue saat paid. */
+/**
+ * Token result online (docs/05 §5.13), di-issue saat paid.
+ *
+ * 12 karakter base36 lowercase ≈ 62 bit. Alfabetnya sengaja tanpa huruf besar:
+ * token ini juga diketik manual dari layar kiosk saat QR gagal dipindai, dan
+ * URL yang peka kapital membuat salah ketik jadi 404. Lookup tetap exact match.
+ * Token lama (32 hex) tetap valid — kolomnya `text` tanpa constraint panjang.
+ */
+const RESULT_TOKEN_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz";
+export const RESULT_TOKEN_LENGTH = 12;
+
 export function generateResultToken(): string {
-  return randomBytes(16).toString("hex");
+  let out = "";
+  for (let i = 0; i < RESULT_TOKEN_LENGTH; i++) {
+    out += RESULT_TOKEN_ALPHABET[randomInt(RESULT_TOKEN_ALPHABET.length)];
+  }
+  return out;
 }
 
 /**

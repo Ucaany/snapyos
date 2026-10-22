@@ -14,6 +14,7 @@ import {
   generateActivationCode,
   generateDeviceToken,
   generateResultToken,
+  RESULT_TOKEN_LENGTH,
   hashDeviceToken,
 } from "../src/lib/device-token.ts";
 import { cameraErrorKind, resolutionLabel, resolutionWarning } from "../src/lib/camera-errors.ts";
@@ -57,8 +58,17 @@ test("activationExpiresAt: ~5 menit dari now", () => {
   assert.ok(Math.abs(at - (now + ACTIVATION_TTL_MS)) <= 5);
 });
 
-test("generateResultToken: 32 hex chars", () => {
-  assert.match(generateResultToken(), /^[0-9a-f]{32}$/);
+test("generateResultToken: 12 karakter base36 lowercase, cukup entropi", () => {
+  const token = generateResultToken();
+  assert.equal(token.length, RESULT_TOKEN_LENGTH);
+  // Tanpa huruf besar: token diketik manual saat QR gagal, URL peka kapital.
+  assert.match(token, /^[0-9a-z]{12}$/);
+  // Token lama 32 hex tetap valid (kolom text, tanpa constraint panjang).
+  assert.match("3f2be8d1a6773d514fd440909cd0e961", /^[0-9a-z]+$/);
+  // 200 token acak tidak boleh ada yang bertabrakan.
+  const seen = new Set<string>();
+  for (let i = 0; i < 200; i++) seen.add(generateResultToken());
+  assert.equal(seen.size, 200);
 });
 
 // --- camera error mapping (docs/05 §5.5.3) ---

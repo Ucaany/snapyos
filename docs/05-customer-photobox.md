@@ -426,6 +426,8 @@ Menyediakan:
 
 **Rule:** `result_token` di-issue saat payment `paid`; akses divalidasi server-side; expiration mengikuti retention policy (default **3 hari**, rentang 1–3 hari; lihat catatan konflik retensi di §Ringkasan atas). Halaman wajib Neo-Brutalism (lihat `11-design-system.md`).
 
+**Format token:** 12 karakter base36 lowercase (`src/lib/device-token.ts`) — tanpa huruf besar karena URL ini juga diketik manual dari layar kiosk saat QR gagal dipindai. Token lama 32 hex tetap valid; kolom `checkout_sessions.result_token` bertipe `text` tanpa constraint panjang.
+
 **Acceptance:** (AC 31–33, 61) setelah payment sukses & finalize, customer mendapat print otomatis + QR ke halaman online dengan GIF & foto berframe.
 
 ---
