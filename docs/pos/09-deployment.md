@@ -53,7 +53,9 @@ Smoke produksi (tenant pilot, checklist tertulis):
 1. Login owner → `/dashboard/pos` → CRUD 2 produk (1 stok-tracked, 1 tidak) + toggle booth pilot.
 2. Staff (role staff existing) login → `/pos` → booth pilot muncul → buka terminal.
 3. Transaksi tunai kecil: order → bayar → `pos_orders` paid, `transactions` row (photobox_id/outlet_id/cashier_user_id/pos_order_id terisi), struk tercetak.
-4. Verifikasi saldo: `balances` + `balance_ledger` TIDAK berubah setelah transaksi POS (kebijakan 0016/A3).
+4. Verifikasi transaksi POS bersifat reporting-only: row `transactions` memiliki
+   `pos_order_id` dan `withdrawable=false`, tidak membuat row `payments`, dan
+   tidak memanggil settlement/payment gateway.
 5. Toggle booth off → terminal menolak submit (`POS_BOOTH_DISABLED`); gate page booth hilang.
 6. Tenant lain (tanpa add-on): menu POS tidak tampil; akses langsung → redirect aktivasi; action → 403.
 7. Kiosk regresi: satu sesi kiosk end-to-end (checkout → QRIS → paid) normal; `\d payments` di produksi identik (POS tidak menyentuhnya).
