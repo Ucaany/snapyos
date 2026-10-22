@@ -412,3 +412,12 @@ export async function assertStorageAvailable(
     );
   }
 }
+
+/**
+ * Rekonsiliasi storage business — cron scheduled (Bug #12).
+ * Listing bucket lalu seed/update ledger + counter via RPC idempotent.
+ * Aman dipanggil ulang: accountStorageAdd per key idempotent.
+ */
+export async function reconcileBusinessStorage(businessId: string): Promise<number> {
+  return reconcileUsedBytes(businessId);
+}

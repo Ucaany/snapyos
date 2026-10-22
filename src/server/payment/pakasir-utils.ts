@@ -212,8 +212,8 @@ export function requiresPakasirServerVerify(provider: string, signatureValid: bo
   return provider === "pakasir" || !signatureValid;
 }
 
-/** Default jendela freshness webhook (jam). */
-export const WEBHOOK_FRESHNESS_HOURS = 24;
+/** Default jendela freshness webhook (menit). */
+export const WEBHOOK_FRESHNESS_MINUTES = 5;
 
 /**
  * H2 — freshness: tolak webhook dengan payment_date di luar jendela
@@ -225,7 +225,7 @@ export function isWebhookEventFresh(
   paymentDate: string | null | undefined,
   now: Date,
   parse: (value: string) => string | null,
-  windowHours: number = WEBHOOK_FRESHNESS_HOURS
+  windowMinutes: number = WEBHOOK_FRESHNESS_MINUTES
 ): boolean {
   if (!paymentDate) return true;
   const iso = parse(paymentDate);
@@ -233,7 +233,7 @@ export function isWebhookEventFresh(
   const t = Date.parse(iso);
   if (Number.isNaN(t)) return true;
   const deltaMs = Math.abs(now.getTime() - t);
-  return deltaMs <= windowHours * 3_600_000;
+  return deltaMs <= windowMinutes * 60_000;
 }
 
 /** Amount webhook cocok (field absen = lewat; ada tapi beda = tolak). */
