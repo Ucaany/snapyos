@@ -8,6 +8,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { failureCount, rateLimit, registerFailure, resetLimit } from "@/lib/rate-limit";
 import { redactSensitive } from "@/lib/error-redaction";
 import { getClientIp } from "@/lib/request-ip";
+import { recordLoginEvent } from "@/server/login-events";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { SESSION_MAX_AGE_SECONDS as SESSION_MAX_AGE } from "@/lib/constants";
 import { verifyStaffPin } from "@/server/staff-pin";
@@ -156,6 +157,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // dibelokkan tanpa menyentuh DB/argon2. Fail-closed di production tanpa
         // secret; dilewati di dev (lihat src/lib/turnstile.ts).
         const ip = getClientIp((request as Request | undefined)?.headers);
+        // User-agent untuk notifikasi login (diringkas di notifier).
+        const ua = (request as Request | undefined)?.headers?.get("user-agent") ?? null;
         if (
           !(await verifyTurnstile(captchaToken, {
             remoteIp: ip,
@@ -195,9 +198,34 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // Email tak dikenal / user suspended hanya membuang satu kuota lockout
         // (dihitung di cabang verifikasi di bawah); tidak ada counter terpisah
         // supaya percobaan gagal tidak dihitung dua kali.
-        if (!user) return null;
+        if (!user) {
+          // Dicatat tanpa actor_id: email yang dicoba tetap penting untuk
+          // mendeteksi brute-force / salah ketik domain.
+          await recordLoginEvent({
+            userId: null,
+            email,
+            ip,
+            ua,
+            method: pin ? "pin" : "password",
+            ok: false,
+            reason: "email tidak terdaftar",
+          });
+          return null;
+        }
         // User suspended (admin, docs/10 §10.2) tidak boleh login.
-        if (user.status === "suspended") return null;
+        if (user.status === "suspended") {
+          await recordLoginEvent({
+            userId: user.id,
+            email,
+            role: user.role,
+            ip,
+            ua,
+            method: pin ? "pin" : "password",
+            ok: false,
+            reason: "akun ditangguhkan",
+          });
+          return null;
+        }
 
         // Staff login via PIN, bukan password (0043). Booth TIDAK lagi dipilih
         // pra-sesi (dulu membocorkan ID/nama booth per email anonim): PIN
@@ -215,10 +243,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           if (!ok) {
             await registerFailure(pinKey, EMAIL_FAILURE_WINDOW_MS);
             await registerFailure(failKey, EMAIL_FAILURE_WINDOW_MS);
+            await recordLoginEvent({
+              userId: user.id,
+              email,
+              role: user.role,
+              ip,
+              ua,
+              method: "pin",
+              ok: false,
+              reason: "PIN salah",
+            });
             return null;
           }
           await resetLimit(pinKey);
           await resetLimit(failKey);
+          await recordLoginEvent({
+            userId: user.id,
+            email,
+            role: user.role,
+            ip,
+            ua,
+            method: "pin",
+            ok: true,
+          });
           return {
             id: user.id,
             email: user.email,
@@ -242,9 +289,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           // Lockout ditegakkan sebagai gate di atas; di sini cukup mencatat
           // kegagalan. Pesan generik yang sama untuk semua sebab (anti-enumerasi).
           await registerFailure(failKey, EMAIL_FAILURE_WINDOW_MS);
+          await recordLoginEvent({
+            userId: user.id,
+            email,
+            role: user.role,
+            ip,
+            ua,
+            method: "password",
+            ok: false,
+            reason: "password salah",
+          });
           return null;
         }
         await resetLimit(failKey);
+
+        await recordLoginEvent({
+          userId: user.id,
+          email,
+          role: user.role,
+          ip,
+          ua,
+          method: "password",
+          ok: true,
+        });
 
         return {
           id: user.id,
