@@ -260,15 +260,9 @@ async function persistRecipients(campaignId: string, recipients: Recipient[]) {
   if (readError) throw new ApiError("INTERNAL", "Gagal memuat penerima broadcast");
   const existingEmails = new Set((existing ?? []).map((r) => r.email.toLowerCase()));
 
-  // Buang penerima yang tidak lagi masuk audiens.
-  const staleIds = (existing ?? [])
-    .filter((r) => !wantedEmails.has(r.email.toLowerCase()))
-    .map((r) => r.id);
-  if (staleIds.length > 0) {
-    await supabase.from("broadcast_recipients").delete().in("id", staleIds);
-  }
-
-  // Tambah hanya email yang belum ada.
+  // Tambah dulu, hapus belakangan: bila insert gagal, penerima lama (beserta
+  // resend_count) tetap utuh. Urutan sebaliknya menghapus riwayat sebelum
+  // tahu insert-nya berhasil.
   const toInsert = wanted
     .filter((r) => !existingEmails.has(r.email.toLowerCase()))
     .map((r) => ({
@@ -279,9 +273,18 @@ async function persistRecipients(campaignId: string, recipients: Recipient[]) {
       user_id: r.user_id,
       business_id: r.business_id,
     }));
-  if (toInsert.length === 0) return;
-  const { error } = await supabase.from("broadcast_recipients").insert(toInsert);
-  if (error) throw new ApiError("INTERNAL", "Gagal menyiapkan penerima broadcast");
+  if (toInsert.length > 0) {
+    const { error } = await supabase.from("broadcast_recipients").insert(toInsert);
+    if (error) throw new ApiError("INTERNAL", "Gagal menyiapkan penerima broadcast");
+  }
+
+  // Buang penerima yang tidak lagi masuk audiens.
+  const staleIds = (existing ?? [])
+    .filter((r) => !wantedEmails.has(r.email.toLowerCase()))
+    .map((r) => r.id);
+  if (staleIds.length > 0) {
+    await supabase.from("broadcast_recipients").delete().in("id", staleIds);
+  }
 }
 
 async function deliverCampaign(campaign: AdminBroadcastRow, onlyFailed: boolean) {

@@ -6,6 +6,7 @@ import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
 import { adminBusinessUpdateSchema } from "@/lib/validators";
+import { likePattern } from "@/lib/postgrest-search";
 import { requireAdmin, audit } from "./guard";
 import { getStorageUsageBatch } from "@/server/storage-usage";
 import { activeStorageProviders } from "@/server/storage";
@@ -59,7 +60,7 @@ export async function listBusinesses(query: {
     req = req.eq("status", query.status);
   }
   if (query.search) {
-    const like = `%${query.search.replace(/[%_]/g, "")}%`;
+    const like = likePattern(query.search);
     req = req.or(`name.ilike.${like},slug.ilike.${like}`);
   }
   const { data, error, count } = await req;

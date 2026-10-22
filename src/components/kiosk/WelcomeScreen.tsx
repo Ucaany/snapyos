@@ -3,6 +3,7 @@
 import type { BrandingConfig, KioskBrandingConfig } from "@/lib/kiosk-types";
 import { kioskThemeVars, kioskVisualStyle } from "@/lib/kiosk-types";
 import { defaultBrandColors } from "@/lib/brand-defaults";
+import { hexToRgba } from "@/lib/color";
 import { KioskVideoBackground } from "@/components/kiosk/KioskVideoBackground";
 import { KioskAction, KioskHeading, kioskGutter } from "@/components/kiosk/ui";
 
@@ -14,10 +15,7 @@ type Props = {
 
 /** Inisial monogram dari nama bisnis (maks 2 huruf) — bukan aset rekaan. */
 function initials(name: string): string {
-  const words = name
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
+  const words = name.trim().split(/\s+/).filter(Boolean);
   if (words.length === 0) return "SF";
   if (words.length === 1) return words[0]!.slice(0, 2).toUpperCase();
   return `${words[0]![0] ?? ""}${words[1]![0] ?? ""}`.toUpperCase();
@@ -154,7 +152,7 @@ export function WelcomeScreen({ business, branding, onStart }: Props) {
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 z-[1]"
-          style={{ backgroundColor: `color-mix(in srgb, ${vs.bg} 62%, transparent)` }}
+          style={{ backgroundColor: hexToRgba(vs.bg, 0.62) }}
         />
       ) : null}
       {body}

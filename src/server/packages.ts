@@ -8,6 +8,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
 import { can, type Permission } from "@/lib/rbac";
 import { getMembership } from "@/lib/tenant";
+import { invalidatePublicConfig } from "@/server/public-config";
 import {
   packageCreateSchema,
   packageUpdateSchema,
@@ -193,6 +194,7 @@ export async function createPackage(userId: string, businessId: string, input: P
   const parsed = packageCreateSchema.parse(input);
   await requireMembership(userId, businessId, "package:write");
   await Promise.all([
+    assertIdsOwned(businessId, "templates", parsed.template_ids),
     assertIdsOwned(businessId, "outlets", parsed.outlet_ids),
     assertIdsOwned(businessId, "photoboxes", parsed.photobox_ids),
   ]);
@@ -211,6 +213,7 @@ export async function createPackage(userId: string, businessId: string, input: P
     syncM2M(businessId, data.id, "package_outlets", "outlet_id", outlet_ids),
     syncM2M(businessId, data.id, "package_photoboxes", "photobox_id", photobox_ids),
   ]);
+  invalidatePublicConfig(businessId);
   return data;
 }
 
@@ -225,6 +228,7 @@ export async function updatePackage(
 
   const supabase = createServerClient();
 
+  await assertIdsOwned(businessId, "templates", parsed.template_ids ?? []);
   await assertIdsOwned(businessId, "outlets", parsed.outlet_ids ?? []);
   await assertIdsOwned(businessId, "photoboxes", parsed.photobox_ids ?? []);
 
@@ -244,6 +248,7 @@ export async function updatePackage(
   if (outlet_ids) await syncM2M(businessId, packageId, "package_outlets", "outlet_id", outlet_ids);
   if (photobox_ids)
     await syncM2M(businessId, packageId, "package_photoboxes", "photobox_id", photobox_ids);
+  invalidatePublicConfig(businessId);
   return data;
 }
 
@@ -273,4 +278,5 @@ export async function deletePackage(userId: string, businessId: string, packageI
     .maybeSingle();
   if (error) throw new ApiError("INTERNAL", "Gagal menghapus package");
   if (!data) throw new ApiError("NOT_FOUND", "Package tidak ditemukan");
+  invalidatePublicConfig(businessId);
 }

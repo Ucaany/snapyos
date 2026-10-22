@@ -113,3 +113,29 @@ test("source: createManualTransaction TIDAK menyentuh payments/balance_ledger", 
     "createManualTransaction TIDAK boleh memanggil creditBalance RPC"
   );
 });
+
+test("source: createManualTransaction menolak booth yang bukan milik outlet", () => {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const src = readFileSync(join(here, "..", "src", "server", "transactions.ts"), "utf8");
+  const fnStart = src.indexOf("export async function createManualTransaction");
+  assert.ok(fnStart > 0, "fungsi createManualTransaction tidak ditemukan");
+  const nextFn = src.indexOf("\nexport ", fnStart + 1);
+  const block = src.slice(fnStart, nextFn === -1 ? undefined : nextFn);
+  assert.match(
+    block,
+    /assertBoothInOutlet\(\s*businessId\s*,\s*parsed\.outlet_id\s*,\s*parsed\.photobox_id\s*\)/,
+    "createManualTransaction wajib memanggil assertBoothInOutlet(outlet_id, photobox_id)"
+  );
+
+  // Helper harus membandingkan outlet_id hasil query dengan outlet yang diminta.
+  const helperStart = src.indexOf("async function assertBoothInOutlet");
+  assert.ok(helperStart > 0, "helper assertBoothInOutlet tidak ditemukan");
+  const helper = src.slice(helperStart, fnStart);
+  assert.match(helper, /\.select\("id, outlet_id"\)/, "helper wajib membaca outlet_id booth");
+  assert.match(helper, /\.eq\("business_id", businessId\)/, "helper wajib scope tenant");
+  assert.match(
+    helper,
+    /outlet_id\s*!==\s*outletId/,
+    "helper wajib membandingkan outlet_id booth dengan outlet transaksi"
+  );
+});

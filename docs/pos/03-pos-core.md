@@ -19,7 +19,7 @@ Dieksekusi 2026-08-28. Yang jadi, sesuai spesifikasi §1–§6:
 
 Deviasi lain (fungsional setara):
 
-1. Decrement stok saat pay = RPC DB-level `pos_decrement_stock()` (`0019_pos_addon.sql:77`), bukan guarded UPDATE app-level §4 langkah 6 — atomic di DB, shortfall tetap log + audit `pos.stock.shortfall`, order tetap paid.
+1. Decrement stok saat pay = RPC DB-level `pos_decrement_stock_batch()` (`0076`, menggantikan panggilan per item ke `pos_decrement_stock()` dari `0019`), bukan guarded UPDATE app-level §4 langkah 6 — atomic di DB, shortfall tetap log + audit `pos.stock.shortfall`, order tetap paid.
 2. `posOrderNumber` retry-on-23505 ada di `createPosOrder` (`pos-orders.ts:233-261`), bukan di lib (lib hanya format).
 
 ---

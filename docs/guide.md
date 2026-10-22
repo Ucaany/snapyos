@@ -220,7 +220,8 @@ Karakteristik:
 - Tidak memakai QRIS POS.
 - Cart hanya display state.
 - Total final dihitung server.
-- Stock decrement memakai RPC `pos_decrement_stock`.
+- Stock decrement memakai RPC batch `pos_decrement_stock_batch` (satu round-trip
+  untuk seluruh baris order); `pos_decrement_stock` tetap ada untuk satu produk.
 - Dipakai staff tanpa role baru.
 
 ## 14. Finance dan Reporting

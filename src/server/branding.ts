@@ -23,7 +23,7 @@ import {
   accountStorageSub,
 } from "@/server/storage-usage";
 import { getStorage, resolveStorage } from "@/server/storage";
-import { publicConfigCacheTag } from "@/server/public-config";
+import { invalidatePublicConfig } from "@/server/public-config";
 import { resetPageOverrides } from "@/lib/branding-pages";
 
 const BRAND_ASSETS_BUCKET = "business-assets" as const;
@@ -185,7 +185,7 @@ export async function updateBranding(
   updateTag(brandingCacheTag(businessId));
   // Config kiosk publik (logo/video/paket/tema) di-cache terpisah 30s — buang
   // juga agar perubahan branding langsung terlihat kiosk tanpa menunggu TTL.
-  updateTag(publicConfigCacheTag(businessId));
+  invalidatePublicConfig(businessId);
 
   const [logoUrl, videoUrl] = await Promise.all([
     merged.logo_key ? logoSignedUrl(merged.logo_key) : null,

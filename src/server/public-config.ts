@@ -4,7 +4,7 @@
  */
 
 import "server-only";
-import { unstable_cache } from "next/cache";
+import { unstable_cache, updateTag } from "next/cache";
 import { createHash } from "node:crypto";
 import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
@@ -25,6 +25,12 @@ const BRAND_ASSETS_BUCKET = "business-assets" as const;
 
 /** Tag data-cache public config (dipakai mutasi branding untuk updateTag). */
 export const publicConfigCacheTag = (businessId: string) => `business:${businessId}:public-config`;
+
+/** Buang entri cache kiosk setelah mutasi yang mengubah isi public config
+ *  (branding, photobox, package, template). Tanpa ini kiosk menunggu TTL 30s. */
+export function invalidatePublicConfig(businessId: string) {
+  updateTag(publicConfigCacheTag(businessId));
+}
 
 /** Cache 30 detik — poll kiosk 3s terlayani dari cache kecuali ada mutasi
  *  (updateTag dari updateBranding) atau TTL lewat. Presign R2 tak dijalan
@@ -89,15 +95,26 @@ export async function getPublicConfig(
   return { ...config, etag: etagOf(config) };
 }
 
-/** Hash ETag dari konten stabil (tanpa signed URL yang berubah tiap presign). */
+/** Hash ETag dari konten stabil. Signed URL berubah tiap presign (signature +
+ *  expiry di query), jadi query string dibuang: path objek tetap unik per file,
+ *  sehingga ganti logo/video tetap mengubah ETag tanpa memicu 200 tiap TTL. */
 function etagOf(config: Omit<PublicConfig, "etag">): string {
-  const stable = JSON.stringify({
-    business: config.business,
-    branding: config.branding,
-    photobox: config.photobox,
-    packages: config.packages,
-    checkout: config.checkout,
-  });
+  const stable = JSON.stringify(
+    {
+      business: config.business,
+      branding: config.branding,
+      photobox: config.photobox,
+      packages: config.packages,
+      checkout: config.checkout,
+    },
+    (_key, value) => {
+      // Hanya URL bertanda tangan yang di-strip; teks biasa boleh mengandung "?".
+      if (typeof value !== "string") return value;
+      if (!value.startsWith("http")) return value;
+      if (!/[?&](X-Amz-Signature|token)=/.test(value)) return value;
+      return value.split("?")[0];
+    }
+  );
   return createHash("sha1").update(stable).digest("hex");
 }
 

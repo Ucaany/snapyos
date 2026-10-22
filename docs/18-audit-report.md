@@ -3,8 +3,8 @@
 > **Status**: laporan akhir audit menyeluruh + status kesiapan rilis.
 > **Basis**: kode `src/`, `db/schema.sql`, `db/migrations/`, `tests/`, `deploy/`.
 > **Peta verifikasi**: `docs/16-feature-map-audit.md`.
-> **Tanggal ukur**: 2026-10-21 · **Commit dasar**: `8d4e995` · **Branch**: `main`
-> · **Working tree**: audit 2026-10-21 (lihat §11 untuk hasil gate terbaru).
+> **Tanggal ukur**: 2026-10-22 · **Commit dasar**: `e1806c3` · **Branch**: `main`
+> · **Working tree**: audit 2026-10-22 (lihat §12 untuk hasil gate terbaru).
 > **Aturan yang dipegang**: hanya gate yang **benar-benar dijalankan** yang ditulis PASS.
 > Gate yang butuh VPS Linux atau DB produksi ditulis **"prepared, not executed"** , bukan PASS.
 > **Kesimpulan**: lihat [§9 Status rilis](#9-status-rilis).
@@ -20,6 +20,9 @@
 7. [Arsip rilis](#7-arsip-rilis)
 8. [Prepared, not executed](#8-prepared-not-executed)
 9. [Status rilis](#9-status-rilis)
+10. [Audit lanjutan 2026-10-20](#10-audit-lanjutan-2026-10-20)
+11. [Audit lanjutan 2026-10-20 (auto-print, POS, storage, deploy)](#11-audit-lanjutan-2026-10-20-auto-print-pos-storage-deploy)
+12. [Audit lanjutan 2026-10-22 (isolasi tenant, cache kiosk, integritas POS)](#12-audit-lanjutan-2026-10-22-isolasi-tenant-cache-kiosk-integritas-pos)
 
 ---
 
@@ -27,10 +30,10 @@
 
 | #   | Gate                                | Hasil              | Bukti                                              |
 | --- | ----------------------------------- | ------------------ | -------------------------------------------------- |
-| G1  | `npm run lint`                      | **PASS**           | 0 error, 12 warning (pre-existing)                 |
-| G2  | `npm run typecheck`                 | **PASS**           | exit 0                                             |
-| G3  | `npm test`                          | **PASS**           | 957/957 (audit POS + cetak 2026-10-21)             |
-| G4  | `npm run build`                     | **PASS**           | exit 0, 93 halaman statis                          |
+| G1  | `npm run lint`                      | **PASS**           | 0 error, 12 warning — diulang 2026-10-22 (§12.1)   |
+| G2  | `npm run typecheck`                 | **PASS**           | exit 0 — diulang 2026-10-22 (§12.1)                |
+| G3  | `npm test`                          | **PASS**           | 958/958 — diulang 2026-10-22 (§12.1)               |
+| G4  | `npm run build`                     | **PASS**           | exit 0, 93 halaman statis — diulang 2026-10-22     |
 | G5  | `npm run build` (output standalone) | **PASS**           | exit 0, `.next/standalone/server.js` ada           |
 | G6  | `npm audit`                         | **PASS bersyarat** | 0 critical; 9 high + 2 moderate (§2.5)             |
 | G7  | Uji keamanan (subset)               | **PASS**           | 51/51                                              |
@@ -38,7 +41,7 @@
 | G16 | E2E cetak foto/struk (headed)       | **PASS PARSIAL**    | 16/16 foto + BLE/Serial; POS struk blocked oleh migration 0073–0074 |
 | G9  | Smoke test pasca-deploy             | **PASS**           | 21/21 (skrip lama, sudah dihapus)                  |
 | G10 | Hygiene repo                        | **PASS**           | `.gitignore` + `.env.example` tanpa nilai rahasia  |
-| G11 | Verifikasi migrasi + rollback       | **PASS statis**    | 94 berkas, 42 tanpa rollback (§6)                  |
+| G11 | Verifikasi migrasi + rollback       | **PASS statis**    | 104 berkas, 73 forward, 42 tanpa rollback (§6, §12.4) |
 | G12 | Boot produksi standalone + health   | **PASS**           | 200, `database ok`, `storage ok`                   |
 | G13 | `npm run format:check`              | **PASS SCOPE**     | file scope audit lulus; 34 file legacy repo-wide belum terformat |
 | G14 | Interaksi UI sentuh (headed)        | **PASS**           | 38/38 assertion, 0 kontrol <44px                   |
@@ -313,6 +316,11 @@ $ node scripts/verify-migration-rollbacks.mjs
 exit 0
 ```
 
+Per 2026-10-22: **104 berkas bernomor, 73 forward, 42 tanpa rollback** (0075 dan
+0076 menambah 4 berkas, dua-duanya punya rollback). Skrip tidak bisa dijalankan
+ulang di mesin ini karena `MIGRATION_CHECK_DB` tidak di-set; angka di atas
+dihitung dari isi direktori, bukan dari skrip.
+
 **Yang diperbaiki.** Dua konvensi penamaan pernah berdampingan
 (`0025_rollback.sql` vs `0025_subscription_billing_fixes.sql`). Karena `ls | sort`
 leksikografis menempatkan `0025_rollback.sql` **sebelum** `0025_....sql`, skrip
@@ -393,7 +401,7 @@ body tidak disalin, jadi tidak ada risiko drift. **Idempotent, aman diulang.**
 
 ## 9. Status rilis
 
-### **NOT READY TO DEPLOY**, migration POS 0073–0074 belum diterapkan
+### **NOT READY TO DEPLOY**, migration POS 0073–0076 belum diterapkan
 
 Semua gate statis, typecheck, build, dan printer mock yang bisa dijalankan di
 mesin ini **PASS**. Namun database yang dipakai server lokal belum menjalankan
@@ -431,6 +439,7 @@ yang harus dihindari.
 6. Jalankan satu endpoint cron manual dengan `CRON_SECRET`.
 7. Putuskan migrasi 0071 (§8 P9).
 8. Jalankan migration POS 0073 lalu 0074 pada database target, refresh schema cache, lalu ulangi `node tests/e2e/pos-receipt-serial.spec.mjs`.
+9. Jalankan `0075_integrity_and_hot_indexes` lalu `0076_pos_stock_batch` (§12.4); keduanya idempotent, rollback tersedia, dan tidak memblokir rilis bila ditunda.
 
 Setelah langkah 1–6 lulus dengan bukti yang dikutip, status berubah menjadi
 **READY TO DEPLOY**.
@@ -592,3 +601,93 @@ pembayaran POS, satuan storage, teks artefak, dan verifikasi deploy produksi.
 | Migrasi `0072_storage_addon_mb_label` | Ditulis + rollback tersedia; **belum diterapkan ke DB produksi**                                                                                          |
 | Advisory dev-time                     | 9 high + 2 moderate; 0 critical (`npm audit`)                                                                                                             |
 | Rate limit in-memory                  | Efektif = limit × jumlah instance (diterima operator)                                                                                                     |
+
+---
+
+## 12. Audit lanjutan 2026-10-22 (isolasi tenant, cache kiosk, integritas POS)
+
+Lanjutan §11 pada working tree yang sama. Fokus: isolasi tenant pada jalur baca
+publik, invalidasi cache kiosk, integritas referensi template, dan hot path POS.
+Setiap temuan di bawah diverifikasi langsung di sumber sebelum diubah; klaim
+laporan otomatis yang tidak terbukti **ditolak**, bukan dikutip.
+
+### 12.1 Gate yang dijalankan ulang
+
+```
+$ npm run typecheck              exit 0
+$ npm run lint                   exit 0  (0 error, 12 warning no-img-element)
+$ npm test                       exit 0  (958/958, 0 fail)
+$ npm run build                  exit 0  (standalone assets prepared)
+$ npx prettier --check <file scope audit>   All matched files use Prettier code style!
+$ npm audit --omit=dev           0 critical, 0 high, 2 moderate (runtime)
+$ npm audit                      0 critical, 9 high, 2 moderate (seluruhnya dev-time)
+```
+
+Tidak ada gate yang ditandai PASS tanpa dijalankan pada working tree ini.
+
+### 12.2 Temuan & perbaikan
+
+| #   | Temuan                                                                                             | Dampak                                                                    | Perbaikan                                                                                                    |
+| --- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| 1   | `createPackage`/`updatePackage` tidak memvalidasi kepemilikan `template_ids`, `outlet_ids`, `photobox_ids` | Owner bisa menautkan template/outlet/photobox tenant lain ke paketnya     | `assertIdsOwned()` untuk ketiga relasi; template global (`business_id is null`) tetap diizinkan               |
+| 2   | Mutasi paket tidak menginvalidasi cache public-config kiosk                                        | Perubahan paket tidak tampil di kiosk sampai TTL 30 detik habis           | `invalidatePublicConfig(businessId)` di create/update/delete paket                                            |
+| 3   | `updateSettings` mengubah `branding`/`checkout` tanpa invalidasi public-config                     | Branding & mode offline kiosk basi                                        | Invalidasi saat `branding` atau `checkout` berubah                                                            |
+| 4   | ETag public-config meng-hash signed URL                                                            | ETag berubah tiap 30 detik → klien selalu mengunduh ulang                 | Signed URL dinormalisasi (query dibuang) sebelum hash; isi berubah tetap mengubah ETag                       |
+| 5   | `loadResult` tidak membandingkan `business_id` sesi dengan baris result                             | Token result bisa membuka sesi tenant lain bila relasi menyimpang         | Guard `session.business_id !== row.business_id` → `NOT_FOUND`; query foto di-scope `business_id`             |
+| 6   | `photoboxes.default_template_id` tanpa FK (docs/07 sudah menyebutnya)                              | Template terhapus meninggalkan id menggantung di booth                    | Migrasi `0075`: FK `on delete set null` + index parsial                                                      |
+| 7   | Decrement stok POS = satu RPC per item (N+1)                                                       | Order 10 baris = 10 round-trip ke DB                                      | RPC batch `pos_decrement_stock_batch` (migrasi `0076`), hasil per produk tetap dilaporkan                     |
+| 8   | Video per halaman branding hanya divalidasi ukuran, bukan durasi                                    | Video >5 detik lolos di editor halaman                                    | `probeVideo()` dipakai kedua jalur; `VIDEO_MAX_SECONDS` satu sumber di `src/lib/upload-validation.ts`         |
+| 9   | `color-mix()` tanpa fallback di WelcomeScreen                                                       | Overlay transparan hilang di Chromium <111                                | `hexToRgba()` di `src/lib/color.ts`                                                                           |
+| 10  | Cleanup effect pan foto tidak membatalkan `requestAnimationFrame`                                   | RAF yatim menulis ke canvas setelah unmount                               | `cancelAnimationFrame` di cleanup, ref di-null-kan                                                            |
+| 11  | Sanitizer LIKE ad-hoc di admin hanya membuang `%_`                                                  | `,()` memecah ekspresi PostgREST `.or()`                                  | `likePattern()` (`src/lib/postgrest-search.ts`) di audit/users/businesses/pos-products                         |
+| 12  | `persistRecipients` menghapus penerima sebelum insert pengganti                                     | Insert gagal → riwayat penerima & `resend_count` hilang                   | Urutan dibalik: insert dulu, hapus penerima yang benar-benar keluar audiens                                   |
+| 13  | `uuidList()` tanpa batas                                                                            | Form dengan ribuan checkbox menghasilkan URL filter melebihi batas        | `.slice(0, 200)`, sama dengan `idArray` di validators                                                         |
+| 14  | Transaksi manual tidak memeriksa booth berada di outlet yang dipilih                                | Data transaksi bisa menunjuk kombinasi outlet/booth yang tidak ada        | `assertBoothInOutlet()` → `VALIDATION_ERROR` bila beda outlet; dikunci `tests/manual-transaction.test.ts`     |
+
+### 12.3 Klaim laporan otomatis yang ditolak
+
+`AUDIT-REPORT.md` (hasil pemindaian otomatis) memuat 21 temuan. Yang berikut
+**tidak** diterapkan karena tidak terbukti saat diverifikasi di sumber:
+
+| Klaim                                                       | Alasan ditolak                                                                                                                        |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| "Webhook lookup tanpa `business_id`" (4 lokasi)             | `payments.order_id` `UNIQUE`; lookup per order_id tidak bisa lintas tenant. Filter tambahan tidak menambah keamanan                    |
+| "63 route tanpa auth"                                       | Grep tidak mengenali wrapper `authRawRoute`; route publik memang publik                                                               |
+| "`.or()` injection di checkout-shared"                      | Sudah dijaga regex sebelum `.or()`                                                                                                    |
+| "FK customer/event `SET NULL` memutus relasi"               | Tidak ada alur hapus customer/event di aplikasi                                                                                       |
+| "Sempitkan `WEBHOOK_FRESHNESS_HOURS`"                       | Akan menolak retry gateway yang sah (24 jam adalah jendela retry nyata)                                                               |
+| "Kuota plan untuk paket/template"                           | Tabel `plans` tidak punya kolom kuota tersebut; menambahkannya mengubah semantik billing                                              |
+| "Mismatch outlet/booth POS"                                 | Outlet diturunkan server-side dari booth pada jalur POS                                                                               |
+| "Index `checkout_sessions(expires_at)`"                     | Cron memfilter `payments`/`sessions`, bukan `checkout_sessions`                                                                       |
+| "Index `transactions(business_id, pos_order_id)`"           | Partial unique index yang ada sudah melayani pola query tersebut                                                                      |
+| "Race di `KioskApp`"                                        | Sudah dijaga `busy`/`session`/`paidHandledRef`                                                                                         |
+| "Circular reference `transactions.payment_id`"              | Kolom diisi oleh trigger settlement `0031` dan dibaca untuk rekonsiliasi; `on delete set null` di kedua arah, tidak ada alur hapus     |
+
+### 12.4 Migrasi baru
+
+| Migrasi                                | Isi                                                                                              | Status                                  |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------- |
+| `0075_integrity_and_hot_indexes.sql`   | FK `photoboxes_default_template_id_fkey`, `idx_photoboxes_default_template`, `idx_payments_credential`, `idx_payments_pending_expiry` | Ditulis + rollback; **belum diterapkan** |
+| `0076_pos_stock_batch.sql`             | `pos_decrement_stock_batch(uuid, jsonb) returns table(product_id, ok)`; `revoke` dari `public/anon/authenticated`, `grant` ke `service_role` | Ditulis + rollback; **belum diterapkan** |
+
+`db/schema.sql` sudah dicerminkan untuk keduanya, jadi schema acuan dan migrasi
+tidak drift. Keduanya idempotent (`if not exists` / `create or replace`) dan
+aman diulang.
+
+### 12.5 Dead code
+
+Tidak ada berkas yang dihapus pada ronde ini: tidak ditemukan modul tanpa
+referensi tambahan di luar yang sudah tercatat di §10.4. `AUDIT-REPORT.md` di
+root adalah keluaran pemindaian otomatis, bukan dokumentasi produk; isinya yang
+terbukti sudah diserap ke sini.
+
+### 12.6 Risiko residual (jujur)
+
+| Item                                        | Status                                                                                                   |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Migrasi `0075` & `0076`                     | **BLOCKED** — butuh DB scratch/produksi ber-otorisasi; `verify-migration-rollbacks.mjs` menolak jalan tanpa `MIGRATION_CHECK_DB` |
+| Printer thermal fisik                       | **BLOCKED** — tidak ada perangkat terkonfirmasi; hanya mock BLE/SPP                                       |
+| Kamera fisik                                | **BLOCKED** — frame gelap total pada perangkat uji (§11.4); kualitas capture belum terverifikasi         |
+| Payment gateway nyata                       | **NOT TESTED** — tidak ada transaksi finansial nyata (sesuai batasan tugas); hanya sandbox/kode          |
+| E2E kiosk penuh                             | **NOT TESTED** pada ronde ini — butuh fixture DB + server dev; gate terakhir yang tercatat §11.1         |
+| Advisory dependensi                         | Dev-time (`eslint`, `shadcn`, `ts-morph`); 0 critical/high runtime                                       |

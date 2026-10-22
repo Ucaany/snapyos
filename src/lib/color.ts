@@ -15,6 +15,15 @@ export function parseHex(hex: string | undefined | null): [number, number, numbe
   return [(value >> 16) & 0xff, (value >> 8) & 0xff, value & 0xff];
 }
 
+/** `#RRGGBB` + alpha → `rgba(...)`. Portal kiosk lama (Chromium <111) belum
+ *  kenal `color-mix()`, jadi overlay video memakai rgba(). Hex non-6-digit
+ *  (mis. var() atau nama warna) dikembalikan apa adanya agar tetap terpakai. */
+export function hexToRgba(hex: string, alpha: number): string {
+  const rgb = parseHex(hex);
+  if (!rgb) return hex;
+  return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha})`;
+}
+
 function toHex(rgb: [number, number, number]): string {
   return `#${rgb
     .map((c) =>

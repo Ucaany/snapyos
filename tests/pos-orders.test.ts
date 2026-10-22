@@ -268,12 +268,12 @@ test("manual pay: kegagalan RPC stok bukan shortfall biasa", async () => {
   const source = await (
     await import("node:fs/promises")
   ).readFile(new URL("../src/server/pos-orders.ts", import.meta.url), "utf8");
-  assert.match(
-    source,
-    /const \{ data: ok, error: stockError \} = await supabase\.rpc\("pos_decrement_stock"/
-  );
+  // Satu RPC batch (0076) — bukan satu panggilan per item.
+  assert.match(source, /await supabase\.rpc\(\s*"pos_decrement_stock_batch"/);
   assert.match(source, /action: "pos\.stock\.decrement_failed"/);
-  assert.match(source, /if \(ok !== true\) \{/);
+  // Kegagalan RPC dicatat terpisah dan TIDAK dihitung sebagai shortfall.
+  assert.match(source, /if \(stockError\) \{[\s\S]*?reason: "batch_rpc"/);
+  assert.match(source, /\.filter\(\(r\) => r\.ok !== true\)/);
 });
 
 test("manual pay: kegagalan memuat item setelah payment tetap direkonsiliasi", async () => {

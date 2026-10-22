@@ -61,11 +61,14 @@ export function bool(formData: FormData, key: string): boolean {
   return formData.getAll(key).some((v) => v === "on" || v === "true" || v === "1");
 }
 
+/** Batasi 200 — sama dengan `idArray` di validators. Tanpa cap, form dengan
+ *  ribuan checkbox menghasilkan filter `.in()` yang melewati batas URL. */
 export function uuidList(formData: FormData, key: string): string[] {
   return formData
     .getAll(key)
     .map((v) => String(v).trim())
-    .filter((v) => /^[0-9a-f-]{36}$/i.test(v));
+    .filter((v) => /^[0-9a-f-]{36}$/i.test(v))
+    .slice(0, 200);
 }
 
 /** Integer opsional dari form: "" → null, invalid → NaN, float → trunc. */

@@ -584,7 +584,9 @@ Log perangkat Electron. Auto-cleanup 30 hari via cron retention. **TIDAK** menyi
 | subtotal                            | integer                | = unit_price × qty                                    |
 | created_at                          | timestamptz            |                                                       |
 
-RPC `pos_decrement_stock(p_business, p_product, p_qty)` — decrement atomic `stock >= qty`, return false saat shortfall.
+RPC `pos_decrement_stock(p_business, p_product, p_qty)` — decrement atomic `stock >= qty`, return false saat shortfall. Dipakai jalur satu-produk.
+
+RPC `pos_decrement_stock_batch(p_business, p_items jsonb)` — 0076. Satu UPDATE ter-guard untuk seluruh baris order; return `table(product_id, ok)`. Baris yang stoknya kurang tidak diubah dan dilaporkan `ok = false`; order tetap paid. Dipakai `src/server/pos-orders.ts`.
 
 RPC `pos_complete_payment(p_order_id, p_business, p_method, p_cashier, p_tx_number, p_outlet_id, p_photobox_id, p_gross, p_discount, p_final)` — atomic UPDATE pos_orders pending→paid + INSERT transactions dalam satu DB transaction (0026). Return UUID transaction baru atau NULL (order bukan pending / sudah diproses). Menulis `transactions.withdrawable=false` untuk penjualan POS offline, menghilangkan window kegagalan parsial dimana order paid tanpa baris transactions, dan dibuat idempoten terhadap retry.
 

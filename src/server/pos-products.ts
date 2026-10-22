@@ -4,6 +4,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
 import { can } from "@/lib/rbac";
 import { insertAudit } from "@/server/audit";
+import { likePattern } from "@/lib/postgrest-search";
 import { requirePosAccess } from "@/server/pos-entitlement";
 import {
   posProductCreateSchema,
@@ -101,7 +102,7 @@ export async function listPosProducts(
   if (query.activeOnly) req = req.eq("is_active", true);
   if (query.category) req = req.eq("category", query.category);
   if (query.search) {
-    const like = `%${query.search.replace(/[%_]/g, (m) => "\\" + m)}%`;
+    const like = likePattern(query.search);
     req = req.or(`name.ilike.${like},sku.ilike.${like}`);
   }
 

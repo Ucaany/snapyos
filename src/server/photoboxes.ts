@@ -5,9 +5,8 @@
  */
 
 import "server-only";
-import { updateTag } from "next/cache";
 import { createServerClient } from "@/lib/supabase/server";
-import { publicConfigCacheTag } from "@/server/public-config";
+import { invalidatePublicConfig } from "@/server/public-config";
 import { ApiError } from "@/lib/api-errors";
 import { can, type Permission } from "@/lib/rbac";
 import { getMembership } from "@/lib/tenant";
@@ -60,16 +59,6 @@ async function requireMembership(userId: string, businessId: string, permission:
     throw new ApiError("FORBIDDEN", "Anda tidak punya izin untuk aksi ini");
   }
   return membership;
-}
-
-/**
- * Invalidate data-cache public config (kiosk runtime) setelah mutasi photobox.
- * getPublicConfig di-cache 30s (public-config.ts); tanpa ini, perubahan
- * print/camera/session settings baru tampil di kiosk setelah TTL lewat
- * (bukan read-your-writes). updateTag = invalidasi segera (Next 16).
- */
-function invalidatePublicConfig(businessId: string) {
-  updateTag(publicConfigCacheTag(businessId));
 }
 
 function assertSlug(slug: string) {

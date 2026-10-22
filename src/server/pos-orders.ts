@@ -542,44 +542,49 @@ export async function payPosOrderManually(
         name_snapshot: string;
       }[]
     ).filter((item) => item.pos_product_id !== null);
-    await Promise.all(
-      stockItems.map(async (item) => {
-        const { data: ok, error: stockError } = await supabase.rpc("pos_decrement_stock", {
-          p_business: businessId,
-          p_product: item.pos_product_id!,
-          p_qty: item.quantity,
-        });
-        if (stockError) {
-          console.error("[pos] stock decrement failed after payment:", stockError.message);
-          await insertAudit({
-            actorId: null,
-            businessId,
-            action: "pos.stock.decrement_failed",
-            target: order.id,
-            meta: {
-              product: item.name_snapshot,
-              qty: item.quantity,
-              db_code: stockError.code ?? null,
-            },
-          });
-          return;
-        }
-        if (ok !== true) {
-          console.warn("[pos] stock shortfall:", {
-            orderId: order.id,
-            product: item.name_snapshot,
-            qty: item.quantity,
-          });
-          await insertAudit({
-            actorId: null,
-            businessId,
-            action: "pos.stock.shortfall",
-            target: order.id,
-            meta: { product: item.name_snapshot, qty: item.quantity },
-          });
-        }
-      })
+    // Satu RPC batch, bukan satu panggilan per item (order 10 baris dulu = 10
+    // round-trip). Aturan shortfall sama: stok kurang tidak diubah, dilaporkan.
+    const { data: stockResults, error: stockError } = await supabase.rpc(
+      "pos_decrement_stock_batch",
+      {
+        p_business: businessId,
+        p_items: stockItems.map((item) => ({
+          product_id: item.pos_product_id,
+          qty: item.quantity,
+        })),
+      }
     );
+    if (stockError) {
+      console.error("[pos] stock decrement failed after payment:", stockError.message);
+      await insertAudit({
+        actorId: null,
+        businessId,
+        action: "pos.stock.decrement_failed",
+        target: order.id,
+        meta: { reason: "batch_rpc", db_code: stockError.code ?? null },
+      });
+    } else {
+      const failed = new Set(
+        ((stockResults ?? []) as { product_id: string; ok: boolean }[])
+          .filter((r) => r.ok !== true)
+          .map((r) => r.product_id)
+      );
+      for (const item of stockItems) {
+        if (!failed.has(item.pos_product_id!)) continue;
+        console.warn("[pos] stock shortfall:", {
+          orderId: order.id,
+          product: item.name_snapshot,
+          qty: item.quantity,
+        });
+        await insertAudit({
+          actorId: null,
+          businessId,
+          action: "pos.stock.shortfall",
+          target: order.id,
+          meta: { product: item.name_snapshot, qty: item.quantity },
+        });
+      }
+    }
   }
 
   await insertAudit({

@@ -206,6 +206,9 @@ export const PHOTO_MAX_BYTES = 10 * 1024 * 1024; // 10 MB per foto
 
 /** Video background template — MP4/WebM looping (docs/05, kiosk attract-loop). */
 export const VIDEO_MAX_BYTES = 15 * 1024 * 1024; // 15 MB
+/** Batas durasi attract-loop; ditegakkan di klien via metadata (server belum
+ *  mem-parse MP4 — lihat `ponytail` di server/branding.ts). */
+export const VIDEO_MAX_SECONDS = 5;
 export const VIDEO_ALLOWED_TYPES: Record<string, string> = {
   "video/mp4": "mp4",
   "video/webm": "webm",

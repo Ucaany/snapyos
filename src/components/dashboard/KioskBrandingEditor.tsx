@@ -16,7 +16,7 @@ import type {
   KioskPageId,
 } from "@/lib/kiosk-types";
 import { kioskVisualStyle } from "@/lib/kiosk-types";
-import { LOGO_MAX_BYTES } from "@/lib/upload-validation";
+import { LOGO_MAX_BYTES, VIDEO_MAX_BYTES, VIDEO_MAX_SECONDS } from "@/lib/upload-validation";
 import type { FormState } from "@/server/auth-actions";
 import {
   deleteKioskPageVideoAction,
@@ -65,9 +65,6 @@ const DEFAULTS = {
 
 const fieldClass = "flex flex-col gap-2";
 const cardClass = "border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111]";
-
-const VIDEO_MAX_SECONDS = 5;
-const VIDEO_MAX_BYTES = 15 * 1024 * 1024;
 
 const PAGE_IDS: KioskPageId[] = [
   "welcome",
@@ -611,37 +608,43 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
     }
   }
 
-  function handleVideoChange(file: File | null) {
+  /** Cek ukuran + durasi (metadata) sebelum upload. Dipakai video global dan
+   *  per-layar: server hanya memvalidasi tipe + size, bukan durasi. */
+  function probeVideo(file: File): Promise<string | null> {
+    if (file.size > VIDEO_MAX_BYTES) return Promise.resolve("Ukuran video maksimal 15 MB.");
+    return new Promise((resolve) => {
+      const url = URL.createObjectURL(file);
+      const probe = document.createElement("video");
+      probe.preload = "metadata";
+      probe.onloadedmetadata = () => {
+        URL.revokeObjectURL(url);
+        if (!Number.isFinite(probe.duration) || probe.duration <= 0) {
+          resolve("Durasi video tidak terbaca. Coba file lain.");
+        } else if (probe.duration > VIDEO_MAX_SECONDS + 0.05) {
+          resolve(
+            `Durasi video maksimal ${VIDEO_MAX_SECONDS} detik (terdeteksi ${probe.duration.toFixed(1)}s).`
+          );
+        } else {
+          resolve(null);
+        }
+      };
+      probe.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve("Video tidak terbaca. Gunakan MP4 atau WebM.");
+      };
+      probe.src = url;
+    });
+  }
+
+  async function handleVideoChange(file: File | null) {
     if (!file) return;
-    if (file.size > VIDEO_MAX_BYTES) {
-      setStatus({ kind: "error", message: "Ukuran video maksimal 15 MB." });
+    const problem = await probeVideo(file);
+    if (problem) {
+      setStatus({ kind: "error", message: problem });
       return;
     }
-    // Validasi durasi ≤5s via metadata (server memvalidasi tipe + size).
-    const url = URL.createObjectURL(file);
-    const probe = document.createElement("video");
-    probe.preload = "metadata";
-    probe.src = url;
-    probe.onloadedmetadata = () => {
-      URL.revokeObjectURL(url);
-      if (!Number.isFinite(probe.duration) || probe.duration <= 0) {
-        setStatus({ kind: "error", message: "Durasi video tidak terbaca. Coba file lain." });
-        return;
-      }
-      if (probe.duration > VIDEO_MAX_SECONDS + 0.05) {
-        setStatus({
-          kind: "error",
-          message: `Durasi video maksimal ${VIDEO_MAX_SECONDS} detik (terdeteksi ${probe.duration.toFixed(1)}s).`,
-        });
-        return;
-      }
-      setStatus({ kind: "idle" });
-      videoInputRef.current?.form?.requestSubmit();
-    };
-    probe.onerror = () => {
-      URL.revokeObjectURL(url);
-      setStatus({ kind: "error", message: "Video tidak terbaca. Gunakan MP4 atau WebM." });
-    };
+    setStatus({ kind: "idle" });
+    videoInputRef.current?.form?.requestSubmit();
   }
 
   async function handleLogoChange(file: File | null) {
@@ -681,8 +684,9 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
   async function handlePageVideoChange(file: File | null) {
     if (!file) return;
     setPageVideoError(null);
-    if (file.size > VIDEO_MAX_BYTES) {
-      setPageVideoError("Ukuran video maksimal 15 MB.");
+    const problem = await probeVideo(file);
+    if (problem) {
+      setPageVideoError(problem);
       return;
     }
     setPageVideoPending(true);
@@ -1803,7 +1807,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
               name="video"
               accept="video/mp4,video/webm"
               disabled={videoPending || !canWrite}
-              onChange={(e) => handleVideoChange(e.target.files?.[0] ?? null)}
+              onChange={(e) => void handleVideoChange(e.target.files?.[0] ?? null)}
               className="border-2 border-ink bg-bg p-2 font-mono text-xs"
             />
             {videoPending && (

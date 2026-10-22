@@ -729,6 +729,46 @@ begin
 end;
 $$;
 
+-- Batch (0076): satu UPDATE dari jsonb — order 10 baris tidak lagi 10 round-trip.
+create or replace function pos_decrement_stock_batch(
+  p_business uuid,
+  p_items jsonb
+) returns table (product_id uuid, ok boolean)
+language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+  return query
+  with req as (
+    select (i->>'product_id')::uuid as id,
+           sum((i->>'qty')::integer)::integer as qty
+      from jsonb_array_elements(p_items) as i
+     where coalesce((i->>'qty')::integer, 0) > 0
+     group by 1
+  ),
+  upd as (
+    update pos_products p
+       set stock = p.stock - req.qty,
+           updated_at = now()
+      from req
+     where p.id = req.id
+       and p.business_id = p_business
+       and p.stock is not null
+       and p.stock >= req.qty
+    returning p.id
+  )
+  select req.id,
+         exists (select 1 from upd u where u.id = req.id)
+         or exists (
+           select 1 from pos_products p2
+            where p2.id = req.id
+              and p2.business_id = p_business
+              and p2.stock is null
+         )
+    from req;
+end;
+$$;
+
 create table transactions (
   id uuid primary key default gen_random_uuid(),
   business_id uuid not null references businesses (id) on delete cascade,
@@ -829,6 +869,9 @@ create table payments (
 );
 create index idx_pay_business_status on payments (business_id, status);
 create index idx_pay_checkout on payments (checkout_session_id);
+-- Cron payment-recovery: status pending + expires_at lewat (tiap menit).
+create index idx_payments_pending_expiry on payments (expires_at)
+  where status = 'pending';
 create unique index idx_pay_reference on payments (provider, payment_reference)
   where payment_reference is not null;
 -- Satu payment aktif (creating/pending) per checkout (0059) — anti race settle ganda.
@@ -1213,6 +1256,13 @@ alter table checkout_sessions
 alter table payments
   add constraint payments_voucher_id_fkey foreign key (voucher_id) references vouchers (id) on delete set null;
 
+-- photoboxes (210) dibuat sebelum templates (372) — FK menyusul di sini.
+alter table photoboxes
+  add constraint photoboxes_default_template_id_fkey
+  foreign key (default_template_id) references templates (id) on delete set null;
+create index idx_photoboxes_default_template on photoboxes (default_template_id)
+  where default_template_id is not null;
+
 -- ============================================================================
 -- Subscription promos (platform billing — docs/02 §2.5, migration 0014)
 -- ============================================================================
@@ -1262,6 +1312,9 @@ create trigger trg_payment_credentials_updated_at before update on payment_crede
 alter table payments
   add constraint payments_credential_id_fkey
   foreign key (credential_id) references payment_credentials (id) on delete set null;
+-- Index kolom FK: tanpa ini ON DELETE SET NULL memindai seluruh payments.
+create index idx_payments_credential on payments (credential_id)
+  where credential_id is not null;
 
 -- ============================================================================
 -- Device logs — riwayat per device, auto-cleanup 30d via cron (0027)
@@ -2186,6 +2239,8 @@ grant execute on function pos_complete_payment(uuid, uuid, text, uuid, text, uui
 
 revoke execute on function pos_decrement_stock(uuid, uuid, integer) from public, anon, authenticated;
 grant execute on function pos_decrement_stock(uuid, uuid, integer) to service_role;
+revoke execute on function pos_decrement_stock_batch(uuid, jsonb) from public, anon, authenticated;
+grant execute on function pos_decrement_stock_batch(uuid, jsonb) to service_role;
 
 revoke execute on function pos_create_order_with_items(uuid, uuid, uuid, uuid, text, integer, integer, integer, integer, text, boolean, jsonb) from public, anon, authenticated;
 grant execute on function pos_create_order_with_items(uuid, uuid, uuid, uuid, text, integer, integer, integer, integer, text, boolean, jsonb) to service_role;

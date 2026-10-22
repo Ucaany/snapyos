@@ -12,6 +12,7 @@ import {
   type AdminUserCreateInput,
   type AdminUserUpdateInput,
 } from "@/lib/validators";
+import { likePattern } from "@/lib/postgrest-search";
 import { requireAdmin, audit } from "./guard";
 
 // ---------------------------------------------------------------------------
@@ -72,7 +73,7 @@ export async function listUsers(query: {
   const limit = Math.min(100, Math.max(1, query.limit ?? 20));
 
   const supabase = createServerClient();
-  const searchLike = query.search ? `%${query.search.replace(/[%_]/g, "")}%` : null;
+  const searchLike = query.search ? likePattern(query.search) : null;
   let req = supabase
     .from("users")
     .select(ADMIN_USER_COLUMNS, { count: "exact" })

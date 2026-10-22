@@ -747,7 +747,7 @@ async function loadResult(resultToken: string) {
   const { data: checkout } = await supabase
     .from("checkout_sessions")
     .select(
-      "result_token, session_id, business_id, sessions ( id, status, result_gif_key, finalized_at )"
+      "result_token, session_id, business_id, sessions ( id, business_id, status, result_gif_key, finalized_at )"
     )
     .eq("result_token", resultToken)
     .maybeSingle();
@@ -761,6 +761,12 @@ async function loadResult(resultToken: string) {
   // link hasil yang dibagikan sebelum sesi finalize (atau sesi yang di-expire)
   // merender halaman "Foto kamu siap!" dengan grid kosong.
   if (session.status !== "completed") {
+    throw new ApiError("NOT_FOUND", "Link tidak valid atau kedaluwarsa");
+  }
+  // Token hasil harus milik business yang sama dengan sesinya. Token acak sudah
+  // sulit ditebak, tapi tanpa cek ini satu baris checkout yang tertaut ke sesi
+  // business lain akan membocorkan foto tenant itu.
+  if (session.business_id !== row.business_id) {
     throw new ApiError("NOT_FOUND", "Link tidak valid atau kedaluwarsa");
   }
 
@@ -786,6 +792,7 @@ async function loadResult(resultToken: string) {
     .from("photos")
     .select("id, file_key, order_index")
     .eq("session_id", session.id)
+    .eq("business_id", row.business_id)
     .order("order_index", { ascending: true });
 
   const photoRows = photos ?? [];

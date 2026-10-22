@@ -202,6 +202,28 @@ async function assertOwned(
   }
 }
 
+/** Booth wajib berada di outlet yang dicatat transaksi — cegah baris lintas
+ *  outlet (`transactions.outlet_id` dipakai laporan per lokasi). */
+async function assertBoothInOutlet(businessId: string, outletId: string, photoboxId: string) {
+  const supabase = createServerClient();
+  const { data } = await supabase
+    .from("photoboxes")
+    .select("id, outlet_id")
+    .eq("id", photoboxId)
+    .eq("business_id", businessId)
+    .maybeSingle();
+  if (!data) {
+    throw new ApiError("VALIDATION_ERROR", "photoboxes tidak ditemukan di business ini", {
+      photobox_id: ["Tidak valid"],
+    });
+  }
+  if ((data as { outlet_id: string }).outlet_id !== outletId) {
+    throw new ApiError("VALIDATION_ERROR", "Photobox tidak berada di outlet yang dipilih", {
+      photobox_id: ["Photobox beda outlet"],
+    });
+  }
+}
+
 /** Catat transaksi manual owner — langsung `paid`, NON-withdrawable. */
 export async function createManualTransaction(
   userId: string,
@@ -217,7 +239,7 @@ export async function createManualTransaction(
     });
   }
   await assertOwned(businessId, "outlets", parsed.outlet_id);
-  await assertOwned(businessId, "photoboxes", parsed.photobox_id);
+  await assertBoothInOutlet(businessId, parsed.outlet_id, parsed.photobox_id);
   if (parsed.package_id) await assertOwned(businessId, "packages", parsed.package_id);
 
   const supabase = createServerClient();

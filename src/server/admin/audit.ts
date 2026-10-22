@@ -6,6 +6,7 @@
 import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
+import { likePattern } from "@/lib/postgrest-search";
 import { requireAdmin, audit } from "./guard";
 
 // ---------------------------------------------------------------------------
@@ -54,7 +55,7 @@ export async function listAuditLogs(query: {
   // Hanya `%` yang di-escape; `_` adalah bagian sah nama action (admin.audit_log).
   if (query.action) req = req.like("action", `${query.action.replace(/%/g, "")}%`);
   if (query.search) {
-    const like = `%${query.search.replace(/[%_]/g, "")}%`;
+    const like = likePattern(query.search);
     req = req.or(`action.ilike.${like},target.ilike.${like}`);
   }
 

@@ -110,6 +110,7 @@ test("0071: mem-pin semua RPC yang belum terpin inline 0069", () => {
     "create_outlet_with_quota",
     "create_photobox_with_quota",
     "pos_create_order_with_items",
+    "pos_decrement_stock_batch",
     "pos_set_booth_enabled",
   ];
   const expected = appFunctionNames(schema)
@@ -147,6 +148,7 @@ test("0071 rollback: pin inline 0069 TIDAK di-reset (bukan berasal dari 0071)", 
     "create_outlet_with_quota",
     "create_photobox_with_quota",
     "pos_create_order_with_items",
+    "pos_decrement_stock_batch",
     "pos_set_booth_enabled",
   ]);
   const reset = [

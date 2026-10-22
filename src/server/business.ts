@@ -12,6 +12,7 @@ import { getMembership, getUserMemberships, type Membership } from "@/lib/tenant
 import { isValidSlug, slugify } from "@/lib/slug";
 import { isSubscriptionEffective, nextPeriod } from "@/lib/subscription-math";
 import { brandingCacheTag } from "@/server/branding";
+import { invalidatePublicConfig } from "@/server/public-config";
 import { sendWelcomeEmail } from "@/server/lifecycle-email";
 
 /** Tag data-cache business_settings (STEP 14). Dipakai getSettings + updateTag pada updateSettings (Next 16). */
@@ -357,6 +358,10 @@ export async function updateSettings(
   updateTag(settingsCacheTag(businessId));
   if (parsed.branding !== undefined) {
     updateTag(brandingCacheTag(businessId));
+  }
+  // branding + checkout juga masuk public config kiosk (cache terpisah 30s).
+  if (parsed.branding !== undefined || parsed.checkout !== undefined) {
+    invalidatePublicConfig(businessId);
   }
   return data;
 }

@@ -157,7 +157,13 @@ function EditorInner({
     });
     return () => {
       cancelled = true;
-      if (panRaf.current !== null) cancelAnimationFrame(panRaf.current);
+      // Null-kan juga: ref yang tertinggal non-null membuat onPointerMove
+      // mengira frame masih terjadwal → pan berhenti selamanya setelah
+      // daftar foto berubah (efek ini jalan ulang tiap photos berubah).
+      if (panRaf.current !== null) {
+        cancelAnimationFrame(panRaf.current);
+        panRaf.current = null;
+      }
     };
   }, [photos, photoUrls]);
 
@@ -745,7 +751,9 @@ function EditorInner({
                             type="button"
                             onClick={() => patchOverlay(o.id, { color: c })}
                             className={`size-9 border-2 ${
-                              o.color === c ? "border-ink outline-2 outline-offset-1 outline-ink" : "border-ink/30"
+                              o.color === c
+                                ? "border-ink outline-2 outline-offset-1 outline-ink"
+                                : "border-ink/30"
                             }`}
                             style={{ background: c }}
                             aria-label={`Warna ${c}`}
@@ -791,7 +799,9 @@ function EditorInner({
                           type="button"
                           onClick={() => patchOverlay(o.id, { y: p.y })}
                           className={`min-h-11 flex-1 border-2 border-ink px-2 py-1 text-[10px] font-bold uppercase tracking-[0.04em] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${
-                            Math.abs(o.y - p.y) < 0.01 ? "bg-accent text-ink" : "bg-surface text-ink"
+                            Math.abs(o.y - p.y) < 0.01
+                              ? "bg-accent text-ink"
+                              : "bg-surface text-ink"
                           }`}
                         >
                           {p.label}
