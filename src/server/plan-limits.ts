@@ -20,7 +20,7 @@ export async function requirePlanLimits(businessId: string): Promise<PlanLimits>
   const { data, error } = await supabase
     .from("subscriptions")
     .select(
-      "status, trial_ends_at, current_period_end, plans ( max_outlets, max_photoboxes, max_concurrent_sessions, max_staff )"
+      "status, trial_ends_at, current_period_end, plans ( max_outlets, max_photoboxes, max_concurrent_sessions, max_staff, max_packages, max_templates )"
     )
     .eq("business_id", businessId)
     .in("status", ["trial", "active", "past_due"])
@@ -41,12 +41,16 @@ export async function requirePlanLimits(businessId: string): Promise<PlanLimits>
           max_photoboxes: number;
           max_concurrent_sessions: number;
           max_staff: number;
+          max_packages: number;
+          max_templates: number;
         }
       | {
           max_outlets: number;
           max_photoboxes: number;
           max_concurrent_sessions: number;
           max_staff: number;
+          max_packages: number;
+          max_templates: number;
         }[]
       | null;
   } | null;
@@ -70,6 +74,8 @@ export async function requirePlanLimits(businessId: string): Promise<PlanLimits>
       plan.max_concurrent_sessions ?? DEFAULT_PLAN_LIMITS.max_concurrent_sessions
     ),
     max_staff: Number(plan.max_staff ?? DEFAULT_PLAN_LIMITS.max_staff),
+    max_packages: Number(plan.max_packages ?? DEFAULT_PLAN_LIMITS.max_packages),
+    max_templates: Number(plan.max_templates ?? DEFAULT_PLAN_LIMITS.max_templates),
   };
 }
 
@@ -84,7 +90,7 @@ export async function getPlanLimits(businessId: string): Promise<PlanLimits> {
   const { data } = await supabase
     .from("subscriptions")
     .select(
-      "id, status, trial_ends_at, current_period_end, plans ( max_outlets, max_photoboxes, max_concurrent_sessions, max_staff )"
+      "id, status, trial_ends_at, current_period_end, plans ( max_outlets, max_photoboxes, max_concurrent_sessions, max_staff, max_packages, max_templates )"
     )
     .eq("business_id", businessId)
     .in("status", ["trial", "active", "past_due"])
@@ -103,12 +109,16 @@ export async function getPlanLimits(businessId: string): Promise<PlanLimits> {
           max_photoboxes: number;
           max_concurrent_sessions: number;
           max_staff: number;
+          max_packages: number;
+          max_templates: number;
         }
       | {
           max_outlets: number;
           max_photoboxes: number;
           max_concurrent_sessions: number;
           max_staff: number;
+          max_packages: number;
+          max_templates: number;
         }[]
       | null;
   } | null;
@@ -150,5 +160,7 @@ export async function getPlanLimits(businessId: string): Promise<PlanLimits> {
     max_photoboxes: (plan.max_photoboxes as number) ?? DEFAULT_PLAN_LIMITS.max_photoboxes,
     max_concurrent_sessions: sessions,
     max_staff: (plan.max_staff as number) ?? DEFAULT_PLAN_LIMITS.max_staff,
+    max_packages: (plan.max_packages as number) ?? DEFAULT_PLAN_LIMITS.max_packages,
+    max_templates: (plan.max_templates as number) ?? DEFAULT_PLAN_LIMITS.max_templates,
   };
 }
