@@ -13,7 +13,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { createCamera } from "./camera/index.ts";
-import { ConfigError, loadConfig } from "./config.ts";
+import { ConfigError, loadConfig, type RuntimeConfig } from "./config.ts";
 import { getMeta, openDatabase, readVersion, type DatabaseSync } from "./db/index.ts";
 import { handleExitRoute } from "./exit/index.ts";
 import {
@@ -28,6 +28,12 @@ import {
 import { buildPdf, printGeometry, printerNameOf, type PrintInput } from "./print/geometry.ts";
 import { createPrinter } from "./print/index.ts";
 import { handleSessionRoute } from "./session/index.ts";
+import {
+  activeSettings,
+  effectiveConfig,
+  handleSettingsRoute,
+  printDefaults,
+} from "./settings/index.ts";
 
 const VERSION: string = (() => {
   try {
@@ -56,7 +62,7 @@ function openStoreOrExit(dataDir: string): DatabaseSync {
 }
 
 async function main(): Promise<void> {
-  let config;
+  let config: RuntimeConfig;
   try {
     config = loadConfig(process.env);
   } catch (error) {
@@ -67,9 +73,12 @@ async function main(): Promise<void> {
     throw error;
   }
 
-  const camera = createCamera(config);
-  const printer = createPrinter(config);
   const db = openStoreOrExit(config.dataDir);
+  // Setelan tersimpan menang atas env saat memilih adapter; env tetap nilai
+  // awal bila store kosong. Ganti provider berlaku setelah runtime restart.
+  const effective = effectiveConfig(config, activeSettings(db, config));
+  const camera = createCamera(effective);
+  const printer = createPrinter(effective);
 
   if (config.mock) {
     console.warn("[snapyos-runtime] MODE MOCK AKTIF — tidak ada kamera/printer fisik yang dipakai.");
@@ -94,10 +103,15 @@ async function main(): Promise<void> {
   }
 
   async function submitPrint(input: PrintInput, test: boolean) {
-    const printerName = printerNameOf(input);
+    // Setelan device jadi nilai awal; kiosk boleh menimpanya per pekerjaan.
+    const merged: PrintInput = { ...printDefaults(activeSettings(db, config)) };
+    for (const [key, value] of Object.entries(input)) {
+      if (value !== undefined) (merged as Record<string, unknown>)[key] = value;
+    }
+    const printerName = printerNameOf(merged);
     await printer.health(printerName || undefined);
-    const pdf = await buildPdf(input, test);
-    return printer.submit(pdf, printerName, printGeometry(input));
+    const pdf = await buildPdf(merged, test);
+    return printer.submit(pdf, printerName, printGeometry(merged));
   }
 
   const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
@@ -158,6 +172,14 @@ async function main(): Promise<void> {
         );
       }
 
+      const settingsRoute = await handleSettingsRoute(
+        { db, config },
+        req.method || "GET",
+        url.pathname,
+        () => readJson(req, config.maxBodyBytes)
+      );
+      if (settingsRoute) return json(res, settingsRoute.status, settingsRoute.body, origin);
+
       const sessionRoute = await handleSessionRoute(
         {
           db,
@@ -183,7 +205,11 @@ async function main(): Promise<void> {
       }
 
       if (req.method === "GET" && url.pathname === "/printer/health") {
-        const printerName = url.searchParams.get("printer")?.trim() || undefined;
+        const stored = printDefaults(activeSettings(db, config)).printer_name;
+        const printerName =
+          url.searchParams.get("printer")?.trim() ||
+          (typeof stored === "string" ? stored.trim() : "") ||
+          undefined;
         return json(res, 200, await printer.health(printerName), origin);
       }
 
@@ -223,7 +249,11 @@ async function main(): Promise<void> {
       return json(
         res,
         status >= 400 && status < 600 ? status : 502,
-        { message: error instanceof Error ? error.message : "Runtime error." },
+        {
+          message: error instanceof Error ? error.message : "Runtime error.",
+          // Kode mesin dipakai kiosk membedakan 403 milik cloud dari 403 lain.
+          ...(error instanceof HttpError && error.code ? { error: error.code } : {}),
+        },
         origin
       );
     }

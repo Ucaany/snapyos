@@ -45,7 +45,8 @@ export function setCors(
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Vary", "Origin");
   }
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  // PUT dipakai `PUT /v1/settings`; tanpa ini preflight browser menolaknya.
+  res.setHeader("Access-Control-Allow-Methods", "GET, PUT, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", ALLOWED_HEADERS);
   res.setHeader("Access-Control-Allow-Private-Network", "true");
   res.setHeader("Access-Control-Max-Age", "600");
@@ -68,10 +69,13 @@ export function tokenMatches(received: unknown, tokenDigest: Buffer): boolean {
 
 export class HttpError extends Error {
   statusCode: number;
-  constructor(message: string, statusCode = 400) {
+  /** Kode mesin untuk kiosk (mis. `FIELD_NOT_DEVICE_OWNED`). */
+  code?: string;
+  constructor(message: string, statusCode = 400, code?: string) {
     super(message);
     this.name = "HttpError";
     this.statusCode = statusCode;
+    this.code = code;
   }
 }
 
