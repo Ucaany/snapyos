@@ -10,6 +10,7 @@
  * ini bisa diuji tanpa server HTTP.
  */
 
+import { randomUUID } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
@@ -228,11 +229,19 @@ export async function captureSlot(
 
   requireActive(row);
 
-  const buffer = await ctx.capture();
-  const filePath = join(mediaDirFor(ctx, id), `${slot}.jpg`);
-  writeFileSync(filePath, buffer);
+  // Slot sudah terisi dengan key lain: jangan buang satu shutter hanya untuk
+  // menemukan konflik di insert. Insert di bawah tetap penjaga balapan.
+  const occupiedBefore = ctx.db
+    .prepare("select id, slot_index, file_path, created_at from captures where session_id = ? and slot_index = ?")
+    .get(id, slot) as CaptureRow | undefined;
+  if (occupiedBefore) {
+    return { status: 200, body: { ok: true, replay: true, capture: occupiedBefore } };
+  }
+
   const at = nowIso(ctx);
-  const captureId = `cap_${key}`;
+  const filePath = join(mediaDirFor(ctx, id), `${slot}.jpg`);
+  const captureId = `cap_${randomUUID()}`;
+  const buffer = await ctx.capture();
   try {
     ctx.db
       .prepare(
@@ -246,6 +255,14 @@ export async function captureSlot(
       .prepare("select id, slot_index, file_path, created_at from captures where session_id = ? and slot_index = ?")
       .get(id, slot) as CaptureRow | undefined;
     if (occupied) return { status: 200, body: { ok: true, replay: true, capture: occupied } };
+    throw error;
+  }
+  try {
+    writeFileSync(filePath, buffer);
+  } catch (error) {
+    // Disk gagal: hapus baris supaya retry dengan key yang sama benar-benar
+    // menulis file, bukan mengembalikan capture tanpa file.
+    ctx.db.prepare("delete from captures where id = ?").run(captureId);
     throw error;
   }
   touch(ctx.db, id, at);
