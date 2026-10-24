@@ -5,17 +5,13 @@
  * membuang token, slug runtime harus cocok, dan error server (4xx/5xx) tidak
  * boleh jatuh ke jalur offline.
  *
- * Run: npx vitest run tests/kiosk-boot-offline.test.ts
+ * Run: npm test
  */
 
 import assert from "node:assert/strict";
+import { test } from "node:test";
 import { KioskError } from "../src/components/kiosk/api.ts";
 import { canBootOffline, isNetworkFailure } from "../src/components/kiosk/boot-offline.ts";
-
-type TestFn = (name: string, fn: () => unknown) => unknown;
-const { test } = (process.env.VITEST
-  ? await import("vitest")
-  : await import("node:test")) as unknown as { test: TestFn };
 
 const SLUG = "booth-a";
 const matching = { photobox_slug: SLUG };

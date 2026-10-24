@@ -5,17 +5,13 @@
  * fallback cache, halaman lain tidak, dan aset pendukung HTML ikut disimpan.
  * sw.js adalah skrip browser tanpa modul — dibaca sebagai teks, bukan dijalankan.
  *
- * Run: npx vitest run tests/kiosk-sw-offline.test.ts
+ * Run: npm test
  */
 
 import assert from "node:assert/strict";
+import { test } from "node:test";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-
-type TestFn = (name: string, fn: () => unknown) => unknown;
-const { test } = (process.env.VITEST
-  ? await import("vitest")
-  : await import("node:test")) as unknown as { test: TestFn };
 
 const source = readFileSync(fileURLToPath(new URL("../public/sw.js", import.meta.url)), "utf8");
 

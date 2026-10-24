@@ -4,17 +4,12 @@
  * Yang diuji hanya janji yang dipegang kiosk: field mesin menang, field uang
  * tetap milik cloud, runtime mati berarti cloud dipakai apa adanya.
  *
- * Run: npx vitest run tests/kiosk-settings-merge.test.ts
+ * Run: npm test
  */
 
 import assert from "node:assert/strict";
+import { test } from "node:test";
 import { mergeSettings } from "../src/lib/settings-merge.ts";
-// Dua runner hidup di repo ini: `npm test` (node:test) dan vitest. `VITEST` hanya
-// di-set oleh vitest, jadi file ini jalan di keduanya tanpa shim terpisah.
-type TestFn = (name: string, fn: () => unknown) => unknown;
-const { test } = (process.env.VITEST
-  ? await import("vitest")
-  : await import("node:test")) as unknown as { test: TestFn };
 
 type Cloud = {
   status: string;

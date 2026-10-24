@@ -10,17 +10,13 @@
  *   disinkronkan runtime),
  * - reload singkat tidak boleh menghapus finalize yang belum terkirim.
  *
- * Run: npx vitest run tests/kiosk-local-fallback.test.ts
+ * Run: npm test
  */
 
 import assert from "node:assert/strict";
+import { test } from "node:test";
 import { KioskError } from "../src/components/kiosk/api.ts";
 import { submitExit } from "../src/components/kiosk/exit-fallback.ts";
-
-type TestFn = (name: string, fn: () => unknown) => unknown;
-const { test } = (process.env.VITEST
-  ? await import("vitest")
-  : await import("node:test")) as unknown as { test: TestFn };
 
 // ---------------------------------------------------------------- exit fallback
 
