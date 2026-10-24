@@ -2,6 +2,7 @@ import { HeroSection } from "@/components/hero";
 import { Header } from "@/components/header";
 import { LogosSection } from "@/components/logos-section";
 import { FeatureSection } from "@/components/feature-section";
+import { FlowSection } from "@/components/flow-section";
 import { Integrations } from "@/components/integrations";
 import { Pricing } from "@/components/pricing";
 import { getPublicPlans, getPublicAddOns, getCheapestPlanPrice } from "@/server/catalog";
@@ -50,6 +51,7 @@ export default async function MarketingPage() {
           </div>
           <FeatureSection />
         </section>
+        <FlowSection />
         <section id="kiosk" className="space-y-8">
           <div className="mx-auto w-full max-w-4xl px-4 md:px-8">
             <SectionHeader
