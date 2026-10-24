@@ -12,8 +12,8 @@ type FlowItem = {
   content: string;
   /** Ikon yang mengidentifikasi objeknya langsung: cloud, uang, tiket, palet, grafik. */
   icon: React.ComponentType<{ className?: string }>;
-  /** Path video loop. `null` = belum ada aset, panel menampilkan penanda. */
-  video: string | null;
+  /** Video loop 16:9 dari `public/video/`. */
+  video: string;
 };
 
 const items: FlowItem[] = [
@@ -22,52 +22,39 @@ const items: FlowItem[] = [
     content:
       "Semua foto dan transaksi otomatis tersimpan di cloud begitu sesi selesai. Cukup buka dashboard untuk mengakses semuanya: mesin booth rusak, hilang, atau kena reset pun, data kamu tetap aman.",
     icon: CloudIcon,
-    video: null,
+    video: "/video/snapyos-cloud-web.mp4",
   },
   {
     title: "Uang langsung masuk",
     content:
       "Uang masuk langsung ke rekeningmu tiap tamu foto, tanpa kembalian, tanpa operator pegang cash, tanpa drama setoran. Setiap transaksi tercatat otomatis, jadi angka di laporan selalu cocok sama saldo. Berlaku di paket Growth ke atas.",
     icon: WalletIcon,
-    video: null,
+    video: "/video/snapyos-qris-web.mp4",
   },
   {
     title: "Voucher untuk jam sepi",
     content:
       "Pakai voucher buat ngisi jam sepi dan naikin nilai tiap transaksi. Bikin promo happy hour, paket bundling, atau diskon khusus per booth, lalu pantau mana yang beneran ngangkat pendapatan lewat data, bukan feeling.",
     icon: TicketIcon,
-    video: null,
+    video: "/video/snapyos-voucher-web.mp4",
   },
   {
     title: "Brand milik sendiri",
     content:
       "Booth-mu tampil dengan logo, warna, dan gaya brand-mu sendiri, bukan aplikasi pasaran yang sama persis kayak booth sebelah. Atur semua sendiri dari dashboard, cukup beberapa klik.",
     icon: PaletteIcon,
-    video: null,
+    video: "/video/snapyos-brand-web.mp4",
   },
   {
     title: "Laporan otomatis",
     content:
       "Gross, net, dan profit per periode, plus pengeluaran per kategori, dihitung dari transaksi yang sama dengan yang masuk rekening. Tidak ada rekap manual di akhir bulan.",
     icon: ChartColumnIcon,
-    video: null,
+    video: "/video/snapyos-laporan-web.mp4",
   },
 ];
 
 function FlowMedia({ item }: { item: FlowItem }) {
-  if (!item.video) {
-    return (
-      <div className="flex size-full flex-col items-center justify-center gap-1 bg-bg p-6 text-center">
-        <span className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
-          [VIDEO]
-        </span>
-        <span className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
-          {item.title}
-        </span>
-      </div>
-    );
-  }
-
   return (
     <video
       aria-label={item.title}
@@ -76,6 +63,7 @@ function FlowMedia({ item }: { item: FlowItem }) {
       loop
       muted
       playsInline
+      preload="metadata"
       src={item.video}
     />
   );
@@ -84,7 +72,7 @@ function FlowMedia({ item }: { item: FlowItem }) {
 function FlowPanel({ item, className }: { item: FlowItem; className?: string }) {
   return (
     <Card className={cn("gap-0 p-6 md:p-8", className)}>
-      <div className="aspect-4/3 w-full overflow-hidden border-2 border-ink">
+      <div className="aspect-video w-full overflow-hidden border-2 border-ink bg-bg">
         <FlowMedia item={item} />
       </div>
       <p className="mt-4 text-sm leading-6 text-muted-foreground">{item.content}</p>
@@ -92,8 +80,27 @@ function FlowPanel({ item, className }: { item: FlowItem; className?: string }) 
   );
 }
 
+/**
+ * Satu panel saja yang boleh ter-mount: tiap panel memuat video, dan dua panel
+ * sekaligus mengunduh video yang sama dua kali (7,6 MB untuk item cloud).
+ * Nilai awal `false` di server dan klien, jadi render pertama tetap sama;
+ * media query baru dibaca di effect setelah hydrate.
+ */
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = React.useState(false);
+  React.useEffect(() => {
+    const query = window.matchMedia("(min-width: 1024px)");
+    const sync = () => setIsDesktop(query.matches);
+    sync();
+    query.addEventListener("change", sync);
+    return () => query.removeEventListener("change", sync);
+  }, []);
+  return isDesktop;
+}
+
 export function FlowSection() {
   const [active, setActive] = React.useState(0);
+  const isDesktop = useIsDesktop();
   const current = items[active] ?? items[0];
 
   if (!current) return null;
@@ -149,10 +156,10 @@ export function FlowSection() {
 
                     {/* Mobile: panel ikut terbuka di dalam list. Desktop punya panel sticky sendiri. */}
                     <AnimatePresence initial={false}>
-                      {isActive && (
+                      {isActive && !isDesktop && (
                         <motion.div
                           animate={{ height: "auto", opacity: 1 }}
-                          className="overflow-hidden lg:hidden"
+                          className="overflow-hidden"
                           exit={{ height: 0, opacity: 0 }}
                           initial={{ height: 0, opacity: 0 }}
                           transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
@@ -167,20 +174,22 @@ export function FlowSection() {
             </ul>
           </div>
 
-          <div className="hidden lg:sticky lg:top-20 lg:block">
-            <AnimatePresence mode="wait">
-              <motion.div
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -8, scale: 0.98 }}
-                id="flow-panel"
-                initial={{ opacity: 0, y: 12, scale: 0.98 }}
-                key={active}
-                transition={{ type: "spring", stiffness: 100, damping: 20 }}
-              >
-                <FlowPanel item={current} />
-              </motion.div>
-            </AnimatePresence>
-          </div>
+          {isDesktop && (
+            <div className="lg:sticky lg:top-20">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                  id="flow-panel"
+                  initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                  key={active}
+                  transition={{ type: "spring", stiffness: 100, damping: 20 }}
+                >
+                  <FlowPanel item={current} />
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          )}
         </div>
       </section>
     </MotionConfig>
