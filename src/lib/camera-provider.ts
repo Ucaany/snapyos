@@ -4,6 +4,9 @@
  * Facing mode kamera — kiosk PWA memakai kamera internal browser (getUserMedia).
  */
 
+// Relatif (bukan `@/`) agar tes `node --experimental-strip-types` bisa impor modul ini.
+import { bridgeHeaders } from "./bridge-token.ts";
+
 export type FacingMode = "user" | "environment";
 
 export type CameraProvider = "browser" | "gphoto2";
@@ -48,10 +51,16 @@ export async function checkCameraBridge(
       method: "GET",
       signal,
       cache: "no-store",
+      headers: bridgeHeaders(),
     },
     10_000
   );
-  if (!response.ok) throw new Error("Bridge kamera tidak merespons.");
+  if (!response.ok) {
+    // 401 = token bridge belum diisi/salah; pesannya harus spesifik karena
+    // operator yang memperbaikinya ada di depan layar kiosk.
+    if (response.status === 401) throw new Error("Token bridge belum diisi atau salah.");
+    throw new Error("Bridge kamera tidak merespons.");
+  }
   return (await response.json()) as { ok: boolean; camera: boolean; message?: string };
 }
 
@@ -65,6 +74,7 @@ export async function captureGphoto2(
       method: "POST",
       signal,
       cache: "no-store",
+      headers: bridgeHeaders(),
     },
     120_000
   );
@@ -90,6 +100,7 @@ export async function fetchGphoto2Preview(
       method: "GET",
       signal,
       cache: "no-store",
+      headers: bridgeHeaders(),
     },
     10_000
   );

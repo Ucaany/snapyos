@@ -1,6 +1,6 @@
 # 7. Database Schema
 
-> **Sinkron dengan `db/schema.sql` aktual per audit 2026-10-21** (55 tabel + 31 fungsi; migration terbaru POS `0074_pos_payment_idempotency_race.sql`; `0071_rpc_search_path_hardening.sql`, `0073`, dan `0074` disiapkan, **belum di-apply** ke cloud). Tabel/kolom di bawah = realita schema; deviasi dari draft awal ditandai.
+> **Sinkron dengan `db/schema.sql` aktual per audit 2026-10-24** (55 tabel + 32 fungsi; migration terbaru `0080_fix_circular_fk_transactions_payments.sql`; `0071_rpc_search_path_hardening.sql`, `0073`, `0074`, `0077`, `0078`, `0079`, `0080` disiapkan, **belum di-apply** ke cloud). Tabel/kolom di bawah = realita schema; deviasi dari draft awal ditandai. Paritas schema ↔ migrasi dijaga `tests/schema-migration-parity.test.ts`.
 >
 > **RLS (C1, migrasi 0064):** setiap tabel `public.*` punya `alter table ... enable row level security` + policy `svc_all` (`for all to service_role using (true) with check (true)`); `anon`/`authenticated` di-revoke, `service_role` di-grant. Tidak ada policy `to public/anon/authenticated`.
 >

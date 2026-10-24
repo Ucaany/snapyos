@@ -116,6 +116,8 @@ create table plans (
   max_photoboxes integer not null default 1,
   max_concurrent_sessions integer not null default 1,
   max_staff integer not null default 1,
+  max_packages integer not null default 50,   -- 0077
+  max_templates integer not null default 20,  -- 0077
   storage_limit_mb integer not null default 1024,
   platform_fee_percent numeric not null default 0,
   platform_fee_flat integer not null default 0,
@@ -516,7 +518,7 @@ create table pos_orders (
   photobox_id uuid not null references photoboxes (id) on delete restrict,  -- per-booth (A13)
   outlet_id uuid references outlets (id) on delete set null,                -- diisi dari photobox.outlet_id
   cashier_user_id uuid not null references users (id) on delete restrict,   -- staff/manager/owner yang menjual
-  customer_id uuid references customers (id) on delete set null,
+  customer_id uuid references customers (id) on delete restrict,            -- 0079: riwayat POS tidak boleh kehilangan customer
   number text not null,                                                     -- POS-YYYYMMDD-#### zona Asia/Jakarta (A14)
   status text not null default 'pending'
     check (status in ('pending', 'paid', 'cancelled')),                     -- TANPA 'expired' (A15)
@@ -877,7 +879,9 @@ create unique index idx_pay_reference on payments (provider, payment_reference)
 -- Satu payment aktif (creating/pending) per checkout (0059) — anti race settle ganda.
 create unique index uq_pay_active_per_checkout on payments (checkout_session_id)
   where status in ('creating', 'pending');
-alter table transactions add column payment_id uuid references payments (id) on delete set null;
+-- Tanpa FK (0080): payments.transaction_id → transactions membentuk siklus bila
+-- arah ini juga ber-FK. Integritas dijaga settle RPC dalam satu transaksi.
+alter table transactions add column payment_id uuid;
 create unique index uq_transaction_payment on transactions (payment_id)
   where payment_id is not null;
 create trigger trg_payments_updated_at before update on payments
@@ -901,7 +905,7 @@ create table invoice_payments (
   expires_at timestamptz,
   paid_at timestamptz,
   provider_ref text,  -- Pakasir v2 txn_id (dipakai getStatus transaction-status)
-  credential_id uuid references payment_credentials (id) on delete set null,  -- Direct Merchant credential (0047); NULL = aggregator mode
+  credential_id uuid,  -- Direct Merchant credential (0047); NULL = aggregator mode. FK menyusul (0063): payment_credentials dibuat di bawah.
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -926,6 +930,10 @@ create table payment_webhooks (
   received_at timestamptz not null default now()
 );
 create index idx_payment_webhooks_payment on payment_webhooks (payment_id);
+-- 0078: hot path monitoring admin + retry cron.
+create index idx_payment_webhooks_status_received on payment_webhooks (status, received_at desc);
+create index idx_payment_webhooks_provider_status on payment_webhooks (provider, status);
+create index idx_payments_status_created on payments (status, created_at desc);
 
 -- ============================================================================
 -- 7.6 People & Business Data
@@ -1034,7 +1042,7 @@ create table voucher_usages (
   id uuid primary key default gen_random_uuid(),
   voucher_id uuid not null references vouchers (id) on delete restrict,
   business_id uuid not null references businesses (id) on delete cascade,
-  customer_id uuid references customers (id) on delete set null,
+  customer_id uuid references customers (id) on delete restrict,  -- 0079
   transaction_id uuid references transactions (id) on delete set null,
   payment_id uuid references payments (id) on delete set null,
   discount_amount integer not null check (discount_amount >= 0),
@@ -1243,11 +1251,11 @@ on conflict (key) do nothing;
 
 alter table sessions
   add constraint sessions_event_id_fkey foreign key (event_id) references events (id) on delete set null,
-  add constraint sessions_customer_id_fkey foreign key (customer_id) references customers (id) on delete set null;
+  add constraint sessions_customer_id_fkey foreign key (customer_id) references customers (id) on delete restrict;  -- 0079
 
 alter table transactions
   add constraint transactions_event_id_fkey foreign key (event_id) references events (id) on delete set null,
-  add constraint transactions_customer_id_fkey foreign key (customer_id) references customers (id) on delete set null,
+  add constraint transactions_customer_id_fkey foreign key (customer_id) references customers (id) on delete restrict,  -- 0079
   add constraint transactions_voucher_id_fkey foreign key (voucher_id) references vouchers (id) on delete set null;
 
 alter table checkout_sessions
@@ -1315,6 +1323,11 @@ alter table payments
 -- Index kolom FK: tanpa ini ON DELETE SET NULL memindai seluruh payments.
 create index idx_payments_credential on payments (credential_id)
   where credential_id is not null;
+
+-- FK tertunda: invoice_payments.credential_id → payment_credentials (0063).
+alter table invoice_payments
+  add constraint invoice_payments_credential_id_fkey
+  foreign key (credential_id) references payment_credentials (id) on delete set null;
 
 -- ============================================================================
 -- Device logs — riwayat per device, auto-cleanup 30d via cron (0027)

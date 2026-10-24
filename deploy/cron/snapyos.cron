@@ -30,3 +30,6 @@ CRON_SECRET_FILE=/var/www/snapyos/.cron-secret
 
 # Pembersihan perangkat kiosk basi. 03:00 UTC = 10:00 WIB.
 0 3 * * * root . "$CRON_SECRET_FILE" 2>/dev/null; curl -fsS -m 300 -H "Authorization: Bearer $CRON_SECRET" http://127.0.0.1:3000/api/cron/device-cleanup > /dev/null 2>&1
+
+# Rekonsiliasi storage_usage vs isi bucket. 02:23 UTC = 09:23 WIB.
+23 2 * * * root . "$CRON_SECRET_FILE" 2>/dev/null; curl -fsS -m 300 -H "Authorization: Bearer $CRON_SECRET" http://127.0.0.1:3000/api/cron/reconcile-storage > /dev/null 2>&1

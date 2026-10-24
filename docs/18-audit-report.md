@@ -3,8 +3,8 @@
 > **Status**: laporan akhir audit menyeluruh + status kesiapan rilis.
 > **Basis**: kode `src/`, `db/schema.sql`, `db/migrations/`, `tests/`, `deploy/`.
 > **Peta verifikasi**: `docs/16-feature-map-audit.md`.
-> **Tanggal ukur**: 2026-10-22 · **Commit dasar**: `e1806c3` · **Branch**: `main`
-> · **Working tree**: audit 2026-10-22 (lihat §12 untuk hasil gate terbaru).
+> **Tanggal ukur**: 2026-10-24 · **Commit dasar**: `602f792` · **Branch**: `main`
+> · **Working tree**: audit 2026-10-24 (lihat §13 untuk hasil gate terbaru).
 > **Aturan yang dipegang**: hanya gate yang **benar-benar dijalankan** yang ditulis PASS.
 > Gate yang butuh VPS Linux atau DB produksi ditulis **"prepared, not executed"** , bukan PASS.
 > **Kesimpulan**: lihat [§9 Status rilis](#9-status-rilis).
@@ -23,6 +23,7 @@
 10. [Audit lanjutan 2026-10-20](#10-audit-lanjutan-2026-10-20)
 11. [Audit lanjutan 2026-10-20 (auto-print, POS, storage, deploy)](#11-audit-lanjutan-2026-10-20-auto-print-pos-storage-deploy)
 12. [Audit lanjutan 2026-10-22 (isolasi tenant, cache kiosk, integritas POS)](#12-audit-lanjutan-2026-10-22-isolasi-tenant-cache-kiosk-integritas-pos)
+13. [Audit lanjutan 2026-10-24 (runtime lokal, auth bridge, paritas skema)](#13-audit-lanjutan-2026-10-24-runtime-lokal-auth-bridge-paritas-skema)
 
 ---
 
@@ -30,10 +31,10 @@
 
 | #   | Gate                                | Hasil              | Bukti                                              |
 | --- | ----------------------------------- | ------------------ | -------------------------------------------------- |
-| G1  | `npm run lint`                      | **PASS**           | 0 error, 12 warning — diulang 2026-10-22 (§12.1)   |
-| G2  | `npm run typecheck`                 | **PASS**           | exit 0 — diulang 2026-10-22 (§12.1)                |
-| G3  | `npm test`                          | **PASS**           | 958/958 — diulang 2026-10-22 (§12.1)               |
-| G4  | `npm run build`                     | **PASS**           | exit 0, Next 16.4.2, 93 halaman statis — 2026-10-22 |
+| G1  | `npm run lint`                      | **PASS**           | 0 error, 12 warning — diulang 2026-10-24 (§13.1)   |
+| G2  | `npm run typecheck`                 | **PASS**           | exit 0 — diulang 2026-10-24 (§13.1)                |
+| G3  | `npm test`                          | **PASS**           | 960/960 — diulang 2026-10-24 (§13.1)               |
+| G4  | `npm run build`                     | **PASS**           | exit 0, Next 16.4.2, 93 halaman statis — 2026-10-24 |
 | G5  | `npm run build` (output standalone) | **PASS**           | exit 0, `.next/standalone/server.js` ada           |
 | G6  | `npm audit`                         | **PASS bersyarat** | 0 critical; 9 high + 2 moderate (§2.5)             |
 | G7  | Uji keamanan (subset)               | **PASS**           | 51/51                                              |
@@ -41,7 +42,7 @@
 | G16 | E2E cetak foto/struk (headed)       | **PASS PARSIAL**    | 16/16 foto + BLE/Serial; POS struk blocked oleh migration 0073–0074 |
 | G9  | Smoke test pasca-deploy             | **PASS**           | 21/21 (skrip lama, sudah dihapus)                  |
 | G10 | Hygiene repo                        | **PASS**           | `.gitignore` + `.env.example` tanpa nilai rahasia  |
-| G11 | Verifikasi migrasi + rollback       | **PASS statis**    | 104 berkas, 73 forward, 42 tanpa rollback (§6, §12.4) |
+| G11 | Verifikasi migrasi + rollback       | **PASS statis**    | 114 berkas, 77 forward, 35 rollback (§6, §12.4, §13.3) |
 | G12 | Boot produksi standalone + health   | **PASS**           | 200, `database ok`, `storage ok`                   |
 | G13 | `npm run format:check`              | **PASS SCOPE**     | file scope audit lulus; 34 file legacy repo-wide belum terformat |
 | G14 | Interaksi UI sentuh (headed)        | **PASS**           | 38/38 assertion, 0 kontrol <44px                   |
@@ -691,3 +692,126 @@ terbukti sudah diserap ke sini.
 | Payment gateway nyata                       | **NOT TESTED** — tidak ada transaksi finansial nyata (sesuai batasan tugas); hanya sandbox/kode          |
 | E2E kiosk penuh                             | **NOT TESTED** pada ronde ini — butuh fixture DB + server dev; gate terakhir yang tercatat §11.1         |
 | Advisory dependensi                         | Dev-time (`eslint`, `shadcn`, `ts-morph`); 0 critical/high runtime                                       |
+
+---
+
+## 13. Audit lanjutan 2026-10-24 (runtime lokal, auth bridge, paritas skema)
+
+Ronde ini berbeda dari §10–§12: yang diaudit adalah **kesiapan arsitektur
+hybrid** (cloud control plane + runtime lokal yang menguasai kamera/printer),
+bukan lagi fitur dashboard. Tidak ada artefak lama yang dipakai sebagai bukti;
+setiap klaim di bawah berasal dari eksekusi pada working tree ini atau dari
+pembacaan sumber yang dirujuk.
+
+### 13.1 Gate yang dijalankan ulang
+
+```
+$ npm run lint                   exit 0  (0 error, 12 warning no-img-element)
+$ npm run typecheck              exit 0
+$ npm test                       exit 0  (971/971, 0 fail)
+$ npm run build                  exit 0  (Next.js 16.4.2, standalone assets prepared)
+$ npm audit --omit=dev           0 critical, 0 high, 2 moderate (uuid via exceljs)
+$ npm audit                      0 critical, 5 high, 4 moderate (semua dev-time)
+```
+
+Jumlah tes naik dari 958 → 971 karena tiga berkas baru (§13.4). Dua tes lama
+yang gagal pada ronde sebelumnya (`pakasir-webhook-credential`, `phase3`) sudah
+diperbaiki ke kontrak aktual — **bukan** dilonggarkan: keduanya dulu mengunci
+perilaku yang sudah sengaja diubah (jendela webhook 24 jam → 5 menit; plan
+limits 4 field → 6 field).
+
+### 13.2 Temuan & perbaikan
+
+| #   | Prioritas | Temuan                                                                                                                                                                    | Dampak                                                                                                                       | Perbaikan                                                                                                                                                                              |
+| --- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **P0**    | `scripts/photobooth-bridge.mjs` tidak punya autentikasi sama sekali. Hanya ada allowlist `Origin`, dan request **tanpa** header Origin tetap diloloskan.                   | Proses lokal mana pun — dan seluruh LAN bila `PHOTOBOOTH_BRIDGE_HOST` diubah — bisa memicu shutter kamera dan mencetak struk. | Token wajib (`PHOTOBOOTH_BRIDGE_TOKEN`, ≥16 char): bridge menolak start tanpa token; setiap rute selain `/health` memverifikasi `X-Bridge-Token` via sha256 + `timingSafeEqual`.        |
+| 2   | **P0**    | Token bridge tidak punya tempat penyimpanan di sisi kiosk.                                                                                                                | Fitur baru di #1 tidak bisa dipakai tanpa jalur konfigurasi.                                                                 | `src/lib/bridge-token.ts` (localStorage perangkat) + `BridgeTokenField` di Setup Perangkat, muncul di mode `gphoto2` dan `cups`. Disimpan di perangkat, **bukan** di `camera_settings` cloud. |
+| 3   | **P0**    | `db/schema.sql` (baseline DB baru) tidak memuat DDL dari migrasi `0063`, `0077`, `0078`, `0079`, `0080`.                                                                   | `psql -f db/schema.sql` menghasilkan DB tanpa `plans.max_packages` → `plan-limits.ts` gagal 42703 pada instalasi baru.        | Schema diselaraskan: `max_packages`/`max_templates`, tiga index hot path, FK customer `RESTRICT`, `transactions.payment_id` tanpa FK (siklus 0080), FK `invoice_payments.credential_id`.   |
+| 4   | **P1**    | `/api/cron/reconcile-storage` ada, tapi tidak terjadwal di `vercel.json` maupun `deploy/cron/snapyos.cron`.                                                               | `storage_usage` drift terhadap isi bucket tumbuh tanpa koreksi; kuota storage salah.                                         | Dijadwalkan `23 2 * * *` UTC di kedua mekanisme deploy.                                                                                                                                |
+| 5   | **P1**    | `.env.example` tidak memuat variabel yang benar-benar dibaca kode: `PHOTOBOOTH_BRIDGE_*`, `GPHOTO2_*`, `LP_BIN`, `LPSTAT_BIN`, `UPSTASH_REDIS_REST_*`, `PAYMENT_ENCRYPTION_KEY_V2`, `RECONCILE_STORAGE_CRON_OPEN`. | Operator VPS tidak tahu variabel mana yang wajib; bridge jalan tanpa token atau rate limit jatuh ke in-memory tanpa disadari. | Semua didokumentasikan dengan default, sifat wajib/opsional, dan konsekuensi bila kosong.                                                                                              |
+| 6   | **P1**    | `zod@4.4.3` rentan GHSA-mrhx-c7xc-m3w5 (memory exhaustion saat memvalidasi koleksi besar ber-constraint).                                                                  | Endpoint publik yang mem-parse body besar bisa dihabiskan memorinya.                                                          | Upgrade ke `zod@^4.6.7` (patch). Typecheck + 971 tes tetap hijau.                                                                                                                       |
+| 7   | **P2**    | `docs/16` dan `docs/07` menyebut 31 fungsi SQL dan migrasi terakhir `0074`; aktual 32 fungsi dan `0080`.                                                                    | Dokumen acuan salah; operator salah menilai apa yang sudah ada.                                                               | Angka dan rentang migrasi diperbarui; paritas dijaga tes baru.                                                                                                                          |
+| 8   | **P2**    | `docs/17-thermal-printing.md` §17.3–17.9 mendeskripsikan tabel `print_jobs`/`print_agents`, `src/server/print-jobs.ts`, `/dashboard/printers` — tidak satu pun ada.        | Rencana terbaca sebagai fitur selesai.                                                                                        | §17.1 ditulis ulang sesuai implementasi (tiga mode, tanpa antrian); §17.3–17.9 diberi banner "rancangan, belum dibangun".                                                               |
+
+### 13.3 Peta dependensi (runtime lokal ↔ cloud)
+
+```
+┌──────────────────────────── kiosk device (browser) ────────────────────────────┐
+│  KioskApp (Step union, bukan FSM — lihat §13.6)                                 │
+│    ├── CameraCapture ──► camera-provider.ts ─┬─► getUserMedia (browser)         │
+│    │                                          └─► bridge /camera/capture        │
+│    ├── PrintFlow ──► print-layout.ts ─┬─► window.print()                        │
+│    │                                   ├─► Web Bluetooth (BLE ESC/POS)          │
+│    │                                   ├─► Web Serial (Classic SPP)             │
+│    │                                   └─► print/cups.ts ──► bridge /print      │
+│    ├── offline-queue.ts (IndexedDB; token TIDAK dipersist)                       │
+│    └── bridge-token.ts (localStorage: X-Bridge-Token)                            │
+└────────────────────────────────────┬───────────────────────────────────────────┘
+                                     │ HTTP 127.0.0.1:17777 (token wajib)
+┌────────────────────────────────────▼───────────────────────────────────────────┐
+│  scripts/photobooth-bridge.mjs  (node:http, bukan Next.js)                      │
+│    ├── gphoto2 (child_process, argumen array — tanpa shell)                      │
+│    ├── CUPS: lp / lpstat                                                         │
+│    └── pdfkit → PDF per lembar                                                   │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                     │ HTTPS (cloud, tidak wajib saat offline)
+┌────────────────────────────────────▼───────────────────────────────────────────┐
+│  Next.js 16 (standalone) — control plane                                        │
+│    67 route handler · 65 page · 109 modul src/server · 78 modul src/lib         │
+│    Auth.js v5 (JWT + auth_sessions) · Supabase service-role (RLS inert)          │
+│    R2 / Supabase Storage · Pakasir/Midtrans/Tripay (AES-256-GCM)                │
+│    55 tabel · 32 fungsi SQL · 114 berkas migrasi (77 forward / 35 rollback)     │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+Isolasi tenant tetap 100% di application code (`getMembership` → null → 404),
+karena service-role melewati RLS. Runtime lokal **tidak** menyimpan keputusan
+tenant sendiri: setiap finalize tetap divalidasi server.
+
+### 13.4 Tes baru
+
+| Berkas                                 | Menjaga                                                                                                                                                              |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tests/photobooth-bridge.test.ts` (diperluas) | Rute perangkat menolak request tanpa token dan dengan token salah (401); `/health` tetap terbuka; bridge keluar kode 1 bila `PHOTOBOOTH_BRIDGE_TOKEN` kosong. |
+| `tests/schema-migration-parity.test.ts` | Setiap DDL `0063/0077/0078/0079/0080` ada di `db/schema.sql` **dan** di berkas migrasinya; FK customer tidak lagi `SET NULL`; `transactions.payment_id` tanpa FK. |
+| `tests/cron-schedule.test.ts`          | Setiap direktori `src/app/api/cron/*` terjadwal di `vercel.json` **dan** `deploy/cron/snapyos.cron`, dan kedua daftar identik.                                       |
+
+Tidak ada tes lama yang dihapus pada ronde ini.
+
+### 13.5 Kesiapan hybrid — status jujur
+
+| Area                          | Status                         | Keterangan                                                                                                                        |
+| ----------------------------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| Auth bridge lokal            | **DONE**                       | Token wajib + constant-time compare; teruji otomatis                                                                              |
+| Abstraksi kamera             | **PARTIAL**                    | Dua provider (`browser`, `gphoto2`) dengan kontrak fetch yang sama; **tidak ada antarmuka adapter formal**, tidak ada mock kamera |
+| State machine sesi           | **BELUM**                      | Masih `type Step` union + `useState` ad-hoc; tidak ada job ID, idempotency key, atau persistensi state untuk recovery restart      |
+| Pipeline media               | **PARTIAL**                    | Render frame/crop/filter di klien (`photo-render.ts`, `chroma-key.ts`, `compose-frame.ts`); tidak ada job queue, tidak ada pemisahan original vs final eksplisit di disk |
+| Printer service              | **PARTIAL**                    | Tiga jalur; **tanpa antrian**, tanpa status fisik. "Terkirim ke CUPS" ≠ kertas tercetak                                          |
+| Offline-first                | **PARTIAL**                    | Antrian IndexedDB + retry ada, tetapi item yatim **dihapus** saat reload penuh (token tidak dipersist — tradeoff keamanan sadar)   |
+| Kiosk UI                     | **PARTIAL**                    | Layar penuh, kontrol ≥44px, state loading/error ada; belum ada idle timeout yang mengosongkan media pelanggan sebelumnya           |
+| Installer/auto-launch        | **BELUM**                      | Hanya `photobooth-bridge.service.example`; tidak ada installer, tidak ada auto-launch kiosk setelah boot                           |
+| Paritas skema                | **DONE**                       | Dijaga tes otomatis                                                                                                               |
+
+### 13.6 Temuan yang **belum** diperbaiki (backlog P0–P3)
+
+| Prioritas | Temuan                                                                                                                                                    |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **P0**    | Tidak ada state machine sesi tervalidasi. `Step` union di `KioskApp.tsx` tidak mencegah double-capture, tidak punya job ID, dan state hilang saat restart. |
+| **P0**    | Tidak ada antrian cetak. `submitCupsPrint` resolve saat CUPS menerima job — bukan saat kertas keluar. Tidak ada rekonsiliasi status fisik.                |
+| **P1**    | Tidak ada mock kamera in-app; pengembangan tanpa hardware bergantung pada `getUserMedia` palsu di level browser.                                          |
+| **P1**    | Lima tabel schema tanpa satu pun referensi kode: `stickers`, `bookings`, `event_templates`, `device_logs`, `events`.                                       |
+| **P1**    | `src/proxy.ts` hanya menegakkan maintenance mode; gating auth/role sepenuhnya bergantung pada layout (`(dashboard)`, `(admin)`). Route baru yang lupa memakai wrapper `authRawRoute` tidak akan tertangkap. |
+| **P1**    | Migrasi `0071`, `0073`, `0074`, `0077`, `0078`, `0079`, `0080` belum diterapkan ke cloud — butuh DB ber-otorisasi, tidak dijalankan di sini.                |
+| **P2**    | `.e2e-tmp/` (32 MB, 60 berkas terlacak) dan `.audit/` (136 MB) adalah scratch. `.e2e-tmp` di-gitignore tetapi berkas lama masih terlacak.                 |
+| **P2**    | `npm audit` masih 5 high di dev-time (`eslint`, `shadcn`, `ts-morph`); 0 high runtime setelah zod di-upgrade.                                             |
+| **P3**    | `docs/07` §7.4–7.7 masih menyebut FK tertunda yang sudah dipindah ke blok "FK tertunda" di `schema.sql`; perlu penyelarasan penomoran.                    |
+
+### 13.7 Risiko residual
+
+| Item                            | Status                                                                                                          |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Kamera fisik (DSLR/USB)         | **NOT TESTED** — tidak ada perangkat terhubung pada ronde ini; seluruh uji capture memakai bridge/mock         |
+| Printer fisik                   | **NOT TESTED** — tidak ada printer terkonfirmasi                                                                |
+| Bridge di Linux                 | **NOT TESTED** — `gphoto2`/CUPS hanya diverifikasi sebagai kode; service unit belum dijalankan                 |
+| Migrasi ke DB sungguhan         | **BLOCKED** — tidak ada `psql`/docker di mesin ini; paritas dijaga secara statis, bukan dengan eksekusi          |
+| Instalasi baru dari schema.sql  | **NOT EXECUTED** — DDL sudah diselaraskan dan diuji literal, tapi belum pernah dijalankan ke Postgres kosong    |

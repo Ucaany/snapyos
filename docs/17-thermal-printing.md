@@ -11,15 +11,19 @@ Prasyarat: `docs/05-customer-photobox.md` §5.15, `docs/pos/01-architecture.md` 
 
 ## 17.1 Ringkasan keputusan
 
-| Keputusan              | Pilihan                                                                                         | Alasan                                                                               |
-| ---------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| Jalur cetak            | **Print agent lokal + antrean di server**                                                       | Satu jalur untuk web, Android, dan iPad. Browser tidak pernah bicara ke printer.     |
-| Protokol printer       | **ESC/POS** (raster `GS v 0` + teks)                                                            | Standar de facto printer thermal 58/80mm.                                            |
-| Lebar kertas           | **80mm = 576 dot / 48 karakter**. 58mm didukung sebagai opsi (384 dot / 32 karakter).           | Default permintaan; 58mm dipakai sebagian POS.                                       |
-| Transport agent        | `lan` (TCP 9100), `serial` (USB-CDC & Bluetooth SPP hasil pairing OS), `usb` (opsional, fase 3) | Pluggable, jadi "belum pasti/campuran" tidak mengunci arsitektur.                    |
-| Render gambar          | **Agent** yang decode + dither, bukan server                                                    | VPS dibatasi `MemoryMax=768M`; agent punya CPU sendiri dan hanya satu job sekaligus. |
-| Mode cetak             | `print_settings.mode: "browser" \| "thermal"`, default `"browser"`                              | Jalur printer foto (DNP/Selphy) yang sudah ada tidak boleh rusak.                    |
-| Web Bluetooth langsung | **Dipakai** untuk mode `print_settings.mode = "bluetooth"`                                      | Chrome desktop/Android saja; iPad/Safari tetap dialog sistem. Lihat §17.10.          |
+Tabel ini mencerminkan **implementasi aktual**, bukan usulan. Desain agent lokal
++ antrean server (§17.3–17.7) tetap non-goal dan tidak dibangun.
+
+| Keputusan              | Pilihan (implementasi)                                                                    | Alasan                                                                          |
+| ---------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Jalur cetak            | Tiga mode: `browser` (dialog OS), `bluetooth` (thermal), `cups` (bridge lokal)             | Kiosk desktop dapat cetak senyap; tablet/iPad tetap lewat dialog OS.            |
+| Protokol printer       | **ESC/POS** (raster `GS v 0` + teks)                                                       | Standar de facto printer thermal 58/80mm.                                       |
+| Lebar kertas           | **80mm = 576 dot / 48 karakter**. 58mm didukung sebagai opsi (384 dot / 32 karakter).      | Default permintaan; 58mm dipakai sebagian POS.                                  |
+| Transport thermal      | Web Bluetooth (GATT) dan Web Serial (Classic SPP) dari browser kiosk                       | Tidak butuh agent; Chrome desktop/Android. iPad/Safari tetap dialog sistem.     |
+| Render gambar          | **Browser** yang decode + dither (`src/lib/print/photo-bitmap.ts`)                         | VPS dibatasi `MemoryMax=768M`; raster dibuat di klien.                          |
+| Printer foto (4x6)     | `cups` via bridge lokal, atau dialog OS                                                    | DNP/Selphy/inkjet apa pun yang terlihat CUPS.                                   |
+| Mode cetak             | `print_settings.mode: "browser" \| "bluetooth" \| "cups"`, default `"browser"`             | Jalur printer foto (DNP/Selphy) yang sudah ada tidak boleh rusak.               |
+| Antrean / status job   | **Tidak ada** — kirim sekali, tombol ulangi manual                                           | Belum dibangun; lihat §17.3 sebagai rancangan, bukan status.                    |
 
 ---
 
@@ -35,9 +39,14 @@ Permintaan "langsung dicetak" (tanpa dialog) tidak bisa dipenuhi browser di keti
 
 Karena iPad harus jalan, jalur browser murni gugur. Agent lokal adalah satu-satunya bentuk yang bekerja identik di ketiganya, karena dari sisi browser hanya ada `fetch()` ke origin sendiri.
 
+> **Status §17.3–17.7: rancangan yang TIDAK dibangun.** Tidak ada tabel
+> `print_jobs`/`print_agents`, tidak ada `src/server/print-jobs.ts`, tidak ada
+> `/dashboard/printers`. Yang ada adalah tiga jalur di §17.1. Jangan membaca
+> bagian di bawah sebagai dokumentasi fitur aktif.
+
 ---
 
-## 17.3 Arsitektur
+## 17.3 Arsitektur (rancangan, belum dibangun)
 
 ```
 Browser kiosk / POS
@@ -281,7 +290,7 @@ Error handling: transport putus → ack `failed` dengan pesan, agent tetap hidup
 
 ---
 
-## 17.7 Perubahan server
+## 17.7 Perubahan server (rancangan, belum dibangun)
 
 ### Baru
 
@@ -351,7 +360,7 @@ Respons `dataEnvelope({ job_id, status: "pending" })`. Rate limit 30/menit per I
 
 ---
 
-## 17.8 Perubahan UI
+## 17.8 Perubahan UI (rancangan, belum dibangun)
 
 ### Dashboard: Pengaturan printer
 
@@ -409,7 +418,7 @@ Saat mode thermal dan `auto_print` aktif, job dibuat sekali saat mount. Guard `u
 
 ---
 
-## 17.9 Operasional
+## 17.9 Operasional (rancangan, belum dibangun)
 
 Cron baru `GET /api/cron/print-jobs`, Bearer `CRON_SECRET`, pola sama dengan `device-cleanup`:
 
