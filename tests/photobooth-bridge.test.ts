@@ -12,6 +12,8 @@ const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const bridge = join(root, "scripts", "photobooth-bridge.mjs");
 const pngBase64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+const TEST_TOKEN = "test-bridge-token-0123456789";
+const auth = { "x-bridge-token": TEST_TOKEN };
 
 async function freePort(): Promise<number> {
   const server = createServer();
@@ -99,6 +101,7 @@ printf '%s\\n' 'request id is TEST_PHOTO-1 (1 file(s))'`,
     env: {
       ...process.env,
       PHOTOBOOTH_BRIDGE_PORT: String(port),
+      PHOTOBOOTH_BRIDGE_TOKEN: TEST_TOKEN,
       PHOTOBOOTH_BRIDGE_ORIGINS: "http://localhost:3000",
       GPHOTO2_BIN: gphoto,
       FAKE_GPHOTO_LOG: gphotoLog,
@@ -117,13 +120,13 @@ printf '%s\\n' 'request id is TEST_PHOTO-1 (1 file(s))'`,
     const health = await fetch(`${baseUrl}/health`);
     assert.deepEqual(await health.json(), { ok: true, camera: true });
 
-    const preview = await fetch(`${baseUrl}/camera/preview`);
+    const preview = await fetch(`${baseUrl}/camera/preview`, { headers: auth });
     assert.equal(preview.status, 200);
     assert.equal(preview.headers.get("content-type"), "image/jpeg");
 
     const firstCapture = await fetch(`${baseUrl}/camera/capture`, {
       method: "POST",
-      headers: { origin: "http://localhost:3000" },
+      headers: { origin: "http://localhost:3000", ...auth },
     });
     assert.equal(firstCapture.status, 200);
     assert.equal(firstCapture.headers.get("content-type"), "image/jpeg");
@@ -140,7 +143,7 @@ printf '%s\\n' 'request id is TEST_PHOTO-1 (1 file(s))'`,
 
     const secondCapture = await fetch(`${baseUrl}/camera/capture`, {
       method: "POST",
-      headers: { origin: "http://localhost:3000" },
+      headers: { origin: "http://localhost:3000", ...auth },
     });
     assert.equal(secondCapture.status, 200);
     const gphotoCalls = (await readFile(gphotoLog, "utf8"))
@@ -153,6 +156,7 @@ printf '%s\\n' 'request id is TEST_PHOTO-1 (1 file(s))'`,
       headers: {
         origin: "http://localhost:3000",
         "content-type": "application/json",
+        ...auth,
       },
       body: JSON.stringify({
         paper_size: "4x6",
@@ -168,7 +172,7 @@ printf '%s\\n' 'request id is TEST_PHOTO-1 (1 file(s))'`,
     assert.match(lpArgs, /fit-to-page/);
     assert.match(lpArgs, /-n 1/);
 
-    const printer = await fetch(`${baseUrl}/printer/health?printer=TEST_PHOTO`);
+    const printer = await fetch(`${baseUrl}/printer/health?printer=TEST_PHOTO`, { headers: auth });
     assert.equal(printer.status, 200);
     assert.equal((await printer.json()).ok, true);
 
@@ -176,8 +180,35 @@ printf '%s\\n' 'request id is TEST_PHOTO-1 (1 file(s))'`,
       headers: { origin: "https://attacker.invalid" },
     });
     assert.equal(forbidden.status, 403);
+
+    // Tanpa token (mis. curl / proses lokal lain) rute perangkat ditolak.
+    const noToken = await fetch(`${baseUrl}/camera/capture`, { method: "POST" });
+    assert.equal(noToken.status, 401);
+    const wrongToken = await fetch(`${baseUrl}/print`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-bridge-token": "salah" },
+      body: JSON.stringify({ sheets: [[pngBase64]] }),
+    });
+    assert.equal(wrongToken.status, 401);
+    // /health tetap terbuka untuk Setup Perangkat sebelum token diisi.
+    assert.equal((await fetch(`${baseUrl}/health`)).status, 200);
   } finally {
     await stop(bridgeProcess);
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+test("bridge menolak start tanpa PHOTOBOOTH_BRIDGE_TOKEN", async () => {
+  const port = await freePort();
+  const bridgeProcess = spawn(process.execPath, [bridge], {
+    cwd: root,
+    env: {
+      ...process.env,
+      PHOTOBOOTH_BRIDGE_PORT: String(port),
+      PHOTOBOOTH_BRIDGE_TOKEN: "",
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const [code] = (await once(bridgeProcess, "exit")) as [number | null];
+  assert.equal(code, 1);
 });

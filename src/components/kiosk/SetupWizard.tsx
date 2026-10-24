@@ -20,6 +20,7 @@ import {
   resolveCameraProvider,
 } from "@/lib/camera-provider";
 import { apiPost, KioskError } from "@/components/kiosk/api";
+import { BridgeTokenField } from "@/components/kiosk/BridgeTokenField";
 
 type Props = {
   deviceToken: string;
@@ -294,6 +295,7 @@ export function SetupWizard({
               <p className="font-mono text-xs uppercase tracking-[0.08em]">
                 Bridge: {cameraBridgeUrl(cameraSettings)}
               </p>
+              <BridgeTokenField onSaved={() => void checkGphoto2()} />
               <Button
                 size="lg"
                 onClick={() => void testGphoto2Capture()}
@@ -437,6 +439,11 @@ export function SetupWizard({
             </div>
           ) : (
             <>
+              {resolvePrintMode(printSettings) === "cups" && (
+                <div className="border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111] md:p-6">
+                  <BridgeTokenField />
+                </div>
+              )}
               <PrintTestPanel
                 mode={resolvePrintMode(printSettings)}
                 paperWidthMm={printSettings.bluetooth_paper_width_mm === 58 ? 58 : 80}

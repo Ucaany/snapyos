@@ -27,10 +27,10 @@ Source of truth: `src/`, `db/schema.sql`, `README.md`
 
 ## Partial or constrained
 
-| Area              | Constraint                                                                                                          |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Camera control    | Browser camera (PWA, `getUserMedia`) — kamera internal tablet. Tanpa kontrol kamera USB native.                     |
-| Printing          | Browser print fallback (`window.print()` / media print). Tanpa kontrol printer native.                              |
+| Area              | Constraint                                                                                                                                                                              |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Camera control    | Dua provider: browser `getUserMedia` (default) dan DSLR via bridge lokal `gphoto2`. Bridge wajib token; hardware fisik belum diuji di mesin ini.                                        |
+| Printing          | Tiga jalur: dialog OS (`window.print()`), thermal ESC/POS (Web Bluetooth / Web Serial), dan CUPS via bridge lokal. Tidak ada antrean server; "terkirim" bukan konfirmasi kertas.          |
 | Subscription REST | Subscription actions use server actions and dashboard pages. No public REST contract is exposed.                    |
 | Owner CRUD REST   | Most owner CRUD uses server actions. Only documented device, customer detail, report, and activation routes remain. |
 
@@ -45,7 +45,7 @@ Selesai (migrasi `0064`–`0066`, commit per phase):
 | C3 cash gate          | `confirmCashPaymentAction` gated `requireEffectiveSubscription(write)`               | `tests/subscription-gate.test.ts`          |
 | C4 offline queue      | purge sekali-jalan (flag), antrian survive reload                                    | `tests/kiosk-offline-queue.test.ts`        |
 | H1 RPC lock           | semua RPC aplikasi service_role-only                                                 | `0065`; `tests/rpc-privilege.test.ts`      |
-| H2 secret + freshness | secret per-credential wajib; freshness ±24 jam                                       | `tests/pakasir-webhook-credential.test.ts` |
+| H2 secret + freshness | secret per-credential wajib; freshness ±5 menit (`WEBHOOK_FRESHNESS_MINUTES`)        | `tests/pakasir-webhook-credential.test.ts` |
 | H3 idempotency        | state-aware `received`→`processed`                                                   | `0066`; `tests/webhook-direct.test.ts`     |
 | M1 IDOR storage       | route storage tenant-scoped (404 cross-tenant)                                       | `tests/parse-uuid-param.test.ts`           |
 | M2 adminRoute         | guard admin di lapisan route                                                         | `tests/admin.test.ts`                      |
@@ -189,14 +189,30 @@ Blocker CI yang ditemukan dan diperbaiki pada titik nol ini:
 (`.github/workflows/ci.yml` menjalankan `npm run lint`) merah. Pola ignore
 diganti menjadi `**/worktrees/**`.
 
+### Gate aktual (2026-10-24, mesin pengembang macOS, Node 24)
+
+Diukur ulang dari nol setelah audit: hasil lama tidak dipakai sebagai bukti.
+
+| Gate             | Perintah            | Hasil                                                   |
+| ---------------- | ------------------- | ------------------------------------------------------- |
+| Lint             | `npm run lint`      | **PASS** 0 error, 12 warning (`no-img-element`, disengaja) |
+| Typecheck        | `npm run typecheck` | **PASS**                                                |
+| Unit/integration | `npm test`          | **PASS** 960/960, 0 gagal, 0 skip                       |
+| Build produksi   | `npm run build`     | **PASS**                                                |
+
+Dua tes yang sebelumnya gagal adalah tes usang yang mengunci kontrak lama, bukan
+bug implementasi: jendela freshness webhook (24 jam → 5 menit) dan
+`DEFAULT_PLAN_LIMITS` (4 → 6 field). Keduanya diperbarui ke kontrak sekarang.
+
 ## Backlog
 
 - Bookings UI and booking endpoints.
 - Event mode.
 - Refund state machine.
-- Formal Playwright end-to-end suite.
 - Load test.
 - Public REST subscription and add-on API.
+- Antrean cetak persisten + konfirmasi hasil fisik per penjualan (`print_jobs`) — dirancang di `docs/17`, belum dibangun.
+- Sinkronisasi `db/schema.sql` dengan migrasi `0077`–`0080` (lihat `docs/18-audit-report.md`).
 
 ## Removed or archived
 
@@ -207,7 +223,7 @@ diganti menjadi `**/worktrees/**`.
 | Dashboard-01 dual shell                             | Single Neo-Brutalist dashboard.                                                                                           |
 | Owner CRUD REST routes                              | Server actions.                                                                                                           |
 | Supabase Realtime                                   | Payment status polling every 3 seconds.                                                                                   |
-| Hardware agent / Tauri kiosk / USB camera (gPhoto2) | Kiosk berjalan sebagai PWA dengan kamera internal; direktori `hardware-agent/`, `tauri-kiosk/`, `docs/hardware/` dihapus. |
+| Hardware agent terpisah / Tauri kiosk              | Diganti bridge lokal Node (`scripts/photobooth-bridge.mjs`) yang dipanggil kiosk PWA; direktori `hardware-agent/`, `tauri-kiosk/`, `docs/hardware/` dihapus. Kamera DSLR (gphoto2) dan cetak CUPS **aktif** lewat bridge ini — lihat `docs/photobooth-bridge.md`. |
 
 ## Reading rule
 

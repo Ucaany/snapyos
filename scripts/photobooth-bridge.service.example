@@ -6,6 +6,9 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=/opt/snapyos
+# Token bridge: wajib, minimal 16 karakter. Isi dengan nilai acak yang sama
+# seperti yang dimasukkan di Setup Perangkat kiosk. Simpan di file 0600.
+EnvironmentFile=-/etc/snapyos/bridge.env
 Environment=NODE_ENV=production
 Environment=PHOTOBOOTH_BRIDGE_HOST=127.0.0.1
 Environment=PHOTOBOOTH_BRIDGE_PORT=17777

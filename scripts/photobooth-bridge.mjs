@@ -2,7 +2,7 @@
 
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import { unlink, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -25,7 +25,29 @@ const allowedOrigins = new Set(
     .map((value) => value.trim())
     .filter(Boolean)
 );
+// Bridge menguasai kamera + printer fisik. Tanpa token, proses lokal mana pun
+// (atau LAN, bila host diubah) bisa memicu shutter dan mencetak. Token wajib:
+// bridge menolak start tanpa PHOTOBOOTH_BRIDGE_TOKEN agar tidak ada deployment
+// yang diam-diam berjalan terbuka.
+const bridgeToken = process.env.PHOTOBOOTH_BRIDGE_TOKEN?.trim() || "";
 let cameraQueue = Promise.resolve();
+
+if (bridgeToken.length < 16) {
+  console.error(
+    "[snapyos-bridge] PHOTOBOOTH_BRIDGE_TOKEN wajib diisi (minimal 16 karakter).\n" +
+      "Buat dengan: node -e \"console.log(require('node:crypto').randomBytes(24).toString('base64url'))\"\n" +
+      "Simpan nilai yang sama di perangkat kiosk (Setup Perangkat → Bridge token)."
+  );
+  process.exit(1);
+}
+
+const tokenDigest = createHash("sha256").update(bridgeToken).digest();
+
+/** Perbandingan constant-time; panjang berbeda tetap aman (hash dulu). */
+function tokenMatches(received) {
+  if (typeof received !== "string" || received.length === 0) return false;
+  return timingSafeEqual(createHash("sha256").update(received).digest(), tokenDigest);
+}
 
 function json(res, status, body, origin) {
   res.statusCode = status;
@@ -40,7 +62,7 @@ function setCors(res, origin) {
     res.setHeader("Vary", "Origin");
   }
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 }
 
 function runCommand(binary, commandArgs, options = {}) {
@@ -338,6 +360,11 @@ const server = createServer(async (req, res) => {
   if (req.headers.origin && !origin)
     return json(res, 403, { message: "Origin tidak diizinkan." }, null);
   const url = new URL(req.url || "/", `http://${host}:${port}`);
+  // /health hanya melaporkan ada/tidaknya kamera dan dipakai Setup Perangkat
+  // sebelum token diisi, jadi dibiarkan terbuka. Semua rute lain menggerakkan
+  // perangkat fisik dan wajib token.
+  if (url.pathname !== "/health" && !tokenMatches(req.headers["x-bridge-token"]))
+    return json(res, 401, { message: "Token bridge tidak valid." }, origin);
   try {
     if (req.method === "GET" && url.pathname === "/health")
       return json(res, 200, await health(), origin);
