@@ -926,6 +926,7 @@ export function KioskApp({
       {exitPrompt && step !== "activation" && (
         <ExitPinDialog
           deviceToken={deviceToken}
+          bridgeUrl={currentPhotobox.camera_settings.bridge_url}
           onSuccess={handleExitSuccess}
           onCancel={() => setExitPrompt(false)}
         />

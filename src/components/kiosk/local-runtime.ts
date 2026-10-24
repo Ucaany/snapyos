@@ -10,6 +10,7 @@
  */
 
 import { cameraBridgeUrl } from "@/lib/camera-provider";
+import { KioskError } from "@/components/kiosk/api";
 import type { DeviceSettings } from "@/lib/settings-merge";
 
 /**
@@ -86,4 +87,51 @@ export async function fetchRuntimeStatus(
   bridgeUrl?: string | null
 ): Promise<StatusResponse | null> {
   return bridgeGet<StatusResponse>("/v1/status", bridgeUrl);
+}
+
+/**
+ * PIN darurat (`POST /v1/exit`, Phase 2). Dipakai HANYA saat cloud tidak bisa
+ * dijangkau — tanpa ini petugas terkurung di dalam booth ketika internet mati.
+ *
+ * Berbeda dari `bridgeGet`, kegagalan di sini dilempar: dialog harus bisa
+ * membedakan "PIN salah" dari "runtime tidak menjawab" untuk pesan ke petugas.
+ */
+export async function submitLocalExit(
+  pin: string,
+  bridgeUrl?: string | null
+): Promise<{ ok: boolean; emergency?: boolean }> {
+  const token = readBridgeToken();
+  if (!token) throw new KioskError("NO_BRIDGE", "Runtime lokal booth tidak aktif.");
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const response = await fetch(
+      `${cameraBridgeUrl({ bridge_url: bridgeUrl ?? undefined })}/v1/exit`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Bridge-Token": token },
+        body: JSON.stringify({ pin }),
+        signal: controller.signal,
+      }
+    );
+    const body = (await response.json().catch(() => null)) as {
+      ok?: boolean;
+      emergency?: boolean;
+      message?: string;
+      error?: string;
+    } | null;
+    if (!response.ok) {
+      throw new KioskError(
+        response.status === 429 ? "PIN_LOCKED" : (body?.error ?? "PIN_EMERGENCY_REJECTED"),
+        body?.message ?? "PIN darurat ditolak."
+      );
+    }
+    return { ok: body?.ok !== false, emergency: body?.emergency };
+  } catch (error) {
+    if (error instanceof KioskError) throw error;
+    throw new KioskError("NO_BRIDGE", "Runtime lokal booth tidak menjawab.");
+  } finally {
+    clearTimeout(timer);
+  }
 }

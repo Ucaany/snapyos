@@ -35,13 +35,16 @@ async function parse<T>(res: Response): Promise<T> {
  */
 const REQUEST_TIMEOUT_MS = 15_000;
 
-function timeoutSignal(existing?: AbortSignal): AbortSignal | undefined {
+function timeoutSignal(
+  existing?: AbortSignal,
+  timeoutMs = REQUEST_TIMEOUT_MS
+): AbortSignal | undefined {
   if (typeof AbortSignal === "undefined" || !("timeout" in AbortSignal)) {
     return existing; // browser kiosk lama tanpa AbortSignal.timeout: tanpa timeout
   }
-  if (!existing) return AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+  if (!existing) return AbortSignal.timeout(timeoutMs);
   const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const t = setTimeout(() => controller.abort(), timeoutMs);
   existing.addEventListener("abort", () => {
     clearTimeout(t);
     controller.abort(existing.reason);
@@ -50,9 +53,11 @@ function timeoutSignal(existing?: AbortSignal): AbortSignal | undefined {
 }
 
 /** Timeout/abort → KioskError dengan pesan jelas (bukan diam). */
-async function request<T>(url: string, init: RequestInit): Promise<T> {
+async function request<T>(url: string, init: RequestInit, timeoutMs?: number): Promise<T> {
   try {
-    return parse<T>(await fetch(url, { ...init, signal: timeoutSignal(init.signal ?? undefined) }));
+    return parse<T>(
+      await fetch(url, { ...init, signal: timeoutSignal(init.signal ?? undefined, timeoutMs) })
+    );
   } catch (e) {
     if (e instanceof KioskError) throw e;
     if (e instanceof DOMException && (e.name === "TimeoutError" || e.name === "AbortError")) {
@@ -72,12 +77,16 @@ async function request<T>(url: string, init: RequestInit): Promise<T> {
   }
 }
 
-export async function apiPost<T>(url: string, body: unknown): Promise<T> {
-  return request<T>(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+export async function apiPost<T>(url: string, body: unknown, timeoutMs?: number): Promise<T> {
+  return request<T>(
+    url,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+    timeoutMs
+  );
 }
 
 export async function apiGet<T>(url: string, signal?: AbortSignal): Promise<T> {

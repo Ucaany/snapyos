@@ -10,10 +10,9 @@
  * disimpan di IndexedDB (plaintext). Item antrian hanya menyimpan foto + metadata
  * minimal; token diambil dari live state kiosk saat sinkron (`syncOne(item, token)`).
  * Konsekuensi: reload/restart penuh perangkat menghapus `deviceToken` dari memori
- * → item antrian yatim disapu (foto customer tidak dibiarkan menumpuk di disk).
- * Tradeoff sengaja: happy-path (kiosk tidak di-reload) tetap sinkron; full reload
- * kehilangan finalize yang belum terkirim — diterima demi tidak menyimpan token
- * di storage yang bisa dibaca XSS/ekstensi.
+ * → item antrian yatim disapu SETELAH grace (`ORPHAN_GRACE_MS`), bukan seketika
+ * (Phase 6: reload singkat dulu menghapus foto pelanggan yang belum tersinkron).
+ * Sesi `local_*` tidak pernah disapu di sini — runtime lokal yang menyelesaikannya.
  * ponytail: foto masih plaintext (WebCrypto envelope-encryption per-device key
  * di masa depan bila ancaman at-rest device theft jadi prioritas); retry interval
  * sederhana — pindah ke background-sync API / service worker bila kiosk proven
@@ -123,13 +122,34 @@ export function purgeLegacyDeviceTokenStore(): void {
 }
 
 /**
- * Sapu item yatim (antrian tanpa token hidup) lalu buang — dipanggil saat boot
- * sebelum drain, agar foto customer tidak menumpuk di disk saat kiosk di-reload.
+ * Grace sebelum item yatim dibuang: satu jam. Token bisa hilang sementara
+ * (operator membersihkan storage, aktivasi ulang booth) dan foto pelanggan yang
+ * belum tersinkron tidak boleh ikut hilang dalam hitungan detik.
  */
-export async function purgeOrphaned(deviceToken: string | null): Promise<void> {
+export const ORPHAN_GRACE_MS = 60 * 60 * 1000;
+
+/**
+ * Sapu item yatim — dipanggil setelah drain, saat antrian memang tidak bisa
+ * dikirim lagi (tanpa token hidup).
+ *
+ * Aturan (Phase 6, lubang #4):
+ * - Sesi `local_*` milik runtime lokal, bukan cloud: token device TIDAK
+ *   dibutuhkan untuk menyelesaikannya, jadi tidak pernah disapu. Menyapunya
+ *   berarti membuang foto pelanggan yang sebenarnya masih bisa disinkronkan.
+ * - Sesi cloud dipertahankan sampai grace habis — reload singkat tidak lagi
+ *   menghapus finalize yang belum terkirim.
+ */
+export async function purgeOrphaned(
+  deviceToken: string | null,
+  now: number = Date.now()
+): Promise<void> {
   if (deviceToken) return;
   const items = await listQueued();
-  for (const item of items) await removeQueued(item.sessionId);
+  for (const item of items) {
+    if (item.sessionId.startsWith("local_")) continue;
+    if (now - item.queuedAt < ORPHAN_GRACE_MS) continue;
+    await removeQueued(item.sessionId);
+  }
 }
 
 /**
@@ -155,14 +175,15 @@ export function buildFinalizeForm(input: {
 
 /**
  * Kirim satu item antrian ke endpoint finalize; sukses → hapus dari antrian.
- * `deviceToken` diambil dari live state kiosk (BUKAN dipersist) — tanpa token
- * item dianggap yatim: disapu dari antrian, tidak pernah terkirim.
+ * `deviceToken` diambil dari live state kiosk (BUKAN dipersist).
  */
 export async function syncOne(item: QueuedFinalize, deviceToken: string | null): Promise<boolean> {
+  // Sesi runtime lokal disinkronkan oleh worker runtime (Phase 7), bukan lewat
+  // endpoint cloud — membuangnya di sini akan menghilangkan fotonya.
+  if (item.sessionId.startsWith("local_")) return false;
   if (!deviceToken) {
-    // Token hilang (reload penuh) → item tak bisa diautentikasi. Buang agar
-    // foto customer tidak tersimpan lebih lama dari yang diperlukan.
-    await removeQueued(item.sessionId);
+    // Token hilang (reload penuh): biarkan di antrian. `purgeOrphaned` yang
+    // memutuskan setelah grace habis — bukan jalur cepat yang menghapus foto.
     return false;
   }
   try {
