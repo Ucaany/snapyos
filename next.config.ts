@@ -20,7 +20,10 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https: blob:",
       "font-src 'self' data:",
-      "connect-src 'self' https: wss:",
+      // Runtime lokal kiosk (kamera + printer) berjalan di loopback dengan
+      // skema http, jadi `'self'` dan `https:` tidak menjangkaunya. Tanpa entri
+      // ini SEMUA panggilan kiosk → http://127.0.0.1:17777 diblokir CSP.
+      "connect-src 'self' https: wss: http://127.0.0.1:* http://localhost:*",
       "frame-src 'self' https://challenges.cloudflare.com",
     ].join("; "),
   },
