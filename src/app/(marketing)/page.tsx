@@ -14,6 +14,17 @@ import { KioskSimulation } from "@/components/kiosk-simulation";
 import { SiteFooter } from "@/components/site-footer";
 import { CallToAction } from "@/components/cta-3";
 
+/**
+ * Katalog harga & nomor WhatsApp konsultasi dibaca dari database, bukan dari
+ * HTML hasil build. Tanpa `revalidate`, halaman ini di-prerender sekali saat
+ * build; kalau saat itu env Supabase belum ada (atau DB sedang tidak terjangkau),
+ * `getPublicPlans()` mengembalikan `[]` dan HTML statis terkunci dengan pesan
+ * "Katalog harga belum tersedia" selamanya — perubahan harga di admin juga
+ * tidak pernah muncul. ISR 60 detik: data datang dari DB di runtime, tetap
+ * murah karena tidak query tiap request.
+ */
+export const revalidate = 60;
+
 export default async function MarketingPage() {
   const [plans, addOns, cheapestPlan, consultNumber] = await Promise.all([
     getPublicPlans(),
