@@ -12,7 +12,8 @@
  *   1. SW menyajikan salinan cache LEBIH DULU dan selalu memanggil `fetch`
  *      (stale-while-revalidate). Cache-first murni tanpa `fetch` = aset beku.
  *   2. Nama cache memuat versi (`vN`) agar `activate` bisa membuang cache lama.
- *   3. HTML navigasi dan `/api/` tidak pernah masuk cache.
+ *   3. HTML navigasi non-kiosk dan `/api/` tidak pernah masuk cache. Pengecualian
+ *      `/p/*` (boot offline Phase 5) diuji di tests/kiosk-sw-offline.test.ts.
  */
 
 import assert from "node:assert/strict";
@@ -51,9 +52,13 @@ test("sw: aset statis memakai stale-while-revalidate, bukan cache-first beku", a
   );
 });
 
-test("sw: HTML navigasi tidak pernah di-cache", async () => {
+test("sw: HTML navigasi hanya di-cache untuk kiosk /p/*", async () => {
   const css = await source();
-  assert.match(css, /request\.mode === "navigate"\) return;/);
+  const fetchHandler = css.slice(css.indexOf('addEventListener("fetch"'));
+  // Halaman non-kiosk tetap network murni (Next SSR) — hanya /p/* yang punya
+  // fallback cache supaya booth bisa boot saat internet mati (Phase 5).
+  assert.match(fetchHandler, /request\.mode === "navigate"\)/);
+  assert.match(fetchHandler, /if \(!url\.pathname\.startsWith\(KIOSK_PATH_PREFIX\)\) return;/);
 });
 
 test("sw: permintaan /api/ tidak pernah di-cache", async () => {

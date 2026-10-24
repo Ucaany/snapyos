@@ -14,6 +14,9 @@ import { kioskVisualStyle } from "@/lib/kiosk-types";
 import { printPlan } from "@/lib/print-layout";
 import { resolveCaptureCount } from "@/lib/template-fit";
 import { apiForm, apiPost, KioskError } from "@/components/kiosk/api";
+import { mergeSettings, type DeviceSettings } from "@/lib/settings-merge";
+import { fetchDeviceSettings, fetchRuntimeStatus } from "@/components/kiosk/local-runtime";
+import { canBootOffline, isNetworkFailure } from "@/components/kiosk/boot-offline";
 import { useConfigSync } from "@/components/kiosk/use-config-sync";
 import { useKioskLock, useHoldExit } from "@/components/kiosk/use-kiosk-lock";
 import { ExitPinDialog } from "@/components/kiosk/ExitPinDialog";
@@ -120,8 +123,25 @@ export function KioskApp({
     config.photobox.slug,
     idle && !kioskLocked
   );
+  // Setelan mesin dari runtime lokal. null = runtime tidak menjawab (kiosk
+  // browser biasa atau runtime sedang restart). Itu normal: cloud dipakai.
+  const [deviceSettings, setDeviceSettings] = useState<DeviceSettings | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void fetchDeviceSettings(config.photobox.camera_settings.bridge_url).then((value) => {
+      if (alive) setDeviceSettings(value);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [config.photobox.camera_settings.bridge_url]);
   // Derive (bukan sync-effect): idle = config live; sesi = snapshot state.
-  const currentPhotobox = idle ? liveConfig.photobox : photobox;
+  // useMemo: mergeSettings mengembalikan objek baru, dan CameraCapture memo
+  // akan re-render tiap KioskApp render tanpa identitas yang stabil.
+  const currentPhotobox = useMemo(
+    () => mergeSettings(idle ? liveConfig.photobox : photobox, deviceSettings),
+    [idle, liveConfig.photobox, photobox, deviceSettings]
+  );
 
   // Prefetch frame semua package saat idle — layar pilih frame pasca-bayar
   // instan (tanpa loading skeleton, gambar sudah warm di HTTP cache).
@@ -287,7 +307,7 @@ export function KioskApp({
             }
             setStep(localStorage.getItem(setupKey(data.photobox.slug)) ? "welcome" : "setup");
           })
-          .catch((e: unknown) => {
+          .catch(async (e: unknown) => {
             // Race guard: hanya sentuh token bila token tersimpan masih token
             // lama yang gagal diverifikasi — bukan token baru dari aktivasi
             // yang berhasil di tengah verify in-flight.
@@ -301,6 +321,25 @@ export function KioskApp({
               localStorage.removeItem(TOKEN_KEY);
               setDeviceToken(null);
               setStep("activation");
+              return;
+            }
+            // Jaringan mati: boot offline HANYA bila runtime lokal memastikan
+            // dirinya booth ini. HTML yang sedang dirender datang dari cache SW
+            // (satu kunjungan online sebelumnya), jadi config di props adalah
+            // config terakhir yang sah.
+            const status = isNetworkFailure(e)
+              ? await fetchRuntimeStatus(config.photobox.camera_settings.bridge_url)
+              : null;
+            if (localStorage.getItem(TOKEN_KEY) !== token) return;
+            // Setup yang belum pernah selesai = belum ada kunjungan online yang
+            // sukses; wizard butuh cloud, jadi jangan pura-pura bisa jalan.
+            if (
+              localStorage.getItem(setupKey(config.photobox.slug)) &&
+              canBootOffline(e, status, config.photobox.slug)
+            ) {
+              setDeviceToken(token);
+              setPhotobox(config.photobox);
+              setStep("welcome");
               return;
             }
             setNotice(
