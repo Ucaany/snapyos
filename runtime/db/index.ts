@@ -163,6 +163,20 @@ export function insertSession(db: DatabaseSync, input: NewSession, now = Date.no
   return input.id;
 }
 
+// --- events ---
+
+/** Catatan kejadian lokal (mis. `exit_pin_emergency_used`). Tidak pernah gagal keras. */
+export function insertEvent(
+  db: DatabaseSync,
+  kind: string,
+  sessionId: string | null = null,
+  detail: unknown = null
+): void {
+  db.prepare(
+    "insert into events (at, kind, session_id, detail_json) values (?, ?, ?, ?)"
+  ).run(new Date().toISOString(), kind, sessionId, detail === null ? null : JSON.stringify(detail));
+}
+
 // --- export ---
 
 /**

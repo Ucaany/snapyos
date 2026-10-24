@@ -1,0 +1,156 @@
+/**
+ * Konfigurasi runtime lokal — satu-satunya tempat env runtime dibaca.
+ *
+ * Runtime menguasai kamera dan printer fisik, jadi validasi terjadi SEBELUM
+ * server listen: konfigurasi salah harus menggagalkan start, bukan menghasilkan
+ * service yang jalan setengah.
+ *
+ * Target produksi adalah Windows, jadi default adapter mengikuti platform:
+ * digiCamControl + print spooler di Windows, gphoto2 + CUPS di Linux.
+ */
+
+import { createHash } from "node:crypto";
+import { homedir } from "node:os";
+import { join } from "node:path";
+
+export const CAMERA_KINDS = ["digicamcontrol", "gphoto2", "mock"] as const;
+export type CameraKind = (typeof CAMERA_KINDS)[number];
+
+export const PRINTER_KINDS = ["windows", "cups", "mock"] as const;
+export type PrinterKind = (typeof PRINTER_KINDS)[number];
+
+export type RuntimeConfig = {
+  host: string;
+  port: number;
+  /** sha256 token bridge — perbandingan constant-time memakai digest ini. */
+  tokenDigest: Buffer;
+  allowedOrigins: Set<string>;
+  /** DB + media + karantina. Terpisah dari kode agar update tidak menyentuh data. */
+  dataDir: string;
+  camera: CameraKind;
+  printer: PrinterKind;
+  /** true bila salah satu adapter mock dipakai (UI wajib melabelinya). */
+  mock: boolean;
+  gphotoBin: string;
+  captureTarget: string;
+  timeoutMs: number;
+  digicamPort: number;
+  digicamCmd: string;
+  sumatraBin: string;
+  powershellBin: string;
+  cupsBin: string;
+  lpstatBin: string;
+  maxBodyBytes: number;
+};
+
+export class ConfigError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ConfigError";
+  }
+}
+
+function pickOne<T extends string>(
+  raw: string | undefined,
+  allowed: readonly T[],
+  fallback: T,
+  name: string
+): T {
+  const value = raw?.trim();
+  if (!value) return fallback;
+  if ((allowed as readonly string[]).includes(value)) return value as T;
+  throw new ConfigError(`${name} harus salah satu dari: ${allowed.join(", ")}.`);
+}
+
+/**
+ * Port 0 ditolak: kiosk memakai URL tetap `http://127.0.0.1:<port>` dan tidak
+ * bisa membaca port acak hasil bind.
+ */
+function readPort(raw: string | undefined, name: string, fallback: number): number {
+  if (raw === undefined || raw.trim() === "") return fallback;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 1 || value > 65535) {
+    throw new ConfigError(`${name} harus bilangan bulat 1-65535.`);
+  }
+  return value;
+}
+
+function defaultDataDir(): string {
+  if (process.platform === "win32") {
+    const base = process.env.ProgramData?.trim() || "C:\\ProgramData";
+    return join(base, "SNAPYOS", "data");
+  }
+  return join(homedir(), ".snapyos");
+}
+
+/** `NodeJS.ProcessEnv` di repo ini mewajibkan NODE_ENV; runtime harus bisa diuji dengan env parsial. */
+export type EnvLike = Record<string, string | undefined>;
+
+export function loadConfig(env: EnvLike): RuntimeConfig {
+  const token = env.PHOTOBOOTH_BRIDGE_TOKEN?.trim() || "";
+  if (token.length < 16) {
+    throw new ConfigError(
+      "PHOTOBOOTH_BRIDGE_TOKEN wajib diisi (minimal 16 karakter).\n" +
+        'Buat dengan: node -e "console.log(require(\'node:crypto\').randomBytes(24).toString(\'base64url\'))"\n' +
+        "Simpan nilai yang sama di perangkat kiosk (Setup Perangkat → Bridge token)."
+    );
+  }
+
+  const win32 = process.platform === "win32";
+  const camera = pickOne(
+    env.SNAPYOS_CAMERA,
+    CAMERA_KINDS,
+    win32 ? "digicamcontrol" : "gphoto2",
+    "SNAPYOS_CAMERA"
+  );
+  const printer = pickOne(
+    env.SNAPYOS_PRINTER,
+    PRINTER_KINDS,
+    win32 ? "windows" : "cups",
+    "SNAPYOS_PRINTER"
+  );
+  const mock = camera === "mock" || printer === "mock";
+
+  // Mock tidak boleh diam-diam jadi produksi: kamera palsu di booth berarti
+  // pelanggan membayar foto yang bukan dirinya.
+  if (mock && env.NODE_ENV === "production" && env.SNAPYOS_ALLOW_MOCK !== "1") {
+    throw new ConfigError(
+      "Adapter mock dipakai dengan NODE_ENV=production. Set SNAPYOS_ALLOW_MOCK=1 bila ini memang uji coba."
+    );
+  }
+
+  const origins = (env.PHOTOBOOTH_BRIDGE_ORIGINS || "http://localhost:3000,http://127.0.0.1:3000")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  const timeoutRaw = Number(env.GPHOTO2_TIMEOUT_MS);
+  const timeoutMs = Number.isFinite(timeoutRaw)
+    ? Math.min(120_000, Math.max(5_000, timeoutRaw))
+    : 45_000;
+
+  return {
+    host: env.PHOTOBOOTH_BRIDGE_HOST?.trim() || "127.0.0.1",
+    port: readPort(env.PHOTOBOOTH_BRIDGE_PORT, "PHOTOBOOTH_BRIDGE_PORT", 17777),
+    tokenDigest: createHash("sha256").update(token).digest(),
+    allowedOrigins: new Set(origins),
+    dataDir: env.SNAPYOS_DATA_DIR?.trim() || defaultDataDir(),
+    camera,
+    printer,
+    mock,
+    gphotoBin: env.GPHOTO2_BIN?.trim() || "gphoto2",
+    captureTarget: env.GPHOTO2_CAPTURE_TARGET?.trim() || "",
+    timeoutMs,
+    digicamPort: readPort(env.DIGICAMCONTROL_PORT, "DIGICAMCONTROL_PORT", 5513),
+    digicamCmd:
+      env.DIGICAMCONTROL_CMD?.trim() ||
+      "C:\\Program Files\\digiCamControl\\CameraControlCmd.exe",
+    sumatraBin:
+      env.SUMATRA_BIN?.trim() || "C:\\Program Files\\SumatraPDF\\SumatraPDF.exe",
+    powershellBin: env.POWERSHELL_BIN?.trim() || "powershell",
+    cupsBin: env.LP_BIN?.trim() || "lp",
+    lpstatBin: env.LPSTAT_BIN?.trim() || "lpstat",
+    // Cap body PDF/base64: 50 lembar × 8 foto tetap jauh di bawah ini.
+    maxBodyBytes: 60 * 1024 * 1024,
+  };
+}

@@ -10,7 +10,7 @@
 import type { DatabaseSync } from "node:sqlite";
 
 /** Versi skema saat ini. Naikkan saat ada migrasi baru. */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 /** Tabel yang ikut export/import setelan. PIN darurat sengaja TIDAK di sini. */
 const MIGRATION_1 = `
@@ -76,8 +76,20 @@ create table if not exists meta (
 );
 `;
 
+/**
+ * Phase 2: kunci idempotensi capture.
+ *
+ * Kiosk mengulang `POST .../capture` saat jaringan putus. Tanpa kunci, satu
+ * slot bisa ditulis dua kali dan sync worker mengirim foto ganda.
+ */
+const MIGRATION_2 = `
+alter table captures add column idempotency_key text;
+create unique index if not exists idx_captures_idempotency
+  on captures (session_id, idempotency_key) where idempotency_key is not null;
+`;
+
 /** Migrasi berurutan; indeks array + 1 = versi skema. */
-const MIGRATIONS: readonly string[] = [MIGRATION_1];
+const MIGRATIONS: readonly string[] = [MIGRATION_1, MIGRATION_2];
 
 export function readVersion(db: DatabaseSync): number {
   const row = db.prepare("pragma user_version").get() as { user_version?: number } | undefined;

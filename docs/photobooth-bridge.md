@@ -56,6 +56,26 @@ Health check yang harus lulus:
 - `POST /print` dengan header token membentuk PDF per sheet, mempertahankan
   ukuran kertas, orientasi, margin, dan mengirim `fit-to-page` ke CUPS.
 
+### Rute sesi lokal (`/v1/sessions*`)
+
+Runtime menyimpan sesi sendiri saat internet mati. ID sesi lokal berprefix
+`local_` supaya tidak pernah tertukar dengan UUID cloud.
+
+| Rute | Catatan |
+|---|---|
+| `POST /v1/sessions` | `package_snapshot` wajib; `expires_at` dihitung runtime |
+| `GET /v1/sessions/:id` | termasuk daftar capture |
+| `POST /v1/sessions/:id/capture` | header `Idempotency-Key` wajib; key sama → capture yang sama |
+| `POST /v1/sessions/:id/finalize` | multipart, field sama dengan `buildFinalizeForm` |
+| `POST /v1/sessions/:id/abort` | sesi `aborted` menolak capture berikutnya (`409`) |
+| `POST /v1/exit` | PIN darurat (argon2id); 5 salah → kunci 5 menit |
+
+`GET /v1/status` kini juga memuat `business_slug` dan `photobox_slug` dari tabel
+`meta`; kiosk memakainya untuk memastikan runtime di port 17777 memang milik
+booth-nya. PIN darurat hanya berlaku bila hash-nya terpasang di `meta`
+(`exit_pin_emergency_hash`) dan tidak pernah ikut export setelan. Pemakaiannya
+dicatat sebagai event `exit_pin_emergency_used`.
+
 ## Keputusan dari upstream
 
 Implementasi ini mengambil pola yang relevan dari
