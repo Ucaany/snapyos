@@ -5,21 +5,15 @@
  * data bertahan setelah proses mati, satu foto per slot, dan export tidak
  * pernah membawa kunci `exit_pin_*`.
  *
- * Run: npx vitest run tests/runtime-db.test.ts
+ * Run: npm test
  */
 
 import assert from "node:assert/strict";
+import { test } from "node:test";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-// Dua runner hidup di repo ini: `npm test` (node:test) dan vitest. `VITEST` hanya
-// di-set oleh vitest, jadi file ini jalan di keduanya tanpa shim terpisah.
-// ponytail: hapus cabang ini saat seluruh tests/ pindah ke satu runner.
-type TestFn = (name: string, fn: () => unknown) => unknown;
-const { test } = (process.env.VITEST
-  ? await import("vitest")
-  : await import("node:test")) as unknown as { test: TestFn };
 import {
   DB_FILE,
   SCHEMA_VERSION,

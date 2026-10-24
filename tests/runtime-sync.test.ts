@@ -6,10 +6,11 @@
  * yang ditolak cloud (410) tidak menghapus foto pelanggan tanpa menyalinnya
  * dulu, dan laporan device tidak bisa menghapus `copies` milik cloud.
  *
- * Run: npx vitest run tests/runtime-sync.test.ts
+ * Run: npm test
  */
 
 import assert from "node:assert/strict";
+import { test } from "node:test";
 import {
   existsSync,
   mkdirSync,
@@ -36,14 +37,6 @@ import {
   foreignSettingKeys,
   mergeDeviceSettings,
 } from "../src/lib/validators.ts";
-
-// Dua runner hidup di repo ini: `npm test` (node:test) dan vitest. `VITEST`
-// hanya di-set oleh vitest, jadi file ini jalan di keduanya tanpa shim.
-type TestFn = (name: string, fn: () => unknown) => unknown;
-const runner = (process.env.VITEST ? await import("vitest") : await import("node:test")) as unknown as {
-  test: TestFn;
-};
-const test = runner.test;
 
 const DEVICE_TOKEN = "test-device-token-0123456789abcdef";
 const BUSINESS_SLUG = "snapy-demo";

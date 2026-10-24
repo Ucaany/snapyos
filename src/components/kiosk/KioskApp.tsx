@@ -15,7 +15,13 @@ import { printPlan } from "@/lib/print-layout";
 import { resolveCaptureCount } from "@/lib/template-fit";
 import { apiForm, apiPost, KioskError } from "@/components/kiosk/api";
 import { mergeSettings, type DeviceSettings } from "@/lib/settings-merge";
-import { fetchDeviceSettings, fetchRuntimeStatus } from "@/components/kiosk/local-runtime";
+import {
+  abortLocalSession,
+  createLocalSession,
+  fetchDeviceSettings,
+  fetchRuntimeStatus,
+  finalizeLocalSession,
+} from "@/components/kiosk/local-runtime";
 import { canBootOffline, isNetworkFailure } from "@/components/kiosk/boot-offline";
 import { useConfigSync } from "@/components/kiosk/use-config-sync";
 import { useKioskLock, useHoldExit } from "@/components/kiosk/use-kiosk-lock";
@@ -431,6 +437,10 @@ export function KioskApp({
   /**
    * Sesi langsung dari package tanpa QRIS (dev bypass atau mode offline docs/05).
    * Server yang memutuskan: dev gate / offline_enabled — klien tidak dipercaya.
+   *
+   * Jaringan mati → sesi dibuat runtime lokal (`local_*`). Itu satu-satunya
+   * jalur yang membuat booth tetap menjual saat internet putus; sync worker
+   * mengirim sesinya ke cloud begitu online.
    */
   async function startDirectSession(pkg: PublicPackage) {
     if (!deviceToken || busy) return;
@@ -445,7 +455,30 @@ export function KioskApp({
       setSession(data);
       setStep("template");
     } catch (e) {
-      setNotice(e instanceof KioskError ? e.message : "Terjadi kesalahan. Coba lagi.");
+      if (!isNetworkFailure(e)) {
+        setNotice(e instanceof KioskError ? e.message : "Terjadi kesalahan. Coba lagi.");
+        return;
+      }
+      try {
+        const local = await createLocalSession({
+          packageSnapshot: pkg,
+          packageId: pkg.id,
+          timerSeconds: sessionSettings?.timer_seconds ?? 0,
+          bridgeUrl: config.photobox.camera_settings.bridge_url,
+        });
+        setSelectedPackage(pkg);
+        setSession({ session_id: local.id, expires_at: local.expires_at, result_token: null });
+        setStep("template");
+      } catch (localError) {
+        // Keduanya mati: cloud tidak terjangkau DAN runtime tidak menjawab.
+        // Berhenti di sini — memulai sesi tanpa tempat menyimpan foto berarti
+        // pelanggan membayar untuk hasil yang hilang.
+        setNotice(
+          localError instanceof KioskError
+            ? `Cloud dan runtime lokal tidak terjangkau. ${localError.message}`
+            : "Cloud dan runtime lokal tidak terjangkau."
+        );
+      }
     } finally {
       setBusy(false);
     }
@@ -459,6 +492,14 @@ export function KioskApp({
     try {
       if (deviceToken && (await resumeActiveSession(deviceToken))) return;
       if (devSkipPayment) {
+        await startDirectSession(pkg);
+        return;
+      }
+      // Mode offline owner-enabled: layar checkout butuh `/checkout` (harga,
+      // voucher, metode bayar) yang tidak bisa dihitung tanpa cloud. Saat
+      // jaringan memang mati, langsung mulai sesi lokal dengan harga paket —
+      // snapshot-nya membekukan harga, jadi sync tidak menagih harga baru.
+      if (offlineEnabled && !navigator.onLine) {
         await startDirectSession(pkg);
         return;
       }
@@ -496,6 +537,36 @@ export function KioskApp({
 
       const shouldPrint =
         currentPhotobox.print_settings.enabled !== false && (selectedPackage?.print_count ?? 0) > 0;
+
+      // Sesi `local_*` hanya dikenal runtime lokal. Cloud tidak punya barisnya,
+      // jadi finalize HARUS ke runtime walau internet sudah hidup lagi — sync
+      // worker yang mengirimkannya ke cloud nanti.
+      if (session.session_id.startsWith("local_")) {
+        try {
+          const form = buildFinalizeForm({
+            deviceToken,
+            templateId: selectedTemplate?.id ?? null,
+            retakeCount,
+            photos: final.map((p) => p.blob),
+            gifPhotos: photos.map((p) => p.blob),
+          });
+          await finalizeLocalSession(session.session_id, form, config.photobox.camera_settings.bridge_url);
+          setFinalPhotos(final);
+          setResult({ result_token: session.result_token ?? null, gif_url: null, pendingSync: true });
+          setReprintRequested(false);
+          setStep(shouldPrint ? "printing" : "result");
+        } catch (localError) {
+          setNotice(
+            localError instanceof KioskError
+              ? localError.message
+              : "Gagal menyimpan hasil di booth. Hubungi petugas."
+          );
+          setStep("editor");
+        } finally {
+          setBusy(false);
+        }
+        return;
+      }
 
       // Offline: foto disimpan lokal, finalisasi disinkronkan saat online kembali.
       if (!navigator.onLine) {
@@ -572,6 +643,7 @@ export function KioskApp({
       businessSlug,
       retakeCount,
       photos,
+      config.photobox.camera_settings.bridge_url,
     ]
   );
 
@@ -582,6 +654,19 @@ export function KioskApp({
     [finalizeAndFinish]
   );
 
+  /** Abort ke tempat sesi itu hidup: `local_*` di runtime, sisanya di cloud. */
+  function abortSession(sessionId: string) {
+    if (sessionId.startsWith("local_")) {
+      void abortLocalSession(sessionId, config.photobox.camera_settings.bridge_url).catch(
+        () => undefined
+      );
+      return;
+    }
+    void apiPost(`/api/v1/public/${businessSlug}/sessions/${sessionId}/abort`, {
+      device_token: deviceToken,
+    }).catch(() => undefined);
+  }
+
   const handleTimerExpired = useCallback(() => {
     if (photos.length > 0) {
       setFinishRequested(true);
@@ -589,27 +674,20 @@ export function KioskApp({
     } else {
       // Tidak ada foto sama sekali → sesi tak bernilai: abort supaya booth
       // langsung bebas, bukan terkunci sampai grace offline (10 menit).
-      if (session) {
-        void apiPost(`/api/v1/public/${businessSlug}/sessions/${session.session_id}/abort`, {
-          device_token: deviceToken,
-        }).catch(() => undefined);
-      }
+      if (session) abortSession(session.session_id);
       setSession(null);
       setSelectedPackage(null);
       setSelectedTemplate(null);
       setPhotos([]);
       setStep("welcome");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photos, session, businessSlug, deviceToken]);
 
   function handleReset() {
     // Buang sesi aktif yang belum difinalisasi — tanpa ini sesi zombie
     // mengunci booth ("Sesi lain masih berjalan") sampai grace offline habis.
-    if (session && !result) {
-      void apiPost(`/api/v1/public/${businessSlug}/sessions/${session.session_id}/abort`, {
-        device_token: deviceToken,
-      }).catch(() => undefined);
-    }
+    if (session && !result) abortSession(session.session_id);
     setSelectedPackage(null);
     setSelectedTemplate(null);
     setSession(null);

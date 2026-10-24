@@ -10,15 +10,10 @@
  */
 
 import { cameraBridgeUrl } from "@/lib/camera-provider";
+import { getBridgeToken } from "@/lib/bridge-token";
 import { KioskError } from "@/components/kiosk/api";
 import type { DeviceSettings } from "@/lib/settings-merge";
 
-/**
- * Token bridge diisi saat setup. Dibaca langsung dari localStorage, bukan lewat
- * modul bersama: `src/lib/bridge-token.ts` lahir di Phase 3 dan kiosk ini harus
- * tetap jalan sebelum fase itu masuk.
- */
-const BRIDGE_TOKEN_KEY = "snapyos_bridge_token";
 /** Runtime ada di mesin yang sama; 1,5 detik sudah jauh lebih dari cukup. */
 const TIMEOUT_MS = 1500;
 
@@ -33,11 +28,45 @@ type StatusResponse = {
   photobox_slug?: string;
 };
 
-function readBridgeToken(): string {
+/** POST ke runtime lokal; melempar `KioskError` supaya UI bisa membedakan sebab. */
+async function bridgePost<T>(
+  path: string,
+  body: unknown,
+  bridgeUrl?: string | null
+): Promise<T> {
+  const token = getBridgeToken();
+  if (!token) throw new KioskError("NO_BRIDGE", "Runtime lokal booth tidak aktif.");
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    return window.localStorage.getItem(BRIDGE_TOKEN_KEY)?.trim() ?? "";
-  } catch {
-    return "";
+    const response = await fetch(
+      `${cameraBridgeUrl({ bridge_url: bridgeUrl ?? undefined })}${path}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Bridge-Token": token },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      }
+    );
+    const payload = (await response.json().catch(() => null)) as {
+      ok?: boolean;
+      error?: string;
+      message?: string;
+      [key: string]: unknown;
+    } | null;
+    if (!response.ok) {
+      throw new KioskError(
+        response.status === 429 ? "PIN_LOCKED" : (payload?.error ?? "PIN_EMERGENCY_REJECTED"),
+        payload?.message ?? "Runtime lokal menolak permintaan."
+      );
+    }
+    return payload as T;
+  } catch (error) {
+    if (error instanceof KioskError) throw error;
+    throw new KioskError("NO_BRIDGE", "Runtime lokal booth tidak menjawab.");
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -46,7 +75,7 @@ async function bridgeGet<T>(path: string, bridgeUrl?: string | null): Promise<T 
   if (typeof window === "undefined") return null;
   // Tanpa token runtime pasti menjawab 401, jadi jangan buang request: kiosk
   // browser biasa tidak punya runtime dan tidak boleh memicu error di konsol.
-  const token = readBridgeToken();
+  const token = getBridgeToken();
   if (!token) return null;
 
   const controller = new AbortController();
@@ -100,38 +129,89 @@ export async function submitLocalExit(
   pin: string,
   bridgeUrl?: string | null
 ): Promise<{ ok: boolean; emergency?: boolean }> {
-  const token = readBridgeToken();
-  if (!token) throw new KioskError("NO_BRIDGE", "Runtime lokal booth tidak aktif.");
+  const body = await bridgePost<{ ok?: boolean; emergency?: boolean }>(
+    "/v1/exit",
+    { pin },
+    bridgeUrl
+  );
+  // `ok !== false` terlalu longgar: respons tanpa `ok` (mis. 200 dari proxy
+  // lain) akan membuka booth. Runtime yang benar mengirim `{ok:true}`.
+  return { ok: body?.ok === true, emergency: body?.emergency };
+}
 
+// ---------------------------------------------------------------- sesi lokal
+
+/** Bentuk respons `POST /v1/sessions` yang dipakai kiosk (subset `present()`). */
+export type LocalSession = {
+  id: string;
+  expires_at: string;
+  package_id: string;
+  state: string;
+};
+
+/**
+ * Buka sesi tanpa cloud (`POST /v1/sessions`, Phase 2).
+ *
+ * `package_snapshot` membekukan harga saat sesi mulai — sync worker memakainya
+ * saat mengirim sesi ke cloud, jadi pelanggan tidak tertagih harga baru hanya
+ * karena internet pulih setelah paket naik.
+ */
+export async function createLocalSession(input: {
+  packageSnapshot: unknown;
+  packageId: string;
+  templateId?: string | null;
+  timerSeconds?: number;
+  bridgeUrl?: string | null;
+}): Promise<LocalSession> {
+  const body = await bridgePost<LocalSession>(
+    "/v1/sessions",
+    {
+      package_snapshot: input.packageSnapshot,
+      package_id: input.packageId,
+      template_id: input.templateId ?? null,
+      timer_seconds: input.timerSeconds ?? 0,
+      client_created_at: new Date().toISOString(),
+    },
+    input.bridgeUrl
+  );
+  if (!body?.id) throw new KioskError("NO_BRIDGE", "Runtime lokal tidak membuat sesi.");
+  return body;
+}
+
+/**
+ * Finalize ke runtime lokal. Foto disimpan di disk booth dan dikirim ke cloud
+ * oleh sync worker (Phase 7) begitu internet pulih.
+ */
+export async function finalizeLocalSession(
+  sessionId: string,
+  form: FormData,
+  bridgeUrl?: string | null
+): Promise<void> {
+  const token = getBridgeToken();
+  if (!token) throw new KioskError("NO_BRIDGE", "Runtime lokal booth tidak aktif.");
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), 15_000);
   try {
     const response = await fetch(
-      `${cameraBridgeUrl({ bridge_url: bridgeUrl ?? undefined })}/v1/exit`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Bridge-Token": token },
-        body: JSON.stringify({ pin }),
-        signal: controller.signal,
-      }
+      `${cameraBridgeUrl({ bridge_url: bridgeUrl ?? undefined })}/v1/sessions/${encodeURIComponent(sessionId)}/finalize`,
+      { method: "POST", headers: { "X-Bridge-Token": token }, body: form, signal: controller.signal }
     );
-    const body = (await response.json().catch(() => null)) as {
-      ok?: boolean;
-      emergency?: boolean;
-      message?: string;
-      error?: string;
-    } | null;
     if (!response.ok) {
-      throw new KioskError(
-        response.status === 429 ? "PIN_LOCKED" : (body?.error ?? "PIN_EMERGENCY_REJECTED"),
-        body?.message ?? "PIN darurat ditolak."
-      );
+      const body = (await response.json().catch(() => null)) as { message?: string } | null;
+      throw new KioskError("NO_BRIDGE", body?.message ?? "Runtime lokal gagal menyimpan hasil.");
     }
-    return { ok: body?.ok !== false, emergency: body?.emergency };
   } catch (error) {
     if (error instanceof KioskError) throw error;
     throw new KioskError("NO_BRIDGE", "Runtime lokal booth tidak menjawab.");
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** Batalkan sesi lokal yang tidak jadi dipakai (timer habis tanpa foto). */
+export async function abortLocalSession(
+  sessionId: string,
+  bridgeUrl?: string | null
+): Promise<void> {
+  await bridgePost(`/v1/sessions/${encodeURIComponent(sessionId)}/abort`, {}, bridgeUrl);
 }

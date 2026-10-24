@@ -6,10 +6,11 @@
  * mengunci setelah 5 salah. Runtime dijalankan sebagai proses nyata karena bug
  * yang mahal justru ada di lapisan HTTP-nya.
  *
- * Run: npx vitest run tests/runtime-session.test.ts
+ * Run: npm test
  */
 
 import assert from "node:assert/strict";
+import { after, before, test } from "node:test";
 import { once } from "node:events";
 import { mkdtempSync, rmSync } from "node:fs";
 import { createServer } from "node:http";
@@ -18,22 +19,6 @@ import { join } from "node:path";
 import { spawn, type ChildProcess } from "node:child_process";
 import { hashDevicePin } from "../src/lib/device-token.ts";
 import { closeDatabase, openDatabase, setMeta } from "../runtime/db/index.ts";
-// Dua runner hidup di repo ini: `npm test` (node:test) dan vitest. `VITEST` hanya
-// di-set oleh vitest, jadi file ini jalan di keduanya tanpa shim terpisah.
-// ponytail: hapus cabang ini saat seluruh tests/ pindah ke satu runner.
-type HookFn = (fn: () => unknown) => unknown;
-type TestFn = (name: string, fn: () => unknown) => unknown;
-// Vitest menamai hook-nya `beforeAll`/`afterAll`, node:test `before`/`after`.
-const runner = (process.env.VITEST ? await import("vitest") : await import("node:test")) as unknown as {
-  test: TestFn;
-  beforeAll?: HookFn;
-  afterAll?: HookFn;
-  before?: HookFn;
-  after?: HookFn;
-};
-const test = runner.test;
-const before = runner.beforeAll ?? runner.before!;
-const after = runner.afterAll ?? runner.after!;
 
 const TOKEN = "test-bridge-token-0123456789";
 const auth = { "x-bridge-token": TOKEN };

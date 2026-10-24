@@ -130,6 +130,19 @@ test("PIN darurat benar: onSuccess dipanggil", async () => {
   assert.deepEqual(r.errors, []);
 });
 
+test("jawaban ok:false tidak membuka booth (200 bukan bukti PIN benar)", async () => {
+  const viaCloud = await run({ cloud: () => Promise.resolve({ ok: false }) });
+  assert.equal(viaCloud.ok, 0, "cloud 200 + ok:false tetap ditolak");
+  assert.deepEqual(viaCloud.errors, ["PIN keluar ditolak."]);
+
+  const viaLocal = await run({
+    cloud: networkDown,
+    local: () => Promise.resolve({ ok: false, emergency: true }),
+  });
+  assert.equal(viaLocal.ok, 0, "runtime lokal 200 + ok:false tetap ditolak");
+  assert.deepEqual(viaLocal.errors, ["PIN keluar ditolak."]);
+});
+
 // ---------------------------------------------------------------- purgeOrphaned
 
 type Store = Map<string, unknown>;

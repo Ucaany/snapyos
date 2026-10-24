@@ -28,19 +28,27 @@ export async function submitExit(input: {
   onSuccess: () => void;
   onError: (message: string) => void;
 }): Promise<void> {
+  let result: ExitResult;
   try {
-    await input.cloud();
+    result = await input.cloud();
   } catch (error) {
     if (!isNetworkFailure(error)) {
       input.onError(messageOf(error));
       return;
     }
     try {
-      await input.local();
+      result = await input.local();
     } catch (localError) {
       input.onError(messageOf(localError));
       return;
     }
+  }
+  // 200 bukan bukti PIN benar. Cloud menjawab `{ok:true,pin_required:false}`
+  // bila booth belum punya PIN, dan runtime lokal hanya `{ok:true}` saat PIN
+  // cocok — jadi `ok:false` eksplisit wajib menahan pembukaan booth.
+  if (result?.ok === false) {
+    input.onError("PIN keluar ditolak.");
+    return;
   }
   input.onSuccess();
 }

@@ -5,10 +5,11 @@
  * (bukan dibuang diam-diam), export tidak pernah membawa PIN, impor menolak
  * berkas booth lain / versi lebih baru, dan merge tidak menimpa `copies`.
  *
- * Run: npx vitest run tests/runtime-settings.test.ts
+ * Run: npm test
  */
 
 import assert from "node:assert/strict";
+import { after, before, test } from "node:test";
 import { once } from "node:events";
 import { mkdtempSync, rmSync } from "node:fs";
 import { createServer } from "node:http";
@@ -17,20 +18,6 @@ import { join } from "node:path";
 import { spawn, type ChildProcess } from "node:child_process";
 import { closeDatabase, openDatabase, setMeta, setSetting } from "../runtime/db/index.ts";
 import { mergeSettings } from "../runtime/settings/index.ts";
-// Dua runner hidup di repo ini: `npm test` (node:test) dan vitest. `VITEST` hanya
-// di-set oleh vitest, jadi file ini jalan di keduanya tanpa shim terpisah.
-type HookFn = (fn: () => unknown) => unknown;
-type TestFn = (name: string, fn: () => unknown) => unknown;
-const runner = (process.env.VITEST ? await import("vitest") : await import("node:test")) as unknown as {
-  test: TestFn;
-  beforeAll?: HookFn;
-  afterAll?: HookFn;
-  before?: HookFn;
-  after?: HookFn;
-};
-const test = runner.test;
-const before = runner.beforeAll ?? runner.before!;
-const after = runner.afterAll ?? runner.after!;
 
 const TOKEN = "test-bridge-token-0123456789";
 const auth = { "x-bridge-token": TOKEN };
