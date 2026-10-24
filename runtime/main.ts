@@ -14,7 +14,7 @@ import { join } from "node:path";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { createCamera } from "./camera/index.ts";
 import { ConfigError, loadConfig } from "./config.ts";
-import { getMeta, openDatabase, readVersion } from "./db/index.ts";
+import { getMeta, openDatabase, readVersion, type DatabaseSync } from "./db/index.ts";
 import { handleExitRoute } from "./exit/index.ts";
 import {
   HttpError,
@@ -38,6 +38,23 @@ const VERSION: string = (() => {
   }
 })();
 
+/**
+ * Store dibuka sebelum listen: tanpa store, sesi lokal dan PIN darurat tidak
+ * bisa dijanjikan. Gagal di sini lebih jujur daripada booth yang tampak hidup
+ * tapi kehilangan sesi saat internet mati.
+ */
+function openStoreOrExit(dataDir: string): DatabaseSync {
+  try {
+    return openDatabase(dataDir);
+  } catch (error) {
+    console.error(
+      `[snapyos-runtime] Store lokal gagal dibuka di ${dataDir}: ` +
+        (error instanceof Error ? error.message : String(error))
+    );
+    process.exit(1);
+  }
+}
+
 async function main(): Promise<void> {
   let config;
   try {
@@ -52,20 +69,7 @@ async function main(): Promise<void> {
 
   const camera = createCamera(config);
   const printer = createPrinter(config);
-
-  // Store dibuka sebelum listen: tanpa store, sesi lokal dan PIN darurat tidak
-  // bisa dijanjikan. Gagal di sini lebih jujur daripada booth yang tampak
-  // hidup tapi kehilangan sesi saat internet mati.
-  let db;
-  try {
-    db = openDatabase(config.dataDir);
-  } catch (error) {
-    console.error(
-      `[snapyos-runtime] Store lokal gagal dibuka di ${config.dataDir}: ` +
-        (error instanceof Error ? error.message : String(error))
-    );
-    process.exit(1);
-  }
+  const db = openStoreOrExit(config.dataDir);
 
   if (config.mock) {
     console.warn("[snapyos-runtime] MODE MOCK AKTIF — tidak ada kamera/printer fisik yang dipakai.");
