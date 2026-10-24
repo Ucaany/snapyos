@@ -76,6 +76,43 @@ booth-nya. PIN darurat hanya berlaku bila hash-nya terpasang di `meta`
 (`exit_pin_emergency_hash`) dan tidak pernah ikut export setelan. Pemakaiannya
 dicatat sebagai event `exit_pin_emergency_used`.
 
+### Sync ke cloud (`runtime/sync/worker.ts`)
+
+Worker berjalan di latar belakang runtime; kamera dan printer tidak pernah
+menunggu jaringan. Butuh dua env:
+
+| Env | Isi |
+|---|---|
+| `SNAPYOS_CLOUD_URL` | origin cloud, mis. `https://app.snapyos.id` |
+| `SNAPYOS_DEVICE_TOKEN` | token dari aktivasi booth |
+
+Keduanya kosong → worker tidak start; sesi tetap tersimpan lokal dan tidak
+pernah dikirim. Bukan error.
+
+Urutan per sesi yang sudah difinalisasi lokal:
+
+1. `POST /api/v1/public/:businessSlug/sessions` dengan `package_id` +
+   `client_created_at`. `cloud_id` disimpan segera setelah sukses, jadi crash
+   berikutnya tidak menghasilkan sesi cloud kedua.
+2. `POST .../sessions/:cloud_id/finalize` dengan foto dari disk.
+3. `synced_at` ditandai.
+
+Kunci idempotensi = `photobox_slug:local_session_id`. Backoff
+`min(2^n × 1 s, 5 m)` ± 20 % (jitter supaya semua booth tidak menghantam cloud
+serentak saat internet pulih).
+
+`410` / `SESSION_EXPIRED` dari cloud berarti sesi tidak akan pernah diterima.
+Media (foto + `finalize.json`) **disalin lebih dulu** ke
+`<dataDir>/quarantine/<local_session_id>/`, baru baris lokal dihapus, dan
+`events` mencatat `session_quarantined`. Foto pelanggan yang sudah dibayar tidak
+boleh hilang hanya karena sync terlambat.
+
+Setelah putaran sync, setelan device aktif dikirim ke
+`PATCH /api/v1/public/devices/settings`. Hanya field device yang diterima;
+field cloud dijawab `403 FIELD_NOT_DEVICE_OWNED`, dan cloud menggabungkan
+per-key sehingga `print_settings.copies` tidak hilang saat booth melaporkan
+`paper_size`.
+
 ## Keputusan dari upstream
 
 Implementasi ini mengambil pola yang relevan dari

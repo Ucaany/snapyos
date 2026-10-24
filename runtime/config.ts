@@ -41,6 +41,14 @@ export type RuntimeConfig = {
   cupsBin: string;
   lpstatBin: string;
   maxBodyBytes: number;
+  /**
+   * Tujuan sinkronisasi (Phase 7). Kosong = booth berjalan tanpa cloud: sesi
+   * tetap tersimpan lokal, hanya tidak pernah terkirim. Bukan error — runtime
+   * harus tetap melayani kamera dan printer walau internet mati.
+   */
+  cloudUrl: string;
+  /** Token device dari aktivasi; dipakai sync sesi + tulis balik setelan. */
+  deviceToken: string;
 };
 
 export class ConfigError extends Error {
@@ -152,5 +160,7 @@ export function loadConfig(env: EnvLike): RuntimeConfig {
     lpstatBin: env.LPSTAT_BIN?.trim() || "lpstat",
     // Cap body PDF/base64: 50 lembar × 8 foto tetap jauh di bawah ini.
     maxBodyBytes: 60 * 1024 * 1024,
+    cloudUrl: (env.SNAPYOS_CLOUD_URL?.trim() || "").replace(/\/+$/, ""),
+    deviceToken: env.SNAPYOS_DEVICE_TOKEN?.trim() || "",
   };
 }

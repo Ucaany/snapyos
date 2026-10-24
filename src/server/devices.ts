@@ -10,6 +10,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
 import { can } from "@/lib/rbac";
 import { getMembership } from "@/lib/tenant";
+import { invalidatePublicConfig } from "@/server/public-config";
 import {
   ACTIVATION_CODE_LENGTH,
   activationExpiresAt,
@@ -18,11 +19,14 @@ import {
   hashDeviceToken,
   verifyDevicePin,
 } from "@/lib/device-token";
-import type {
-  DeviceActivateInput,
-  DeviceExitInput,
-  DeviceReportInput,
-  DeviceVerifyInput,
+import {
+  foreignSettingKeys,
+  mergeDeviceSettings,
+  type DeviceActivateInput,
+  type DeviceExitInput,
+  type DeviceReportInput,
+  type DeviceSettingsPatchInput,
+  type DeviceVerifyInput,
 } from "@/lib/validators";
 
 type DeviceRow = {
@@ -440,6 +444,74 @@ export async function verifyDeviceExit(input: DeviceExitInput) {
       .eq("id", photobox.id);
   }
   return { ok: true, pin_required: true };
+}
+
+/**
+ * Tulis balik setelan device ke cloud (Phase 7) — `PATCH /api/v1/public/devices/settings`.
+ *
+ * Hanya field milik device yang diterima. Field cloud dijawab
+ * `403 FIELD_NOT_DEVICE_OWNED` alih-alih dibuang diam-diam: operator yang
+ * mengira `copies` berubah dari booth harus tahu setelan itu milik website.
+ *
+ * Merge per-key, bukan replace — `copies`/`layout` milik cloud tidak boleh
+ * hilang hanya karena booth melaporkan `paper_size`.
+ */
+export async function updateDeviceSettings(input: DeviceSettingsPatchInput) {
+  const foreign = foreignSettingKeys(input.settings);
+  if (foreign.length > 0) {
+    throw new ApiError(
+      "FIELD_NOT_DEVICE_OWNED",
+      `Field ini milik website dan tidak bisa diubah dari booth: ${foreign.join(", ")}.`,
+      { fields: foreign }
+    );
+  }
+
+  const { photobox, businessId } = await resolveActiveDevice(input.device_token);
+  const supabase = createServerClient();
+  const merged = mergeDeviceSettings(
+    {
+      camera_settings: (photobox.camera_settings as Record<string, unknown> | null) ?? {},
+      print_settings: (photobox.print_settings as Record<string, unknown> | null) ?? {},
+      session_settings: (photobox.session_settings as Record<string, unknown> | null) ?? {},
+    },
+    input.settings
+  );
+
+  const patch: Record<string, unknown> = {};
+  for (const group of ["camera_settings", "print_settings", "session_settings"] as const) {
+    if (input.settings[group] === undefined) continue;
+    patch[group] = merged[group];
+  }
+
+  const { data, error } = await supabase
+    .from("photoboxes")
+    .update(patch)
+    .eq("id", photobox.id)
+    .eq("business_id", businessId)
+    .select("id, camera_settings, print_settings, session_settings")
+    .maybeSingle();
+  if (error) throw new ApiError("INTERNAL", "Gagal menyimpan setelan device");
+  if (!data) throw new ApiError("NOT_FOUND", "Photobox tidak ditemukan");
+
+  // Kiosk browser membaca nilai terakhir yang dilaporkan device dari cache
+  // konfigurasi publik — tanpa invalidasi, laporan ini tidak terlihat sampai
+  // TTL habis.
+  invalidatePublicConfig(businessId);
+
+  const row = data as unknown as {
+    camera_settings: Record<string, unknown> | null;
+    print_settings: Record<string, unknown> | null;
+    session_settings: Record<string, unknown> | null;
+  };
+  return {
+    ok: true,
+    photobox_id: photobox.id,
+    settings: {
+      camera_settings: row.camera_settings ?? {},
+      print_settings: row.print_settings ?? {},
+      session_settings: row.session_settings ?? {},
+    },
+  };
 }
 
 /** Laporan status device dari setup wizard (docs/05 §5.0.1). */

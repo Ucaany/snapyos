@@ -264,6 +264,9 @@ export async function updatePhotobox(
       .eq("business_id", businessId)
       .maybeSingle();
     if (!current) throw new ApiError("NOT_FOUND", "Photobox tidak ditemukan");
+    // Merge per-key, bukan replace. Owner boleh menulis `copies`/`layout`
+    // (milik cloud); laporan device tidak — penyaringan itu ada di
+    // `mergeDeviceSettings` yang dipakai PATCH devices/settings.
     if (chromaKeyEnabled !== undefined || cameraSettings !== undefined) {
       (columns as Record<string, unknown>).camera_settings = {
         ...((current.camera_settings as CameraSettings | null) ?? {}),

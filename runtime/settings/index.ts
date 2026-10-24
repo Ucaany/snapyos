@@ -13,11 +13,11 @@
  */
 
 import type { DatabaseSync } from "node:sqlite";
+import { mergeDeviceSettings } from "../../src/lib/validators.ts";
 import type { RuntimeConfig } from "../config.ts";
 import { getMeta, getSetting, setSetting } from "../db/index.ts";
 import { HttpError, type RouteResult } from "../http.ts";
 import {
-  CLOUD_OWNED,
   DEVICE_GROUPS,
   SETTINGS_SCHEMA_VERSION,
   deviceSettingsSchema,
@@ -97,19 +97,7 @@ export function activeSettings(db: DatabaseSync, config: RuntimeConfig): Setting
  * apa adanya meski device mengirim grup yang sama.
  */
 export function mergeSettings(cloud: CloudSettings, device: SettingsShape): CloudSettings {
-  const out: CloudSettings = { ...cloud };
-  for (const group of DEVICE_GROUPS) {
-    const incoming = device[group];
-    if (!incoming) continue;
-    const merged: Record<string, unknown> = { ...(cloud[group] ?? {}) };
-    for (const [key, value] of Object.entries(incoming)) {
-      if (value === undefined) continue;
-      if (CLOUD_OWNED[group].includes(key)) continue;
-      merged[key] = value;
-    }
-    out[group] = merged;
-  }
-  return out;
+  return mergeDeviceSettings(cloud, device);
 }
 
 /**

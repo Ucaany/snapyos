@@ -402,6 +402,105 @@ export const sessionSettingsSchema = z
     { message: "Peringatan harus lebih singkat dari durasi sesi", path: ["warning_seconds"] }
   );
 
+// ---------------------------------------------------------------------------
+// Kepemilikan setelan: cloud (uang) vs device (mesin).
+//
+// Satu tabel dipakai tiga pihak — `PUT /v1/settings` di runtime, `PATCH
+// /api/v1/public/devices/settings` di cloud, dan kiosk — supaya aturannya tidak
+// pernah berbeda pendapat. Field cloud DITOLAK (403), bukan dibuang diam-diam.
+// ---------------------------------------------------------------------------
+
+export const DEVICE_SETTING_GROUPS = [
+  "camera_settings",
+  "print_settings",
+  "session_settings",
+] as const;
+export type DeviceSettingGroup = (typeof DEVICE_SETTING_GROUPS)[number];
+
+/** Field milik cloud yang berada di dalam grup milik device. */
+export const CLOUD_OWNED_SETTING_FIELDS: Record<DeviceSettingGroup, readonly string[]> = {
+  camera_settings: [],
+  // copies = biaya bahan, layout = bentuk output pelanggan.
+  print_settings: ["copies", "layout"],
+  session_settings: [],
+};
+
+/** Setelan yang boleh ditulis device. `strict()`: kunci asing ditolak. */
+export const deviceSettingsSchema = z
+  .object({
+    camera_settings: cameraSettingsSchema.optional(),
+    print_settings: printSettingsSchema.optional(),
+    session_settings: sessionSettingsSchema.optional(),
+  })
+  .strict();
+
+export type DeviceSettingsInput = z.infer<typeof deviceSettingsSchema>;
+
+const DEVICE_SETTING_SHAPES: Record<DeviceSettingGroup, Record<string, unknown>> = {
+  camera_settings: cameraSettingsSchema.shape,
+  print_settings: printSettingsSchema.shape,
+  session_settings: sessionSettingsSchema.shape,
+};
+
+export function isDeviceSettingGroup(key: string): key is DeviceSettingGroup {
+  return (DEVICE_SETTING_GROUPS as readonly string[]).includes(key);
+}
+
+/** Nama field yang boleh ditulis device pada satu grup. */
+export function deviceSettingFields(group: DeviceSettingGroup): string[] {
+  return Object.keys(DEVICE_SETTING_SHAPES[group]).filter(
+    (key) => !CLOUD_OWNED_SETTING_FIELDS[group].includes(key)
+  );
+}
+
+/**
+ * Field di payload yang BUKAN milik device. Kosong berarti payload boleh
+ * ditulis; selain itu pemanggil menjawab 403 `FIELD_NOT_DEVICE_OWNED`.
+ */
+export function foreignSettingKeys(payload: Record<string, unknown>): string[] {
+  const foreign: string[] = [];
+  for (const [key, value] of Object.entries(payload)) {
+    if (!isDeviceSettingGroup(key)) {
+      foreign.push(key);
+      continue;
+    }
+    if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+    const allowed = deviceSettingFields(key);
+    for (const nested of Object.keys(value)) {
+      if (!allowed.includes(nested)) foreign.push(`${key}.${nested}`);
+    }
+  }
+  return foreign;
+}
+
+/**
+ * Salin field device di atas nilai cloud, per-key. Field cloud (`copies`,
+ * `layout`, `payment_mode`, …) dan kunci yang tidak dikirim tetap apa adanya —
+ * laporan device yang hanya tahu `paper_size` tidak boleh menghapus `copies`.
+ */
+export function mergeDeviceSettings<T extends object>(
+  cloud: T,
+  device: DeviceSettingsInput | Partial<Record<DeviceSettingGroup, Record<string, unknown>>>
+): T {
+  const out = { ...cloud } as Record<string, unknown>;
+  for (const group of DEVICE_SETTING_GROUPS) {
+    const incoming = device[group];
+    if (!incoming) continue;
+    const base = out[group];
+    const merged: Record<string, unknown> =
+      base && typeof base === "object" && !Array.isArray(base)
+        ? { ...(base as Record<string, unknown>) }
+        : {};
+    for (const [key, value] of Object.entries(incoming)) {
+      if (value === undefined) continue;
+      if (CLOUD_OWNED_SETTING_FIELDS[group].includes(key)) continue;
+      merged[key] = value;
+    }
+    out[group] = merged;
+  }
+  return out as T;
+}
+
 export const outletCreateSchema = z.object({
   name: z
     .string()
@@ -932,6 +1031,42 @@ export const deviceReportSchema = z.object({
 });
 
 /**
+ * Tulis balik setelan device ke cloud — `PATCH /api/v1/public/devices/settings`.
+ *
+ * Payload = setelan device + `device_token`. Field cloud (mis.
+ * `print_settings.copies`) tidak ditolak di sini karena bentuk schema-nya
+ * ketat: route memeriksa `foreignSettingKeys` lebih dulu agar pesan errornya
+ * menyebut field mana yang bukan milik device.
+ */
+export const deviceSettingsPatchSchema = z.object({
+  device_token: z.string().trim().min(32).max(128),
+  settings: deviceSettingsSchema,
+});
+
+export type DeviceSettingsPatchInput = z.infer<typeof deviceSettingsPatchSchema>;
+
+/**
+ * Waktu jual sesi menurut booth, untuk sync worker runtime lokal.
+ *
+ * Tanpa ini laporan harian owner mencatat transaksi pada waktu sync, bukan
+ * waktu pelanggan benar-benar difoto — booth yang offline semalam menumpuk
+ * semua penjualannya di hari reconnect. Masa depan ditolak (jam booth salah)
+ * dan masa lalu >24 jam ditolak (bukan sesi yang masih relevan).
+ */
+export const SESSION_CLIENT_CREATED_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+export const sessionClientCreatedAtSchema = z.iso
+  .datetime({ offset: true, error: "client_created_at harus ISO 8601" })
+  .refine(
+    (value) => new Date(value).getTime() <= Date.now(),
+    "client_created_at tidak boleh di masa depan"
+  )
+  .refine(
+    (value) => Date.now() - new Date(value).getTime() <= SESSION_CLIENT_CREATED_MAX_AGE_MS,
+    "client_created_at maksimal 24 jam lampau"
+  );
+
+/**
  * Buat sesi kiosk — docs/08 §8.14.
  * v2 pay-first: syarat checkout_session paid; saat DEV_SKIP_PAYMENT aktif,
  * `package_id` dipakai untuk membuat checkout paid sintetik (docs/12 Phase 4).
@@ -941,6 +1076,8 @@ export const sessionCreateSchema = z
     checkout_session_id: uuid.optional(),
     package_id: uuid.optional(),
     device_token: z.string().trim().min(32).max(128),
+    /** Waktu sesi dibuat di booth (sync offline). Diabaikan tanpa `package_id`. */
+    client_created_at: sessionClientCreatedAtSchema.optional(),
   })
   .refine((v) => v.checkout_session_id || v.package_id, {
     message: "checkout_session_id atau package_id wajib diisi",

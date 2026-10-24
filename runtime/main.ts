@@ -34,6 +34,7 @@ import {
   handleSettingsRoute,
   printDefaults,
 } from "./settings/index.ts";
+import { startSyncWorker } from "./sync/worker.ts";
 
 const VERSION: string = (() => {
   try {
@@ -266,7 +267,14 @@ async function main(): Promise<void> {
     );
   });
 
-  const shutdown = () => server.close(() => process.exit(0));
+  // Sync berjalan di latar belakang: kamera dan printer tidak boleh menunggu
+  // jaringan. Tanpa cloud/token worker tidak start dan sesi tetap lokal.
+  const stopSync = startSyncWorker({ db, config });
+
+  const shutdown = () => {
+    stopSync();
+    server.close(() => process.exit(0));
+  };
   process.once("SIGTERM", shutdown);
   process.once("SIGINT", shutdown);
 }
