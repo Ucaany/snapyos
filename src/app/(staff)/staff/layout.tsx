@@ -1,8 +1,13 @@
 import { redirect } from "next/navigation";
 
 import { StaffSidebar } from "@/components/staff/StaffSidebar";
+import { STAFF_NAV } from "@/components/staff/nav";
 import { StaffTopbar } from "@/components/staff/StaffTopbar";
 import { CashPaymentNotifier } from "@/components/dashboard/CashPaymentNotifier";
+import { EfferdShell } from "@/components/efferd/shell";
+import { toEfferdNav } from "@/components/efferd/nav";
+import { DashboardThemeProvider } from "@/components/theme/dashboard-theme-context";
+import { getDashboardTheme } from "@/lib/dashboard-theme-server";
 import { destinationFor } from "@/lib/destination";
 import { can } from "@/lib/rbac";
 import { getActiveBusiness, getUserMemberships, requireUser } from "@/lib/tenant";
@@ -16,8 +21,7 @@ import { hasFeature } from "@/server/feature-gate";
  * - Owner/manager di bisnis manapun → /dashboard (shell finansial).
  *
  * Shell brutalist dengan sidebar ramping (5 modul read-only: overview, booth,
- * outlet, package, template). Topbar tanpa workspace switcher (staff cukup 1
- * bisnis aktif).
+ * outlet, package, template). Tema modern mengikuti cookie yang sama.
  */
 export default async function StaffLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
@@ -35,8 +39,29 @@ export default async function StaffLayout({ children }: { children: React.ReactN
     (await hasFeature(active.business.id, "cash_payment"))
   );
 
+  const theme = await getDashboardTheme();
+  if (theme === "modern") {
+    return (
+      <div className="theme-modern min-h-[100dvh]">
+        <DashboardThemeProvider theme="modern">
+        <EfferdShell
+          navGroups={toEfferdNav([{ label: "Operasional", items: STAFF_NAV }])}
+          rootHref="/staff"
+          homeHref="/staff"
+          user={{ name: user.name, email: user.email }}
+          settingsHref="/staff"
+        >
+          {children}
+        </EfferdShell>
+        {showCashConfirm && active && <CashPaymentNotifier businessId={active.business.id} />}
+        </DashboardThemeProvider>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-[100dvh] flex-col">
+      <DashboardThemeProvider theme="brutalist">
       <StaffTopbar
         user={{ name: user.name, email: user.email }}
         businessName={active?.business.name ?? null}
@@ -46,6 +71,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
         <main className="min-w-0">{children}</main>
       </div>
       {showCashConfirm && active && <CashPaymentNotifier businessId={active.business.id} />}
+      </DashboardThemeProvider>
     </div>
   );
 }

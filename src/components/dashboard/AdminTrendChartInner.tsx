@@ -8,6 +8,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { useChartStyle } from "@/components/ui/chart-style";
 
 const chartConfig = {
   txCount: { label: "Transaksi", color: "var(--chart-1)" },
@@ -24,25 +25,27 @@ export function AdminTrendChartInner({
 }: {
   data: { date: string; txCount: number; sessionCount: number }[];
 }) {
+  const chart = useChartStyle();
+
   return (
     <ChartContainer config={chartConfig} className="aspect-auto h-[260px] w-full">
       <LineChart accessibilityLayer data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-        <CartesianGrid vertical={false} stroke="#111111" strokeOpacity={0.15} />
+        <CartesianGrid vertical={false} stroke={chart.gridStroke} strokeOpacity={chart.gridOpacity} />
         <XAxis
           dataKey="date"
           tickLine={false}
-          axisLine={{ stroke: "#111111", strokeWidth: 2 }}
+          axisLine={chart.axisLine}
           tickMargin={8}
           minTickGap={24}
           tickFormatter={tickDate}
-          tick={{ fontSize: 11, fontFamily: "var(--font-mono)" }}
+          tick={{ fontSize: 11, fontFamily: chart.tickFontFamily }}
         />
         <YAxis
           width={40}
           tickLine={false}
           axisLine={false}
           allowDecimals={false}
-          tick={{ fontSize: 11, fontFamily: "var(--font-mono)" }}
+          tick={{ fontSize: 11, fontFamily: chart.tickFontFamily }}
         />
         <ChartTooltip
           cursor={{ stroke: "#111111", strokeOpacity: 0.2 }}
@@ -52,7 +55,7 @@ export function AdminTrendChartInner({
           dataKey="txCount"
           type="monotone"
           stroke="var(--color-txCount)"
-          strokeWidth={2}
+          strokeWidth={chart.barStrokeWidth}
           dot={false}
           activeDot={{ r: 3 }}
         />
@@ -60,7 +63,7 @@ export function AdminTrendChartInner({
           dataKey="sessionCount"
           type="monotone"
           stroke="var(--color-sessionCount)"
-          strokeWidth={2}
+          strokeWidth={chart.barStrokeWidth}
           dot={false}
           activeDot={{ r: 3 }}
         />

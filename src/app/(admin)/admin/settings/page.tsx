@@ -3,6 +3,8 @@ import { AdminActionForm } from "@/components/admin/AdminActionForm";
 import { BrutalistCheckbox } from "@/components/admin/BrutalistCheckbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ThemeSwitcher } from "@/components/theme/ThemeSwitcher";
+import { getDashboardTheme } from "@/lib/dashboard-theme-server";
 import { updateSettingsAction } from "@/server/admin-actions";
 import { getPlatformSettings } from "@/server/admin";
 
@@ -188,6 +190,16 @@ export default async function AdminSettingsPage() {
               defaultChecked={s.gateway_tripay_enabled !== false}
             />
           </AdminActionForm>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Tampilan</CardTitle>
+          <CardDescription>Tema shell admin untuk browser ini.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ThemeSwitcher current={await getDashboardTheme()} />
         </CardContent>
       </Card>
     </div>

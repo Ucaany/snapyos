@@ -1,0 +1,258 @@
+/*
+ * Tema "modern" — app shell @efferd/app-shell-3 (shadcn base-nova, palet neutral).
+ *
+ * Prinsip: halaman tetap satu salinan markup (24 page.tsx tidak diduplikasi),
+ * lalu kelas tanda tangan brutalis dinetralkan di dalam scope `.theme-modern`
+ * agar hasil akhirnya = tampilan default shadcn: border 1px `--border`,
+ * radius 0.625rem, shadow-sm, font sans, tanpa uppercase/mono, chart abu.
+ *
+ * Token = palet neutral v4 shadcn apa adanya (oklch).
+ * `!important` dipakai pada normalisasi karena kelas brutalis ditulis langsung
+ * di markup halaman; tanpa itu utility Tailwind menang pada beberapa properti.
+ */
+
+.theme-modern {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+
+  /* Palet SnapyOS dipetakan ke netral template, supaya utility bg-bg /
+     text-ink / bg-accent / slot-* ikut bahasa visual yang sama. */
+  --color-bg: oklch(1 0 0);
+  --color-surface: oklch(1 0 0);
+  --color-ink: oklch(0.145 0 0);
+  --color-accent: oklch(0.97 0 0);
+  --color-accent-2: oklch(0.97 0 0);
+  --color-accent-3: oklch(0.97 0 0);
+  --color-accent-4: oklch(0.97 0 0);
+  --color-accent-3-strong: oklch(0.439 0 0);
+  --color-slot-1: oklch(0.87 0 0);
+  --color-slot-2: oklch(0.556 0 0);
+  --color-slot-3: oklch(0.439 0 0);
+  --color-slot-4: oklch(0.371 0 0);
+  --color-slot-5: oklch(0.269 0 0);
+  --color-slot-6: oklch(0.708 0 0);
+  --color-slot-7: oklch(0.922 0 0);
+  --color-slot-8: oklch(0.205 0 0);
+
+  /* Radius template. Skala dideklarasikan ulang: nilai di :root sudah
+     ter-resolve dengan --radius 0px sehingga mewarisi 0, bukan menghitung. */
+  --radius: 0.625rem;
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* Template tidak memakai hard shadow; hanya shadow-sm bawaan shadcn. */
+  --shadow-hard: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-hard-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+
+  /* Tipografi template: satu sans stack, tanpa Archivo/IBM Plex/Space Mono. */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-body: var(--font-sans);
+  --font-display: var(--font-sans);
+  --font-mono: var(--font-sans);
+
+  font-family: var(--font-sans);
+  color: var(--foreground);
+  background: var(--background);
+}
+
+/* Grain global hanya milik estetika brutalis. */
+body:has(.theme-modern)::after {
+  opacity: 0;
+}
+
+/* --- normalisasi utilitas brutalis ------------------------------------ */
+
+/* Border tebal → 1px border template. */
+.theme-modern [class*="border-ink"] {
+  border-color: var(--border) !important;
+}
+.theme-modern [class~="border-2"],
+.theme-modern [class~="border-b-2"],
+.theme-modern [class~="border-t-2"],
+.theme-modern [class~="border-r-2"],
+.theme-modern [class~="border-l-2"] {
+  border-width: 1px !important;
+}
+.theme-modern [class~="border-destructive"] {
+  border-color: var(--destructive) !important;
+}
+
+/* Hard offset shadow → shadow-sm. */
+.theme-modern [class*="0_0_#111111"],
+.theme-modern [class*="shadow-hard"] {
+  box-shadow: var(--shadow-hard) !important;
+}
+
+/* Radius 0 → radius template. */
+.theme-modern [class~="rounded-none"] {
+  border-radius: var(--radius-sm) !important;
+}
+.theme-modern [data-slot="card"],
+.theme-modern [data-slot="metric-card"],
+.theme-modern [data-slot="dialog-content"],
+.theme-modern [data-slot="popover-content"],
+.theme-modern [data-slot="dropdown-menu-content"] {
+  border-radius: var(--radius-lg) !important;
+}
+
+/* Mono + uppercase + tracking lebar → tipografi sans template. */
+.theme-modern [class~="font-mono"],
+.theme-modern [class~="font-display"],
+.theme-modern [class~="font-heading"] {
+  font-family: var(--font-sans) !important;
+}
+.theme-modern [class~="uppercase"] {
+  text-transform: none !important;
+}
+.theme-modern [class*="tracking-["] {
+  letter-spacing: normal !important;
+}
+
+/* Grid "blueprint" brutalis: `gap-[2px] bg-ink` dengan sel `bg-surface`
+   dipakai sebagai garis pemisah tebal. Template memakai 1px border. */
+.theme-modern [class*="gap-[2px]"][class*="bg-ink"] {
+  background: var(--border) !important;
+  gap: 1px !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: none !important;
+}
+.theme-modern [class*="gap-[2px]"][class*="bg-ink"] > * {
+  background: var(--card) !important;
+}
+
+/* Header tabel brutalis memakai bar solid ink. */
+.theme-modern thead tr,
+.theme-modern [class*="bg-ink"][class*="text-bg"] {
+  background: var(--muted) !important;
+  color: var(--muted-foreground) !important;
+}
+.theme-modern thead th {
+  font-weight: 500 !important;
+  color: var(--muted-foreground) !important;
+}
+
+/* Histogram CSS brutalis: bar bg-ink/70 dan bg-ink/10 → skala chart abu. */
+.theme-modern [class*="bg-ink/70"] {
+  background: var(--chart-2) !important;
+}
+.theme-modern [class*="bg-ink/10"] {
+  background: var(--chart-1) !important;
+}
+.theme-modern [class~="bg-ink"]:not(thead tr) {
+  background: var(--primary) !important;
+}
+
+/* Tab/pill aktif brutalis: <Link> dengan bg-accent + border ink. Template
+   menandai tab aktif dengan latar primary dan teks primary-foreground. */
+.theme-modern a[class~="bg-accent"] {
+  background: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+  border-color: var(--primary) !important;
+  font-weight: 500 !important;
+}
+
+/* Badge status brutalis (bg-accent-2/3/4 solid) → badge secondary template. */
+.theme-modern [class*="bg-accent-2"],
+.theme-modern [class*="bg-accent-3"],
+.theme-modern [class*="bg-accent-4"] {
+  background: var(--secondary) !important;
+  color: var(--secondary-foreground) !important;
+}
+
+/* --- chart -------------------------------------------------------------
+   Komponen chart brutalis meng-hardcode stroke "#111111", strokeWidth 2,
+   radius 0, dan cursor gelap. Nilai itu atribut presentasi SVG sehingga CSS
+   menang tanpa mengubah komponen (tema brutalis tetap utuh). */
+
+.theme-modern .recharts-cartesian-grid line {
+  stroke: var(--border);
+}
+.theme-modern .recharts-cartesian-axis-line {
+  stroke: var(--border);
+}
+.theme-modern .recharts-cartesian-axis-tick-line {
+  stroke: transparent;
+}
+.theme-modern .recharts-cartesian-axis-tick-value {
+  fill: var(--muted-foreground);
+  font-family: var(--font-sans);
+}
+.theme-modern .recharts-bar-rectangle path,
+.theme-modern .recharts-rectangle {
+  stroke: none;
+  clip-path: inset(0 round 4px);
+}
+.theme-modern .recharts-tooltip-cursor {
+  fill: var(--muted);
+  fill-opacity: 0.6;
+}
+
+/* --- portal ------------------------------------------------------------
+   Popup (dropdown/tooltip/dialog/popover) dirender ke <body>, di luar
+   .theme-modern, jadi token tema dipasang ulang pada elemen popup-nya. */
+body:has(.theme-modern)
+  :is(
+    [data-slot="dropdown-menu-content"],
+    [data-slot="tooltip-content"],
+    [data-slot="dialog-content"],
+    [data-slot="popover-content"]
+  ) {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --radius: 0.625rem;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: var(--font-sans);
+  border-color: var(--border);
+  color: var(--foreground);
+}

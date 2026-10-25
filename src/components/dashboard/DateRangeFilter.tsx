@@ -5,10 +5,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { CalendarRange } from "lucide-react";
 import type { DateRange } from "react-day-picker";
 
+import { useIsModernTheme } from "@/components/theme/dashboard-theme-context";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { shiftISO, todayISO } from "@/lib/dashboard-math";
+import { cn } from "@/lib/utils";
 
 const PRESETS: { label: string; days: number }[] = [
   { label: "7 HARI", days: 7 },
@@ -55,6 +57,7 @@ export function DateRangeFilter({
   /** Route tujuan filter (default dashboard; analytics/finance dst.). */
   basePath?: string;
 }) {
+  const modern = useIsModernTheme();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
@@ -118,9 +121,9 @@ export function DateRangeFilter({
   const label = `${dateFmt.format(range.from!)} → ${dateFmt.format(range.to!)}`;
 
   return (
-    <div className="flex w-full flex-col gap-3 border-2 border-ink bg-surface p-3 shadow-[4px_4px_0_0_#111111] sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+    <div className={cn("flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center", modern ? "rounded-xl bg-card p-3 ring-1 ring-foreground/10" : "border-2 border-ink bg-surface p-3 shadow-[4px_4px_0_0_#111111]")}>
       <div className="flex min-w-0 items-center gap-3">
-        <span className="flex shrink-0 items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+        <span className={cn("flex shrink-0 items-center gap-2 text-muted-foreground", modern ? "text-xs font-medium" : "font-mono text-[11px] font-bold uppercase tracking-[0.1em]")}>
           <CalendarRange aria-hidden className="size-4" />
           Periode
         </span>
@@ -182,7 +185,7 @@ export function DateRangeFilter({
             type="button"
             size="sm"
             variant={days === p.days ? "default" : "outline"}
-            className="min-h-11 sm:min-h-9"
+            className={modern ? undefined : "min-h-11 sm:min-h-9"}
             onClick={() => applyPreset(p.days)}
           >
             {p.label}

@@ -1,6 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import { Receipt } from "lucide-react";
 
+import { StatStrip } from "@/components/dashboard/StatStrip";
+import { useIsModernTheme } from "@/components/theme/dashboard-theme-context";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatIDR } from "@/lib/dashboard-math";
 import type { TxInsights } from "@/lib/tx-insights";
@@ -36,6 +42,7 @@ export function TxInsightsPanel({
   insights: TxInsights;
   rangeLabel: string;
 }) {
+  const modern = useIsModernTheme();
   const { statusCounts, hourly, peakHour, peakCount, outlets, net } = insights;
   const maxHourly = Math.max(1, ...hourly);
 
@@ -65,6 +72,101 @@ export function TxInsightsPanel({
     );
   }
 
+  if (modern) {
+    return (
+      <section aria-labelledby="tx-insights" className="flex flex-col gap-4">
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <h2 id="tx-insights" className="font-medium text-foreground">
+            Insight transaksi
+          </h2>
+          <span>
+            {rangeLabel} · NET {formatIDR(net)}
+          </span>
+        </div>
+
+        <StatStrip
+          label="Ringkasan status transaksi"
+          columns={6}
+          items={STATUS_CELLS.map((cell) => ({
+            label: cell.label,
+            value: String(statusCounts[cell.key]).padStart(2, "0"),
+          }))}
+        />
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium">Jam ramai</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                {peakHour !== null
+                  ? `Puncak ${hourLabel(peakHour)}:00–${hourLabel(peakHour)}:59 · ${peakCount} trx`
+                  : "Tanpa puncak"}
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div
+                className="grid h-28 grid-cols-12 items-end gap-1 md:grid-cols-[repeat(24,minmax(0,1fr))]"
+                role="img"
+                aria-label={`Histogram transaksi per jam, puncak ${peakHour !== null ? hourLabel(peakHour) + ":00" : "-"} dengan ${peakCount} transaksi`}
+              >
+                {hourly.map((count, h) => (
+                  <div
+                    key={h}
+                    className={h === peakHour ? "bg-chart-2" : count > 0 ? "bg-chart-3" : "bg-muted"}
+                    style={{ height: `${Math.max(2, Math.round((count / maxHourly) * 100))}%` }}
+                    title={`${hourLabel(h)}:00: ${count} trx`}
+                  />
+                ))}
+              </div>
+              <div className="mt-2 flex justify-between text-[10px] text-muted-foreground">
+                <span>00</span>
+                <span>06</span>
+                <span>12</span>
+                <span>18</span>
+                <span>23</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium">Outlet teramai</CardTitle>
+              <p className="text-xs text-muted-foreground">{outlets.length} outlet</p>
+            </CardHeader>
+            <CardContent>
+              {outlets.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Tidak ada outlet</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Outlet</TableHead>
+                      <TableHead className="text-right">Trx</TableHead>
+                      <TableHead className="text-right">Gagal</TableHead>
+                      <TableHead className="text-right">Net</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {outlets.map((o) => (
+                      <TableRow key={o.outletId}>
+                        <TableCell className="font-medium">{o.name}</TableCell>
+                        <TableCell className="text-right tabular-nums">{o.count}</TableCell>
+                        <TableCell className="text-right tabular-nums text-destructive">
+                          {o.failedCount > 0 ? o.failedCount : "-"}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">{formatIDR(o.net)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section aria-labelledby="tx-insights" className="flex flex-col gap-4">
       <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
@@ -76,21 +178,15 @@ export function TxInsightsPanel({
       </div>
 
       {/* Bar 1: strip status SEMUA transaksi (grid tipis blueprint). */}
-      <dl
-        className="grid grid-cols-2 gap-[2px] border-2 border-ink bg-ink shadow-[4px_4px_0_0_#111111] sm:grid-cols-3 lg:grid-cols-6"
-        aria-label="Ringkasan status transaksi"
-      >
-        {STATUS_CELLS.map((cell) => (
-          <div key={cell.key} className="flex flex-col gap-1 bg-surface p-4">
-            <dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-              {cell.label}
-            </dt>
-            <dd className={`font-mono text-2xl font-bold leading-none md:text-3xl ${cell.tone}`}>
-              {String(statusCounts[cell.key]).padStart(2, "0")}
-            </dd>
-          </div>
-        ))}
-      </dl>
+      <StatStrip
+        label="Ringkasan status transaksi"
+        columns={6}
+        items={STATUS_CELLS.map((cell) => ({
+          label: cell.label,
+          value: String(statusCounts[cell.key]).padStart(2, "0"),
+          tone: cell.tone,
+        }))}
+      />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Bar 2: jam ramai: histogram 24 slot CSS. */}

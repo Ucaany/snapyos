@@ -2,7 +2,9 @@
 
 > Semantic design system (tokens, typography, components, motion, bans). Source of truth pendamping `docs/11-design-system.md` & `docs/13-skill-anti-slop.md`. PRD SnapyOS menang atas skill mana pun bila konflik.
 
-> **DEFAULT AESTHETIC = Neo-Brutalism** (`industrial-brutalist-ui`) — **satu-satunya** bahasa visual untuk **seluruh** UI SnapyOS: marketing, auth, kiosk customer, result page, dashboard owner/admin/staff, dan semua API response. Tidak ada pengecualian. Dashboard-01 dual-shell pernah ada, **dihapus 2026-08-30** (v1.4) — satu dashboard brutalist saja. `DashboardThemeSwitcher` / `.snapyos-d01` sudah di-remove; `docs/dashboard-redesign.md` adalah catatan historis. Skill lain hanya menyumbang perilaku interaksi, bukan tampilan.
+> **DEFAULT AESTHETIC = Neo-Brutalism** (`industrial-brutalist-ui`) — bahasa visual **seluruh** UI SnapyOS: marketing, auth, kiosk customer, result page, dashboard owner/admin/staff, dan semua API response. Skill lain hanya menyumbang perilaku interaksi, bukan tampilan.
+>
+> **Satu pengecualian (2026-10-25):** shell dashboard owner/admin/staff punya tema kedua opsional, `modern` (`@efferd/app-shell-3` + token zinc), dipilih per-browser lewat cookie `snapyos_dashboard_theme` di halaman Pengaturan. Brutalis tetap default dan satu-satunya tema untuk marketing, auth, kiosk, POS, dan result page. Isi halaman dashboard tidak diduplikasi: scope `.theme-modern` (`src/styles/theme-modern.css`) menetralkan border tebal/hard shadow/radius 0/uppercase. Lihat `docs/dashboard-redesign.md`.
 
 ## 1. Visual Theme & Atmosphere
 

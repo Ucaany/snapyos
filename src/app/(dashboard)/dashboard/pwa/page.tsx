@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { ArrowRight, MonitorSmartphone, Smartphone, Tablet } from "lucide-react";
 
 import { PageHeader } from "@/components/ui/page-header";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { can } from "@/lib/rbac";
 import { getActiveBusiness, requireUser } from "@/lib/tenant";
 import { hasFeature } from "@/server/feature-gate";
