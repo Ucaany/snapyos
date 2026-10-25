@@ -24,6 +24,7 @@ Source of truth: `src/`, `db/schema.sql`, `README.md`
 | Template builder                        | Active                              | `src/components/dashboard/TemplateBuilder.tsx`             |
 | Storage quota                           | Active when plan feature is enabled | `src/server/storage-usage.ts` (jumlah kedua provider)      |
 | Dual storage (R2 write + Supabase read) | Active — Fase 3                     | `src/server/storage` (`getWriteStorage`, `resolveStorage`) |
+| Aplikasi booth (EXE Windows)            | Partial — kode ada, `.exe`/`.msi` NOT TESTED | `src-tauri/` (Tauri v2, jendela kiosk + sidecar runtime)   |
 
 ## Partial or constrained
 
@@ -223,7 +224,7 @@ bug implementasi: jendela freshness webhook (24 jam → 5 menit) dan
 | Dashboard-01 dual shell                             | Single Neo-Brutalist dashboard.                                                                                           |
 | Owner CRUD REST routes                              | Server actions.                                                                                                           |
 | Supabase Realtime                                   | Payment status polling every 3 seconds.                                                                                   |
-| Hardware agent terpisah / Tauri kiosk              | Diganti bridge lokal Node (`scripts/photobooth-bridge.mjs`) yang dipanggil kiosk PWA; direktori `hardware-agent/`, `tauri-kiosk/`, `docs/hardware/` dihapus. Kamera DSLR (gphoto2) dan cetak CUPS **aktif** lewat bridge ini — lihat `docs/photobooth-bridge.md`. |
+| Hardware agent terpisah                         | Diganti bridge lokal Node (`scripts/photobooth-bridge.mjs`) yang dipanggil kiosk PWA; direktori `hardware-agent/`, `tauri-kiosk/`, `docs/hardware/` dihapus. Kamera DSLR (gphoto2) dan cetak CUPS **aktif** lewat bridge ini — lihat `docs/photobooth-bridge.md`. |
 
 ## Reading rule
 

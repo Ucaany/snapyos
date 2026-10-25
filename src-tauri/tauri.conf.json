@@ -1,0 +1,68 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "SNAPY OS Kiosk",
+  "version": "0.1.0",
+  "identifier": "id.snapyos.kiosk",
+  "build": {
+    "frontendDist": "https://test.snapyos.biz.id",
+    "beforeBuildCommand": {
+      "cwd": "..",
+      "script": "node scripts/build-kiosk-runtime.mjs"
+    },
+    "beforeDevCommand": {
+      "cwd": "..",
+      "script": "node scripts/build-kiosk-runtime.mjs"
+    }
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "SNAPY OS",
+        "url": "https://test.snapyos.biz.id",
+        "width": 1920,
+        "height": 1080,
+        "minWidth": 1024,
+        "minHeight": 768,
+        "resizable": false,
+        "fullscreen": true,
+        "decorations": false,
+        "visible": false,
+        "closable": true,
+        "devtools": false,
+        "create": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "msi",
+      "nsis"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.png",
+      "icons/icon.ico"
+    ],
+    "resources": {
+      "runtime-dist": "runtime"
+    },
+    "windows": {
+      "webviewInstallMode": {
+        "type": "embedBootstrapper"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDE3NTVCRTg5NTcyMTVGN0MKUldSOFh5RlhpYjVWRjA0Zi9JR3BiZmpycDFIMUtLaXVHRmdHMktYbnFJQzRpK2FZRU9NTHZGMEgK",
+      "endpoints": []
+    }
+  }
+}

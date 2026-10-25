@@ -37,6 +37,31 @@ export function cameraErrorKind(name?: string | null): CameraErrorKind | null {
     : null;
 }
 
+/**
+ * Pesan + label tombol untuk satu kegagalan kamera.
+ *
+ * Di EXE kiosk (WebView2) izin kamera bukan dialog browser yang bisa diulang
+ * dari halaman: Windows menyimpannya per aplikasi. Tanpa kalimat yang menyebut
+ * Settings, petugas hanya melihat layar hitam dan menekan "AKTIFKAN KAMERA"
+ * berkali-kali. Pesannya karena itu menyebut jalur yang benar; tombolnya tetap
+ * ada untuk kasus izin sudah diperbaiki di Settings.
+ */
+export function cameraErrorCopy(
+  name: string | null | undefined,
+  options: { exe?: boolean } = {}
+): { message: string; action: string } {
+  const kind = cameraErrorKind(name);
+  if (options.exe && (kind === "NotAllowedError" || kind === "NotFoundError")) {
+    return {
+      message:
+        "Izin kamera ditolak. Buka Windows Settings → Privacy → Camera, izinkan aplikasi ini, lalu coba lagi.",
+      action: "COBA LAGI",
+    };
+  }
+  if (kind) return CAMERA_ERRORS[kind];
+  return { message: "Gagal membuka kamera. Coba lagi.", action: "COBA LAGI" };
+}
+
 /** Label resolusi untuk CameraStatusBar (docs/05 §5.5.1 langkah 5). */
 export function resolutionLabel(width: number): "FULL HD" | "HD" | "LOW" {
   if (width >= 1920) return "FULL HD";

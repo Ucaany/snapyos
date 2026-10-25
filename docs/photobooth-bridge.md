@@ -113,6 +113,57 @@ field cloud dijawab `403 FIELD_NOT_DEVICE_OWNED`, dan cloud menggabungkan
 per-key sehingga `print_settings.copies` tidak hilang saat booth melaporkan
 `paper_size`.
 
+## Aplikasi booth (EXE Windows)
+
+`src-tauri/` membungkus halaman kiosk yang sama ke satu EXE Tauri v2: jendela
+fullscreen memuat `SNAPYOS_KIOSK_URL`, dan runtime lokal dijalankan sebagai
+sidecar Node. Tidak ada komponen kiosk yang ditulis ulang — UI, `ui.tsx`, dan
+semua alur tetap milik halaman web.
+
+| Berkas | Isi |
+|---|---|
+| `src-tauri/tauri.conf.json` | jendela fullscreen, `resizable: false`, `minWidth`/`minHeight` 1024×768, updater |
+| `src-tauri/src/main.rs` | izin kamera, ukuran jendela per orientasi, sidecar hidup-mati |
+| `src-tauri/capabilities/default.json` | tanpa izin invoke; halaman kiosk tidak memanggil `invoke` |
+| `src-tauri/tauri.windows.conf.json` | `externalBin` sidecar (hanya Windows, supaya `cargo check` di macOS tidak gagal) |
+| `scripts/build-kiosk-runtime.mjs` | bundel `runtime/` jadi `src-tauri/runtime-dist/` |
+
+`bridge.env` (`%ProgramData%\SNAPYOS\bridge.env`) dibaca EXE lalu diteruskan
+apa adanya ke sidecar. Kunci tambahan khusus EXE:
+
+| Kunci | Isi |
+|---|---|
+| `SNAPYOS_KIOSK_URL` | halaman kiosk booth ini, mis. `https://test.snapyos.biz.id/p/toko-a/booth-1` |
+| `SNAPYOS_KIOSK_ORIENTATION` | `portrait` → jendela 1080×1920; selain itu 1920×1080 |
+| `SNAPYOS_UPDATE_ENDPOINT` | opsional; URL manifest update. Kosong = updater tidak memeriksa apa pun |
+
+Updater memakai `pubkey` di `tauri.conf.json`; private key-nya **tidak** masuk
+repo. Buat sekali dengan `npx tauri signer generate`, simpan private key di
+mesin rilis, dan tanda tangani setiap build dengan
+`TAURI_SIGNING_PRIVATE_KEY` + `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. Manifest
+rilis belum punya rumah, jadi endpoint sengaja tidak ditulis di config.
+
+Tiga hal yang berbeda dari kiosk browser:
+
+1. **Izin kamera.** WebView2 menolak `getUserMedia` tanpa handler eksplisit.
+   `main.rs` mengizinkan `COREWEBVIEW2_PERMISSION_KIND_CAMERA` hanya untuk host
+   halaman kiosk. Kalau Windows tetap menolak (Privacy → Camera), layar setup
+   menampilkan "Izin kamera ditolak. Buka Windows Settings → Privacy → Camera"
+   dengan tombol "COBA LAGI".
+2. **Orientasi.** `screen.orientation.lock()` tidak berefek di Windows desktop.
+   `src/lib/kiosk-shell.ts` mendeteksi EXE (`window.__SNAPYOS_EXE__`, ditulis
+   Rust lewat initialization script) dan melewati pemanggilan lock; orientasi
+   ditegakkan ukuran jendela + layout responsif yang sudah ada.
+3. **Ukuran jendela.** `resizable: false` + min 1024×768 supaya layout tidak
+   pecah bila operator mencoba mengubah ukuran.
+
+WebView2 **tidak punya Web Bluetooth**. Printer thermal Bluetooth hanya ada di
+POS; di EXE cetak lewat spooler Windows / CUPS bridge.
+
+Build `.exe`/`.msi` hanya bisa di Windows: taruh `node.exe` sebagai
+`src-tauri/binaries/node-x86_64-pc-windows-msvc.exe`, lalu `npx tauri build`.
+Statusnya **NOT TESTED** — belum pernah dibangun atau dijalankan di Windows.
+
 ## Keputusan dari upstream
 
 Implementasi ini mengambil pola yang relevan dari

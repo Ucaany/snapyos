@@ -6,12 +6,8 @@ import { PrintTestPanel } from "@/components/print/PrintTestPanel";
 import { resolvePrintMode } from "@/lib/print/print-mode";
 import type { CameraSettings, PrintSettings } from "@/lib/kiosk-types";
 import { Button } from "@/components/ui/button";
-import {
-  CAMERA_ERRORS,
-  cameraErrorKind,
-  resolutionLabel,
-  resolutionWarning,
-} from "@/lib/camera-errors";
+import { cameraErrorCopy, cameraErrorKind, resolutionLabel, resolutionWarning } from "@/lib/camera-errors";
+import { isKioskExe } from "@/lib/kiosk-shell";
 import { getDeviceProfile } from "@/lib/device-profile";
 import {
   cameraBridgeUrl,
@@ -159,15 +155,9 @@ export function SetupWizard({
       setDevices(cams);
       if (!deviceId && cams.length === 1) setSelectedId(cams[0]!.deviceId);
     } catch (e) {
-      const kind = cameraErrorKind(e instanceof DOMException ? e.name : null);
-      if (kind) {
-        setCameraError({
-          message: CAMERA_ERRORS[kind].message,
-          action: CAMERA_ERRORS[kind].action,
-        });
-      } else {
-        setCameraError({ message: "Gagal membuka kamera. Coba lagi.", action: "COBA LAGI" });
-      }
+      const name = e instanceof DOMException ? e.name : null;
+      const kind = cameraErrorKind(name);
+      setCameraError(cameraErrorCopy(name, { exe: isKioskExe() }));
       // Laporkan kegagalan kamera ke server — diagnostik booth (docs/16 §K2).
       await report({ camera: { error: kind ?? "UNKNOWN" } });
     }

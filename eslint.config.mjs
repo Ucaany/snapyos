@@ -48,6 +48,9 @@ const eslintConfig = defineConfig([
     // kantor-agent: skill agent + vendor three.js. Bukan source app; dulu
     // terlintas sehingga `npm run lint` gagal karena 37 error dari bundel pihak ketiga.
     "kantor-agent/**",
+    // Tauri kiosk (Phase 9): crate Rust + hasil build. `target/` dan
+    // `runtime-dist/` dibuat mesin, bukan source — jangan dilintasi ESLint.
+    "src-tauri/**",
     // macOS AppleDouble metadata:
     "**/._*",
   ]),
