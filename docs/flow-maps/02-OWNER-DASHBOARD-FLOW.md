@@ -432,99 +432,48 @@ Delete photobox → deletePhotobox(businessId, photoboxId)
 
 ---
 
-## 7.1 Camera & Printer Settings (per photobox)
+## 7.1 Setelan mesin: milik aplikasi booth
 
-**Page**: `/dashboard/photoboxes/[id]/camera` (atau section di detail photobox)
+**Tidak ada halaman dashboard.** Kamera, printer, dan durasi sesi diatur dari aplikasi booth
+(runtime lokal), bukan dari browser owner. Tidak ada tombol uji kamera jarak jauh: hardware
+hanya bisa diuji di lokasi, dan halaman yang mencoba melakukannya sudah dihapus.
 
-**Server Actions**: `src/server/booth-actions.ts`
+**Yang tetap di dashboard** (form ubah booth):
 
-- `updatePhotoboxSettings` — update camera_settings, print_settings, session_settings
+- `name`, `slug`, `outlet_id`, `status`, `payment_mode`
+- `print_settings.copies` (biaya bahan) dan `print_settings.layout` (bentuk output pelanggan)
 
-**Camera Settings** (`camera_settings` jsonb):
+**Yang ditolak dari sesi pengguna** (`src/lib/photobox-form-fields.ts`): seluruh field kamera,
+printer fisik, sesi, dan `exit_pin`. Bila dikirim lewat form, action mengembalikan error yang
+menyebut field mana, bukan membuangnya diam-diam. Jalur sah satu-satunya adalah device token
+(`PATCH /api/v1/public/devices/settings`).
 
-```json
-{
-  "countdown_seconds": 3,
-  "mirror_preview": true,
-  "fullscreen": true,
-  "facingMode": "environment",
-  "preferred_device_id": null,
-  "capture_width": 1920,
-  "capture_height": 1080,
-  "jpeg_quality": 0.92
-}
-```
+**Panel cermin** (dialog **Perangkat**, `DeviceDialog`):
 
-**Printer Settings** (`print_settings` jsonb):
-
-```json
-{
-  "enabled": true,
-  "paper_size": "4x6",
-  "layout": "single",
-  "orientation": "portrait",
-  "auto_print": true,
-  "copies": 1,
-  "margins_mm": 0
-}
-```
-
-**Session Settings** (`session_settings` jsonb):
-
-```json
-{
-  "timer_seconds": 300,
-  "warning_seconds": 60,
-  "max_retakes": null
-}
-```
-
-**Device Status** (`device_status` jsonb — read-only, diisi device):
-
-```json
-{
-  "camera": { "resolution": "1920x1080", "deviceId": "..." },
-  "printer": { "status": "ok", "last_test_at": "..." },
-  "last_heartbeat": "2026-09-30T10:00:00Z"
-}
-```
-
-**UI**:
-
-- Form settings kamera: countdown, mirror, fullscreen, facingMode, resolusi, kualitas JPEG
-- Form settings printer: enable, ukuran kertas, layout, orientasi, auto-print, copies
-- Form settings session: timer detik, warning detik, max retakes (nullable = unlimited)
-- Device status display (read-only): resolusi kamera, printer status, last heartbeat
-- [ PRINT TEST ] — generate halaman test → cetak di kiosk → owner konfirmasi manual
+- Resolusi kamera dan status uji printer dari `device_status` (laporan setup wizard)
+- Printer aktif (`print_settings.printer_name`) dan ukuran kertas (`paper_size`)
+- "Dilaporkan: <waktu>" dari `last_seen_at`; belum pernah → "Belum pernah dilaporkan"
 - [ ULANGI SETUP ] — revoke device → re-pair → setup wizard jalan lagi
 
-**Data Flow (Update Settings)**:
-
-```
-Owner ubah settings → updatePhotoboxSettings(businessId, photoboxId, { camera_settings, print_settings, session_settings })
-   ↓ composite .eq('id').eq('business_id')
-   ↓ update jsonb columns
-   ↓ revalidate
-```
+Tidak ada tombol "minta booth melapor": belum ada kanal perintah cloud → runtime. Laporan
+datang sendiri lewat heartbeat device.
 
 **Setup Wizard (device-side, tidak ada UI owner)**:
 
 - Berjalan sekali setelah device activation
 - Grant permission kamera → detect kamera → pilih kamera → print test → selesai
 - Customer tidak pernah melihat wizard ini (hidden dari flow customer)
-- Owner hanya melihat hasil di device_status + tombol [ ULANGI SETUP ]
-
-**Validation**: countdown 1–60 detik; timer_seconds >= 60; warning_seconds < timer_seconds; capture resolution valid; paper_size enum; layout enum; orientation enum.
+- Owner hanya melihat hasilnya di panel cermin
 
 **Permission**: OWNER, MANAGER.
 
 **File Locations**:
 
-- Page: `src/app/(dashboard)/dashboard/photoboxes/[id]/camera/page.tsx`
-- Server: `src/server/booth-actions.ts`
-- Components: `src/components/photoboxes/CameraSettings.tsx`, `src/components/photoboxes/PrinterSettings.tsx`, `src/components/photoboxes/SessionSettings.tsx`
+- Server: `src/server/photoboxes.ts`, `src/server/booth-actions.ts`, `src/lib/photobox-form-fields.ts`
+- Components: `src/components/dashboard/PhotoboxForm.tsx`, `src/components/dashboard/DeviceDialog.tsx`
 
-**Acceptance**: owner konfigurasi kamera/printer/session per booth; settings tersimpan dan dipakai kiosk; print test berfungsi.
+**Acceptance**: owner mengatur identitas dan kebijakan bisnis booth; setelan mesin datang dari
+laporan booth; field mesin yang dikirim dari dashboard ditolak.
 
 ---
 

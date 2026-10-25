@@ -213,6 +213,14 @@ export function DeviceDialog({
   const printerStatus = photobox.device_status?.printer as
     { confirmed?: boolean; last_test_at?: string } | undefined;
 
+  // Laporan terakhir datang dari heartbeat device (last_seen_at), bukan push
+  // dari cloud: belum ada kanal perintah cloud ke runtime.
+  const reportedAt = devices.reduce<string | null>((latest, d) => {
+    if (!d.last_seen_at) return latest;
+    if (!latest) return d.last_seen_at;
+    return new Date(d.last_seen_at) > new Date(latest) ? d.last_seen_at : latest;
+  }, null);
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
@@ -278,6 +286,28 @@ export function DeviceDialog({
               {printerStatus?.confirmed === true
                 ? `Test print OK (${printerStatus.last_test_at ?? ""})`
                 : "Belum dikonfirmasi"}
+            </p>
+          </div>
+          <div className="flex flex-col gap-1">
+            <p className="font-bold uppercase tracking-[0.12em]">Printer aktif</p>
+            <p className="text-muted-foreground">
+              {photobox.print_settings.printer_name || "Belum dilaporkan booth"}
+            </p>
+          </div>
+          <div className="flex flex-col gap-1">
+            <p className="font-bold uppercase tracking-[0.12em]">Ukuran kertas</p>
+            <p className="text-muted-foreground">
+              {photobox.print_settings.paper_size ?? "Belum dilaporkan booth"}
+            </p>
+          </div>
+          <div className="flex flex-col gap-1 md:col-span-2">
+            <p className="font-bold uppercase tracking-[0.12em]">Dilaporkan</p>
+            <p className="text-muted-foreground">
+              {reportedAt
+                ? new Date(reportedAt).toLocaleString("id-ID")
+                : loadingDevices
+                  ? "…"
+                  : "Belum pernah dilaporkan"}
             </p>
           </div>
         </div>

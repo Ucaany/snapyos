@@ -4,7 +4,7 @@ import { Fragment, useState } from "react";
 import Link from "next/link";
 import { Camera, ChevronDown, Pencil, Plus } from "lucide-react";
 
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -63,12 +63,11 @@ export function PhotoboxesTable({
             {"PERINGATAN KEAMANAN · " + noPinBooths.length + " BOOTH TANPA PIN"}
           </p>
           <p className="mt-2 font-display text-base uppercase leading-tight">
-            Set PIN keluar kiosk sekarang
+            Booth ini keluar kiosk tanpa PIN
           </p>
           <p className="mt-1 max-w-[70ch] font-mono text-xs leading-relaxed text-ink">
-            Tanpa PIN, siapa pun bisa keluar dari mode kiosk dan mengakses perangkat booth. Buka
-            tiap booth di bawah, isi kolom <strong>PIN keluar kiosk (4–8 digit)</strong>, lalu
-            simpan. Petugas memakai PIN ini untuk keluar dari mode kiosk.
+            Tanpa PIN, siapa pun bisa keluar dari mode kiosk dan mengakses perangkat booth. PIN
+            keluar tidak lagi diubah dari dashboard.
           </p>
           <ul className="mt-3 flex flex-wrap gap-2 font-mono text-[11px] uppercase tracking-[0.06em]">
             {noPinBooths.map((b) => (
@@ -91,8 +90,8 @@ export function PhotoboxesTable({
             Set ulang PIN keluar photobox
           </p>
           <p className="mt-1 font-mono text-xs leading-relaxed text-ink">
-            Hash PIN lama (sha256) sudah tidak diterima, sistem sekarang pakai argon2id. Buka tiap
-            booth di bawah dan simpan PIN baru sebelum petugas mencoba keluar mode kiosk.
+            Hash PIN lama (sha256) sudah tidak diterima; sistem sekarang memakai argon2id. Booth ini
+            tidak bisa keluar kiosk dengan PIN sampai hash-nya diganti.
           </p>
           <ul className="mt-3 flex flex-wrap gap-2 font-mono text-[11px] uppercase tracking-[0.06em]">
             {legacyPinBooths.map((b) => (
@@ -238,14 +237,6 @@ export function PhotoboxesTable({
                     {canWrite && (
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-2">
-                          <Link
-                            href={`/dashboard/photoboxes/${box.id}/camera`}
-                            className={cn(buttonVariants({ variant: "outline", size: "icon-sm" }))}
-                            aria-label={`Test kamera ${box.name}`}
-                            title="Test kamera"
-                          >
-                            <Camera className="size-4" aria-hidden />
-                          </Link>
                           <DeviceDialog
                             businessId={businessId}
                             businessSlug={businessSlug}

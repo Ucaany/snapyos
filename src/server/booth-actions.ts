@@ -18,10 +18,9 @@ import {
   createPhotobox,
   deletePhotobox,
   updatePhotobox,
-  updatePhotoboxCameraConfig,
   updatePhotoboxBranding,
-  updatePhotoboxPrintStatus,
 } from "@/server/photoboxes";
+import { forbiddenPhotoboxFields } from "@/lib/photobox-form-fields";
 import type { FormState } from "@/server/auth-actions";
 
 // --- OUTLETS ---
@@ -99,70 +98,37 @@ function photoboxInput(formData: FormData) {
     const value = Number(formData.get(key));
     return Number.isFinite(value) ? value : fallback;
   };
-  const unlimitedRetakes = formData.get("unlimited_retakes") === "on";
   return {
     name: str(formData, "name"),
     slug: str(formData, "slug") || undefined,
     outlet_id: formValue("outlet_id"),
     status: (str(formData, "status") || "offline") as "online" | "offline" | "maintenance",
-    // PIN keluar kiosk (opsional) — hash sha256 di server; kosong = tidak diubah.
-    exit_pin: str(formData, "exit_pin") || undefined,
-    chroma_key_enabled: formData.get("chroma_key_enabled") === "on",
     payment_mode: (str(formData, "payment_mode") || null) as "gateway" | "voucher" | null,
-    camera_settings: {
-      provider: str(formData, "camera_provider") === "gphoto2" ? ("gphoto2" as const) : ("browser" as const),
-      bridge_url: str(formData, "camera_bridge_url") || undefined,
-      countdown_seconds: number("countdown_seconds", 3),
-      mirror_preview: formData.get("mirror_preview") === "on",
-      fullscreen: formData.get("fullscreen") === "on",
-      facingMode:
-        str(formData, "facing_mode") === "user" ? ("user" as const) : ("environment" as const),
-      capture_width: number("capture_width", 1920),
-      capture_height: number("capture_height", 1080),
-      jpeg_quality: number("jpeg_quality", 0.92),
-      rotation_degrees: number("rotation_degrees", 0),
-      zoom: number("zoom", 1),
-      screen_orientation:
-        str(formData, "screen_orientation") === "portrait"
-          ? ("portrait" as const)
-          : ("landscape" as const),
-    },
-    session_settings: {
-      timer_seconds: number("timer_seconds", 300),
-      warning_seconds: number("warning_seconds", 60),
-      max_retakes: unlimitedRetakes ? null : number("max_retakes", 1),
-    },
+    // Hanya dua field cetak milik cloud. Sisanya (printer_name, paper_size,
+    // margins_mm, mode) dilaporkan aplikasi booth lewat device token.
     print_settings: {
-      enabled: formData.get("print_enabled") === "on",
-      paper_size: str(formData, "paper_size") === "A6" ? ("A6" as const) : ("4x6" as const),
       layout: str(formData, "print_layout") === "strip" ? ("strip" as const) : ("single" as const),
-      orientation:
-        str(formData, "orientation") === "landscape"
-          ? ("landscape" as const)
-          : ("portrait" as const),
-      auto_print: formData.get("auto_print") === "on",
       copies: number("copies", 1),
-      margins_mm: number("margins_mm", 0),
-      mode:
-        str(formData, "print_mode") === "bluetooth"
-          ? ("bluetooth" as const)
-          : str(formData, "print_mode") === "cups"
-            ? ("cups" as const)
-            : ("browser" as const),
-      bluetooth_paper_width_mm:
-        number("bluetooth_paper_width_mm", 80) === 58 ? (58 as const) : (80 as const),
-      bluetooth_device_name: str(formData, "bluetooth_device_name") || undefined,
-      bridge_url: str(formData, "print_bridge_url") || undefined,
-      printer_name: str(formData, "printer_name") || undefined,
     },
     // Perangkat (kamera/printer/display) tidak diisi manual —
     // auto-detect saat device pairing (docs/05 §5.0.1, Phase 4).
   };
 }
 
+/** Tolak field yang bukan milik dashboard bila dikirim dari sesi pengguna. */
+function rejectTechnicalFields(formData: FormData): FormState | null {
+  const rejected = forbiddenPhotoboxFields(formData.keys());
+  if (rejected.length === 0) return null;
+  return {
+    error: `Field ini tidak bisa diubah dari dashboard: ${rejected.join(", ")}. Setelan mesin diatur dari aplikasi booth.`,
+  };
+}
+
 async function createPhotoboxAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const ctx = await requireActiveBusiness();
   if (!ctx) return { error: "Sesi berakhir. Silakan login ulang." };
+  const rejected = rejectTechnicalFields(formData);
+  if (rejected) return rejected;
   await requireEffectiveSubscription(ctx.businessId, "write");
 
   // CAPTCHA (Turnstile) — hanya saat CREATE (bukan edit). Fail-closed di prod.
@@ -191,6 +157,8 @@ async function createPhotoboxAction(_prev: FormState, formData: FormData): Promi
 async function updatePhotoboxAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const ctx = await requireActiveBusiness();
   if (!ctx) return { error: "Sesi berakhir. Silakan login ulang." };
+  const rejected = rejectTechnicalFields(formData);
+  if (rejected) return rejected;
   await requireEffectiveSubscription(ctx.businessId, "write");
 
   const id = str(formData, "id");
@@ -232,104 +200,6 @@ export async function deletePhotoboxAction(formData: FormData): Promise<FormStat
   }
   revalidatePath("/dashboard/photoboxes");
   return { error: undefined };
-}
-
-// --- CAMERA TEST (owner) — docs/05 §5.5 ---
-
-export type MirrorUpdate = { ok: boolean; mirror: boolean; error?: string };
-
-/**
- * Toggle mirror_preview kiosk — persist ke camera_settings photobox.
- * Dipanggil langsung dari CameraTest (optimistic); client tidak dipercaya,
- * hasil server jadi source of truth.
- */
-export async function setPhotoboxMirrorAction(
-  photoboxId: string,
-  mirror: boolean
-): Promise<MirrorUpdate> {
-  const ctx = await requireActiveBusiness();
-  if (!ctx) return { ok: false, mirror, error: "Sesi berakhir. Login ulang." };
-  await requireEffectiveSubscription(ctx.businessId, "write");
-  if (!photoboxId) return { ok: false, mirror, error: "Photobox tidak valid" };
-
-  try {
-    await updatePhotoboxCameraConfig(ctx.user.id, ctx.businessId, photoboxId, {
-      mirror_preview: mirror,
-    });
-  } catch (error) {
-    const message =
-      error instanceof ApiError ? error.message : "Gagal menyimpan pengaturan mirror.";
-    return { ok: false, mirror, error: message };
-  }
-
-  revalidatePath(`/dashboard/photoboxes/${photoboxId}/camera`);
-  return { ok: true, mirror };
-}
-
-/**
- * Pilih kamera booth dari dashboard (owner). Tanpa ini satu-satunya jalan
- * mengganti `preferred_device_id` adalah mengulang pairing perangkat.
- */
-export async function setPhotoboxPreferredCameraAction(
-  photoboxId: string,
-  deviceId: string | null
-): Promise<{ ok: boolean; error?: string }> {
-  const ctx = await requireActiveBusiness();
-  if (!ctx) return { ok: false, error: "Sesi berakhir. Login ulang." };
-  await requireEffectiveSubscription(ctx.businessId, "write");
-  if (!photoboxId) return { ok: false, error: "Photobox tidak valid" };
-  const normalized = deviceId?.trim() ? deviceId.trim().slice(0, 200) : null;
-
-  try {
-    await updatePhotoboxCameraConfig(ctx.user.id, ctx.businessId, photoboxId, {
-      preferred_device_id: normalized,
-    });
-  } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof ApiError ? error.message : "Gagal menyimpan pilihan kamera.",
-    };
-  }
-
-  revalidatePath(`/dashboard/photoboxes/${photoboxId}/camera`);
-  return { ok: true };
-}
-
-export type PrintTestReport = {
-  confirmed: boolean;
-  mode: "browser" | "bluetooth" | "cups";
-  device_name?: string;
-};
-
-/**
- * Simpan hasil uji cetak dari dashboard owner (bukan dari device).
- * Panel yang sama dipakai SetupWizard lewat `reportDevice` (device-token).
- */
-export async function reportPrintTestAction(
-  photoboxId: string,
-  report: PrintTestReport
-): Promise<{ ok: boolean; error?: string }> {
-  const ctx = await requireActiveBusiness();
-  if (!ctx) return { ok: false, error: "Sesi berakhir. Login ulang." };
-  await requireEffectiveSubscription(ctx.businessId, "write");
-  if (!photoboxId) return { ok: false, error: "Photobox tidak valid" };
-
-  try {
-    await updatePhotoboxPrintStatus(ctx.user.id, ctx.businessId, photoboxId, {
-      confirmed: report.confirmed,
-      last_test_at: new Date().toISOString(),
-      mode: report.mode,
-      device_name: report.device_name,
-    });
-  } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof ApiError ? error.message : "Gagal menyimpan hasil uji cetak.",
-    };
-  }
-
-  revalidatePath(`/dashboard/photoboxes/${photoboxId}/camera`);
-  return { ok: true };
 }
 
 // --- PER-BOOTH BRANDING OVERRIDE (0045) ---
