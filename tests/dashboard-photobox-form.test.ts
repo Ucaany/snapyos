@@ -5,23 +5,19 @@
  * action menolak field milik aplikasi booth, dan tidak ada import tersisa ke
  * berkas yang dihapus.
  *
- * ponytail: runner ganda (vitest + node:test) supaya `npm test` dan
- * `npx vitest run` sama-sama jalan; satu sumber tes, bukan dua salinan.
+ * Run: npm test
  */
 
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
+import { test } from "node:test";
 
 import {
   CLOUD_PHOTOBOX_FIELDS,
   DASHBOARD_FORBIDDEN_PHOTOBOX_FIELDS,
   forbiddenPhotoboxFields,
 } from "../src/lib/photobox-form-fields.ts";
-
-const runner = process.env.VITEST ? await import("vitest") : await import("node:test");
-type TestFn = (name: string, fn: () => unknown) => unknown;
-const test = runner.test as unknown as TestFn;
 
 const ROOT = new URL("../", import.meta.url);
 
