@@ -8,32 +8,33 @@ Source of truth: `src/`, `db/schema.sql`, `README.md`
 
 ## Active
 
-| Area                                    | Status                              | Canonical source                                           |
-| --------------------------------------- | ----------------------------------- | ---------------------------------------------------------- |
-| Auth.js credential auth                 | Active                              | `src/lib/auth.ts`, `auth_sessions`                         |
-| Multi-tenant business                   | Active                              | `businesses`, `business_members`, tenant helpers           |
-| Owner dashboard                         | Active                              | `src/app/(dashboard)/dashboard/`                           |
-| Staff shell                             | Active, operational read-only       | `src/app/(staff)/staff/`                                   |
-| Admin platform                          | Active                              | `src/app/(admin)/admin/`                                   |
-| Customer kiosk                          | Active, pay-first                   | `src/app/p/[businessSlug]/[photoboxSlug]/`                 |
-| Online result                           | Active                              | `src/app/r/[token]/`                                       |
-| Direct merchant payment                 | Active                              | Pakasir, Midtrans, Tripay credentials per business         |
-| Voucher payment                         | Active                              | public checkout actions and voucher server logic           |
-| Offline cash kiosk                      | Active when owner enables it        | `business_settings.checkout.offline_enabled`               |
-| POS add-on                              | Active, offline-only                | `src/server/pos-actions.ts`, `photoboxes.pos_enabled`      |
-| Template builder                        | Active                              | `src/components/dashboard/TemplateBuilder.tsx`             |
-| Storage quota                           | Active when plan feature is enabled | `src/server/storage-usage.ts` (jumlah kedua provider)      |
-| Dual storage (R2 write + Supabase read) | Active — Fase 3                     | `src/server/storage` (`getWriteStorage`, `resolveStorage`) |
+| Area                                    | Status                                       | Canonical source                                           |
+| --------------------------------------- | -------------------------------------------- | ---------------------------------------------------------- |
+| Auth.js credential auth                 | Active                                       | `src/lib/auth.ts`, `auth_sessions`                         |
+| Multi-tenant business                   | Active                                       | `businesses`, `business_members`, tenant helpers           |
+| Owner dashboard                         | Active                                       | `src/app/(dashboard)/dashboard/`                           |
+| Staff shell                             | Active, operational read-only                | `src/app/(staff)/staff/`                                   |
+| Admin platform                          | Active                                       | `src/app/(admin)/admin/`                                   |
+| Customer kiosk                          | Active, pay-first                            | `src/app/p/[businessSlug]/[photoboxSlug]/`                 |
+| Online result                           | Active                                       | `src/app/r/[token]/`                                       |
+| Direct merchant payment                 | Active                                       | Pakasir, Midtrans, Tripay credentials per business         |
+| Voucher payment                         | Active                                       | public checkout actions and voucher server logic           |
+| Offline cash kiosk                      | Active when owner enables it                 | `business_settings.checkout.offline_enabled`               |
+| POS add-on                              | Active, offline-only                         | `src/server/pos-actions.ts`, `photoboxes.pos_enabled`      |
+| Template builder                        | Active                                       | `src/components/dashboard/TemplateBuilder.tsx`             |
+| Storage quota                           | Active when plan feature is enabled          | `src/server/storage-usage.ts` (jumlah kedua provider)      |
+| Dual storage (R2 write + Supabase read) | Active — Fase 3                              | `src/server/storage` (`getWriteStorage`, `resolveStorage`) |
 | Aplikasi booth (EXE Windows)            | Partial — kode ada, `.exe`/`.msi` NOT TESTED | `src-tauri/` (Tauri v2, jendela kiosk + sidecar runtime)   |
+| Katalog aplikasi (admin)                | Active — tautan saja, tanpa upload           | `src/app/(admin)/admin/apps/`, `app_releases` (0081)       |
 
 ## Partial or constrained
 
-| Area              | Constraint                                                                                                                                                                              |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Camera control    | Dua provider: browser `getUserMedia` (default) dan DSLR via bridge lokal `gphoto2`. Bridge wajib token; hardware fisik belum diuji di mesin ini.                                        |
-| Printing          | Tiga jalur: dialog OS (`window.print()`), thermal ESC/POS (Web Bluetooth / Web Serial), dan CUPS via bridge lokal. Tidak ada antrean server; "terkirim" bukan konfirmasi kertas.          |
-| Subscription REST | Subscription actions use server actions and dashboard pages. No public REST contract is exposed.                    |
-| Owner CRUD REST   | Most owner CRUD uses server actions. Only documented device, customer detail, report, and activation routes remain. |
+| Area              | Constraint                                                                                                                                                                       |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Camera control    | Dua provider: browser `getUserMedia` (default) dan DSLR via bridge lokal `gphoto2`. Bridge wajib token; hardware fisik belum diuji di mesin ini.                                 |
+| Printing          | Tiga jalur: dialog OS (`window.print()`), thermal ESC/POS (Web Bluetooth / Web Serial), dan CUPS via bridge lokal. Tidak ada antrean server; "terkirim" bukan konfirmasi kertas. |
+| Subscription REST | Subscription actions use server actions and dashboard pages. No public REST contract is exposed.                                                                                 |
+| Owner CRUD REST   | Most owner CRUD uses server actions. Only documented device, customer detail, report, and activation routes remain.                                                              |
 
 ## Security hardening (2026-10-08)
 
@@ -154,7 +155,7 @@ Diukur ulang di mesin pengembang sebelum deploy. Semua gate lulus:
 | Typecheck        | `npm run typecheck`          | **PASS**                                                                                  |
 | Unit/integration | `npm test`                   | **PASS** 957/957, 0 gagal, 0 skip                                                         |
 | Build produksi   | `npm run build`              | **PASS**                                                                                  |
-| Format           | `npm run format:check`       | **PASS SCOPE**; 34 file legacy repo-wide belum terformat                                     |
+| Format           | `npm run format:check`       | **PASS SCOPE**; 34 file legacy repo-wide belum terformat                                  |
 | E2E kiosk smoke  | `kiosk-smoke.spec.mjs`       | **PASS** 6/6 (headed)                                                                     |
 | E2E kiosk lock   | `kiosk-lock.spec.mjs`        | **PASS** 7/7 (headed)                                                                     |
 | E2E kiosk frames | `kiosk-frames.spec.mjs`      | **PASS** 5/5 (headed)                                                                     |
@@ -194,12 +195,12 @@ diganti menjadi `**/worktrees/**`.
 
 Diukur ulang dari nol setelah audit: hasil lama tidak dipakai sebagai bukti.
 
-| Gate             | Perintah            | Hasil                                                   |
-| ---------------- | ------------------- | ------------------------------------------------------- |
+| Gate             | Perintah            | Hasil                                                      |
+| ---------------- | ------------------- | ---------------------------------------------------------- |
 | Lint             | `npm run lint`      | **PASS** 0 error, 12 warning (`no-img-element`, disengaja) |
-| Typecheck        | `npm run typecheck` | **PASS**                                                |
-| Unit/integration | `npm test`          | **PASS** 960/960, 0 gagal, 0 skip                       |
-| Build produksi   | `npm run build`     | **PASS**                                                |
+| Typecheck        | `npm run typecheck` | **PASS**                                                   |
+| Unit/integration | `npm test`          | **PASS** 960/960, 0 gagal, 0 skip                          |
+| Build produksi   | `npm run build`     | **PASS**                                                   |
 
 Dua tes yang sebelumnya gagal adalah tes usang yang mengunci kontrak lama, bukan
 bug implementasi: jendela freshness webhook (24 jam → 5 menit) dan
@@ -217,14 +218,14 @@ bug implementasi: jendela freshness webhook (24 jam → 5 menit) dan
 
 ## Removed or archived
 
-| Item                                                | Replacement or reason                                                                                                     |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Kiosk aggregator withdrawal flow                    | Direct merchant owner-first, voucher, and offline cash.                                                                   |
-| Owner withdrawal and balance flow                   | Removed in v1.8. Payment settles to owner gateway.                                                                        |
-| Dashboard-01 dual shell                             | Single Neo-Brutalist dashboard.                                                                                           |
-| Owner CRUD REST routes                              | Server actions.                                                                                                           |
-| Supabase Realtime                                   | Payment status polling every 3 seconds.                                                                                   |
-| Hardware agent terpisah                         | Diganti bridge lokal Node (`scripts/photobooth-bridge.mjs`) yang dipanggil kiosk PWA; direktori `hardware-agent/`, `tauri-kiosk/`, `docs/hardware/` dihapus. Kamera DSLR (gphoto2) dan cetak CUPS **aktif** lewat bridge ini — lihat `docs/photobooth-bridge.md`. |
+| Item                              | Replacement or reason                                                                                                                                                                                                                                             |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Kiosk aggregator withdrawal flow  | Direct merchant owner-first, voucher, and offline cash.                                                                                                                                                                                                           |
+| Owner withdrawal and balance flow | Removed in v1.8. Payment settles to owner gateway.                                                                                                                                                                                                                |
+| Dashboard-01 dual shell           | Single Neo-Brutalist dashboard.                                                                                                                                                                                                                                   |
+| Owner CRUD REST routes            | Server actions.                                                                                                                                                                                                                                                   |
+| Supabase Realtime                 | Payment status polling every 3 seconds.                                                                                                                                                                                                                           |
+| Hardware agent terpisah           | Diganti bridge lokal Node (`scripts/photobooth-bridge.mjs`) yang dipanggil kiosk PWA; direktori `hardware-agent/`, `tauri-kiosk/`, `docs/hardware/` dihapus. Kamera DSLR (gphoto2) dan cetak CUPS **aktif** lewat bridge ini — lihat `docs/photobooth-bridge.md`. |
 
 ## Reading rule
 

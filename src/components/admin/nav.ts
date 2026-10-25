@@ -3,6 +3,7 @@ import {
   Building2,
   CircleHelp,
   CreditCard,
+  Download,
   Gauge,
   ImageIcon,
   Landmark,
@@ -68,6 +69,7 @@ export const NAV_GROUPS: AdminNavGroup[] = [
     label: "Konten & Sistem",
     items: [
       { label: "Templates", href: "/admin/templates", icon: ImageIcon },
+      { label: "Katalog Aplikasi", href: "/admin/apps", icon: Download },
       { label: "Tiket Bantuan", href: "/admin/support", icon: CircleHelp },
       { label: "Settings", href: "/admin/settings", icon: Settings },
       { label: "Audit Log", href: "/admin/audit", icon: ScrollText },

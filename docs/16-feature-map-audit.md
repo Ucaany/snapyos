@@ -274,6 +274,15 @@
 - **DB**: `broadcast_campaigns, broadcast_recipients, businesses, business_members, users`.
 - **Integrasi**: Resend (`src/lib/broadcast-email.ts`, `src/lib/resend.ts`). Status: draft/sending/sent/partial/failed; riwayat per penerima.
 
+### A17. Katalog Aplikasi
+
+- **Page**: `/admin/apps` (`ADMIN - KATALOG APLIKASI`).
+- **Actions**: `createAppReleaseAction`, `updateAppReleaseAction`, `toggleAppReleaseAction`, `deleteAppReleaseAction`. **Data**: `listAppReleases`, `createAppRelease`, `updateAppRelease`, `setAppReleaseActive`, `deleteAppRelease` (`src/server/admin/apps.ts`).
+- **API**: tidak ada REST route — server action saja (konvensi `docs/api/README.md`).
+- **Field**: versi (`1.2.3`), `download_url` (wajib `https://`, hostname publik), `file_name`, `file_size_bytes` (opsional), `sha256` (opsional, 64 hex), `release_notes`, `is_active`.
+- **DB**: `app_releases` (0081). **Storage**: tidak disentuh — file ada di Google Drive/host eksternal.
+- **Dampak**: rilis `is_active` tampil di `/dashboard/apps` owner. Tautan mati tidak terdeteksi server (SSRF); SHA-256 diisi manual.
+
 ### A16. Lintas-Admin
 
 - **Aksi**: `Buka Dashboard Bisnis` → `/dashboard` (admin juga bisa jadi owner).

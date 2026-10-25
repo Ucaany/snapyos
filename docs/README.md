@@ -39,10 +39,11 @@ SnapyOS Photobox Business Operating System.
 
 ## Integrasi
 
-| Topik                    | Dokumen                                              |
-| ------------------------ | ---------------------------------------------------- |
-| POS add-on               | [`pos/01-architecture.md`](./pos/01-architecture.md) |
-| Flow owner, staff, admin | [`flow-maps/00-INDEX.md`](./flow-maps/00-INDEX.md)   |
+| Topik                    | Dokumen                                                    |
+| ------------------------ | ---------------------------------------------------------- |
+| POS add-on               | [`pos/01-architecture.md`](./pos/01-architecture.md)       |
+| Rilis aplikasi booth     | [`19-desktop-app-release.md`](./19-desktop-app-release.md) |
+| Flow owner, staff, admin | [`flow-maps/00-INDEX.md`](./flow-maps/00-INDEX.md)         |
 
 ## Status Dokumen
 

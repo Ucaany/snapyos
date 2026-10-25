@@ -175,6 +175,14 @@ terkena batas ini. Bila perlu video/template >8 MB via server action, implement
 
 **Access:** foto & asset pribadi diakses via **signed URL** (expiry pendek) atau token result. Tidak ada public URL permanen untuk foto pribadi.
 
+**Katalog aplikasi (0081) TIDAK memakai storage.** Installer booth
+(`.exe`/`.msi`) diunggah admin ke Google Drive atau host lain; `app_releases`
+hanya menyimpan URL + metadata. Tidak ada bucket baru, tidak ada
+`StorageBucket` baru, tidak ada presigned PUT, dan kuota storage per-business
+tidak terpengaruh. Konsekuensi: integritas file tidak dijamin platform — ukuran
+dan SHA-256 diisi manual dan tidak diverifikasi server (lihat §10.7
+`10-admin-platform.md`).
+
 ## 9.8 Retention & Lifecycle
 
 Configurable per business (`business_settings.retention_days`, default 3 hari, max 3 — migrasi 0034).

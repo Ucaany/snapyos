@@ -69,6 +69,7 @@ Admin SnapyOS memiliki dashboard terpisah untuk mengelola platform.
 | Promos                 | create/edit `subscription_promos` (kode diskon plan-level, %/fixed, jadwal, batas pemakaian)                                                                  |
 | Subscriptions          | list (detail periode/trial/invoice), ubah status, perpanjang, cancel, kelola add-on aktif                                                                     |
 | Templates & Categories | kelola template global (`business_id NULL`) + upload URL frame/thumbnail/video + FK `category_id` + **harga/premium (jualan)**                                |
+| Katalog Aplikasi       | daftar rilis installer booth sebagai **tautan** (Google Drive/host lain), ukuran + SHA-256 opsional diisi manual, aktif/nonaktif, hapus baris                 |
 | Payment Gateways       | overview credential seluruh tenant (redacted) + **enable/disable global per provider** (`gateway_*_enabled`)                                                  |
 | Audit Log              | view seluruh `audit_logs` + filter aksi/search + **hapus riwayat (retensi)**                                                                                  |
 | Platform settings      | konfigurasi global (fee, retention default, maintenance_mode + **maintenance_message kustom**, gateway toggle, dll.)                                          |
@@ -163,3 +164,35 @@ Admin meninjau tiket bantuan yang dikirim owner (lihat `04-owner-dashboard.md` �
 **Data:** tabel `support_tickets` + `support_ticket_replies` (migration 0050).
 
 **UI:** `/admin/support` — tabel tiket dengan dropdown status inline per baris.
+
+## 10.7 Katalog Aplikasi (tautan eksternal)
+
+Admin mendaftarkan rilis aplikasi booth (installer Windows) supaya owner bisa
+mengunduhnya dari `/dashboard/apps`.
+
+- **Hanya tautan.** File `.exe`/`.msi` diunggah admin ke Google Drive (atau host
+  lain); tidak ada upload ke storage SNAPY OS, tidak ada bucket baru, tidak ada
+  presigned PUT. Tabel `app_releases` menyimpan URL + metadata.
+- **Halaman:** `/admin/apps` (`ADMIN - KATALOG APLIKASI`). Form: versi (`1.2.3`),
+  URL unduhan, nama file, ukuran byte (opsional), SHA-256 (opsional), catatan rilis.
+  Tabel: versi, nama file, ukuran, tanggal, host tujuan, status.
+- **Aksi:** `createAppReleaseAction`, `updateAppReleaseAction`,
+  `toggleAppReleaseAction`, `deleteAppReleaseAction`. Data:
+  `src/server/admin/apps.ts` (`listAppReleases`, `createAppRelease`,
+  `updateAppRelease`, `setAppReleaseActive`, `deleteAppRelease`).
+- **Tanpa REST route.** Sesuai `docs/api/README.md`, server action adalah jalur
+  utama CRUD dashboard admin dan tidak ada konsumen eksternal untuk katalog ini.
+- **Validasi URL** (`appReleaseSchema`, `src/lib/validators.ts`): `new URL()`,
+  protocol wajib `https:`, hostname wajib punya titik (menolak `localhost`,
+  `.com`, IP polos). `javascript:`, `data:`, `file:`, `http:` ditolak. URL
+  disimpan apa adanya — normalisasi bisa mematahkan tautan Google Drive. Tidak
+  ada allowlist host: admin adalah CEO platform.
+- **Tanpa verifikasi tautan dari server.** HEAD/GET ke URL sembarang adalah SSRF
+  (bisa menembak `169.254.169.254` atau host internal). Tautan mati ketahuan saat
+  owner mengklik, bukan saat disimpan.
+- **Versi duplikat** ditangkap sebagai error field `version` (SQLSTATE `23505` →
+  `VALIDATION_ERROR`), bukan 500.
+- **Batas jujur di UI:** file diunduh dari host di luar SNAPY OS; ukuran dan
+  SHA-256 diisi manual dan tidak diverifikasi sistem; periksa dengan
+  `Get-FileHash` sebelum memasang.
+- **DB:** `app_releases` (migration `0081`).

@@ -68,18 +68,25 @@
 - Settings
 - Bantuan (Help Center)
 
-**Admin Platform** (role admin — 10 item nav, `src/components/admin/AdminSidebar.tsx`):
+**Admin Platform** (role admin — 17 item nav, `src/components/admin/nav.ts`):
 
 - Overview
 - Users
 - Businesses
 - Plans
-- Subscriptions
 - Add-ons
-- Templates & Categories
+- Promos
+- Subscriptions
+- Antrian Aktivasi Manual
 - Payments
-- Withdrawals
+- Gateways
+- Templates & Categories
+- Katalog Aplikasi
+- Tiket Bantuan
 - Platform Settings
+- Audit Log
+- Broadcast Email
+- Buka Dashboard Bisnis (keluar ke shell owner)
 
 ### 3.3.1 Route Separation (single domain)
 

@@ -1,6 +1,6 @@
 # 7. Database Schema
 
-> **Sinkron dengan `db/schema.sql` aktual per audit 2026-10-24** (55 tabel + 32 fungsi; migration terbaru `0080_fix_circular_fk_transactions_payments.sql`; `0071_rpc_search_path_hardening.sql`, `0073`, `0074`, `0077`, `0078`, `0079`, `0080` disiapkan, **belum di-apply** ke cloud). Tabel/kolom di bawah = realita schema; deviasi dari draft awal ditandai. Paritas schema ↔ migrasi dijaga `tests/schema-migration-parity.test.ts`.
+> **Sinkron dengan `db/schema.sql` aktual per audit 2026-10-24** (55 tabel + 32 fungsi; migration terbaru `0081_app_releases.sql`; `0071_rpc_search_path_hardening.sql`, `0073`, `0074`, `0077`, `0078`, `0079`, `0080`, `0081` disiapkan, **belum di-apply** ke cloud). Tabel/kolom di bawah = realita schema; deviasi dari draft awal ditandai. Paritas schema ↔ migrasi dijaga `tests/schema-migration-parity.test.ts`.
 >
 > **RLS (C1, migrasi 0064):** setiap tabel `public.*` punya `alter table ... enable row level security` + policy `svc_all` (`for all to service_role using (true) with check (true)`); `anon`/`authenticated` di-revoke, `service_role` di-grant. Tidak ada policy `to public/anon/authenticated`.
 >
@@ -552,24 +552,24 @@ Log perangkat Electron. Auto-cleanup 30 hari via cron retention. **TIDAK** menyi
 
 ### pos_orders
 
-| kolom                                         | tipe                 | ket                                                      |
-| --------------------------------------------- | -------------------- | -------------------------------------------------------- |
-| id                                            | uuid PK              |                                                          |
-| business_id                                   | uuid → businesses.id |                                                          |
-| photobox_id                                   | uuid → photoboxes.id | NOT NULL, on delete restrict — per booth                 |
-| outlet_id                                     | uuid → outlets.id    | diisi dari photobox.outlet_id                            |
-| cashier_user_id                               | uuid → users.id      | NOT NULL, on delete restrict                             |
-| customer_id                                   | uuid → customers.id  | nullable                                                 |
-| number                                        | text                 | `POS-YYYYMMDD-####` WIB; `unique(business_id, number)`   |
-| status                                        | text                 | `pending`/`paid`/`cancelled` (tanpa `expired` — offline) |
-| gross_amount / discount_amount / final_amount | integer              | check `final = gross − discount`                         |
-| payment_method                                | text                 | `cash`/`bank_transfer`/`other` (offline-only)            |
-| payment_reference                             | text                 | nullable                                                 |
-| paid_at                                       | timestamptz          | nullable                                                 |
-| paper_width_mm                                | integer              | `58`/`80`; snapshot lebar printer thermal saat order dibuat |
+| kolom                                         | tipe                 | ket                                                           |
+| --------------------------------------------- | -------------------- | ------------------------------------------------------------- |
+| id                                            | uuid PK              |                                                               |
+| business_id                                   | uuid → businesses.id |                                                               |
+| photobox_id                                   | uuid → photoboxes.id | NOT NULL, on delete restrict — per booth                      |
+| outlet_id                                     | uuid → outlets.id    | diisi dari photobox.outlet_id                                 |
+| cashier_user_id                               | uuid → users.id      | NOT NULL, on delete restrict                                  |
+| customer_id                                   | uuid → customers.id  | nullable                                                      |
+| number                                        | text                 | `POS-YYYYMMDD-####` WIB; `unique(business_id, number)`        |
+| status                                        | text                 | `pending`/`paid`/`cancelled` (tanpa `expired` — offline)      |
+| gross_amount / discount_amount / final_amount | integer              | check `final = gross − discount`                              |
+| payment_method                                | text                 | `cash`/`bank_transfer`/`other` (offline-only)                 |
+| payment_reference                             | text                 | nullable                                                      |
+| paid_at                                       | timestamptz          | nullable                                                      |
+| paper_width_mm                                | integer              | `58`/`80`; snapshot lebar printer thermal saat order dibuat   |
 | print_mode                                    | text                 | `browser`/`bluetooth`; snapshot jalur cetak saat order dibuat |
-| auto_print                                    | boolean              | snapshot izin auto-print saat order dibuat               |
-| created_at / updated_at                       | timestamptz          |                                                          |
+| auto_print                                    | boolean              | snapshot izin auto-print saat order dibuat                    |
+| created_at / updated_at                       | timestamptz          |                                                               |
 
 ### pos_order_items (snapshot)
 
@@ -757,6 +757,25 @@ Tabel `reports` dihapus karena 0 caller di kode aplikasi. Fitur export report (C
 | target      | text                 | entity id                                       |
 | meta        | jsonb                |                                                 |
 | created_at  | timestamptz          |                                                 |
+
+### app_releases (0081 — katalog aplikasi, TAUTAN saja)
+
+| kolom                   | tipe            | ket                                                                    |
+| ----------------------- | --------------- | ---------------------------------------------------------------------- |
+| id                      | uuid PK         |                                                                        |
+| version                 | text            | UNIQUE, format `1.2.3` (divalidasi Zod, bukan CHECK)                   |
+| download_url            | text            | CHECK `^https://`; disimpan apa adanya (tanpa normalisasi)             |
+| file_name               | text            | nama yang disarankan saat menyimpan                                    |
+| file_size_bytes         | bigint          | nullable, `> 0`; **diisi manual**, tidak diverifikasi sistem           |
+| sha256                  | text            | nullable, CHECK `^[0-9a-f]{64}$`; **diisi manual**, tidak diverifikasi |
+| release_notes           | text            | nullable                                                               |
+| is_active               | boolean         | default true                                                           |
+| created_by              | uuid → users.id | on delete set null                                                     |
+| created_at / updated_at | timestamptz     |                                                                        |
+
+File installer **tidak** disimpan di storage SNAPY OS — hanya tautan ke host
+eksternal (Google Drive). Tidak ada bucket, objek, atau kolom storage key.
+Server tidak melakukan HEAD/GET ke `download_url` (SSRF).
 
 ### support_tickets (0050)
 
