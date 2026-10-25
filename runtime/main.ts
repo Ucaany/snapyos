@@ -9,7 +9,6 @@
  * wajib token; origin di luar allowlist ditolak sebelum routing.
  */
 
-import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { createCamera } from "./camera/index.ts";
@@ -35,15 +34,7 @@ import {
   printDefaults,
 } from "./settings/index.ts";
 import { startSyncWorker } from "./sync/worker.ts";
-
-const VERSION: string = (() => {
-  try {
-    const raw = readFileSync(new URL("../package.json", import.meta.url), "utf8");
-    return String((JSON.parse(raw) as { version?: string }).version ?? "0.0.0");
-  } catch {
-    return "0.0.0";
-  }
-})();
+import { VERSION } from "./version.ts";
 
 /**
  * Store dibuka sebelum listen: tanpa store, sesi lokal dan PIN darurat tidak

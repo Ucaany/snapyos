@@ -482,6 +482,14 @@ export async function updateDeviceSettings(input: DeviceSettingsPatchInput) {
     if (input.settings[group] === undefined) continue;
     patch[group] = merged[group];
   }
+  // Versi booth ikut jalur tulis-balik setelan (Phase 12): runtime mengirimnya
+  // setiap kali push, jadi dashboard owner tidak bergantung pada setup wizard.
+  if (input.app_version) {
+    patch.device_status = {
+      ...((photobox.device_status as Record<string, unknown> | null) ?? {}),
+      app_version: input.app_version,
+    };
+  }
 
   const { data, error } = await supabase
     .from("photoboxes")
@@ -533,6 +541,10 @@ export async function reportDevice(input: DeviceReportInput) {
     deviceStatus.camera = { ...((deviceStatus.camera as object) ?? {}), ...input.camera };
   if (input.printer)
     deviceStatus.printer = { ...((deviceStatus.printer as object) ?? {}), ...input.printer };
+  // Versi aplikasi booth (Phase 12): dashboard owner memakainya untuk badge
+  // PERLU UPDATE. Field opsional — booth lama yang tidak mengirimnya tidak
+  // boleh menghapus nilai yang sudah tercatat.
+  if (input.app_version) deviceStatus.app_version = input.app_version;
 
   const { error } = await supabase
     .from("photoboxes")

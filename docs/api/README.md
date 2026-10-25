@@ -10,7 +10,7 @@ Source of truth: route handlers in `src/app/api/`, server actions in `src/server
 
 Server actions adalah jalur utama untuk owner dashboard CRUD. REST hanya dipakai bila client, device, browser download, public kiosk, webhook, atau admin membutuhkan HTTP contract. POS owner tidak memiliki REST API.
 
-Katalog aplikasi (`/admin/apps`, tabel `app_releases`) **tidak** punya REST route: hanya server action. Tidak ada konsumen eksternal yang butuh HTTP contract untuk daftar rilis, dan file installer tidak pernah melewati server SNAPY OS (hanya tautan eksternal).
+Katalog aplikasi (`/admin/apps`, tabel `app_releases`) **tidak** punya REST route: hanya server action. Tidak ada konsumen eksternal yang butuh HTTP contract untuk daftar rilis, dan file installer tidak pernah melewati server SNAPY OS (hanya tautan eksternal). Halaman owner `/dashboard/apps` juga server component tanpa REST; versi booth masuk lewat `POST /api/v1/public/devices/report` dan `PATCH /api/v1/public/devices/settings`.
 
 ## Public kiosk
 

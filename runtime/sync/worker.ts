@@ -24,6 +24,7 @@ import type { DatabaseSync } from "node:sqlite";
 import type { RuntimeConfig } from "../config.ts";
 import { activeSettings, type SettingsShape } from "../settings/index.ts";
 import { insertEvent } from "../db/index.ts";
+import { VERSION } from "../version.ts";
 
 export const MAX_BACKOFF_MS = 5 * 60_000;
 export const BASE_BACKOFF_MS = 1_000;
@@ -333,7 +334,13 @@ export async function pushSettings(
   const response = await getFetch(ctx)(`${cloudBase(ctx)}/api/v1/public/devices/settings`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ device_token: ctx.config.deviceToken, settings }),
+    // `app_version` membuat dashboard owner tahu booth mana yang ketinggalan
+    // (Phase 12); tanpa ini satu-satunya sumber versi adalah setup wizard.
+    body: JSON.stringify({
+      device_token: ctx.config.deviceToken,
+      app_version: VERSION,
+      settings,
+    }),
   }).catch(() => null);
 
   if (!response) return "failed";

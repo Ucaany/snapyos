@@ -441,6 +441,42 @@
 
 ---
 
+## 11.1 Katalog Aplikasi (Tautan)
+
+**Page**: `/admin/apps` → `src/app/(admin)/admin/apps/page.tsx`
+
+**Tujuan**: mendaftarkan rilis installer booth (`.exe`/`.msi`) yang diunggah ke
+Google Drive atau host lain. SNAPY OS **tidak** menyimpan filenya.
+
+**Server Actions**: `createAppReleaseAction`, `updateAppReleaseAction`,
+`toggleAppReleaseAction`, `deleteAppReleaseAction` (`src/server/admin-actions.ts`)
+→ `createAppRelease`, `updateAppRelease`, `setAppReleaseActive`,
+`deleteAppRelease` (`src/server/admin/apps.ts`).
+
+**Data Flow**:
+
+```
+AdminActionForm → action → appReleaseSchema.parse()
+   ↓ URL harus https:// + hostname publik (javascript:/data:/file:/http: ditolak)
+   ↓ insert/update app_releases (versi unik; 23505 → error field `version`)
+   ↓ listAppReleases() → daftar rilis (aktif & nonaktif)
+   ↓ rilis is_active tampil di /dashboard/apps owner
+```
+
+**Field**: `version` (`1.2.3`), `download_url`, `file_name`,
+`file_size_bytes` (opsional), `sha256` (opsional, 64 hex), `release_notes`,
+`is_active`.
+
+**Batas**: server tidak melakukan HEAD/GET ke `download_url` (SSRF), jadi tautan
+mati hanya ketahuan saat owner mengklik. `sha256` dan ukuran diisi manual dan
+tidak diverifikasi sistem. Tidak ada upload/bucket baru; kuota storage tidak
+tersentuh.
+
+**Acceptance**: admin mendaftarkan rilis, menonaktifkannya, dan menghapus baris
+tanpa menyentuh objek storage mana pun. Lihat `docs/19-desktop-app-release.md`.
+
+---
+
 ## 12. Audit Logs
 
 **Implicit**: Semua admin actions tercatat di `audit_logs`:
@@ -492,19 +528,15 @@
 
 ## 15. Navigation
 
-**Sidebar** (`src/components/admin-sidebar.tsx`):
+**Sidebar** (`src/components/admin/nav.ts`, dirender `AdminSidebar.tsx`) — 7 grup, 17 item:
 
-- Overview
-- Users
-- Businesses
-- Plans
-- Add-ons
-- Promos
-- Subscriptions (+ badge pending-review jika ada intent failures)
-- Templates
-- Payments
-- Withdrawals
-- Settings
+- **Utama**: Overview
+- **Tenant**: Users, Businesses
+- **Monetisasi**: Plans, Add-ons, Promos, Subscriptions (+ badge pending-review jika ada intent failures), Antrian Aktivasi Manual
+- **Keuangan**: Payments, Gateways
+- **Konten & Sistem**: Templates & Categories, Katalog Aplikasi, Tiket Bantuan, Platform Settings, Audit Log
+- **Pemasaran**: Broadcast Email
+- **Sisi Owner**: Buka Dashboard Bisnis
 
 **Topbar**: user avatar + dropdown logout.
 

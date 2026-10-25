@@ -1007,10 +1007,23 @@ export const deviceExitSchema = z.object({
     .optional(),
 });
 
+/**
+ * Versi aplikasi booth (Phase 12). Dashboard owner membandingkannya dengan
+ * rilis terbaru; tanpa ini owner tidak tahu booth mana yang ketinggalan.
+ * Opsional: booth lama tidak mengirimnya dan tetap boleh melapor.
+ */
+const appVersionSchema = z
+  .string()
+  .trim()
+  .max(20, "Versi maksimal 20 karakter")
+  .regex(/^\d+\.\d+\.\d+$/, "Versi harus format 1.2.3")
+  .optional();
+
 /** Laporan status device (setup wizard) — docs/05 §5.0.1. */
 export const deviceReportSchema = z.object({
   device_token: z.string().trim().min(32).max(128),
   preferred_device_id: z.string().trim().max(200).nullable().optional(),
+  app_version: appVersionSchema,
   camera: z
     .object({
       resolution: z.string().trim().max(40).optional(),
@@ -1040,6 +1053,8 @@ export const deviceReportSchema = z.object({
  */
 export const deviceSettingsPatchSchema = z.object({
   device_token: z.string().trim().min(32).max(128),
+  /** Versi aplikasi booth; ikut dikirim worker bersama setelan. */
+  app_version: appVersionSchema,
   settings: deviceSettingsSchema,
 });
 

@@ -113,6 +113,12 @@ field cloud dijawab `403 FIELD_NOT_DEVICE_OWNED`, dan cloud menggabungkan
 per-key sehingga `print_settings.copies` tidak hilang saat booth melaporkan
 `paper_size`.
 
+Body yang sama membawa `app_version` (`runtime/version.ts`, dibaca dari
+`package.json`). Cloud menyimpannya ke `photoboxes.device_status.app_version`,
+dan `/dashboard/apps` memakainya untuk menandai booth yang tertinggal versi.
+`POST /api/v1/public/devices/report` juga menerima `app_version` opsional untuk
+jalur setup wizard.
+
 ## Aplikasi booth (EXE Windows)
 
 `src-tauri/` membungkus halaman kiosk yang sama ke satu EXE Tauri v2: jendela

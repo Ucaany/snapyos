@@ -26,6 +26,7 @@ Source of truth: `src/`, `db/schema.sql`, `README.md`
 | Dual storage (R2 write + Supabase read) | Active — Fase 3                              | `src/server/storage` (`getWriteStorage`, `resolveStorage`) |
 | Aplikasi booth (EXE Windows)            | Partial — kode ada, `.exe`/`.msi` NOT TESTED | `src-tauri/` (Tauri v2, jendela kiosk + sidecar runtime)   |
 | Katalog aplikasi (admin)                | Active — tautan saja, tanpa upload           | `src/app/(admin)/admin/apps/`, `app_releases` (0081)       |
+| Unduh aplikasi booth (owner)            | Active — tautan + status versi per booth     | `src/app/(dashboard)/dashboard/apps/`, `device_status.app_version` |
 
 ## Partial or constrained
 

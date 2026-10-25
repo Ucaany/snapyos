@@ -54,6 +54,18 @@ sebelumnya. Hapus hanya bila versi itu tidak akan dipakai lagi: menghapus baris
 - **Tidak ada kanal perintah cloud → booth.** Owner mengunduh dan memasang
   manual; tidak ada tombol "kirim update".
 
+## Versi yang terpasang di tiap booth
+
+Runtime mengirim `app_version` (dibaca dari `package.json`) setiap kali menulis
+balik setelan ke `PATCH /api/v1/public/devices/settings`. `deviceReportSchema`
+juga menerimanya secara opsional, jadi booth yang melapor lewat setup wizard
+bisa mengisinya. Keduanya bermuara di `photoboxes.device_status.app_version`.
+
+`/dashboard/apps` membandingkannya dengan versi rilis aktif terbaru dan memberi
+badge **Perlu update** bila lebih rendah. Booth yang belum pernah melapor
+ditampilkan "Belum pernah dilaporkan", bukan dianggap mutakhir maupun
+ketinggalan: keduanya tidak bisa dibedakan tanpa laporan.
+
 ## Verifikasi cepat
 
 - `/admin/apps` menampilkan daftar rilis + peringatan host eksternal.
