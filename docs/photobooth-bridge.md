@@ -128,6 +128,30 @@ semua alur tetap milik halaman web.
 | `src-tauri/tauri.windows.conf.json` | `externalBin` sidecar (hanya Windows, supaya `cargo check` di macOS tidak gagal) |
 | `scripts/build-kiosk-runtime.mjs` | bundel `runtime/` jadi `src-tauri/runtime-dist/` |
 
+### Pemasangan di Windows
+
+```powershell
+.\scripts\install-snapyos.ps1 -AppDir "C:\Program Files\SNAPY OS Kiosk" `
+  -CloudUrl https://snapyos.example -KioskUrl https://snapyos.example/p/toko-a/booth-1
+```
+
+Skrip memeriksa Node.js ≥ 22 (termasuk `node:sqlite` tanpa flag) dan WebView2,
+mendeteksi digiCamControl + SumatraPDF, meminta PIN darurat, lalu menulis
+`bridge.env` dan mendaftarkan tugas `SnapyOSRuntime` (`schtasks`, boot, SYSTEM).
+
+- **Token bridge dibuat di mesin booth**, tidak ada di dalam skrip. Token satu
+  booth tidak boleh dipakai booth lain.
+- `bridge.env` hanya bisa dibaca SYSTEM + Administrators — di situlah tokennya.
+  Folder data tetap bisa ditulis user kiosk, karena sidecar EXE berjalan sebagai
+  user itu.
+- Slug booth diambil dari `/p/<business>/<booth>` pada `-KioskUrl` dan ditulis ke
+  `meta` store; tanpa slug, sesi offline ditolak.
+- PIN darurat disimpan sebagai hash argon2id di `meta.exit_pin_emergency_hash`,
+  dengan parameter yang sama seperti `hashDevicePin`.
+
+`.\scripts\uninstall-snapyos.ps1` menghapus tugas dan `bridge.env` saja. Folder
+data — sesi, foto, hash PIN — **tidak** disentuh.
+
 `bridge.env` (`%ProgramData%\SNAPYOS\bridge.env`) dibaca EXE lalu diteruskan
 apa adanya ke sidecar. Kunci tambahan khusus EXE:
 
