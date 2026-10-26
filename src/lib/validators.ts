@@ -1311,7 +1311,12 @@ export const appReleaseSchema = z.object({
     .regex(/^[0-9a-f]{64}$/, "SHA-256 harus 64 karakter hex")
     .nullable()
     .optional(),
-  release_notes: z.string().trim().max(4000, "Catatan rilis maksimal 4000 karakter").nullable().optional(),
+  release_notes: z
+    .string()
+    .trim()
+    .max(4000, "Catatan rilis maksimal 4000 karakter")
+    .nullable()
+    .optional(),
   is_active: z.boolean().optional(),
 });
 
@@ -1331,7 +1336,11 @@ export type AppReleaseUpdateInput = z.infer<typeof appReleaseUpdateSchema>;
 export function appReleaseWriteError(
   error: { code?: string } | null | undefined,
   fallback: string
-): { code: "VALIDATION_ERROR" | "INTERNAL"; message: string; fieldErrors?: Record<string, string[]> } {
+): {
+  code: "VALIDATION_ERROR" | "INTERNAL";
+  message: string;
+  fieldErrors?: Record<string, string[]>;
+} {
   if (error?.code === "23505") {
     const message = "Versi ini sudah terdaftar. Hapus atau ubah rilis lama lebih dulu.";
     return { code: "VALIDATION_ERROR", message, fieldErrors: { version: [message] } };

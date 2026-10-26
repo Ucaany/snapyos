@@ -29,11 +29,7 @@ type StatusResponse = {
 };
 
 /** POST ke runtime lokal; melempar `KioskError` supaya UI bisa membedakan sebab. */
-async function bridgePost<T>(
-  path: string,
-  body: unknown,
-  bridgeUrl?: string | null
-): Promise<T> {
+async function bridgePost<T>(path: string, body: unknown, bridgeUrl?: string | null): Promise<T> {
   const token = getBridgeToken();
   if (!token) throw new KioskError("NO_BRIDGE", "Runtime lokal booth tidak aktif.");
 
@@ -194,7 +190,12 @@ export async function finalizeLocalSession(
   try {
     const response = await fetch(
       `${cameraBridgeUrl({ bridge_url: bridgeUrl ?? undefined })}/v1/sessions/${encodeURIComponent(sessionId)}/finalize`,
-      { method: "POST", headers: { "X-Bridge-Token": token }, body: form, signal: controller.signal }
+      {
+        method: "POST",
+        headers: { "X-Bridge-Token": token },
+        body: form,
+        signal: controller.signal,
+      }
     );
     if (!response.ok) {
       const body = (await response.json().catch(() => null)) as { message?: string } | null;

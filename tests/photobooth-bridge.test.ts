@@ -80,7 +80,7 @@ case "\${1-}" in
     printf '\\377\\330FAKE\\377\\331' > "$output"
     exit "\${FAKE_GPHOTO_CAPTURE_EXIT:-0}"
     ;;
-esac`,
+esac`
   );
   await writeExecutable(
     lpstat,
@@ -88,12 +88,12 @@ esac`,
   -p) printf '%s\\n' 'printer TEST_PHOTO is idle. enabled since today' ;;
   -d) printf '%s\\n' 'system default destination: TEST_PHOTO' ;;
   *) exit 2 ;;
-esac`,
+esac`
   );
   await writeExecutable(
     lp,
     `printf '%s\\n' "$*" >> "$FAKE_LP_LOG"
-printf '%s\\n' 'request id is TEST_PHOTO-1 (1 file(s))'`,
+printf '%s\\n' 'request id is TEST_PHOTO-1 (1 file(s))'`
   );
 
   const bridgeProcess = spawn(process.execPath, [bridge], {
@@ -162,16 +162,10 @@ printf '%s\\n' 'request id is TEST_PHOTO-1 (1 file(s))'`,
     });
     assert.equal(firstCapture.status, 200);
     assert.equal(firstCapture.headers.get("content-type"), "image/jpeg");
-    assert.deepEqual(Array.from(new Uint8Array(await firstCapture.arrayBuffer())), [
-      255,
-      216,
-      70,
-      65,
-      75,
-      69,
-      255,
-      217,
-    ]);
+    assert.deepEqual(
+      Array.from(new Uint8Array(await firstCapture.arrayBuffer())),
+      [255, 216, 70, 65, 75, 69, 255, 217]
+    );
 
     const secondCapture = await fetch(`${baseUrl}/camera/capture`, {
       method: "POST",

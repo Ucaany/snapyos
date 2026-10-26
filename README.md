@@ -16,6 +16,7 @@ PRD dan dokumentasi teknis ada di [`docs/`](./docs/README.md). Panduan developme
 - **Auth:** Auth.js v5 (NextAuth) — credential email/password, argon2id, JWT + DB revocation (`auth_sessions`)
 - **Payment:** Pakasir (pakasir.com — QRIS aggregator)
 - **Visual:** Full Neo-Brutalism (single aesthetic lock — satu dashboard brutalist)
+- **Aplikasi booth:** kiosk PWA (tablet/phone) atau EXE Windows (Tauri v2 + sidecar runtime lokal `runtime/`); setelan kamera/printer/timer/PIN tinggal di booth, bukan di cloud
 
 ## Struktur Kunci
 
@@ -26,6 +27,8 @@ src/
   components/ui/ # shadcn/ui — dikustomisasi Neo-Brutalism
   lib/           # auth, supabase, utils
   styles/        # tokens.css — single source of truth design token
+runtime/         # runtime booth lokal (node:sqlite + HTTP /v1/* di loopback, token bridge)
+src-tauri/       # aplikasi booth Windows (Tauri v2, jendela kiosk + sidecar runtime)
 db/schema.sql    # DDL lengkap + index + seed (docs/07)
 db/migrations/   # migrasi inkremental untuk DB yang sudah jalan
 ```
@@ -80,6 +83,8 @@ npm run test:e2e:bluetooth  # E2E printer Bluetooth
 npm run test:e2e:print   # E2E cetak standalone
 npm run format           # prettier --write
 npm run format:check     # prettier --check (gate rilis)
+npm run bridge:local     # runtime booth lokal di 127.0.0.1:17777 (butuh PHOTOBOOTH_BRIDGE_TOKEN)
+npm run bridge:gphoto2   # sama, adapter kamera DSLR via gphoto2
 ```
 
 ### Audit rilis (2026-10-21)

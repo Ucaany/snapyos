@@ -89,7 +89,11 @@ function psQuote(value: string): string {
 
 function createWindowsPrinter(config: RuntimeConfig): PrinterAdapter {
   const ps = (script: string, timeoutMs: number) =>
-    runCommand(config.powershellBin, ["-NoProfile", "-NonInteractive", "-Command", script], timeoutMs);
+    runCommand(
+      config.powershellBin,
+      ["-NoProfile", "-NonInteractive", "-Command", script],
+      timeoutMs
+    );
 
   return {
     kind: "windows",

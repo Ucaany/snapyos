@@ -73,7 +73,9 @@ async function main(): Promise<void> {
   const printer = createPrinter(effective);
 
   if (config.mock) {
-    console.warn("[snapyos-runtime] MODE MOCK AKTIF — tidak ada kamera/printer fisik yang dipakai.");
+    console.warn(
+      "[snapyos-runtime] MODE MOCK AKTIF — tidak ada kamera/printer fisik yang dipakai."
+    );
   }
 
   /** Kontrak lama: `ok` berarti adapter-nya hidup, `camera` berarti perangkat terdeteksi. */
@@ -120,7 +122,10 @@ async function main(): Promise<void> {
     const url = new URL(req.url || "/", `http://${config.host}:${config.port}`);
 
     // /health terbuka: Setup Perangkat memanggilnya sebelum token diisi.
-    if (url.pathname !== "/health" && !tokenMatches(req.headers["x-bridge-token"], config.tokenDigest)) {
+    if (
+      url.pathname !== "/health" &&
+      !tokenMatches(req.headers["x-bridge-token"], config.tokenDigest)
+    ) {
       return json(res, 401, { message: "Token bridge tidak valid." }, origin);
     }
 

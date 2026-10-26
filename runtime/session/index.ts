@@ -62,12 +62,16 @@ function isLocalId(id: string): boolean {
 }
 
 function findSession(db: DatabaseSync, id: string): SessionRow | null {
-  return (db.prepare("select * from sessions where id = ?").get(id) as SessionRow | undefined) ?? null;
+  return (
+    (db.prepare("select * from sessions where id = ?").get(id) as SessionRow | undefined) ?? null
+  );
 }
 
 function listCaptures(db: DatabaseSync, sessionId: string): CaptureRow[] {
   return db
-    .prepare("select id, slot_index, file_path, created_at from captures where session_id = ? order by slot_index")
+    .prepare(
+      "select id, slot_index, file_path, created_at from captures where session_id = ? order by slot_index"
+    )
     .all(sessionId) as CaptureRow[];
 }
 
@@ -169,8 +173,10 @@ export function createSession(
     optionalString(snapshotObject.id, "package_snapshot.id");
   if (!packageId) throw new HttpError("package_id wajib diisi.", 400);
 
-  const businessSlug = optionalString(body.business_slug, "business_slug") ?? getMeta(ctx.db, "business_slug");
-  const photoboxSlug = optionalString(body.photobox_slug, "photobox_slug") ?? getMeta(ctx.db, "photobox_slug");
+  const businessSlug =
+    optionalString(body.business_slug, "business_slug") ?? getMeta(ctx.db, "business_slug");
+  const photoboxSlug =
+    optionalString(body.photobox_slug, "photobox_slug") ?? getMeta(ctx.db, "photobox_slug");
   if (!businessSlug || !photoboxSlug) {
     throw new HttpError("Runtime belum dikonfigurasi (business_slug/photobox_slug kosong).", 409);
   }
@@ -223,7 +229,9 @@ export async function captureSlot(
   const slot = slotOf(body.slot_index ?? 0);
 
   const existing = ctx.db
-    .prepare("select id, slot_index, file_path, created_at from captures where session_id = ? and idempotency_key = ?")
+    .prepare(
+      "select id, slot_index, file_path, created_at from captures where session_id = ? and idempotency_key = ?"
+    )
     .get(id, key) as CaptureRow | undefined;
   if (existing) return { status: 200, body: { ok: true, replay: true, capture: existing } };
 
@@ -232,7 +240,9 @@ export async function captureSlot(
   // Slot sudah terisi dengan key lain: jangan buang satu shutter hanya untuk
   // menemukan konflik di insert. Insert di bawah tetap penjaga balapan.
   const occupiedBefore = ctx.db
-    .prepare("select id, slot_index, file_path, created_at from captures where session_id = ? and slot_index = ?")
+    .prepare(
+      "select id, slot_index, file_path, created_at from captures where session_id = ? and slot_index = ?"
+    )
     .get(id, slot) as CaptureRow | undefined;
   if (occupiedBefore) {
     return { status: 200, body: { ok: true, replay: true, capture: occupiedBefore } };
@@ -252,7 +262,9 @@ export async function captureSlot(
   } catch (error) {
     // Slot sudah terisi (key berbeda, slot sama): kirim baris yang ada, bukan 500.
     const occupied = ctx.db
-      .prepare("select id, slot_index, file_path, created_at from captures where session_id = ? and slot_index = ?")
+      .prepare(
+        "select id, slot_index, file_path, created_at from captures where session_id = ? and slot_index = ?"
+      )
       .get(id, slot) as CaptureRow | undefined;
     if (occupied) return { status: 200, body: { ok: true, replay: true, capture: occupied } };
     throw error;
@@ -266,7 +278,10 @@ export async function captureSlot(
     throw error;
   }
   touch(ctx.db, id, at);
-  return { status: 201, body: { ok: true, capture: { id: captureId, slot_index: slot, created_at: at } } };
+  return {
+    status: 201,
+    body: { ok: true, capture: { id: captureId, slot_index: slot, created_at: at } },
+  };
 }
 
 type Part = { name: string; filename: string | null; data: Buffer };
@@ -313,11 +328,13 @@ export function finalizeSession(
   now = Date.now()
 ): { status: number; body: unknown } {
   const row = requireSession(ctx.db, id);
-  const existing = ctx.db
-    .prepare("select id from finalize_queue where session_id = ?")
-    .get(id) as { id: string } | undefined;
+  const existing = ctx.db.prepare("select id from finalize_queue where session_id = ?").get(id) as
+    { id: string } | undefined;
   if (existing) {
-    return { status: 200, body: { ok: true, replay: true, session: present(requireSession(ctx.db, id)) } };
+    return {
+      status: 200,
+      body: { ok: true, replay: true, session: present(requireSession(ctx.db, id)) },
+    };
   }
   requireActive(row);
 
@@ -358,7 +375,9 @@ export function finalizeSession(
     )
     .run(`fq_${id}`, id, payloadPath, at, at);
   ctx.db
-    .prepare("update sessions set state = 'finalized', retake_count = ?, updated_at = ? where id = ?")
+    .prepare(
+      "update sessions set state = 'finalized', retake_count = ?, updated_at = ? where id = ?"
+    )
     .run(payload.retake_count, at, id);
 
   return {

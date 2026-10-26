@@ -110,8 +110,7 @@ export function effectiveConfig(config: RuntimeConfig, settings: SettingsShape):
   const printMode = settings.print_settings?.mode;
   return {
     ...config,
-    camera:
-      config.camera !== "mock" && provider === "gphoto2" ? "gphoto2" : config.camera,
+    camera: config.camera !== "mock" && provider === "gphoto2" ? "gphoto2" : config.camera,
     printer: config.printer !== "mock" && printMode === "cups" ? "cups" : config.printer,
   };
 }
@@ -233,11 +232,7 @@ export function importSettings(ctx: SettingsContext, raw: unknown) {
 
   const version = Number(payload.schema_version);
   if (!Number.isInteger(version) || version < 1) {
-    throw new HttpError(
-      "schema_version wajib bilangan bulat positif.",
-      400,
-      INVALID_SETTINGS
-    );
+    throw new HttpError("schema_version wajib bilangan bulat positif.", 400, INVALID_SETTINGS);
   }
   if (version > SETTINGS_SCHEMA_VERSION) {
     throw new HttpError(
@@ -249,7 +244,8 @@ export function importSettings(ctx: SettingsContext, raw: unknown) {
   }
 
   const currentSlug = getMeta(ctx.db, "photobox_slug");
-  const incomingSlug = typeof payload.photobox_slug === "string" ? payload.photobox_slug.trim() : "";
+  const incomingSlug =
+    typeof payload.photobox_slug === "string" ? payload.photobox_slug.trim() : "";
   if (currentSlug && incomingSlug && incomingSlug !== currentSlug) {
     throw new HttpError(
       `Berkas ini milik booth "${incomingSlug}", bukan "${currentSlug}".`,

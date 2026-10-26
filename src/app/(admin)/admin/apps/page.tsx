@@ -58,7 +58,9 @@ export default async function AdminAppsPage() {
 
       {/* Batas jujur: tanpa kalimat ini owner mengira integritas file dijamin platform. */}
       <div className="border-2 border-ink bg-accent/30 p-4 md:p-5">
-        <p className="font-mono text-xs font-bold uppercase tracking-[0.12em]">Batas tautan eksternal</p>
+        <p className="font-mono text-xs font-bold uppercase tracking-[0.12em]">
+          Batas tautan eksternal
+        </p>
         <p className="mt-2 max-w-[70ch] text-sm leading-relaxed">
           File diunduh dari host di luar SNAPY OS. Ukuran dan SHA-256 diisi manual oleh admin dan
           tidak diverifikasi sistem. Periksa hash di booth dengan{" "}

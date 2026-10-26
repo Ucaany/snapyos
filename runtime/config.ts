@@ -99,7 +99,7 @@ export function loadConfig(env: EnvLike): RuntimeConfig {
   if (token.length < 16) {
     throw new ConfigError(
       "PHOTOBOOTH_BRIDGE_TOKEN wajib diisi (minimal 16 karakter).\n" +
-        'Buat dengan: node -e "console.log(require(\'node:crypto\').randomBytes(24).toString(\'base64url\'))"\n' +
+        "Buat dengan: node -e \"console.log(require('node:crypto').randomBytes(24).toString('base64url'))\"\n" +
         "Simpan nilai yang sama di perangkat kiosk (Setup Perangkat → Bridge token)."
     );
   }
@@ -151,10 +151,8 @@ export function loadConfig(env: EnvLike): RuntimeConfig {
     timeoutMs,
     digicamPort: readPort(env.DIGICAMCONTROL_PORT, "DIGICAMCONTROL_PORT", 5513),
     digicamCmd:
-      env.DIGICAMCONTROL_CMD?.trim() ||
-      "C:\\Program Files\\digiCamControl\\CameraControlCmd.exe",
-    sumatraBin:
-      env.SUMATRA_BIN?.trim() || "C:\\Program Files\\SumatraPDF\\SumatraPDF.exe",
+      env.DIGICAMCONTROL_CMD?.trim() || "C:\\Program Files\\digiCamControl\\CameraControlCmd.exe",
+    sumatraBin: env.SUMATRA_BIN?.trim() || "C:\\Program Files\\SumatraPDF\\SumatraPDF.exe",
     powershellBin: env.POWERSHELL_BIN?.trim() || "powershell",
     cupsBin: env.LP_BIN?.trim() || "lp",
     lpstatBin: env.LPSTAT_BIN?.trim() || "lpstat",

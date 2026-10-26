@@ -61,14 +61,14 @@ Health check yang harus lulus:
 Runtime menyimpan sesi sendiri saat internet mati. ID sesi lokal berprefix
 `local_` supaya tidak pernah tertukar dengan UUID cloud.
 
-| Rute | Catatan |
-|---|---|
-| `POST /v1/sessions` | `package_snapshot` wajib; `expires_at` dihitung runtime |
-| `GET /v1/sessions/:id` | termasuk daftar capture |
-| `POST /v1/sessions/:id/capture` | header `Idempotency-Key` wajib; key sama → capture yang sama |
-| `POST /v1/sessions/:id/finalize` | multipart, field sama dengan `buildFinalizeForm` |
-| `POST /v1/sessions/:id/abort` | sesi `aborted` menolak capture berikutnya (`409`) |
-| `POST /v1/exit` | PIN darurat (argon2id); 5 salah → kunci 5 menit |
+| Rute                             | Catatan                                                      |
+| -------------------------------- | ------------------------------------------------------------ |
+| `POST /v1/sessions`              | `package_snapshot` wajib; `expires_at` dihitung runtime      |
+| `GET /v1/sessions/:id`           | termasuk daftar capture                                      |
+| `POST /v1/sessions/:id/capture`  | header `Idempotency-Key` wajib; key sama → capture yang sama |
+| `POST /v1/sessions/:id/finalize` | multipart, field sama dengan `buildFinalizeForm`             |
+| `POST /v1/sessions/:id/abort`    | sesi `aborted` menolak capture berikutnya (`409`)            |
+| `POST /v1/exit`                  | PIN darurat (argon2id); 5 salah → kunci 5 menit              |
 
 `GET /v1/status` kini juga memuat `business_slug` dan `photobox_slug` dari tabel
 `meta`; kiosk memakainya untuk memastikan runtime di port 17777 memang milik
@@ -81,10 +81,10 @@ dicatat sebagai event `exit_pin_emergency_used`.
 Worker berjalan di latar belakang runtime; kamera dan printer tidak pernah
 menunggu jaringan. Butuh dua env:
 
-| Env | Isi |
-|---|---|
-| `SNAPYOS_CLOUD_URL` | origin cloud, mis. `https://app.snapyos.id` |
-| `SNAPYOS_DEVICE_TOKEN` | token dari aktivasi booth |
+| Env                    | Isi                                         |
+| ---------------------- | ------------------------------------------- |
+| `SNAPYOS_CLOUD_URL`    | origin cloud, mis. `https://app.snapyos.id` |
+| `SNAPYOS_DEVICE_TOKEN` | token dari aktivasi booth                   |
 
 Keduanya kosong → worker tidak start; sesi tetap tersimpan lokal dan tidak
 pernah dikirim. Bukan error.
@@ -126,13 +126,13 @@ fullscreen memuat `SNAPYOS_KIOSK_URL`, dan runtime lokal dijalankan sebagai
 sidecar Node. Tidak ada komponen kiosk yang ditulis ulang — UI, `ui.tsx`, dan
 semua alur tetap milik halaman web.
 
-| Berkas | Isi |
-|---|---|
-| `src-tauri/tauri.conf.json` | jendela fullscreen, `resizable: false`, `minWidth`/`minHeight` 1024×768, updater |
-| `src-tauri/src/main.rs` | izin kamera, ukuran jendela per orientasi, sidecar hidup-mati |
-| `src-tauri/capabilities/default.json` | tanpa izin invoke; halaman kiosk tidak memanggil `invoke` |
-| `src-tauri/tauri.windows.conf.json` | `externalBin` sidecar (hanya Windows, supaya `cargo check` di macOS tidak gagal) |
-| `scripts/build-kiosk-runtime.mjs` | bundel `runtime/` jadi `src-tauri/runtime-dist/` |
+| Berkas                                | Isi                                                                              |
+| ------------------------------------- | -------------------------------------------------------------------------------- |
+| `src-tauri/tauri.conf.json`           | jendela fullscreen, `resizable: false`, `minWidth`/`minHeight` 1024×768, updater |
+| `src-tauri/src/main.rs`               | izin kamera, ukuran jendela per orientasi, sidecar hidup-mati                    |
+| `src-tauri/capabilities/default.json` | tanpa izin invoke; halaman kiosk tidak memanggil `invoke`                        |
+| `src-tauri/tauri.windows.conf.json`   | `externalBin` sidecar (hanya Windows, supaya `cargo check` di macOS tidak gagal) |
+| `scripts/build-kiosk-runtime.mjs`     | bundel `runtime/` jadi `src-tauri/runtime-dist/`                                 |
 
 ### Pemasangan di Windows
 
@@ -161,11 +161,11 @@ data — sesi, foto, hash PIN — **tidak** disentuh.
 `bridge.env` (`%ProgramData%\SNAPYOS\bridge.env`) dibaca EXE lalu diteruskan
 apa adanya ke sidecar. Kunci tambahan khusus EXE:
 
-| Kunci | Isi |
-|---|---|
-| `SNAPYOS_KIOSK_URL` | halaman kiosk booth ini, mis. `https://test.snapyos.biz.id/p/toko-a/booth-1` |
-| `SNAPYOS_KIOSK_ORIENTATION` | `portrait` → jendela 1080×1920; selain itu 1920×1080 |
-| `SNAPYOS_UPDATE_ENDPOINT` | opsional; URL manifest update. Kosong = updater tidak memeriksa apa pun |
+| Kunci                       | Isi                                                                          |
+| --------------------------- | ---------------------------------------------------------------------------- |
+| `SNAPYOS_KIOSK_URL`         | halaman kiosk booth ini, mis. `https://test.snapyos.biz.id/p/toko-a/booth-1` |
+| `SNAPYOS_KIOSK_ORIENTATION` | `portrait` → jendela 1080×1920; selain itu 1920×1080                         |
+| `SNAPYOS_UPDATE_ENDPOINT`   | opsional; URL manifest update. Kosong = updater tidak memeriksa apa pun      |
 
 Updater memakai `pubkey` di `tauri.conf.json`; private key-nya **tidak** masuk
 repo. Buat sekali dengan `npx tauri signer generate`, simpan private key di

@@ -550,9 +550,17 @@ export function KioskApp({
             photos: final.map((p) => p.blob),
             gifPhotos: photos.map((p) => p.blob),
           });
-          await finalizeLocalSession(session.session_id, form, config.photobox.camera_settings.bridge_url);
+          await finalizeLocalSession(
+            session.session_id,
+            form,
+            config.photobox.camera_settings.bridge_url
+          );
           setFinalPhotos(final);
-          setResult({ result_token: session.result_token ?? null, gif_url: null, pendingSync: true });
+          setResult({
+            result_token: session.result_token ?? null,
+            gif_url: null,
+            pendingSync: true,
+          });
           setReprintRequested(false);
           setStep(shouldPrint ? "printing" : "result");
         } catch (localError) {

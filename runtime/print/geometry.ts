@@ -81,7 +81,11 @@ export function buildPdf(input: PrintInput, test = false): Promise<Buffer> {
         width: contentWidth - 16,
         align: "center",
       });
-    doc.save().rect(margin + 8, height - margin - 14, contentWidth - 16, 6).fill("#111111").restore();
+    doc
+      .save()
+      .rect(margin + 8, height - margin - 14, contentWidth - 16, 6)
+      .fill("#111111")
+      .restore();
   } else {
     if (!Array.isArray(input.sheets) || input.sheets.length < 1 || input.sheets.length > 50) {
       throw new Error("Lembar cetak tidak valid.");

@@ -26,7 +26,10 @@ test("EXE: NotFoundError juga mengarahkan ke Settings (kamera dimatikan OS)", ()
 
 test("browser: pesan lama tidak berubah", () => {
   assert.deepEqual(cameraErrorCopy("NotAllowedError"), CAMERA_ERRORS.NotAllowedError);
-  assert.deepEqual(cameraErrorCopy("NotReadableError", { exe: true }), CAMERA_ERRORS.NotReadableError);
+  assert.deepEqual(
+    cameraErrorCopy("NotReadableError", { exe: true }),
+    CAMERA_ERRORS.NotReadableError
+  );
 });
 
 test("nama error tak dikenal tetap punya pesan dan aksi", () => {

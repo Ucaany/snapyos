@@ -220,28 +220,28 @@ Tidak dipakai (JWT strategy + `auth_sessions` di atas); `users` tetap source of 
 
 ### photoboxes
 
-| kolom                   | tipe                       | ket                                                                                                                                    |
-| ----------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| id                      | uuid PK                    |                                                                                                                                        |
-| business_id             | uuid → businesses.id       |                                                                                                                                        |
-| outlet_id               | uuid → outlets.id          |                                                                                                                                        |
-| slug                    | text                       | unique per business, untuk URL `/p/[businessSlug]/[photoboxSlug]`                                                                      |
-| name                    | text                       | "Booth 01"                                                                                                                             |
-| status                  | text                       | `online`/`offline`/`maintenance`                                                                                                       |
-| camera                  | text                       | nullable                                                                                                                               |
-| printer                 | text                       | nullable                                                                                                                               |
-| display                 | text                       | nullable                                                                                                                               |
-| default_template_id     | uuid → templates.id        | nullable                                                                                                                               |
-| camera_settings         | jsonb                      | nullable (`{ countdown_seconds, mirror_preview, fullscreen, facingMode, capture_width, capture_height, jpeg_quality }`)                |
-| print_settings          | jsonb                      | nullable (`{ enabled, paper_size, layout, orientation, auto_print, copies }`)                                                          |
-| session_settings        | jsonb                      | nullable (v2: `{ timer_seconds: 300, warning_seconds: 60, max_retakes: null }`)                                                        |
+| kolom                   | tipe                       | ket                                                                                                                                              |
+| ----------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| id                      | uuid PK                    |                                                                                                                                                  |
+| business_id             | uuid → businesses.id       |                                                                                                                                                  |
+| outlet_id               | uuid → outlets.id          |                                                                                                                                                  |
+| slug                    | text                       | unique per business, untuk URL `/p/[businessSlug]/[photoboxSlug]`                                                                                |
+| name                    | text                       | "Booth 01"                                                                                                                                       |
+| status                  | text                       | `online`/`offline`/`maintenance`                                                                                                                 |
+| camera                  | text                       | nullable                                                                                                                                         |
+| printer                 | text                       | nullable                                                                                                                                         |
+| display                 | text                       | nullable                                                                                                                                         |
+| default_template_id     | uuid → templates.id        | nullable                                                                                                                                         |
+| camera_settings         | jsonb                      | nullable (`{ countdown_seconds, mirror_preview, fullscreen, facingMode, capture_width, capture_height, jpeg_quality }`)                          |
+| print_settings          | jsonb                      | nullable (`{ enabled, paper_size, layout, orientation, auto_print, copies }`)                                                                    |
+| session_settings        | jsonb                      | nullable (v2: `{ timer_seconds: 300, warning_seconds: 60, max_retakes: null }`)                                                                  |
 | device_status           | jsonb                      | nullable (last heartbeat, camera resolution, printer status, `app_version` — versi booth dilaporkan lewat `devices/report` & `devices/settings`) |
-| exit_pin_hash           | text                       | nullable — PIN keluar kiosk, verifikasi server-side (hash)                                                                             |
-| exit_pin_failed_count   | integer not null default 0 | migrasi 0034 — throttle brute-force PIN exit kiosk (counter percobaan gagal beruntun)                                                  |
-| exit_pin_locked_until   | timestamptz nullable       | migrasi 0034 — 5 gagal beruntun → lock 5 menit (server-side, tidak dapat di-bypass client)                                             |
-| pos_enabled             | boolean                    | not null default false — toggle POS add-on per booth (0019)                                                                            |
-| branding                | jsonb                      | nullable (0045) — override branding kiosk per-booth; null = inherit `business_settings.branding`. Deep-merge di app layer saat render. |
-| created_at / updated_at | timestamptz                |                                                                                                                                        |
+| exit_pin_hash           | text                       | nullable — PIN keluar kiosk, verifikasi server-side (hash)                                                                                       |
+| exit_pin_failed_count   | integer not null default 0 | migrasi 0034 — throttle brute-force PIN exit kiosk (counter percobaan gagal beruntun)                                                            |
+| exit_pin_locked_until   | timestamptz nullable       | migrasi 0034 — 5 gagal beruntun → lock 5 menit (server-side, tidak dapat di-bypass client)                                                       |
+| pos_enabled             | boolean                    | not null default false — toggle POS add-on per booth (0019)                                                                                      |
+| branding                | jsonb                      | nullable (0045) — override branding kiosk per-booth; null = inherit `business_settings.branding`. Deep-merge di app layer saat render.           |
+| created_at / updated_at | timestamptz                |                                                                                                                                                  |
 
 ### member_photoboxes (akses booth per member — 0018)
 

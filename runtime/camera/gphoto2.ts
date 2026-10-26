@@ -70,9 +70,20 @@ export function createGphoto2Camera(config: RuntimeConfig): CameraAdapter {
         ? ["--set-config", `capturetarget=${config.captureTarget}`]
         : [];
       const attempts = [
-        [...target, "--set-config", "output=Off", "--capture-image-and-download", `--filename=${file}`],
+        [
+          ...target,
+          "--set-config",
+          "output=Off",
+          "--capture-image-and-download",
+          `--filename=${file}`,
+        ],
         [...target, "--capture-image-and-download", `--filename=${file}`],
-        [...target, "--trigger-capture", "--wait-event-and-download=FILEADDED", `--filename=${file}`],
+        [
+          ...target,
+          "--trigger-capture",
+          "--wait-event-and-download=FILEADDED",
+          `--filename=${file}`,
+        ],
       ];
       let lastError: unknown = null;
       try {

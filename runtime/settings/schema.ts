@@ -34,4 +34,8 @@ export type SettingsShape = Partial<Record<DeviceGroup, Record<string, unknown>>
  */
 export type CloudSettings = SettingsShape & Record<string, unknown>;
 
-export { deviceSettingFields as deviceFields, deviceSettingsSchema, foreignSettingKeys as foreignKeys };
+export {
+  deviceSettingFields as deviceFields,
+  deviceSettingsSchema,
+  foreignSettingKeys as foreignKeys,
+};

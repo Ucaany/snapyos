@@ -2,40 +2,42 @@
 
 Status: active
 Audience: owner, staff, admin, developer, operator
-Last updated: 2026-10-20
-Last verified: 2026-10-20
-Source of truth: `src/`, `db/schema.sql`, `README.md`
+Last updated: 2026-10-26
+Last verified: 2026-10-26
+Source of truth: `src/`, `runtime/`, `db/schema.sql`, `README.md`
 
 ## Active
 
-| Area                                    | Status                                       | Canonical source                                           |
-| --------------------------------------- | -------------------------------------------- | ---------------------------------------------------------- |
-| Auth.js credential auth                 | Active                                       | `src/lib/auth.ts`, `auth_sessions`                         |
-| Multi-tenant business                   | Active                                       | `businesses`, `business_members`, tenant helpers           |
-| Owner dashboard                         | Active                                       | `src/app/(dashboard)/dashboard/`                           |
-| Staff shell                             | Active, operational read-only                | `src/app/(staff)/staff/`                                   |
-| Admin platform                          | Active                                       | `src/app/(admin)/admin/`                                   |
-| Customer kiosk                          | Active, pay-first                            | `src/app/p/[businessSlug]/[photoboxSlug]/`                 |
-| Online result                           | Active                                       | `src/app/r/[token]/`                                       |
-| Direct merchant payment                 | Active                                       | Pakasir, Midtrans, Tripay credentials per business         |
-| Voucher payment                         | Active                                       | public checkout actions and voucher server logic           |
-| Offline cash kiosk                      | Active when owner enables it                 | `business_settings.checkout.offline_enabled`               |
-| POS add-on                              | Active, offline-only                         | `src/server/pos-actions.ts`, `photoboxes.pos_enabled`      |
-| Template builder                        | Active                                       | `src/components/dashboard/TemplateBuilder.tsx`             |
-| Storage quota                           | Active when plan feature is enabled          | `src/server/storage-usage.ts` (jumlah kedua provider)      |
-| Dual storage (R2 write + Supabase read) | Active — Fase 3                              | `src/server/storage` (`getWriteStorage`, `resolveStorage`) |
-| Aplikasi booth (EXE Windows)            | Partial — kode ada, `.exe`/`.msi` NOT TESTED | `src-tauri/` (Tauri v2, jendela kiosk + sidecar runtime)   |
-| Katalog aplikasi (admin)                | Active — tautan saja, tanpa upload           | `src/app/(admin)/admin/apps/`, `app_releases` (0081)       |
+| Area                                    | Status                                       | Canonical source                                                   |
+| --------------------------------------- | -------------------------------------------- | ------------------------------------------------------------------ |
+| Auth.js credential auth                 | Active                                       | `src/lib/auth.ts`, `auth_sessions`                                 |
+| Multi-tenant business                   | Active                                       | `businesses`, `business_members`, tenant helpers                   |
+| Owner dashboard                         | Active                                       | `src/app/(dashboard)/dashboard/`                                   |
+| Staff shell                             | Active, operational read-only                | `src/app/(staff)/staff/`                                           |
+| Admin platform                          | Active                                       | `src/app/(admin)/admin/`                                           |
+| Customer kiosk                          | Active, pay-first                            | `src/app/p/[businessSlug]/[photoboxSlug]/`                         |
+| Online result                           | Active                                       | `src/app/r/[token]/`                                               |
+| Direct merchant payment                 | Active                                       | Pakasir, Midtrans, Tripay credentials per business                 |
+| Voucher payment                         | Active                                       | public checkout actions and voucher server logic                   |
+| Offline cash kiosk                      | Active when owner enables it                 | `business_settings.checkout.offline_enabled`                       |
+| POS add-on                              | Active, offline-only                         | `src/server/pos-actions.ts`, `photoboxes.pos_enabled`              |
+| Template builder                        | Active                                       | `src/components/dashboard/TemplateBuilder.tsx`                     |
+| Storage quota                           | Active when plan feature is enabled          | `src/server/storage-usage.ts` (jumlah kedua provider)              |
+| Dual storage (R2 write + Supabase read) | Active — Fase 3                              | `src/server/storage` (`getWriteStorage`, `resolveStorage`)         |
+| Aplikasi booth (EXE Windows)            | Partial — kode ada, `.exe`/`.msi` NOT TESTED | `src-tauri/` (Tauri v2, jendela kiosk + sidecar runtime)           |
+| Kiosk offline runtime (lokal)           | Active — sesi lokal + sync ke cloud          | `runtime/` (`node:sqlite`, `/v1/*` loopback, token bridge)         |
+| Katalog aplikasi (admin)                | Active — tautan saja, tanpa upload           | `src/app/(admin)/admin/apps/`, `app_releases` (0081)               |
 | Unduh aplikasi booth (owner)            | Active — tautan + status versi per booth     | `src/app/(dashboard)/dashboard/apps/`, `device_status.app_version` |
 
 ## Partial or constrained
 
-| Area              | Constraint                                                                                                                                                                       |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Camera control    | Dua provider: browser `getUserMedia` (default) dan DSLR via bridge lokal `gphoto2`. Bridge wajib token; hardware fisik belum diuji di mesin ini.                                 |
-| Printing          | Tiga jalur: dialog OS (`window.print()`), thermal ESC/POS (Web Bluetooth / Web Serial), dan CUPS via bridge lokal. Tidak ada antrean server; "terkirim" bukan konfirmasi kertas. |
-| Subscription REST | Subscription actions use server actions and dashboard pages. No public REST contract is exposed.                                                                                 |
-| Owner CRUD REST   | Most owner CRUD uses server actions. Only documented device, customer detail, report, and activation routes remain.                                                              |
+| Area              | Constraint                                                                                                                                                                           |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Camera control    | Dua provider: browser `getUserMedia` (default) dan DSLR via bridge lokal `gphoto2`. Bridge wajib token; hardware fisik belum diuji di mesin ini.                                     |
+| Printing          | Tiga jalur: dialog OS (`window.print()`), thermal ESC/POS (Web Bluetooth / Web Serial), dan CUPS via bridge lokal. Tidak ada antrean server; "terkirim" bukan konfirmasi kertas.     |
+| Subscription REST | Subscription actions use server actions and dashboard pages. No public REST contract is exposed.                                                                                     |
+| Owner CRUD REST   | Most owner CRUD uses server actions. Only documented device, customer detail, report, and activation routes remain.                                                                  |
+| Runtime offline   | Boot offline hanya setelah satu kunjungan online sukses (cache SW + `meta` slug). Tanpa `SNAPYOS_CLOUD_URL`/`SNAPYOS_DEVICE_TOKEN`, sesi menumpuk lokal dan tidak pernah tersinkron. |
 
 ## Security hardening (2026-10-08)
 

@@ -157,9 +157,10 @@ type CloudAnswer = {
 };
 
 async function readAnswer(response: Response): Promise<CloudAnswer> {
-  const body = (await response.json().catch(() => null)) as
-    | { data?: Record<string, unknown>; error?: { code?: string } }
-    | null;
+  const body = (await response.json().catch(() => null)) as {
+    data?: Record<string, unknown>;
+    error?: { code?: string };
+  } | null;
   return {
     ok: response.ok,
     status: response.status,
@@ -173,24 +174,24 @@ function isExpired(answer: CloudAnswer): boolean {
   return answer.status === 410 || answer.code === "SESSION_EXPIRED";
 }
 
-async function createCloudSession(
-  ctx: SyncContext,
-  session: SyncSessionRow
-): Promise<CloudAnswer> {
-  const response = await getFetch(ctx)(`${cloudBase(ctx)}/api/v1/public/${session.business_slug}/sessions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      // Cloud boleh memakai ini untuk dedupe; worker sendiri tidak bergantung
-      // padanya karena `cloud_id` disimpan segera setelah sukses.
-      "Idempotency-Key": idempotencyKey(session),
-    },
-    body: JSON.stringify({
-      package_id: session.package_id,
-      client_created_at: session.client_created_at,
-      device_token: ctx.config.deviceToken,
-    }),
-  });
+async function createCloudSession(ctx: SyncContext, session: SyncSessionRow): Promise<CloudAnswer> {
+  const response = await getFetch(ctx)(
+    `${cloudBase(ctx)}/api/v1/public/${session.business_slug}/sessions`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        // Cloud boleh memakai ini untuk dedupe; worker sendiri tidak bergantung
+        // padanya karena `cloud_id` disimpan segera setelah sukses.
+        "Idempotency-Key": idempotencyKey(session),
+      },
+      body: JSON.stringify({
+        package_id: session.package_id,
+        client_created_at: session.client_created_at,
+        device_token: ctx.config.deviceToken,
+      }),
+    }
+  );
   return readAnswer(response);
 }
 
@@ -217,12 +218,13 @@ async function finalizeCloudSession(
     );
   }
 
-  const response = await getFetch(
-    ctx
-  )(`${cloudBase(ctx)}/api/v1/public/${session.business_slug}/sessions/${cloudId}/finalize`, {
-    method: "POST",
-    body: form,
-  });
+  const response = await getFetch(ctx)(
+    `${cloudBase(ctx)}/api/v1/public/${session.business_slug}/sessions/${cloudId}/finalize`,
+    {
+      method: "POST",
+      body: form,
+    }
+  );
   return readAnswer(response);
 }
 
@@ -260,7 +262,9 @@ function scheduleRetry(ctx: SyncContext, queue: QueueRow, message: string): void
     (ctx.now?.() ?? Date.now()) + backoffDelay(attempts, ctx.random)
   ).toISOString();
   ctx.db
-    .prepare("update finalize_queue set attempts = ?, next_attempt_at = ?, last_error = ? where session_id = ?")
+    .prepare(
+      "update finalize_queue set attempts = ?, next_attempt_at = ?, last_error = ? where session_id = ?"
+    )
     .run(attempts, next, message.slice(0, 500), queue.session_id);
 }
 
@@ -310,7 +314,9 @@ export async function syncSession(ctx: SyncContext, queue: QueueRow): Promise<Se
   }
 
   const at = nowIso(ctx);
-  ctx.db.prepare("update sessions set synced_at = ?, updated_at = ? where id = ?").run(at, at, session.id);
+  ctx.db
+    .prepare("update sessions set synced_at = ?, updated_at = ? where id = ?")
+    .run(at, at, session.id);
   ctx.db
     .prepare("update finalize_queue set attempts = 0, last_error = null where session_id = ?")
     .run(session.id);

@@ -69,8 +69,7 @@ export function closeDatabase(db: DatabaseSync): void {
 
 export function getSetting<T = unknown>(db: DatabaseSync, key: string): T | null {
   const row = db.prepare("select value_json from device_settings where key = ?").get(key) as
-    | { value_json: string }
-    | undefined;
+    { value_json: string } | undefined;
   if (!row) return null;
   try {
     return JSON.parse(row.value_json) as T;
@@ -107,8 +106,7 @@ export function listSettings(db: DatabaseSync): Record<string, unknown> {
 
 export function getMeta(db: DatabaseSync, key: string): string | null {
   const row = db.prepare("select value from meta where key = ?").get(key) as
-    | { value: string }
-    | undefined;
+    { value: string } | undefined;
   return row?.value ?? null;
 }
 
@@ -172,9 +170,12 @@ export function insertEvent(
   sessionId: string | null = null,
   detail: unknown = null
 ): void {
-  db.prepare(
-    "insert into events (at, kind, session_id, detail_json) values (?, ?, ?, ?)"
-  ).run(new Date().toISOString(), kind, sessionId, detail === null ? null : JSON.stringify(detail));
+  db.prepare("insert into events (at, kind, session_id, detail_json) values (?, ?, ?, ?)").run(
+    new Date().toISOString(),
+    kind,
+    sessionId,
+    detail === null ? null : JSON.stringify(detail)
+  );
 }
 
 // --- export ---

@@ -43,7 +43,10 @@ test("port 0 dan port di luar rentang ditolak", () => {
 });
 
 test("timeout capture dijepit ke 5-120 detik", () => {
-  assert.equal(loadConfig({ PHOTOBOOTH_BRIDGE_TOKEN: TOKEN, GPHOTO2_TIMEOUT_MS: "1" }).timeoutMs, 5_000);
+  assert.equal(
+    loadConfig({ PHOTOBOOTH_BRIDGE_TOKEN: TOKEN, GPHOTO2_TIMEOUT_MS: "1" }).timeoutMs,
+    5_000
+  );
   assert.equal(
     loadConfig({ PHOTOBOOTH_BRIDGE_TOKEN: TOKEN, GPHOTO2_TIMEOUT_MS: "999999" }).timeoutMs,
     120_000
@@ -59,5 +62,8 @@ test("token tidak pernah disimpan mentah di config", () => {
 test("data dir tidak pernah menunjuk ke folder kode", () => {
   const config = loadConfig({ PHOTOBOOTH_BRIDGE_TOKEN: TOKEN });
   assert.ok(!config.dataDir.startsWith(process.cwd()));
-  assert.equal(loadConfig({ PHOTOBOOTH_BRIDGE_TOKEN: TOKEN, SNAPYOS_DATA_DIR: "/tmp/x" }).dataDir, "/tmp/x");
+  assert.equal(
+    loadConfig({ PHOTOBOOTH_BRIDGE_TOKEN: TOKEN, SNAPYOS_DATA_DIR: "/tmp/x" }).dataDir,
+    "/tmp/x"
+  );
 });

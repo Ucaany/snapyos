@@ -114,13 +114,13 @@ test("UNIQUE(session_id, slot_index) menolak duplikat", () => {
     );
     const at = new Date().toISOString();
     insert.run("cap_1", "local_dup", 0, "/data/1.jpg", at);
-    assert.throws(() => insert.run("cap_2", "local_dup", 0, "/data/2.jpg", at), /UNIQUE|constraint/i);
+    assert.throws(
+      () => insert.run("cap_2", "local_dup", 0, "/data/2.jpg", at),
+      /UNIQUE|constraint/i
+    );
     // Slot lain tetap boleh.
     insert.run("cap_3", "local_dup", 1, "/data/3.jpg", at);
-    assert.equal(
-      (db.prepare("select count(*) as n from captures").get() as { n: number }).n,
-      2
-    );
+    assert.equal((db.prepare("select count(*) as n from captures").get() as { n: number }).n, 2);
     closeDatabase(db);
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -142,7 +142,10 @@ test("export membuang semua kunci exit_pin_", () => {
     assert.deepEqual(Object.keys(exported.meta).sort(), ["business_slug", "photobox_slug"]);
     assert.deepEqual(exported.device_settings, { session: { timer_seconds: 300 } });
     assert.equal(exported.schema_version, SCHEMA_VERSION);
-    assert.ok(!JSON.stringify(exported).includes("exit_pin_"), "tidak ada jejak exit_pin_ di export");
+    assert.ok(
+      !JSON.stringify(exported).includes("exit_pin_"),
+      "tidak ada jejak exit_pin_ di export"
+    );
 
     // Hash tetap ada di DB — hanya export yang membuangnya.
     assert.equal(getMeta(db, "exit_pin_emergency_hash"), "$argon2id$v=19$...");

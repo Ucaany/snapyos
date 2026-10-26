@@ -59,9 +59,7 @@ export function buildNavGroups(showPos = false, showPwaKiosk = false): NavGroup[
         { label: "Paket", href: "/dashboard/packages", icon: Package },
         { label: "Voucher", href: "/dashboard/vouchers", icon: Ticket },
         ...(showPos ? [{ label: "POS", href: "/dashboard/pos", icon: ScanBarcode }] : []),
-        ...(showPwaKiosk
-          ? [{ label: "Unduh PWA", href: "/dashboard/pwa", icon: Download }]
-          : []),
+        ...(showPwaKiosk ? [{ label: "Unduh PWA", href: "/dashboard/pwa", icon: Download }] : []),
         // Installer booth (EXE) — tautan admin, bukan unggahan SNAPY OS.
         { label: "Aplikasi Booth", href: "/dashboard/apps", icon: Download },
       ],

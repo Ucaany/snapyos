@@ -6,7 +6,12 @@ import { PrintTestPanel } from "@/components/print/PrintTestPanel";
 import { resolvePrintMode } from "@/lib/print/print-mode";
 import type { CameraSettings, PrintSettings } from "@/lib/kiosk-types";
 import { Button } from "@/components/ui/button";
-import { cameraErrorCopy, cameraErrorKind, resolutionLabel, resolutionWarning } from "@/lib/camera-errors";
+import {
+  cameraErrorCopy,
+  cameraErrorKind,
+  resolutionLabel,
+  resolutionWarning,
+} from "@/lib/camera-errors";
 import { isKioskExe } from "@/lib/kiosk-shell";
 import { getDeviceProfile } from "@/lib/device-profile";
 import {

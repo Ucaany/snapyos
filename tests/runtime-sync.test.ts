@@ -122,7 +122,9 @@ function makeFixture(): Fixture {
       finalized_at: at,
     })
   );
-  db.prepare("update sessions set state = 'finalized', retake_count = 1 where id = ?").run(sessionId);
+  db.prepare("update sessions set state = 'finalized', retake_count = 1 where id = ?").run(
+    sessionId
+  );
   db.prepare(
     `insert into finalize_queue (id, session_id, payload_path, attempts, next_attempt_at, last_error, created_at)
      values (?, ?, ?, 0, ?, null, ?)`
@@ -187,7 +189,10 @@ test("cloud 500 lalu 200 menghasilkan satu sesi cloud yang sukses", async () => 
           : { status: 201, body: { data: { session_id: "22222222-2222-4222-8222-222222222222" } } };
       }
       finalizeAttempts += 1;
-      return { status: 200, body: { data: { session_id: "22222222-2222-4222-8222-222222222222" } } };
+      return {
+        status: 200,
+        body: { data: { session_id: "22222222-2222-4222-8222-222222222222" } },
+      };
     });
     fixture.ctx.fetchImpl = impl;
 
@@ -221,7 +226,10 @@ test("cloud 500 lalu 200 menghasilkan satu sesi cloud yang sukses", async () => 
     const sentBody = JSON.parse(String(createCall.body)) as Record<string, unknown>;
     assert.equal(sentBody.package_id, "11111111-1111-4111-8111-111111111111");
     assert.equal(sentBody.client_created_at, "2026-10-25T01:58:00.000Z");
-    assert.equal(idempotencyKey({ photobox_slug: PHOTOBOX_SLUG, id: fixture.sessionId }), `${PHOTOBOX_SLUG}:${fixture.sessionId}`);
+    assert.equal(
+      idempotencyKey({ photobox_slug: PHOTOBOX_SLUG, id: fixture.sessionId }),
+      `${PHOTOBOX_SLUG}:${fixture.sessionId}`
+    );
   } finally {
     cleanup(fixture);
   }
@@ -235,7 +243,10 @@ test("sesi yang sudah tersinkron tidak pernah dikirim dua kali", async () => {
         return { status: 200, body: { data: { ok: true } } };
       }
       if (method === "POST" && url.endsWith(`/${BUSINESS_SLUG}/sessions`)) {
-        return { status: 201, body: { data: { session_id: "33333333-3333-4333-8333-333333333333" } } };
+        return {
+          status: 201,
+          body: { data: { session_id: "33333333-3333-4333-8333-333333333333" } },
+        };
       }
       return { status: 200, body: { data: { ok: true } } };
     });
@@ -279,7 +290,10 @@ test("410 SESSION_EXPIRED menyalin media ke karantina sebelum menghapus baris", 
       if (url.endsWith("/devices/settings") && method === "PATCH") {
         return { status: 200, body: { data: { ok: true } } };
       }
-      return { status: 410, body: { error: { code: "SESSION_EXPIRED", message: "Sesi sudah berakhir" } } };
+      return {
+        status: 410,
+        body: { error: { code: "SESSION_EXPIRED", message: "Sesi sudah berakhir" } },
+      };
     });
     fixture.ctx.fetchImpl = impl;
 
@@ -316,7 +330,10 @@ test("410 saat finalize juga dikarantina, bukan diulang selamanya", async () => 
         return { status: 200, body: { data: { ok: true } } };
       }
       if (method === "POST" && url.endsWith(`/${BUSINESS_SLUG}/sessions`)) {
-        return { status: 201, body: { data: { session_id: "44444444-4444-4444-8444-444444444444" } } };
+        return {
+          status: 201,
+          body: { data: { session_id: "44444444-4444-4444-8444-444444444444" } },
+        };
       }
       return { status: 410, body: { error: { code: "SESSION_EXPIRED" } } };
     });

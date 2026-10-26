@@ -154,7 +154,8 @@ function CameraCaptureInner({
       if (cameraProvider === "gphoto2") {
         try {
           const result = await checkCameraBridge(cameraSettings);
-          if (!result.ok || !result.camera) throw new Error(result.message || "Kamera GPhoto2 tidak terdeteksi.");
+          if (!result.ok || !result.camera)
+            throw new Error(result.message || "Kamera GPhoto2 tidak terdeteksi.");
           setCameraReady(true);
         } catch (e) {
           setError({
@@ -232,12 +233,7 @@ function CameraCaptureInner({
         setError({ message: copy.message, action: copy.action });
       }
     },
-    [
-      cameraSettings,
-      cameraProvider,
-      onTrackEnded,
-      stopStream,
-    ]
+    [cameraSettings, cameraProvider, onTrackEnded, stopStream]
   );
 
   useEffect(() => {
