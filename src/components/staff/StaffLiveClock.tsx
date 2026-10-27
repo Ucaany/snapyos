@@ -35,7 +35,7 @@ export function StationClock({ initialMs, timeZone }: { initialMs: number; timeZ
   const nowMs = useNowMs(initialMs);
   const { time, zone } = clockParts(nowMs, timeZone);
   return (
-    <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+    <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
       <span className="size-2 bg-accent shadow-[0_0_0_2px_#111111]" aria-hidden />
       <span className="text-ink">LIVE</span>
       <span aria-hidden>·</span>
@@ -66,7 +66,7 @@ export function LiveSessionMeta({
 
   return (
     <>
-      <div className="mt-3 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+      <div className="mt-3 flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
         <span>MULAI {startedLabel}</span>
         <span className="text-ink">
           {minutes} MIN

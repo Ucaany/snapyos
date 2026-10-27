@@ -22,7 +22,7 @@ const STYLE: Record<string, string> = {
   cancelled: "bg-muted text-muted-foreground",
   expired: "bg-muted text-muted-foreground",
   inactive: "bg-muted text-muted-foreground",
-  offline: "bg-muted text-muted-foreground",
+  offline: "bg-accent",
   refunded: "bg-accent-4 text-bg",
   open: "bg-accent-3",
   needs_action: "bg-accent",
