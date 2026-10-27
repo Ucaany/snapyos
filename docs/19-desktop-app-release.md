@@ -26,8 +26,10 @@ tidak terpengaruh.
 
 ## Prosedur rilis
 
-1. Build installer di mesin build (`src-tauri/`, lihat `docs/status.md`).
-2. Hitung hash: `Get-FileHash .\snapyos-booth-<versi>-setup.exe -Algorithm SHA256`.
+1. Build installer di mesin Windows: `.\scripts\build-booth.ps1` dari root repo
+   (panduan lengkap `docs/20-booth-build-windows.md`). Skrip mencetak path dan
+   SHA-256 setiap artefak, jadi langkah 2 tinggal disalin.
+2. Hitung hash bila perlu: `Get-FileHash .\snapyos-booth-<versi>-setup.exe -Algorithm SHA256`.
 3. Unggah file ke Google Drive. Set akses **"Siapa saja yang punya link"** —
    tautan "terbatas" akan gagal untuk owner.
 4. Buka `/admin/apps`, isi versi, URL, nama file, ukuran byte, SHA-256, catatan

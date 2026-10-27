@@ -190,8 +190,10 @@ Tiga hal yang berbeda dari kiosk browser:
 WebView2 **tidak punya Web Bluetooth**. Printer thermal Bluetooth hanya ada di
 POS; di EXE cetak lewat spooler Windows / CUPS bridge.
 
-Build `.exe`/`.msi` hanya bisa di Windows: taruh `node.exe` sebagai
-`src-tauri/binaries/node-x86_64-pc-windows-msvc.exe`, lalu `npx tauri build`.
+Build `.exe`/`.msi` hanya bisa di Windows. Jalankan
+`.\scripts\build-booth.ps1` dari root repo (panduan lengkap:
+`docs/20-booth-build-windows.md`); skrip itu mengunduh sidecar `node.exe`,
+membundel runtime, lalu menjalankan `tauri build`.
 Statusnya **NOT TESTED** — belum pernah dibangun atau dijalankan di Windows.
 
 ## Keputusan dari upstream
