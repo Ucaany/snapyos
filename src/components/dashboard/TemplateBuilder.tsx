@@ -10,6 +10,7 @@ import {
   useTransition,
 } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Eye, EyeOff, Plus, Trash2, WandSparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -155,6 +156,24 @@ export function TemplateBuilder({
   const [frameVersion, setFrameVersion] = useState(0);
   const [saveState, action, saving] = useActionState(saveAction, initial);
   const [, startSaveTransition] = useTransition();
+  const router = useRouter();
+  // Umpan balik simpan: tanpa ini user tidak tahu apakah frame/layout tersimpan
+  // (frame hasil chroma hanya terlihat setelah halaman memuat ulang URL signed).
+  const pendingSaveRef = useRef(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!pendingSaveRef.current || saving) return;
+    pendingSaveRef.current = false;
+    const hasError = Boolean(
+      saveState?.error ??
+        (saveState?.fieldErrors && Object.keys(saveState.fieldErrors).length > 0)
+    );
+    if (!hasError) {
+      setSavedAt(Date.now());
+      router.refresh();
+    }
+  }, [saving, saveState, router]);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const frameRef = useRef<HTMLImageElement | null>(null);
@@ -666,6 +685,8 @@ export function TemplateBuilder({
     }
     const chromaFile = chromaInputRef.current?.files?.[0];
     if (chromaFile) formData.set("chroma_file", chromaFile);
+    pendingSaveRef.current = true;
+    setSavedAt(null);
     startSaveTransition(() => {
       void action(formData);
     });
@@ -1042,11 +1063,19 @@ export function TemplateBuilder({
                 {saveState.error}
               </p>
             )}
-            {saveState.fieldErrors?.layout && (
-              <p role="alert" className="text-xs text-destructive">
-                {saveState.fieldErrors.layout[0]}
+            {savedAt !== null && !saveState.error && (
+              <p
+                role="status"
+                className="rounded-none border-2 border-ink bg-ink/5 px-3 py-2 text-sm text-ink"
+              >
+                Tersimpan. Frame terbaru dimuat ulang; kalau belum terlihat, muat ulang halaman.
               </p>
             )}
+            {Object.entries(saveState.fieldErrors ?? {}).map(([field, messages]) => (
+              <p key={field} role="alert" className="text-xs text-destructive">
+                {field}: {messages?.[0]}
+              </p>
+            ))}
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"

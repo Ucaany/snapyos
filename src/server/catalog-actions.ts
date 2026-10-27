@@ -174,23 +174,25 @@ export async function saveTemplateBuilderAction(
 ): Promise<FormState> {
   const ctx = await requireActiveBusiness();
   if (!ctx) return { error: "Sesi berakhir. Silakan login ulang." };
-  await requireEffectiveSubscription(ctx.businessId, "write");
   const id = str(formData, "id");
-  if (!id) return { error: "Template tidak valid" };
-
   const layoutRaw = str(formData, "layout");
-  let layout: TemplateUpdateInput["layout"];
-  try {
-    layout = layoutRaw ? (JSON.parse(layoutRaw) as TemplateUpdateInput["layout"]) : null;
-  } catch {
-    return { fieldErrors: { layout: ["Data layout tidak valid"] } };
-  }
-
-  const isActive = bool(formData, "is_active");
   const thumbnail = formData.get("thumbnail");
   const chromaFile = formData.get("chroma_file");
+  const isActive = bool(formData, "is_active");
 
   try {
+    // Gerbang langganan WAJIB di dalam try: di luar try, ApiError 410 lolos ke
+    // client sebagai 500 tanpa pesan yang bisa ditampilkan builder.
+    await requireEffectiveSubscription(ctx.businessId, "write");
+    if (!id) return { error: "Template tidak valid" };
+
+    let layout: TemplateUpdateInput["layout"];
+    try {
+      layout = layoutRaw ? (JSON.parse(layoutRaw) as TemplateUpdateInput["layout"]) : null;
+    } catch {
+      return { fieldErrors: { layout: ["Data layout tidak valid"] } };
+    }
+
     await updateTemplate(ctx.user.id, ctx.businessId, id, {
       layout,
       is_active: isActive,
@@ -202,6 +204,26 @@ export async function saveTemplateBuilderAction(
       await replaceTemplateFrame(ctx.user.id, ctx.businessId, id, chromaFile);
     }
   } catch (error) {
+    // Tanpa log ini kegagalan hanya terlihat sebagai state di browser.
+    console.error(
+      "[saveTemplateBuilder]",
+      JSON.stringify({
+        id,
+        layoutBytes: layoutRaw.length,
+        slots: (() => {
+          try {
+            const parsed = JSON.parse(layoutRaw) as { slots?: unknown[] };
+            return Array.isArray(parsed?.slots) ? parsed.slots.length : null;
+          } catch {
+            return "unparsed";
+          }
+        })(),
+        thumbnailBytes: thumbnail instanceof File ? thumbnail.size : 0,
+        chromaBytes: chromaFile instanceof File ? chromaFile.size : 0,
+        isActive,
+        error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+      })
+    );
     return toFormState(error);
   }
   revalidatePath("/dashboard/templates");
