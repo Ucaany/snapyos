@@ -95,15 +95,27 @@ npm run bridge:gphoto2   # sama, adapter kamera DSLR via gphoto2
 Gate yang diverifikasi di mesin pengembang sebelum deploy:
 
 ```bash
-npm run typecheck        # PASS
-npm run lint             # PASS, 0 error, 12 warning <img> yang disengaja
-npm test                 # PASS 957/957
-npm run build            # PASS (Next.js 16, 93 static pages)
-npm run format:check     # PASS untuk file scope audit; repo-wide masih memiliki 34 file legacy tidak terformat
+npm run typecheck        # PASS (exit 0)
+npm run lint             # PASS, 0 error, 18 warning <img> yang disengaja
+npm test                 # PASS 1153/1153
+npm run build            # PASS (Next.js 16, 93 static pages + standalone)
 npm run test:e2e:print   # PASS 4/4
 npm run test:e2e:bluetooth # PASS 2/2 suite (12 assertion: BLE 2, SPP/foto 10)
 node tests/e2e/pos-receipt-serial.spec.mjs # PASS 16/16 (58mm + 80mm)
+node scripts/probe-migration-status.mjs    # PASS 13/13 applied, exit 0
 ```
+
+> **Dua suite E2E gagal karena sebab yang SUDAH ADA sebelum pekerjaan migrasi
+> 2026-10-27** (dibuktikan dengan `git stash` pada perubahan yang sama):
+>
+> - `kiosk-print-serial.spec.mjs` — test menunggu heading "Test printer" di
+>   `/dashboard/photoboxes/[id]/camera`, rute yang **dihapus sengaja** di Phase 8
+>   (commit `51edd43`, "setelan mesin pindah ke aplikasi booth"). Test-nya
+>   kedaluwarsa, bukan regresi.
+> - `kiosk-full-frame-flow.spec.mjs` — timeout menunggu heading "Pilih frame".
+>   Gagal juga tanpa perubahan ini.
+>
+> Keduanya perlu diperbarui/dipindahkan ke alur baru; tidak terkait migrasi.
 
 > **Pembaruan 2026-10-27:** E2E struk POS kini **16/16 PASS**. Sebelumnya BLOCKED
 > karena `0076` belum diterapkan; setelah `0076` masuk, suite berjalan dan
