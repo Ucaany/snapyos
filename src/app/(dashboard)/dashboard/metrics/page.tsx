@@ -129,7 +129,7 @@ export default async function MetricsPage({
             <EmptyState eyebrow="BELUM ADA PHOTOBOX" title="Belum ada booth terdaftar" />
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[420px] border-collapse text-left">
+              <table className="w-full md:min-w-[420px] border-collapse text-left">
                 <caption className="sr-only">Performa per photobox</caption>
                 <thead>
                   <tr className="border-b-2 border-ink font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">

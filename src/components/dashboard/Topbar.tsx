@@ -1,22 +1,24 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { logoutAction } from "@/server/auth-actions";
 import { StorageIndicator } from "@/components/dashboard/StorageIndicator";
-import { WorkspaceSwitcher } from "@/components/dashboard/WorkspaceSwitcher";
 
 /**
  * Topbar — workspace switcher + storage indicator + user menu (docs/04 §4.16, docs/11 §11.6).
+ * Satu baris 64px. Di layar sempit wordmark dan aksi sekunder disembunyikan
+ * supaya pemilih workspace (konteks bisnis aktif) tetap terbaca, bukan terpotong.
  * Search & notifikasi menyusul di fase terkait (tidak dipalsukan).
  */
 export function Topbar({
   user,
-  businesses,
-  activeBusiness,
+  workspaceSlot,
+  activeBusinessId,
   isAdmin = false,
 }: {
   user: { name: string | null | undefined; email: string | null | undefined };
-  businesses: { id: string; name: string }[];
-  activeBusiness: { id: string; name: string } | null;
+  workspaceSlot: ReactNode;
+  activeBusinessId: string | null;
   isAdmin?: boolean;
 }) {
   return (
@@ -24,27 +26,29 @@ export function Topbar({
       <div className="flex h-16 w-full items-center gap-2 px-4 md:gap-4 md:px-6">
         <Link
           href="/dashboard"
-          className="flex min-h-11 shrink-0 items-center gap-2 font-display text-base font-bold uppercase tracking-tight [@media(pointer:coarse)]:min-h-11 md:text-lg"
+          className="flex min-h-11 shrink-0 items-center gap-2 font-display text-base font-bold uppercase tracking-tight md:text-lg"
         >
           <img src="/snapyos-mark.png" alt="Logo SnapyOS" className="h-8 w-8 shrink-0" />
-          SnapyOS<span className="text-accent">®</span>
+          <span className="hidden sm:inline">
+            SnapyOS<span className="text-accent">®</span>
+          </span>
         </Link>
 
-        <WorkspaceSwitcher businesses={businesses} activeId={activeBusiness?.id ?? null} />
+        {workspaceSlot}
 
-        <div className="ml-auto flex shrink-0 items-center gap-3">
-          {activeBusiness && <StorageIndicator businessId={activeBusiness.id} />}
+        <div className="ml-auto flex shrink-0 items-center gap-2 md:gap-3">
+          {activeBusinessId && <StorageIndicator businessId={activeBusinessId} />}
           {isAdmin ? (
             <Link
               href="/admin"
-              className="border-2 border-ink bg-accent px-2.5 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.05em] text-ink transition-colors hover:bg-accent/80 active:translate-y-[2px] md:px-3 md:text-xs"
+              className="hidden min-h-11 items-center border-2 border-ink bg-accent px-2.5 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.05em] text-ink transition-colors hover:bg-accent/80 active:translate-y-[2px] sm:inline-flex md:px-3 md:text-xs"
             >
               Panel Admin
             </Link>
           ) : null}
           <div className="hidden text-right lg:block">
             <p className="text-sm font-semibold leading-tight">{user.name ?? "Owner"}</p>
-            <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+            <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
               {user.email}
             </p>
           </div>

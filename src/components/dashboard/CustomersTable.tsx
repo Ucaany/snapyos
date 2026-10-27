@@ -4,6 +4,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Users } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -110,24 +111,24 @@ export function CustomersTable({
         />
       ) : (
         <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
-          <table className="w-full min-w-[860px] border-collapse text-left">
+          <table className="w-full border-collapse text-left md:md:min-w-[860px]">
             <caption className="sr-only">Daftar pelanggan</caption>
             <thead>
-              <tr className="border-b-2 border-ink bg-ink font-mono text-[10px] uppercase tracking-[0.12em] text-bg">
+              <tr className="border-b-2 border-ink bg-ink font-mono text-[11px] uppercase tracking-[0.12em] text-bg">
                 <th scope="col" className="px-4 py-3.5">
                   Pelanggan
                 </th>
-                <th scope="col" className="px-4 py-3.5">
+                <th scope="col" className="hidden px-4 py-3.5 md:table-cell">
                   Kontak
                 </th>
-                <th scope="col" className="px-4 py-3.5">
+                <th scope="col" className="hidden px-4 py-3.5 md:table-cell">
                   Sejak
                 </th>
-                <th scope="col" className="px-4 py-3.5 text-center">
+                <th scope="col" className="hidden px-4 py-3.5 text-center md:table-cell">
                   Transaksi
                 </th>
                 <th scope="col" className="px-4 py-3.5 text-right">
-                  Total Spending
+                  Total Belanja
                 </th>
                 <th scope="col" className="px-4 py-3.5 text-right">
                   Detail
@@ -141,13 +142,13 @@ export function CustomersTable({
                     <td className="px-4 py-4 font-mono text-sm font-bold uppercase tracking-[0.05em]">
                       {c.name ?? "Tanpa nama"}
                     </td>
-                    <td className="px-4 py-4 font-mono text-xs text-muted-foreground">
-                      {[c.phone, c.email].filter(Boolean).join(" \u00b7 ") || "\u2014"}
+                    <td className="hidden px-4 py-4 font-mono text-xs text-muted-foreground md:table-cell">
+                      {[c.phone, c.email].filter(Boolean).join(" \u00b7 ") || "-"}
                     </td>
-                    <td className="px-4 py-4 font-mono text-xs">
+                    <td className="hidden px-4 py-4 font-mono text-xs md:table-cell">
                       {formatDate(c.created_at, timeZone)}
                     </td>
-                    <td className="px-4 py-4 text-center font-mono text-sm">
+                    <td className="hidden px-4 py-4 text-center font-mono text-sm md:table-cell">
                       {c.transactionCount}
                     </td>
                     <td className="px-4 py-4 text-right font-mono text-sm font-bold">
@@ -260,22 +261,16 @@ export function CustomersTable({
           <p className="font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
             {`HALAMAN ${page}/${totalPages}`}
           </p>
-          <div className="flex gap-2 font-mono text-xs">
+          <div className="flex gap-2">
             {prevHref && (
-              <Link
-                href={prevHref}
-                className="border-2 border-ink px-3 py-2 font-bold uppercase tracking-[0.05em] shadow-[2px_2px_0_0_#111111] hover:bg-accent"
-              >
-                {"\u2190 Sebelumnya"}
-              </Link>
+              <Button variant="outline" size="sm" nativeButton={false} render={<Link href={prevHref} />}>
+                Sebelumnya
+              </Button>
             )}
             {nextHref && (
-              <Link
-                href={nextHref}
-                className="border-2 border-ink px-3 py-2 font-bold uppercase tracking-[0.05em] shadow-[2px_2px_0_0_#111111] hover:bg-accent"
-              >
-                {"Berikutnya \u2192"}
-              </Link>
+              <Button variant="outline" size="sm" nativeButton={false} render={<Link href={nextHref} />}>
+                Berikutnya
+              </Button>
             )}
           </div>
         </nav>

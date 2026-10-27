@@ -28,6 +28,29 @@ const STYLE: Record<string, string> = {
   resolved: "bg-muted text-muted-foreground",
 };
 
+const LABELS: Record<string, string> = {
+  paid: "Lunas",
+  completed: "Selesai",
+  active: "Aktif",
+  online: "Online",
+  confirmed: "Dikonfirmasi",
+  sent: "Terkirim",
+  pending: "Menunggu",
+  scheduled: "Terjadwal",
+  maintenance: "Perawatan",
+  processing: "Diproses",
+  partial: "Sebagian",
+  failed: "Gagal",
+  cancelled: "Dibatalkan",
+  expired: "Kedaluwarsa",
+  inactive: "Nonaktif",
+  offline: "Offline",
+  refunded: "Dikembalikan",
+  open: "Terbuka",
+  needs_action: "Butuh Tindakan",
+  resolved: "Selesai",
+};
+
 export function StatusBadge({
   status,
   label,
@@ -45,7 +68,7 @@ export function StatusBadge({
         className
       )}
     >
-      {label ?? status}
+      {label ?? LABELS[status] ?? status}
     </span>
   );
 }

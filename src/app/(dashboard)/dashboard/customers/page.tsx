@@ -57,7 +57,7 @@ export default async function CustomersPage({
   return (
     <div className="flex flex-col gap-8 p-6 md:p-10">
       <PageHeader
-        eyebrow={`PELANGGAN: ${result.total} TOTAL`}
+        eyebrow={`${result.total} PELANGGAN`}
         title="Pelanggan"
         description="Data pelanggan ditampilkan berdasarkan informasi yang diberikan saat transaksi."
         right={

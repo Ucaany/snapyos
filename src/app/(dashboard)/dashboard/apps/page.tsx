@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { AppDownloadCard } from "@/components/dashboard/AppDownloadCard";
+import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { can } from "@/lib/rbac";
 import { formatReleaseDate, hostOf, needsAppUpdate, type AppReleaseView } from "@/lib/app-release";
@@ -45,15 +46,11 @@ export default async function AppsPage() {
       {latest ? (
         <AppDownloadCard release={latest} />
       ) : (
-        <div className="border-2 border-ink bg-muted p-5">
-          <p className="font-mono text-xs font-bold uppercase tracking-[0.12em]">
-            Belum ada rilis aktif
-          </p>
-          <p className="mt-2 max-w-[60ch] text-sm leading-relaxed text-muted-foreground">
-            Admin belum mengaktifkan rilis aplikasi. Booth yang sudah terpasang tetap berjalan;
-            hubungi admin bila butuh installer.
-          </p>
-        </div>
+        <EmptyState
+          eyebrow="BELUM ADA RILIS"
+          title="Belum ada rilis aktif"
+          body="Admin belum mengaktifkan rilis aplikasi. Booth yang sudah terpasang tetap berjalan; hubungi admin bila butuh installer."
+        />
       )}
 
       <BoothVersions photoboxes={photoboxes} latest={latest} />
@@ -126,9 +123,9 @@ function BoothVersions({
                     : null;
                 const outdated = latest ? needsAppUpdate(reported, latest.version) : false;
                 return (
-                  <tr key={p.id} className="border-b border-ink/10 last:border-b-0">
+                  <tr key={p.id} className="border-b-2 border-ink/10 last:border-b-0">
                     <td className="px-4 py-3">{p.name}</td>
-                    <td className="flex flex-wrap items-center gap-2 px-4 py-3 font-mono text-xs">
+                    <td className="px-4 py-3 font-mono text-xs [&>span]:ml-2">
                       {reported ? (
                         <>v{reported}</>
                       ) : (

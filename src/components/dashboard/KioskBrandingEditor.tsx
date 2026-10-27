@@ -173,7 +173,7 @@ function AlignPicker({
                 </span>
               ))}
             </span>
-            <span className="font-mono text-[9px] font-bold uppercase tracking-[0.08em] text-ink">
+            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-ink">
               {o.label}
               {allowNone && selected ? " ●" : ""}
             </span>
@@ -2168,7 +2168,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                       className="font-display text-[11px] uppercase leading-none"
                       style={{ fontFamily: pvFont }}
                     >{`[PAKET ${i + 1}]`}</p>
-                    <p className="font-mono text-[9px] font-bold" style={{ color: sSafe }}>
+                    <p className="font-mono text-[10px] font-bold" style={{ color: sSafe }}>
                       Rp ...
                     </p>
                     <span
@@ -2396,7 +2396,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                 style={{ backgroundColor: `color-mix(in srgb, ${ps.text} 4%, ${ps.bg})` }}
               >
                 <span
-                  className="flex h-2/3 w-1/2 items-center justify-center border-2 border-dashed font-mono text-[9px] uppercase tracking-[0.15em]"
+                  className="flex h-2/3 w-1/2 items-center justify-center border-2 border-dashed font-mono text-[10px] uppercase tracking-[0.15em]"
                   style={{ borderColor: `color-mix(in srgb, ${ps.text} 30%, transparent)` }}
                 >
                   FOTO + FRAME

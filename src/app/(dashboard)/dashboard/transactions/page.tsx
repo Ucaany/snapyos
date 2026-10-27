@@ -94,7 +94,7 @@ export default async function TransactionsPage({
   return (
     <div className="flex flex-col gap-8 p-6 md:p-10">
       <PageHeader
-        eyebrow={`TRANSAKSI: ${result.total} TOTAL`}
+        eyebrow={`${result.total} TRANSAKSI DITEMUKAN`}
         title="Transaksi"
         description="Semua transaksi bisnis. Diskon tercatat terpisah dan tidak dihitung sebagai revenue."
         right={

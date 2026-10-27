@@ -2,7 +2,7 @@
 
 ## Status Implementasi (audit 2026-08-30)
 
-Dokumen ini = sumber kebenaran gaya brutalist untuk SELURUH UI SnapyOS. **Dual-shell Dashboard-01 pernah ada dan DIHAPUS 2026-08-30**, lalu dihidupkan kembali 2026-10-25 dengan basis berbeda: tema `modern` memakai `@efferd/app-shell-3` + primitif shadcn `base-nova`, cakupan shell owner/admin/staff saja, dipilih per-browser lewat cookie `snapyos_dashboard_theme`. Brutalis tetap default dan satu-satunya tema untuk marketing, auth, kiosk, POS, dan result page. Kontrak lengkap: `docs/dashboard-redesign.md`.
+Dokumen ini = sumber kebenaran gaya brutalist untuk SELURUH UI SnapyOS. **Dual-shell Dashboard-01 pernah ada dan DIHAPUS 2026-08-30**, lalu dihidupkan kembali 2026-10-25 sebagai tema `modern` (`@efferd/app-shell-3` + primitif shadcn `base-nova`), dan **DIHAPUS LAGI 2026-10-28**: `src/components/efferd/*`, `src/components/theme/*`, `src/lib/dashboard-theme*.ts`, `src/styles/theme-modern.css`, dan `src/components/ui/modern-classes.ts` sudah tidak ada. Brutalis sekarang satu-satunya tema untuk marketing, auth, kiosk, POS, result page, dan seluruh shell dashboard owner/admin/staff. Catatan historis: `docs/dashboard-redesign.md`.
 
 ## 11.1 Prinsip
 

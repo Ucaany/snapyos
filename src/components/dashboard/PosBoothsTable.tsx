@@ -31,10 +31,10 @@ export function PosBoothsTable({
 
   return (
     <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
-      <table className="w-full min-w-[720px] border-collapse text-left">
+      <table className="w-full md:min-w-[720px] border-collapse text-left">
         <caption className="sr-only">Booth POS</caption>
         <thead>
-          <tr className="border-b-2 border-ink bg-ink font-mono text-[10px] uppercase tracking-[0.12em] text-bg">
+          <tr className="border-b-2 border-ink bg-ink font-mono text-[11px] uppercase tracking-[0.12em] text-bg">
             <th scope="col" className="px-4 py-3.5">
               Booth
             </th>

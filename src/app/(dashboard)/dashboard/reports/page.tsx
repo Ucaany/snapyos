@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateInput } from "@/components/ui/date-input";
+import { PageHeader } from "@/components/ui/page-header";
 import { Select } from "@/components/ui/select";
 import { LABEL_CLASS as labelClass } from "@/lib/form-ui";
 import { can } from "@/lib/rbac";
@@ -54,15 +55,11 @@ export default async function ReportsPage() {
 
   return (
     <div className="flex flex-col gap-8 p-6 md:p-10">
-      <header>
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {"LAPORAN: EXPORT"}
-        </p>
-        <h1 className="mt-2 font-display text-4xl uppercase tracking-tight md:text-5xl">Laporan</h1>
-        <p className="mt-3 max-w-[65ch] text-sm leading-relaxed text-muted-foreground">
-          Buat laporan dari data transaksi, biaya, dan voucher. Format CSV &amp; XLSX.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="EXPORT DATA"
+        title="Laporan"
+        description="Buat laporan dari data transaksi, biaya, dan voucher. Format CSV dan XLSX."
+      />
 
       <Card>
         <CardHeader>

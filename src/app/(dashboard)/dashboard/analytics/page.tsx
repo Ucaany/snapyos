@@ -153,7 +153,7 @@ export default async function AnalyticsPage({
           )}
           {tab !== "day" && (breakdown?.items.length ?? 0) > 0 && (
             <div className="mt-6 overflow-x-auto">
-              <table className="w-full min-w-[480px] border-collapse text-left">
+              <table className="w-full md:min-w-[480px] border-collapse text-left">
                 <caption className="sr-only">Rincian breakdown</caption>
                 <thead>
                   <tr className="border-b-2 border-ink font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">

@@ -819,41 +819,32 @@ export function TemplateBuilder({
             ) : (
               <ul className="flex flex-col">
                 {orderedSlots.map((slot, i) => (
-                  <li key={slot.id} className="border-t first:border-t-0">
+                  <li key={slot.id} className="flex items-center gap-1 border-t first:border-t-0">
                     <button
                       type="button"
                       onClick={() => {
                         setSelectedId(slot.id);
                         setPreviewMode(false);
                       }}
-                      className={`flex w-full items-center justify-between gap-2 py-2 text-left text-sm ${
+                      aria-pressed={slot.id === selectedId}
+                      className={`flex min-h-11 flex-1 items-center justify-between gap-2 py-2 text-left text-sm ${
                         slot.id === selectedId ? "font-medium text-ink" : "text-muted-foreground"
                       }`}
                     >
                       <span className="min-w-0 truncate">
-                        <span className="mr-2 inline-flex size-5 shrink-0 items-center justify-center rounded-none border-2 border-ink text-[10px] font-medium">
+                        <span className="mr-2 inline-flex size-5 shrink-0 items-center justify-center rounded-none border-2 border-ink text-[11px] font-medium">
                           {i + 1}
                         </span>
                         {`${slot.shape} ${Math.round(slot.width)}×${Math.round(slot.height)}`}
                       </span>
-                      <span
-                        role="button"
-                        tabIndex={0}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeSlot(slot.id);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.stopPropagation();
-                            removeSlot(slot.id);
-                          }
-                        }}
-                        className="shrink-0 border border-transparent px-1 py-0.5 text-destructive hover:border-destructive"
-                        aria-label={`Hapus slot ${i + 1}`}
-                      >
-                        <Trash2 className="size-4" aria-hidden />
-                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeSlot(slot.id)}
+                      aria-label={`Hapus slot ${i + 1}`}
+                      className="flex size-11 shrink-0 items-center justify-center border-2 border-transparent text-destructive hover:border-destructive focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+                    >
+                      <Trash2 className="size-4" aria-hidden />
                     </button>
                   </li>
                 ))}

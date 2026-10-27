@@ -8,7 +8,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { useChartStyle } from "@/components/ui/chart-style";
+import { CHART_STYLE } from "@/components/ui/chart-style";
 
 const chartConfig = {
   txCount: { label: "Transaksi", color: "var(--chart-1)" },
@@ -25,7 +25,7 @@ export function AdminTrendChartInner({
 }: {
   data: { date: string; txCount: number; sessionCount: number }[];
 }) {
-  const chart = useChartStyle();
+  const chart = CHART_STYLE;
 
   return (
     <ChartContainer config={chartConfig} className="aspect-auto h-[260px] w-full">

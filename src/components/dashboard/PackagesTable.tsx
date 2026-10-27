@@ -95,30 +95,30 @@ export function PackagesTable({ packages, templates, outlets, photoboxes, canWri
         )
       ) : (
         <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
-          <table className="w-full min-w-[860px] border-collapse text-left">
+          <table className="w-full border-collapse text-left md:md:min-w-[860px]">
             <caption className="sr-only">Daftar paket</caption>
             <thead>
-              <tr className="border-b-2 border-ink bg-ink font-mono text-[10px] uppercase tracking-[0.12em] text-bg">
+              <tr className="border-b-2 border-ink bg-ink font-mono text-[11px] uppercase tracking-[0.12em] text-bg">
                 <th scope="col" className="px-4 py-3.5">
                   Paket
                 </th>
                 <th scope="col" className="px-4 py-3.5 text-right">
                   Harga
                 </th>
-                <th scope="col" className="px-4 py-3.5 text-center">
+                <th scope="col" className="hidden px-4 py-3.5 text-center md:table-cell">
                   Foto
                 </th>
-                <th scope="col" className="px-4 py-3.5 text-center">
+                <th scope="col" className="hidden px-4 py-3.5 text-center md:table-cell">
                   Cetak
                 </th>
-                <th scope="col" className="px-4 py-3.5 text-center">
+                <th scope="col" className="hidden px-4 py-3.5 text-center lg:table-cell">
                   Digital
                 </th>
-                <th scope="col" className="px-4 py-3.5">
+                <th scope="col" className="hidden px-4 py-3.5 lg:table-cell">
                   Mode
                 </th>
-                <th scope="col" className="px-4 py-3.5">
-                  Assign
+                <th scope="col" className="hidden px-4 py-3.5 lg:table-cell">
+                  Penugasan
                 </th>
                 <th scope="col" className="px-4 py-3.5">
                   Status
@@ -147,14 +147,20 @@ export function PackagesTable({ packages, templates, outlets, photoboxes, canWri
                     <td className="px-4 py-4 text-right font-mono text-sm font-bold">
                       {formatIDR(pkg.price)}
                     </td>
-                    <td className="px-4 py-4 text-center font-mono text-sm">{pkg.photo_count}</td>
-                    <td className="px-4 py-4 text-center font-mono text-sm">{pkg.print_count}</td>
-                    <td className="px-4 py-4 text-center font-mono text-xs uppercase">
+                    <td className="hidden px-4 py-4 text-center font-mono text-sm md:table-cell">
+                      {pkg.photo_count}
+                    </td>
+                    <td className="hidden px-4 py-4 text-center font-mono text-sm md:table-cell">
+                      {pkg.print_count}
+                    </td>
+                    <td className="hidden px-4 py-4 text-center font-mono text-xs uppercase lg:table-cell">
                       {pkg.digital_output ? "YA" : "-"}
                     </td>
-                    <td className="px-4 py-4 font-mono text-xs uppercase">{pkg.capture_mode}</td>
-                    <td className="px-4 py-4 font-mono text-[11px] text-muted-foreground">
-                      {`${pkg.template_count} tpl \u00b7 ${pkg.outlet_count} outlet \u00b7 ${pkg.photobox_count} booth`}
+                    <td className="hidden px-4 py-4 font-mono text-xs uppercase lg:table-cell">
+                      {pkg.capture_mode}
+                    </td>
+                    <td className="hidden px-4 py-4 font-mono text-[11px] text-muted-foreground lg:table-cell">
+                      {`${pkg.template_count} template \u00b7 ${pkg.outlet_count} outlet \u00b7 ${pkg.photobox_count} booth`}
                     </td>
                     <td className="px-4 py-4">
                       <StatusBadge status={pkg.is_active ? "active" : "inactive"} />

@@ -13,7 +13,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { useChartStyle } from "@/components/ui/chart-style";
+import { CHART_STYLE } from "@/components/ui/chart-style";
 import { formatIDR } from "@/lib/dashboard-math";
 
 const chartConfig = {
@@ -27,7 +27,7 @@ function compactIDR(v: number): string {
 }
 
 export function PosReportsDayChartInner({ data }: { data: { date: string; amount: number }[] }) {
-  const chart = useChartStyle();
+  const chart = CHART_STYLE;
 
   return (
     <ChartContainer config={chartConfig} className="mt-2 aspect-auto h-[180px] w-full">

@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Fragment, useEffect, useRef } from "react";
+
 import { buildNavGroups, type NavItem } from "@/components/dashboard/nav";
 
 import { cn } from "@/lib/utils";
@@ -9,10 +11,10 @@ import { isNavActive } from "@/lib/nav-active";
 
 /**
  * Sidebar navigasi — docs/04 §4 (list modul) + docs/11 §11.6.
- * 5 grup, 19 item tetap; POS & Unduh PWA menyusul saat entitlement/fitur aktif
- * (docs/04 §4.2–4.3).
- * Desktop/tablet (md+): dikelompokkan per kategori (bukan 1 kolom panjang
- * menyatu) — docs/11 §11.9. Mobile: strip horizontal scroll, tanpa header.
+ * Desktop/tablet (md+): dikelompokkan per kategori, bisa diciutkan.
+ * Mobile: strip horizontal yang menempel di bawah topbar, tetap membawa label
+ * grup, dan otomatis menggeser item aktif ke tengah supaya halaman aktif tidak
+ * pernah berada di luar layar.
  */
 
 export function Sidebar({
@@ -26,6 +28,14 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const groups = buildNavGroups(showPos, showPwaKiosk);
+  const stripRef = useRef<HTMLDivElement | null>(null);
+
+  // Item aktif bisa berada jauh di kanan strip (mis. Pengaturan). Geser ke
+  // tengah saat rute berubah, hanya sumbu horizontal, tanpa menggeser halaman.
+  useEffect(() => {
+    const active = stripRef.current?.querySelector<HTMLElement>('[data-nav-active="true"]');
+    active?.scrollIntoView({ inline: "center", block: "nearest" });
+  }, [pathname]);
 
   const renderItem = (item: NavItem) => {
     // Link lintas-shell (`/docs`) tidak ditandai aktif di dashboard.
@@ -36,12 +46,11 @@ export function Sidebar({
         key={item.label}
         href={item.href}
         title={collapsed ? item.label : undefined}
+        aria-label={item.label}
         aria-current={active ? "page" : undefined}
+        data-nav-active={active ? "true" : undefined}
         className={cn(
           "flex min-h-11 shrink-0 items-center gap-2 px-3 py-2 font-mono text-xs uppercase tracking-[0.05em] transition-colors",
-          // Collapsed: stretch penuh di content-box nav p-2 (46px) + ikon
-          // center — border kotak aktif selalu utuh (46 ≥ 4+16), satu sumbu
-          // vertikal dengan tombol toggle. Tanpa fit-content/cascade trick.
           collapsed && "md:w-full md:justify-center md:gap-0 md:px-0",
           active ? "border-2 border-ink bg-accent font-bold text-ink" : "text-ink hover:bg-muted"
         )}
@@ -55,29 +64,45 @@ export function Sidebar({
   return (
     <nav
       aria-label="Navigasi utama"
-      className={cn(
-        "flex gap-1 overflow-x-auto border-b-2 border-ink p-3 md:flex-col md:overflow-hidden md:border-b-0 md:p-4",
-        collapsed && "md:px-2 md:py-4"
-      )}
+      className="sticky top-16 z-[9] border-b-2 border-ink bg-bg md:static md:z-auto md:border-b-0"
     >
-      {/* Mobile: strip horizontal flat. */}
-      <div className="flex gap-1 md:hidden">{groups.flatMap((g) => g.items).map(renderItem)}</div>
+      {/* Mobile: strip horizontal dengan label grup. */}
+      <div
+        ref={stripRef}
+        className="flex items-center gap-1 overflow-x-auto p-3 md:hidden"
+      >
+        {groups.map((group) => (
+          <Fragment key={group.label}>
+            <span className="shrink-0 px-1 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              {group.label}
+            </span>
+            {group.items.map(renderItem)}
+          </Fragment>
+        ))}
+      </div>
 
       {/* Desktop/tablet: kategori terpisah dengan header mono. */}
-      {groups.map((group, i) => (
-        <div key={group.label} className="hidden flex-col gap-1 md:flex">
-          <p
-            className={cn(
-              "px-3 pb-1 pt-3 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground",
-              i === 0 ? "pt-0" : "border-t-2 border-ink/30",
-              collapsed && "md:hidden"
-            )}
-          >
-            {group.label}
-          </p>
-          {group.items.map(renderItem)}
-        </div>
-      ))}
+      <div
+        className={cn(
+          "hidden md:flex md:flex-col md:gap-1 md:overflow-hidden",
+          collapsed ? "md:px-2 md:py-4" : "md:p-4"
+        )}
+      >
+        {groups.map((group, i) => (
+          <div key={group.label} className="flex flex-col gap-1">
+            <p
+              className={cn(
+                "px-3 pb-1 pt-3 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground",
+                i === 0 ? "pt-0" : "border-t-2 border-ink/30",
+                collapsed && "md:hidden"
+              )}
+            >
+              {group.label}
+            </p>
+            {group.items.map(renderItem)}
+          </div>
+        ))}
+      </div>
     </nav>
   );
 }

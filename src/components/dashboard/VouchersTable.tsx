@@ -85,27 +85,27 @@ export function VouchersTable({ vouchers, analytics, packages, outlets, canWrite
         />
       ) : (
         <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
-          <table className="w-full min-w-[920px] border-collapse text-left">
+          <table className="w-full border-collapse text-left md:md:min-w-[920px]">
             <caption className="sr-only">Daftar voucher</caption>
             <thead>
-              <tr className="border-b-2 border-ink bg-ink font-mono text-[10px] uppercase tracking-[0.12em] text-bg">
+              <tr className="border-b-2 border-ink bg-ink font-mono text-[11px] uppercase tracking-[0.12em] text-bg">
                 <th scope="col" className="px-4 py-3.5">
                   Kode
                 </th>
                 <th scope="col" className="px-4 py-3.5">
                   Diskon
                 </th>
-                <th scope="col" className="px-4 py-3.5">
+                <th scope="col" className="hidden px-4 py-3.5 md:table-cell">
                   Syarat
                 </th>
-                <th scope="col" className="px-4 py-3.5 text-right">
-                  Usage
+                <th scope="col" className="hidden px-4 py-3.5 text-right md:table-cell">
+                  Pemakaian
                 </th>
-                <th scope="col" className="px-4 py-3.5 text-right">
+                <th scope="col" className="hidden px-4 py-3.5 text-right lg:table-cell">
                   Total Diskon
                 </th>
-                <th scope="col" className="px-4 py-3.5 text-right">
-                  Revenue
+                <th scope="col" className="hidden px-4 py-3.5 text-right lg:table-cell">
+                  Pendapatan
                 </th>
                 <th scope="col" className="px-4 py-3.5">
                   Status
@@ -134,23 +134,23 @@ export function VouchersTable({ vouchers, analytics, packages, outlets, canWrite
                           </span>
                         ) : null}
                       </td>
-                      <td className="px-4 py-4 font-mono text-[11px] text-muted-foreground">
+                      <td className="hidden px-4 py-4 font-mono text-[11px] text-muted-foreground md:table-cell">
                         {[
                           vcr.min_transaction > 0 ? `min ${formatIDR(vcr.min_transaction)}` : null,
-                          `${vcr.usage_per_customer}x / customer`,
+                          `${vcr.usage_per_customer}x / pelanggan`,
                           vcr.usage_limit !== null ? `limit ${vcr.usage_limit}` : "tanpa limit",
                         ]
                           .filter(Boolean)
                           .join(" \u00b7 ")}
                       </td>
-                      <td className="px-4 py-4 text-right font-mono text-sm font-bold">
+                      <td className="hidden px-4 py-4 text-right font-mono text-sm font-bold md:table-cell">
                         {vcr.usage}
                         {vcr.usage_limit !== null ? `/${vcr.usage_limit}` : ""}
                       </td>
-                      <td className="px-4 py-4 text-right font-mono text-sm">
+                      <td className="hidden px-4 py-4 text-right font-mono text-sm lg:table-cell">
                         {formatIDR(stats?.totalDiscount ?? 0)}
                       </td>
-                      <td className="px-4 py-4 text-right font-mono text-sm">
+                      <td className="hidden px-4 py-4 text-right font-mono text-sm lg:table-cell">
                         {formatIDR(stats?.revenueGenerated ?? 0)}
                       </td>
                       <td className="px-4 py-4">
