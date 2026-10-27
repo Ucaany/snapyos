@@ -65,7 +65,8 @@ export async function createPayment(
     resolved = await resolveKioskPaymentMethod(
       device.businessId,
       device.photobox.id,
-      parsed.method_id
+      parsed.method_id,
+      checkout.final_amount
     );
   } catch {
     throw new ApiError("VALIDATION_ERROR", "Metode pembayaran tidak tersedia");

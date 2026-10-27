@@ -7,6 +7,7 @@ import {
 } from "@/lib/payment-credentials";
 import {
   buildKioskPaymentMethods,
+  ensureFreeSettlementMethod,
   filterKioskPaymentMethods,
   paymentMethodId,
   type KioskPaymentMethod,
@@ -82,28 +83,33 @@ async function getPhotoboxPaymentMode(photoboxId: string): Promise<PhotoboxPayme
 
 export async function listKioskPaymentMethods(
   businessId: string,
-  photoboxId: string
+  photoboxId: string,
+  finalAmount?: number
 ): Promise<KioskPaymentMethod[]> {
   const credentials = await listKioskCredentials(businessId);
-  const methods = filterKioskPaymentMethods(
-    buildKioskPaymentMethods(credentials),
-    await getPhotoboxPaymentMode(photoboxId)
-  );
+  const all = buildKioskPaymentMethods(credentials);
+  const methods = filterKioskPaymentMethods(all, await getPhotoboxPaymentMode(photoboxId));
+  // Checkout yang sudah lunas (voucher 100% / diskon penuh) tidak punya sisa
+  // tagihan untuk gateway. Kanal voucher wajib tetap tersedia agar sesi bisa
+  // dimulai — termasuk di booth "hanya gateway" (payment_mode='gateway'),
+  // yang kalau tidak akan menawarkan pembayaran tunai Rp0 dan menggantung.
+  const withFreeSettlement = ensureFreeSettlementMethod(methods, all, finalAmount);
   if (!(await hasFeature(businessId, "cash_payment"))) {
-    return methods.filter((method) => method.id !== "cash");
+    return withFreeSettlement.filter((method) => method.id !== "cash");
   }
-  return methods;
+  return withFreeSettlement;
 }
 
 export async function resolveKioskPaymentMethod(
   businessId: string,
   photoboxId: string,
-  methodId: string
+  methodId: string,
+  finalAmount?: number
 ): Promise<{
   method: KioskPaymentMethod;
   credentialId: string | null;
 }> {
-  const methods = await listKioskPaymentMethods(businessId, photoboxId);
+  const methods = await listKioskPaymentMethods(businessId, photoboxId, finalAmount);
   const method = methods.find((candidate) => candidate.id === methodId);
   if (!method) throw new Error("Metode pembayaran tidak tersedia");
   // Cash + voucher tidak butuh credential merchant — provider null.
