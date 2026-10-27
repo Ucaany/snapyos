@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 const TABS = [
   { key: "day", label: "Per Hari" },
   { key: "outlet", label: "Per Outlet" },
-  { key: "package", label: "Per Package" },
+  { key: "package", label: "Per Paket" },
   { key: "photobox", label: "Per Photobox" },
   { key: "method", label: "Per Metode Bayar" },
 ] as const;

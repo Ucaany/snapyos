@@ -18,11 +18,11 @@ const REPORT_TYPES = [
   { value: "daily", label: "Harian" },
   { value: "weekly", label: "Mingguan" },
   { value: "monthly", label: "Bulanan" },
-  { value: "revenue", label: "Revenue" },
-  { value: "transactions", label: "Transactions" },
+  { value: "revenue", label: "Pendapatan" },
+  { value: "transactions", label: "Transaksi" },
   { value: "outlet", label: "Outlet" },
   { value: "photobox", label: "Photobox" },
-  { value: "expenses", label: "Expenses" },
+  { value: "expenses", label: "Biaya" },
   { value: "voucher", label: "Voucher" },
 ];
 

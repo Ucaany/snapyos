@@ -73,7 +73,7 @@ export function Sidebar({
       >
         {groups.map((group) => (
           <Fragment key={group.label}>
-            <span className="shrink-0 px-1 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+            <span className="shrink-0 px-1 font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
               {group.label}
             </span>
             {group.items.map(renderItem)}

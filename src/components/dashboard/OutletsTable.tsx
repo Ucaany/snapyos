@@ -164,7 +164,7 @@ export function OutletsTable({ outlets, canWrite, maxOutlets }: Props) {
         )
       ) : (
         <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
-          <table className="w-full border-collapse text-left md:md:min-w-[760px]">
+          <table className="w-full border-collapse text-left md:min-w-[760px]">
             <caption className="sr-only">Daftar outlet</caption>
             <thead>
               <tr className="border-b-2 border-ink bg-ink font-mono text-[11px] uppercase tracking-[0.12em] text-bg">

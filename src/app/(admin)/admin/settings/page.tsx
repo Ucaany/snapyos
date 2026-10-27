@@ -3,6 +3,7 @@ import { AdminActionForm } from "@/components/admin/AdminActionForm";
 import { BrutalistCheckbox } from "@/components/admin/BrutalistCheckbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/ui/page-header";
 import { updateSettingsAction } from "@/server/admin-actions";
 import { getPlatformSettings } from "@/server/admin";
 
@@ -18,17 +19,11 @@ export default async function AdminSettingsPage() {
 
   return (
     <div className="flex flex-col gap-8 p-6 md:p-10">
-      <header>
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {"ADMIN - PLATFORM SETTINGS"}
-        </p>
-        <h1 className="mt-2 font-display text-3xl uppercase tracking-tight md:text-4xl">
-          Konfigurasi Platform
-        </h1>
-        <p className="mt-2 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
-          GLOBAL · BERLAKU UNTUK SEMUA TENANT
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="ADMIN - PLATFORM SETTINGS"
+        title="Konfigurasi Platform"
+        meta="GLOBAL · BERLAKU UNTUK SEMUA TENANT"
+      />
 
       <Card>
         <CardHeader>
@@ -48,7 +43,7 @@ export default async function AdminSettingsPage() {
             <div className="flex flex-col gap-1">
               <label
                 htmlFor="s-fee-pct"
-                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                className="font-mono text-[11px] uppercase tracking-[0.12em]"
               >
                 Platform fee default (%)
               </label>
@@ -59,14 +54,14 @@ export default async function AdminSettingsPage() {
                 step="0.5"
                 defaultValue={s.platform_fee_percent ?? 0}
               />
-              <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+              <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
                 Referensi tampilan; fee efektif per-plan.
               </p>
             </div>
             <div className="flex flex-col gap-1">
               <label
                 htmlFor="s-fee-flat"
-                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                className="font-mono text-[11px] uppercase tracking-[0.12em]"
               >
                 Platform fee default flat (IDR)
               </label>
@@ -80,7 +75,7 @@ export default async function AdminSettingsPage() {
             <div className="flex flex-col gap-1">
               <label
                 htmlFor="s-retention"
-                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                className="font-mono text-[11px] uppercase tracking-[0.12em]"
               >
                 Default retention (hari)
               </label>
@@ -93,14 +88,14 @@ export default async function AdminSettingsPage() {
                 step={1}
                 defaultValue={s.default_retention_days ?? 3}
               />
-              <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+              <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
                 Rentang 1–3 hari (kebijakan privasi); diterapkan ke semua tenant.
               </p>
             </div>
             <div className="flex flex-col gap-1">
               <label
                 htmlFor="s-trial"
-                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                className="font-mono text-[11px] uppercase tracking-[0.12em]"
               >
                 Trial (hari)
               </label>
@@ -115,7 +110,7 @@ export default async function AdminSettingsPage() {
             <div className="flex flex-col gap-1 md:col-span-3">
               <label
                 htmlFor="s-maint-msg"
-                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                className="font-mono text-[11px] uppercase tracking-[0.12em]"
               >
                 Pesan maintenance (kustom)
               </label>
@@ -125,7 +120,7 @@ export default async function AdminSettingsPage() {
                 defaultValue={s.maintenance_message ?? ""}
                 placeholder="Platform sedang perawatan. Coba lagi nanti."
               />
-              <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+              <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
                 Ditampilkan di halaman /maintenance saat mode aktif.
               </p>
             </div>

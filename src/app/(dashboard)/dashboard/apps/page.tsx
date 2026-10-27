@@ -133,7 +133,7 @@ function BoothVersions({
                       )}
                       {outdated ? (
                         <span className="inline-flex items-center border-2 border-ink bg-accent px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]">
-                          Perlu update
+                          Perlu diperbarui
                         </span>
                       ) : null}
                     </td>

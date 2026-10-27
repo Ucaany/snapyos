@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 
 import { Sidebar } from "@/components/dashboard/Sidebar";
-import { buildNavGroups } from "@/components/dashboard/nav";
 import { Topbar } from "@/components/dashboard/Topbar";
 import { CashPaymentNotifier } from "@/components/dashboard/CashPaymentNotifier";
 import { InstallPWA } from "@/components/dashboard/InstallPWA";

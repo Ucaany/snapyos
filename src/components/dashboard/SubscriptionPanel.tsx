@@ -42,7 +42,7 @@ const PLAN_FEATURES: { key: string; label: string }[] = [
   { key: "direct_payment", label: "Payment gateway direct-merchant" },
   { key: "staff", label: "Staff management" },
   { key: "finance", label: "Finance / settlement" },
-  { key: "storage", label: "Storage" },
+  { key: "storage", label: "Penyimpanan" },
   { key: "reports", label: "Laporan / reports" },
   { key: "voucher", label: "Voucher" },
 ];
@@ -157,9 +157,9 @@ function PlanCardBlock({
           ))}
         </ul>
         {isCurrent ? (
-          <Button type="button" variant="outline" disabled className="mt-auto w-full">
-            Plan kamu saat ini
-          </Button>
+          <p className="mt-auto border-2 border-ink bg-muted px-3 py-2 text-center font-mono text-xs font-bold uppercase tracking-[0.08em]">
+            Paket kamu saat ini
+          </p>
         ) : (
           trigger
         )}

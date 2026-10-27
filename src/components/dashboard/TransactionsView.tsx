@@ -156,7 +156,7 @@ export function TransactionsView({
                 </div>
                 <div className="flex flex-col gap-2">
                   <label htmlFor="mtx-package" className={labelClass}>
-                    Package
+                    Paket
                   </label>
                   <Select id="mtx-package" name="package_id" defaultValue="" disabled={pending}>
                     <option value="">Tanpa package</option>
@@ -176,7 +176,7 @@ export function TransactionsView({
                 </div>
                 <div className="flex flex-col gap-2">
                   <label htmlFor="mtx-gross" className={labelClass}>
-                    Gross (IDR) *
+                    Kotor (IDR) *
                   </label>
                   <Input
                     id="mtx-gross"
@@ -240,7 +240,7 @@ export function TransactionsView({
         />
       ) : (
         <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
-          <table className="w-full border-collapse text-left md:md:min-w-[1240px]">
+          <table className="w-full border-collapse text-left md:min-w-[1240px]">
             <caption className="sr-only">Daftar transaksi</caption>
             <thead>
               <tr className="border-b-2 border-ink bg-ink font-mono text-[11px] uppercase tracking-[0.12em] text-bg">

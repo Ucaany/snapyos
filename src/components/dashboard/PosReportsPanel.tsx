@@ -71,7 +71,7 @@ export function PosReportsPanel({ data, timeZone }: { data: PosReportsData; time
   return (
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Metric label="Revenue POS" value={formatIDR(revenue.totalFinal)} />
+        <Metric label="Pendapatan POS" value={formatIDR(revenue.totalFinal)} />
         <Metric label="Transaksi" value={String(revenue.count)} />
         <Metric label="Rata-rata" value={formatIDR(revenue.average)} />
         <Metric
@@ -107,7 +107,7 @@ export function PosReportsPanel({ data, timeZone }: { data: PosReportsData; time
             </div>
           </dl>
           <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.06em] text-muted-foreground">
-            {`diskon ${formatIDR(revenue.totalDiscount)} \u00b7 gross ${formatIDR(revenue.totalGross)}`}
+            {`diskon ${formatIDR(revenue.totalDiscount)} \u00b7 kotor ${formatIDR(revenue.totalGross)}`}
           </p>
         </div>
 

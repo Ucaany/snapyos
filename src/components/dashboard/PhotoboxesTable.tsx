@@ -6,7 +6,6 @@ import { Camera, ChevronDown, Pencil, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { PhotoboxForm } from "@/components/dashboard/PhotoboxForm";
@@ -170,7 +169,7 @@ export function PhotoboxesTable({
         )
       ) : (
         <div className="overflow-x-auto border-2 border-ink shadow-[4px_4px_0_0_#111111]">
-          <table className="w-full border-collapse bg-surface text-left md:md:min-w-[820px]">
+          <table className="w-full border-collapse bg-surface text-left md:min-w-[820px]">
             <caption className="sr-only">Daftar photobox</caption>
             <thead>
               <tr className="border-b-2 border-ink bg-ink font-mono text-[11px] uppercase tracking-[0.12em] text-bg">

@@ -8,11 +8,18 @@ import { cn } from "@/lib/utils";
  * sempit; kolom sekunder disembunyikan per halaman lewat `hidden md:table-cell`.
  */
 
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+function Table({
+  className,
+  containerClassName,
+  ...props
+}: React.ComponentProps<"table"> & { containerClassName?: string }) {
   return (
     <div
       data-slot="table-container"
-      className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]"
+      className={cn(
+        "overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]",
+        containerClassName
+      )}
     >
       <table
         data-slot="table"
@@ -67,8 +74,9 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
   return (
     <th
       data-slot="table-head"
+      scope="col"
       className={cn(
-        "px-4 py-3.5 text-left align-middle font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-bg [&:has([role=checkbox])]:pr-0",
+        "px-4 py-3 text-left align-middle font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-bg [&:has([role=checkbox])]:pr-0",
         className
       )}
       {...props}

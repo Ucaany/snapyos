@@ -1,8 +1,9 @@
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 /**
- * StatusBadge — pill status Neo-Brutalist (docs/11 §11.4 Badge).
- * Server component; pemetaan warna status → accent token.
+ * StatusBadge — pemetaan status → accent token, memakai geometri `Badge`
+ * supaya hanya ada satu ukuran badge di seluruh aplikasi.
  */
 
 const STYLE: Record<string, string> = {
@@ -28,29 +29,6 @@ const STYLE: Record<string, string> = {
   resolved: "bg-muted text-muted-foreground",
 };
 
-const LABELS: Record<string, string> = {
-  paid: "Lunas",
-  completed: "Selesai",
-  active: "Aktif",
-  online: "Online",
-  confirmed: "Dikonfirmasi",
-  sent: "Terkirim",
-  pending: "Menunggu",
-  scheduled: "Terjadwal",
-  maintenance: "Perawatan",
-  processing: "Diproses",
-  partial: "Sebagian",
-  failed: "Gagal",
-  cancelled: "Dibatalkan",
-  expired: "Kedaluwarsa",
-  inactive: "Nonaktif",
-  offline: "Offline",
-  refunded: "Dikembalikan",
-  open: "Terbuka",
-  needs_action: "Butuh Tindakan",
-  resolved: "Selesai",
-};
-
 export function StatusBadge({
   status,
   label,
@@ -61,14 +39,11 @@ export function StatusBadge({
   className?: string;
 }) {
   return (
-    <span
-      className={cn(
-        "inline-flex h-6 items-center border-2 border-ink px-2 font-mono text-[10px] font-bold uppercase tracking-[0.1em]",
-        STYLE[status] ?? "bg-muted text-muted-foreground",
-        className
-      )}
+    <Badge
+      variant="outline"
+      className={cn("min-h-6", STYLE[status] ?? "bg-muted text-muted-foreground", className)}
     >
-      {label ?? LABELS[status] ?? status}
-    </span>
+      {label ?? status}
+    </Badge>
   );
 }

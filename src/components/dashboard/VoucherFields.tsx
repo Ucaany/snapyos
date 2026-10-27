@@ -173,7 +173,7 @@ export function VoucherFields({
       </div>
       <div className="flex flex-col gap-2">
         <label htmlFor={`vcr-limit-${id}`} className={labelClass}>
-          {"Usage limit total (kosong = \u221E)"}
+          {"Batas pemakaian total (kosong = tanpa batas)"}
         </label>
         <Input
           id={`vcr-limit-${id}`}
@@ -190,7 +190,7 @@ export function VoucherFields({
       </div>
       <div className="flex flex-col gap-2">
         <label htmlFor={`vcr-per-${id}`} className={labelClass}>
-          Usage per customer
+          Pemakaian per pelanggan
         </label>
         <Input
           id={`vcr-per-${id}`}

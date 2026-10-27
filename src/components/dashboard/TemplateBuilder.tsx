@@ -507,26 +507,33 @@ export function TemplateBuilder({
     e.currentTarget.releasePointerCapture(e.pointerId);
   }
 
-  /** Layout dibulatkan sebelum disimpan (kontrak px design, docs/15 §15.2). */
-  const roundedLayout: TemplateLayout = useMemo(
-    () => ({
+  /** Layout dibulatkan sebelum disimpan (kontrak px design, docs/15 §15.2).
+   *  Bulatkan DULU, clamp setelahnya: `x=0.5, w=1199.5` akan menjadi 1+1200
+   *  dan melewati canvas kalau urutannya dibalik. */
+  const roundedLayout: TemplateLayout = useMemo(() => {
+    const canvas = {
+      ...layout.canvas,
+      width: Math.round(layout.canvas.width),
+      height: Math.round(layout.canvas.height),
+    };
+    return {
       ...layout,
-      canvas: {
-        ...layout.canvas,
-        width: Math.round(layout.canvas.width),
-        height: Math.round(layout.canvas.height),
-      },
-      slots: layout.slots.map((s) => ({
-        ...s,
-        x: Math.round(s.x),
-        y: Math.round(s.y),
-        width: Math.round(s.width),
-        height: Math.round(s.height),
-        radius: s.radius !== undefined ? Math.round(s.radius) : undefined,
-      })),
-    }),
-    [layout]
-  );
+      canvas,
+      slots: layout.slots.map((s) =>
+        clampSlot(
+          {
+            ...s,
+            x: Math.round(s.x),
+            y: Math.round(s.y),
+            width: Math.round(s.width),
+            height: Math.round(s.height),
+            radius: s.radius !== undefined ? Math.round(s.radius) : undefined,
+          },
+          canvas
+        )
+      ),
+    };
+  }, [layout]);
 
   /** Thumbnail otomatis dari preview slot terisi (docs/15 §15.3).
    *  `toBlob` pada Chromium kadang TIDAK memanggil callback (canvas besar /

@@ -20,7 +20,7 @@ const STATUS_CELLS: {
   label: string;
   tone: string;
 }[] = [
-  { key: "total", label: "Total Trx", tone: "text-ink" },
+  { key: "total", label: "Total Transaksi", tone: "text-ink" },
   { key: "paid", label: "Berhasil", tone: "text-accent-3-strong" },
   { key: "failed", label: "Gagal", tone: "text-destructive" },
   { key: "pending", label: "Pending", tone: "text-ink" },
@@ -94,7 +94,7 @@ export function TxInsightsPanel({
         <div className="border-2 border-ink bg-surface p-4 shadow-[3px_3px_0_0_#111111] md:p-5">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h3 className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-              {"JAM.RAMAI"}
+              {"JAM RAMAI"}
             </h3>
             <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
               {peakHour !== null ? (
@@ -137,7 +137,7 @@ export function TxInsightsPanel({
         <div className="border-2 border-ink bg-surface p-4 shadow-[3px_3px_0_0_#111111] md:p-5">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h3 className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-              {"OUTLET.TERAMAI"}
+              {"OUTLET TERAMAI"}
             </h3>
             <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
               {outlets.length} OUTLET
@@ -157,7 +157,7 @@ export function TxInsightsPanel({
                       Outlet
                     </th>
                     <th scope="col" className="py-2 pr-3 text-right">
-                      Trx
+                      Transaksi
                     </th>
                     <th scope="col" className="py-2 pr-3 text-right">
                       Gagal
