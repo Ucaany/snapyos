@@ -9,15 +9,35 @@ import { bridgeHeaders } from "./bridge-token.ts";
 
 export type FacingMode = "user" | "environment";
 
-export type CameraProvider = "browser" | "gphoto2";
+/** "browser" = getUserMedia; "bridge" = kamera fisik via runtime lokal. */
+export type CameraProvider = "browser" | "bridge";
+
+/**
+ * Nilai `camera_settings.provider` yang dianggap memilih jalur bridge.
+ * `gphoto2` dipertahankan agar setelan booth lama tetap berlaku; adapter
+ * konkretnya (gphoto2 / libcamera / v4l2 / pyav) ditentukan env runtime, bukan
+ * oleh nilai tersimpan ini.
+ */
+export const BRIDGE_PROVIDERS = [
+  "bridge",
+  "gphoto2",
+  "digicamcontrol",
+  "libcamera",
+  "v4l2",
+  "pyav",
+] as const;
 
 export type CameraProviderSettings = {
-  provider?: CameraProvider;
+  provider?: CameraProvider | (typeof BRIDGE_PROVIDERS)[number];
   bridge_url?: string;
 };
 
 export function resolveCameraProvider(settings?: CameraProviderSettings | null): CameraProvider {
-  return settings?.provider === "gphoto2" ? "gphoto2" : "browser";
+  const provider = settings?.provider;
+  if (typeof provider === "string" && (BRIDGE_PROVIDERS as readonly string[]).includes(provider)) {
+    return "bridge";
+  }
+  return "browser";
 }
 
 export function cameraBridgeUrl(settings?: CameraProviderSettings | null): string {
@@ -64,7 +84,7 @@ export async function checkCameraBridge(
   return (await response.json()) as { ok: boolean; camera: boolean; message?: string };
 }
 
-export async function captureGphoto2(
+export async function captureFromBridge(
   settings?: CameraProviderSettings | null,
   signal?: AbortSignal
 ): Promise<Blob> {
@@ -81,7 +101,7 @@ export async function captureGphoto2(
   if (!response.ok) {
     const body = await response.json().catch(() => null);
     throw new Error(
-      typeof body?.message === "string" ? body.message : "GPhoto2 gagal mengambil foto."
+      typeof body?.message === "string" ? body.message : "Kamera bridge gagal mengambil foto."
     );
   }
   const blob = await response.blob();
@@ -90,7 +110,7 @@ export async function captureGphoto2(
   return blob;
 }
 
-export async function fetchGphoto2Preview(
+export async function fetchBridgePreview(
   settings?: CameraProviderSettings | null,
   signal?: AbortSignal
 ): Promise<Blob> {
@@ -104,7 +124,7 @@ export async function fetchGphoto2Preview(
     },
     10_000
   );
-  if (!response.ok) throw new Error("Preview GPhoto2 tidak tersedia.");
+  if (!response.ok) throw new Error("Preview kamera bridge tidak tersedia.");
   const blob = await response.blob();
   if (!blob.type.startsWith("image/")) throw new Error("Preview kamera tidak valid.");
   return blob;

@@ -354,7 +354,9 @@ const photoboxStatus = z.enum(["online", "offline", "maintenance"]);
 const photoboxPaymentMode = z.enum(["gateway", "voucher"]);
 
 export const cameraSettingsSchema = z.object({
-  provider: z.enum(["browser", "gphoto2"]).optional(),
+  provider: z
+    .enum(["browser", "bridge", "gphoto2", "digicamcontrol", "libcamera", "v4l2", "pyav"])
+    .optional(),
   bridge_url: z.string().trim().url().max(300).optional(),
   countdown_seconds: z.number().int().min(1).max(10).optional(),
   mirror_preview: z.boolean().optional(),

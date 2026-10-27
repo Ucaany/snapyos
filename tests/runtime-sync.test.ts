@@ -22,7 +22,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { RuntimeConfig } from "../runtime/config.ts";
+import { loadConfig, type RuntimeConfig } from "../runtime/config.ts";
 import { closeDatabase, insertSession, openDatabase, setMeta } from "../runtime/db/index.ts";
 import {
   backoffDelay,
@@ -42,31 +42,17 @@ const DEVICE_TOKEN = "test-device-token-0123456789abcdef";
 const BUSINESS_SLUG = "snapy-demo";
 const PHOTOBOX_SLUG = "booth-01";
 
+/** Dibangun lewat `loadConfig` supaya field baru tidak mematahkan fixture. */
 function baseConfig(dataDir: string): RuntimeConfig {
-  // Hanya field yang dibaca sync worker yang diisi; sisanya tidak pernah
-  // disentuh jalur ini.
-  return {
-    host: "127.0.0.1",
-    port: 0,
-    tokenDigest: Buffer.alloc(32),
-    allowedOrigins: new Set<string>(),
-    dataDir,
-    camera: "mock",
-    printer: "mock",
-    mock: true,
-    gphotoBin: "gphoto2",
-    captureTarget: "",
-    timeoutMs: 5_000,
-    digicamPort: 5513,
-    digicamCmd: "",
-    sumatraBin: "",
-    powershellBin: "powershell",
-    cupsBin: "lp",
-    lpstatBin: "lpstat",
-    maxBodyBytes: 1_048_576,
-    cloudUrl: "https://cloud.test",
-    deviceToken: DEVICE_TOKEN,
-  };
+  return loadConfig({
+    PHOTOBOOTH_BRIDGE_TOKEN: "test-bridge-token-0123456789",
+    SNAPYOS_CAMERA: "mock",
+    SNAPYOS_PRINTER: "mock",
+    SNAPYOS_ALLOW_MOCK: "1",
+    SNAPYOS_DATA_DIR: dataDir,
+    SNAPYOS_CLOUD_URL: "https://cloud.test",
+    SNAPYOS_DEVICE_TOKEN: DEVICE_TOKEN,
+  });
 }
 
 type Fixture = {

@@ -16,7 +16,8 @@
 import type { AppearanceSettings } from "./appearance-merge.ts";
 
 export type BoothCameraDraft = {
-  provider: "browser" | "gphoto2";
+  /** bridge = kamera fisik lewat runtime lokal (gphoto2 / libcamera / v4l2 / PyAV). */
+  provider: "browser" | "bridge";
   countdown_seconds: number;
   capture_width: number;
   capture_height: number;

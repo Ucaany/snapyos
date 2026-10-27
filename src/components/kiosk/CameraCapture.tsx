@@ -6,9 +6,9 @@ import { cameraErrorCopy } from "@/lib/camera-errors";
 import { isKioskExe } from "@/lib/kiosk-shell";
 import { captureFrame, normalizeRotation, normalizeZoom } from "@/lib/camera-capture";
 import {
-  captureGphoto2,
+  captureFromBridge,
   checkCameraBridge,
-  fetchGphoto2Preview,
+  fetchBridgePreview,
   resolveCameraProvider,
   resolveFacingMode,
 } from "@/lib/camera-provider";
@@ -41,6 +41,8 @@ type Props = {
   layout?: TemplateLayout | null;
   /** PNG frame transparan template terpilih — dipakai preview frame langsung. */
   frameUrl?: string | null;
+  /** Mode capture package — `burst` melewati layar review antar shot. */
+  captureMode?: "single" | "burst" | "photostrip";
   onProgress?: (photos: CapturePhoto[], retakeCount: number) => void;
   onComplete: (photos: CapturePhoto[], retakeCount: number) => void;
 };
@@ -60,6 +62,7 @@ function CameraCaptureInner({
   videoUrl = null,
   layout = null,
   frameUrl = null,
+  captureMode = "single",
   onProgress,
   onComplete,
 }: Props) {
@@ -87,8 +90,8 @@ function CameraCaptureInner({
   const rotation = normalizeRotation(cameraSettings.rotation_degrees);
   const calibrationZoom = normalizeZoom(cameraSettings.zoom);
   const [cameraReady, setCameraReady] = useState(false);
-  const [gphotoPreviewBlob, setGphotoPreviewBlob] = useState<Blob | null>(null);
-  const gphotoPreviewUrl = useObjectUrl(gphotoPreviewBlob);
+  const [bridgePreviewBlob, setGphotoPreviewBlob] = useState<Blob | null>(null);
+  const bridgePreviewUrl = useObjectUrl(bridgePreviewBlob);
   const cameraProvider = resolveCameraProvider(cameraSettings);
   // `action` = label tombol; `onAction` = yang benar-benar dijalankan. Tanpa
   // pemisahan ini, error batas retake (satu-satunya jalur keluar dari review)
@@ -151,15 +154,15 @@ function CameraCaptureInner({
       const generation = ++streamGeneration.current;
       setError(null);
       setCameraReady(false);
-      if (cameraProvider === "gphoto2") {
+      if (cameraProvider === "bridge") {
         try {
           const result = await checkCameraBridge(cameraSettings);
           if (!result.ok || !result.camera)
-            throw new Error(result.message || "Kamera GPhoto2 tidak terdeteksi.");
+            throw new Error(result.message || "Kamera bridge tidak terdeteksi.");
           setCameraReady(true);
         } catch (e) {
           setError({
-            message: e instanceof Error ? e.message : "Bridge GPhoto2 tidak siap.",
+            message: e instanceof Error ? e.message : "Bridge kamera tidak siap.",
             action: "COBA LAGI",
           });
         }
@@ -282,7 +285,7 @@ function CameraCaptureInner({
   // otomatis tanpa menunggu event devicechange (yang kadang tak ter-pause).
   // Tidak berlaku saat error tampil (permission denied dsb.) — hindari loop.
   useEffect(() => {
-    if (cameraProvider === "gphoto2") return;
+    if (cameraProvider === "bridge") return;
     const id = setInterval(() => {
       if (stage !== "preview" || error) return;
       const track = streamRef.current?.getVideoTracks()[0];
@@ -295,14 +298,14 @@ function CameraCaptureInner({
   }, [cameraProvider, stage, error]);
 
   useEffect(() => {
-    if (cameraProvider !== "gphoto2" || stage === "review" || error) return;
+    if (cameraProvider !== "bridge" || stage === "review" || error) return;
     let cancelled = false;
     let previewInFlight = false;
     const refresh = async () => {
       if (previewInFlight) return;
       previewInFlight = true;
       try {
-        const blob = await fetchGphoto2Preview(cameraSettings);
+        const blob = await fetchBridgePreview(cameraSettings);
         if (!cancelled) setGphotoPreviewBlob(blob);
       } catch {
         if (!cancelled) setGphotoPreviewBlob(null);
@@ -343,8 +346,8 @@ function CameraCaptureInner({
     if (stageRef.current !== "countdown") return;
     try {
       const photo =
-        cameraProvider === "gphoto2"
-          ? { blob: await captureGphoto2(cameraSettings) }
+        cameraProvider === "bridge"
+          ? { blob: await captureFromBridge(cameraSettings) }
           : await captureFrame(
               videoRef.current!,
               cameraSettings.jpeg_quality || 0.92,
@@ -352,10 +355,24 @@ function CameraCaptureInner({
               normalizeRotation(cameraSettings.rotation_degrees),
               normalizeZoom(cameraSettings.zoom)
             );
-      setCurrent(photo);
       setFlash(true);
       if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
       flashTimerRef.current = setTimeout(() => setFlash(false), 180);
+      if (captureMode === "burst") {
+        // Burst: tanpa layar review — shot langsung masuk slot berikutnya supaya
+        // rangkaian cepat tidak terpotong konfirmasi per foto.
+        const next = [...photos, photo];
+        setPhotos(next);
+        onProgress?.(next, retakeCount);
+        if (slot + 1 >= photoCount) {
+          onComplete(next, retakeCount);
+        } else {
+          setSlot(slot + 1);
+          setStage("preview");
+        }
+        return;
+      }
+      setCurrent(photo);
       setStage("review");
     } catch {
       setError({ message: "Gagal mengambil foto. Coba lagi.", action: "COBA LAGI" });
@@ -415,19 +432,19 @@ function CameraCaptureInner({
         {stage === "review" && current && currentUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={currentUrl} alt="Hasil foto" className="max-h-full max-w-full object-contain" />
-        ) : cameraProvider === "gphoto2" ? (
-          gphotoPreviewUrl ? (
+        ) : cameraProvider === "bridge" ? (
+          bridgePreviewUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={gphotoPreviewUrl}
-              alt="Preview kamera GPhoto2"
+              src={bridgePreviewUrl}
+              alt="Preview kamera bridge"
               className="max-h-full max-w-full object-contain"
             />
           ) : (
             <div className="flex max-w-[34ch] flex-col items-center gap-3 px-6 text-center text-bg">
               <Camera className="size-9" aria-hidden />
               <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.1em]">
-                Preview live DSLR tidak tersedia. Kamera tetap siap untuk mengambil foto.
+                Preview live kamera tidak tersedia. Kamera tetap siap untuk mengambil foto.
               </p>
             </div>
           )
@@ -571,7 +588,7 @@ function CameraCaptureInner({
             activeSlot={slot}
             videoEl={stage === "review" ? null : videoEl}
             liveImageUrl={
-              stage === "review" || cameraProvider !== "gphoto2" ? null : gphotoPreviewUrl
+              stage === "review" || cameraProvider !== "bridge" ? null : bridgePreviewUrl
             }
             activeOverride={stage === "review" && current ? current.blob : null}
             mirror={mirror}

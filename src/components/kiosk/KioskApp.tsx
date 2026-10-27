@@ -915,6 +915,7 @@ export function KioskApp({
           videoUrl={kioskBranding?.pages?.capture?.video_url ?? null}
           layout={selectedTemplate?.layout ?? null}
           frameUrl={selectedTemplate?.file_url ?? null}
+          captureMode={selectedPackage.capture_mode}
           onProgress={onProgressCapture}
           onComplete={handleCaptured}
         />

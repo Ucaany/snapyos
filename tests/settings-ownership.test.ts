@@ -288,7 +288,7 @@ test("mergeSettings tetap menolak appearance menimpa field uang", () => {
 
 const baseDraft = {
   camera: {
-    provider: "gphoto2" as const,
+    provider: "bridge" as const,
     countdown_seconds: 5,
     capture_width: 1920,
     capture_height: 1080,

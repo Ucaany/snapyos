@@ -112,7 +112,7 @@ function toDraft(settings: DeviceSettings | null): Draft {
   const appearance = (settings?.appearance_settings ?? {}) as AppearanceSettings;
   return {
     camera: {
-      provider: camera.provider === "gphoto2" ? "gphoto2" : "browser",
+      provider: camera.provider && camera.provider !== "browser" ? "bridge" : "browser",
       countdown_seconds: num(camera.countdown_seconds, DEFAULT_DRAFT.camera.countdown_seconds),
       capture_width: num(camera.capture_width, DEFAULT_DRAFT.camera.capture_width),
       capture_height: num(camera.capture_height, DEFAULT_DRAFT.camera.capture_height),
@@ -240,12 +240,12 @@ export function BoothSettingsPanel({ initial, bridgeUrl, photoboxName, onSaved, 
                 value={draft.camera.provider}
                 onChange={(e) =>
                   update("camera", {
-                    provider: e.target.value === "gphoto2" ? "gphoto2" : "browser",
+                    provider: e.target.value === "bridge" ? "bridge" : "browser",
                   })
                 }
               >
                 <option value="browser">Kamera browser (webcam/USB)</option>
-                <option value="gphoto2">DSLR via gphoto2</option>
+                <option value="bridge">Kamera bridge (DSLR / Pi Cam / Webcam via runtime)</option>
               </select>
             </label>
             <label className="flex flex-col gap-1">

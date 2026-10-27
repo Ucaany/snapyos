@@ -19,7 +19,7 @@ type Props = {
   activeSlot: number;
   /** Elemen <video> kamera yang sedang hidup (null saat review/unmount). */
   videoEl: HTMLVideoElement | null;
-  /** URL preview still-frame dari bridge GPhoto2. */
+  /** URL preview still-frame dari bridge kamera. */
   liveImageUrl?: string | null;
   /** Hasil baru yang belum dikonfirmasi (tampil saat stage review). */
   activeOverride: Blob | null;

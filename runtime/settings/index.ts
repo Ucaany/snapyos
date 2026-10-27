@@ -121,13 +121,34 @@ export function cloudSyncedSettings(settings: SettingsShape): SettingsShape {
  * Adapter dipilih saat start dari setelan tersimpan; env tetap nilai awal bila
  * store kosong. Mock tidak pernah ditimpa setelan — kamera palsu di booth
  * berarti pelanggan membayar foto yang bukan dirinya.
+ *
+ * Nilai `browser`/`bridge`/kosong berarti "jangan menimpa env": operator hanya
+ * menyatakan jalur mana yang dipakai, sedangkan merek adapter (gphoto2 /
+ * libcamera / v4l2 / pyav) milik mesin booth. Nilai adapter yang eksplisit
+ * (dipilih teknisi) tetap menang supaya booth bisa ganti kamera tanpa mengubah
+ * service env.
  */
+export const STORED_BRIDGE_KINDS = [
+  "digicamcontrol",
+  "gphoto2",
+  "libcamera",
+  "v4l2",
+  "pyav",
+] as const;
+
+function storedCameraKind(provider: unknown): RuntimeConfig["camera"] | null {
+  return typeof provider === "string" && (STORED_BRIDGE_KINDS as readonly string[]).includes(provider)
+    ? (provider as RuntimeConfig["camera"])
+    : null;
+}
+
 export function effectiveConfig(config: RuntimeConfig, settings: SettingsShape): RuntimeConfig {
   const provider = settings.camera_settings?.provider;
   const printMode = settings.print_settings?.mode;
+  const stored = config.camera === "mock" ? null : storedCameraKind(provider);
   return {
     ...config,
-    camera: config.camera !== "mock" && provider === "gphoto2" ? "gphoto2" : config.camera,
+    camera: stored ?? config.camera,
     printer: config.printer !== "mock" && printMode === "cups" ? "cups" : config.printer,
   };
 }
