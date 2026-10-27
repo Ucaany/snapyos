@@ -60,9 +60,12 @@ psql "postgresql://postgres.<ref>:<DB_PASSWORD>@aws-0-<region>.pooler.supabase.c
 node scripts/backfill-storage-usage.mjs
 ```
 
-- **Sudah diterapkan ke cloud** (diverifikasi 2026-10-20 lewat probe PostgREST): `0061`, `0062`, `0063`, `0068`, `0069`, `0070`. `0069` menghadirkan RPC kuota atomik (`create_outlet_with_quota`, `create_photobox_with_quota`, `add_business_member_with_quota`) yang dipanggil `src/server/outlets.ts`, `photoboxes.ts`, dan `staff.ts`.
-- **Belum diterapkan:** `0073_pos_receipt_snapshot_and_untracked_stock.sql` lalu `0074_pos_payment_idempotency_race.sql` — wajib sebelum deploy kode POS terbaru; menambah kolom snapshot struk, RPC order/item atomic, RPC toggle booth atomic, mencegah pembayaran retry mengurangi stok dua kali, dan menandai transaksi POS offline `withdrawable=false`. Setelah menjalankan SQL, refresh schema cache PostgREST lalu ulangi E2E transaksi POS.
-- **Belum diterapkan (sengaja):** `0071_rpc_search_path_hardening.sql`. Ini keputusan pemilik, lihat `docs/status.md`. Jalankan sebelum mengaktifkan hardening `search_path` di produksi.
+Status migrasi cloud **diterapkan dan diverifikasi 2026-10-27**. Jalankan `node scripts/probe-migration-status.mjs` (exit 0 = cocok); skrip itu memakai probe PostgREST plus katalog Postgres via `supabase db query --linked` untuk index, aksi `ON DELETE`, dan signature fungsi. Hasil akhir: **13 applied, 0 not applied, 0 unverifiable, 0 error**.
+
+- **Sudah diterapkan (terukur):** `0061`, `0062`, `0063`, `0068`, `0069`, `0070`, **`0072`**, **`0073`**, **`0074`**, **`0075`**, **`0076`**, **`0077`**, **`0078`**, **`0079`**, **`0080`**, **`0081`**. `0069` menghadirkan RPC kuota atomik (`create_outlet_with_quota`, `create_photobox_with_quota`, `add_business_member_with_quota`) yang dipanggil `src/server/outlets.ts`, `photoboxes.ts`, dan `staff.ts`.
+- **`0072`/`0075`/`0076` diterapkan 2026-10-27** lewat `db/migrations/APPLY_0072_0075_0076_combined.sql` (idempotent, tiga blok transaksi terpisah). Verifikasi: label add-on menjadi `Tambah Storage 1.024 MB`; FK `photoboxes_default_template_id_fkey` ada dengan `on delete set null`; RPC `pos_decrement_stock_batch` ada, `service_role`-only, `search_path` ter-pin, dan diuji fungsional (decrement normal, shortfall tidak mengubah stok, stok `null` selalu `ok`, qty 0 diabaikan, isolasi tenant menolak bisnis lain).
+- **Belum diterapkan (sengaja):** `0071_rpc_search_path_hardening.sql`. Ini keputusan pemilik, lihat `docs/status.md`. Catatan: `0073`, `0074`, dan `0076` sudah memakai `set search_path = public, pg_temp` di definisinya, jadi RPC tersebut sudah ter-pin tanpa `0071`.
+- **`0075`/`0078`/`0079` diverifikasi lewat katalog Postgres** (PostgREST tidak mengekspos index maupun aksi FK): 3 index `0075` + 3 index `0078` ada; keempat FK `customers` di `sessions`/`transactions`/`pos_orders`/`voucher_usages` memakai `confdeltype = 'r'` (RESTRICT) sesuai `0079`.
 - `0061` = plan device/addon model (DML UPDATE pada `plans`); `0062` = storage_usage accounting (`storage_objects` + `storage_usage` + RPC `storage_account_add`/`storage_account_sub`).
 - Jalur baca enforcement storage (`assertStorageAvailable` → `getBusinessUsedBytes(id, failOpen=false)`) **fail-closed: melempar** saat query gagal. Pemanggilnya (`src/server/branding.ts`, `src/server/kiosk-sessions.ts`, `src/server/templates.ts`) `await` tanpa try/catch, jadi `0062` wajib ada di setiap environment sebelum upload/finalize dipakai.
 
@@ -99,8 +102,17 @@ npm run build            # PASS (Next.js 16, 93 static pages)
 npm run format:check     # PASS untuk file scope audit; repo-wide masih memiliki 34 file legacy tidak terformat
 npm run test:e2e:print   # PASS 4/4
 npm run test:e2e:bluetooth # PASS 2/2 suite (12 assertion: BLE 2, SPP/foto 10)
-node tests/e2e/pos-receipt-serial.spec.mjs # BLOCKED sampai migration 0073–0074 diterapkan
+node tests/e2e/pos-receipt-serial.spec.mjs # PASS 16/16 (58mm + 80mm)
 ```
+
+> **Pembaruan 2026-10-27:** E2E struk POS kini **16/16 PASS**. Sebelumnya BLOCKED
+> karena `0076` belum diterapkan; setelah `0076` masuk, suite berjalan dan
+> menyingkap satu bug nyata yang sudah diperbaiki: dua jalur cetak (auto-print
+> dan tombol manual) menulis ke port serial yang sama tanpa antrean, sehingga
+> chunk 256-byte saling menyisip dan struk keluar rusak (teks tergabung
+> `WaktKLIK FOTO DEV`, baris melewati lebar kolom). Perbaikan: antrean tulis
+> per-port di `src/lib/print/serial.ts`, dijaga `tests/print-serial.test.ts`
+> ("dua job bersamaan ke port yang sama tidak bercampur").
 
 ### Cetak thermal Bluetooth (2026-10-20)
 

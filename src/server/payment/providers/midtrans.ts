@@ -25,18 +25,31 @@ function authHeader(serverKey: string): string {
   return `Basic ${Buffer.from(`${serverKey}:`).toString("base64")}`;
 }
 
+/**
+ * `fraud_status` hanya ada untuk transaksi kartu (docs Midtrans reference
+ * /fraud-status). Untuk QRIS/e-wallet/VA, notifikasi `settlement` tidak membawa
+ * `fraud_status` sama sekali. "Tidak ada fraud_status" ≠ "fraud_status bukan
+ * accept": menolaknya akan membuat pembayaran QRIS yang sah tidak pernah
+ * di-settle. Nilai tidak dikenal tetap fail-closed (bukan paid), dan
+ * `fraud_status: "deny"` tetap selalu ditolak.
+ */
+export function isMidtransFraudAccepted(fraudStatus?: string | null): boolean {
+  if (fraudStatus === null || fraudStatus === undefined) return true;
+  return String(fraudStatus).trim().toLowerCase() === "accept";
+}
+
 /** Map Midtrans transaction_status → GatewayStatus. */
 export function mapMidtransStatus(
   transactionStatus: string,
   fraudStatus?: string | null
 ): GatewayStatus {
   const s = transactionStatus.toLowerCase();
-  if ((s === "capture" || s === "settlement") && fraudStatus === "accept") return "paid";
+  if (s === "capture" || s === "settlement") {
+    return isMidtransFraudAccepted(fraudStatus) ? "paid" : "failed";
+  }
   if (s === "pending") return "pending";
   if (s === "deny" || s === "cancel") return "failed";
   if (s === "expire") return "expired";
-  // capture/settlement tanpa fraud_status='accept' tidak pernah dianggap paid.
-  if (s === "capture" || s === "settlement") return "failed";
   return "pending";
 }
 

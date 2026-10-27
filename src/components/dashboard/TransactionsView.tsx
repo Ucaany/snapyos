@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import Link from "next/link";
 import { Receipt, Wallet } from "lucide-react";
 
@@ -60,6 +60,14 @@ export function TransactionsView({
   timeZone,
 }: Props) {
   const [state, action, pending] = useActionState(createManualTxAction, initial);
+  // Outlet menentukan booth mana yang valid: server menolak booth di luar outlet
+  // (assertBoothInOutlet), jadi UI hanya menawarkan booth milik outlet terpilih
+  // agar owner tidak memilih kombinasi yang pasti ditolak.
+  const [outletId, setOutletId] = useState("");
+  const [photoboxId, setPhotoboxId] = useState("");
+  const boothOptions = outletId
+    ? photoboxes.filter((b) => b.outlet_id === outletId)
+    : photoboxes;
 
   return (
     <div className="flex flex-col gap-6">
@@ -95,7 +103,11 @@ export function TransactionsView({
                     id="mtx-outlet"
                     name="outlet_id"
                     required
-                    defaultValue=""
+                    value={outletId}
+                    onChange={(e) => {
+                      setOutletId(e.currentTarget.value);
+                      setPhotoboxId("");
+                    }}
                     disabled={pending}
                     aria-invalid={Boolean(fieldError(state, "outlet_id"))}
                   >
@@ -122,14 +134,15 @@ export function TransactionsView({
                     id="mtx-box"
                     name="photobox_id"
                     required
-                    defaultValue=""
-                    disabled={pending}
+                    value={photoboxId}
+                    onChange={(e) => setPhotoboxId(e.currentTarget.value)}
+                    disabled={pending || !outletId}
                     aria-invalid={Boolean(fieldError(state, "photobox_id"))}
                   >
                     <option value="" disabled>
-                      Pilih photobox
+                      {outletId ? "Pilih photobox" : "Pilih outlet dulu"}
                     </option>
-                    {photoboxes.map((b) => (
+                    {boothOptions.map((b) => (
                       <option key={b.id} value={b.id}>
                         {b.name}
                       </option>
