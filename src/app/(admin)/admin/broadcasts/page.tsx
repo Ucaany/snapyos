@@ -11,6 +11,15 @@ import {
 } from "@/server/admin-actions";
 import { listBroadcasts, getBroadcastStats, listBroadcastRecipients } from "@/server/admin";
 import { BROADCAST_KIND_LABEL } from "@/lib/broadcast-email";
+import { PageHeader } from "@/components/ui/page-header";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 /**
  * Admin Broadcast Email - marketing/pengumuman via Resend (migration 0057/0058).
@@ -53,17 +62,11 @@ export default async function AdminBroadcastsPage() {
 
   return (
     <div className="flex flex-col gap-8 p-6 md:p-10">
-      <header>
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {"ADMIN - BROADCAST EMAIL"}
-        </p>
-        <h1 className="mt-2 font-display text-3xl uppercase tracking-tight md:text-4xl">
-          Broadcast Email
-        </h1>
-        <p className="mt-2 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
-          PENGUMUMAN · MARKETING · RESEND DENGAN LIMIT · RIWAYAT PENGIRIMAN
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="ADMIN - BROADCAST EMAIL"
+        title="Broadcast Email"
+        meta="PENGUMUMAN · MARKETING · RESEND DENGAN LIMIT · RIWAYAT PENGIRIMAN"
+      />
 
       <Card>
         <CardHeader>
@@ -95,7 +98,7 @@ export default async function AdminBroadcastsPage() {
             <div className="flex flex-col gap-1 md:col-span-2">
               <label
                 htmlFor="bc-subject"
-                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                className="font-mono text-[11px] uppercase tracking-[0.12em]"
               >
                 Subjek
               </label>
@@ -109,7 +112,7 @@ export default async function AdminBroadcastsPage() {
             <div className="flex flex-col gap-1 md:col-span-2">
               <label
                 htmlFor="bc-body"
-                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                className="font-mono text-[11px] uppercase tracking-[0.12em]"
               >
                 Isi pesan
               </label>
@@ -131,7 +134,7 @@ export default async function AdminBroadcastsPage() {
             <div className="flex flex-col gap-1">
               <label
                 htmlFor="bc-max-resend"
-                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                className="font-mono text-[11px] uppercase tracking-[0.12em]"
               >
                 Limit resend (0–10)
               </label>
@@ -172,7 +175,7 @@ export default async function AdminBroadcastsPage() {
                     <span className="font-display text-lg uppercase tracking-tight">
                       {b.subject}
                     </span>
-                    <span className="border-2 border-ink bg-accent px-2 py-0.5 font-mono text-[10px] uppercase">
+                    <span className="border-2 border-ink bg-accent px-2 py-0.5 font-mono text-[11px] uppercase">
                       {BROADCAST_KIND_LABEL[b.kind] ?? b.kind}
                     </span>
                     <span className="font-mono text-xs text-muted-foreground">
@@ -242,48 +245,48 @@ async function RecipientHistory({ campaignId }: { campaignId: string }) {
   const dateFmt = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" });
   return (
     <div className="mt-4">
-      <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+      <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
         Riwayat Pengiriman ({recipients.length})
       </p>
-      <div className="max-h-96 overflow-x-auto overflow-y-auto border-2 border-ink/20">
-        <table className="w-full border-collapse font-mono text-xs">
-          <thead className="sticky top-0 bg-bg">
-            <tr className="border-b-2 border-ink text-left">
-              <th className="p-2 font-bold">Penerima</th>
-              <th className="p-2 font-bold">Jenis</th>
-              <th className="p-2 font-bold">Status</th>
-              <th className="p-2 font-bold">Resend</th>
-              <th className="p-2 font-bold">Terakhir</th>
-              <th className="p-2 font-bold">ID / Error</th>
-            </tr>
-          </thead>
-          <tbody>
+      <div className="max-h-96 overflow-y-auto">
+        <Table containerClassName="border-ink/20 shadow-none">
+          <TableHeader>
+            <TableRow>
+              <TableHead>Penerima</TableHead>
+              <TableHead>Jenis</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="hidden sm:table-cell">Resend</TableHead>
+              <TableHead className="hidden md:table-cell">Terakhir</TableHead>
+              <TableHead>ID / Error</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {recipients.map((r) => (
-              <tr key={r.id} className="border-b border-ink/10 align-top">
-                <td className="p-2">
+              <TableRow key={r.id} className="align-top">
+                <TableCell>
                   <span className="font-bold">{r.name ?? r.email}</span>
                   <br />
-                  <span className="text-[10px] text-muted-foreground">{r.email}</span>
-                </td>
-                <td className="p-2 uppercase">{r.kind}</td>
-                <td className="p-2">
+                  <span className="text-[11px] text-muted-foreground">{r.email}</span>
+                </TableCell>
+                <TableCell className="uppercase">{r.kind}</TableCell>
+                <TableCell>
                   <StatusBadge status={r.status} />
-                </td>
-                <td className="p-2">{r.resend_count}x</td>
-                <td className="p-2 text-[10px]">
+                </TableCell>
+                <TableCell className="hidden sm:table-cell">{r.resend_count}x</TableCell>
+                <TableCell className="hidden text-[11px] md:table-cell">
                   {r.last_sent_at ? dateFmt.format(new Date(r.last_sent_at)) : "-"}
-                </td>
-                <td className="p-2 break-all text-[10px]">
+                </TableCell>
+                <TableCell className="break-all text-[11px]">
                   {r.provider_message_id ? (
                     <span className="text-muted-foreground">{r.provider_message_id}</span>
                   ) : (
                     <span className="text-destructive">{r.error ?? r.last_error ?? "-"}</span>
                   )}
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </div>
   );

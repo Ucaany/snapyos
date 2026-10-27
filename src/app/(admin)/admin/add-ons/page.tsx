@@ -1,8 +1,10 @@
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
+import { BrutalistCheckbox } from "@/components/admin/BrutalistCheckbox";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/ui/page-header";
 import { formatIDR } from "@/lib/dashboard-math";
 import { storageAddOnDisplayName } from "@/lib/storage-units";
 import { createAddOnAction, updateAddOnAction } from "@/server/admin-actions";
@@ -17,17 +19,11 @@ export default async function AdminAddOnsPage() {
 
   return (
     <div className="flex flex-col gap-8 p-6 md:p-10">
-      <header>
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {"ADMIN - ADD-ONS"}
-        </p>
-        <h1 className="mt-2 font-display text-3xl uppercase tracking-tight md:text-4xl">
-          Manajemen Add-on
-        </h1>
-        <p className="mt-2 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
-          {addOns.length} add-on terdaftar
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="ADMIN - ADD-ONS"
+        title="Manajemen Add-on"
+        meta={`${addOns.length} add-on terdaftar`}
+      />
 
       <Card>
         <CardHeader>
@@ -45,7 +41,7 @@ export default async function AdminAddOnsPage() {
             <div className="flex flex-col gap-1">
               <label
                 htmlFor="addon-code"
-                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                className="font-mono text-[11px] uppercase tracking-[0.12em]"
               >
                 Kode
               </label>
@@ -54,7 +50,7 @@ export default async function AdminAddOnsPage() {
             <div className="flex flex-col gap-1">
               <label
                 htmlFor="addon-name"
-                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                className="font-mono text-[11px] uppercase tracking-[0.12em]"
               >
                 Nama
               </label>
@@ -63,7 +59,7 @@ export default async function AdminAddOnsPage() {
             <div className="flex flex-col gap-1">
               <label
                 htmlFor="addon-price"
-                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                className="font-mono text-[11px] uppercase tracking-[0.12em]"
               >
                 Harga / bln (IDR)
               </label>
@@ -72,7 +68,7 @@ export default async function AdminAddOnsPage() {
             <div className="flex flex-col gap-1">
               <label
                 htmlFor="addon-unit"
-                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                className="font-mono text-[11px] uppercase tracking-[0.12em]"
               >
                 Unit
               </label>
@@ -81,7 +77,7 @@ export default async function AdminAddOnsPage() {
             <div className="flex flex-col gap-1">
               <label
                 htmlFor="addon-storage"
-                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                className="font-mono text-[11px] uppercase tracking-[0.12em]"
               >
                 Storage (MB)
               </label>
@@ -139,7 +135,7 @@ export default async function AdminAddOnsPage() {
                   <div className="flex flex-col gap-1">
                     <label
                       htmlFor={`name-${a.id}`}
-                      className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                      className="font-mono text-[11px] uppercase tracking-[0.12em]"
                     >
                       Nama
                     </label>
@@ -156,7 +152,7 @@ export default async function AdminAddOnsPage() {
                   <div className="flex flex-col gap-1">
                     <label
                       htmlFor={`price-${a.id}`}
-                      className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                      className="font-mono text-[11px] uppercase tracking-[0.12em]"
                     >
                       Harga / bln
                     </label>
@@ -170,7 +166,7 @@ export default async function AdminAddOnsPage() {
                   <div className="flex flex-col gap-1">
                     <label
                       htmlFor={`unit-${a.id}`}
-                      className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                      className="font-mono text-[11px] uppercase tracking-[0.12em]"
                     >
                       Unit
                     </label>
@@ -179,7 +175,7 @@ export default async function AdminAddOnsPage() {
                   <div className="flex flex-col gap-1">
                     <label
                       htmlFor={`storage-${a.id}`}
-                      className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                      className="font-mono text-[11px] uppercase tracking-[0.12em]"
                     >
                       Storage (MB)
                     </label>
@@ -190,18 +186,11 @@ export default async function AdminAddOnsPage() {
                       defaultValue={a.storage_mb ?? ""}
                     />
                   </div>
-                  <label className="flex items-end gap-2 pb-3 font-mono text-xs uppercase">
-                    {/* hidden "false" dulu → unchecked tetap terkirim (H2 audit) */}
-                    <input type="hidden" name="is_active" value="false" />
-                    <input
-                      type="checkbox"
-                      name="is_active"
-                      value="true"
-                      defaultChecked={a.is_active}
-                      className="size-4 accent-[#ffd400]"
-                    />
-                    Aktif
-                  </label>
+                  <BrutalistCheckbox
+                    name="is_active"
+                    label="Aktif"
+                    defaultChecked={a.is_active}
+                  />
                 </AdminActionForm>
               </div>
             </div>

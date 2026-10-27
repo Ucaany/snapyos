@@ -51,6 +51,14 @@
     background: var(--color-accent);
     color: var(--color-ink);
   }
+  /* Satu indikator fokus untuk kontrol yang tidak memakai ring komponen
+     (link tabel, paginator, summary, item nav). */
+  a:focus-visible,
+  summary:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+  }
 }
 
 /* Global grain — fixed, pointer-events-none (never on scrolling containers) */

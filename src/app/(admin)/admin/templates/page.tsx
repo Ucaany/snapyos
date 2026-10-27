@@ -16,6 +16,15 @@ import {
   updateGlobalTemplateAction,
 } from "@/server/admin-actions";
 import { listGlobalTemplates, listTemplateCategories, listTemplatePurchases } from "@/server/admin";
+import { PageHeader } from "@/components/ui/page-header";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 /**
  * Admin templates & kategori global - docs/10 §10.2 (migration 0039).
@@ -37,24 +46,18 @@ export default async function AdminTemplatesPage() {
 
   return (
     <div className="flex flex-col gap-8 p-6 md:p-10">
-      <header>
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {"ADMIN - TEMPLATES & CATEGORIES"}
-        </p>
-        <h1 className="mt-2 font-display text-3xl uppercase tracking-tight md:text-4xl">
-          Template Global
-        </h1>
-        <p className="mt-2 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
-          {categories.length} KATEGORI · {templates.length} TEMPLATE GLOBAL
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="ADMIN - TEMPLATES & CATEGORIES"
+        title="Template Global"
+        meta={`${categories.length} KATEGORI · ${templates.length} TEMPLATE GLOBAL`}
+      />
 
       <Card>
         <CardHeader>
           <CardTitle>Kategori Template</CardTitle>
           <CardDescription>
             Kategori global dipakai seluruh tenant + template global (FK
-            <code className="ml-1 font-mono text-[10px]">templates.category_id</code>).
+            <code className="ml-1 font-mono text-[11px]">templates.category_id</code>).
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
@@ -66,7 +69,7 @@ export default async function AdminTemplatesPage() {
             <div className="flex flex-col gap-1">
               <label
                 htmlFor="cat-name"
-                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                className="font-mono text-[11px] uppercase tracking-[0.12em]"
               >
                 Nama kategori
               </label>
@@ -75,7 +78,7 @@ export default async function AdminTemplatesPage() {
             <div className="flex flex-col gap-1">
               <label
                 htmlFor="cat-price"
-                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                className="font-mono text-[11px] uppercase tracking-[0.12em]"
               >
                 Harga default (IDR, opsional)
               </label>
@@ -110,9 +113,10 @@ export default async function AdminTemplatesPage() {
                   <AdminActionButton
                     action={deleteCategoryAction}
                     hidden={{ categoryId: c.id }}
-                    submitLabel="Hapus"
+                    submitLabel="Hapus kategori"
                     variant="ghost"
                     confirm={`Hapus kategori "${c.name}"? Ditolak bila masih dipakai template.`}
+                    confirmTitle={`Hapus kategori ${c.name}`}
                   />
                 </li>
               ))}
@@ -143,7 +147,7 @@ export default async function AdminTemplatesPage() {
               <div className="flex flex-col gap-1">
                 <label
                   htmlFor="tpl-name"
-                  className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                  className="font-mono text-[11px] uppercase tracking-[0.12em]"
                 >
                   Nama template
                 </label>
@@ -159,7 +163,7 @@ export default async function AdminTemplatesPage() {
               <div className="flex flex-col gap-1 md:col-span-2">
                 <label
                   htmlFor="tpl-file"
-                  className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                  className="font-mono text-[11px] uppercase tracking-[0.12em]"
                 >
                   Upload file frame (PNG/JPG/WebP) - atau isi URL di bawah
                 </label>
@@ -173,7 +177,7 @@ export default async function AdminTemplatesPage() {
               <div className="flex flex-col gap-1 md:col-span-2">
                 <label
                   htmlFor="tpl-file-url"
-                  className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                  className="font-mono text-[11px] uppercase tracking-[0.12em]"
                 >
                   URL file frame (opsional bila upload file)
                 </label>
@@ -186,7 +190,7 @@ export default async function AdminTemplatesPage() {
               <div className="flex flex-col gap-1">
                 <label
                   htmlFor="tpl-thumb"
-                  className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                  className="font-mono text-[11px] uppercase tracking-[0.12em]"
                 >
                   URL thumbnail (opsional)
                 </label>
@@ -199,7 +203,7 @@ export default async function AdminTemplatesPage() {
               <div className="flex flex-col gap-1">
                 <label
                   htmlFor="tpl-price"
-                  className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                  className="font-mono text-[11px] uppercase tracking-[0.12em]"
                 >
                   Harga (IDR, opsional)
                 </label>
@@ -253,7 +257,7 @@ export default async function AdminTemplatesPage() {
                     <span className="block text-sm font-bold">
                       {t.name}
                       {t.is_premium ? (
-                        <span className="ml-2 inline-block border-2 border-ink bg-ink px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-bg">
+                        <span className="ml-2 inline-block border-2 border-ink bg-ink px-1.5 py-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-bg">
                           PREMIUM
                         </span>
                       ) : null}
@@ -281,9 +285,10 @@ export default async function AdminTemplatesPage() {
                     <AdminActionButton
                       action={deleteGlobalTemplateAction}
                       hidden={{ templateId: t.id }}
-                      submitLabel="Hapus"
+                      submitLabel="Hapus template"
                       variant="ghost"
                       confirm={`Hapus template "${t.name}"? Riwayat pembelian tenant untuk template ini ikut terhapus.`}
+                      confirmTitle={`Hapus template ${t.name}`}
                     />
                   </span>
                   <details className="w-full border-t-2 border-ink/10 pt-3">
@@ -299,7 +304,7 @@ export default async function AdminTemplatesPage() {
                       <div className="flex flex-col gap-1">
                         <label
                           htmlFor={`edit-name-${t.id}`}
-                          className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                          className="font-mono text-[11px] uppercase tracking-[0.12em]"
                         >
                           Nama
                         </label>
@@ -313,7 +318,7 @@ export default async function AdminTemplatesPage() {
                       <div className="flex flex-col gap-1">
                         <label
                           htmlFor={`edit-price-${t.id}`}
-                          className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                          className="font-mono text-[11px] uppercase tracking-[0.12em]"
                         >
                           Harga (IDR)
                         </label>
@@ -355,36 +360,33 @@ export default async function AdminTemplatesPage() {
         </CardHeader>
         <CardContent>
           {purchases.length === 0 ? (
-            <p className="font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
-              {"BELUM ADA PEMBELIAN TEMPLATE PREMIUM"}
-            </p>
+            <AdminEmptyState heading="BELUM ADA PEMBELIAN">
+              Belum ada tenant yang membeli template premium. Pembelian tercatat di sini setelah
+              invoice QRIS lunas.
+            </AdminEmptyState>
           ) : (
-            <div className="overflow-x-auto border-2 border-ink">
-              <table className="w-full min-w-[640px] border-collapse bg-surface text-left">
-                <thead>
-                  <tr className="bg-ink font-mono text-[10px] uppercase tracking-[0.12em] text-bg">
-                    <th className="px-4 py-3 font-bold">Business</th>
-                    <th className="px-4 py-3 font-bold">Template</th>
-                    <th className="px-4 py-3 font-bold">Harga</th>
-                    <th className="px-4 py-3 font-bold">Dibeli</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {purchases.map((p) => (
-                    <tr key={p.id} className="border-t-2 border-ink/10">
-                      <td className="px-4 py-3 text-sm font-bold">{p.business_name}</td>
-                      <td className="px-4 py-3 font-mono text-xs">{p.template_name}</td>
-                      <td className="px-4 py-3 font-mono text-xs font-bold">
-                        {formatIDR(p.price)}
-                      </td>
-                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                        {dateFmt.format(new Date(p.created_at))}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Table containerClassName="shadow-none">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Business</TableHead>
+                  <TableHead>Template</TableHead>
+                  <TableHead>Harga</TableHead>
+                  <TableHead className="hidden sm:table-cell">Dibeli</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {purchases.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell className="text-sm font-bold">{p.business_name}</TableCell>
+                    <TableCell>{p.template_name}</TableCell>
+                    <TableCell className="font-bold">{formatIDR(p.price)}</TableCell>
+                    <TableCell className="hidden text-muted-foreground sm:table-cell">
+                      {dateFmt.format(new Date(p.created_at))}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>

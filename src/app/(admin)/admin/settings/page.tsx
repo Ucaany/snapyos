@@ -37,7 +37,7 @@ export default async function AdminSettingsPage() {
         <CardContent>
           <AdminActionForm
             action={updateSettingsAction}
-            submitLabel="Simpan Settings"
+            submitLabel="Simpan settings global"
             className="grid grid-cols-1 gap-4 md:grid-cols-3"
           >
             <div className="flex flex-col gap-1">
@@ -161,7 +161,7 @@ export default async function AdminSettingsPage() {
         <CardContent>
           <AdminActionForm
             action={updateSettingsAction}
-            submitLabel="Simpan Settings"
+            submitLabel="Simpan gateway global"
             className="grid grid-cols-1 gap-4 md:grid-cols-3"
           >
             <BrutalistCheckbox
