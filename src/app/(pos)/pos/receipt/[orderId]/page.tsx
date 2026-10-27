@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { ReceiptView } from "@/components/pos/ReceiptView";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { ApiError } from "@/lib/api-errors";
 import { cn } from "@/lib/utils";
 import { getActiveBusiness, requireUser } from "@/lib/tenant";

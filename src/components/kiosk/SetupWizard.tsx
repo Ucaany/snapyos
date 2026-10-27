@@ -7,11 +7,12 @@ import { resolvePrintMode } from "@/lib/print/print-mode";
 import type { CameraSettings, PrintSettings } from "@/lib/kiosk-types";
 import { Button } from "@/components/ui/button";
 import {
-  CAMERA_ERRORS,
+  cameraErrorCopy,
   cameraErrorKind,
   resolutionLabel,
   resolutionWarning,
 } from "@/lib/camera-errors";
+import { isKioskExe } from "@/lib/kiosk-shell";
 import { getDeviceProfile } from "@/lib/device-profile";
 import {
   cameraBridgeUrl,
@@ -20,6 +21,7 @@ import {
   resolveCameraProvider,
 } from "@/lib/camera-provider";
 import { apiPost, KioskError } from "@/components/kiosk/api";
+import { BridgeTokenField } from "@/components/kiosk/BridgeTokenField";
 
 type Props = {
   deviceToken: string;
@@ -158,15 +160,9 @@ export function SetupWizard({
       setDevices(cams);
       if (!deviceId && cams.length === 1) setSelectedId(cams[0]!.deviceId);
     } catch (e) {
-      const kind = cameraErrorKind(e instanceof DOMException ? e.name : null);
-      if (kind) {
-        setCameraError({
-          message: CAMERA_ERRORS[kind].message,
-          action: CAMERA_ERRORS[kind].action,
-        });
-      } else {
-        setCameraError({ message: "Gagal membuka kamera. Coba lagi.", action: "COBA LAGI" });
-      }
+      const name = e instanceof DOMException ? e.name : null;
+      const kind = cameraErrorKind(name);
+      setCameraError(cameraErrorCopy(name, { exe: isKioskExe() }));
       // Laporkan kegagalan kamera ke server — diagnostik booth (docs/16 §K2).
       await report({ camera: { error: kind ?? "UNKNOWN" } });
     }
@@ -294,6 +290,7 @@ export function SetupWizard({
               <p className="font-mono text-xs uppercase tracking-[0.08em]">
                 Bridge: {cameraBridgeUrl(cameraSettings)}
               </p>
+              <BridgeTokenField onSaved={() => void checkGphoto2()} />
               <Button
                 size="lg"
                 onClick={() => void testGphoto2Capture()}
@@ -437,6 +434,11 @@ export function SetupWizard({
             </div>
           ) : (
             <>
+              {resolvePrintMode(printSettings) === "cups" && (
+                <div className="border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111] md:p-6">
+                  <BridgeTokenField />
+                </div>
+              )}
               <PrintTestPanel
                 mode={resolvePrintMode(printSettings)}
                 paperWidthMm={printSettings.bluetooth_paper_width_mm === 58 ? 58 : 80}

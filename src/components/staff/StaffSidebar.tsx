@@ -2,15 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Camera,
-  Gauge,
-  ImageIcon,
-  LockKeyhole,
-  Package,
-  Store,
-  type LucideIcon,
-} from "lucide-react";
+import { LockKeyhole } from "lucide-react";
+import { STAFF_NAV, type StaffNavItem } from "@/components/staff/nav";
 
 import { cn } from "@/lib/utils";
 import { isNavActive } from "@/lib/nav-active";
@@ -21,20 +14,6 @@ import { isNavActive } from "@/lib/nav-active";
  * me-redirect staff-only). Mobile memakai strip sticky di bawah topbar;
  * desktop memakai rail penuh dengan status akses.
  */
-
-type StaffNavItem = {
-  label: string;
-  href: string;
-  icon: LucideIcon;
-};
-
-const STAFF_NAV: StaffNavItem[] = [
-  { label: "Overview", href: "/staff", icon: Gauge },
-  { label: "Booth", href: "/staff/photoboxes", icon: Camera },
-  { label: "Outlet", href: "/staff/outlets", icon: Store },
-  { label: "Package", href: "/staff/packages", icon: Package },
-  { label: "Template", href: "/staff/templates", icon: ImageIcon },
-];
 
 export function StaffSidebar() {
   const pathname = usePathname();

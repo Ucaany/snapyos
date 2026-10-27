@@ -35,7 +35,7 @@ declare
     'support_tickets','support_ticket_replies','broadcast_campaigns',
     'broadcast_recipients','lifecycle_emails','subscription_promos',
     'payment_credentials','device_logs','subscription_intent_failures',
-    'storage_objects','storage_usage'
+    'storage_objects','storage_usage','app_releases'
   ];
 begin
   foreach t in array tbls loop

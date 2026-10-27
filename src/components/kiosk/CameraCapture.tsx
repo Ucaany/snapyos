@@ -2,7 +2,8 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Camera, FlipHorizontal2, RotateCcw } from "lucide-react";
-import { CAMERA_ERRORS, cameraErrorKind } from "@/lib/camera-errors";
+import { cameraErrorCopy } from "@/lib/camera-errors";
+import { isKioskExe } from "@/lib/kiosk-shell";
 import { captureFrame, normalizeRotation, normalizeZoom } from "@/lib/camera-capture";
 import {
   captureGphoto2,
@@ -153,7 +154,8 @@ function CameraCaptureInner({
       if (cameraProvider === "gphoto2") {
         try {
           const result = await checkCameraBridge(cameraSettings);
-          if (!result.ok || !result.camera) throw new Error(result.message || "Kamera GPhoto2 tidak terdeteksi.");
+          if (!result.ok || !result.camera)
+            throw new Error(result.message || "Kamera GPhoto2 tidak terdeteksi.");
           setCameraReady(true);
         } catch (e) {
           setError({
@@ -227,20 +229,11 @@ function CameraCaptureInner({
             // jatuh ke penanganan error umum di bawah
           }
         }
-        const kind = cameraErrorKind(name);
-        if (kind) {
-          setError({ message: CAMERA_ERRORS[kind].message, action: CAMERA_ERRORS[kind].action });
-        } else {
-          setError({ message: "Gagal membuka kamera. Coba lagi.", action: "COBA LAGI" });
-        }
+        const copy = cameraErrorCopy(name, { exe: isKioskExe() });
+        setError({ message: copy.message, action: copy.action });
       }
     },
-    [
-      cameraSettings,
-      cameraProvider,
-      onTrackEnded,
-      stopStream,
-    ]
+    [cameraSettings, cameraProvider, onTrackEnded, stopStream]
   );
 
   useEffect(() => {

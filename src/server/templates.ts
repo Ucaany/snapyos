@@ -17,6 +17,7 @@ import {
   type TemplateUpdateInput,
 } from "@/lib/validators";
 import { slotCount, type TemplateLayout } from "@/lib/template-layout";
+import { planLimitError } from "@/lib/plan-limits";
 import { staleTemplateKeys, staleThumbnailKeys } from "@/lib/template-cleanup";
 import { generateFrameThumbnail } from "@/server/frame-thumbnail";
 import { SIGNED_URL_TTL_SECONDS as SIGNED_URL_TTL } from "@/lib/constants";
@@ -26,6 +27,7 @@ import {
   accountStorageSub,
 } from "@/server/storage-usage";
 import { getStorage, resolveStorage, signedUrlMap, removeResolved } from "@/server/storage";
+import { requirePlanLimits } from "@/server/plan-limits";
 
 const BUCKET = "business-assets";
 const TEMPLATE_MAX_BYTES = 5 * 1024 * 1024; // 5 MB (docs/04 §4.10)
@@ -243,6 +245,22 @@ export async function uploadTemplate(
   if (!check.ok) {
     throw new ApiError("VALIDATION_ERROR", check.error, { file: [check.error] });
   }
+
+  const supabase = createServerClient();
+  const [limits, { count }] = await Promise.all([
+    requirePlanLimits(businessId),
+    supabase
+      .from("templates")
+      .select("id", { count: "exact", head: true })
+      .eq("business_id", businessId),
+  ]);
+  if (planLimitError(count ?? 0, limits.max_templates)) {
+    throw new ApiError(
+      "PLAN_LIMIT_REACHED",
+      `Plan Anda dibatasi ${limits.max_templates} template. Upgrade untuk menambah.`
+    );
+  }
+
   await assertStorageAvailable(businessId, body.length);
   const parsed = templateCreateSchema.parse({
     name: meta.name,
@@ -252,7 +270,6 @@ export async function uploadTemplate(
 
   const baseName = `${businessId}/templates/${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   const key = `${baseName}.${check.ext}`;
-  const supabase = createServerClient();
   const { error: uploadError } = await getStorage().upload(BUCKET, key, body, {
     contentType: file.type ?? "application/octet-stream",
     upsert: false,

@@ -402,6 +402,105 @@ export const sessionSettingsSchema = z
     { message: "Peringatan harus lebih singkat dari durasi sesi", path: ["warning_seconds"] }
   );
 
+// ---------------------------------------------------------------------------
+// Kepemilikan setelan: cloud (uang) vs device (mesin).
+//
+// Satu tabel dipakai tiga pihak — `PUT /v1/settings` di runtime, `PATCH
+// /api/v1/public/devices/settings` di cloud, dan kiosk — supaya aturannya tidak
+// pernah berbeda pendapat. Field cloud DITOLAK (403), bukan dibuang diam-diam.
+// ---------------------------------------------------------------------------
+
+export const DEVICE_SETTING_GROUPS = [
+  "camera_settings",
+  "print_settings",
+  "session_settings",
+] as const;
+export type DeviceSettingGroup = (typeof DEVICE_SETTING_GROUPS)[number];
+
+/** Field milik cloud yang berada di dalam grup milik device. */
+export const CLOUD_OWNED_SETTING_FIELDS: Record<DeviceSettingGroup, readonly string[]> = {
+  camera_settings: [],
+  // copies = biaya bahan, layout = bentuk output pelanggan.
+  print_settings: ["copies", "layout"],
+  session_settings: [],
+};
+
+/** Setelan yang boleh ditulis device. `strict()`: kunci asing ditolak. */
+export const deviceSettingsSchema = z
+  .object({
+    camera_settings: cameraSettingsSchema.optional(),
+    print_settings: printSettingsSchema.optional(),
+    session_settings: sessionSettingsSchema.optional(),
+  })
+  .strict();
+
+export type DeviceSettingsInput = z.infer<typeof deviceSettingsSchema>;
+
+const DEVICE_SETTING_SHAPES: Record<DeviceSettingGroup, Record<string, unknown>> = {
+  camera_settings: cameraSettingsSchema.shape,
+  print_settings: printSettingsSchema.shape,
+  session_settings: sessionSettingsSchema.shape,
+};
+
+export function isDeviceSettingGroup(key: string): key is DeviceSettingGroup {
+  return (DEVICE_SETTING_GROUPS as readonly string[]).includes(key);
+}
+
+/** Nama field yang boleh ditulis device pada satu grup. */
+export function deviceSettingFields(group: DeviceSettingGroup): string[] {
+  return Object.keys(DEVICE_SETTING_SHAPES[group]).filter(
+    (key) => !CLOUD_OWNED_SETTING_FIELDS[group].includes(key)
+  );
+}
+
+/**
+ * Field di payload yang BUKAN milik device. Kosong berarti payload boleh
+ * ditulis; selain itu pemanggil menjawab 403 `FIELD_NOT_DEVICE_OWNED`.
+ */
+export function foreignSettingKeys(payload: Record<string, unknown>): string[] {
+  const foreign: string[] = [];
+  for (const [key, value] of Object.entries(payload)) {
+    if (!isDeviceSettingGroup(key)) {
+      foreign.push(key);
+      continue;
+    }
+    if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+    const allowed = deviceSettingFields(key);
+    for (const nested of Object.keys(value)) {
+      if (!allowed.includes(nested)) foreign.push(`${key}.${nested}`);
+    }
+  }
+  return foreign;
+}
+
+/**
+ * Salin field device di atas nilai cloud, per-key. Field cloud (`copies`,
+ * `layout`, `payment_mode`, …) dan kunci yang tidak dikirim tetap apa adanya —
+ * laporan device yang hanya tahu `paper_size` tidak boleh menghapus `copies`.
+ */
+export function mergeDeviceSettings<T extends object>(
+  cloud: T,
+  device: DeviceSettingsInput | Partial<Record<DeviceSettingGroup, Record<string, unknown>>>
+): T {
+  const out = { ...cloud } as Record<string, unknown>;
+  for (const group of DEVICE_SETTING_GROUPS) {
+    const incoming = device[group];
+    if (!incoming) continue;
+    const base = out[group];
+    const merged: Record<string, unknown> =
+      base && typeof base === "object" && !Array.isArray(base)
+        ? { ...(base as Record<string, unknown>) }
+        : {};
+    for (const [key, value] of Object.entries(incoming)) {
+      if (value === undefined) continue;
+      if (CLOUD_OWNED_SETTING_FIELDS[group].includes(key)) continue;
+      merged[key] = value;
+    }
+    out[group] = merged;
+  }
+  return out as T;
+}
+
 export const outletCreateSchema = z.object({
   name: z
     .string()
@@ -908,10 +1007,23 @@ export const deviceExitSchema = z.object({
     .optional(),
 });
 
+/**
+ * Versi aplikasi booth (Phase 12). Dashboard owner membandingkannya dengan
+ * rilis terbaru; tanpa ini owner tidak tahu booth mana yang ketinggalan.
+ * Opsional: booth lama tidak mengirimnya dan tetap boleh melapor.
+ */
+const appVersionSchema = z
+  .string()
+  .trim()
+  .max(20, "Versi maksimal 20 karakter")
+  .regex(/^\d+\.\d+\.\d+$/, "Versi harus format 1.2.3")
+  .optional();
+
 /** Laporan status device (setup wizard) — docs/05 §5.0.1. */
 export const deviceReportSchema = z.object({
   device_token: z.string().trim().min(32).max(128),
   preferred_device_id: z.string().trim().max(200).nullable().optional(),
+  app_version: appVersionSchema,
   camera: z
     .object({
       resolution: z.string().trim().max(40).optional(),
@@ -932,6 +1044,44 @@ export const deviceReportSchema = z.object({
 });
 
 /**
+ * Tulis balik setelan device ke cloud — `PATCH /api/v1/public/devices/settings`.
+ *
+ * Payload = setelan device + `device_token`. Field cloud (mis.
+ * `print_settings.copies`) tidak ditolak di sini karena bentuk schema-nya
+ * ketat: route memeriksa `foreignSettingKeys` lebih dulu agar pesan errornya
+ * menyebut field mana yang bukan milik device.
+ */
+export const deviceSettingsPatchSchema = z.object({
+  device_token: z.string().trim().min(32).max(128),
+  /** Versi aplikasi booth; ikut dikirim worker bersama setelan. */
+  app_version: appVersionSchema,
+  settings: deviceSettingsSchema,
+});
+
+export type DeviceSettingsPatchInput = z.infer<typeof deviceSettingsPatchSchema>;
+
+/**
+ * Waktu jual sesi menurut booth, untuk sync worker runtime lokal.
+ *
+ * Tanpa ini laporan harian owner mencatat transaksi pada waktu sync, bukan
+ * waktu pelanggan benar-benar difoto — booth yang offline semalam menumpuk
+ * semua penjualannya di hari reconnect. Masa depan ditolak (jam booth salah)
+ * dan masa lalu >24 jam ditolak (bukan sesi yang masih relevan).
+ */
+export const SESSION_CLIENT_CREATED_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+export const sessionClientCreatedAtSchema = z.iso
+  .datetime({ offset: true, error: "client_created_at harus ISO 8601" })
+  .refine(
+    (value) => new Date(value).getTime() <= Date.now(),
+    "client_created_at tidak boleh di masa depan"
+  )
+  .refine(
+    (value) => Date.now() - new Date(value).getTime() <= SESSION_CLIENT_CREATED_MAX_AGE_MS,
+    "client_created_at maksimal 24 jam lampau"
+  );
+
+/**
  * Buat sesi kiosk — docs/08 §8.14.
  * v2 pay-first: syarat checkout_session paid; saat DEV_SKIP_PAYMENT aktif,
  * `package_id` dipakai untuk membuat checkout paid sintetik (docs/12 Phase 4).
@@ -941,6 +1091,8 @@ export const sessionCreateSchema = z
     checkout_session_id: uuid.optional(),
     package_id: uuid.optional(),
     device_token: z.string().trim().min(32).max(128),
+    /** Waktu sesi dibuat di booth (sync offline). Diabaikan tanpa `package_id`. */
+    client_created_at: sessionClientCreatedAtSchema.optional(),
   })
   .refine((v) => v.checkout_session_id || v.package_id, {
     message: "checkout_session_id atau package_id wajib diisi",
@@ -1067,6 +1219,8 @@ export const adminPlanCreateSchema = z.object({
   max_photoboxes: z.number().int().min(1).max(1000).optional(),
   max_concurrent_sessions: z.number().int().min(1).max(1000).optional(),
   max_staff: z.number().int().min(0).max(1000).optional(),
+  max_packages: z.number().int().min(1).max(10000).optional(),
+  max_templates: z.number().int().min(1).max(10000).optional(),
   storage_limit_mb: z.number().int().min(0).max(1_000_000).optional(),
   platform_fee_percent: z.number().min(0).max(100).optional(),
   platform_fee_flat: priceIdr.optional(),
@@ -1104,6 +1258,95 @@ export const adminAddOnUpdateSchema = adminAddOnCreateSchema
   .omit({ code: true })
   .partial()
   .refine((v) => Object.keys(v).length > 0, { message: "Minimal satu field diubah" });
+
+// ---------------------------------------------------------------------------
+// Katalog aplikasi booth (0081) — TAUTAN saja, tidak ada upload.
+// ---------------------------------------------------------------------------
+
+/**
+ * URL unduhan harus https:// dengan hostname publik (punya label + titik).
+ * Menolak javascript:/data:/file:/http:, hostname kosong, dan `localhost`/
+ * IP polos. Tidak ada allowlist host: admin boleh memakai host mana pun
+ * (Google Drive, CDN, situs sendiri). Tidak ada HEAD/GET verifikasi — memanggil
+ * URL sembarang dari server adalah SSRF.
+ */
+export function isHttpsDownloadUrl(raw: string): boolean {
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:") return false;
+    // Label pertama wajib terisi → menolak ".com", "localhost", dan IP polos.
+    return /^[^\s.]+(?:\.[^\s.]+)+$/.test(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
+const appReleaseUrl = z
+  .string()
+  .trim()
+  .min(1, "URL unduhan wajib diisi")
+  .max(2000, "URL terlalu panjang")
+  .refine(isHttpsDownloadUrl, "URL harus https:// dengan hostname publik");
+
+/** Disimpan apa adanya (trim saja) — normalisasi bisa mematahkan link Drive. */
+export const appReleaseSchema = z.object({
+  version: z
+    .string()
+    .trim()
+    .regex(/^\d+\.\d+\.\d+$/, "Versi harus format 1.2.3 (tanpa awalan v)"),
+  download_url: appReleaseUrl,
+  file_name: z.string().trim().min(1, "Nama file wajib diisi").max(200),
+  file_size_bytes: z
+    .number({ error: "Ukuran harus angka bulat byte" })
+    .int("Ukuran harus angka bulat byte")
+    .positive("Ukuran harus lebih dari 0")
+    .max(20_000_000_000, "Ukuran terlalu besar")
+    .nullable()
+    .optional(),
+  // Hex tidak peka huruf besar/kecil; DB menyimpan huruf kecil (check constraint).
+  sha256: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(/^[0-9a-f]{64}$/, "SHA-256 harus 64 karakter hex")
+    .nullable()
+    .optional(),
+  release_notes: z
+    .string()
+    .trim()
+    .max(4000, "Catatan rilis maksimal 4000 karakter")
+    .nullable()
+    .optional(),
+  is_active: z.boolean().optional(),
+});
+
+export type AppReleaseInput = z.infer<typeof appReleaseSchema>;
+
+export const appReleaseUpdateSchema = appReleaseSchema
+  .partial()
+  .refine((v) => Object.keys(v).length > 0, { message: "Minimal satu field diubah" });
+
+export type AppReleaseUpdateInput = z.infer<typeof appReleaseUpdateSchema>;
+
+/**
+ * Terjemahkan error tulis app_releases jadi bentuk yang bisa dipakai form.
+ * `version` adalah satu-satunya unique constraint di tabel, jadi 23505 selalu
+ * berarti versi duplikat → error field, bukan 500.
+ */
+export function appReleaseWriteError(
+  error: { code?: string } | null | undefined,
+  fallback: string
+): {
+  code: "VALIDATION_ERROR" | "INTERNAL";
+  message: string;
+  fieldErrors?: Record<string, string[]>;
+} {
+  if (error?.code === "23505") {
+    const message = "Versi ini sudah terdaftar. Hapus atau ubah rilis lama lebih dulu.";
+    return { code: "VALIDATION_ERROR", message, fieldErrors: { version: [message] } };
+  }
+  return { code: "INTERNAL", message: fallback };
+}
 
 export const adminUserUpdateSchema = z
   .object({

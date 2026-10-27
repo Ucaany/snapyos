@@ -235,19 +235,31 @@ Contoh: Business `KLIK FOTO` → Outlet `Malioboro` → Photobox `Booth 01`.
 
 **Acceptance:** (AC 5, 44) owner membuat photobox & melihat performanya.
 
-### 4.6.1 Camera & Printer Settings (per photobox)
+### 4.6.1 Setelan mesin: milik aplikasi booth
 
-Owner mengonfigurasi kamera & printer dari halaman detail photobox:
+Kamera, printer fisik, dan durasi sesi **tidak** diatur dari dashboard. Ketiganya milik
+aplikasi booth (runtime lokal), karena hanya mesin di lokasi yang tahu nilai sebenarnya.
 
-- **Camera settings** (`camera_settings`): countdown detik, mirror preview, fullscreen, facingMode default, resolusi capture, kualitas JPEG.
-- **Printer settings** (`print_settings`): enable print, ukuran kertas (4x6/strip), layout (single/strip), orientasi, auto-print, jumlah salinan.
-- **Device status** (`device_status`): resolusi kamera terdeteksi, status printer, last heartbeat.
-- **[ PRINT TEST ]** — generate halaman test → cetak di kiosk → owner konfirmasi (deteksi printer manual, karena browser tidak bisa enumerate printer).
-- **[ TAMPILKAN KODE/QR ]** — aktivasi device (lihat `05-customer-photobox.md` §5.0).
-- **Session settings** (`session_settings`): `timer_seconds` (default 300), `warning_seconds` (default 60), `max_retakes` (null = unlimited). Timer mulai saat payment paid; timeout post-paid → auto-finalize (`05-customer-photobox.md` §5.1b).
-- **Setup wizard (v2):** permission kamera/printer, pemilihan kamera, dan print test dilakukan **sekali saat device pairing** (`05-customer-photobox.md` §5.0.1) — tidak muncul di flow customer. Halaman detail photobox menampilkan `device_status` + tombol **[ ULANGI SETUP ]** (revoke → re-pair).
+**Yang diatur dari dashboard** (form ubah booth, dua seksi):
 
-**API:** `PATCH /api/v1/business/:businessId/photoboxes/:id/settings` (camera_settings + print_settings).
+- **Identitas booth**: `name`, `slug`, `outlet_id`, `status`.
+- **Kebijakan bisnis**: `payment_mode`, `print_settings.copies` (biaya bahan),
+  `print_settings.layout` (bentuk output pelanggan).
+
+Field mesin yang dikirim lewat form dashboard **ditolak** dengan pesan yang menyebut nama
+field-nya (`src/lib/photobox-form-fields.ts`), bukan dibuang diam-diam. Jalur sah satu-satunya
+adalah device token (`PATCH /api/v1/public/devices/settings`).
+
+**Panel cermin** (dialog **Perangkat**, `DeviceDialog`) menampilkan laporan booth:
+
+- Resolusi kamera dan status uji printer dari `device_status`.
+- Printer aktif (`print_settings.printer_name`) dan ukuran kertas (`paper_size`).
+- "Dilaporkan: <waktu>" dari `last_seen_at`; belum pernah → "Belum pernah dilaporkan".
+- **[ ULANGI SETUP ]** — revoke device → re-pair → setup wizard jalan lagi.
+
+Tidak ada tombol "minta booth melapor": belum ada kanal perintah cloud → runtime, laporan
+datang sendiri lewat heartbeat. Tidak ada halaman uji kamera jarak jauh; hardware hanya bisa
+diuji di lokasi, lewat SetupWizard saat pairing (`05-customer-photobox.md` §5.0.1).
 
 ---
 
@@ -610,3 +622,50 @@ perkembangannya langsung dari dashboard.
 
 **Acceptance:** owner bisa submit masalah, melihat status (terbuka/butuh tindakan/selesai),
 dan membalas; admin platform menindaklanjuti via `/admin/support` (docs/10 §10.6).
+
+## 4.21 Aplikasi Booth (Unduh Installer)
+
+**Purpose:** Owner memasang aplikasi booth (EXE Windows) di komputer booth tanpa
+meminta file ke admin lewat chat.
+
+**Akses:** sidebar owner — grup **Operasional**, item **Aplikasi Booth**
+(`/dashboard/apps`, ikon `Download`). Guard `photobox:read`. Selalu tampil:
+isinya tautan installer, bukan fitur berbayar.
+
+**Alur:**
+
+1. Owner membuka **Aplikasi Booth** → melihat kartu rilis aktif terbaru: versi,
+   tanggal, ukuran (bila admin mengisinya), catatan rilis.
+2. Owner menekan **Buka tautan unduhan** → tab baru ke host eksternal
+   (`drive.google.com` dan sejenisnya). Host tujuan tertulis di kartu supaya
+   jelas tautan meninggalkan SNAPY OS.
+3. Bila admin mengisi SHA-256, hash tampil dalam blok `font-mono` dengan tombol
+   **Salin hash**; owner membandingkannya dengan `Get-FileHash` di booth.
+4. **Riwayat rilis** menampilkan semua rilis aktif, terbaru dulu.
+5. **Versi terpasang per booth** membaca `device_status.app_version`. Booth di
+   bawah versi terbaru diberi badge **Perlu update**; booth tanpa laporan
+   ditampilkan "Belum pernah dilaporkan".
+
+**Komponen:** `AppDownloadCard` (client, hanya untuk tombol salin), tabel versi
+booth (server).
+
+**Data:** `listOwnerReleases`, `getLatestRelease` (`src/server/app-releases.ts`,
+filter `is_active = true`), `listPhotoboxes`, `compareAppVersions` /
+`needsAppUpdate` (`src/lib/app-release.ts`).
+
+**States:** belum ada rilis aktif → kartu kosong dengan penjelasan; belum ada
+booth → tabel kosong; browser memblokir clipboard → pesan "salin manual".
+
+**Batas:**
+
+- Tautan wajib `https://` di sisi admin; server **tidak** melakukan HEAD/GET
+  (SSRF). Tautan mati atau izin Drive berubah hanya ketahuan saat diklik.
+- Ukuran dan SHA-256 diisi manual, tidak diverifikasi sistem.
+- **Tidak ada tombol "kirim update ke booth"**: belum ada kanal perintah
+  cloud → runtime. Pembaruan dipasang manual di komputer booth.
+- Atribut `download` tidak dipakai: browser mengabaikannya untuk URL lintas
+  origin, jadi unduhan terjadi di host asal.
+
+**Acceptance:** owner bisa menemukan installer versi terbaru, tahu host
+tujuannya, dan melihat booth mana yang tertinggal versi. Tidak ada file
+installer yang melewati storage SNAPY OS.

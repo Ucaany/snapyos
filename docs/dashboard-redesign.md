@@ -1,51 +1,61 @@
-# Dashboard Redesign — shadcn Dashboard-01
+# Dashboard Themes — Brutalis (default) + Modern (shadcn/efferd)
 
-> **Status: DIBATALKAN / DIHAPUS 2026-08-30 — catatan historis.**
-> Dual-shell (brutalist default + Dashboard-01 alternatif via `DashboardThemeSwitcher`) pernah terimplementasi penuh, lalu dihapus atas keputusan owner: **satu dashboard brutalist saja**. File ini dipertahankan sebagai histori keputusan; TIDAK berlaku lagi sebagai kontrak aktif.
->
-> Yang dihapus pada 2026-08-30:
->
-> - `src/components/shadcn-theme/` (OwnerShadcnShell, AdminShadcnShell, SiteHeader, NavUser, WorkspaceMenu, ShadcnNav, D01ThemeToggle) — seluruh folder.
-> - `src/components/theme/DashboardThemeSwitcher.tsx`, `src/server/theme-actions.ts`, `src/lib/dashboard-theme.ts`.
-> - Scope CSS `.snapyos-d01` (light + dark + normalisasi utilitas brutalist) dari `src/app/globals.css`.
-> - Branch `getDashboardTheme() === "shadcn"` di `src/app/(dashboard)/layout.tsx` + `src/app/(admin)/layout.tsx`; render switcher di `/dashboard/settings`.
->
-> Cookie `snapyos_dashboard_theme` lama di browser user jadi tidak terbaca (harmless; tidak ada kode membacanya lagi).
->
-> Estetika aktif: **Neo-Brutalism single** (`docs/11-design-system.md`, `DESIGN.md`, AGENTS.md "KUNCI ESTETIKA").
+> **Status: AKTIF (2026-10-25).** Dokumen ini menggantikan catatan historis
+> "DIBATALKAN 2026-08-30" (dual-shell Dashboard-01). Tema kedua sekarang
+> berbasis **`@efferd/app-shell-3`** + primitif shadcn `base-nova`, bukan
+> dashboard-01, dan dipilih per-browser lewat cookie.
 
-## Histori (sebelum penghapusan)
+## Ringkas
 
-Dokumen ini semula kontrak redesign dashboard memakai `npx shadcn@latest add dashboard-01` (registry resmi) sebagai referensi struktur & visual shell alternatif:
+| | Brutalis (default) | Modern |
+|---|---|---|
+| Shell | `Topbar` + `CollapsibleShell` + `Sidebar` | `EfferdShell` (`@efferd/app-shell-3`) |
+| Token | `src/styles/tokens.css` (Neo-Brutalism) | `src/styles/theme-modern.css` (shadcn neutral, oklch) |
+| Primitif | `src/components/ui/*` (border 2px, shadow keras) | kelas default shadcn di `src/components/ui/modern-classes.ts` |
+| Chart | garis hitam 2px, bar kotak, font mono | grid `--border`, bar radius 4, font sans |
+| Cakupan | seluruh app | shell owner/admin/staff (`/dashboard`, `/admin`, `/staff`) |
 
-- **Struktur** = page.tsx block dashboard-01: `SidebarProvider` + `Sidebar variant="inset" collapsible="offcanvas"` + `SidebarInset` → `SiteHeader` → konten `@container/main`.
-- **Token**: scope `.snapyos-d01` = nilai default registry shadcn (zinc + `--radius: 0.625rem` + font stack default Tailwind); di luar scope, palet Neo-Brutalism tetap.
-- **Default theme** = `brutalist`; shell Dashboard-01 via `DashboardThemeSwitcher` (cookie `snapyos_dashboard_theme`).
-- Normalisasi utilitas brutalist (border-2→1px, shadow→none, font-mono→sans) di dalam scope — tanpa rewrite komponen.
+Marketing, auth, kiosk, POS, dan result page tetap **brutalis saja**.
 
-Alur audit shell yang dulu dipakai dual-shell tetap relevan sebagai referensi struktur halaman (`/dashboard/*` widget + gating per route); tabel itu di bawah tetap dipertahankan sebagai inventaris halaman (shell kolom "Gating" tetap akurat untuk shell brutalist tunggal).
+## Cara kerja
 
-## 1. Struktur dashboard existing (audit)
+Dua tema hidup di route yang sama, jadi markup halaman tidak diduplikasi.
+Tiga lapisan:
 
-Owner dashboard `/dashboard/*` (layout `src/app/(dashboard)/layout.tsx`):
+1. **Context** — `src/components/theme/dashboard-theme-context.tsx`.
+   Default `"brutalist"`, jadi pemakaian primitif di luar shell dashboard
+   otomatis tetap brutalis.
+2. **Primitif theme-aware** — `card`, `table`, `badge`, `button`, `input`,
+   `textarea`, `select`, `page-header`, `MetricCard`, `StatStrip`,
+   `DateRangeFilter`, `TxInsightsPanel`, dan chart (`chart-style.ts`) memilih
+   kelas brutalis atau kelas default shadcn berdasarkan context.
+3. **Scope CSS** — `src/styles/theme-modern.css` menetralkan sisa kelas
+   brutalis yang ditulis langsung di halaman (border 2px, hard shadow,
+   radius 0, mono/uppercase, `gap-[2px] bg-ink`, header tabel, chart SVG).
 
-| Route                     | Judul                      | Widget                                                                                                                          | Gating                         |
-| ------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
-| `/dashboard`              | Business name / onboarding | MetricCard hero, dl-grid 8 metrik, RevenueChart, DateRangeFilter, CreateBusinessForm                                            | `transaction:read`             |
-| `/dashboard/analytics`    | Revenue Analytics          | RevenueChart, BreakdownChart, DateRangeFilter                                                                                   | `transaction:read`             |
-| `/dashboard/metrics`      | Business Metrics           | MetricCard grid, DateRangeFilter                                                                                                | `transaction:read`             |
-| `/dashboard/photoboxes`   | Photobox                   | PhotoboxesTable (+PhotoboxForm, DeviceDialog)                                                                                   | `photobox:write`               |
-| `/dashboard/outlets`      | Outlet                     | OutletsTable (+WilayahPicker)                                                                                                   | `outlet:write`                 |
-| `/dashboard/templates`    | Templates                  | TemplatesGrid; `/templates/builder/[id]` full-bleed TemplateBuilder                                                             | `template:write`               |
-| `/dashboard/packages`     | Package                    | PackagesTable                                                                                                                   | `package:write`                |
-| `/dashboard/vouchers`     | Voucher                    | VouchersTable                                                                                                                   | `voucher:write`                |
-| `/dashboard/transactions` | Transaksi                  | TransactionsView, DateRangeFilter, LiveSearch                                                                                   | `transaction:read/write`       |
-| `/dashboard/finance`      | Finance                    | MetricCard, ExpensesPanel, WithdrawalPanel, DateRangeFilter                                                                     | `finance:read`                 |
-| `/dashboard/reports`      | Reports                    | form GET → export API                                                                                                           | `report:read`                  |
-| `/dashboard/customers`    | Customer                   | CustomersTable, LiveSearch                                                                                                      | `customer:read`                |
-| `/dashboard/staff`        | Staff & Role               | StaffPanel                                                                                                                      | owner only                     |
-| `/dashboard/subscription` | Subscription               | SubscriptionPanel (+SubscriptionCheckout); `/invoice/[id]` InvoicePayClient; `/invoice/[id]/receipt` = route.ts (bukan halaman) | `subscription:write`           |
-| `/dashboard/settings`     | Settings                   | CheckoutSettingsEditor, RetentionSettingsEditor                                                                                 | `business:update` (read semua) |
-| `/dashboard/pos`          | POS                        | PosProductsTable, PosBoothsTable, PosReportsPanel                                                                               | `pos:read` + entitlement       |
+## State
 
-Admin platform `/admin/*` (layout `src/app/(admin)/layout.tsx`): overview, users, businesses, plans, subscriptions, add-ons, templates, payments, withdrawals, settings (nav 10 item, `src/components/admin/AdminSidebar.tsx`).
+Cookie `snapyos_dashboard_theme` = `modern` | `brutalist` (selain itu
+fallback brutalis). Ditulis client di halaman Pengaturan
+(`src/components/theme/ThemeSwitcher.tsx`), dibaca server lewat
+`getDashboardTheme()` (`src/lib/dashboard-theme-server.ts`).
+
+Sidebar ciut punya cookie sendiri (`sidebar_state` untuk shell modern,
+`snapyos_sidebar_collapsed` untuk brutalis) — dua state independen.
+
+## Menambah UI baru
+
+- Pakai primitif `src/components/ui/*` (Card/Table/Badge/Button/Input).
+  Keduanya otomatis benar di dua tema; jangan hardcode `border-2 border-ink`
+  atau `shadow-[...]` di halaman baru.
+- Kalau tetap butuh kelas brutalis langsung (mis. markup kustom), tambahkan
+  pola normalisasinya ke `theme-modern.css` agar tema modern tidak bocor.
+- Jangan menambah warna SnapyOS baru tanpa memetakannya di scope
+  `.theme-modern` — palet modern sengaja netral (shadcn neutral).
+
+## Riwayat
+
+- **2026-08-30** — dual-shell Dashboard-01 dihapus; satu estetika brutalis.
+- **2026-10-25** — tema kedua dihidupkan lagi dengan `@efferd/app-shell-3`,
+  cakupan owner/admin/staff, pilihan per-browser di halaman Pengaturan.
+  Isi halaman tidak ditulis ulang; primitif dibuat theme-aware.

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Camera, ScanBarcode } from "lucide-react";
 
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import { getActiveBusiness, requireUser } from "@/lib/tenant";
 import { listPosBooths } from "@/server/pos-products";

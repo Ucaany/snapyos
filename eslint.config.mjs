@@ -45,6 +45,9 @@ const eslintConfig = defineConfig([
     ".audit/**",
     ".e2e-tmp/**",
     "test-results/**",
+    // Tauri kiosk (Phase 9): crate Rust + hasil build. `target/` dan
+    // `runtime-dist/` dibuat mesin, bukan source — jangan dilintasi ESLint.
+    "src-tauri/**",
     // macOS AppleDouble metadata:
     "**/._*",
   ]),

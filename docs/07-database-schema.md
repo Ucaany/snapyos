@@ -1,6 +1,6 @@
 # 7. Database Schema
 
-> **Sinkron dengan `db/schema.sql` aktual per audit 2026-10-21** (55 tabel + 31 fungsi; migration terbaru POS `0074_pos_payment_idempotency_race.sql`; `0071_rpc_search_path_hardening.sql`, `0073`, dan `0074` disiapkan, **belum di-apply** ke cloud). Tabel/kolom di bawah = realita schema; deviasi dari draft awal ditandai.
+> **Sinkron dengan `db/schema.sql` aktual per audit 2026-10-24** (55 tabel + 32 fungsi; migration terbaru `0081_app_releases.sql`; `0071_rpc_search_path_hardening.sql`, `0073`, `0074`, `0077`, `0078`, `0079`, `0080`, `0081` disiapkan, **belum di-apply** ke cloud). Tabel/kolom di bawah = realita schema; deviasi dari draft awal ditandai. Paritas schema ↔ migrasi dijaga `tests/schema-migration-parity.test.ts`.
 >
 > **RLS (C1, migrasi 0064):** setiap tabel `public.*` punya `alter table ... enable row level security` + policy `svc_all` (`for all to service_role using (true) with check (true)`); `anon`/`authenticated` di-revoke, `service_role` di-grant. Tidak ada policy `to public/anon/authenticated`.
 >
@@ -220,28 +220,28 @@ Tidak dipakai (JWT strategy + `auth_sessions` di atas); `users` tetap source of 
 
 ### photoboxes
 
-| kolom                   | tipe                       | ket                                                                                                                                    |
-| ----------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| id                      | uuid PK                    |                                                                                                                                        |
-| business_id             | uuid → businesses.id       |                                                                                                                                        |
-| outlet_id               | uuid → outlets.id          |                                                                                                                                        |
-| slug                    | text                       | unique per business, untuk URL `/p/[businessSlug]/[photoboxSlug]`                                                                      |
-| name                    | text                       | "Booth 01"                                                                                                                             |
-| status                  | text                       | `online`/`offline`/`maintenance`                                                                                                       |
-| camera                  | text                       | nullable                                                                                                                               |
-| printer                 | text                       | nullable                                                                                                                               |
-| display                 | text                       | nullable                                                                                                                               |
-| default_template_id     | uuid → templates.id        | nullable                                                                                                                               |
-| camera_settings         | jsonb                      | nullable (`{ countdown_seconds, mirror_preview, fullscreen, facingMode, capture_width, capture_height, jpeg_quality }`)                |
-| print_settings          | jsonb                      | nullable (`{ enabled, paper_size, layout, orientation, auto_print, copies }`)                                                          |
-| session_settings        | jsonb                      | nullable (v2: `{ timer_seconds: 300, warning_seconds: 60, max_retakes: null }`)                                                        |
-| device_status           | jsonb                      | nullable (last heartbeat, camera resolution, printer status)                                                                           |
-| exit_pin_hash           | text                       | nullable — PIN keluar kiosk, verifikasi server-side (hash)                                                                             |
-| exit_pin_failed_count   | integer not null default 0 | migrasi 0034 — throttle brute-force PIN exit kiosk (counter percobaan gagal beruntun)                                                  |
-| exit_pin_locked_until   | timestamptz nullable       | migrasi 0034 — 5 gagal beruntun → lock 5 menit (server-side, tidak dapat di-bypass client)                                             |
-| pos_enabled             | boolean                    | not null default false — toggle POS add-on per booth (0019)                                                                            |
-| branding                | jsonb                      | nullable (0045) — override branding kiosk per-booth; null = inherit `business_settings.branding`. Deep-merge di app layer saat render. |
-| created_at / updated_at | timestamptz                |                                                                                                                                        |
+| kolom                   | tipe                       | ket                                                                                                                                              |
+| ----------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| id                      | uuid PK                    |                                                                                                                                                  |
+| business_id             | uuid → businesses.id       |                                                                                                                                                  |
+| outlet_id               | uuid → outlets.id          |                                                                                                                                                  |
+| slug                    | text                       | unique per business, untuk URL `/p/[businessSlug]/[photoboxSlug]`                                                                                |
+| name                    | text                       | "Booth 01"                                                                                                                                       |
+| status                  | text                       | `online`/`offline`/`maintenance`                                                                                                                 |
+| camera                  | text                       | nullable                                                                                                                                         |
+| printer                 | text                       | nullable                                                                                                                                         |
+| display                 | text                       | nullable                                                                                                                                         |
+| default_template_id     | uuid → templates.id        | nullable                                                                                                                                         |
+| camera_settings         | jsonb                      | nullable (`{ countdown_seconds, mirror_preview, fullscreen, facingMode, capture_width, capture_height, jpeg_quality }`)                          |
+| print_settings          | jsonb                      | nullable (`{ enabled, paper_size, layout, orientation, auto_print, copies }`)                                                                    |
+| session_settings        | jsonb                      | nullable (v2: `{ timer_seconds: 300, warning_seconds: 60, max_retakes: null }`)                                                                  |
+| device_status           | jsonb                      | nullable (last heartbeat, camera resolution, printer status, `app_version` — versi booth dilaporkan lewat `devices/report` & `devices/settings`) |
+| exit_pin_hash           | text                       | nullable — PIN keluar kiosk, verifikasi server-side (hash)                                                                                       |
+| exit_pin_failed_count   | integer not null default 0 | migrasi 0034 — throttle brute-force PIN exit kiosk (counter percobaan gagal beruntun)                                                            |
+| exit_pin_locked_until   | timestamptz nullable       | migrasi 0034 — 5 gagal beruntun → lock 5 menit (server-side, tidak dapat di-bypass client)                                                       |
+| pos_enabled             | boolean                    | not null default false — toggle POS add-on per booth (0019)                                                                                      |
+| branding                | jsonb                      | nullable (0045) — override branding kiosk per-booth; null = inherit `business_settings.branding`. Deep-merge di app layer saat render.           |
+| created_at / updated_at | timestamptz                |                                                                                                                                                  |
 
 ### member_photoboxes (akses booth per member — 0018)
 
@@ -552,24 +552,24 @@ Log perangkat Electron. Auto-cleanup 30 hari via cron retention. **TIDAK** menyi
 
 ### pos_orders
 
-| kolom                                         | tipe                 | ket                                                      |
-| --------------------------------------------- | -------------------- | -------------------------------------------------------- |
-| id                                            | uuid PK              |                                                          |
-| business_id                                   | uuid → businesses.id |                                                          |
-| photobox_id                                   | uuid → photoboxes.id | NOT NULL, on delete restrict — per booth                 |
-| outlet_id                                     | uuid → outlets.id    | diisi dari photobox.outlet_id                            |
-| cashier_user_id                               | uuid → users.id      | NOT NULL, on delete restrict                             |
-| customer_id                                   | uuid → customers.id  | nullable                                                 |
-| number                                        | text                 | `POS-YYYYMMDD-####` WIB; `unique(business_id, number)`   |
-| status                                        | text                 | `pending`/`paid`/`cancelled` (tanpa `expired` — offline) |
-| gross_amount / discount_amount / final_amount | integer              | check `final = gross − discount`                         |
-| payment_method                                | text                 | `cash`/`bank_transfer`/`other` (offline-only)            |
-| payment_reference                             | text                 | nullable                                                 |
-| paid_at                                       | timestamptz          | nullable                                                 |
-| paper_width_mm                                | integer              | `58`/`80`; snapshot lebar printer thermal saat order dibuat |
+| kolom                                         | tipe                 | ket                                                           |
+| --------------------------------------------- | -------------------- | ------------------------------------------------------------- |
+| id                                            | uuid PK              |                                                               |
+| business_id                                   | uuid → businesses.id |                                                               |
+| photobox_id                                   | uuid → photoboxes.id | NOT NULL, on delete restrict — per booth                      |
+| outlet_id                                     | uuid → outlets.id    | diisi dari photobox.outlet_id                                 |
+| cashier_user_id                               | uuid → users.id      | NOT NULL, on delete restrict                                  |
+| customer_id                                   | uuid → customers.id  | nullable                                                      |
+| number                                        | text                 | `POS-YYYYMMDD-####` WIB; `unique(business_id, number)`        |
+| status                                        | text                 | `pending`/`paid`/`cancelled` (tanpa `expired` — offline)      |
+| gross_amount / discount_amount / final_amount | integer              | check `final = gross − discount`                              |
+| payment_method                                | text                 | `cash`/`bank_transfer`/`other` (offline-only)                 |
+| payment_reference                             | text                 | nullable                                                      |
+| paid_at                                       | timestamptz          | nullable                                                      |
+| paper_width_mm                                | integer              | `58`/`80`; snapshot lebar printer thermal saat order dibuat   |
 | print_mode                                    | text                 | `browser`/`bluetooth`; snapshot jalur cetak saat order dibuat |
-| auto_print                                    | boolean              | snapshot izin auto-print saat order dibuat               |
-| created_at / updated_at                       | timestamptz          |                                                          |
+| auto_print                                    | boolean              | snapshot izin auto-print saat order dibuat                    |
+| created_at / updated_at                       | timestamptz          |                                                               |
 
 ### pos_order_items (snapshot)
 
@@ -757,6 +757,25 @@ Tabel `reports` dihapus karena 0 caller di kode aplikasi. Fitur export report (C
 | target      | text                 | entity id                                       |
 | meta        | jsonb                |                                                 |
 | created_at  | timestamptz          |                                                 |
+
+### app_releases (0081 — katalog aplikasi, TAUTAN saja)
+
+| kolom                   | tipe            | ket                                                                    |
+| ----------------------- | --------------- | ---------------------------------------------------------------------- |
+| id                      | uuid PK         |                                                                        |
+| version                 | text            | UNIQUE, format `1.2.3` (divalidasi Zod, bukan CHECK)                   |
+| download_url            | text            | CHECK `^https://`; disimpan apa adanya (tanpa normalisasi)             |
+| file_name               | text            | nama yang disarankan saat menyimpan                                    |
+| file_size_bytes         | bigint          | nullable, `> 0`; **diisi manual**, tidak diverifikasi sistem           |
+| sha256                  | text            | nullable, CHECK `^[0-9a-f]{64}$`; **diisi manual**, tidak diverifikasi |
+| release_notes           | text            | nullable                                                               |
+| is_active               | boolean         | default true                                                           |
+| created_by              | uuid → users.id | on delete set null                                                     |
+| created_at / updated_at | timestamptz     |                                                                        |
+
+File installer **tidak** disimpan di storage SNAPY OS — hanya tautan ke host
+eksternal (Google Drive). Tidak ada bucket, objek, atau kolom storage key.
+Server tidak melakukan HEAD/GET ke `download_url` (SSRF).
 
 ### support_tickets (0050)
 

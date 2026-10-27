@@ -1,3 +1,5 @@
+// Relatif (bukan `@/`) agar tes `node --experimental-strip-types` bisa impor modul ini.
+import { bridgeHeaders } from "../bridge-token.ts";
 import type { PrintSettingsInput } from "@/lib/print-layout";
 
 export type CupsTestInput = { title: string; lines: string[] };
@@ -27,11 +29,12 @@ async function postBridge(
 ): Promise<void> {
   const response = await fetch(`${cupsBridgeUrl(settings)}${pathname}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...bridgeHeaders() },
     cache: "no-store",
     body: JSON.stringify(body),
   });
   if (!response.ok) {
+    if (response.status === 401) throw new Error("Token bridge belum diisi atau salah.");
     const result = await response.json().catch(() => null);
     throw new Error(
       typeof result?.message === "string" ? result.message : "Bridge CUPS tidak bisa mengirim cetak."

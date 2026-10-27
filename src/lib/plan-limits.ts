@@ -8,6 +8,8 @@ export type PlanLimits = {
   max_photoboxes: number;
   max_concurrent_sessions: number;
   max_staff: number;
+  max_packages: number;
+  max_templates: number;
 };
 
 /** Default konservatif bila subscription tidak ditemukan (= seed starter). */
@@ -16,6 +18,8 @@ export const DEFAULT_PLAN_LIMITS: PlanLimits = {
   max_photoboxes: 1,
   max_concurrent_sessions: 1,
   max_staff: 0,
+  max_packages: 50,
+  max_templates: 20,
 };
 
 /**

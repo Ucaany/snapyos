@@ -6,7 +6,7 @@ import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { companyLinks, legalLinks, productLinks } from "@/components/nav-links";
 import { LinkItem } from "@/components/sheard";
 import { XIcon, MenuIcon } from "lucide-react";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 
 /** Navigasi mobile marketing: mirror desktop (Produk, Perusahaan, Legal) + 2 CTA. */
 export function MobileNav() {

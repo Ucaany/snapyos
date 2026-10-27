@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getDeviceProfile } from "@/lib/device-profile";
 import { isBlockedShortcut, isExitShortcut } from "@/lib/kiosk-lock";
+import { isKioskExe } from "@/lib/kiosk-shell";
 
 /**
  * Kiosk fullscreen lock — layar terkunci penuh setelah setup. Keluar hanya via
@@ -61,6 +62,13 @@ export function useKioskLock(
 
   const requestFullscreen = useCallback(() => {
     if (unlockedRef.current) return;
+    // EXE kiosk: jendela sudah fullscreen dari Tauri (decorations: false).
+    // Memanggil requestFullscreen di WebView2 hanya memunculkan overlay
+    // "tekan Esc untuk keluar" yang tidak berguna bagi pelanggan.
+    if (isKioskExe()) {
+      setReengage(false);
+      return;
+    }
     if (!fullscreenEnabled) {
       setReengage(false);
       return;
@@ -96,6 +104,12 @@ export function useKioskLock(
   }, []);
 
   const lockOrientation = useCallback((target: string) => {
+    // EXE kiosk: tidak ada rotasi layar di Windows desktop. `screen.orientation
+    // .lock()` di WebView2 gagal tanpa efek, dan kegagalan itu tidak boleh
+    // terlihat seperti bug kamera. Orientasi booth di EXE ditentukan ukuran
+    // jendela (SNAPYOS_KIOSK_ORIENTATION di bridge.env) + layout responsif;
+    // memutar monitor fisik tetap pekerjaan manusia.
+    if (isKioskExe()) return Promise.resolve();
     // Screen Orientation API — Chrome/Android; iOS PWA pakai manifest.
     // iPad/iPhone tidak dukung lock runtime — no-op.
     if (!getDeviceProfile().supportsFullscreen) return Promise.resolve();

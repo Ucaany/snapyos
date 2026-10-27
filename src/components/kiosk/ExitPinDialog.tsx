@@ -2,10 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Delete, Loader2, LockKeyhole } from "lucide-react";
-import { apiPost, KioskError } from "@/components/kiosk/api";
+import { apiPost } from "@/components/kiosk/api";
+import { submitExit } from "@/components/kiosk/exit-fallback";
+import { submitLocalExit } from "@/components/kiosk/local-runtime";
 
 type Props = {
   deviceToken: string | null;
+  /** `bridge_url` booth — jalur PIN darurat saat internet mati. */
+  bridgeUrl?: string | null;
   /** Dipanggil setelah PIN diverifikasi server — keluar TANPA reset sesi. */
   onSuccess: () => void;
   onCancel: () => void;
@@ -22,7 +26,7 @@ const keyBtn =
  * hanya melepas fullscreen lock, tanpa reload/reset (sesi berjalan utuh dan
  * resume otomatis bila halaman dibuka ulang).
  */
-export function ExitPinDialog({ deviceToken, onSuccess, onCancel }: Props) {
+export function ExitPinDialog({ deviceToken, bridgeUrl, onSuccess, onCancel }: Props) {
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -85,14 +89,22 @@ export function ExitPinDialog({ deviceToken, onSuccess, onCancel }: Props) {
     setBusy(true);
     setError(null);
     try {
-      await apiPost<{ ok: boolean; pin_required: boolean }>("/api/v1/public/devices/exit", {
-        device_token: deviceToken,
-        ...(value ? { pin: value } : {}),
+      // Cloud SELALU dulu. PIN darurat hanya jaring saat jaringan mati; PIN_LOCKED
+      // dari cloud tidak boleh jatuh ke jalur lokal (akan membatalkan rate-limit).
+      await submitExit({
+        cloud: () =>
+          apiPost<{ ok: boolean; pin_required: boolean }>(
+            "/api/v1/public/devices/exit",
+            { device_token: deviceToken, ...(value ? { pin: value } : {}) },
+            2000
+          ),
+        local: () => submitLocalExit(value, bridgeUrl),
+        onSuccess,
+        onError: (message) => {
+          setError(message);
+          setPin("");
+        },
       });
-      onSuccess();
-    } catch (e) {
-      setError(e instanceof KioskError ? e.message : "Gagal memverifikasi PIN. Coba lagi.");
-      setPin("");
     } finally {
       setBusy(false);
     }

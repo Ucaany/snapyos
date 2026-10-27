@@ -142,7 +142,7 @@ Error:
 - `POST /api/v1/public/:businessSlug/payments/create`: buat payment ternormalisasi (`{ checkout_session_id, device_token, method_id }`). Reservation `creating` + partial unique index menjamin satu payment aktif per checkout. Metode hanya berasal dari credential aktif owner (Pakasir/Midtrans/Tripay direct merchant; tanpa credential direct tidak ada fallback aggregator; kiosk hanya menawarkan voucher + tunai); response display-only berisi `display`, QR/VA/redirect data, total integer, reference, dan expiry.
 - `POST /api/v1/public/:businessSlug/payments/cash-confirm`: konfirmasi tunai lewat API oleh operator terautentikasi dengan membership `transaction:write` (jalur staff di dashboard memakai server action dengan `payment:confirm`); body `{ payment_reference, device_token }`. Customer kiosk tidak dapat self-confirm.
 - `GET /api/v1/public/:businessSlug/payments/:paymentRef/status` — status payment (recover saat reload)
-- `POST /api/v1/public/:businessSlug/sessions` — mulai sesi (**syarat: checkout_session paid**) (`{ checkout_session_id, device_token }`) → `{ session_id, expires_at }`; semua endpoint sesi cek `expires_at` → `SESSION_EXPIRED`. Development-only: ketika `DEV_SKIP_PAYMENT` aktif, server juga menerima `{ package_id, device_token }` untuk checkout paid sintetis; jalur ini tidak aktif di production.
+- `POST /api/v1/public/:businessSlug/sessions` — mulai sesi (**syarat: checkout_session paid**) (`{ checkout_session_id, device_token }`) → `{ session_id, expires_at }`; semua endpoint sesi cek `expires_at` → `SESSION_EXPIRED`. Development-only: ketika `DEV_SKIP_PAYMENT` aktif, server juga menerima `{ package_id, device_token }` untuk checkout paid sintetis; jalur ini tidak aktif di production. Mode offline (`checkout.offline_enabled`) memakai `package_id` yang sama. `client_created_at` opsional (ISO 8601, tidak boleh masa depan, maksimal 24 jam lampau) hanya dipakai jalur `package_id`: sync worker runtime lokal mengirimnya supaya sesi dan transaksi offline tercatat pada waktu jual booth, bukan waktu reconnect.
 - `POST /api/v1/public/:businessSlug/sessions/:id/finalize` — selesai (trigger auto-print + generate result & GIF)
 - `GET /api/v1/public/results/:resultToken` — akses result online (unduh GIF slideshow + foto berframe; `gif_url`/`photos[].url` untuk preview + `gif_download_url`/`photos[].download_url` untuk unduh); diakses dari halaman publik `/r/[token]`
 
@@ -233,7 +233,8 @@ Ini menutup gap: §8.3–§8.16 hanya mencantumkan route + param ringkas; detail
 Endpoint berikut ada di kode namun belum tercantum di section di atas:
 
 - `POST /api/v1/public/devices/exit` — verifikasi PIN keluar kiosk (server-side, `photoboxes.exit_pin_hash`).
-- `POST /api/v1/public/devices/report` — heartbeat/status report device kiosk.
+- `POST /api/v1/public/devices/report` — heartbeat/status report device kiosk. Menerima `app_version` opsional (maks 20 karakter, `x.y.z`) dan menyimpannya ke `photoboxes.device_status.app_version`.
+- `PATCH /api/v1/public/devices/settings` — booth menulis balik setelan miliknya (kamera, printer, timer). Auth `device_token` di body. Field cloud (`print_settings.copies`, `print_settings.layout`, `payment_mode`, harga) dijawab `403 FIELD_NOT_DEVICE_OWNED`; cloud menggabungkan per-key. Body juga menerima `app_version` opsional yang disimpan ke `device_status.app_version` (dibaca `/dashboard/apps`). Lihat `docs/photobooth-bridge.md`.
 - `GET/POST /api/v1/admin/add-ons` + `PATCH /api/v1/admin/add-ons/:id` — CRUD katalog add-on platform (termasuk POS).
 - `GET /api/health` — readiness check (audit 2026-10-16, lihat §8.21).
 - `GET /api/v1/emoji` — katalog emoji/stiker global untuk kiosk & template builder (menggantikan stickers REST per-business).

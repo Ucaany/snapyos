@@ -59,3 +59,11 @@ tauri-kiosk/gen/
 
 # Screenshot e2e — dibuat ulang tiap run; bukti terkurasi disimpan manual.
 /tests/e2e/*.png
+
+# --- Tauri kiosk (Phase 9) ---
+# Sidecar Node + hasil bundel runtime dibuat saat build, bukan disimpan.
+src-tauri/binaries/node-*
+src-tauri/runtime-dist/
+src-tauri/target/
+# Schema ACL yang di-generate tauri-build.
+src-tauri/gen/

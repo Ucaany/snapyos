@@ -2,8 +2,8 @@
 
 > **Status**: audit berbasis kode berjalan (`src/`, `db/schema.sql`, `tests/`) + knowledge graph
 > `codebase-memory` (proyek `Users-ucaany-Downloads-PT-SNAPY-OS`, mode `moderate`, generasi 2026-10-11).
-> **Metode**: Scout→Verify. Graf (4.167 node / 14.341 edge, snapshot 2026-10-11), 55 tabel `create table`, 31 fungsi SQL,
-> 63 route API, 65 page, 7 layout, 17 modul `"use server"` (99 aksi ter-export), 159 komponen, 86 berkas uji (`tests/*.test.ts`).
+> **Metode**: Scout→Verify. Graf (4.167 node / 14.341 edge, snapshot 2026-10-11), 56 tabel `create table`, 32 fungsi SQL,
+> 66 route API, 66 page, 8 layout, 17 modul `"use server"` (102 aksi ter-export), 189 komponen, 119 berkas uji (`tests/*.test.ts`).
 > **Bukan** dokumen PRD — dokumen ini merekam **apa yang benar-benar terpasang** di kode.
 > Sumber kebenaran tetap `src/`, lalu `db/schema.sql`, lalu `docs/07`+`docs/08`.
 > **Cakupan**: seluruh fitur per kategori (Admin, Owner, Staff, Kiosk, POS, Marketing/Auth, Result, API, Cron, DB).
@@ -21,7 +21,7 @@
 | 0   | [Ringkasan Angka](#0-ringkasan-angka-audit-2026-10-11-angka-disegarkan-2026-10-16)                                                       |
 | 1   | [Lapisan Lintas-Potong](#1-lapisan-lintas-potong-cross-cutting) — routing, RBAC, tenant, gate langganan, API wrapper, rate limit, desain |
 | 2   | [Dashboard Admin](#2-dashboard-admin-platform--ceo) — A1–A16                                                                             |
-| 3   | [Dashboard Owner](#3-dashboard-owner-bisnis) — O1–O25                                                                                    |
+| 3   | [Dashboard Owner](#3-dashboard-owner-bisnis) — O1–O26                                                                                    |
 | 4   | [Dashboard Staff](#4-dashboard-staff-shell-operasional-read-only) — S1–S8                                                                |
 | 5   | [Kiosk Customer](#5-kiosk-customer-photobox-publik) — K1–K16                                                                             |
 | 6   | [Hasil Online](#6-hasil-online-result-page)                                                                                              |
@@ -29,28 +29,28 @@
 | 8   | [Marketing & Publik](#8-marketing--publik) — M1–M5                                                                                       |
 | 9   | [Autentikasi & Onboarding](#9-autentikasi--onboarding) — A–E                                                                             |
 | 10  | [Pembayaran & Webhook](#10-pembayaran--webhook)                                                                                          |
-| 11  | [API Routes](#11-api-routes-63) — daftar ekshaustif 63 route                                                                             |
+| 11  | [API Routes](#11-api-routes-66) — daftar ekshaustif 66 route                                                                             |
 | 12  | [Cron & Lifecycle](#12-cron--lifecycle-verceljson)                                                                                       |
-| 13  | [Database](#13-database-55-tabel--31-fungsi)                                                                                             |
+| 13  | [Database](#13-database-56-tabel--32-fungsi)                                                                                             |
 | 14  | [Storage](#14-storage-dual-provider)                                                                                                     |
 | 15  | [Ringkasan Audit](#15-ringkasan-audit) — temuan, backlog, batasan                                                                        |
 
 ---
 
-## 0. Ringkasan Angka (Audit 2026-10-11, angka disegarkan 2026-10-16)
+## 0. Ringkasan Angka (Audit 2026-10-11, angka disegarkan 2026-10-25)
 
 | Dimensi                     | Jumlah                   | Catatan                                                                                         |
 | --------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------- |
-| Halaman (`page.tsx`)        | 65                       | 5 route group + kiosk/result/onboarding/welcome                                                 |
-| Layout (`layout.tsx`)       | 7                        | root, auth, dashboard, admin, staff, pos, onboarding                                            |
-| Route API (`route.ts`)      | 63                       | 23 admin, 7 business, 17 public, 3 webhook, 5 cron, health, auth×3, me, emoji, help, businesses |
-| Modul server action         | 17                       | `"use server"` · 99 aksi ter-export                                                             |
-| Modul server (`src/server`) | 106                      | data layer                                                                                      |
-| Modul lib (`src/lib`)       | 73                       | pure/util (65 di akar + `r2/` 6 + `supabase/` 2)                                                |
-| Komponen (`src/components`) | 159 `.tsx`               | 64 dashboard, 24 kiosk (+7 `.ts`), 3 pos, 7 admin                                               |
-| Tabel DB                    | 55                       | `db/schema.sql`                                                                                 |
-| Fungsi SQL/RPC              | 31                       | 29 dipakai app (4 SECURITY DEFINER) + 2 trigger                                                 |
-| Berkas uji                  | 86                       | `node --test` (naik dari 83 setelah suite keamanan ditambahkan — `docs/18` §3)                  |
+| Halaman (`page.tsx`)        | 66                       | 5 route group + kiosk/result/onboarding/welcome                                                 |
+| Layout (`layout.tsx`)       | 8                        | root, auth, dashboard, admin, staff, pos, onboarding, result                                    |
+| Route API (`route.ts`)      | 66                       | 24 admin, 8 business, 18 public, 3 webhook, 5 cron, health, auth×3, me, emoji, help, businesses |
+| Modul server action         | 17                       | `"use server"` · 102 aksi ter-export                                                            |
+| Modul server (`src/server`) | 111                      | data layer                                                                                      |
+| Modul lib (`src/lib`)       | 99                       | pure/util (81 di akar + `r2/` 6 + `supabase/` 2 + subfolder lain)                               |
+| Komponen (`src/components`) | 189 `.tsx` (+17 `.ts`)   | 67 dashboard, 29 kiosk, 3 pos, 7 admin, 5 staff, 33 ui, 8 efferd                                |
+| Tabel DB                    | 56                       | `db/schema.sql`                                                                                 |
+| Fungsi SQL/RPC              | 32                       | 30 dipakai app (4 SECURITY DEFINER) + 2 trigger                                                 |
+| Berkas uji                  | 119                      | `node --test`                                                                                   |
 | Knowledge graph             | 4.167 node / 14.341 edge | snapshot 2026-10-11                                                                             |
 
 **Route group & domain** (single-domain, saling eksklusif):
@@ -134,8 +134,8 @@
 ## 2. DASHBOARD ADMIN (Platform / CEO)
 
 **Route group**: `(admin)` → `/admin/*` · **Layout**: `src/app/(admin)/layout.tsx` (guard `getAdminUser()` → redirect `/dashboard` atau `/login`).
-**Shell**: `AdminTopbar` + `AdminSidebar` (6 grup, 16 item) + `CollapsibleShell`.
-**Navigasi** (`src/components/admin/AdminSidebar.tsx`): Utama (1) · Tenant (2) · Monetisasi (5) · Keuangan (2) · Konten & Sistem (4) · Pemasaran (1) · Sisi Owner (1) = 16 item.
+**Shell**: `AdminTopbar` + `AdminSidebar` (7 grup, 17 item) + `CollapsibleShell`.
+**Navigasi** (`src/components/admin/nav.ts`): Utama (1) · Tenant (2) · Monetisasi (5) · Keuangan (2) · Konten & Sistem (5, termasuk Katalog Aplikasi) · Pemasaran (1) · Sisi Owner (1) = 17 item.
 
 ### A1. Overview Platform
 
@@ -274,6 +274,15 @@
 - **DB**: `broadcast_campaigns, broadcast_recipients, businesses, business_members, users`.
 - **Integrasi**: Resend (`src/lib/broadcast-email.ts`, `src/lib/resend.ts`). Status: draft/sending/sent/partial/failed; riwayat per penerima.
 
+### A17. Katalog Aplikasi
+
+- **Page**: `/admin/apps` (`ADMIN - KATALOG APLIKASI`).
+- **Actions**: `createAppReleaseAction`, `updateAppReleaseAction`, `toggleAppReleaseAction`, `deleteAppReleaseAction`. **Data**: `listAppReleases`, `createAppRelease`, `updateAppRelease`, `setAppReleaseActive`, `deleteAppRelease` (`src/server/admin/apps.ts`).
+- **API**: tidak ada REST route — server action saja (konvensi `docs/api/README.md`).
+- **Field**: versi (`1.2.3`), `download_url` (wajib `https://`, hostname publik), `file_name`, `file_size_bytes` (opsional), `sha256` (opsional, 64 hex), `release_notes`, `is_active`.
+- **DB**: `app_releases` (0081). **Storage**: tidak disentuh — file ada di Google Drive/host eksternal.
+- **Dampak**: rilis `is_active` tampil di `/dashboard/apps` owner. Tautan mati tidak terdeteksi server (SSRF); SHA-256 diisi manual.
+
 ### A16. Lintas-Admin
 
 - **Aksi**: `Buka Dashboard Bisnis` → `/dashboard` (admin juga bisa jadi owner).
@@ -286,7 +295,7 @@
 **Route group**: `(dashboard)` → `/dashboard/*` · **Layout**: `src/app/(dashboard)/layout.tsx`.
 **Guard layout**: `requireUser` → `/login`; `destinationFor` ≠ `/dashboard` → redirect; `getActiveBusiness`.
 **Shell**: `Topbar` (WorkspaceSwitcher + StorageIndicator + link admin bila admin) + `Sidebar` (5 grup) + `CollapsibleShell` + `CashPaymentNotifier` (bila `payment:confirm` + fitur `cash_payment`) + `InstallPWA`.
-**Sidebar** (`src/components/dashboard/Sidebar.tsx`): Utama (Dashboard, Analitik, Metrik) · Operasional (Photobox, Branding & Kiosk, Outlet, Template, Paket, Voucher, POS*, Unduh PWA*) · Keuangan (Transaksi, Keuangan, Payment Gateway, Laporan) · Pelanggan & Tim (Pelanggan, Tim) · Langganan & Akun (Langganan, Pengaturan, Tiket Bantuan, Dokumentasi). `*` = kondisional entitlement/fitur.
+**Sidebar** (`src/components/dashboard/Sidebar.tsx`, data di `src/components/dashboard/nav.ts`): Utama (Dashboard, Analitik, Metrik) · Operasional (Photobox, Branding & Kiosk, Outlet, Template, Paket, Voucher, POS*, Unduh PWA*, Aplikasi Booth) · Keuangan (Transaksi, Keuangan, Payment Gateway, Laporan) · Pelanggan & Tim (Pelanggan, Tim) · Langganan & Akun (Langganan, Pengaturan, Tiket Bantuan, Dokumentasi). `*` = kondisional entitlement/fitur. Total 20 item tetap + 2 kondisional.
 
 ### O1. Dashboard Overview
 
@@ -347,19 +356,17 @@
 - **Data**: `listPhotoboxes` (`src/server/photoboxes.ts`), `listOutlets`, `getPlanLimits`, `hasFeature`.
 - **Actions**: `savePhotoboxAction`, `deletePhotoboxAction` (`src/server/booth-actions.ts`).
 - **Komponen**: `PhotoboxesTable`, `PhotoboxForm`, `DeviceDialog`, `DeleteConfirmForm`.
-- **Field**: name, slug, outlet_id, status, exit_pin, `chroma_key_enabled`, `payment_mode` (gateway/voucher), session_settings (`timer_seconds`, `warning_seconds`, `max_retakes`, unlimited), camera_settings, print_settings, `pos_enabled`.
+- **Field**: name, slug, outlet_id, status, `payment_mode` (gateway/voucher), `print_settings.copies`, `print_settings.layout`, `pos_enabled`. Setelan mesin (kamera, printer, sesi, `exit_pin`) milik aplikasi booth: ditolak bila dikirim dari sesi pengguna (`src/lib/photobox-form-fields.ts`), bukan dibuang diam-diam.
 - **DB**: `photoboxes, outlets, devices, activation_codes, member_photoboxes`.
 - **Dampak**: `pos_enabled` → POS per-booth + unique index satu booth POS aktif per bisnis; `payment_mode` → kanal bayar kiosk; `exit_pin_hash` → keluar kiosk.
 - **Sub: Device pairing** (`DeviceDialog`) — `POST /api/v1/business/:id/photoboxes/:id/activation` (generate kode 6 karakter), `GET /api/v1/business/:id/devices`, `DELETE /api/v1/business/:id/devices/[id]` (revoke); server `generateActivation`, `listDevices`, `revokeDevice` (`src/server/devices.ts`).
 
-### O8. Kamera & Cetak (per photobox)
+### O8. Panel cermin perangkat (per photobox)
 
-- **Page**: `/dashboard/photoboxes/[id]/camera` · eyebrow `KAMERA & CETAK — <ROLE>` · guard `photobox:read` (write: `photobox:write`).
-- **Data**: `getPhotoboxCameraConfig`, `updatePhotoboxCameraConfig` (`src/server/photoboxes.ts`).
-- **Actions**: `setPhotoboxMirrorAction` (`src/server/booth-actions.ts`).
-- **Komponen**: `CameraTest` (live preview `getUserMedia`, ambil foto, retake, mirror toggle).
-- **DB**: `photoboxes.camera_settings, print_settings`.
-- **Catatan**: tanpa kontrol kamera USB native — browser camera PWA saja.
+- **Lokasi**: dialog **Perangkat** (`DeviceDialog`) di `/dashboard/photoboxes`, bukan halaman sendiri.
+- **Data**: `listPhotoboxes` (`device_status`, `print_settings`, `last_seen_at`).
+- **Isi**: resolusi kamera, status uji printer, printer aktif, ukuran kertas, waktu laporan terakhir.
+- **Catatan**: read-only. Setelan kamera/printer/sesi diubah dari aplikasi booth, bukan dashboard; belum ada kanal perintah cloud ke runtime, jadi laporan datang lewat heartbeat.
 
 ### O9. Paket
 
@@ -518,6 +525,15 @@
 - **Gate**: `can(role,'payment:confirm')` + `hasFeature('cash_payment')` + `requireEffectiveSubscription('write')` (C3).
 - **DB**: `payments, checkout_sessions, transactions`.
 - **Dampak**: konfirmasi → `settleCashPayment` → transaksi paid + sesi bisa dibuka kiosk.
+
+### O26. Aplikasi Booth (Unduh Installer)
+
+- **Page**: `/dashboard/apps` · guard `photobox:read`. Sidebar grup Operasional, item "Aplikasi Booth".
+- **Data**: `listOwnerReleases`, `getLatestRelease` (`src/server/app-releases.ts`, filter `is_active`), `listPhotoboxes`, `compareAppVersions`/`needsAppUpdate` (`src/lib/app-release.ts`).
+- **Komponen**: `AppDownloadCard` (client, tombol salin SHA-256), tabel versi booth (server).
+- **API**: tidak ada REST route — server component membaca tabel langsung. `app_version` masuk lewat `POST /api/v1/public/devices/report` dan `PATCH /api/v1/public/devices/settings`.
+- **DB**: `app_releases` (baca), `photoboxes.device_status.app_version` (baca). Storage tidak disentuh.
+- **Dampak**: owner tahu versi terbaru + host tautan + booth mana yang tertinggal ("Perlu update"). Tidak ada tombol kirim update — belum ada kanal cloud → runtime.
 
 ---
 
@@ -886,7 +902,7 @@
 
 ---
 
-## 11. API ROUTES (63)
+## 11. API ROUTES (66)
 
 ### Admin (23, `requireAdmin`)
 
@@ -977,7 +993,7 @@
 | `/api/cron/payment-recovery`                                 | GET                                                  |
 | `/api/cron/device-cleanup`                                   | GET                                                  |
 
-**Total: 63 route.**
+**Total: 66 route.**
 
 ## 12. CRON & LIFECYCLE (vercel.json)
 
@@ -995,7 +1011,7 @@
 
 ---
 
-## 13. DATABASE (55 tabel + 31 fungsi)
+## 13. DATABASE (56 tabel + 32 fungsi)
 
 **Identity & Tenant**: `users`, `auth_sessions`, `businesses`, `business_members`, `business_settings`.
 **Billing**: `plans`, `subscriptions`, `invoices`, `add_ons`, `subscription_add_ons`, `subscription_promos`, `subscription_intent_failures`, `lifecycle_emails`, `payment_credentials`.
@@ -1010,7 +1026,7 @@
 **Support & Marketing**: `support_tickets`, `support_ticket_replies`, `broadcast_campaigns`, `broadcast_recipients`.
 **Storage**: `storage_objects`, `storage_usage`.
 
-**Fungsi SQL/RPC (31)**:
+**Fungsi SQL/RPC (32)**:
 `set_updated_at` (trigger) · `activate_device_atomically` · `pos_complete_payment` · `pos_decrement_stock` · `pos_decrement_stock_batch` · `pos_create_order_with_items` · `pos_set_booth_enabled` · `settle_paid_payment_atomically` · `create_voucher_payment_atomically` · `exit_pin_register_failure` · `dashboard_tx_summary` · `dashboard_daily_revenue` · `finance_expense_summary` · `revenue_breakdown` · `tx_insights_summary` · `metrics_tx_status` · `metrics_returning_customers` · `metrics_revenue_per_booth` · `metrics_sessions_per_booth` · `metrics_session_summary` · `metrics_popular_package` · `metrics_popular_template` · `staff_directory_today` · `customer_spending` · `operational_metrics` · `tg_subscription_intent_failures_touch` · `storage_account_add` · `storage_account_sub` · `bootstrap_admin` (promosi eksplisit satu user ke role admin, migration 0052; service_role-only) · **`create_outlet_with_quota` · `create_photobox_with_quota` · `add_business_member_with_quota`** (kuota atomik 0069 — advisory lock per `(business, jenis)`, `SECURITY DEFINER`, `PLAN_LIMIT_REACHED` bila lewat limit).
 
 **Konvensi**: uang integer IDR; RLS + policy `svc_all` service_role di semua tabel publik (0064); semua RPC `revoke` anon/authenticated + `grant` service_role (0065); `search_path` dipin `public, pg_temp` pada seluruh RPC aplikasi (0071 — **ditulis & diuji statis, BELUM di-apply**); migration POS 0073 menambah snapshot setting struk, RPC order/item atomic, dan RPC toggle booth atomic; 0074 menutup race retry pembayaran terhadap decrement stok.
@@ -1035,7 +1051,7 @@
 ### 15.1 Cakupan yang sudah dipetakan
 
 - **Admin**: 15 fitur + lintas-admin (overview, users, businesses, plans, add-ons, promos, subscriptions, pending-review, payments, gateways, templates+categories+builder, support, settings, audit, broadcasts) — 23 route API + 26 server action.
-- **Owner**: 25 modul (dashboard, analytics, metrics, finance, transactions, outlets, photoboxes+camera, packages, templates+builder, vouchers, staff, customers, reports, settings, branding, payment, POS, PWA, subscription, invoice+receipt, support, topbar/workspace, cash notifier).
+- **Owner**: 25 modul (dashboard, analytics, metrics, finance, transactions, outlets, photoboxes, packages, templates+builder, vouchers, staff, customers, reports, settings, branding, payment, POS, PWA, subscription, invoice+receipt, support, topbar/workspace, cash notifier).
 - **Staff**: 8 modul (overview, booth, outlet, package, template, login PIN, cash confirm, POS kasir).
 - **Kiosk**: 16 modul (activation → setup → welcome → guide → package → checkout → template → capture → editor → printing → result, offline queue, lock/PIN, config sync).
 - **POS**: 5 modul (gate, terminal, struk, reports, entitlement).
@@ -1044,8 +1060,8 @@
 - **Auth/Onboarding**: 5 alur (login, register-konsultasi, welcome, create-business, workspace switch).
 - **Pembayaran/Webhook**: 3 provider + invoice aggregator + recovery.
 - **Cron**: 5 job.
-- **API**: 63 route.
-- **DB**: 55 tabel, 31 fungsi.
+- **API**: 66 route.
+- **DB**: 56 tabel, 32 fungsi.
 
 ### 15.2 Temuan (kode = kenyataan)
 
@@ -1090,8 +1106,9 @@
 - Booking & event mode (tabel ada, tanpa page/action).
 - Refund state machine (hanya status `refunded` di enum).
 - ZIP download hasil foto.
-- Session settings owner-configurable UI penuh (sebagian via PhotoboxForm).
-- Print test dari dashboard (ada CameraTest, tanpa print test terpisah).
+- Setelan sesi & kamera dari dashboard: **dipindah permanen** ke aplikasi booth (Phase 8);
+  dashboard hanya menampilkan panel cermin read-only.
+- Print test dari dashboard: dihapus bersama halaman kamera; uji cetak hanya di SetupWizard booth.
 - REST subscription & add-on publik.
 - Topbar global search & notifikasi.
 

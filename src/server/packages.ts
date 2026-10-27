@@ -6,9 +6,11 @@
 import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
+import { planLimitError } from "@/lib/plan-limits";
 import { can, type Permission } from "@/lib/rbac";
 import { getMembership } from "@/lib/tenant";
 import { invalidatePublicConfig } from "@/server/public-config";
+import { requirePlanLimits } from "@/server/plan-limits";
 import {
   packageCreateSchema,
   packageUpdateSchema,
@@ -193,13 +195,28 @@ export async function listPackages(userId: string, businessId: string): Promise<
 export async function createPackage(userId: string, businessId: string, input: PackageCreateInput) {
   const parsed = packageCreateSchema.parse(input);
   await requireMembership(userId, businessId, "package:write");
+
+  const supabase = createServerClient();
+  const [limits, { count }] = await Promise.all([
+    requirePlanLimits(businessId),
+    supabase
+      .from("packages")
+      .select("id", { count: "exact", head: true })
+      .eq("business_id", businessId),
+  ]);
+  if (planLimitError(count ?? 0, limits.max_packages)) {
+    throw new ApiError(
+      "PLAN_LIMIT_REACHED",
+      `Plan Anda dibatasi ${limits.max_packages} paket. Upgrade untuk menambah.`
+    );
+  }
+
   await Promise.all([
     assertIdsOwned(businessId, "templates", parsed.template_ids),
     assertIdsOwned(businessId, "outlets", parsed.outlet_ids),
     assertIdsOwned(businessId, "photoboxes", parsed.photobox_ids),
   ]);
 
-  const supabase = createServerClient();
   const { template_ids, outlet_ids, photobox_ids, ...fields } = parsed;
   const { data, error } = await supabase
     .from("packages")

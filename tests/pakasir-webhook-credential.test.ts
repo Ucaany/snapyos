@@ -181,14 +181,20 @@ test("C2/H2: order non-tenant (aggregator/invoice) → pakai secret global", () 
 // H2 — freshness: tolak webhook di luar jendela (replay / clock skew).
 // ---------------------------------------------------------------------------
 
-test("H2: payment_date dalam jendela → fresh", () => {
+test("H2: payment_date dalam jendela 5 menit → fresh", () => {
+  // Tanpa offset = WIB (+07:00); now 12:00Z = 19:00 WIB.
   const now = new Date("2026-10-08T12:00:00Z");
-  assert.equal(isWebhookEventFresh("2026-10-08 11:00:00", now, parseProviderDateTime), true);
+  assert.equal(isWebhookEventFresh("2026-10-08 18:58:00", now, parseProviderDateTime), true);
+});
+
+test("H2: payment_date 1 jam lalu (di luar jendela 5 menit) → STALE (ditolak)", () => {
+  const now = new Date("2026-10-08T12:00:00Z");
+  assert.equal(isWebhookEventFresh("2026-10-08 18:00:00", now, parseProviderDateTime), false);
 });
 
 test("H2: payment_date terlalu lama (>24 jam) → STALE (ditolak)", () => {
   const now = new Date("2026-10-08T12:00:00Z");
-  assert.equal(isWebhookEventFresh("2026-10-06 11:00:00", now, parseProviderDateTime), false);
+  assert.equal(isWebhookEventFresh("2026-10-06 18:00:00", now, parseProviderDateTime), false);
 });
 
 test("H2: payment_date di masa depan jauh (clock skew) → STALE", () => {

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { PosProductsTable } from "@/components/dashboard/PosProductsTable";
 import { PosBoothsTable } from "@/components/dashboard/PosBoothsTable";
 import { PosReportsPanel } from "@/components/dashboard/PosReportsPanel";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { DateInput } from "@/components/ui/date-input";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";

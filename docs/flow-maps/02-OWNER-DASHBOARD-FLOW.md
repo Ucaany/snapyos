@@ -432,99 +432,91 @@ Delete photobox → deletePhotobox(businessId, photoboxId)
 
 ---
 
-## 7.1 Camera & Printer Settings (per photobox)
+## 7.1 Setelan mesin: milik aplikasi booth
 
-**Page**: `/dashboard/photoboxes/[id]/camera` (atau section di detail photobox)
+**Tidak ada halaman dashboard.** Kamera, printer, dan durasi sesi diatur dari aplikasi booth
+(runtime lokal), bukan dari browser owner. Tidak ada tombol uji kamera jarak jauh: hardware
+hanya bisa diuji di lokasi, dan halaman yang mencoba melakukannya sudah dihapus.
 
-**Server Actions**: `src/server/booth-actions.ts`
+**Yang tetap di dashboard** (form ubah booth):
 
-- `updatePhotoboxSettings` — update camera_settings, print_settings, session_settings
+- `name`, `slug`, `outlet_id`, `status`, `payment_mode`
+- `print_settings.copies` (biaya bahan) dan `print_settings.layout` (bentuk output pelanggan)
 
-**Camera Settings** (`camera_settings` jsonb):
+**Yang ditolak dari sesi pengguna** (`src/lib/photobox-form-fields.ts`): seluruh field kamera,
+printer fisik, sesi, dan `exit_pin`. Bila dikirim lewat form, action mengembalikan error yang
+menyebut field mana, bukan membuangnya diam-diam. Jalur sah satu-satunya adalah device token
+(`PATCH /api/v1/public/devices/settings`).
 
-```json
-{
-  "countdown_seconds": 3,
-  "mirror_preview": true,
-  "fullscreen": true,
-  "facingMode": "environment",
-  "preferred_device_id": null,
-  "capture_width": 1920,
-  "capture_height": 1080,
-  "jpeg_quality": 0.92
-}
-```
+**Panel cermin** (dialog **Perangkat**, `DeviceDialog`):
 
-**Printer Settings** (`print_settings` jsonb):
-
-```json
-{
-  "enabled": true,
-  "paper_size": "4x6",
-  "layout": "single",
-  "orientation": "portrait",
-  "auto_print": true,
-  "copies": 1,
-  "margins_mm": 0
-}
-```
-
-**Session Settings** (`session_settings` jsonb):
-
-```json
-{
-  "timer_seconds": 300,
-  "warning_seconds": 60,
-  "max_retakes": null
-}
-```
-
-**Device Status** (`device_status` jsonb — read-only, diisi device):
-
-```json
-{
-  "camera": { "resolution": "1920x1080", "deviceId": "..." },
-  "printer": { "status": "ok", "last_test_at": "..." },
-  "last_heartbeat": "2026-09-30T10:00:00Z"
-}
-```
-
-**UI**:
-
-- Form settings kamera: countdown, mirror, fullscreen, facingMode, resolusi, kualitas JPEG
-- Form settings printer: enable, ukuran kertas, layout, orientasi, auto-print, copies
-- Form settings session: timer detik, warning detik, max retakes (nullable = unlimited)
-- Device status display (read-only): resolusi kamera, printer status, last heartbeat
-- [ PRINT TEST ] — generate halaman test → cetak di kiosk → owner konfirmasi manual
+- Resolusi kamera dan status uji printer dari `device_status` (laporan setup wizard)
+- Printer aktif (`print_settings.printer_name`) dan ukuran kertas (`paper_size`)
+- "Dilaporkan: <waktu>" dari `last_seen_at`; belum pernah → "Belum pernah dilaporkan"
 - [ ULANGI SETUP ] — revoke device → re-pair → setup wizard jalan lagi
 
-**Data Flow (Update Settings)**:
-
-```
-Owner ubah settings → updatePhotoboxSettings(businessId, photoboxId, { camera_settings, print_settings, session_settings })
-   ↓ composite .eq('id').eq('business_id')
-   ↓ update jsonb columns
-   ↓ revalidate
-```
+Tidak ada tombol "minta booth melapor": belum ada kanal perintah cloud → runtime. Laporan
+datang sendiri lewat heartbeat device.
 
 **Setup Wizard (device-side, tidak ada UI owner)**:
 
 - Berjalan sekali setelah device activation
 - Grant permission kamera → detect kamera → pilih kamera → print test → selesai
 - Customer tidak pernah melihat wizard ini (hidden dari flow customer)
-- Owner hanya melihat hasil di device_status + tombol [ ULANGI SETUP ]
-
-**Validation**: countdown 1–60 detik; timer_seconds >= 60; warning_seconds < timer_seconds; capture resolution valid; paper_size enum; layout enum; orientation enum.
+- Owner hanya melihat hasilnya di panel cermin
 
 **Permission**: OWNER, MANAGER.
 
 **File Locations**:
 
-- Page: `src/app/(dashboard)/dashboard/photoboxes/[id]/camera/page.tsx`
-- Server: `src/server/booth-actions.ts`
-- Components: `src/components/photoboxes/CameraSettings.tsx`, `src/components/photoboxes/PrinterSettings.tsx`, `src/components/photoboxes/SessionSettings.tsx`
+- Server: `src/server/photoboxes.ts`, `src/server/booth-actions.ts`, `src/lib/photobox-form-fields.ts`
+- Components: `src/components/dashboard/PhotoboxForm.tsx`, `src/components/dashboard/DeviceDialog.tsx`
 
-**Acceptance**: owner konfigurasi kamera/printer/session per booth; settings tersimpan dan dipakai kiosk; print test berfungsi.
+**Acceptance**: owner mengatur identitas dan kebijakan bisnis booth; setelan mesin datang dari
+laporan booth; field mesin yang dikirim dari dashboard ditolak.
+
+---
+
+## 7.2 Unduh aplikasi booth (`/dashboard/apps`)
+
+**Page**: `/dashboard/apps` → `src/app/(dashboard)/dashboard/apps/page.tsx`
+
+**Data Flow**:
+
+```
+SSR page → listOwnerReleases()      (app_releases where is_active = true, created_at desc)
+        → listPhotoboxes()          (device_status.app_version per booth)
+   ↓ latest = releases[0]
+   ↓ needsAppUpdate(reported, latest.version) → badge "Perlu update"
+   ↓ render AppDownloadCard + riwayat + tabel versi booth
+```
+
+**Kartu rilis terbaru** (`AppDownloadCard`, client hanya untuk tombol salin):
+
+- Versi, tanggal, ukuran byte (bila admin mengisi), nama file, catatan rilis
+- **Buka tautan unduhan** → `<a target="_blank" rel="noopener noreferrer">` ke host eksternal
+- Host tujuan tertulis (`drive.google.com`), supaya jelas tautan meninggalkan SNAPY OS
+- SHA-256 dalam blok `font-mono` + tombol **Salin hash**, hanya bila admin mengisinya
+
+**Tabel versi per booth**: `name` + `device_status.app_version`; belum pernah melapor →
+"Belum pernah dilaporkan"; versi < rilis terbaru → badge **Perlu update** (`bg-accent`,
+`text-[10px]`).
+
+**Tidak ada** tombol "kirim update ke booth": belum ada kanal perintah cloud → runtime.
+Unduhan dan pemasangan manual di komputer booth.
+
+**States**: belum ada rilis aktif (kartu kosong + penjelasan), belum ada booth (tabel kosong),
+clipboard diblokir ("salin manual"), migration 0081 belum diterapkan (daftar kosong, bukan 500).
+
+**File Locations**:
+
+- Server: `src/server/app-releases.ts` (`listOwnerReleases`, `getLatestRelease`)
+- Lib: `src/lib/app-release.ts` (`compareAppVersions`, `needsAppUpdate`, `hostOf`, format)
+- Components: `src/components/dashboard/AppDownloadCard.tsx`
+- Nav: `src/components/dashboard/nav.ts` (grup Operasional, setelah Unduh PWA)
+
+**Acceptance**: owner menemukan installer versi terbaru, tahu host tujuannya, dan melihat booth
+mana yang tertinggal versi. Tidak ada file installer yang melewati storage SNAPY OS.
 
 ---
 
@@ -1451,27 +1443,24 @@ Delete credential → deletePaymentCredential(businessId, credentialId)
 
 ## 17. Sidebar Navigation
 
-**Items** (14 item):
+**Items** (20 item tetap, 5 grup — `src/components/dashboard/nav.ts`):
 
-1. Dashboard (overview)
-2. Analytics (revenue charts)
-3. Metrics (business metrics)
-4. Outlets
-5. Photoboxes (+ device management)
-6. Packages
-7. Templates (+ builder)
-8. Vouchers
-9. Staff
-10. Customers
-11. Transactions (di Finance)
-12. Finance (expenses, profit)
-13. Subscription (+ add-ons)
-14. Reports (export)
-15. Settings (profile, branding, payment, retention, checkout)
+**Utama**: Dashboard (overview) · Analytics (revenue charts) · Metrics (business metrics)
+
+**Operasional**: Photobox (+ device management) · Branding & Kiosk · Outlets · Templates (+ builder) · Packages · Vouchers · Aplikasi Booth (unduh installer, `/dashboard/apps`)
+
+**Keuangan**: Transactions · Finance (expenses, profit) · Payment Gateway · Reports (export)
+
+**Pelanggan & Tim**: Customers · Staff
+
+**Langganan & Akun**: Subscription (+ add-ons) · Settings (profile, branding, payment, retention, checkout) · Tiket Bantuan · Dokumentasi (keluar ke `/docs`)
 
 **Conditional Items**:
 
 - POS (hanya render jika `hasPosEntitlement()` — lihat `05-POS-TERMINAL-FLOW.md`)
+- Unduh PWA (hanya render jika `hasFeature('pwa_kiosk')`)
+
+**Aplikasi Booth** selalu tampil: isinya tautan installer di host eksternal, bukan fitur berbayar.
 
 **Active State**: `src/lib/nav-active.ts` shared helper.
 

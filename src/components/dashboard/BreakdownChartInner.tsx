@@ -13,6 +13,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { useChartStyle } from "@/components/ui/chart-style";
 import { formatIDR } from "@/lib/dashboard-math";
 
 const chartConfig = {
@@ -26,6 +27,8 @@ function compactIDR(n: number): string {
 }
 
 export function BreakdownChartInner({ data }: { data: { label: string; amount: number }[] }) {
+  const chart = useChartStyle();
+
   return (
     <ChartContainer config={chartConfig} className="aspect-auto h-[320px] w-full">
       <BarChart
@@ -34,13 +37,13 @@ export function BreakdownChartInner({ data }: { data: { label: string; amount: n
         layout="vertical"
         margin={{ top: 8, right: 16, left: 8, bottom: 0 }}
       >
-        <CartesianGrid horizontal={false} stroke="#111111" strokeOpacity={0.15} />
+        <CartesianGrid horizontal={false} stroke={chart.gridStroke} strokeOpacity={chart.gridOpacity} />
         <XAxis
           type="number"
           tickLine={false}
-          axisLine={{ stroke: "#111111", strokeWidth: 2 }}
+          axisLine={chart.axisLine}
           tickFormatter={compactIDR}
-          tick={{ fontSize: 11, fontFamily: "var(--font-mono)" }}
+          tick={{ fontSize: 11, fontFamily: chart.tickFontFamily }}
         />
         <YAxis
           type="category"
@@ -48,10 +51,10 @@ export function BreakdownChartInner({ data }: { data: { label: string; amount: n
           width={120}
           tickLine={false}
           axisLine={false}
-          tick={{ fontSize: 11, fontFamily: "var(--font-mono)" }}
+          tick={{ fontSize: 11, fontFamily: chart.tickFontFamily }}
         />
         <ChartTooltip
-          cursor={{ fill: "#111111", fillOpacity: 0.06 }}
+          cursor={{ fill: chart.cursorFill, fillOpacity: chart.cursorOpacity }}
           content={
             <ChartTooltipContent
               indicator="dot"
@@ -64,9 +67,9 @@ export function BreakdownChartInner({ data }: { data: { label: string; amount: n
         <Bar
           dataKey="amount"
           fill="var(--color-amount)"
-          stroke="#111111"
-          strokeWidth={2}
-          radius={0}
+          stroke={chart.barStroke}
+          strokeWidth={chart.barStrokeWidth}
+          radius={chart.barRadius}
           maxBarSize={24}
         />
       </BarChart>

@@ -50,36 +50,35 @@
 **Customer Photobox App** (public, tanpa login — **v2 pay-first**):
 (Setup device sekali: permission kamera/printer, §5.0.1 doc 05) → Welcome → Package → Checkout → Voucher → QRIS → **PAID** (timer mulai) → Template/Frame → Camera → Capture → Review/Retake → Edit → Finalize → Auto-Print → QR Result → Online Result (unduh GIF + foto berframe)
 
-**Owner Platform** (login, per business):
+**Owner Platform** (login, per business — 20 item nav tetap + 2 kondisional, `src/components/dashboard/nav.ts`):
 
-- Dashboard
-- Photobox
-- Outlets
-- Templates
-- Packages
-- Vouchers
-- Transactions
-- Customers
-- Bookings
-- Finance
-- Reports
-- Staff
-- Subscription
-- Settings
-- Bantuan (Help Center)
+- **Utama**: Dashboard, Analitik, Metrik
+- **Operasional**: Photobox, Branding & Kiosk, Outlet, Template, Paket, Voucher, POS\*, Unduh PWA\*, Aplikasi Booth (`/dashboard/apps`)
+- **Keuangan**: Transaksi, Keuangan, Payment Gateway, Laporan
+- **Pelanggan & Tim**: Pelanggan, Tim
+- **Langganan & Akun**: Langganan, Pengaturan, Tiket Bantuan, Dokumentasi
 
-**Admin Platform** (role admin — 10 item nav, `src/components/admin/AdminSidebar.tsx`):
+`*` = kondisional entitlement/fitur (`pos`, `pwa_kiosk`). "Aplikasi Booth" selalu tampil: isinya tautan installer, bukan fitur berbayar.
+
+**Admin Platform** (role admin — 17 item nav, `src/components/admin/nav.ts`):
 
 - Overview
 - Users
 - Businesses
 - Plans
-- Subscriptions
 - Add-ons
-- Templates & Categories
+- Promos
+- Subscriptions
+- Antrian Aktivasi Manual
 - Payments
-- Withdrawals
+- Gateways
+- Templates & Categories
+- Katalog Aplikasi
+- Tiket Bantuan
 - Platform Settings
+- Audit Log
+- Broadcast Email
+- Buka Dashboard Bisnis (keluar ke shell owner)
 
 ### 3.3.1 Route Separation (single domain)
 

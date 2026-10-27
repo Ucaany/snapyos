@@ -42,6 +42,8 @@ test("default plan starter 1/1", () => {
     max_photoboxes: 1,
     max_concurrent_sessions: 1,
     max_staff: 0,
+    max_packages: 50,
+    max_templates: 20,
   });
 });
 

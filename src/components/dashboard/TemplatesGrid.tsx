@@ -5,7 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { ImageIcon, LayoutTemplate, Pencil, Upload } from "lucide-react";
 
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";

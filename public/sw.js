@@ -1,9 +1,12 @@
 /* SnapyOS Kiosk service worker — installable PWA.
- * Strategi: TIDAK pernah cache HTML navigasi (HTML di-render SSR Next per
- * request; cache HTML lama = hydration mismatch + kiosk basi). Aset statis
- * memakai stale-while-revalidate, BUKAN cache-first. API/payment/storage selalu
- * network-only — SW tidak menyentuh data sensitif. Offline shell kiosk ditangani
- * app (IndexedDB offline-queue), bukan cache HTML SW.
+ * Strategi: halaman lain TIDAK pernah cache HTML navigasi (HTML di-render SSR
+ * Next per request; cache HTML lama = hydration mismatch + dashboard basi).
+ * Pengecualian: navigasi kiosk `/p/*` memakai network-first dengan fallback
+ * HTML terakhir, supaya booth tetap bisa boot saat internet mati — batas
+ * jujurnya, cache itu hanya ada setelah satu kunjungan online yang sukses.
+ *
+ * Aset statis memakai stale-while-revalidate, BUKAN cache-first. API/payment/
+ * storage selalu network-only — SW tidak menyentuh data sensitif.
  *
  * Kenapa stale-while-revalidate: aset di `public/` punya URL STABIL (tidak
  * content-hashed), jadi cache-first membuat penggantian aset apa pun — ikon,
@@ -13,7 +16,10 @@
  * cepat, tetap jalan offline) lalu memperbarui di latar, sehingga perubahan
  * aset terpakai pada muat berikutnya.
  */
-const CACHE = "snapyos-kiosk-v5";
+const CACHE = "snapyos-kiosk-v6";
+/** Cache navigasi dipisah dari cache aset: umur dan aturan pakainya beda. */
+const NAV_CACHE = "snapyos-kiosk-nav-v6";
+const KIOSK_PATH_PREFIX = "/p/";
 const CACHEABLE_DEST = new Set(["image", "font", "style", "script"]);
 
 self.addEventListener("install", (event) => {
@@ -24,7 +30,11 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) =>
+        Promise.all(
+          keys.filter((k) => k !== CACHE && k !== NAV_CACHE).map((k) => caches.delete(k))
+        )
+      )
       .then(() => self.clients.claim())
       .catch(() => undefined)
   );
@@ -45,6 +55,68 @@ function isCacheableStatic(request, url) {
   return true;
 }
 
+/**
+ * Simpan `<script src>` dan `<link rel=stylesheet>` dari HTML kiosk yang baru
+ * di-cache. Tanpa ini HTML offline tampil tanpa CSS dan tanpa JS — halaman
+ * kosong yang terlihat seperti booth rusak.
+ */
+async function cacheHtmlAssets(html, baseUrl) {
+  const urls = new Set();
+  for (const match of html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["']/gi)) urls.add(match[1]);
+  for (const match of html.matchAll(/<link\b[^>]*>/gi)) {
+    if (!/\brel=["']?stylesheet/i.test(match[0])) continue;
+    const href = /\bhref=["']([^"']+)["']/i.exec(match[0]);
+    if (href) urls.add(href[1]);
+  }
+
+  const cache = await caches.open(CACHE);
+  await Promise.all(
+    [...urls].map(async (raw) => {
+      let target;
+      try {
+        target = new URL(raw, baseUrl);
+      } catch {
+        return;
+      }
+      if (target.origin !== self.location.origin) return;
+      if (await cache.match(target.href)) return;
+      try {
+        const response = await fetch(target.href);
+        if (response.ok) await cache.put(target.href, response);
+      } catch {
+        /* satu aset gagal tidak membatalkan sisanya */
+      }
+    })
+  );
+}
+
+/**
+ * Navigasi kiosk: jaringan dulu (HTML selalu segar saat online), HTML terakhir
+ * saat jaringan mati. Aset pendukungnya di-cache setelah respons dikirim, jadi
+ * pelanggan tidak menunggu unduhan CSS/JS.
+ */
+function navigateNetworkFirst(event, request) {
+  return fetch(request)
+    .then((response) => {
+      if (response.ok) {
+        const forCache = response.clone();
+        const forAssets = response.clone();
+        event.waitUntil(
+          (async () => {
+            const cache = await caches.open(NAV_CACHE);
+            await cache.put(request, forCache);
+            await cacheHtmlAssets(await forAssets.text(), request.url);
+          })().catch(() => undefined)
+        );
+      }
+      return response;
+    })
+    .catch(async () => {
+      const cache = await caches.open(NAV_CACHE);
+      return (await cache.match(request)) ?? Response.error();
+    });
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -54,8 +126,13 @@ self.addEventListener("fetch", (event) => {
   if (url.pathname.startsWith("/api/")) return;
   if (url.hostname.includes("supabase")) return;
 
-  // Navigasi HTML: SELALU network (Next SSR), tanpa cache.
-  if (request.mode === "navigate") return;
+  // Navigasi HTML: hanya kiosk `/p/*` yang punya fallback cache. Halaman lain
+  // tetap network murni (Next SSR).
+  if (request.mode === "navigate") {
+    if (!url.pathname.startsWith(KIOSK_PATH_PREFIX)) return;
+    event.respondWith(navigateNetworkFirst(event, request));
+    return;
+  }
 
   if (!isCacheableStatic(request, url)) return;
 

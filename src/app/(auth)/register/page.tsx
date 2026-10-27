@@ -9,7 +9,7 @@ import { destinationForUser } from "@/lib/destination";
 import { getUserMemberships, requireUser } from "@/lib/tenant";
 import { getConsultWhatsApp } from "@/server/consult";
 import { isAdminUser } from "@/server/admin";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { DecorIcon } from "@/components/decor-icon";
 
 export const metadata: Metadata = { title: "Konsultasi Pendaftaran | SnapyOS" };

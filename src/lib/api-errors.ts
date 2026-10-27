@@ -6,6 +6,8 @@
 export const API_ERRORS = {
   UNAUTHORIZED: 401,
   FORBIDDEN: 403,
+  /** Payload setelan memuat field milik cloud (harga, `copies`, `payment_mode`). */
+  FIELD_NOT_DEVICE_OWNED: 403,
   NOT_FOUND: 404,
   VALIDATION_ERROR: 422,
   PLAN_LIMIT_REACHED: 422,

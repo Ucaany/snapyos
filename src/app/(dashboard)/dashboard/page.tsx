@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { DateRangeFilter } from "@/components/dashboard/DateRangeFilter";
 import { MetricCard } from "@/components/dashboard/MetricCard";
+import { StatStrip } from "@/components/dashboard/StatStrip";
 import { RevenueChart } from "@/components/dashboard/RevenueChart";
 import { TxInsightsPanel } from "@/components/dashboard/TxInsightsPanel";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -130,11 +131,10 @@ export default async function DashboardPage({
             </div>
           </div>
 
-          <dl
-            className="grid grid-cols-2 gap-[2px] border-2 border-ink bg-ink shadow-[4px_4px_0_0_#111111] md:grid-cols-4 xl:grid-cols-8"
-            aria-label="Ringkasan metrik"
-          >
-            {[
+          <StatStrip
+            label="Ringkasan metrik"
+            columns={8}
+            items={[
               { label: "Hari Ini", value: formatIDR(summary.revenueToday) },
               { label: "Bulan Ini", value: formatIDR(summary.revenueMonth) },
               { label: "Transaksi Paid", value: String(summary.paidTx) },
@@ -143,17 +143,8 @@ export default async function DashboardPage({
               { label: "Pelanggan", value: String(metrics.customers) },
               { label: "Booth Online", value: String(metrics.activePhotoboxes) },
               { label: "Outlet Aktif", value: String(metrics.activeOutlets) },
-            ].map((cell) => (
-              <div key={cell.label} className="flex flex-col gap-2 bg-surface p-3">
-                <dt className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                  {cell.label}
-                </dt>
-                <dd className="font-mono text-sm font-bold leading-none md:text-base">
-                  {cell.value}
-                </dd>
-              </div>
-            ))}
-          </dl>
+            ]}
+          />
 
           {txInsights && (
             <TxInsightsPanel

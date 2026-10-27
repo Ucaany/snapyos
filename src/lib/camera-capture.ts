@@ -1,5 +1,5 @@
 /**
- * Capture util bersama, dipakai kiosk (CameraCapture) & owner camera-test.
+ * Capture util bersama, dipakai kiosk (CameraCapture).
  * Murni (tanpa DOM-event), unit-testable. docs/05 §5.5.
  */
 

@@ -12,6 +12,8 @@ const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const bridge = join(root, "scripts", "photobooth-bridge.mjs");
 const pngBase64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+const TEST_TOKEN = "test-bridge-token-0123456789";
+const auth = { "x-bridge-token": TEST_TOKEN };
 
 async function freePort(): Promise<number> {
   const server = createServer();
@@ -78,7 +80,7 @@ case "\${1-}" in
     printf '\\377\\330FAKE\\377\\331' > "$output"
     exit "\${FAKE_GPHOTO_CAPTURE_EXIT:-0}"
     ;;
-esac`,
+esac`
   );
   await writeExecutable(
     lpstat,
@@ -86,12 +88,12 @@ esac`,
   -p) printf '%s\\n' 'printer TEST_PHOTO is idle. enabled since today' ;;
   -d) printf '%s\\n' 'system default destination: TEST_PHOTO' ;;
   *) exit 2 ;;
-esac`,
+esac`
   );
   await writeExecutable(
     lp,
     `printf '%s\\n' "$*" >> "$FAKE_LP_LOG"
-printf '%s\\n' 'request id is TEST_PHOTO-1 (1 file(s))'`,
+printf '%s\\n' 'request id is TEST_PHOTO-1 (1 file(s))'`
   );
 
   const bridgeProcess = spawn(process.execPath, [bridge], {
@@ -99,8 +101,10 @@ printf '%s\\n' 'request id is TEST_PHOTO-1 (1 file(s))'`,
     env: {
       ...process.env,
       PHOTOBOOTH_BRIDGE_PORT: String(port),
+      PHOTOBOOTH_BRIDGE_TOKEN: TEST_TOKEN,
       PHOTOBOOTH_BRIDGE_ORIGINS: "http://localhost:3000",
       GPHOTO2_BIN: gphoto,
+      SNAPYOS_DATA_DIR: join(directory, "data"),
       FAKE_GPHOTO_LOG: gphotoLog,
       FAKE_GPHOTO_CAPTURE_EXIT: "1",
       LPSTAT_BIN: lpstat,
@@ -117,30 +121,55 @@ printf '%s\\n' 'request id is TEST_PHOTO-1 (1 file(s))'`,
     const health = await fetch(`${baseUrl}/health`);
     assert.deepEqual(await health.json(), { ok: true, camera: true });
 
-    const preview = await fetch(`${baseUrl}/camera/preview`);
+    // Preflight harus mengizinkan X-Bridge-Token, kalau tidak browser menolak
+    // setiap panggilan perangkat sebelum request-nya terkirim.
+    const preflight = await fetch(`${baseUrl}/camera/capture`, {
+      method: "OPTIONS",
+      headers: {
+        origin: "http://localhost:3000",
+        "access-control-request-method": "POST",
+        "access-control-request-headers": "x-bridge-token,content-type",
+      },
+    });
+    assert.equal(preflight.status, 204);
+    assert.match(
+      String(preflight.headers.get("access-control-allow-headers")).toLowerCase(),
+      /x-bridge-token/
+    );
+    assert.equal(preflight.headers.get("access-control-allow-origin"), "http://localhost:3000");
+
+    const status = await fetch(`${baseUrl}/v1/status`, { headers: auth });
+    assert.equal(status.status, 200);
+    const statusBody = await status.json();
+    assert.equal(statusBody.ok, true);
+    assert.equal(statusBody.camera.adapter, "gphoto2");
+    assert.equal(statusBody.camera.connected, true);
+    assert.equal(statusBody.camera.mock, false);
+    assert.equal(statusBody.printer.adapter, "cups");
+    assert.equal(statusBody.printer.ok, true);
+    assert.equal(typeof statusBody.version, "string");
+    // Store lokal dibuka saat start; versi skema nyata, bukan 0.
+    assert.ok(Number(statusBody.db_version) >= 1);
+    assert.equal(statusBody.business_slug, null);
+
+    const preview = await fetch(`${baseUrl}/camera/preview`, { headers: auth });
     assert.equal(preview.status, 200);
     assert.equal(preview.headers.get("content-type"), "image/jpeg");
 
     const firstCapture = await fetch(`${baseUrl}/camera/capture`, {
       method: "POST",
-      headers: { origin: "http://localhost:3000" },
+      headers: { origin: "http://localhost:3000", ...auth },
     });
     assert.equal(firstCapture.status, 200);
     assert.equal(firstCapture.headers.get("content-type"), "image/jpeg");
-    assert.deepEqual(Array.from(new Uint8Array(await firstCapture.arrayBuffer())), [
-      255,
-      216,
-      70,
-      65,
-      75,
-      69,
-      255,
-      217,
-    ]);
+    assert.deepEqual(
+      Array.from(new Uint8Array(await firstCapture.arrayBuffer())),
+      [255, 216, 70, 65, 75, 69, 255, 217]
+    );
 
     const secondCapture = await fetch(`${baseUrl}/camera/capture`, {
       method: "POST",
-      headers: { origin: "http://localhost:3000" },
+      headers: { origin: "http://localhost:3000", ...auth },
     });
     assert.equal(secondCapture.status, 200);
     const gphotoCalls = (await readFile(gphotoLog, "utf8"))
@@ -153,6 +182,7 @@ printf '%s\\n' 'request id is TEST_PHOTO-1 (1 file(s))'`,
       headers: {
         origin: "http://localhost:3000",
         "content-type": "application/json",
+        ...auth,
       },
       body: JSON.stringify({
         paper_size: "4x6",
@@ -168,7 +198,7 @@ printf '%s\\n' 'request id is TEST_PHOTO-1 (1 file(s))'`,
     assert.match(lpArgs, /fit-to-page/);
     assert.match(lpArgs, /-n 1/);
 
-    const printer = await fetch(`${baseUrl}/printer/health?printer=TEST_PHOTO`);
+    const printer = await fetch(`${baseUrl}/printer/health?printer=TEST_PHOTO`, { headers: auth });
     assert.equal(printer.status, 200);
     assert.equal((await printer.json()).ok, true);
 
@@ -176,8 +206,88 @@ printf '%s\\n' 'request id is TEST_PHOTO-1 (1 file(s))'`,
       headers: { origin: "https://attacker.invalid" },
     });
     assert.equal(forbidden.status, 403);
+
+    // Tanpa token (mis. curl / proses lokal lain) rute perangkat ditolak.
+    const noToken = await fetch(`${baseUrl}/camera/capture`, { method: "POST" });
+    assert.equal(noToken.status, 401);
+    const wrongToken = await fetch(`${baseUrl}/print`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-bridge-token": "salah" },
+      body: JSON.stringify({ sheets: [[pngBase64]] }),
+    });
+    assert.equal(wrongToken.status, 401);
+    // /health tetap terbuka untuk Setup Perangkat sebelum token diisi.
+    assert.equal((await fetch(`${baseUrl}/health`)).status, 200);
   } finally {
     await stop(bridgeProcess);
     await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("bridge menolak start tanpa PHOTOBOOTH_BRIDGE_TOKEN", async () => {
+  const port = await freePort();
+  const bridgeProcess = spawn(process.execPath, [bridge], {
+    cwd: root,
+    env: {
+      ...process.env,
+      PHOTOBOOTH_BRIDGE_PORT: String(port),
+      PHOTOBOOTH_BRIDGE_TOKEN: "",
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const [code] = (await once(bridgeProcess, "exit")) as [number | null];
+  assert.equal(code, 1);
+});
+
+test("bridge menolak adapter mock di produksi tanpa SNAPYOS_ALLOW_MOCK", async () => {
+  const port = await freePort();
+  const bridgeProcess = spawn(process.execPath, [bridge], {
+    cwd: root,
+    env: {
+      ...process.env,
+      PHOTOBOOTH_BRIDGE_PORT: String(port),
+      PHOTOBOOTH_BRIDGE_TOKEN: TEST_TOKEN,
+      NODE_ENV: "production",
+      SNAPYOS_CAMERA: "mock",
+      SNAPYOS_ALLOW_MOCK: "",
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const [code] = (await once(bridgeProcess, "exit")) as [number | null];
+  assert.equal(code, 1);
+});
+
+test("adapter mock melayani /v1/status dan capture tanpa hardware", async () => {
+  const port = await freePort();
+  const bridgeProcess = spawn(process.execPath, [bridge], {
+    cwd: root,
+    env: {
+      ...process.env,
+      PHOTOBOOTH_BRIDGE_PORT: String(port),
+      PHOTOBOOTH_BRIDGE_TOKEN: TEST_TOKEN,
+      SNAPYOS_CAMERA: "mock",
+      SNAPYOS_PRINTER: "mock",
+      SNAPYOS_ALLOW_MOCK: "1",
+      SNAPYOS_DATA_DIR: join(tmpdir(), "snapyos-bridge-mock"),
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  try {
+    const baseUrl = `http://127.0.0.1:${port}`;
+    await waitForHealth(baseUrl);
+
+    const status = await (await fetch(`${baseUrl}/v1/status`, { headers: auth })).json();
+    assert.equal(status.camera.mock, true);
+    assert.equal(status.printer.mock, true);
+
+    const capture = await fetch(`${baseUrl}/camera/capture`, { method: "POST", headers: auth });
+    assert.equal(capture.status, 200);
+    const body = Buffer.from(await capture.arrayBuffer());
+    assert.equal(body[0], 0xff);
+    assert.equal(body[1], 0xd8);
+    assert.equal(body[body.length - 1], 0xd9);
+  } finally {
+    await stop(bridgeProcess);
   }
 });

@@ -228,11 +228,58 @@ export async function createSession(businessSlug: string, input: SessionCreateIn
     throw new ApiError("VALIDATION_ERROR", "checkout_session_id atau package_id wajib diisi");
   }
 
+  const now = new Date();
+
+  // Waktu jual menurut booth. Sync worker runtime lokal mengirim
+  // `client_created_at` supaya laporan harian owner mencatat transaksi pada
+  // waktu pelanggan difoto, bukan waktu reconnect. Jalur checkout berbayar
+  // tidak memakainya — di sana `paid_at` yang menentukan.
+  const soldAt =
+    !parsed.checkout_session_id && parsed.client_created_at
+      ? new Date(parsed.client_created_at)
+      : now;
+
+  // Dedupe sync offline, SEBELUM cek kapasitas: booth mengulang `POST sessions`
+  // bila respons hilang setelah commit (jaringan putus di tengah jawaban).
+  // Tanpa ini satu sesi lokal menjadi dua sesi cloud + dua transaksi offline,
+  // dan percobaan ulangnya sendiri ditolak SESSION_LIMIT_REACHED karena sesi
+  // pertamanya masih aktif. Kuncinya = waktu jual, yang dikirim worker dari
+  // `sessions.client_created_at` booth.
+  if (!parsed.checkout_session_id && parsed.client_created_at) {
+    const { data: replay } = await supabase
+      .from("sessions")
+      .select("id, expires_at, checkout_sessions ( id, result_token )")
+      .eq("business_id", businessId)
+      .eq("photobox_id", photobox.id)
+      .eq("started_at", soldAt.toISOString())
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    const replayRow = (replay ?? null) as unknown as {
+      id: string;
+      expires_at: string | null;
+      checkout_sessions:
+        | { id: string; result_token: string | null }
+        | { id: string; result_token: string | null }[]
+        | null;
+    } | null;
+    if (replayRow) {
+      const checkout = Array.isArray(replayRow.checkout_sessions)
+        ? replayRow.checkout_sessions[0]
+        : replayRow.checkout_sessions;
+      return {
+        session_id: replayRow.id,
+        expires_at: replayRow.expires_at,
+        checkout_session_id: checkout?.id ?? "",
+        result_token: checkout?.result_token ?? null,
+        replay: true,
+      };
+    }
+  }
+
   // Limit sesi konkuren (docs/02 §2.3) — helper bersama dengan pre-payment check
   // (createCheckout/createPayment) agar aturan tidak drift.
   await assertSessionCapacity(businessId, photobox.id);
-
-  const now = new Date();
 
   const timerSeconds = (photobox.session_settings as { timer_seconds?: number } | null)
     ?.timer_seconds;
@@ -299,8 +346,11 @@ export async function createSession(businessSlug: string, input: SessionCreateIn
       photobox_id: photobox.id,
       package_id: packageId,
       status: "active",
-      started_at: now.toISOString(),
+      started_at: soldAt.toISOString(),
       expires_at: expiresAt,
+      // Waktu jual dari booth (sync offline). `expires_at` tetap dari `now`:
+      // sesi yang baru tiba lewat sync harus masih bisa difinalisasi.
+      ...(parsed.client_created_at ? { created_at: soldAt.toISOString() } : {}),
     })
     .select("id, expires_at, status")
     .single();
@@ -334,6 +384,9 @@ export async function createSession(businessSlug: string, input: SessionCreateIn
       .eq("id", businessId)
       .maybeSingle();
     const tz = (biz as { timezone?: string } | null)?.timezone ?? "Asia/Jakarta";
+    // Tanggal + waktu transaksi mengikuti waktu jual booth: laporan harian
+    // memakai `created_at`, jadi penjualan semalam tidak boleh menumpuk di
+    // hari reconnect.
     const { error: txError } = await supabase.from("transactions").insert({
       business_id: businessId,
       outlet_id: photobox.outlet_id,
@@ -346,8 +399,9 @@ export async function createSession(businessSlug: string, input: SessionCreateIn
       discount_amount: 0,
       final_amount: packagePrice,
       status: "paid",
-      number: formatTxNumber(todayISO(tz), randomUUID().replace(/-/g, "").slice(0, 6)),
-      paid_at: now.toISOString(),
+      number: formatTxNumber(todayISO(tz, soldAt), randomUUID().replace(/-/g, "").slice(0, 6)),
+      paid_at: soldAt.toISOString(),
+      ...(parsed.client_created_at ? { created_at: soldAt.toISOString() } : {}),
     });
     if (txError) throw new ApiError("INTERNAL", "Gagal mencatat transaksi offline");
   }

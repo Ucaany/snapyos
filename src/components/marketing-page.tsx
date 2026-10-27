@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Header } from "@/components/header";
 import { SiteFooter } from "@/components/site-footer";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 
 export function MarketingPage({
   eyebrow,
