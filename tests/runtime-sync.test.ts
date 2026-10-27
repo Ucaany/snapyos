@@ -393,3 +393,63 @@ test("merge mempertahankan copies milik cloud saat device mengirim paper_size", 
   assert.equal(print.printer_name, "Booth", "field device menang");
   assert.equal(merged.payment_mode, "gateway", "field di luar grup tidak tersentuh");
 });
+
+test("appearance_settings tidak pernah ikut PATCH ke cloud", async () => {
+  const fixture = makeFixture();
+  try {
+    // Booth mengkustomisasi tampilannya sendiri.
+    setMeta(fixture.db, "photobox_slug", PHOTOBOX_SLUG);
+    fixture.db
+      .prepare(
+        `insert into device_settings (key, value_json, updated_at)
+         values (?, ?, ?)
+         on conflict (key) do update set value_json = excluded.value_json`
+      )
+      .run(
+        "appearance_settings",
+        JSON.stringify({ bg_color: "#101820", padding: 40 }),
+        new Date(fixture.clock.value).toISOString()
+      );
+    fixture.db
+      .prepare(
+        `insert into device_settings (key, value_json, updated_at)
+         values (?, ?, ?)
+         on conflict (key) do update set value_json = excluded.value_json`
+      )
+      .run(
+        "print_settings",
+        JSON.stringify({ paper_size: "A6", printer_name: "DNP QW410" }),
+        new Date(fixture.clock.value).toISOString()
+      );
+
+    const { impl, calls } = fakeFetch(({ url, method }) => {
+      if (url.endsWith("/devices/settings") && method === "PATCH") {
+        return { status: 200, body: { data: { ok: true } } };
+      }
+      return { status: 200, body: { data: {} } };
+    });
+    fixture.ctx.fetchImpl = impl;
+
+    await runSyncOnce(fixture.ctx);
+
+    const patch = calls.find(
+      (c) => c.method === "PATCH" && c.url.endsWith("/devices/settings")
+    );
+    assert.ok(patch, "worker harus melaporkan setelan mesin ke cloud");
+
+    const sent = JSON.parse(String(patch.body)) as {
+      settings: Record<string, unknown>;
+    };
+    // Setelan mesin ikut — dashboard owner butuh nilai ini.
+    assert.ok(sent.settings.print_settings, "print_settings harus ikut");
+    // Kustomisasi tampilan TIDAK ikut: kalau ikut, satu booth akan menimpa
+    // baris photoboxes yang dibaca seluruh booth di business yang sama.
+    assert.equal(
+      sent.settings.appearance_settings,
+      undefined,
+      "appearance_settings tidak boleh naik ke cloud"
+    );
+  } finally {
+    cleanup(fixture);
+  }
+});

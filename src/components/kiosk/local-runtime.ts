@@ -104,6 +104,61 @@ export async function fetchDeviceSettings(
 }
 
 /**
+ * Simpan setelan booth ke runtime lokal (`PUT /v1/settings`).
+ *
+ * Ini satu-satunya jalur tulis setelan mesin. Dashboard sengaja menolak field
+ * mesin (`src/lib/photobox-form-fields.ts`), jadi tanpa fungsi ini tidak ada
+ * cara sah mengubah kamera/printer/sesi/tampilan dari dalam booth.
+ *
+ * Berbeda dari `bridgeGet`, kegagalan dilempar: panel setelan harus bisa
+ * membedakan "runtime mati" dari "nilai ditolak" dan menampilkan sebabnya.
+ */
+export async function saveDeviceSettings(
+  settings: DeviceSettings,
+  bridgeUrl?: string | null
+): Promise<DeviceSettings> {
+  const token = getBridgeToken();
+  if (!token) {
+    throw new KioskError("NO_BRIDGE", "Runtime lokal booth tidak aktif. Setelan tidak disimpan.");
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const response = await fetch(
+      `${cameraBridgeUrl({ bridge_url: bridgeUrl ?? undefined })}/v1/settings`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "X-Bridge-Token": token },
+        body: JSON.stringify(settings),
+        signal: controller.signal,
+      }
+    );
+    const payload = (await response.json().catch(() => null)) as {
+      ok?: boolean;
+      error?: string;
+      message?: string;
+      settings?: DeviceSettings;
+    } | null;
+    if (!response.ok) {
+      // 403 FIELD_NOT_DEVICE_OWNED = panel mencoba menulis field milik cloud
+      // (copies, layout, harga). Itu bug panel, bukan salah operator — pesannya
+      // menyebut field agar langsung terlihat.
+      throw new KioskError(
+        payload?.error ?? "SETTINGS_REJECTED",
+        payload?.message ?? "Runtime lokal menolak setelan."
+      );
+    }
+    return payload?.settings ?? {};
+  } catch (error) {
+    if (error instanceof KioskError) throw error;
+    throw new KioskError("NO_BRIDGE", "Runtime lokal booth tidak menjawab. Setelan tidak disimpan.");
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
  * Identitas booth menurut runtime lokal (`GET /v1/status`). Dipakai saat boot
  * offline: runtime di port 17777 harus memastikan dirinya booth ini, kalau
  * tidak dua booth di jaringan yang sama bisa saling tertukar.

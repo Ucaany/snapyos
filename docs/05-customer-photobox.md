@@ -160,7 +160,11 @@ Konfigurasi kiosk (`branding.kiosk`) mencakup:
 - **Tutorial custom** (`guide_steps`): langkah ditampilkan sebelum pemilihan paket, dapat ditambah/dihapus/diurutkan (max 8). Kosong = dilewati.
 - **Video promo** (`video_key` global + `pages.*.video_key` per-layar): looping muted; layar kamera awal bisa menampilkan video attract di latar panel preview.
 - **Kontrol interaksi**: `show_mirror_toggle` (tampilkan tombol mirror di layar kamera) dan `allow_zoom_pan` (izinkan customer zoom/pan foto di editor).
-- **Override per-booth**: pilih booth di dashboard → simpan snapshot config sendiri, atau reset ke inherit global.
+- **Override per-booth**: dua lapis, dan urutannya menentukan pemenang.
+  1. **Website** (`/dashboard/branding`) menyimpan snapshot override di `photoboxes.branding` — dipakai saat booth belum dikustomisasi di mesin.
+  2. **Aplikasi booth** (panel **Setelan booth** → grup `appearance_settings`) menyimpan kustomisasi di store lokal mesin. Nilai ini menang atas branding cloud, dan **tidak** dikirim ke cloud supaya tidak menimpa booth lain.
+
+  Kiosk me-merge keduanya lewat `src/lib/appearance-merge.ts`: identitas brand (logo, `primary_color`, `secondary_color`, `video_url`) selalu dari cloud; warna/teks/tata letak boleh ditimpa booth. Runtime mati → branding cloud dipakai apa adanya.
 
 ---
 

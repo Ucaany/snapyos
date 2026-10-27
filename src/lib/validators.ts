@@ -402,6 +402,74 @@ export const sessionSettingsSchema = z
     { message: "Peringatan harus lebih singkat dari durasi sesi", path: ["warning_seconds"] }
   );
 
+/**
+ * Kustomisasi tampilan booth — milik DEVICE, bukan cloud.
+ *
+ * Booth punya layar, ukuran, dan sudut pandang sendiri; teks dan warna yang
+ * terbaca di satu booth belum tentu terbaca di booth lain. Karena itu
+ * kustomisasi disimpan di mesin booth (`PUT /v1/settings`) dan menang atas
+ * `business_settings.branding` milik cloud.
+ *
+ * Yang tetap milik cloud: identitas brand (nama bisnis, logo, warna brand
+ * primary/secondary), aset video (storage key), harga, paket, dan payment
+ * gateway. Semua itu "informasi" yang harus sama di seluruh booth.
+ *
+ * `video_key` sengaja TIDAK ada di sini: video adalah objek storage milik
+ * cloud, bukan nilai yang bisa dikarang mesin.
+ */
+const appearancePageSchema = z.object({
+  bg_color: hexColor.optional(),
+  text_color: hexColor.optional(),
+  font_scale: z.number().min(0.8).max(1.4).optional(),
+  button_radius: z.number().int().min(0).max(24).optional(),
+  padding: z.number().int().min(0).max(96).optional(),
+  align: z.enum(PAGE_ALIGNS).optional(),
+});
+
+export const appearanceSettingsSchema = z.object({
+  bg_color: hexColor.optional(),
+  text_color: hexColor.optional(),
+  font_family: z.enum(["display", "sans", "mono"]).optional(),
+  font_scale: z.number().min(0.8).max(1.4).optional(),
+  button_radius: z.number().int().min(0).max(24).optional(),
+  padding: z.number().int().min(0).max(96).optional(),
+  align: z.enum(PAGE_ALIGNS).optional(),
+  welcome_layout: z.enum(WELCOME_LAYOUTS).optional(),
+  result_layout: z.enum(RESULT_LAYOUTS).optional(),
+  welcome_title: z.string().trim().max(120).optional(),
+  welcome_tagline: z.string().trim().max(200).optional(),
+  welcome_button: z.string().trim().min(1).max(24).optional(),
+  payment_title: z.string().trim().max(80).optional(),
+  payment_hint: z.string().trim().max(160).optional(),
+  capture_title: z.string().trim().max(80).optional(),
+  capture_hint: z.string().trim().max(160).optional(),
+  editor_title: z.string().trim().max(80).optional(),
+  editor_hint: z.string().trim().max(160).optional(),
+  result_title: z.string().trim().max(80).optional(),
+  result_hint: z.string().trim().max(160).optional(),
+  guide_title: z.string().trim().max(80).optional(),
+  guide_button: z.string().trim().min(1).max(24).optional(),
+  package_title: z.string().trim().max(80).optional(),
+  template_title: z.string().trim().max(80).optional(),
+  show_logo: z.boolean().optional(),
+  show_tagline: z.boolean().optional(),
+  show_mirror_toggle: z.boolean().optional(),
+  allow_zoom_pan: z.boolean().optional(),
+  guide_steps: z.array(z.string().trim().min(1).max(160)).max(8).optional(),
+  pages: z
+    .object({
+      welcome: appearancePageSchema.optional(),
+      guide: appearancePageSchema.optional(),
+      package: appearancePageSchema.optional(),
+      payment: appearancePageSchema.optional(),
+      template: appearancePageSchema.optional(),
+      capture: appearancePageSchema.optional(),
+      edit: appearancePageSchema.optional(),
+      result: appearancePageSchema.optional(),
+    })
+    .optional(),
+});
+
 // ---------------------------------------------------------------------------
 // Kepemilikan setelan: cloud (uang) vs device (mesin).
 //
@@ -414,8 +482,30 @@ export const DEVICE_SETTING_GROUPS = [
   "camera_settings",
   "print_settings",
   "session_settings",
+  "appearance_settings",
 ] as const;
 export type DeviceSettingGroup = (typeof DEVICE_SETTING_GROUPS)[number];
+
+/**
+ * Grup yang ikut disinkronkan ke cloud (`PATCH .../devices/settings`).
+ *
+ * `appearance_settings` sengaja TIDAK di sini: kustomisasi tampilan berlaku
+ * untuk satu booth dan tidak boleh menular ke booth lain lewat baris
+ * `photoboxes`. Cloud menolak grup ini dengan `LOCAL_ONLY_SETTING`, bukan
+ * membuangnya diam-diam.
+ */
+export const CLOUD_SYNCED_DEVICE_GROUPS = [
+  "camera_settings",
+  "print_settings",
+  "session_settings",
+] as const;
+
+/** Grup yang hanya hidup di mesin booth. */
+export const LOCAL_ONLY_DEVICE_GROUPS = ["appearance_settings"] as const;
+
+export function isLocalOnlySettingGroup(key: string): boolean {
+  return (LOCAL_ONLY_DEVICE_GROUPS as readonly string[]).includes(key);
+}
 
 /** Field milik cloud yang berada di dalam grup milik device. */
 export const CLOUD_OWNED_SETTING_FIELDS: Record<DeviceSettingGroup, readonly string[]> = {
@@ -423,6 +513,7 @@ export const CLOUD_OWNED_SETTING_FIELDS: Record<DeviceSettingGroup, readonly str
   // copies = biaya bahan, layout = bentuk output pelanggan.
   print_settings: ["copies", "layout"],
   session_settings: [],
+  appearance_settings: [],
 };
 
 /** Setelan yang boleh ditulis device. `strict()`: kunci asing ditolak. */
@@ -431,6 +522,7 @@ export const deviceSettingsSchema = z
     camera_settings: cameraSettingsSchema.optional(),
     print_settings: printSettingsSchema.optional(),
     session_settings: sessionSettingsSchema.optional(),
+    appearance_settings: appearanceSettingsSchema.optional(),
   })
   .strict();
 
@@ -440,6 +532,7 @@ const DEVICE_SETTING_SHAPES: Record<DeviceSettingGroup, Record<string, unknown>>
   camera_settings: cameraSettingsSchema.shape,
   print_settings: printSettingsSchema.shape,
   session_settings: sessionSettingsSchema.shape,
+  appearance_settings: appearanceSettingsSchema.shape,
 };
 
 export function isDeviceSettingGroup(key: string): key is DeviceSettingGroup {
@@ -451,6 +544,18 @@ export function deviceSettingFields(group: DeviceSettingGroup): string[] {
   return Object.keys(DEVICE_SETTING_SHAPES[group]).filter(
     (key) => !CLOUD_OWNED_SETTING_FIELDS[group].includes(key)
   );
+}
+
+/**
+ * Grup setelan yang HANYA boleh ditulis ke runtime lokal, tidak ke cloud.
+ *
+ * `appearance_settings` = kustomisasi tampilan satu booth. Kalau grup ini
+ * diterima `PATCH /api/v1/public/devices/settings`, satu booth yang mengganti
+ * warna latar akan menulis ke baris `photoboxes` yang dibaca semua booth.
+ * Pemanggil menjawab 403 `LOCAL_ONLY_SETTING`, bukan membuangnya diam-diam.
+ */
+export function localOnlySettingKeys(payload: Record<string, unknown>): string[] {
+  return Object.keys(payload).filter((key) => isLocalOnlySettingGroup(key));
 }
 
 /**
@@ -699,10 +804,6 @@ export const voucherCreateSchema = voucherBaseSchema
   .refine((v) => v.type !== "percentage" || v.amount <= 100, {
     message: "Diskon persen maksimal 100",
     path: ["amount"],
-  })
-  .refine((v) => !v.max_discount || !v.min_transaction || v.min_transaction <= v.max_discount, {
-    message: "min_transaction tidak boleh melebihi max_discount",
-    path: ["min_transaction"],
   });
 
 // zod v4: .partial() hanya pada object schema — jangan partial hasil refine.
@@ -715,15 +816,7 @@ export const voucherUpdateSchema = voucherBaseSchema
   .refine((v) => v.type !== "percentage" || v.amount === undefined || v.amount <= 100, {
     message: "Diskon persen maksimal 100",
     path: ["amount"],
-  })
-  .refine(
-    (v) =>
-      !v.max_discount ||
-      !v.min_transaction ||
-      v.min_transaction === undefined ||
-      v.min_transaction <= v.max_discount,
-    { message: "min_transaction tidak boleh melebihi max_discount", path: ["min_transaction"] }
-  );
+  });
 
 /**
  * Invariant diskon yang bergantung pada type: persentase maksimal 100.
@@ -776,12 +869,9 @@ export function voucherInvariantError(
   if (
     merged.max_discount !== null &&
     merged.max_discount !== undefined &&
-    merged.min_transaction > merged.max_discount
+    merged.max_discount < 0
   ) {
-    issues.push({
-      path: ["min_transaction"],
-      message: "min_transaction tidak boleh melebihi max_discount",
-    });
+    issues.push({ path: ["max_discount"], message: "Maksimum diskon minimal 0" });
   }
 
   return issues;

@@ -7,7 +7,20 @@
  * berarti `device` null dan cloud dipakai apa adanya.
  */
 
-export const DEVICE_GROUPS = ["camera_settings", "print_settings", "session_settings"] as const;
+/**
+ * Grup setelan yang hidup di mesin booth.
+ *
+ * `appearance_settings` ikut di sini karena kustomisasi tampilan disimpan
+ * bersama setelan mesin lain di store lokal runtime (`PUT /v1/settings`) dan
+ * menang atas branding cloud. Grup ini TIDAK ikut naik ke cloud — lihat
+ * `LOCAL_ONLY_DEVICE_GROUPS` di `src/lib/validators.ts`.
+ */
+export const DEVICE_GROUPS = [
+  "camera_settings",
+  "print_settings",
+  "session_settings",
+  "appearance_settings",
+] as const;
 export type DeviceGroup = (typeof DEVICE_GROUPS)[number];
 
 export type DeviceSettings = Partial<Record<DeviceGroup, Record<string, unknown>>>;
@@ -17,6 +30,7 @@ const CLOUD_OWNED: Record<DeviceGroup, readonly string[]> = {
   camera_settings: [],
   print_settings: ["copies", "layout"],
   session_settings: [],
+  appearance_settings: [],
 };
 
 /**
