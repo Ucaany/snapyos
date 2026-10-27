@@ -267,7 +267,7 @@ export function FramePreviewPanel({
       >
         {"PREVIEW FRAME"}
       </p>
-      <div className="relative mx-auto w-fit max-w-full border-2 border-ink bg-ink shadow-[4px_4px_0_0_#111111]">
+      <div className="relative mx-auto w-fit max-w-full border-2 border-ink bg-ink shadow-hard">
         <canvas
           ref={canvasRef}
           className="block h-auto max-h-[30vh] w-auto max-w-full object-contain lg:max-h-[36vh]"

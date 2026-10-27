@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Delete, Loader2, LockKeyhole } from "lucide-react";
+import { Delete, LockKeyhole } from "lucide-react";
 import { apiPost } from "@/components/kiosk/api";
 import { submitExit } from "@/components/kiosk/exit-fallback";
 import { submitLocalExit } from "@/components/kiosk/local-runtime";
@@ -44,7 +44,7 @@ const COPY = {
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
 
 const keyBtn =
-  "min-h-14 border-2 border-ink bg-bg font-display text-xl font-bold uppercase tracking-tight shadow-[3px_3px_0_0_#111111] transition-transform duration-150 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-50";
+  "min-h-14 border-2 border-ink bg-bg font-display text-xl font-bold uppercase tracking-tight shadow-hard-sm transition-transform duration-150 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-50";
 
 /**
  * Dialog PIN keluar kiosk — petugas memasukkan PIN (diatur owner di dashboard
@@ -166,7 +166,7 @@ export function ExitPinDialog({
       <div
         ref={dialogRef}
         tabIndex={-1}
-        className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[400px] flex-col gap-4 overflow-y-auto border-2 border-ink bg-bg p-4 shadow-[6px_6px_0_0_#111111] outline-none sm:max-h-[calc(100dvh-2rem)] sm:p-5 md:p-6"
+        className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[400px] flex-col gap-4 overflow-y-auto border-2 border-ink bg-bg p-4 shadow-hard focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ink sm:max-h-[calc(100dvh-2rem)] sm:p-5 md:p-6"
       >
         <div className="flex items-center gap-3">
           <LockKeyhole className="size-6 shrink-0" aria-hidden />
@@ -193,7 +193,7 @@ export function ExitPinDialog({
             <button
               type="button"
               onClick={onCancel}
-              className="min-h-12 self-center border-2 border-ink bg-surface px-5 py-2 font-mono text-xs font-bold uppercase tracking-[0.1em] shadow-[3px_3px_0_0_#111111] transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+              className="min-h-12 self-center border-2 border-ink bg-surface px-5 py-2 font-mono text-xs font-bold uppercase tracking-[0.1em] shadow-hard-sm transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
             >
               Kembali
             </button>
@@ -246,13 +246,9 @@ export function ExitPinDialog({
                 type="button"
                 onClick={() => void submit(pin)}
                 disabled={busy || pin.length < 4}
-                className="min-h-14 border-2 border-ink bg-accent font-display text-base font-bold uppercase tracking-[-0.01em] shadow-[3px_3px_0_0_#111111] transition-transform active:translate-y-[2px] active:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-50"
+                className="min-h-14 border-2 border-ink bg-accent font-display text-base font-bold uppercase tracking-[-0.01em] shadow-hard-sm transition-transform active:translate-y-[2px] active:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-50"
               >
-                {busy ? (
-                  <Loader2 className="mx-auto size-5 animate-spin" aria-hidden />
-                ) : (
-                  copy.submit
-                )}
+                {busy ? "Memverifikasi" : copy.submit}
               </button>
             </div>
 
@@ -264,7 +260,7 @@ export function ExitPinDialog({
               type="button"
               onClick={onCancel}
               disabled={busy}
-              className="min-h-12 self-center border-2 border-ink bg-surface px-5 py-2 font-mono text-xs font-bold uppercase tracking-[0.1em] shadow-[3px_3px_0_0_#111111] transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-50"
+              className="min-h-12 self-center border-2 border-ink bg-surface px-5 py-2 font-mono text-xs font-bold uppercase tracking-[0.1em] shadow-hard-sm transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-50"
             >
               {copy.cancel}
             </button>

@@ -24,9 +24,10 @@
  */
 
 import { useCallback, useState } from "react";
-import { Loader2, Save, SlidersHorizontal, TriangleAlert } from "lucide-react";
+import { Save, SlidersHorizontal, TriangleAlert } from "lucide-react";
 import { KioskError } from "@/components/kiosk/api";
 import { saveDeviceSettings } from "@/components/kiosk/local-runtime";
+import { KIOSK_FIELD } from "@/components/kiosk/ui";
 import type { DeviceSettings } from "@/lib/settings-merge";
 import { APPEARANCE_PAGES, type AppearanceSettings } from "@/lib/appearance-merge";
 import {
@@ -155,8 +156,7 @@ function toDraft(settings: DeviceSettings | null): Draft {
 
 const sectionClass = "flex flex-col gap-3 border-2 border-ink bg-surface p-4 md:p-5";
 const labelClass = "font-mono text-[10px] font-bold uppercase tracking-[0.16em]";
-const inputClass =
-  "min-h-11 w-full border-2 border-ink bg-bg px-3 font-mono text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
+const inputClass = `${KIOSK_FIELD} bg-bg font-mono`;
 const headingClass = "font-display text-lg uppercase leading-none tracking-[-0.01em]";
 
 export function BoothSettingsPanel({ initial, bridgeUrl, photoboxName, onSaved, onClose }: Props) {
@@ -510,7 +510,7 @@ export function BoothSettingsPanel({ initial, bridgeUrl, photoboxName, onSaved, 
               <input
                 type="number"
                 min={0}
-                max={24}
+                max={4}
                 className={inputClass}
                 value={draft.appearance.button_radius}
                 onChange={(e) => update("appearance", { button_radius: Number(e.target.value) })}
@@ -521,7 +521,7 @@ export function BoothSettingsPanel({ initial, bridgeUrl, photoboxName, onSaved, 
               <input
                 type="number"
                 min={0}
-                max={96}
+                max={48}
                 className={inputClass}
                 value={draft.appearance.padding}
                 onChange={(e) => update("appearance", { padding: Number(e.target.value) })}
@@ -580,14 +580,16 @@ export function BoothSettingsPanel({ initial, bridgeUrl, photoboxName, onSaved, 
             type="button"
             onClick={() => void handleSave()}
             disabled={busy || runtimeDown}
-            className="flex min-h-12 items-center justify-center gap-2 border-2 border-ink bg-accent px-5 font-display text-base font-bold uppercase tracking-[-0.01em] shadow-[4px_4px_0_0_#111111] transition-transform active:translate-y-[2px] disabled:opacity-50"
+            className="flex min-h-12 items-center justify-center gap-2 border-2 border-ink bg-accent px-5 font-display text-base font-bold uppercase tracking-[-0.01em] shadow-hard transition-transform active:translate-y-[2px] disabled:opacity-50"
           >
             {busy ? (
-              <Loader2 className="size-4 animate-spin" aria-hidden />
+              "Menyimpan..."
             ) : (
-              <Save className="size-4" aria-hidden />
+              <>
+                <Save className="size-4" aria-hidden />
+                Simpan setelan
+              </>
             )}
-            Simpan setelan
           </button>
           <button
             type="button"

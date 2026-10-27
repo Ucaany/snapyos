@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
-import { ArrowLeft, Loader2, WifiOff } from "lucide-react";
+import { ArrowLeft, WifiOff } from "lucide-react";
 import {
   kioskThemeVars,
   type KioskPaymentMethod,
@@ -22,6 +22,7 @@ import {
   KioskCard,
   KioskEyebrow,
   KioskHeader,
+  KioskLoading,
   kioskGutter,
 } from "@/components/kiosk/ui";
 
@@ -325,17 +326,13 @@ export function CheckoutScreen({
         )}
 
         {phase === "loading" && (
-          <div
-            className="flex min-h-[46dvh] items-center justify-center gap-3 border-2 border-dashed border-ink/30 bg-surface p-6"
+          <KioskCard
+            className="flex min-h-[46dvh] flex-col justify-center gap-4 p-6"
             style={{ borderRadius: radius }}
-            role="status"
-            aria-live="polite"
           >
-            <Loader2 className="size-5 animate-spin" aria-hidden />
-            <p className="font-mono text-xs font-bold uppercase tracking-[0.12em]">
-              Menyiapkan pembayaran
-            </p>
-          </div>
+            <KioskEyebrow>{"MENYIAPKAN PEMBAYARAN"}</KioskEyebrow>
+            <KioskLoading label="Menyiapkan pembayaran" rows={3} />
+          </KioskCard>
         )}
 
         {phase === "error" && (
@@ -482,7 +479,7 @@ export function CheckoutScreen({
             {payment.payment_url ? (
               <a
                 href={payment.payment_url}
-                className="inline-flex min-h-14 w-fit items-center justify-center border-2 border-ink px-6 py-3 font-display text-base font-bold uppercase tracking-[-0.01em] shadow-[4px_4px_0_0_#111111]"
+                className="inline-flex min-h-14 w-fit items-center justify-center border-2 border-ink px-6 py-3 font-display text-base font-bold uppercase tracking-[-0.01em] shadow-hard"
                 style={ctaStyle}
               >
                 Lanjut bayar

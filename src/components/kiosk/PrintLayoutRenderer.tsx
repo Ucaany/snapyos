@@ -293,7 +293,7 @@ function PrintLayoutRendererInner({
 
   return (
     <>
-      <div className="fixed inset-0 z-40 flex flex-col items-center justify-center gap-5 overflow-y-auto bg-bg p-6 text-center md:p-8">
+      <div className="fixed inset-0 z-30 flex flex-col items-center justify-center gap-5 overflow-y-auto bg-bg p-6 text-center md:p-8">
         {state === "error" ? (
           <>
             <TriangleAlert className="size-10 shrink-0 text-destructive" aria-hidden />
@@ -339,7 +339,7 @@ function PrintLayoutRendererInner({
           </>
         ) : (
           <>
-            <Printer className="size-10 shrink-0 animate-pulse" aria-hidden />
+            <Printer className="size-10 shrink-0 motion-safe:animate-pulse" aria-hidden />
             <p className="font-display text-xl uppercase leading-none tracking-[-0.02em] md:text-2xl">
               {state === "ready" ? "Mencetak..." : "Menyiapkan..."}
             </p>

@@ -72,7 +72,7 @@ export function PaymentMethodPicker({
               type="button"
               disabled={disabled}
               onClick={() => onSelect(method)}
-              className={`flex min-h-[132px] flex-col items-start justify-between gap-4 border-2 border-ink p-4 text-left shadow-[4px_4px_0_0_#111111] transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink active:translate-y-[2px] active:shadow-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none ${
+              className={`flex min-h-[132px] flex-col items-start justify-between gap-4 border-2 border-ink p-4 text-left shadow-hard transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink active:translate-y-[2px] active:shadow-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none ${
                 featured ? "bg-accent" : "bg-surface"
               }`}
               style={

@@ -276,7 +276,7 @@ export function DeviceDialog({
             <p className="font-bold uppercase tracking-[0.12em]">Kamera</p>
             <p className="text-muted-foreground">
               {cameraStatus?.resolution
-                ? `${cameraStatus.resolution}${cameraStatus.error ? ` \u2014 ${cameraStatus.error}` : ""}`
+                ? `${cameraStatus.resolution}${cameraStatus.error ? ` - ${cameraStatus.error}` : ""}`
                 : "Belum ada laporan (setup wizard belum jalan)"}
             </p>
           </div>
@@ -330,7 +330,7 @@ export function DeviceDialog({
             </div>
             {hasActive ? (
               <p className="border-2 border-dashed border-ink/40 bg-muted px-4 py-3 font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
-                {"DEVICE AKTIF TERHUBUNG \u2014 cabut dulu untuk memasang perangkat baru"}
+                {"DEVICE AKTIF TERHUBUNG - cabut dulu untuk memasang perangkat baru"}
               </p>
             ) : (
               activation && (
@@ -384,7 +384,7 @@ export function DeviceDialog({
             <Skeleton className="h-10 w-full border-2 border-ink" />
           ) : devices.length === 0 ? (
             <p className="border-2 border-dashed border-ink/40 bg-muted px-4 py-3 font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
-              {"BELUM ADA DEVICE \u2014 buat kode lalu buka URL di perangkat kiosk"}
+              {"BELUM ADA DEVICE - buat kode lalu buka URL di perangkat kiosk"}
             </p>
           ) : (
             <ul className="divide-y-2 divide-ink/10 border-2 border-ink">
@@ -395,10 +395,10 @@ export function DeviceDialog({
                 >
                   <div className="flex flex-col gap-0.5 font-mono text-xs">
                     <p className="font-bold uppercase tracking-[0.05em]">
-                      {`${d.name ?? "Kiosk"} \u2014 ${d.photobox_name ?? ""}`}
+                      {`${d.name ?? "Kiosk"}${d.photobox_name ? ` - ${d.photobox_name}` : ""}`}
                     </p>
                     <p className="text-muted-foreground">
-                      {`Terakhir aktif: ${d.last_seen_at ? new Date(d.last_seen_at).toLocaleString("id-ID") : "\u2014"}`}
+                      {`Terakhir aktif: ${d.last_seen_at ? new Date(d.last_seen_at).toLocaleString("id-ID") : "-"}`}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">

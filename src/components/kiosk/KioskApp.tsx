@@ -789,7 +789,7 @@ export function KioskApp({
     >
       {notice && (
         <div
-          className="fixed inset-x-0 top-0 z-50 flex items-start justify-between gap-3 border-b-2 border-ink bg-accent px-4 py-3 shadow-[0_2px_0_0_#111111]"
+          className="fixed inset-x-0 top-0 z-50 flex items-start justify-between gap-3 border-b-2 border-ink bg-accent px-4 py-3 shadow-hard-sm"
           style={{ paddingTop: "calc(env(safe-area-inset-top) + 0.75rem)" }}
           role="status"
           aria-live="polite"
@@ -1045,14 +1045,14 @@ export function KioskApp({
           <button
             type="button"
             onClick={() => requestFullscreen()}
-            className="min-h-14 border-2 border-ink bg-accent px-6 py-3 font-display text-base font-bold uppercase tracking-[-0.01em] shadow-[4px_4px_0_0_#111111] transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+            className="min-h-14 border-2 border-ink bg-accent px-6 py-3 font-display text-base font-bold uppercase tracking-[-0.01em] shadow-hard transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
           >
             Kembali ke kiosk
           </button>
           <button
             type="button"
             onClick={() => setExitPrompt(true)}
-            className="min-h-11 border-2 border-ink bg-surface px-4 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground shadow-[3px_3px_0_0_#111111] transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+            className="min-h-11 border-2 border-ink bg-surface px-4 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground shadow-hard-sm transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
           >
             Petugas: keluar kiosk
           </button>

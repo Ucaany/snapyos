@@ -281,7 +281,7 @@ export function SetupWizard({
       {stage === "camera" ? (
         <div className="flex w-full max-w-[760px] flex-col gap-5">
           {cameraProvider === "bridge" ? (
-            <div className="flex flex-col gap-4 border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111] md:p-6">
+            <div className="flex flex-col gap-4 border-2 border-ink bg-surface p-5 shadow-hard md:p-6">
               <p className="max-w-[56ch] text-sm leading-relaxed text-muted-foreground">
                 Mode bridge memakai kamera fisik melalui runtime lokal. Pastikan adapter yang dipilih
                 terpasang (gphoto2 / libcamera-still / ffmpeg / PyAV),
@@ -348,7 +348,7 @@ export function SetupWizard({
             </div>
           ) : (
             <>
-              <div className="relative aspect-video w-full overflow-hidden border-2 border-ink bg-ink shadow-[4px_4px_0_0_#111111]">
+              <div className="relative aspect-video w-full overflow-hidden border-2 border-ink bg-ink shadow-hard">
                 {cameraError ? (
                   <div className="flex h-full flex-col items-center justify-center gap-3 bg-bg p-6 text-center">
                     <Camera className="size-8" aria-hidden />
@@ -436,7 +436,7 @@ export function SetupWizard({
           ) : (
             <>
               {resolvePrintMode(printSettings) === "cups" && (
-                <div className="border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111] md:p-6">
+                <div className="border-2 border-ink bg-surface p-5 shadow-hard md:p-6">
                   <BridgeTokenField />
                 </div>
               )}

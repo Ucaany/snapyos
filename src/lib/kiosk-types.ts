@@ -358,11 +358,11 @@ export type PhotoEdit = {
 };
 
 export const FILTER_PRESETS: { id: string; label: string; css: string }[] = [
-  { id: "original", label: "Original", css: "none" },
+  { id: "original", label: "Asli", css: "none" },
   { id: "film", label: "Film", css: "contrast(1.05) saturate(0.85) brightness(1.02)" },
-  { id: "warm", label: "Warm", css: "sepia(0.25) saturate(1.2)" },
-  { id: "cool", label: "Cool", css: "hue-rotate(-10deg) saturate(1.1)" },
-  { id: "bw", label: "B&W", css: "grayscale(1) contrast(1.1)" },
+  { id: "warm", label: "Hangat", css: "sepia(0.25) saturate(1.2)" },
+  { id: "cool", label: "Dingin", css: "hue-rotate(-10deg) saturate(1.1)" },
+  { id: "bw", label: "Hitam putih", css: "grayscale(1) contrast(1.1)" },
   { id: "retro", label: "Retro", css: "sepia(0.4) contrast(1.1) saturate(1.15)" },
   { id: "vintage", label: "Vintage", css: "sepia(0.5) brightness(0.95) contrast(0.95)" },
   { id: "y2k", label: "Y2K", css: "saturate(1.6) contrast(1.1) brightness(1.05)" },

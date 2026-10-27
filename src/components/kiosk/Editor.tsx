@@ -588,7 +588,7 @@ function EditorInner({
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
-            className="relative max-h-[46vh] max-w-full border-2 border-ink bg-ink shadow-[4px_4px_0_0_#111111] sm:max-h-[52vh] lg:max-h-full"
+            className="relative max-h-[46vh] max-w-full border-2 border-ink bg-ink shadow-hard sm:max-h-[52vh] lg:max-h-full"
             style={{ cursor: edit.adjust.zoom > 1.01 ? "grab" : "default", touchAction: "none" }}
           />
         </div>
@@ -689,8 +689,8 @@ function EditorInner({
                   ["contrast", "Kontras", 0.5, 1.5, 0.01],
                   ["saturation", "Saturasi", 0, 2, 0.01],
                   ["blur", "Blur", 0, 12, 0.5],
-                  ["grain", "Grain", 0, 1, 0.05],
-                  ["vignette", "Vignette", 0, 1, 0.05],
+                  ["grain", "Butiran", 0, 1, 0.05],
+                  ["vignette", "Vignette cahaya", 0, 1, 0.05],
                 ] as const
               ).map(([key, label, min, max, step]) => (
                 <label key={key} className="flex flex-col gap-1">
@@ -760,7 +760,7 @@ function EditorInner({
                             key={c}
                             type="button"
                             onClick={() => patchOverlay(o.id, { color: c })}
-                            className={`size-9 border-2 ${
+                            className={`size-11 border-2 ${
                               o.color === c
                                 ? "border-ink outline-2 outline-offset-1 outline-ink"
                                 : "border-ink/30"

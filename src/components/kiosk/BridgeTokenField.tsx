@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { getBridgeToken, setBridgeToken } from "@/lib/bridge-token";
+import { KIOSK_FIELD } from "@/components/kiosk/ui";
 
 /**
  * Isian token bridge lokal. Disimpan di localStorage perangkat kiosk, bukan di
@@ -34,7 +35,7 @@ export function BridgeTokenField({ onSaved }: { onSaved?: () => void }) {
             setSaved(false);
           }}
           placeholder="PHOTOBOOTH_BRIDGE_TOKEN"
-          className="min-h-11 flex-1 border-2 border-ink bg-surface px-3 font-mono text-sm"
+          className={`${KIOSK_FIELD} flex-1 bg-surface font-mono`}
         />
         <button
           type="button"
@@ -43,7 +44,7 @@ export function BridgeTokenField({ onSaved }: { onSaved?: () => void }) {
             setSaved(true);
             onSaved?.();
           }}
-          className="min-h-11 border-2 border-ink bg-accent px-4 font-mono text-xs font-bold uppercase tracking-[0.08em]"
+          className="min-h-11 shrink-0 border-2 border-ink bg-accent px-4 font-mono text-xs font-bold uppercase tracking-[0.08em]"
         >
           Simpan token
         </button>
