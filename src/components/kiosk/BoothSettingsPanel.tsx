@@ -63,6 +63,7 @@ const DEFAULT_DRAFT: Draft = {
     capture_height: 1080,
     mirror_preview: true,
     screen_orientation: "landscape",
+    chroma_key_enabled: false,
   },
   print: {
     enabled: true,
@@ -116,8 +117,8 @@ function toDraft(settings: DeviceSettings | null): Draft {
       capture_width: num(camera.capture_width, DEFAULT_DRAFT.camera.capture_width),
       capture_height: num(camera.capture_height, DEFAULT_DRAFT.camera.capture_height),
       mirror_preview: bool(camera.mirror_preview, DEFAULT_DRAFT.camera.mirror_preview),
-      screen_orientation:
-        camera.screen_orientation === "portrait" ? "portrait" : "landscape",
+      screen_orientation: camera.screen_orientation === "portrait" ? "portrait" : "landscape",
+      chroma_key_enabled: bool(camera.chroma_key_enabled, DEFAULT_DRAFT.camera.chroma_key_enabled),
     },
     print: {
       enabled: bool(print.enabled, DEFAULT_DRAFT.print.enabled),
@@ -158,13 +159,7 @@ const inputClass =
   "min-h-11 w-full border-2 border-ink bg-bg px-3 font-mono text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
 const headingClass = "font-display text-lg uppercase leading-none tracking-[-0.01em]";
 
-export function BoothSettingsPanel({
-  initial,
-  bridgeUrl,
-  photoboxName,
-  onSaved,
-  onClose,
-}: Props) {
+export function BoothSettingsPanel({ initial, bridgeUrl, photoboxName, onSaved, onClose }: Props) {
   const [draft, setDraft] = useState<Draft>(() => toDraft(initial));
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -309,6 +304,15 @@ export function BoothSettingsPanel({
                 className="size-5"
               />
               <span className={labelClass}>Pratinjau mirror</span>
+            </label>
+            <label className="flex min-h-11 items-center gap-3 border-2 border-ink bg-bg px-3">
+              <input
+                type="checkbox"
+                checked={draft.camera.chroma_key_enabled}
+                onChange={(e) => update("camera", { chroma_key_enabled: e.target.checked })}
+                className="size-5"
+              />
+              <span className={labelClass}>Layar hijau (chroma key)</span>
             </label>
           </div>
         </section>
@@ -554,9 +558,9 @@ export function BoothSettingsPanel({
             </label>
           </div>
           <p className="text-xs leading-relaxed text-muted-foreground">
-            Logo, warna brand, dan video promosi tetap milik website supaya brand konsisten di
-            semua booth. Yang di sini hanya penyesuaian layar booth ini (
-            {APPEARANCE_PAGES.length} layar didukung).
+            Logo, warna brand, dan video promosi tetap milik website supaya brand konsisten di semua
+            booth. Yang di sini hanya penyesuaian layar booth ini ({APPEARANCE_PAGES.length} layar
+            didukung).
           </p>
         </section>
 

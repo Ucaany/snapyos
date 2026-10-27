@@ -337,6 +337,8 @@ Jumlah foto mengikuti **template terpilih** — jumlah slot pada `templates.layo
 - Transform: crop, rotate, **zoom & pan/posisi** — menyesuaikan foto **di dalam slot** template terpilih (bukan full canvas); zoom minimal = cover-fit, clamp per slot (`15-template-builder.md` §15.4). Template legacy (tanpa slot) = perilaku lama full-canvas.
 - Adjust: brightness, contrast, saturation, blur, grain, vignette
 - **Filters:** Original, Film, Warm, Cool, Black & White, Retro, Vintage, Y2K
+- **Latar layar hijau (opsional per booth):** `camera_settings.chroma_key_enabled`. Saat aktif, editor menampilkan tombol "Hapus latar hijau"; warna kunci diambil dari sudut foto. Piksel yang dihapus menampilkan `templates.layout.canvas.background` (default putih) — bukan transparan, karena output final disimpan sebagai JPEG.
+- **Layer teks/stiker:** digambar di atas frame, bukan di dalam foto, agar tidak terpotong clip slot.
 
 **Components:** `EditorCanvas` (canvas-based, memakai `composeFrame`), `FilterRow`, `AdjustSlider`, `CropTool`, `RotateButton`, `ZoomSlider`, `PanTool`.
 
@@ -419,7 +421,7 @@ YOUR PHOTOS ARE READY!
 
 Menyediakan:
 
-- **Unduh GIF animasi slideshow** — semua foto berframe bergantian otomatis; digenerate **server-side saat finalize**; storage key di `sessions.result_gif_key`. Preview GIF autoplay loop di atas halaman.
+- **Unduh GIF animasi slideshow** — foto bergantian otomatis; digenerate **server-side saat finalize**; storage key di `sessions.result_gif_key`. Template legacy memakai foto berframe; frame ber-slot memakai capture mentah (composite tunggal tidak bisa jadi slideshow). Preview GIF autoplay loop di atas halaman.
 - **Unduh foto berframe** (statis, per foto — hasil edit + frame pilihan customer), tampil sebagai grid thumbnail, bisa diunduh per foto. **BACKLOG: unduh semua (ZIP)** — belum diimplementasi (lihat blok Status Implementasi).
 - Tombol unduh bekerja lintas origin: URL unduh membawa `Content-Disposition: attachment` (`gif_download_url`, `photos[].download_url` dari `getResult`) — atribut `download` pada `<a>` cross-origin diabaikan browser.
 - (Slot future: kirim ke email — **OUT OF SCOPE sekarang, jangan diproses**.)

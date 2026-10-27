@@ -45,7 +45,12 @@ ALTER TABLE templates ADD COLUMN layout jsonb NOT NULL DEFAULT '{}';
 ```json
 {
   "version": 1,
-  "canvas": { "width": 1200, "height": 1800, "preset": "4x6-portrait" },
+  "canvas": {
+    "width": 1200,
+    "height": 1800,
+    "preset": "4x6-portrait",
+    "background": "#ffffff"
+  },
   "slots": [
     {
       "id": "slot_1",
@@ -63,21 +68,22 @@ ALTER TABLE templates ADD COLUMN layout jsonb NOT NULL DEFAULT '{}';
 }
 ```
 
-| Field                      | Ket                                                                                                                                 |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `version`                  | versi contract, mulai `1`                                                                                                           |
-| `canvas.width/height`      | resolusi design dalam px (bukan persen — deterministik & mudah divalidasi)                                                          |
-| `canvas.preset`            | `4x6-portrait` (1200×1800) · `4x6-landscape` (1800×1200) · `2x6-strip` (600×1800) · `square` (1500×1500) · `custom` (max 3000×3000) |
-| `slots[].shape`            | `rect` \| `rounded` \| `circle` \| `ellipse`                                                                                        |
-| `slots[].x/y/width/height` | px design, posisi kiri-atas sebelum rotasi                                                                                          |
-| `slots[].rotation`         | derajat, pivot = center slot, rentang −180..180                                                                                     |
-| `slots[].radius`           | corner radius px, hanya untuk `rounded`                                                                                             |
-| `slots[].fit`              | `cover` (default) \| `contain`                                                                                                      |
-| `slots[].z`                | urutan render antar slot (kecil dulu); `photos.order_index` → slot urut `z`                                                         |
+| Field                      | Ket                                                                                                                                                                                                                           |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `version`                  | versi contract, mulai `1`                                                                                                                                                                                                     |
+| `canvas.width/height`      | resolusi design dalam px (bukan persen — deterministik & mudah divalidasi)                                                                                                                                                    |
+| `canvas.preset`            | `4x6-portrait` (1200×1800) · `4x6-landscape` (1800×1200) · `2x6-strip` (600×1800) · `square` (1500×1500) · `custom` (max 3000×3000)                                                                                           |
+| `canvas.background`        | hex `#rrggbb`, default `#ffffff`. Warna dasar di bawah foto — satu-satunya latar yang terlihat lewat lubang alpha frame dan lewat piksel yang dihapus chroma key. Tanpa ini area tersebut tercetak hitam (output final JPEG). |
+| `slots[].shape`            | `rect` \| `rounded` \| `circle` \| `ellipse`                                                                                                                                                                                  |
+| `slots[].x/y/width/height` | px design, posisi kiri-atas sebelum rotasi                                                                                                                                                                                    |
+| `slots[].rotation`         | derajat, pivot = center slot, rentang −180..180                                                                                                                                                                               |
+| `slots[].radius`           | corner radius px, hanya untuk `rounded`                                                                                                                                                                                       |
+| `slots[].fit`              | `cover` (default) \| `contain`                                                                                                                                                                                                |
+| `slots[].z`                | urutan render antar slot (kecil dulu); `photos.order_index` → slot urut `z`                                                                                                                                                   |
 
 ### Validasi server-side (trust boundary — wajib)
 
-- Layout schema validation di setiap `POST/PATCH` template.
+- Layout schema validation di setiap `POST/PATCH` template — termasuk builder **admin** global (`updateGlobalTemplateLayout`). Layout invalid ditolak 4xx; sebelum perbaikan ini jalur admin menulis JSON mentah dan layout rusak diam-diam terbaca sebagai legacy (`slotCount` = 0).
 - Slot: `width > 0`, `height > 0`, `x ≥ 0`, `y ≥ 0`, `x + width ≤ canvas.width`, `y + height ≤ canvas.height`, `rotation` −180..180, `shape` enum valid, `radius ≥ 0`.
 - Max slot per template: **8**.
 - `slot_count = layout.slots.length` (layout kosong = 0).
@@ -89,6 +95,8 @@ ALTER TABLE templates ADD COLUMN layout jsonb NOT NULL DEFAULT '{}';
 - Frame selalu di atas foto. Layer frame di bawah / z-configurable → tambah `frame_z` saat dibutuhkan.
 - Shape custom/path mask (SVG path) → `shape: "path"` saat dibutuhkan.
 - Tidak ada `template_versions` / undo history — draft vs publish cukup (`is_active`).
+- Chroma key memakai **warna dasar kanvas**, bukan aset latar terpisah. Latar bergambar di balik customer → tambah `canvas.background_image` saat dibutuhkan.
+- `sessions` belum menyimpan `template_id`; lihat risiko residual §15.10.
 
 ## 15.3 Owner — Template Builder
 
@@ -124,10 +132,14 @@ Builder canvas:
 
 Urutan render (satu frame/output):
 
-1. Clear canvas ke resolusi `canvas.width × canvas.height`.
+1. Set resolusi `canvas.width × canvas.height`, clear, lalu isi `canvas.background` (default putih).
 2. Untuk setiap slot urut `z` naik: clip ke shape path (rect / `roundRect` / ellipse; rotation via `ctx.rotate` di center slot) → `drawImage` foto terkait dengan `fit` cover/contain + transform zoom/pan customer (clamp minimal cover-fit).
 3. `drawImage` frame PNG di-rect penuh canvas (0,0,canvas.w,canvas.h).
-4. Sticker & text (sistem eksisting §5.10–5.11) digambar di atas.
+4. Sticker & text (sistem eksisting §5.10–5.11) digambar **setelah** frame — bukan di dalam foto yang ter-clip slot, supaya tidak terpotong clip/tertutup frame.
+
+**Chroma key:** foto dari booth berlayar hijau dihapus latarnya sebelum masuk slot; piksel yang dihapus menampilkan `canvas.background`. Output final tetap JPEG (kontrak storage/finalize), jadi latar wajib berwarna — transparan akan tercetak hitam.
+
+**GIF slideshow:** frame ber-slot menghasilkan satu composite, jadi GIF memakai **capture mentah** (pose bergantian). Template legacy memakai foto berframe. Server menerima `gif_photos` opsional; tanpa field itu GIF jatuh ke foto final.
 
 Output = full resolusi design canvas (PNG/JPEG sesuai pipeline finalize eksisting). GIF & result online tidak berubah (tetap dari foto final hasil composite).
 
@@ -135,22 +147,22 @@ Output = full resolusi design canvas (PNG/JPEG sesuai pipeline finalize eksistin
 
 ## 15.5 Customer — Perubahan Flow (patch `05-customer-photobox.md`)
 
-| Tahap                | Perubahan                                                                                                                                      |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| §5.4 Choose Template | Thumbnail WebP 480px; semua frame aktif tampil untuk paket mana pun                                                                            |
+| Tahap                | Perubahan                                                                                                                                            |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| §5.4 Choose Template | Thumbnail WebP 480px; semua frame aktif tampil untuk paket mana pun                                                                                  |
 | §5.6 Capture         | Frame ber-slot: jumlah capture = `template.slot_count`; legacy: `package.photo_count`; slot yang perlu mengulang foto diisi bergiliran (`fillSlots`) |
-| §5.9 Editor          | Zoom/pan menyesuaikan foto **di dalam slot** (bukan full canvas); zoom minimal = cover-fit; filter/adjust/sticker/text tetap di atas composite |
-| §5.15 Print          | `PrintLayoutRenderer` memakai `composeFrame` — hasil cetak identik dengan preview builder                                                      |
+| §5.9 Editor          | Zoom/pan menyesuaikan foto **di dalam slot** (bukan full canvas); zoom minimal = cover-fit; filter/adjust/sticker/text tetap di atas composite       |
+| §5.15 Print          | `PrintLayoutRenderer` memakai `composeFrame` — hasil cetak identik dengan preview builder                                                            |
 
 ## 15.6 API (patch `08-api-spec.md` §8.7)
 
-| Endpoint                                              | Perubahan                                                                |
-| ----------------------------------------------------- | ------------------------------------------------------------------------ |
-| `GET/POST /api/v1/business/:businessId/templates`     | terima/kembalikan `layout` (server validation §15.2)                     |
-| `POST /api/v1/business/:businessId/templates/upload`  | multipart PNG; response berisi `layout` kosong siap dibuilder            |
-| `PATCH /api/v1/business/:businessId/templates/:id`    | update `layout` (draft/publish via `is_active`)                          |
-| `GET /api/v1/public/:businessSlug/templates?package=` | include `layout` + frame signed URL + thumbnail 480px; tanpa filter slot |
-| `POST /sessions`                                      | memastikan `template_id` pilihan tersimpan (behavior eksisting)          |
+| Endpoint                                              | Perubahan                                                                                                      |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `GET/POST /api/v1/business/:businessId/templates`     | terima/kembalikan `layout` (server validation §15.2)                                                           |
+| `POST /api/v1/business/:businessId/templates/upload`  | multipart PNG; response berisi `layout` kosong siap dibuilder                                                  |
+| `PATCH /api/v1/business/:businessId/templates/:id`    | update `layout` (draft/publish via `is_active`)                                                                |
+| `GET /api/v1/public/:businessSlug/templates?package=` | include `layout` + frame signed URL + thumbnail 480px; tanpa filter slot                                       |
+| `POST /sessions`                                      | **tidak** menyimpan `template_id` (kolom belum ada); finalize menerima `template_id` dari kiosk — lihat §15.10 |
 
 Tidak ada endpoint baru — CRUD lama cukup.
 
@@ -173,3 +185,9 @@ Tidak ada endpoint baru — CRUD lama cukup.
 4. Hasil print & result online identik dengan preview builder (satu engine composite).
 5. Template legacy (layout kosong) tetap berfungsi — backward compatible.
 6. Validasi layout di-enforce server-side (request dengan layout invalid ditolak 4xx).
+
+## 15.10 Risiko residual (jujur)
+
+- **`template_id` tidak dipersist di `sessions`.** Kiosk mengirimnya saat finalize, jadi server memakai nilai dari client untuk menentukan ekspektasi jumlah capture. Composite dirender di client dan hanya diunggah sebagai JPEG, sehingga server memang tidak bisa memverifikasi isi visual — `template_id` hanya memengaruhi pemeriksaan jumlah, bukan harga atau settlement. Memperbaikinya butuh migrasi kolom `sessions.template_id`; belum dilakukan.
+- **`gif_photos` opsional.** Tanpa field itu, jumlah capture untuk frame ber-slot tidak bisa diperiksa (composite tunggal sah). Klien lama tetap bisa finalize.
+- **PNG tanpa alpha channel** belum dideteksi saat upload frame; template tanpa lubang alpha akan menutupi seluruh foto.

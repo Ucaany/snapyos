@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   CANVAS_MAX,
   MAX_SLOTS,
+  canvasBackground,
   clampSlot,
   coverFit,
   emptyLayout,
@@ -270,4 +271,42 @@ test("emptyLayout: preset menghasilkan canvas sesuai docs/15 §15.2", () => {
 
   assert.equal(emptyLayout("custom").slots.length, 0);
   assert.equal(layoutSchema.safeParse(emptyLayout("square")).success, true);
+});
+
+// --- warna dasar kanvas (chroma key) ---
+
+test("canvasBackground: template lama tanpa background memakai putih", () => {
+  assert.equal(
+    canvasBackground({ version: 1, canvas: { ...canvas, preset: "custom" }, slots: [] }),
+    "#ffffff"
+  );
+});
+
+test("canvasBackground: nilai tersimpan dipakai apa adanya", () => {
+  const layout = emptyLayout("square");
+  layout.canvas.background = "#0a0a0a";
+  assert.equal(canvasBackground(layout), "#0a0a0a");
+});
+
+test("layoutSchema: background harus hex 6 digit", () => {
+  const ok = layoutSchema.safeParse({
+    version: 1,
+    canvas: { ...canvas, preset: "custom", background: "#00b140" },
+    slots: [],
+  });
+  assert.equal(ok.success, true);
+
+  for (const bad of ["green", "#0f0", "#00b1400", "rgb(0,0,0)"]) {
+    const parsed = layoutSchema.safeParse({
+      version: 1,
+      canvas: { ...canvas, preset: "custom", background: bad },
+      slots: [],
+    });
+    assert.equal(parsed.success, false, `background "${bad}" harus ditolak`);
+  }
+});
+
+test("emptyLayout membawa warna dasar default agar chroma tidak hitam", () => {
+  assert.equal(emptyLayout("4x6-portrait").canvas.background, "#ffffff");
+  assert.equal(canvasBackground(emptyLayout("4x6-portrait")), "#ffffff");
 });

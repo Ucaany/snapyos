@@ -28,6 +28,7 @@ import {
   MAX_SLOTS,
   SLOT_FITS,
   SLOT_SHAPES,
+  canvasBackground,
   clampSlot,
   emptyLayout,
   layoutSchema,
@@ -224,7 +225,7 @@ export function TemplateBuilder({
     canvas.height = Math.max(1, Math.round(layout.canvas.height * scale));
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    ctx.fillStyle = "#FFFDF5";
+    ctx.fillStyle = canvasBackground(layout);
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     if (frameRef.current) {
       ctx.drawImage(frameRef.current, 0, 0, canvas.width, canvas.height);
@@ -361,9 +362,15 @@ export function TemplateBuilder({
         preset === "custom"
           ? { width: prev.canvas.width, height: prev.canvas.height }
           : CANVAS_PRESETS[preset];
-      const canvas = { width: dims.width, height: dims.height, preset };
+      // `background` ikut dipertahankan: mengganti preset tidak boleh
+      // mengembalikan warna dasar ke default diam-diam.
+      const canvas = { ...prev.canvas, width: dims.width, height: dims.height, preset };
       return { ...prev, canvas, slots: prev.slots.map((s) => clampSlot(s, canvas)) };
     });
+  }
+
+  function changeBackground(value: string) {
+    setLayout((prev) => ({ ...prev, canvas: { ...prev.canvas, background: value } }));
   }
 
   function changeCustomSize(which: "width" | "height", value: number) {
@@ -749,6 +756,18 @@ export function TemplateBuilder({
                   </label>
                 </div>
               )}
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <span className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]">
+                  Dasar
+                </span>
+                <input
+                  type="color"
+                  value={canvasBackground(layout)}
+                  onChange={(e) => changeBackground(e.target.value)}
+                  aria-label="Warna dasar kanvas di balik foto"
+                  className="h-9 w-12 cursor-pointer rounded-none border-2 border-ink bg-surface p-0.5"
+                />
+              </label>
             </div>
             <div className="flex items-center gap-2">
               <Button

@@ -550,6 +550,13 @@ export function KioskApp({
       const shouldPrint =
         currentPhotobox.print_settings.enabled !== false && (selectedPackage?.print_count ?? 0) > 0;
 
+      // GIF slideshow: frame ber-slot menghasilkan SATU composite, jadi
+      // slideshow memakai capture mentah (pose bergantian). Template legacy
+      // memakai foto berframe — sesuai docs/05 §5.13.
+      const gifSource = selectedTemplate?.layout
+        ? photos.map((p) => p.blob)
+        : final.map((p) => p.blob);
+
       // Sesi `local_*` hanya dikenal runtime lokal. Cloud tidak punya barisnya,
       // jadi finalize HARUS ke runtime walau internet sudah hidup lagi — sync
       // worker yang mengirimkannya ke cloud nanti.
@@ -560,7 +567,7 @@ export function KioskApp({
             templateId: selectedTemplate?.id ?? null,
             retakeCount,
             photos: final.map((p) => p.blob),
-            gifPhotos: photos.map((p) => p.blob),
+            gifPhotos: gifSource,
           });
           await finalizeLocalSession(
             session.session_id,
@@ -598,7 +605,7 @@ export function KioskApp({
             retakeCount,
             photos: final.map((p) => p.blob),
             // Capture mentah tanpa frame → GIF slideshow (bukan hasil komposit).
-            gifPhotos: photos.map((p) => p.blob),
+            gifPhotos: gifSource,
             queuedAt: Date.now(),
           });
           setFinalPhotos(final);
@@ -624,7 +631,7 @@ export function KioskApp({
           retakeCount,
           photos: final.map((p) => p.blob),
           // Capture mentah tanpa frame → GIF slideshow (bukan hasil komposit).
-          gifPhotos: photos.map((p) => p.blob),
+          gifPhotos: gifSource,
         });
 
         const data = await apiForm<FinalizeResult>(

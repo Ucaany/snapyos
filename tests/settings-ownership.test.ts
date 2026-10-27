@@ -294,6 +294,7 @@ const baseDraft = {
     capture_height: 1080,
     mirror_preview: true,
     screen_orientation: "portrait" as const,
+    chroma_key_enabled: true,
   },
   print: {
     enabled: true,
@@ -355,10 +356,7 @@ test("payload panel merapikan nilai teks dan panduan", () => {
   );
   assert.equal((payload.appearance_settings as Record<string, unknown>).welcome_title, "Halo");
   // Tagline kosong tidak dikirim supaya nilai cloud tidak tertimpa string kosong.
-  assert.equal(
-    (payload.appearance_settings as Record<string, unknown>).welcome_tagline,
-    undefined
-  );
+  assert.equal((payload.appearance_settings as Record<string, unknown>).welcome_tagline, undefined);
   assert.deepEqual((payload.appearance_settings as Record<string, unknown>).guide_steps, [
     "Langkah satu",
     "Langkah dua",
@@ -415,7 +413,10 @@ const read = (p: string) => readFileSync(join(repo, p), "utf8");
 
 test("dokumen menyebut appearance_settings sebagai milik booth", () => {
   const owner = read("docs/04-owner-dashboard.md");
-  assert.ok(owner.includes("appearance_settings"), "04-owner-dashboard harus menyebut grup tampilan");
+  assert.ok(
+    owner.includes("appearance_settings"),
+    "04-owner-dashboard harus menyebut grup tampilan"
+  );
   assert.ok(
     owner.includes("LOCAL_ONLY_SETTING"),
     "dokumen harus menyebut penolakan cloud untuk setelan lokal"

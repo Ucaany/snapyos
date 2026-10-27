@@ -196,13 +196,13 @@ export const HELP_ARTICLES: HelpArticle[] = [
         heading: "3. Paket dan template",
         paragraphs: [
           "Package menentukan harga, jumlah foto (photo count), dan jumlah cetak (print count). Assign package ke outlet dan photobox yang berlaku: customer hanya melihat paket yang eligible di booth tempat ia berdiri.",
-          "Template adalah frame PNG yang menampung foto. Aturan keras: slot count harus sama dengan photo count, selain itu assign ditolak server. Preview builder memakai engine composeFrame yang sama dengan kiosk, print, dan result online sehingga hasil identik.",
+          "Template adalah frame PNG yang menampung foto. Frame ber-slot menentukan jumlah capture: frame 6 slot mengambil 6 foto, bukan mengikuti photo count paket. Template legacy tanpa slot memakai photo count paket. Preview builder memakai engine composeFrame yang sama dengan kiosk, print, dan result online sehingga hasil identik.",
         ],
         steps: [
           "Buka Packages, tekan Buat Package. Isi nama, harga integer Rupiah di atas nol, photo count minimal 1, print count minimal 0.",
           "Assign package ke outlet dan photobox yang berlaku.",
           "Buka Templates, upload PNG frame transparan maksimal 5 MB, pilih kategori.",
-          "Buka builder, tambah slot sesuai jumlah foto paket, Preview, lalu Publish.",
+          "Buka builder, tambah slot, atur warna dasar kanvas bila booth memakai layar hijau, Preview, lalu Publish.",
           "Uji dari kiosk: pilih paket, bayar, pastikan frame muncul.",
         ],
       },
@@ -342,7 +342,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     troubleshooting: [
       {
         gejala: "Frame yang dicari tidak muncul",
-        penyebab: "Frame tidak aktif/ter-assign, URL frame gagal, atau respons public template error",
+        penyebab:
+          "Frame tidak aktif/ter-assign, URL frame gagal, atau respons public template error",
         solusi: "Pilih frame yang tampil, atau tanya operator.",
       },
       {
@@ -618,7 +619,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     troubleshooting: [
       {
         gejala: "Frame punya slot lebih banyak daripada jumlah foto paket",
-        penyebab: "Jumlah capture mengikuti slot frame; package photo_count hanya fallback template legacy",
+        penyebab:
+          "Jumlah capture mengikuti slot frame; package photo_count hanya fallback template legacy",
         solusi:
           "Tidak perlu diubah. Slot sisa terisi foto secara bergiliran. Ubah jumlah foto hanya bila paket memang harus menambah capture.",
       },

@@ -22,6 +22,8 @@ export type BoothCameraDraft = {
   capture_height: number;
   mirror_preview: boolean;
   screen_orientation: "landscape" | "portrait";
+  /** Booth punya layar hijau — editor kiosk menawarkan hapus latar. */
+  chroma_key_enabled: boolean;
 };
 
 export type BoothPrintDraft = {
@@ -102,6 +104,7 @@ export function boothDraftToSettings(draft: BoothDraft): BoothSettingsPayload {
       capture_height: draft.camera.capture_height,
       mirror_preview: draft.camera.mirror_preview,
       screen_orientation: draft.camera.screen_orientation,
+      chroma_key_enabled: draft.camera.chroma_key_enabled,
     },
     print_settings: {
       enabled: draft.print.enabled,
@@ -110,9 +113,7 @@ export function boothDraftToSettings(draft: BoothDraft): BoothSettingsPayload {
       orientation: draft.print.orientation,
       auto_print: draft.print.auto_print,
       margins_mm: draft.print.margins_mm,
-      ...(draft.print.printer_name.trim()
-        ? { printer_name: draft.print.printer_name.trim() }
-        : {}),
+      ...(draft.print.printer_name.trim() ? { printer_name: draft.print.printer_name.trim() } : {}),
     },
     session_settings: {
       timer_seconds: draft.session.timer_seconds,

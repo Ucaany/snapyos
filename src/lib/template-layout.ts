@@ -17,6 +17,15 @@ export type CanvasPreset = keyof typeof CANVAS_PRESETS | "custom";
 export const CANVAS_MAX = 3000;
 export const MAX_SLOTS = 8;
 
+/**
+ * Warna dasar di bawah foto. Wajib ada karena chroma key menghapus piksel
+ * (alpha 0) sementara output final disimpan sebagai JPEG — tanpa isian dasar,
+ * lubang transparan itu tercetak hitam.
+ */
+export const DEFAULT_CANVAS_BACKGROUND = "#ffffff";
+
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+
 export const SLOT_SHAPES = ["rect", "rounded", "circle", "ellipse"] as const;
 export const SLOT_FITS = ["cover", "contain"] as const;
 
@@ -44,6 +53,8 @@ export const layoutSchema = z
       width: z.number().int().min(1).max(CANVAS_MAX),
       height: z.number().int().min(1).max(CANVAS_MAX),
       preset: z.string().trim().min(1).max(32),
+      /** Warna dasar di bawah foto (hex 6 digit). Kosong = putih. */
+      background: z.string().regex(HEX_COLOR, "background harus hex #rrggbb").optional(),
     }),
     slots: z.array(slotSchema).max(MAX_SLOTS),
   })
@@ -107,6 +118,11 @@ export function slotCount(layout: unknown): number {
 /** Slot urut z naik — mapping photos.order_index i → slot ke-i (docs/15 §15.4). */
 export function slotsByZ(layout: TemplateLayout): LayoutSlot[] {
   return [...layout.slots].sort((a, b) => a.z - b.z);
+}
+
+/** Warna dasar kanvas — `#ffffff` bila template lama tidak menyimpannya. */
+export function canvasBackground(layout: TemplateLayout): string {
+  return layout.canvas.background ?? DEFAULT_CANVAS_BACKGROUND;
 }
 
 /**
@@ -185,7 +201,12 @@ export function emptyLayout(preset: CanvasPreset): TemplateLayout {
   const dims = preset === "custom" ? { width: 1200, height: 1800 } : CANVAS_PRESETS[preset];
   return {
     version: 1,
-    canvas: { width: dims.width, height: dims.height, preset },
+    canvas: {
+      width: dims.width,
+      height: dims.height,
+      preset,
+      background: DEFAULT_CANVAS_BACKGROUND,
+    },
     slots: [],
   };
 }

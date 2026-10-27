@@ -234,7 +234,9 @@ export function FramePreviewPanel({
     const paint = () => {
       const ordered = slotsByZ(previewLayout);
       const sources = ordered.map((_, i) => sourceAt(i));
-      composeFrame(canvas, previewLayout, frameRef.current, sources, [], maxW, "blank");
+      composeFrame(canvas, previewLayout, frameRef.current, sources, [], maxW, {
+        emptySlot: "blank",
+      });
     };
 
     paint();

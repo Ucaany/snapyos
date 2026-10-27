@@ -14,13 +14,14 @@ import {
   type KioskVisualStyle,
   type PhotoEdit,
 } from "@/lib/kiosk-types";
-import type { TemplateLayout } from "@/lib/template-layout";
+import { DEFAULT_CANVAS_BACKGROUND, type TemplateLayout } from "@/lib/template-layout";
 import { fillSlots } from "@/lib/template-fit";
 import { composeFrame } from "@/lib/compose-frame";
 import {
   canvasToBlob,
   defaultEdit,
   drawFrameOverlay,
+  drawOverlayLayer,
   drawPhoto,
   renderFramedPhotoBlob,
 } from "@/components/kiosk/photo-render";
@@ -125,7 +126,12 @@ function EditorInner({
   // berubah (drag slot aktif tak me-render ulang slot lain tiap frame).
   const slotCacheRef = useRef<{ sig: string; canvas: HTMLCanvasElement }[]>([]);
 
-  const edit = edits[active] ?? defaultEdit();
+  // `active` menunjuk SLOT; edit dimiliki FOTO. Pada frame 6 slot + 3 foto,
+  // slot 4..6 memakai ulang foto 1..3, jadi keduanya harus dipetakan.
+  const activePhoto = layout
+    ? (fillSlots(layout.slots.length, photos.length)[active] ?? 0)
+    : active;
+  const edit = edits[activePhoto] ?? defaultEdit();
 
   /** Filter GLOBAL diterapkan ke semua foto — satu pilihan menimpa `adjust.filter`. */
   function filteredEdit(e: PhotoEdit): PhotoEdit {
@@ -252,7 +258,8 @@ function EditorInner({
         frameRef.current,
         sources,
         fillSlots(sources.length, photos.length).map((photoIndex) => transformsFor(photoIndex)),
-        720
+        720,
+        { overlays: edit.overlays }
       );
       // highlight slot aktif (petunjuk zoom/pan berlaku per slot)
       const ctx = canvas.getContext("2d");
@@ -272,18 +279,19 @@ function EditorInner({
       }
       return;
     }
-    const img = imgsRef.current[active];
+    const img = imgsRef.current[activePhoto];
     if (img) {
-      drawPhoto(canvas, img, filteredEdit(edit), 640, chromaOn);
-      // Template legacy (tanpa slot) = frame full-canvas DI ATAS foto — preview
-      // harus menampilkan hal yang sama dengan hasil final (docs/05 §5.9).
+      drawPhoto(canvas, img, filteredEdit(edit), 640, chromaOn, DEFAULT_CANVAS_BACKGROUND);
+      // Template legacy (tanpa slot) = frame full-canvas DI ATAS foto, overlay
+      // di atas frame — preview harus sama dengan hasil final (docs/05 §5.9).
       drawFrameOverlay(canvas, frameRef.current);
+      drawOverlayLayer(canvas, edit.overlays);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imgVersion, frameVersion, edit, edits, active, layout, filterId, chromaOn]);
 
   function patchEdit(patch: (e: PhotoEdit) => PhotoEdit) {
-    setEdits((prev) => prev.map((e, i) => (i === active ? patch(e) : e)));
+    setEdits((prev) => prev.map((e, i) => (i === activePhoto ? patch(e) : e)));
   }
 
   function patchAdjust<K extends keyof PhotoEdit["adjust"]>(key: K, value: PhotoEdit["adjust"][K]) {
@@ -457,7 +465,8 @@ function EditorInner({
           frameRef.current,
           sources,
           fillSlots(sources.length, photos.length).map((photoIndex) => transformsFor(photoIndex)),
-          Number.POSITIVE_INFINITY
+          Number.POSITIVE_INFINITY,
+          { overlays: edit.overlays }
         );
         onFinish([{ blob: await canvasToBlob(canvas) }]);
         return;
@@ -471,7 +480,8 @@ function EditorInner({
           photos[i]!.blob,
           filteredEdit(edits[i] ?? defaultEdit()),
           frameRef.current,
-          chromaOn
+          chromaOn,
+          DEFAULT_CANVAS_BACKGROUND
         );
         results.push({ blob });
       }

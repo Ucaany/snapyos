@@ -391,8 +391,9 @@
 ### O11. Template Builder (Slot Editor)
 
 - **Page**: `/dashboard/templates/builder/[id]` (+ admin mirror `/admin/templates/builder/[id]`).
-- **Komponen**: `src/components/dashboard/TemplateBuilder.tsx` (~996 baris): drag/resize/rotate slot di atas frame PNG, z-order, clip-path, preview `composeFrame`, upload frame/thumbnail, chroma-key.
-- **Lib**: `src/lib/template-layout.ts` (`layoutSchema`, `slotCount`, `slotsByZ`), `src/lib/template-cleanup.ts`.
+- **Komponen**: `src/components/dashboard/TemplateBuilder.tsx` (~1080 baris): drag/resize/rotate slot di atas frame PNG, z-order, clip-path, warna dasar kanvas (`canvas.background`), preview `composeFrame`, upload frame/thumbnail, chroma-key frame.
+- **Lib**: `src/lib/template-layout.ts` (`layoutSchema`, `slotCount`, `slotsByZ`, `canvasBackground`), `src/lib/compose-frame.ts`, `src/lib/template-cleanup.ts`.
+- **Validasi**: layout divalidasi `layoutSchema` di jalur owner (`templateUpdateSchema`) **dan** admin global (`updateGlobalTemplateLayout`).
 - **DB**: `templates.layout` (jsonb).
 - **Catatan status**: god-component terdaftar sebagai known-issue (H7).
 
@@ -678,12 +679,13 @@
 - **Lib**: `src/lib/camera-capture.ts`, `camera-provider.ts`, `camera-errors.ts`, `photo-render.ts`.
 - **API**: `POST /api/v1/public/devices/report` (status).
 - **DB**: tidak langsung; hasil disimpan di state sampai finalize.
-- **Batasan**: `camera_settings` (deviceId, mirror, countdown, resolution, rotasi/zoom kalibrasi, chroma key); frame ber-slot menentukan kuota capture, template legacy memakai `package.photo_count`; slot lebih banyak dari foto yang tersedia diisi bergiliran; finalize memvalidasi capture mentah terhadap frame/paket dan menyimpan composite final; `max_retakes` opsional dari `session_settings` (tidak diset = retake tak terbatas, docs/05 §5.5.2).
+- **Batasan**: `camera_settings` (deviceId, mirror, countdown, resolution, rotasi/zoom kalibrasi, `chroma_key_enabled`); frame ber-slot menentukan kuota capture, template legacy memakai `package.photo_count`; slot lebih banyak dari foto yang tersedia diisi bergiliran; finalize memvalidasi capture mentah terhadap frame/paket dan menyimpan composite final; `max_retakes` opsional dari `session_settings` (tidak diset = retake tak terbatas, docs/05 §5.5.2).
+- **Chroma key**: toggle per booth ada di aplikasi booth (`BoothSettingsPanel` → grup Kamera), bukan dashboard — dashboard menolak field mesin. Chroma kiosk menghapus latar foto; warna pengganti = `layout.canvas.background` (default putih).
 
 ### K10. Editor (Edit Foto)
 
 - **Komponen**: `Editor` (dynamic import) + `StickerPicker`.
-- **Fitur**: filter preset (`FILTER_PRESETS`), adjust (brightness/contrast/saturation/…), overlay teks/sticker, drag/zoom/pan, compose frame (`composeFrame`), layout slot (`slotClipPath`).
+- **Fitur**: filter preset (`FILTER_PRESETS`), adjust (brightness/contrast/saturation/…), overlay teks/sticker (layer teratas, di atas frame), drag/zoom/pan, compose frame (`composeFrame`), layout slot (`slotClipPath`), chroma key opsional.
 - **Lib**: `src/lib/compose-frame.ts`, `template-layout.ts`, `src/components/kiosk/photo-render.ts`.
 - **Dampak**: menghasilkan `FinalPhoto[]` untuk finalize + print.
 

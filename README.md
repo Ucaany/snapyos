@@ -96,8 +96,8 @@ Gate yang diverifikasi di mesin pengembang sebelum deploy:
 
 ```bash
 npm run typecheck        # PASS (exit 0)
-npm run lint             # PASS, 0 error, 18 warning <img> yang disengaja
-npm test                 # PASS 1153/1153
+npm run lint             # PASS, 0 error, 12 warning <img> yang disengaja
+npm test                 # PASS 1154/1154
 npm run build            # PASS (Next.js 16, 93 static pages + standalone)
 npm run test:e2e:print   # PASS 4/4
 npm run test:e2e:bluetooth # PASS 2/2 suite (12 assertion: BLE 2, SPP/foto 10)
@@ -116,6 +116,45 @@ node scripts/probe-migration-status.mjs    # PASS 13/13 applied, exit 0
 >   Gagal juga tanpa perubahan ini.
 >
 > Keduanya perlu diperbarui/dipindahkan ke alur baru; tidak terkait migrasi.
+
+> **Pembaruan 2026-10-28 — audit template & chroma.** Empat jalur render
+> (builder preview, editor kiosk, cetak, GIF) dirapikan agar satu kontrak:
+>
+> - **Chroma key tidak lagi menghitam.** Piksel yang dihapus chroma key
+>   sebelumnya jatuh ke transparan, lalu di-encode JPEG (tanpa alpha) menjadi
+>   hitam. Kini `composeFrame` mengisi `layout.canvas.background` (default
+>   `#ffffff`) sebelum slot, dan jalur legacy mengisi hal yang sama di
+>   `drawPhoto`. Builder punya pemilih **warna dasar**; `layoutSchema` menolak
+>   nilai bukan hex. Detail: `docs/15-template-builder.md` §15.2/§15.4.
+> - **Teks & stiker kini di atas frame.** Sebelumnya overlay digambar di dalam
+>   foto (ter-clip slot, lalu tertutup frame). Sekarang `composeFrame` menerima
+>   `options.overlays` dan menggambarnya setelah frame; jalur legacy memakai
+>   `drawOverlayLayer` setelah `drawFrameOverlay`.
+> - **Layout template global admin divalidasi** dengan `layoutSchema`
+>   (`updateGlobalTemplateLayout`). Sebelumnya JSON mentah tersimpan apa adanya
+>   dan layout rusak diam-diam terbaca sebagai legacy (`slotCount` = 0).
+> - **GIF sesuai tipe template.** Frame ber-slot menghasilkan satu composite,
+>   jadi GIF memakai capture mentah; template legacy memakai foto berframe.
+>   Validasi jumlah capture hanya jalan bila `gif_photos` dikirim, sehingga
+>   klien lama tanpa field itu tetap bisa finalize.
+> - **Chroma key per booth kini bisa dinyalakan owner** dari Setelan Booth
+>   (`BoothSettingsPanel` → grup Kamera), bukan hanya default global admin.
+> - **Builder:** pembulatan slot dilakukan sebelum clamp (sebelumnya
+>   `x=0.5,w=1199.5` bisa jadi `1+1200 > 1200` dan ditolak server); editor
+>   memetakan slot aktif ke indeks foto lewat `fillSlots`.
+>
+> Gate setelah perubahan: `typecheck` PASS, `lint` PASS (0 error), `test`
+> PASS 1154/1154, `build` PASS. Test regresi baru ada di
+> `tests/template-layout.test.ts` (warna dasar + validasi hex).
+> Risiko residual (jujur): `sessions` belum menyimpan `template_id` — lihat
+> `docs/15-template-builder.md` §15.10.
+>
+> Audit Cloudflare/R2 (checklist cloud & deployment): bucket privat dengan
+> signed URL TTL 1 jam (`SIGNED_URL_TTL_SECONDS`), `r2Key()` menolak path
+> traversal, CORS hanya origin aplikasi dan metode `GET`/`HEAD`
+> (`scripts/configure-r2-cors.mjs`), kredensial `server-only` tanpa prefix
+> `NEXT_PUBLIC_` (`src/lib/r2/config.ts`). Tidak ada temuan baru; eksposur
+> bucket/CORS live tetap `needs_validation` karena itu keputusan akun.
 
 > **Pembaruan 2026-10-27:** E2E struk POS kini **16/16 PASS**. Sebelumnya BLOCKED
 > karena `0076` belum diterapkan; setelah `0076` masuk, suite berjalan dan

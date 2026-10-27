@@ -15,6 +15,7 @@ import { LOGO_ALLOWED_TYPES } from "@/lib/upload-validation";
 import { SIGNED_URL_TTL_SECONDS } from "@/lib/constants";
 import { getStorage, resolveStorage, removeResolved } from "@/server/storage";
 import { staleTemplateKeys, storageKeysOnly } from "@/lib/template-cleanup";
+import { layoutSchema } from "@/lib/template-layout";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -321,9 +322,24 @@ export async function updateGlobalTemplateLayout(
   input: { layout: unknown; is_active: boolean }
 ) {
   const admin = await requireAdmin();
+  // Layout global adalah trust boundary yang sama dengan layout owner
+  // (docs/15 §15.2). Tanpa validasi ini, layout invalid tersimpan apa adanya
+  // lalu `slotCount()` membacanya sebagai 0 — frame diam-diam jadi legacy.
+  const empty =
+    input.layout === null ||
+    input.layout === undefined ||
+    (typeof input.layout === "object" &&
+      !Array.isArray(input.layout) &&
+      Object.keys(input.layout as Record<string, unknown>).length === 0);
+  const parsed = empty ? null : layoutSchema.safeParse(input.layout);
+  if (parsed && !parsed.success) {
+    const first = parsed.error.issues[0];
+    const path = first?.path.join(".") || "layout";
+    throw new ApiError("VALIDATION_ERROR", `Layout tidak valid (${path}): ${first?.message ?? ""}`);
+  }
   const supabase = createServerClient();
   const patch: Record<string, unknown> = {
-    layout: input.layout ?? {},
+    layout: parsed?.success ? parsed.data : {},
     is_active: input.is_active,
   };
   const { data, error } = await supabase
