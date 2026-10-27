@@ -15,6 +15,7 @@ import {
   type PhotoEdit,
 } from "@/lib/kiosk-types";
 import type { TemplateLayout } from "@/lib/template-layout";
+import { effectiveSlots } from "@/lib/template-layout";
 import { fillSlots } from "@/lib/template-fit";
 import { composeFrame } from "@/lib/compose-frame";
 import {
@@ -235,7 +236,7 @@ function EditorInner({
   function slotSources(maxW: number): (HTMLCanvasElement | null)[] {
     if (!layout) return renderPhotoOffscreens(maxW);
     const offscreens = renderPhotoOffscreens(maxW);
-    return fillSlots(layout.slots.length, photos.length).map(
+    return fillSlots(effectiveSlots(layout).length, photos.length).map(
       (photoIndex) => offscreens[photoIndex] ?? null
     );
   }
@@ -256,7 +257,7 @@ function EditorInner({
       );
       // highlight slot aktif (petunjuk zoom/pan berlaku per slot)
       const ctx = canvas.getContext("2d");
-      const slots = [...layout.slots].sort((a, b) => a.z - b.z);
+      const slots = effectiveSlots(layout);
       const slot = slots[active];
       if (ctx && slot) {
         const s = canvas.width / layout.canvas.width;

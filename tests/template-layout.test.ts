@@ -6,6 +6,7 @@ import {
   MAX_SLOTS,
   clampSlot,
   coverFit,
+  effectiveSlots,
   emptyLayout,
   layoutSchema,
   slotCount,
@@ -264,4 +265,30 @@ test("emptyLayout: preset menghasilkan canvas sesuai docs/15 §15.2", () => {
   assert.deepEqual(emptyLayout("square").canvas, { width: 1500, height: 1500, preset: "square" });
   assert.equal(emptyLayout("custom").slots.length, 0);
   assert.equal(layoutSchema.safeParse(emptyLayout("square")).success, true);
+});
+test("effectiveSlots: layout tanpa slot = satu slot full-canvas di belakang frame", () => {
+  const layout = emptyLayout("4x6-portrait");
+  const eff = effectiveSlots(layout);
+  assert.equal(eff.length, 1);
+  const only = eff[0]!;
+  assert.equal(only.x, 0);
+  assert.equal(only.y, 0);
+  assert.equal(only.width, layout.canvas.width);
+  assert.equal(only.height, layout.canvas.height);
+  assert.equal(only.fit, "cover");
+  assert.equal(only.z, 0);
+});
+
+test("effectiveSlots: layout ber-slot dipakai apa adanya, urut z", () => {
+  const layout: TemplateLayout = {
+    version: 1,
+    canvas: { ...canvas, preset: "4x6-portrait" },
+    slots: [slot({ id: "b", z: 5 }), slot({ id: "a", z: 1 })],
+  };
+  const eff = effectiveSlots(layout);
+  assert.deepEqual(
+    eff.map((s) => s.id),
+    ["a", "b"]
+  );
+  assert.deepEqual(eff, slotsByZ(layout));
 });

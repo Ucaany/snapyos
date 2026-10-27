@@ -110,6 +110,31 @@ export function slotsByZ(layout: TemplateLayout): LayoutSlot[] {
 }
 
 /**
+ * Slot efektif untuk render/print.
+ *
+ * Layout tanpa slot (template legacy) TIDAK berarti "tanpa foto": foto customer
+ * digambar penuh satu kanvas DI BELAKANG frame, lalu frame PNG ditimpa di atasnya.
+ * Dengan begitu template tidak terpotong, area transparan frame terisi foto, dan
+ * owner tidak wajib menggambar slot manual lebih dulu.
+ */
+export function effectiveSlots(layout: TemplateLayout): LayoutSlot[] {
+  if (layout.slots.length > 0) return slotsByZ(layout);
+  return [
+    {
+      id: "auto-full",
+      shape: "rect",
+      x: 0,
+      y: 0,
+      width: layout.canvas.width,
+      height: layout.canvas.height,
+      rotation: 0,
+      z: 0,
+      fit: "cover",
+    },
+  ];
+}
+
+/**
  * Math cover/contain-fit: rasio tidak terdistorsi (docs/15 §15.9 AC 2).
  * Return ukuran gambar + offset agar ter-center di area slot.
  */

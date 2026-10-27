@@ -7,7 +7,7 @@
  */
 
 import {
-  slotsByZ,
+  effectiveSlots,
   slotPlacement,
   type LayoutSlot,
   type TemplateLayout,
@@ -67,7 +67,10 @@ export function composeFrame(
   if (!ctx) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  slotsByZ(layout).forEach((slot, i) => {
+  // effectiveSlots: layout tanpa slot = satu slot full-canvas di BELAKANG frame,
+  // supaya foto customer tetap tercetak (dulu: tanpa slot = foto tidak digambar
+  // sama sekali → hasil cetak blank).
+  effectiveSlots(layout).forEach((slot, i) => {
     const src = photos[i] ?? null;
     ctx.save();
     // Rotasi pivot center slot (docs/15 §15.2).

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { defaultBrandColors } from "@/lib/brand-defaults";
 import type { KioskVisualStyle } from "@/lib/kiosk-types";
-import { slotsByZ, type TemplateLayout } from "@/lib/template-layout";
+import { effectiveSlots, type TemplateLayout } from "@/lib/template-layout";
 import { composeFrame, type ComposeSource } from "@/lib/compose-frame";
 import { useObjectUrls } from "@/components/kiosk/use-object-url";
 
@@ -232,7 +232,7 @@ export function FramePreviewPanel({
     };
 
     const paint = () => {
-      const ordered = slotsByZ(previewLayout);
+      const ordered = effectiveSlots(previewLayout);
       const sources = ordered.map((_, i) => sourceAt(i));
       composeFrame(canvas, previewLayout, frameRef.current, sources, [], maxW, "blank");
     };
@@ -251,7 +251,7 @@ export function FramePreviewPanel({
 
   if (!previewLayout) return null;
 
-  const slotTotal = previewLayout.slots.length;
+  const slotTotal = effectiveSlots(previewLayout).length;
   const legacy = layout === null;
   const statusLabel = legacy
     ? `Mode frame penuh · ${captured.length} terisi`

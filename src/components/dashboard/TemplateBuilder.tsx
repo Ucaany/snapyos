@@ -669,12 +669,8 @@ export function TemplateBuilder({
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
-    if (roundedLayout.slots.length === 0) {
-      const ok = window.confirm(
-        "Template ini tidak punya slot: foto customer akan tampil full-canvas (mode legacy). Tetap publish?"
-      );
-      if (!ok) return;
-    }
+    // Tanpa slot bukan lagi mode "tanpa foto": engine mengisi satu slot
+    // full-canvas DI BELAKANG frame, jadi publish langsung aman.
     const formData = new FormData(form);
     formData.set("layout", JSON.stringify(roundedLayout));
     try {
@@ -1053,7 +1049,7 @@ export function TemplateBuilder({
             />
             <p className="font-mono text-xs uppercase tracking-[0.1em]">Simpan</p>
             <p className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
-              {`Slot: ${slotCount(roundedLayout)}. Frame ber-slot dapat dipakai lintas package; jumlah capture mengikuti slot.`}
+              {`Slot: ${slotCount(roundedLayout)}. Tanpa slot, foto customer mengisi penuh kanvas di belakang frame (frame tidak terpotong). Frame ber-slot dipakai lintas package; jumlah capture mengikuti slot.`}
             </p>
             {saveState.error && (
               <p
