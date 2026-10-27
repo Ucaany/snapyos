@@ -369,11 +369,17 @@ export async function createSession(businessSlug: string, input: SessionCreateIn
   } | null;
   if (sessionError || !sessionRow) throw new ApiError("INTERNAL", "Gagal membuat sesi");
 
-  // Link checkout ↔ session (result_token lookup saat finalize).
-  await supabase
+  // Link checkout ↔ session (result_token lookup saat finalize). Gagal di sini
+  // berarti customer sudah bayar tapi QR hasil tidak akan pernah ketemu —
+  // jangan ditelan: rollback sesi supaya booth bisa mengulang.
+  const { error: linkError } = await supabase
     .from("checkout_sessions")
     .update({ session_id: sessionRow.id })
     .eq("id", checkoutId);
+  if (linkError) {
+    await supabase.from("sessions").delete().eq("id", sessionRow.id);
+    throw new ApiError("INTERNAL", "Gagal menautkan checkout ke sesi");
+  }
 
   // Mode offline (docs/05): catat transaksi utk reporting — status paid,
   // payment_method 'offline'. BY DESIGN non-withdrawable (bukan pembayaran gateway).

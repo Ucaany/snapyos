@@ -43,6 +43,7 @@ const eslintConfig = defineConfig([
     "**/worktrees/**",
     // Local audit / Playwright E2E harness (bukan source app):
     ".audit/**",
+    ".audit-run/**",
     ".e2e-tmp/**",
     "test-results/**",
     // Tauri kiosk (Phase 9): crate Rust + hasil build. `target/` dan

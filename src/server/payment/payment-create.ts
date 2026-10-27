@@ -15,7 +15,12 @@ import { assertSessionCapacity } from "@/server/session-capacity";
 import { paymentCreateSchema, type PaymentCreateInput } from "@/lib/validators";
 import { resolveGatewayByCredential } from "./providers/registry";
 import type { PaymentRow } from "./checkout-shared";
-import { getQrisExpiryMinutes, loadCheckout, requireDevice } from "./checkout-shared";
+import {
+  getBusinessTimezone,
+  getQrisExpiryMinutes,
+  loadCheckout,
+  requireDevice,
+} from "./checkout-shared";
 import { resolveKioskPaymentMethod } from "./payment-methods";
 import { transitionPaymentToExpired } from "./settlement";
 import { paymentResponse, type PaymentResponse } from "./payment-response";
@@ -92,13 +97,14 @@ export async function createPayment(
     payment_reference: paymentReference,
   };
   if (method.kind === "voucher") {
+    const tz = await getBusinessTimezone(device.businessId);
     const { data, error } = await supabase.rpc("create_voucher_payment_atomically", {
       p_checkout_id: checkout.id,
       p_business_id: device.businessId,
       p_payment_reference: paymentReference,
       p_order_id: orderId,
       p_transaction_number: formatTxNumber(
-        todayISO("Asia/Jakarta"),
+        todayISO(tz),
         randomUUID().replace(/-/g, "").slice(0, 6)
       ),
       p_result_token: generateResultToken(),
@@ -128,6 +134,10 @@ export async function createPayment(
       })
       .select("*")
       .single();
+    // Partial unique index uq_pay_active_per_checkout — tunai kedua harus jadi
+    // 409, bukan 500 (jalur gateway sudah memetakan ini).
+    if (error && (error as { code?: string }).code === "23505")
+      throw new ApiError("PAYMENT_ALREADY_PROCESSED", "Checkout sudah diproses");
     return paymentResponse(inserted(data, error), null);
   }
   // Metode gateway SELALU dipilih dari credential milik business ini
