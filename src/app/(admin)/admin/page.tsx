@@ -4,6 +4,7 @@ import { BreakdownChart } from "@/components/dashboard/BreakdownChart";
 import { RevenueChart } from "@/components/dashboard/RevenueChart";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 import { formatIDR } from "@/lib/dashboard-math";
 import {
   getAdminAnalytics,
@@ -16,6 +17,10 @@ import {
 /**
  * Admin overview - docs/10 §10.1 (8 metrics) + ringkasan payment §10.3 +
  * indikator maintenance §10.4 + chart tren & breakdown provider.
+ *
+ * Urutan mengikuti pertanyaan yang dibawa admin ke layar ini: apa yang perlu
+ * ditindak hari ini, lalu uang, lalu volume. Rincian user dilipat karena bukan
+ * keputusan layar ini (pindah ke /admin/users bila perlu).
  */
 export default async function AdminOverviewPage() {
   const [overview, payments, settings, analytics, health] = await Promise.all([
@@ -32,28 +37,58 @@ export default async function AdminOverviewPage() {
     amount: p.volume,
   }));
 
+  const attention = [
+    { label: "Antrian aktivasi manual", value: health.pendingReview, href: "/admin/subscriptions/pending-review" },
+    { label: "Webhook error", value: health.webhookErrors, href: "/admin/payments" },
+    { label: "Signature invalid", value: payments.webhookIntegrity.invalidSignature, href: "/admin/payments" },
+  ];
+  const needsAttention = settings.maintenance_mode || attention.some((item) => item.value > 0);
+
   return (
     <div className="flex flex-col gap-8 p-6 md:p-10">
-      <header>
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {"ADMIN - PLATFORM CONTROL"}
-        </p>
-        <h1 className="mt-2 font-display text-4xl uppercase tracking-tight md:text-5xl">
-          Operasi SnapyOS
-        </h1>
-        <p className="mt-2 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
-          SEMUA TENANT · AGREGAT PLATFORM · {payments.webhookIntegrity.total} WEBHOOK TEREKAM
-        </p>
-      </header>
+      <PageHeader
+        size="hero"
+        eyebrow="ADMIN - PLATFORM CONTROL"
+        title="Operasi SnapyOS"
+        meta={`SEMUA TENANT · AGREGAT PLATFORM · ${payments.webhookIntegrity.total} WEBHOOK TEREKAM`}
+      />
 
       {settings.maintenance_mode ? (
         <div
           role="alert"
           className="border-2 border-ink bg-accent-2 px-4 py-3 font-mono text-xs font-bold uppercase tracking-[0.1em] text-ink"
         >
-          {"!! MAINTENANCE MODE AKTIF - PLATFORM SETTING GLOBAL"}
+          MAINTENANCE MODE AKTIF · PLATFORM SETTING GLOBAL
         </div>
       ) : null}
+
+      <section aria-labelledby="perlu-tindakan" className="flex flex-col gap-3">
+        <h2
+          id="perlu-tindakan"
+          className="font-mono text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground"
+        >
+          {needsAttention ? "Perlu tindakan" : "Tidak ada antrian tertunda"}
+        </h2>
+        <div className="grid grid-cols-1 gap-[2px] border-2 border-ink bg-ink sm:grid-cols-3">
+          {attention.map((item) => (
+            <Link
+              key={item.label}
+              href={item.href}
+              className={
+                "flex min-h-11 flex-col justify-between gap-2 p-3 hover:bg-muted " +
+                (item.value > 0 ? "bg-accent-2" : "bg-surface")
+              }
+            >
+              <span className="font-mono text-[11px] uppercase tracking-[0.12em]">
+                {item.label}
+              </span>
+              <span className="font-mono text-2xl font-bold leading-none tabular-nums">
+                {item.value}
+              </span>
+            </Link>
+          ))}
+        </div>
+      </section>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-12">
         <MetricCard
@@ -64,7 +99,7 @@ export default async function AdminOverviewPage() {
           sub={`${overview.activeSubscribers} subscriber aktif`}
           className="md:col-span-8"
         />
-        <div className="grid grid-cols-1 gap-6 md:col-span-4 sm:grid-cols-2 md:grid-cols-1">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:col-span-4 md:grid-cols-1">
           <MetricCard
             label="Total Bisnis"
             value={String(overview.totalBusinesses)}
@@ -85,11 +120,11 @@ export default async function AdminOverviewPage() {
         {[
           { label: "Total Sesi", value: String(overview.totalSessions) },
           { label: "Total Transaksi", value: String(overview.totalTransactions) },
-          { label: "Payment Volume", value: formatIDR(payments.volume) },
-          { label: "Refund", value: formatIDR(payments.refunded) },
+          { label: "Volume Pembayaran", value: formatIDR(payments.volume) },
+          { label: "Dana Dikembalikan", value: formatIDR(payments.refunded) },
         ].map((cell) => (
           <div key={cell.label} className="flex flex-col gap-2 bg-surface p-3">
-            <dt className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+            <dt className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
               {cell.label}
             </dt>
             <dd className="font-mono text-sm font-bold leading-none md:text-base">{cell.value}</dd>
@@ -100,93 +135,25 @@ export default async function AdminOverviewPage() {
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
         <Card className="xl:col-span-7">
           <CardHeader>
-            <CardTitle>Kesehatan Database</CardTitle>
+            <CardTitle>Pembayaran</CardTitle>
             <CardDescription>
-              Jumlah baris per tabel · {health.pendingReview} antrian aktivasi manual ·{" "}
-              {health.webhookErrors} webhook error.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <dl className="grid grid-cols-2 gap-[2px] border-2 border-ink bg-ink md:grid-cols-4">
-              {health.tables.map((t) => (
-                <div key={t.name} className="flex flex-col gap-1 bg-surface p-3">
-                  <dt className="truncate font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-                    {t.name}
-                  </dt>
-                  <dd className="font-mono text-sm font-bold leading-none tabular-nums">
-                    {t.count}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Link
-                href="/admin/subscriptions/pending-review"
-                className="inline-flex min-h-11 items-center border-2 border-ink bg-surface px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em] hover:bg-muted"
-              >
-                Antrian Aktivasi Manual ({health.pendingReview})
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="xl:col-span-5">
-          <CardHeader>
-            <CardTitle>Rincian User</CardTitle>
-            <CardDescription>Jumlah user pada seluruh platform.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <dl className="grid grid-cols-2 gap-[2px] border-2 border-ink bg-ink">
-              {[
-                { label: "Total", value: health.users.total, accent: true },
-                { label: "Admin", value: health.users.admins },
-                { label: "User", value: health.users.regular },
-                { label: "Aktif", value: health.users.active },
-                { label: "Suspended", value: health.users.suspended },
-                { label: "Verified", value: health.users.verified },
-                { label: "Belum Verified", value: health.users.unverified },
-                { label: "Punya Bisnis", value: health.users.withBusiness },
-                { label: "Tanpa Bisnis", value: health.users.withoutBusiness },
-              ].map((cell) => (
-                <div
-                  key={cell.label}
-                  className={`flex flex-col gap-1 p-3 ${cell.accent ? "bg-accent" : "bg-surface"}`}
-                >
-                  <dt className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-                    {cell.label}
-                  </dt>
-                  <dd className="font-mono text-sm font-bold leading-none tabular-nums">
-                    {cell.value}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
-        <Card className="xl:col-span-7">
-          <CardHeader>
-            <CardTitle>Monitoring Pembayaran</CardTitle>
-            <CardDescription>
-              Pendapatan kotor, biaya, bersih, dan status seluruh tenant.
+              Volume bruto, biaya platform, dan dana bersih seluruh tenant.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <dl className="grid grid-cols-2 gap-[2px] border-2 border-ink bg-ink md:grid-cols-4">
               {[
-                { label: "Gross Volume", value: formatIDR(payments.gross) },
-                { label: "Platform Fee", value: formatIDR(payments.fee) },
-                { label: "Net (ke owner)", value: formatIDR(payments.net) },
-                { label: "Paid", value: String(payments.counts.paid ?? 0) },
-                { label: "Pending", value: String(payments.counts.pending ?? 0) },
-                { label: "Failed", value: String(payments.counts.failed ?? 0) },
-                { label: "Expired", value: String(payments.counts.expired ?? 0) },
-                { label: "Refunded", value: String(payments.counts.refunded ?? 0) },
+                { label: "Volume Bruto", value: formatIDR(payments.gross) },
+                { label: "Biaya Platform", value: formatIDR(payments.fee) },
+                { label: "Bersih (ke owner)", value: formatIDR(payments.net) },
+                { label: "Lunas", value: String(payments.counts.paid ?? 0) },
+                { label: "Menunggu", value: String(payments.counts.pending ?? 0) },
+                { label: "Gagal", value: String(payments.counts.failed ?? 0) },
+                { label: "Kedaluwarsa", value: String(payments.counts.expired ?? 0) },
+                { label: "Dikembalikan", value: String(payments.counts.refunded ?? 0) },
               ].map((cell) => (
                 <div key={cell.label} className="flex flex-col gap-1 bg-surface p-3">
-                  <dt className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                  <dt className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
                     {cell.label}
                   </dt>
                   <dd className="font-mono text-sm font-bold leading-none">{cell.value}</dd>
@@ -220,7 +187,7 @@ export default async function AdminOverviewPage() {
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
         <Card className="xl:col-span-7">
           <CardHeader>
-            <CardTitle>Revenue Harian</CardTitle>
+            <CardTitle>Pendapatan Harian</CardTitle>
             <CardDescription>
               Pendapatan paid (IDR) 30 hari terakhir seluruh tenant.
             </CardDescription>
@@ -252,6 +219,69 @@ export default async function AdminOverviewPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Kesehatan Database</CardTitle>
+          <CardDescription>
+            Jumlah baris per tabel · {health.pendingReview} antrian aktivasi manual ·{" "}
+            {health.webhookErrors} webhook error.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <dl className="grid grid-cols-2 gap-[2px] border-2 border-ink bg-ink md:grid-cols-4">
+            {health.tables.map((t) => (
+              <div key={t.name} className="flex flex-col gap-1 bg-surface p-3">
+                <dt className="truncate font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
+                  {t.name}
+                </dt>
+                <dd className="font-mono text-sm font-bold leading-none tabular-nums">{t.count}</dd>
+              </div>
+            ))}
+          </dl>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Link
+              href="/admin/subscriptions/pending-review"
+              className="inline-flex min-h-11 items-center border-2 border-ink bg-surface px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.1em] hover:bg-muted"
+            >
+              Antrian Aktivasi Manual ({health.pendingReview})
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+
+      <details className="border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
+        <summary className="flex min-h-11 cursor-pointer items-center px-5 font-mono text-[11px] font-bold uppercase tracking-[0.12em]">
+          Rincian user seluruh platform
+        </summary>
+        <div className="border-t-2 border-ink p-5">
+          <dl className="grid grid-cols-2 gap-[2px] border-2 border-ink bg-ink md:grid-cols-3">
+            {[
+              { label: "Total", value: health.users.total, accent: true },
+              { label: "Admin", value: health.users.admins },
+              { label: "User", value: health.users.regular },
+              { label: "Aktif", value: health.users.active },
+              { label: "Suspended", value: health.users.suspended },
+              { label: "Terverifikasi", value: health.users.verified },
+              { label: "Belum verifikasi", value: health.users.unverified },
+              { label: "Punya bisnis", value: health.users.withBusiness },
+              { label: "Tanpa bisnis", value: health.users.withoutBusiness },
+            ].map((cell) => (
+              <div
+                key={cell.label}
+                className={`flex flex-col gap-1 p-3 ${cell.accent ? "bg-accent" : "bg-surface"}`}
+              >
+                <dt className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
+                  {cell.label}
+                </dt>
+                <dd className="font-mono text-sm font-bold leading-none tabular-nums">
+                  {cell.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </details>
     </div>
   );
 }

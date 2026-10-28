@@ -43,6 +43,8 @@ next-env.d.ts
 
 # --- Local harness (bukan bagian app) ---
 .audit/
+# Scratch run audit (JSON crawl 11 MB). Deliverable-nya ada di .audit-out/.
+.audit-run/
 .e2e-tmp/
 .e2e-builder/
 .claude/

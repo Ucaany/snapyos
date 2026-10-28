@@ -64,7 +64,7 @@ const DEFAULTS = {
 };
 
 const fieldClass = "flex flex-col gap-2";
-const cardClass = "border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111]";
+const cardClass = "border-2 border-ink bg-surface p-6 shadow-hard";
 
 const PAGE_IDS: KioskPageId[] = [
   "welcome",
@@ -77,14 +77,14 @@ const PAGE_IDS: KioskPageId[] = [
   "result",
 ];
 const PAGE_LABELS: Record<KioskPageId, string> = {
-  welcome: "Welcome",
+  welcome: "Beranda",
   guide: "Tutorial",
   package: "Paket",
-  payment: "Payment",
+  payment: "Pembayaran",
   template: "Frame",
   capture: "Foto",
   edit: "Edit",
-  result: "Result",
+  result: "Hasil",
 };
 const PAGE_OVERVIEW: Record<KioskPageId, string> = {
   welcome: "LAYAR UTAMA / BRANDING",
@@ -159,7 +159,7 @@ function AlignPicker({
             disabled={disabled}
             onClick={() => onChange(selected && allowNone ? "" : o.value)}
             title={allowNone && selected ? `${o.label}: klik lagi untuk ikut global` : o.label}
-            className={`flex w-[92px] flex-col gap-1.5 border-2 border-ink p-2 shadow-[2px_2px_0_0_#111111] transition-transform active:translate-y-[1px] disabled:opacity-40 ${
+            className={`flex w-[92px] flex-col gap-1.5 border-2 border-ink p-2 shadow-hard-sm transition-transform active:translate-y-[1px] disabled:opacity-40 ${
               selected ? "bg-accent" : "bg-surface hover:bg-muted"
             }`}
           >
@@ -173,7 +173,7 @@ function AlignPicker({
                 </span>
               ))}
             </span>
-            <span className="font-mono text-[9px] font-bold uppercase tracking-[0.08em] text-ink">
+            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-ink">
               {o.label}
               {allowNone && selected ? " ●" : ""}
             </span>
@@ -218,14 +218,14 @@ function PreviewVideo({ url }: { url?: string | null }) {
 }
 
 const PREVIEW_SCREENS = [
-  { id: "welcome", label: "Welcome" },
+  { id: "welcome", label: "Beranda" },
   { id: "guide", label: "Tutorial" },
   { id: "package", label: "Paket" },
-  { id: "payment", label: "Payment" },
+  { id: "payment", label: "Pembayaran" },
   { id: "template", label: "Frame" },
   { id: "capture", label: "Foto" },
   { id: "editor", label: "Edit" },
-  { id: "result", label: "Result" },
+  { id: "result", label: "Hasil" },
 ] as const;
 
 /**
@@ -250,7 +250,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
 
   const [title, setTitle] = useState(branding?.welcome_title ?? "");
   const [tagline, setTagline] = useState(branding?.welcome_tagline ?? "");
-  const [button, setButton] = useState(branding?.welcome_button ?? "START");
+  const [button, setButton] = useState(branding?.welcome_button ?? "Mulai");
   const [primary, setPrimary] = useState(branding?.primary_color ?? DEFAULTS.primary);
   const [secondary, setSecondary] = useState(branding?.secondary_color ?? DEFAULTS.secondary);
   const [bgColor, setBgColor] = useState(k.bg_color ?? DEFAULTS.bgColor);
@@ -339,7 +339,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
   const saved = useRef({
     title: branding?.welcome_title ?? "",
     tagline: branding?.welcome_tagline ?? "",
-    button: branding?.welcome_button ?? "START",
+    button: branding?.welcome_button ?? "Mulai",
     primary: branding?.primary_color ?? DEFAULTS.primary,
     secondary: branding?.secondary_color ?? DEFAULTS.secondary,
     bgColor: k.bg_color ?? DEFAULTS.bgColor,
@@ -901,10 +901,10 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
         <section className={cardClass} aria-labelledby="kb-welcome-heading">
           <div className="mb-5 flex items-center justify-between gap-4 border-b-2 border-ink pb-4">
             <h2 id="kb-welcome-heading" className="font-display text-lg uppercase tracking-tight">
-              Teks &amp; Identitas: Welcome
+              Teks &amp; Identitas: Beranda
             </h2>
             <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
-              01 / TEKS WELCOME
+              01 / TEKS BERANDA
             </span>
           </div>
           <div className="flex flex-col gap-5">
@@ -927,7 +927,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
               </label>
               <Input
                 id="kb-tagline"
-                placeholder="Capture your moment."
+                placeholder="Abadikan momenmu."
                 value={tagline}
                 onChange={(e) => setTagline(e.target.value)}
                 disabled={pending || !canWrite}
@@ -940,7 +940,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
               </label>
               <Input
                 id="kb-button"
-                placeholder="START"
+                placeholder="Mulai"
                 value={button}
                 onChange={(e) => setButton(e.target.value)}
                 disabled={pending || !canWrite}
@@ -1136,8 +1136,8 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                 id="kb-radius"
                 type="range"
                 min={0}
-                max={24}
-                step={2}
+                max={4}
+                step={1}
                 value={radius}
                 onChange={(e) => setRadius(Number(e.target.value))}
                 disabled={pending || !canWrite}
@@ -1152,7 +1152,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                 id="kb-padding"
                 type="range"
                 min={0}
-                max={96}
+                max={48}
                 step={8}
                 value={padding}
                 onChange={(e) => setPadding(Number(e.target.value))}
@@ -1203,7 +1203,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                   aria-selected={activePage === id}
                   onClick={() => setActivePage(id)}
                   disabled={pending || !canWrite}
-                  className={`border-2 border-ink px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.12em] shadow-[2px_2px_0_0_#111111] transition-transform active:translate-y-[1px] ${
+                  className={`border-2 border-ink px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.12em] shadow-hard-sm transition-transform active:translate-y-[1px] ${
                     activePage === id ? "bg-accent text-ink" : "bg-surface text-muted-foreground"
                   }`}
                 >
@@ -1298,8 +1298,8 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                     <input
                       type="range"
                       min={0}
-                      max={24}
-                      step={2}
+                      max={4}
+                      step={1}
                       value={p?.button_radius ?? 0}
                       onChange={(e) => setPageField(id, "button_radius", Number(e.target.value))}
                       disabled={!active || pending || !canWrite}
@@ -1312,7 +1312,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                     <input
                       type="range"
                       min={0}
-                      max={96}
+                      max={48}
                       step={8}
                       value={p?.padding ?? 24}
                       onChange={(e) => setPageField(id, "padding", Number(e.target.value))}
@@ -1368,7 +1368,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <div className={fieldClass}>
               <label htmlFor="kb-welcome-layout" className={labelClass}>
-                Welcome: posisi kolom brand
+                Beranda: posisi kolom brand
               </label>
               <select
                 id="kb-welcome-layout"
@@ -1405,7 +1405,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
           </div>
           <p className="mt-4 font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em] text-muted-foreground">
             {
-              "WELCOME = BRAND KIRI/KANAN/TENGAH · RESULT = QR KANAN/KIRI/BAWAH · PERATAAN LAINNYA LIHAT BAGIAN 02"
+              "BERANDA = BRAND KIRI/KANAN/TENGAH · HASIL = QR KANAN/KIRI/BAWAH · PERATAAN LAINNYA LIHAT BAGIAN 02"
             }
           </p>
         </section>
@@ -1838,7 +1838,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                 />
                 <div className="flex flex-wrap items-center gap-3">
                   <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                    {"VIDEO AKTIF · LOOPING DI WELCOME SCREEN"}
+                    {"VIDEO AKTIF · LOOPING DI LAYAR BERANDA"}
                   </p>
                   <Button
                     type="button"
@@ -1911,7 +1911,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
             )}
             <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em] text-muted-foreground">
               {
-                "VIDEO LATAR DITAMPILKAN DI LAYAR YANG DIPILIH (WELCOME, TUTORIAL, PAKET, PAYMENT, FRAME, FOTO, EDIT, RESULT)."
+                "VIDEO LATAR DITAMPILKAN DI LAYAR YANG DIPILIH (BERANDA, TUTORIAL, PAKET, PEMBAYARAN, FRAME, FOTO, EDIT, HASIL)."
               }
             </p>
           </div>
@@ -1974,7 +1974,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
               role="tab"
               aria-selected={previewScreen === s.id}
               onClick={() => setPreviewScreen(s.id)}
-              className={`border-2 border-ink px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.12em] shadow-[2px_2px_0_0_#111111] transition-transform active:translate-y-[1px] ${
+              className={`border-2 border-ink px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.12em] shadow-hard-sm transition-transform active:translate-y-[1px] ${
                 previewScreen === s.id ? "bg-accent text-ink" : "bg-surface text-muted-foreground"
               }`}
             >
@@ -1985,7 +1985,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
 
         {/* Frame bersama semua layar: border memakai secondary, bg/text memakai kiosk. */}
         <div
-          className="aspect-[4/3] overflow-hidden border-4 shadow-[8px_8px_0_0_#111111]"
+          className="mx-auto aspect-[4/3] w-full max-w-[560px] overflow-hidden border-4 shadow-hard lg:max-w-none"
           style={{ borderColor: sSafe }}
         >
           {previewScreen === "welcome" && (
@@ -2025,7 +2025,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                       unoptimized
                     />
                   ) : null}
-                  <p className="font-mono text-[8px] uppercase tracking-[0.3em] opacity-70">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.3em] opacity-70">
                     {businessName.toUpperCase()}
                   </p>
                 </div>
@@ -2045,7 +2045,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                       className="max-w-[20ch] leading-relaxed opacity-80"
                       style={{ fontSize: `${0.65 * ps.fontScale}rem` }}
                     >
-                      {tagline || "Capture your moment."}
+                      {tagline || "Abadikan momenmu."}
                     </p>
                   )}
                   <span
@@ -2058,7 +2058,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                       fontFamily: pvFont,
                     }}
                   >
-                    {button || "START"}
+                    {button || "Mulai"}
                   </span>
                 </div>
               </div>
@@ -2082,7 +2082,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                   aria-hidden
                 />
               )}
-              <p className="relative z-10 font-mono text-[8px] uppercase tracking-[0.25em] opacity-60">
+              <p className="relative z-10 font-mono text-[10px] uppercase tracking-[0.25em] opacity-60">
                 {"PETUNJUK"}
               </p>
               <h2
@@ -2100,7 +2100,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                   .map((step, i) => (
                     <li
                       key={`${i}-${step}`}
-                      className="flex items-center gap-2 border-2 p-1.5 font-mono text-[8px] uppercase tracking-[0.05em]"
+                      className="flex items-center gap-2 border-2 p-1.5 font-mono text-[10px] uppercase tracking-[0.05em]"
                       style={{ borderColor: ps.text, borderRadius: ps.radius }}
                     >
                       <span className="font-bold">{String(i + 1).padStart(2, "0")}</span>
@@ -2112,13 +2112,13 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                 className={`relative z-10 mt-1 flex gap-2 ${pvAlign === "center" ? "justify-center" : pvAlign === "right" ? "justify-end" : "justify-start"}`}
               >
                 <span
-                  className="border-2 px-3 py-1 font-mono text-[8px] font-bold uppercase"
+                  className="border-2 px-3 py-1 font-mono text-[10px] font-bold uppercase"
                   style={{ borderColor: ps.text, borderRadius: ps.radius }}
                 >
                   Kembali
                 </span>
                 <span
-                  className="border-2 px-3 py-1 font-mono text-[8px] font-bold uppercase"
+                  className="border-2 px-3 py-1 font-mono text-[10px] font-bold uppercase"
                   style={{
                     backgroundColor: pSafe,
                     borderColor: sSafe,
@@ -2139,7 +2139,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
             >
               <PreviewVideo url={k.pages?.package?.video_url} />
               <div className={`relative z-10 ${pvAlignClass}`}>
-                <p className="font-mono text-[8px] uppercase tracking-[0.25em] opacity-60">
+                <p className="font-mono text-[10px] uppercase tracking-[0.25em] opacity-60">
                   {"STEP 01 · PILIH PAKET"}
                 </p>
                 <h2
@@ -2161,18 +2161,18 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                     }}
                   >
                     <p
-                      className="font-mono text-[7px] font-bold uppercase tracking-[0.1em]"
+                      className="font-mono text-[9px] font-bold uppercase tracking-[0.1em]"
                       style={{ opacity: 0.7 }}
                     >{`PKG-${String(i + 1).padStart(2, "0")}`}</p>
                     <p
                       className="font-display text-[11px] uppercase leading-none"
                       style={{ fontFamily: pvFont }}
                     >{`[PAKET ${i + 1}]`}</p>
-                    <p className="font-mono text-[9px] font-bold" style={{ color: sSafe }}>
+                    <p className="font-mono text-[10px] font-bold" style={{ color: sSafe }}>
                       Rp ...
                     </p>
                     <span
-                      className="mt-auto border-2 px-2 py-1 text-center font-mono text-[7px] font-bold uppercase"
+                      className="mt-auto border-2 px-2 py-1 text-center font-mono text-[9px] font-bold uppercase"
                       style={{
                         borderColor: ps.text,
                         backgroundColor: i === 0 ? ps.surface : pSafe,
@@ -2194,7 +2194,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
             >
               <PreviewVideo url={k.pages?.payment?.video_url} />
               <div className={`relative z-10 flex w-full flex-col gap-1 ${payAlignClass}`}>
-                <p className="font-mono text-[8px] uppercase tracking-[0.3em] opacity-60">
+                <p className="font-mono text-[10px] uppercase tracking-[0.3em] opacity-60">
                   {"CHECKOUT"}
                 </p>
                 <h2
@@ -2204,7 +2204,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                   {paymentTitle || "Bayar sebelum foto"}
                 </h2>
                 {paymentHint && (
-                  <p className="font-mono text-[8px] uppercase tracking-[0.1em] opacity-70">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.1em] opacity-70">
                     {paymentHint}
                   </p>
                 )}
@@ -2214,7 +2214,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                   className="flex flex-col gap-1 border-2 p-3"
                   style={{ borderColor: ps.text, borderRadius: ps.radius }}
                 >
-                  <p className="font-mono text-[7px] uppercase tracking-[0.1em] opacity-60">
+                  <p className="font-mono text-[9px] uppercase tracking-[0.1em] opacity-60">
                     [ RINGKASAN ]
                   </p>
                   <p
@@ -2237,7 +2237,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                     aria-hidden
                   />
                   <p
-                    className="font-mono text-[8px] font-bold uppercase tracking-[0.1em]"
+                    className="font-mono text-[10px] font-bold uppercase tracking-[0.1em]"
                     style={{ color: sSafe }}
                   >
                     QRIS
@@ -2257,7 +2257,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                 className={`relative z-10 flex w-[38%] shrink-0 flex-col justify-center gap-1.5 border-r-2 p-3 ${pvAlignClass}`}
                 style={{ borderColor: ps.text }}
               >
-                <p className="font-mono text-[8px] uppercase tracking-[0.25em] opacity-60">
+                <p className="font-mono text-[10px] uppercase tracking-[0.25em] opacity-60">
                   {"STEP 02 · FRAME"}
                 </p>
                 <h2
@@ -2267,7 +2267,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                   {templateTitle || "Pilih frame"}
                 </h2>
                 <p
-                  className="font-mono text-[7px] uppercase tracking-[0.1em]"
+                  className="font-mono text-[9px] uppercase tracking-[0.1em]"
                   style={{ opacity: 0.6 }}
                 >
                   [N] FRAME
@@ -2280,7 +2280,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                 {[0, 1, 2, 3, 4, 5].map((i) => (
                   <div
                     key={i}
-                    className="flex aspect-[3/4] items-center justify-center border-2 font-mono text-[7px] uppercase tracking-[0.1em]"
+                    className="flex aspect-[3/4] items-center justify-center border-2 font-mono text-[9px] uppercase tracking-[0.1em]"
                     style={{
                       borderColor: ps.text,
                       borderRadius: ps.radius,
@@ -2315,7 +2315,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                 }}
               >
                 <p
-                  className="font-mono text-[8px] uppercase tracking-[0.25em]"
+                  className="font-mono text-[10px] uppercase tracking-[0.25em]"
                   style={{ opacity: 0.6 }}
                 >
                   {"CAPTURE"}
@@ -2328,7 +2328,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                 </p>
                 {captureHint && (
                   <p
-                    className="font-mono text-[7px] uppercase tracking-[0.15em]"
+                    className="font-mono text-[9px] uppercase tracking-[0.15em]"
                     style={{ opacity: 0.5 }}
                   >
                     {captureHint}
@@ -2364,7 +2364,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                 }}
               >
                 <div className={`flex flex-col ${pvAlignClass}`}>
-                  <p className="font-mono text-[8px] uppercase tracking-[0.2em] opacity-60">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.2em] opacity-60">
                     {"EDIT"}
                   </p>
                   <h2
@@ -2374,7 +2374,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                     {editorTitle || "Edit foto"}
                   </h2>
                   {editorHint && (
-                    <p className="font-mono text-[7px] uppercase tracking-[0.1em] opacity-70">
+                    <p className="font-mono text-[9px] uppercase tracking-[0.1em] opacity-70">
                       {editorHint}
                     </p>
                   )}
@@ -2383,7 +2383,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                   {["FILM", "WARM", "BW"].map((f) => (
                     <span
                       key={f}
-                      className="border-2 px-2 py-1 font-mono text-[7px] font-bold uppercase"
+                      className="border-2 px-2 py-1 font-mono text-[9px] font-bold uppercase"
                       style={{ borderColor: ps.text, borderRadius: ps.radius }}
                     >
                       {f}
@@ -2396,7 +2396,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                 style={{ backgroundColor: `color-mix(in srgb, ${ps.text} 4%, ${ps.bg})` }}
               >
                 <span
-                  className="flex h-2/3 w-1/2 items-center justify-center border-2 border-dashed font-mono text-[9px] uppercase tracking-[0.15em]"
+                  className="flex h-2/3 w-1/2 items-center justify-center border-2 border-dashed font-mono text-[10px] uppercase tracking-[0.15em]"
                   style={{ borderColor: `color-mix(in srgb, ${ps.text} 30%, transparent)` }}
                 >
                   FOTO + FRAME
@@ -2422,7 +2422,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                 style={{ borderColor: ps.text, backgroundColor: ps.surface }}
               >
                 <span
-                  className="flex h-1/2 w-1/2 items-center justify-center border-2 border-dashed font-mono text-[8px] uppercase tracking-[0.15em]"
+                  className="flex h-1/2 w-1/2 items-center justify-center border-2 border-dashed font-mono text-[10px] uppercase tracking-[0.15em]"
                   style={{ borderColor: `color-mix(in srgb, ${ps.text} 30%, transparent)` }}
                 >
                   HASIL FOTO
@@ -2441,7 +2441,7 @@ export function KioskBrandingEditor({ businessName, branding, photoboxes, canWri
                 >
                   {resultTitle || "Foto kamu jadi!"}
                 </h2>
-                <p className="max-w-[20ch] font-mono text-[7px] uppercase leading-relaxed tracking-[0.1em] opacity-70">
+                <p className="max-w-[20ch] font-mono text-[9px] uppercase leading-relaxed tracking-[0.1em] opacity-70">
                   {resultHint || "Scan QR untuk mengunduh hasil."}
                 </p>
                 <span

@@ -38,12 +38,12 @@ export default async function StaffPackagesPage() {
   return (
     <div className="flex flex-col gap-6 p-4 pb-10 sm:gap-8 sm:p-6 md:p-8 lg:p-10">
       <StaffPageHeader
-        eyebrow="PACKAGE · READ ONLY"
-        title="Package"
+        eyebrow="PAKET · HANYA LIHAT"
+        title="Paket"
         description="Daftar harga & isi paket di booth yang Anda akses. Harga dikunci owner."
         aside={
           <div className="border-2 border-ink bg-bg px-3 py-2">
-            <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">
+            <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
               PAKET TERSEDIA
             </p>
             <p className="font-mono text-xl font-bold leading-none">
@@ -53,7 +53,7 @@ export default async function StaffPackagesPage() {
         }
       />
       <StaffCatalogShell
-        title="PACKAGE.REGISTER"
+        title="DAFTAR.PAKET"
         meta={`${String(visiblePackages.length).padStart(2, "0")} PAKET`}
       >
         <StaffPackagesBoard

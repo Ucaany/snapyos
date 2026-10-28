@@ -57,7 +57,10 @@ export function AdminSidebar({ collapsed = false }: { collapsed?: boolean }) {
           // center - border kotak aktif selalu utuh (46 ≥ 4+16), satu sumbu
           // vertikal dengan tombol toggle. Tanpa fit-content/cascade trick.
           collapsed && "md:w-full md:justify-center md:gap-0 md:px-0",
-          active ? "border-2 border-ink bg-accent font-bold text-ink" : "text-ink hover:bg-muted"
+          "border-2",
+          active
+            ? "border-ink bg-accent font-bold text-ink"
+            : "border-transparent text-ink hover:bg-muted"
         )}
         onClick={() => setMobileOpen(false)}
       >
@@ -71,12 +74,12 @@ export function AdminSidebar({ collapsed = false }: { collapsed?: boolean }) {
     <nav
       aria-label="Navigasi admin platform"
       className={cn(
-        "flex gap-1 overflow-x-auto border-b-2 border-ink p-3 md:flex-col md:overflow-hidden md:border-b-0 md:p-4",
+        "flex flex-col gap-1 border-b-2 border-ink p-3 md:overflow-hidden md:border-b-0 md:p-4",
         collapsed && "md:px-2 md:py-4"
       )}
     >
       <div className="flex items-center justify-between gap-2 md:hidden">
-        <span className="font-mono text-[10px] font-bold uppercase tracking-[0.15em]">
+        <span className="font-mono text-[11px] font-bold uppercase tracking-[0.15em]">
           Menu Admin
         </span>
         <button
@@ -92,14 +95,14 @@ export function AdminSidebar({ collapsed = false }: { collapsed?: boolean }) {
       </div>
       <div
         id="admin-mobile-nav"
-        className={cn("gap-1 md:hidden", mobileOpen ? "flex flex-col" : "hidden")}
+        className={cn("flex-col gap-1 md:hidden", mobileOpen ? "flex" : "hidden")}
       >
         {NAV_GROUPS.map((group) => (
           <div
             key={group.label}
             className="border-t-2 border-ink/10 pt-2 first:border-t-0 first:pt-0"
           >
-            <p className="px-3 pb-1 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+            <p className="px-3 pb-1 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
               {group.label}
             </p>
             <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
@@ -114,7 +117,7 @@ export function AdminSidebar({ collapsed = false }: { collapsed?: boolean }) {
         <div key={group.label} className="hidden flex-col gap-1 md:flex">
           <p
             className={cn(
-              "px-3 pb-1 pt-3 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground",
+              "px-3 pb-1 pt-3 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground",
               i === 0 ? "pt-0" : "border-t-2 border-ink/10",
               collapsed && "md:hidden"
             )}

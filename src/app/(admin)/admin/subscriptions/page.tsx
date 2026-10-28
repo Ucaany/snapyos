@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { AdminActionButton, AdminActionForm } from "@/components/admin/AdminActionForm";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminPaginator } from "@/components/admin/AdminPaginator";
 import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
+import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -37,37 +39,43 @@ export default async function AdminSubscriptionsPage({
 
   return (
     <div className="flex flex-col gap-8 p-6 md:p-10">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            {"ADMIN - SUBSCRIPTIONS"}
-          </p>
-          <h1 className="mt-2 font-display text-3xl uppercase tracking-tight md:text-4xl">
-            Manajemen Subscription
-          </h1>
-          <p className="mt-2 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
-            {total} subscription{q.status ? ` · filter: ${q.status}` : ""}
-          </p>
-        </div>
-        <form method="GET" className="flex items-end gap-2">
-          <BrutalistSelect
-            name="status"
-            label="Status"
-            defaultValue={q.status ?? ""}
-            options={[
-              { value: "", label: "SEMUA" },
-              ...STATUSES.map((s) => ({ value: s, label: s.toUpperCase() })),
-            ]}
-          />
-          <Button type="submit" size="sm" variant="secondary">
-            Filter
-          </Button>
-        </form>
-      </header>
+      <PageHeader
+        eyebrow="ADMIN - SUBSCRIPTIONS"
+        title="Manajemen Langganan"
+        meta={`${total} langganan${q.status ? ` · filter: ${q.status}` : ""}`}
+        right={
+          <form method="GET" className="flex flex-wrap items-end gap-2">
+            <BrutalistSelect
+              name="status"
+              label="Status"
+              defaultValue={q.status ?? ""}
+              options={[
+                { value: "", label: "SEMUA" },
+                ...STATUSES.map((s) => ({ value: s, label: s.toUpperCase() })),
+              ]}
+            />
+            <Button type="submit" size="sm" variant="secondary">
+              Filter
+            </Button>
+          </form>
+        }
+      />
 
       {items.length === 0 ? (
-        <AdminEmptyState heading="TIDAK ADA SUBSCRIPTION">
-          Tidak ada subscription{q.status ? ` berstatus ${q.status}` : ""} saat ini.
+        <AdminEmptyState
+          heading="TIDAK ADA LANGGANAN"
+          action={
+            q.status ? (
+              <Link
+                href="/admin/subscriptions"
+                className="inline-flex min-h-11 items-center border-2 border-ink bg-surface px-3 font-mono text-[11px] font-bold uppercase tracking-[0.1em] hover:bg-muted"
+              >
+                Hapus filter
+              </Link>
+            ) : null
+          }
+        >
+          Tidak ada langganan{q.status ? ` berstatus ${q.status}` : ""} saat ini.
         </AdminEmptyState>
       ) : (
         <div className="flex flex-col gap-4">
@@ -118,7 +126,7 @@ export default async function AdminSubscriptionsPage({
                   },
                 ].map((cell) => (
                   <div key={cell.label} className="flex flex-col gap-1 bg-surface p-3">
-                    <dt className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                    <dt className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
                       {cell.label}
                     </dt>
                     <dd className="font-mono text-xs font-bold uppercase">{cell.value}</dd>
@@ -141,7 +149,7 @@ export default async function AdminSubscriptionsPage({
                         hidden={{ linkId: link.id }}
                         submitLabel="Batalkan"
                         variant="outline"
-                        confirm="Batalkan add-on ini? Mode SEGERA memutus fitur pelanggan seketika."
+                        confirm={`Batalkan add-on ${link.name} untuk ${s.business_name}? Mode SEGERA memutus fitur pelanggan seketika.`}
                         className="flex flex-wrap items-end gap-2"
                       >
                         <BrutalistSelect
@@ -153,12 +161,11 @@ export default async function AdminSubscriptionsPage({
                             { value: "deferred", label: "AKHIR PERIODE" },
                             { value: "immediate", label: "SEGERA (AUDIT)" },
                           ]}
-                          className="h-9"
-                        />
+                              />
                         <div className="flex flex-col gap-1">
                           <label
                             htmlFor={`cancel-reason-${link.id}`}
-                            className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                            className="font-mono text-[11px] uppercase tracking-[0.12em]"
                           >
                             Alasan (wajib bila SEGERA)
                           </label>
@@ -166,7 +173,7 @@ export default async function AdminSubscriptionsPage({
                             id={`cancel-reason-${link.id}`}
                             name="manual_cancel_reason"
                             placeholder="Darurat/fraud"
-                            className="h-9 w-36 text-xs"
+                            className="w-36 text-xs"
                           />
                         </div>
                       </AdminActionForm>
@@ -188,12 +195,11 @@ export default async function AdminSubscriptionsPage({
                     label="Ubah status"
                     defaultValue={s.status}
                     options={STATUSES.map((st) => ({ value: st, label: st.toUpperCase() }))}
-                    className="h-9"
                   />
                   <div className="flex flex-col gap-1">
                     <label
                       htmlFor={`extend-${s.id}`}
-                      className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                      className="font-mono text-[11px] uppercase tracking-[0.12em]"
                     >
                       Perpanjang (hari)
                     </label>
@@ -202,7 +208,7 @@ export default async function AdminSubscriptionsPage({
                       name="extend_days"
                       type="number"
                       placeholder="30"
-                      className="h-9 w-28 text-xs"
+                      className="w-28 text-xs"
                     />
                   </div>
                 </AdminActionForm>
@@ -234,12 +240,11 @@ export default async function AdminSubscriptionsPage({
                           label: cancelled.has(a.id) ? `+ ${a.name} · REAKTIVASI` : a.name,
                         }));
                       })()}
-                      className="h-9"
-                    />
+                      />
                     <div className="flex flex-col gap-1">
                       <label
                         htmlFor={`qty-${s.id}`}
-                        className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                        className="font-mono text-[11px] uppercase tracking-[0.12em]"
                       >
                         Qty
                       </label>
@@ -249,7 +254,7 @@ export default async function AdminSubscriptionsPage({
                         type="number"
                         defaultValue={1}
                         min={1}
-                        className="h-9 w-20 text-xs"
+                        className="w-20 text-xs"
                       />
                     </div>
                   </AdminActionForm>

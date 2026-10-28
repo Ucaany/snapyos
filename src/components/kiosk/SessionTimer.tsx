@@ -38,7 +38,7 @@ export function SessionTimer({ expiresAt, warningSeconds, onExpired }: Props) {
 
   return (
     <div
-      className={`inline-flex items-center gap-2 border-2 border-ink px-3 py-2 font-mono text-sm font-bold leading-none shadow-[2px_2px_0_0_#111111] ${
+      className={`inline-flex items-center gap-2 border-2 border-ink px-3 py-2 font-mono text-sm font-bold leading-none shadow-hard-sm ${
         warning ? "bg-destructive text-destructive-foreground" : "bg-surface text-ink"
       }`}
       role="timer"

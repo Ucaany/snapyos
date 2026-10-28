@@ -29,6 +29,7 @@ import {
 } from "@/server/payment/pakasir-utils";
 import { pakasirAggregatorGateway } from "@/server/payment/pakasir";
 import { parseProviderAmount } from "@/lib/qris-helpers";
+import { isMidtransFraudAccepted } from "@/server/payment/providers/midtrans";
 import { decrypt } from "@/server/payment/providers/encrypt";
 import { resolveGatewayByCredential } from "@/server/payment/providers/registry";
 import { handleInvoiceWebhookEvent, handleDirectInvoiceWebhook } from "@/server/payment/invoice";
@@ -135,7 +136,7 @@ export async function handleMidtransWebhook(rawPayload: unknown) {
       event.signature_key,
       midtransEventId(event),
       event.transaction_status,
-      (status === "capture" || status === "settlement") && fraud === "accept",
+      (status === "capture" || status === "settlement") && isMidtransFraudAccepted(fraud),
       status === "expire",
       parseMidtransAmount(event.gross_amount),
       event
@@ -153,10 +154,10 @@ export async function handleMidtransWebhook(rawPayload: unknown) {
       payload: event,
       signaturePayload: event,
       signature: event.signature_key,
-      paid: (status === "capture" || status === "settlement") && fraud === "accept",
+      paid: (status === "capture" || status === "settlement") && isMidtransFraudAccepted(fraud),
       expired: status === "expire",
       rejectReason:
-        (status === "capture" || status === "settlement") && fraud !== "accept"
+        (status === "capture" || status === "settlement") && !isMidtransFraudAccepted(fraud)
           ? "fraud_status tidak diterima"
           : status === "deny" || status === "cancel"
             ? "status Midtrans ditolak"

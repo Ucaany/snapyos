@@ -46,6 +46,7 @@ export function AdminPaginator({
       aria-label="Paginasi"
       className="flex flex-wrap items-center gap-2 font-mono text-xs uppercase tracking-[0.1em]"
     >
+      <span className="text-muted-foreground">Halaman</span>
       {start > 1 ? (
         <Link href={href(1)} aria-label="Halaman pertama" className={cell}>
           {"<<"}

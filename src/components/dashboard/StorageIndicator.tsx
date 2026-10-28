@@ -48,8 +48,8 @@ export function StorageIndicator({ businessId }: { businessId: string }) {
       href="/dashboard/settings"
       title={
         hasLimit
-          ? `Storage: ${formatStorageMb(usage!.usedMb)} / ${formatStorageMb(usage!.limitMb)} terpakai (${usage!.percent}%)`
-          : "Storage penyimpanan"
+          ? `Penyimpanan: ${formatStorageMb(usage!.usedMb)} / ${formatStorageMb(usage!.limitMb)} terpakai (${usage!.percent}%)`
+          : "Penyimpanan"
       }
       className={cn(
         "hidden min-h-11 shrink-0 items-center gap-2 border-2 border-ink bg-surface px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.05em] text-ink transition-colors hover:bg-accent active:translate-y-[2px] sm:flex md:px-3 md:text-xs"
@@ -57,7 +57,7 @@ export function StorageIndicator({ businessId }: { businessId: string }) {
     >
       <HardDrive className="size-4 shrink-0" />
       {usage === null ? (
-        <span className="text-muted-foreground">Storage</span>
+        <span className="text-muted-foreground">Penyimpanan</span>
       ) : hasLimit ? (
         <span className="flex items-center gap-2">
           <span className={cn(usage.isFull && "font-bold text-destructive")}>
@@ -72,7 +72,7 @@ export function StorageIndicator({ businessId }: { businessId: string }) {
           </span>
         </span>
       ) : (
-        <span className="text-muted-foreground">Storage</span>
+        <span className="text-muted-foreground">Penyimpanan</span>
       )}
     </Link>
   );

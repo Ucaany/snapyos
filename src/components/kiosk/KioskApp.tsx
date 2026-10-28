@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Lock, Maximize2, WifiOff, X } from "lucide-react";
+import { Lock, Maximize2, Settings, WifiOff, X } from "lucide-react";
 import type {
   CapturePhoto,
   FinalPhoto,
@@ -11,6 +11,7 @@ import type {
   PublicTemplate,
 } from "@/lib/kiosk-types";
 import { kioskVisualStyle } from "@/lib/kiosk-types";
+import { mergeAppearance } from "@/lib/appearance-merge";
 import { printPlan } from "@/lib/print-layout";
 import { resolveCaptureCount } from "@/lib/template-fit";
 import { apiForm, apiPost, KioskError } from "@/components/kiosk/api";
@@ -26,6 +27,7 @@ import { canBootOffline, isNetworkFailure } from "@/components/kiosk/boot-offlin
 import { useConfigSync } from "@/components/kiosk/use-config-sync";
 import { useKioskLock, useHoldExit } from "@/components/kiosk/use-kiosk-lock";
 import { ExitPinDialog } from "@/components/kiosk/ExitPinDialog";
+import { BoothSettingsPanel } from "@/components/kiosk/BoothSettingsPanel";
 import {
   buildFinalizeForm,
   drainQueue,
@@ -180,6 +182,11 @@ export function KioskApp({
   // pasca-aktivasi). Keluar hanya via PIN petugas (server-verified, diatur
   // owner di dashboard); state sesi TIDAK di-reset saat keluar.
   const [exitPrompt, setExitPrompt] = useState(false);
+  // Panel setelan booth: hanya terbuka SETELAH PIN petugas terverifikasi.
+  // Tanpa gerbang ini siapa pun yang menyentuh layar bisa mengubah kamera,
+  // printer, dan tampilan yang dilihat pelanggan.
+  const [settingsPrompt, setSettingsPrompt] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const requestExit = useCallback(() => setExitPrompt(true), []);
   const { reengage, requestFullscreen, unlock } = useKioskLock(
     step !== "activation",
@@ -193,6 +200,11 @@ export function KioskApp({
   function handleExitSuccess() {
     setExitPrompt(false);
     unlock();
+  }
+
+  /** Setelan booth tersimpan → pakai nilai baru tanpa menunggu reload. */
+  function handleSettingsSaved(next: DeviceSettings) {
+    setDeviceSettings(next);
   }
 
   /** Resume sesi aktif dari verify — return true bila sesi dipulihkan. */
@@ -538,6 +550,13 @@ export function KioskApp({
       const shouldPrint =
         currentPhotobox.print_settings.enabled !== false && (selectedPackage?.print_count ?? 0) > 0;
 
+      // GIF slideshow: frame ber-slot menghasilkan SATU composite, jadi
+      // slideshow memakai capture mentah (pose bergantian). Template legacy
+      // memakai foto berframe — sesuai docs/05 §5.13.
+      const gifSource = selectedTemplate?.layout
+        ? photos.map((p) => p.blob)
+        : final.map((p) => p.blob);
+
       // Sesi `local_*` hanya dikenal runtime lokal. Cloud tidak punya barisnya,
       // jadi finalize HARUS ke runtime walau internet sudah hidup lagi — sync
       // worker yang mengirimkannya ke cloud nanti.
@@ -548,7 +567,7 @@ export function KioskApp({
             templateId: selectedTemplate?.id ?? null,
             retakeCount,
             photos: final.map((p) => p.blob),
-            gifPhotos: photos.map((p) => p.blob),
+            gifPhotos: gifSource,
           });
           await finalizeLocalSession(
             session.session_id,
@@ -586,7 +605,7 @@ export function KioskApp({
             retakeCount,
             photos: final.map((p) => p.blob),
             // Capture mentah tanpa frame → GIF slideshow (bukan hasil komposit).
-            gifPhotos: photos.map((p) => p.blob),
+            gifPhotos: gifSource,
             queuedAt: Date.now(),
           });
           setFinalPhotos(final);
@@ -612,7 +631,7 @@ export function KioskApp({
           retakeCount,
           photos: final.map((p) => p.blob),
           // Capture mentah tanpa frame → GIF slideshow (bukan hasil komposit).
-          gifPhotos: photos.map((p) => p.blob),
+          gifPhotos: gifSource,
         });
 
         const data = await apiForm<FinalizeResult>(
@@ -732,12 +751,21 @@ export function KioskApp({
   );
 
   const sessionSettings = currentPhotobox.session_settings;
+  // Branding efektif: identitas cloud (logo, warna brand, video) DASAR, lalu
+  // kustomisasi booth (`appearance_settings` dari runtime lokal) di atasnya.
+  // Booth menang karena hanya mesin di lokasi yang tahu layarnya — teks yang
+  // muat di booth A belum tentu muat di booth B. Runtime mati → branding cloud
+  // dipakai apa adanya (booth tetap jualan).
+  const effectiveBranding = useMemo(
+    () => mergeAppearance(liveConfig.branding, deviceSettings?.appearance_settings),
+    [liveConfig.branding, deviceSettings?.appearance_settings]
+  );
   // Gaya visual per layar — global kiosk + override per-layar (kioskVisualStyle).
-  const kioskBranding = liveConfig.branding.kiosk;
+  const kioskBranding = effectiveBranding.kiosk;
   // Warna brand (primary/secondary) — diteruskan ke tombol CTA tiap layar.
   const brandColors = {
-    primary: liveConfig.branding.primary_color,
-    secondary: liveConfig.branding.secondary_color,
+    primary: effectiveBranding.primary_color,
+    secondary: effectiveBranding.secondary_color,
   };
   const pageStyle = (page: KioskPageId) => kioskVisualStyle(kioskBranding, page, brandColors);
   // Panduan cara pakai (branding.kiosk.guide_steps) — kosong = dilewati.
@@ -761,7 +789,7 @@ export function KioskApp({
     >
       {notice && (
         <div
-          className="fixed inset-x-0 top-0 z-50 flex items-start justify-between gap-3 border-b-2 border-ink bg-accent px-4 py-3 shadow-[0_2px_0_0_#111111]"
+          className="fixed inset-x-0 top-0 z-50 flex items-start justify-between gap-3 border-b-2 border-ink bg-accent px-4 py-3 shadow-hard-sm"
           style={{ paddingTop: "calc(env(safe-area-inset-top) + 0.75rem)" }}
           role="status"
           aria-live="polite"
@@ -820,7 +848,7 @@ export function KioskApp({
       {step === "welcome" && (
         <WelcomeScreen
           business={liveConfig.business}
-          branding={liveConfig.branding}
+          branding={effectiveBranding}
           onStart={() => setStep(hasGuide ? "guide" : "package")}
         />
       )}
@@ -840,8 +868,8 @@ export function KioskApp({
           packages={liveConfig.packages}
           kioskStyle={pageStyle("package")}
           titleText={kioskBranding?.package_title}
-          primaryColor={liveConfig.branding.primary_color}
-          secondaryColor={liveConfig.branding.secondary_color}
+          primaryColor={effectiveBranding.primary_color}
+          secondaryColor={effectiveBranding.secondary_color}
           videoUrl={kioskBranding?.pages?.package?.video_url ?? null}
           busy={busy}
           onBack={() => setStep(hasGuide ? "guide" : "welcome")}
@@ -854,8 +882,8 @@ export function KioskApp({
           pkg={selectedPackage}
           deviceToken={deviceToken}
           offlineEnabled={offlineEnabled}
-          paymentTitle={liveConfig.branding.kiosk?.payment_title}
-          paymentHint={liveConfig.branding.kiosk?.payment_hint}
+          paymentTitle={kioskBranding?.payment_title}
+          paymentHint={kioskBranding?.payment_hint}
           kioskStyle={pageStyle("payment")}
           videoUrl={kioskBranding?.pages?.payment?.video_url ?? null}
           onOffline={() => void startDirectSession(selectedPackage)}
@@ -880,13 +908,14 @@ export function KioskApp({
           cameraSettings={currentPhotobox.camera_settings}
           photoCount={captureCount}
           maxRetakes={sessionSettings?.max_retakes ?? null}
-          titleText={liveConfig.branding.kiosk?.capture_title}
-          hintText={liveConfig.branding.kiosk?.capture_hint}
+          titleText={kioskBranding?.capture_title}
+          hintText={kioskBranding?.capture_hint}
           kioskStyle={pageStyle("capture")}
           showMirrorToggle={kioskBranding?.show_mirror_toggle !== false}
           videoUrl={kioskBranding?.pages?.capture?.video_url ?? null}
           layout={selectedTemplate?.layout ?? null}
           frameUrl={selectedTemplate?.file_url ?? null}
+          captureMode={selectedPackage.capture_mode}
           onProgress={onProgressCapture}
           onComplete={handleCaptured}
         />
@@ -898,8 +927,8 @@ export function KioskApp({
           onFinish={handleEditorFinish}
           layout={selectedTemplate?.layout ?? null}
           frameUrl={selectedTemplate?.file_url ?? null}
-          titleText={liveConfig.branding.kiosk?.editor_title}
-          hintText={liveConfig.branding.kiosk?.editor_hint}
+          titleText={kioskBranding?.editor_title}
+          hintText={kioskBranding?.editor_hint}
           kioskStyle={pageStyle("edit")}
           videoUrl={kioskBranding?.pages?.edit?.video_url ?? null}
           allowZoomPan={kioskBranding?.allow_zoom_pan !== false}
@@ -926,9 +955,9 @@ export function KioskApp({
           gifUrl={result.gif_url ?? null}
           finalPhotos={finalPhotos}
           businessName={liveConfig.business.name}
-          resultTitle={liveConfig.branding.kiosk?.result_title}
-          resultHint={liveConfig.branding.kiosk?.result_hint}
-          resultLayout={liveConfig.branding.kiosk?.result_layout}
+          resultTitle={kioskBranding?.result_title}
+          resultHint={kioskBranding?.result_hint}
+          resultLayout={kioskBranding?.result_layout}
           kioskStyle={pageStyle("result")}
           videoUrl={kioskBranding?.pages?.result?.video_url ?? null}
           printed={printed}
@@ -980,6 +1009,28 @@ export function KioskApp({
         dua detik.
       </p>
 
+      {/* Tombol setelan booth: diskret, di sebelah tombol keluar. Membuka panel
+          setelan kamera/printer/sesi/tampilan SETELAH PIN petugas diverifikasi,
+          tanpa melepas kiosk. Hanya tampil bila runtime lokal hidup — tanpa
+          runtime tidak ada tempat menyimpan setelan mesin. */}
+      {step !== "activation" && deviceSettings !== null && !exitPrompt && !settingsOpen && (
+        <button
+          type="button"
+          aria-label="Petugas: buka setelan booth"
+          title="Petugas: setelan booth"
+          onClick={() => setSettingsPrompt(true)}
+          className="fixed left-3 z-40 flex size-12 items-center justify-center border-2 border-ink/20 bg-surface/60 text-muted-foreground opacity-40 transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink lg:left-4"
+          style={{
+            marginLeft: "env(safe-area-inset-left)",
+            bottom: online
+              ? "calc(env(safe-area-inset-bottom) + 4rem)"
+              : "calc(env(safe-area-inset-bottom) + 6.5rem)",
+          }}
+        >
+          <Settings className="size-4" aria-hidden />
+        </button>
+      )}
+
       {/* Overlay re-engage fullscreen. Customer hanya bisa kembali ke mode
           penuh; keluar kiosk butuh PIN petugas (server-verified). */}
       {reengage && step !== "activation" && (
@@ -994,14 +1045,14 @@ export function KioskApp({
           <button
             type="button"
             onClick={() => requestFullscreen()}
-            className="min-h-14 border-2 border-ink bg-accent px-6 py-3 font-display text-base font-bold uppercase tracking-[-0.01em] shadow-[4px_4px_0_0_#111111] transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+            className="min-h-14 border-2 border-ink bg-accent px-6 py-3 font-display text-base font-bold uppercase tracking-[-0.01em] shadow-hard transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
           >
             Kembali ke kiosk
           </button>
           <button
             type="button"
             onClick={() => setExitPrompt(true)}
-            className="min-h-11 border-2 border-ink bg-surface px-4 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground shadow-[3px_3px_0_0_#111111] transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+            className="min-h-11 border-2 border-ink bg-surface px-4 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground shadow-hard-sm transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
           >
             Petugas: keluar kiosk
           </button>
@@ -1015,6 +1066,32 @@ export function KioskApp({
           bridgeUrl={currentPhotobox.camera_settings.bridge_url}
           onSuccess={handleExitSuccess}
           onCancel={() => setExitPrompt(false)}
+        />
+      )}
+
+      {/* Setelan booth: dibuka lewat PIN petugas, TIDAK melepas kiosk.
+          Hanya tampil bila runtime lokal hidup — tanpa runtime tidak ada
+          tempat menyimpan setelan mesin, dan panel hanya akan menampilkan
+          tombol simpan yang pasti gagal. */}
+      {settingsPrompt && step !== "activation" && (
+        <ExitPinDialog
+          deviceToken={deviceToken}
+          bridgeUrl={currentPhotobox.camera_settings.bridge_url}
+          purpose="settings"
+          onSuccess={() => {
+            setSettingsPrompt(false);
+            setSettingsOpen(true);
+          }}
+          onCancel={() => setSettingsPrompt(false)}
+        />
+      )}
+      {settingsOpen && step !== "activation" && (
+        <BoothSettingsPanel
+          initial={deviceSettings}
+          bridgeUrl={currentPhotobox.camera_settings.bridge_url}
+          photoboxName={currentPhotobox.name}
+          onSaved={handleSettingsSaved}
+          onClose={() => setSettingsOpen(false)}
         />
       )}
     </div>

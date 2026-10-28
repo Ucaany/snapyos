@@ -1,0 +1,2702 @@
+diff --git a/docs/04-owner-dashboard.md b/docs/04-owner-dashboard.md
+index b2b46cd..7d7f737 100755
+--- a/docs/04-owner-dashboard.md
++++ b/docs/04-owner-dashboard.md
+@@ -237,8 +237,9 @@ Contoh: Business `KLIK FOTO` → Outlet `Malioboro` → Photobox `Booth 01`.
+ 
+ ### 4.6.1 Setelan mesin: milik aplikasi booth
+ 
+-Kamera, printer fisik, dan durasi sesi **tidak** diatur dari dashboard. Ketiganya milik
+-aplikasi booth (runtime lokal), karena hanya mesin di lokasi yang tahu nilai sebenarnya.
++Kamera, printer fisik, durasi sesi, dan **kustomisasi tampilan per booth** tidak diatur dari
++dashboard. Semuanya milik aplikasi booth (runtime lokal), karena hanya mesin di lokasi yang
++tahu nilai sebenarnya.
+ 
+ **Yang diatur dari dashboard** (form ubah booth, dua seksi):
+ 
+@@ -246,9 +247,31 @@ aplikasi booth (runtime lokal), karena hanya mesin di lokasi yang tahu nilai seb
+ - **Kebijakan bisnis**: `payment_mode`, `print_settings.copies` (biaya bahan),
+   `print_settings.layout` (bentuk output pelanggan).
+ 
++**Yang diatur di aplikasi booth** (panel **Setelan booth**, dibuka dengan PIN petugas):
++
++| Grup                 | Field                                                                                        |
++| -------------------- | -------------------------------------------------------------------------------------------- |
++| `camera_settings`    | `provider`, `countdown_seconds`, `capture_width/height`, `mirror_preview`, `screen_orientation` |
++| `print_settings`     | `enabled`, `mode`, `paper_size`, `orientation`, `auto_print`, `margins_mm`, `printer_name`     |
++| `session_settings`   | `timer_seconds`, `warning_seconds`, `max_retakes`                                              |
++| `appearance_settings`| `bg_color`, `text_color`, `font_scale`, `button_radius`, `padding`, judul/hint layar, `guide_steps`, override per-layar |
++
+ Field mesin yang dikirim lewat form dashboard **ditolak** dengan pesan yang menyebut nama
+-field-nya (`src/lib/photobox-form-fields.ts`), bukan dibuang diam-diam. Jalur sah satu-satunya
+-adalah device token (`PATCH /api/v1/public/devices/settings`).
++field-nya (`src/lib/photobox-form-fields.ts`), bukan dibuang diam-diam.
++
++Jalur tulis setelan ada dua, dan keduanya tidak bisa saling menimpa:
++
++- **`PUT /v1/settings`** (runtime lokal) — semua grup di atas, termasuk `appearance_settings`.
++- **`PATCH /api/v1/public/devices/settings`** (cloud) — hanya tiga grup mesin. Payload yang
++  membawa `appearance_settings` dijawab `403 LOCAL_ONLY_SETTING`; payload yang membawa
++  `copies`/`layout`/`payment_mode` dijawab `403 FIELD_NOT_DEVICE_OWNED`.
++
++**Kustomisasi tampilan adalah milik satu booth.** `appearance_settings` disimpan di store
++lokal booth dan **tidak** ikut laporan ke cloud: kalau ikut, satu booth yang mengganti warna
++latar akan menimpa `photoboxes.*` yang dibaca seluruh booth di business yang sama. Di kiosk,
++nilai booth di-merge **di atas** branding cloud (`src/lib/appearance-merge.ts`), sehingga logo,
++warna brand, dan video promosi tetap milik website. Runtime mati → branding cloud dipakai apa
++adanya dan booth tetap bisa menjual.
+ 
+ **Panel cermin** (dialog **Perangkat**, `DeviceDialog`) menampilkan laporan booth:
+ 
+diff --git a/docs/05-customer-photobox.md b/docs/05-customer-photobox.md
+index d07df35..a7cd9bc 100755
+--- a/docs/05-customer-photobox.md
++++ b/docs/05-customer-photobox.md
+@@ -160,7 +160,11 @@ Konfigurasi kiosk (`branding.kiosk`) mencakup:
+ - **Tutorial custom** (`guide_steps`): langkah ditampilkan sebelum pemilihan paket, dapat ditambah/dihapus/diurutkan (max 8). Kosong = dilewati.
+ - **Video promo** (`video_key` global + `pages.*.video_key` per-layar): looping muted; layar kamera awal bisa menampilkan video attract di latar panel preview.
+ - **Kontrol interaksi**: `show_mirror_toggle` (tampilkan tombol mirror di layar kamera) dan `allow_zoom_pan` (izinkan customer zoom/pan foto di editor).
+-- **Override per-booth**: pilih booth di dashboard → simpan snapshot config sendiri, atau reset ke inherit global.
++- **Override per-booth**: dua lapis, dan urutannya menentukan pemenang.
++  1. **Website** (`/dashboard/branding`) menyimpan snapshot override di `photoboxes.branding` — dipakai saat booth belum dikustomisasi di mesin.
++  2. **Aplikasi booth** (panel **Setelan booth** → grup `appearance_settings`) menyimpan kustomisasi di store lokal mesin. Nilai ini menang atas branding cloud, dan **tidak** dikirim ke cloud supaya tidak menimpa booth lain.
++
++  Kiosk me-merge keduanya lewat `src/lib/appearance-merge.ts`: identitas brand (logo, `primary_color`, `secondary_color`, `video_url`) selalu dari cloud; warna/teks/tata letak boleh ditimpa booth. Runtime mati → branding cloud dipakai apa adanya.
+ 
+ ---
+ 
+diff --git a/runtime/settings/index.ts b/runtime/settings/index.ts
+index ca6b0c3..a7dd6ea 100644
+--- a/runtime/settings/index.ts
++++ b/runtime/settings/index.ts
+@@ -13,7 +13,7 @@
+  */
+ 
+ import type { DatabaseSync } from "node:sqlite";
+-import { mergeDeviceSettings } from "../../src/lib/validators.ts";
++import { CLOUD_SYNCED_DEVICE_GROUPS, mergeDeviceSettings } from "../../src/lib/validators.ts";
+ import type { RuntimeConfig } from "../config.ts";
+ import { getMeta, getSetting, setSetting } from "../db/index.ts";
+ import { HttpError, type RouteResult } from "../http.ts";
+@@ -100,6 +100,23 @@ export function mergeSettings(cloud: CloudSettings, device: SettingsShape): Clou
+   return mergeDeviceSettings(cloud, device);
+ }
+ 
++/**
++ * Setelan yang boleh naik ke cloud (`PATCH .../devices/settings`).
++ *
++ * `appearance_settings` TIDAK ikut: kustomisasi tampilan adalah milik satu
++ * booth dan tidak boleh menular ke booth lain lewat baris `photoboxes`.
++ * Tanpa penyaringan ini, satu booth yang mengganti warna latar akan menimpa
++ * photoboxes.print_settings/… untuk seluruh booth di business yang sama.
++ */
++export function cloudSyncedSettings(settings: SettingsShape): SettingsShape {
++  const out: SettingsShape = {};
++  for (const group of CLOUD_SYNCED_DEVICE_GROUPS) {
++    const value = settings[group];
++    if (value) out[group] = value;
++  }
++  return out;
++}
++
+ /**
+  * Adapter dipilih saat start dari setelan tersimpan; env tetap nilai awal bila
+  * store kosong. Mock tidak pernah ditimpa setelan — kamera palsu di booth
+@@ -172,6 +189,8 @@ function present(db: DatabaseSync, config: RuntimeConfig) {
+       camera_settings: stripSecrets(active.camera_settings ?? {}),
+       print_settings: stripSecrets(active.print_settings ?? {}),
+       session_settings: stripSecrets(active.session_settings ?? {}),
++      // Kustomisasi tampilan booth — hidup hanya di mesin ini.
++      appearance_settings: stripSecrets(active.appearance_settings ?? {}),
+     },
+   };
+ }
+diff --git a/runtime/sync/worker.ts b/runtime/sync/worker.ts
+index bccdf8a..d5225c1 100644
+--- a/runtime/sync/worker.ts
++++ b/runtime/sync/worker.ts
+@@ -22,7 +22,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+ import { join } from "node:path";
+ import type { DatabaseSync } from "node:sqlite";
+ import type { RuntimeConfig } from "../config.ts";
+-import { activeSettings, type SettingsShape } from "../settings/index.ts";
++import { activeSettings, cloudSyncedSettings, type SettingsShape } from "../settings/index.ts";
+ import { insertEvent } from "../db/index.ts";
+ import { VERSION } from "../version.ts";
+ 
+@@ -333,7 +333,9 @@ export async function pushSettings(
+   lastPushed: { value: string | null } = { value: null }
+ ): Promise<SyncReport["settings"]> {
+   if (!canSync(ctx)) return "skipped";
+-  const settings: SettingsShape = activeSettings(ctx.db, ctx.config);
++  // `appearance_settings` sengaja dibuang: kustomisasi tampilan milik satu
++  // booth dan tidak boleh menimpa baris photoboxes milik seluruh booth.
++  const settings: SettingsShape = cloudSyncedSettings(activeSettings(ctx.db, ctx.config));
+   const serialized = JSON.stringify(settings);
+   if (serialized === lastPushed.value) return "unchanged";
+ 
+diff --git a/src/app/api/v1/public/devices/settings/route.ts b/src/app/api/v1/public/devices/settings/route.ts
+index cca8bf1..a0bb58f 100644
+--- a/src/app/api/v1/public/devices/settings/route.ts
++++ b/src/app/api/v1/public/devices/settings/route.ts
+@@ -4,7 +4,7 @@ import { toErrorResponse } from "@/lib/api-route";
+ import { rateLimit, rateLimitByDevice } from "@/lib/rate-limit";
+ import { getClientIp } from "@/lib/request-ip";
+ import { updateDeviceSettings } from "@/server/devices";
+-import { deviceSettingsPatchSchema, foreignSettingKeys } from "@/lib/validators";
++import { deviceSettingsPatchSchema, foreignSettingKeys, localOnlySettingKeys } from "@/lib/validators";
+ 
+ /**
+  * PATCH /api/v1/public/devices/settings — booth menulis balik setelan miliknya
+@@ -35,6 +35,16 @@ export async function PATCH(request: Request) {
+     if (body && typeof body === "object" && !Array.isArray(body)) {
+       const settings = (body as { settings?: unknown }).settings;
+       if (settings && typeof settings === "object" && !Array.isArray(settings)) {
++        // Kustomisasi tampilan hanya hidup di mesin booth. Kalau diterima di
++        // sini, satu booth akan menimpa tampilan seluruh booth di business.
++        const localOnly = localOnlySettingKeys(settings as Record<string, unknown>);
++        if (localOnly.length > 0) {
++          throw new ApiError(
++            "LOCAL_ONLY_SETTING",
++            `Setelan ini hanya berlaku di mesin booth dan tidak disinkronkan: ${localOnly.join(", ")}.`,
++            { fields: localOnly }
++          );
++        }
+         const foreign = foreignSettingKeys(settings as Record<string, unknown>);
+         if (foreign.length > 0) {
+           throw new ApiError(
+diff --git a/src/components/kiosk/ExitPinDialog.tsx b/src/components/kiosk/ExitPinDialog.tsx
+index f0715d2..0e3f242 100755
+--- a/src/components/kiosk/ExitPinDialog.tsx
++++ b/src/components/kiosk/ExitPinDialog.tsx
+@@ -10,11 +10,37 @@ type Props = {
+   deviceToken: string | null;
+   /** `bridge_url` booth — jalur PIN darurat saat internet mati. */
+   bridgeUrl?: string | null;
+-  /** Dipanggil setelah PIN diverifikasi server — keluar TANPA reset sesi. */
++  /** Dipanggil setelah PIN diverifikasi server. */
+   onSuccess: () => void;
+   onCancel: () => void;
++  /**
++   * Tujuan verifikasi PIN. Keduanya memakai PIN petugas yang sama, tetapi
++   * akibatnya berbeda: `exit` melepas kiosk, `settings` membuka panel setelan
++   * booth TANPA keluar dari kiosk. Tanpa pemisahan ini, membuka setelan akan
++   * ikut melepas fullscreen dan meninggalkan booth dalam keadaan tak terkunci.
++   */
++  purpose?: "exit" | "settings";
+ };
+ 
++const COPY = {
++  exit: {
++    eyebrow: "AKSES PETUGAS",
++    title: "Keluar mode kiosk",
++    hint: "Masukkan PIN keluar yang diatur owner. Sesi foto yang sedang berjalan tidak terputus, kembali ke kiosk untuk melanjutkan.",
++    submit: "Keluar",
++    cancel: "Batal. Kembali ke kiosk",
++    aria: "Keluar mode kiosk",
++  },
++  settings: {
++    eyebrow: "AKSES PETUGAS",
++    title: "Setelan booth",
++    hint: "Masukkan PIN petugas untuk membuka setelan kamera, printer, sesi, dan tampilan booth ini. Kiosk tidak keluar; sesi pelanggan tidak terputus.",
++    submit: "Buka",
++    cancel: "Batal. Kembali ke kiosk",
++    aria: "Buka setelan booth",
++  },
++} as const;
++
+ const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
+ 
+ const keyBtn =
+@@ -26,7 +52,14 @@ const keyBtn =
+  * hanya melepas fullscreen lock, tanpa reload/reset (sesi berjalan utuh dan
+  * resume otomatis bila halaman dibuka ulang).
+  */
+-export function ExitPinDialog({ deviceToken, bridgeUrl, onSuccess, onCancel }: Props) {
++export function ExitPinDialog({
++  deviceToken,
++  bridgeUrl,
++  onSuccess,
++  onCancel,
++  purpose = "exit",
++}: Props) {
++  const copy = COPY[purpose];
+   const [pin, setPin] = useState("");
+   const [error, setError] = useState<string | null>(null);
+   const [busy, setBusy] = useState(false);
+@@ -127,7 +160,7 @@ export function ExitPinDialog({ deviceToken, bridgeUrl, onSuccess, onCancel }: P
+     <div
+       role="dialog"
+       aria-modal="true"
+-      aria-label="Keluar mode kiosk"
++      aria-label={copy.aria}
+       className="fixed inset-0 z-[70] flex items-center justify-center bg-ink/40 p-3 sm:p-4"
+     >
+       <div
+@@ -139,18 +172,15 @@ export function ExitPinDialog({ deviceToken, bridgeUrl, onSuccess, onCancel }: P
+           <LockKeyhole className="size-6 shrink-0" aria-hidden />
+           <div className="flex min-w-0 flex-col gap-1">
+             <p className="font-mono text-[10px] font-bold uppercase leading-none tracking-[0.24em] text-muted-foreground">
+-              {"AKSES PETUGAS"}
++              {copy.eyebrow}
+             </p>
+             <h2 className="font-display text-xl uppercase leading-none tracking-[-0.02em] md:text-2xl">
+-              Keluar mode kiosk
++              {copy.title}
+             </h2>
+           </div>
+         </div>
+ 
+-        <p className="text-xs leading-relaxed text-muted-foreground">
+-          Masukkan PIN keluar yang diatur owner. Sesi foto yang sedang berjalan tidak terputus,
+-          kembali ke kiosk untuk melanjutkan.
+-        </p>
++        <p className="text-xs leading-relaxed text-muted-foreground">{copy.hint}</p>
+ 
+         {!deviceToken ? (
+           <>
+@@ -158,7 +188,7 @@ export function ExitPinDialog({ deviceToken, bridgeUrl, onSuccess, onCancel }: P
+               role="alert"
+               className="border-2 border-ink bg-accent px-3 py-2 text-xs font-bold uppercase leading-relaxed tracking-[0.04em]"
+             >
+-              Perangkat belum diaktivasi. Selesaikan aktivasi sebelum keluar kiosk.
++              Perangkat belum diaktivasi. Selesaikan aktivasi sebelum membuka akses petugas.
+             </p>
+             <button
+               type="button"
+@@ -218,7 +248,11 @@ export function ExitPinDialog({ deviceToken, bridgeUrl, onSuccess, onCancel }: P
+                 disabled={busy || pin.length < 4}
+                 className="min-h-14 border-2 border-ink bg-accent font-display text-base font-bold uppercase tracking-[-0.01em] shadow-[3px_3px_0_0_#111111] transition-transform active:translate-y-[2px] active:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-50"
+               >
+-                {busy ? <Loader2 className="mx-auto size-5 animate-spin" aria-hidden /> : "Keluar"}
++                {busy ? (
++                  <Loader2 className="mx-auto size-5 animate-spin" aria-hidden />
++                ) : (
++                  copy.submit
++                )}
+               </button>
+             </div>
+ 
+@@ -232,7 +266,7 @@ export function ExitPinDialog({ deviceToken, bridgeUrl, onSuccess, onCancel }: P
+               disabled={busy}
+               className="min-h-12 self-center border-2 border-ink bg-surface px-5 py-2 font-mono text-xs font-bold uppercase tracking-[0.1em] shadow-[3px_3px_0_0_#111111] transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-50"
+             >
+-              Batal. Kembali ke kiosk
++              {copy.cancel}
+             </button>
+           </>
+         )}
+diff --git a/src/components/kiosk/KioskApp.tsx b/src/components/kiosk/KioskApp.tsx
+index 0471347..b2c511c 100755
+--- a/src/components/kiosk/KioskApp.tsx
++++ b/src/components/kiosk/KioskApp.tsx
+@@ -1,7 +1,7 @@
+ "use client";
+ 
+ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+-import { Lock, Maximize2, WifiOff, X } from "lucide-react";
++import { Lock, Maximize2, Settings, WifiOff, X } from "lucide-react";
+ import type {
+   CapturePhoto,
+   FinalPhoto,
+@@ -11,6 +11,7 @@ import type {
+   PublicTemplate,
+ } from "@/lib/kiosk-types";
+ import { kioskVisualStyle } from "@/lib/kiosk-types";
++import { mergeAppearance } from "@/lib/appearance-merge";
+ import { printPlan } from "@/lib/print-layout";
+ import { resolveCaptureCount } from "@/lib/template-fit";
+ import { apiForm, apiPost, KioskError } from "@/components/kiosk/api";
+@@ -26,6 +27,7 @@ import { canBootOffline, isNetworkFailure } from "@/components/kiosk/boot-offlin
+ import { useConfigSync } from "@/components/kiosk/use-config-sync";
+ import { useKioskLock, useHoldExit } from "@/components/kiosk/use-kiosk-lock";
+ import { ExitPinDialog } from "@/components/kiosk/ExitPinDialog";
++import { BoothSettingsPanel } from "@/components/kiosk/BoothSettingsPanel";
+ import {
+   buildFinalizeForm,
+   drainQueue,
+@@ -180,6 +182,11 @@ export function KioskApp({
+   // pasca-aktivasi). Keluar hanya via PIN petugas (server-verified, diatur
+   // owner di dashboard); state sesi TIDAK di-reset saat keluar.
+   const [exitPrompt, setExitPrompt] = useState(false);
++  // Panel setelan booth: hanya terbuka SETELAH PIN petugas terverifikasi.
++  // Tanpa gerbang ini siapa pun yang menyentuh layar bisa mengubah kamera,
++  // printer, dan tampilan yang dilihat pelanggan.
++  const [settingsPrompt, setSettingsPrompt] = useState(false);
++  const [settingsOpen, setSettingsOpen] = useState(false);
+   const requestExit = useCallback(() => setExitPrompt(true), []);
+   const { reengage, requestFullscreen, unlock } = useKioskLock(
+     step !== "activation",
+@@ -195,6 +202,11 @@ export function KioskApp({
+     unlock();
+   }
+ 
++  /** Setelan booth tersimpan → pakai nilai baru tanpa menunggu reload. */
++  function handleSettingsSaved(next: DeviceSettings) {
++    setDeviceSettings(next);
++  }
++
+   /** Resume sesi aktif dari verify — return true bila sesi dipulihkan. */
+   const resumeFromVerify = useCallback(
+     (token: string, data: VerifyData): boolean => {
+@@ -732,12 +744,21 @@ export function KioskApp({
+   );
+ 
+   const sessionSettings = currentPhotobox.session_settings;
++  // Branding efektif: identitas cloud (logo, warna brand, video) DASAR, lalu
++  // kustomisasi booth (`appearance_settings` dari runtime lokal) di atasnya.
++  // Booth menang karena hanya mesin di lokasi yang tahu layarnya — teks yang
++  // muat di booth A belum tentu muat di booth B. Runtime mati → branding cloud
++  // dipakai apa adanya (booth tetap jualan).
++  const effectiveBranding = useMemo(
++    () => mergeAppearance(liveConfig.branding, deviceSettings?.appearance_settings),
++    [liveConfig.branding, deviceSettings?.appearance_settings]
++  );
+   // Gaya visual per layar — global kiosk + override per-layar (kioskVisualStyle).
+-  const kioskBranding = liveConfig.branding.kiosk;
++  const kioskBranding = effectiveBranding.kiosk;
+   // Warna brand (primary/secondary) — diteruskan ke tombol CTA tiap layar.
+   const brandColors = {
+-    primary: liveConfig.branding.primary_color,
+-    secondary: liveConfig.branding.secondary_color,
++    primary: effectiveBranding.primary_color,
++    secondary: effectiveBranding.secondary_color,
+   };
+   const pageStyle = (page: KioskPageId) => kioskVisualStyle(kioskBranding, page, brandColors);
+   // Panduan cara pakai (branding.kiosk.guide_steps) — kosong = dilewati.
+@@ -820,7 +841,7 @@ export function KioskApp({
+       {step === "welcome" && (
+         <WelcomeScreen
+           business={liveConfig.business}
+-          branding={liveConfig.branding}
++          branding={effectiveBranding}
+           onStart={() => setStep(hasGuide ? "guide" : "package")}
+         />
+       )}
+@@ -840,8 +861,8 @@ export function KioskApp({
+           packages={liveConfig.packages}
+           kioskStyle={pageStyle("package")}
+           titleText={kioskBranding?.package_title}
+-          primaryColor={liveConfig.branding.primary_color}
+-          secondaryColor={liveConfig.branding.secondary_color}
++          primaryColor={effectiveBranding.primary_color}
++          secondaryColor={effectiveBranding.secondary_color}
+           videoUrl={kioskBranding?.pages?.package?.video_url ?? null}
+           busy={busy}
+           onBack={() => setStep(hasGuide ? "guide" : "welcome")}
+@@ -854,8 +875,8 @@ export function KioskApp({
+           pkg={selectedPackage}
+           deviceToken={deviceToken}
+           offlineEnabled={offlineEnabled}
+-          paymentTitle={liveConfig.branding.kiosk?.payment_title}
+-          paymentHint={liveConfig.branding.kiosk?.payment_hint}
++          paymentTitle={kioskBranding?.payment_title}
++          paymentHint={kioskBranding?.payment_hint}
+           kioskStyle={pageStyle("payment")}
+           videoUrl={kioskBranding?.pages?.payment?.video_url ?? null}
+           onOffline={() => void startDirectSession(selectedPackage)}
+@@ -880,8 +901,8 @@ export function KioskApp({
+           cameraSettings={currentPhotobox.camera_settings}
+           photoCount={captureCount}
+           maxRetakes={sessionSettings?.max_retakes ?? null}
+-          titleText={liveConfig.branding.kiosk?.capture_title}
+-          hintText={liveConfig.branding.kiosk?.capture_hint}
++          titleText={kioskBranding?.capture_title}
++          hintText={kioskBranding?.capture_hint}
+           kioskStyle={pageStyle("capture")}
+           showMirrorToggle={kioskBranding?.show_mirror_toggle !== false}
+           videoUrl={kioskBranding?.pages?.capture?.video_url ?? null}
+@@ -898,8 +919,8 @@ export function KioskApp({
+           onFinish={handleEditorFinish}
+           layout={selectedTemplate?.layout ?? null}
+           frameUrl={selectedTemplate?.file_url ?? null}
+-          titleText={liveConfig.branding.kiosk?.editor_title}
+-          hintText={liveConfig.branding.kiosk?.editor_hint}
++          titleText={kioskBranding?.editor_title}
++          hintText={kioskBranding?.editor_hint}
+           kioskStyle={pageStyle("edit")}
+           videoUrl={kioskBranding?.pages?.edit?.video_url ?? null}
+           allowZoomPan={kioskBranding?.allow_zoom_pan !== false}
+@@ -926,9 +947,9 @@ export function KioskApp({
+           gifUrl={result.gif_url ?? null}
+           finalPhotos={finalPhotos}
+           businessName={liveConfig.business.name}
+-          resultTitle={liveConfig.branding.kiosk?.result_title}
+-          resultHint={liveConfig.branding.kiosk?.result_hint}
+-          resultLayout={liveConfig.branding.kiosk?.result_layout}
++          resultTitle={kioskBranding?.result_title}
++          resultHint={kioskBranding?.result_hint}
++          resultLayout={kioskBranding?.result_layout}
+           kioskStyle={pageStyle("result")}
+           videoUrl={kioskBranding?.pages?.result?.video_url ?? null}
+           printed={printed}
+@@ -980,6 +1001,28 @@ export function KioskApp({
+         dua detik.
+       </p>
+ 
++      {/* Tombol setelan booth: diskret, di sebelah tombol keluar. Membuka panel
++          setelan kamera/printer/sesi/tampilan SETELAH PIN petugas diverifikasi,
++          tanpa melepas kiosk. Hanya tampil bila runtime lokal hidup — tanpa
++          runtime tidak ada tempat menyimpan setelan mesin. */}
++      {step !== "activation" && deviceSettings !== null && !exitPrompt && !settingsOpen && (
++        <button
++          type="button"
++          aria-label="Petugas: buka setelan booth"
++          title="Petugas: setelan booth"
++          onClick={() => setSettingsPrompt(true)}
++          className="fixed left-3 z-40 flex size-12 items-center justify-center border-2 border-ink/20 bg-surface/60 text-muted-foreground opacity-40 transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink lg:left-4"
++          style={{
++            marginLeft: "env(safe-area-inset-left)",
++            bottom: online
++              ? "calc(env(safe-area-inset-bottom) + 4rem)"
++              : "calc(env(safe-area-inset-bottom) + 6.5rem)",
++          }}
++        >
++          <Settings className="size-4" aria-hidden />
++        </button>
++      )}
++
+       {/* Overlay re-engage fullscreen. Customer hanya bisa kembali ke mode
+           penuh; keluar kiosk butuh PIN petugas (server-verified). */}
+       {reengage && step !== "activation" && (
+@@ -1017,6 +1060,32 @@ export function KioskApp({
+           onCancel={() => setExitPrompt(false)}
+         />
+       )}
++
++      {/* Setelan booth: dibuka lewat PIN petugas, TIDAK melepas kiosk.
++          Hanya tampil bila runtime lokal hidup — tanpa runtime tidak ada
++          tempat menyimpan setelan mesin, dan panel hanya akan menampilkan
++          tombol simpan yang pasti gagal. */}
++      {settingsPrompt && step !== "activation" && (
++        <ExitPinDialog
++          deviceToken={deviceToken}
++          bridgeUrl={currentPhotobox.camera_settings.bridge_url}
++          purpose="settings"
++          onSuccess={() => {
++            setSettingsPrompt(false);
++            setSettingsOpen(true);
++          }}
++          onCancel={() => setSettingsPrompt(false)}
++        />
++      )}
++      {settingsOpen && step !== "activation" && (
++        <BoothSettingsPanel
++          initial={deviceSettings}
++          bridgeUrl={currentPhotobox.camera_settings.bridge_url}
++          photoboxName={currentPhotobox.name}
++          onSaved={handleSettingsSaved}
++          onClose={() => setSettingsOpen(false)}
++        />
++      )}
+     </div>
+   );
+ }
+diff --git a/src/components/kiosk/local-runtime.ts b/src/components/kiosk/local-runtime.ts
+index 26c5715..4ffd971 100644
+--- a/src/components/kiosk/local-runtime.ts
++++ b/src/components/kiosk/local-runtime.ts
+@@ -103,6 +103,61 @@ export async function fetchDeviceSettings(
+   return body?.settings ?? null;
+ }
+ 
++/**
++ * Simpan setelan booth ke runtime lokal (`PUT /v1/settings`).
++ *
++ * Ini satu-satunya jalur tulis setelan mesin. Dashboard sengaja menolak field
++ * mesin (`src/lib/photobox-form-fields.ts`), jadi tanpa fungsi ini tidak ada
++ * cara sah mengubah kamera/printer/sesi/tampilan dari dalam booth.
++ *
++ * Berbeda dari `bridgeGet`, kegagalan dilempar: panel setelan harus bisa
++ * membedakan "runtime mati" dari "nilai ditolak" dan menampilkan sebabnya.
++ */
++export async function saveDeviceSettings(
++  settings: DeviceSettings,
++  bridgeUrl?: string | null
++): Promise<DeviceSettings> {
++  const token = getBridgeToken();
++  if (!token) {
++    throw new KioskError("NO_BRIDGE", "Runtime lokal booth tidak aktif. Setelan tidak disimpan.");
++  }
++
++  const controller = new AbortController();
++  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
++  try {
++    const response = await fetch(
++      `${cameraBridgeUrl({ bridge_url: bridgeUrl ?? undefined })}/v1/settings`,
++      {
++        method: "PUT",
++        headers: { "Content-Type": "application/json", "X-Bridge-Token": token },
++        body: JSON.stringify(settings),
++        signal: controller.signal,
++      }
++    );
++    const payload = (await response.json().catch(() => null)) as {
++      ok?: boolean;
++      error?: string;
++      message?: string;
++      settings?: DeviceSettings;
++    } | null;
++    if (!response.ok) {
++      // 403 FIELD_NOT_DEVICE_OWNED = panel mencoba menulis field milik cloud
++      // (copies, layout, harga). Itu bug panel, bukan salah operator — pesannya
++      // menyebut field agar langsung terlihat.
++      throw new KioskError(
++        payload?.error ?? "SETTINGS_REJECTED",
++        payload?.message ?? "Runtime lokal menolak setelan."
++      );
++    }
++    return payload?.settings ?? {};
++  } catch (error) {
++    if (error instanceof KioskError) throw error;
++    throw new KioskError("NO_BRIDGE", "Runtime lokal booth tidak menjawab. Setelan tidak disimpan.");
++  } finally {
++    clearTimeout(timer);
++  }
++}
++
+ /**
+  * Identitas booth menurut runtime lokal (`GET /v1/status`). Dipakai saat boot
+  * offline: runtime di port 17777 harus memastikan dirinya booth ini, kalau
+diff --git a/src/lib/api-errors.ts b/src/lib/api-errors.ts
+index 4546860..690629b 100755
+--- a/src/lib/api-errors.ts
++++ b/src/lib/api-errors.ts
+@@ -8,6 +8,12 @@ export const API_ERRORS = {
+   FORBIDDEN: 403,
+   /** Payload setelan memuat field milik cloud (harga, `copies`, `payment_mode`). */
+   FIELD_NOT_DEVICE_OWNED: 403,
++  /**
++   * Payload setelan memuat grup yang hanya hidup di mesin booth
++   * (`appearance_settings`). Menolak di sini mencegah satu booth menimpa
++   * tampilan seluruh booth lewat baris `photoboxes`.
++   */
++  LOCAL_ONLY_SETTING: 403,
+   NOT_FOUND: 404,
+   VALIDATION_ERROR: 422,
+   PLAN_LIMIT_REACHED: 422,
+diff --git a/src/lib/settings-merge.ts b/src/lib/settings-merge.ts
+index 308b4f4..14d07ad 100644
+--- a/src/lib/settings-merge.ts
++++ b/src/lib/settings-merge.ts
+@@ -7,7 +7,20 @@
+  * berarti `device` null dan cloud dipakai apa adanya.
+  */
+ 
+-export const DEVICE_GROUPS = ["camera_settings", "print_settings", "session_settings"] as const;
++/**
++ * Grup setelan yang hidup di mesin booth.
++ *
++ * `appearance_settings` ikut di sini karena kustomisasi tampilan disimpan
++ * bersama setelan mesin lain di store lokal runtime (`PUT /v1/settings`) dan
++ * menang atas branding cloud. Grup ini TIDAK ikut naik ke cloud — lihat
++ * `LOCAL_ONLY_DEVICE_GROUPS` di `src/lib/validators.ts`.
++ */
++export const DEVICE_GROUPS = [
++  "camera_settings",
++  "print_settings",
++  "session_settings",
++  "appearance_settings",
++] as const;
+ export type DeviceGroup = (typeof DEVICE_GROUPS)[number];
+ 
+ export type DeviceSettings = Partial<Record<DeviceGroup, Record<string, unknown>>>;
+@@ -17,6 +30,7 @@ const CLOUD_OWNED: Record<DeviceGroup, readonly string[]> = {
+   camera_settings: [],
+   print_settings: ["copies", "layout"],
+   session_settings: [],
++  appearance_settings: [],
+ };
+ 
+ /**
+diff --git a/src/lib/validators.ts b/src/lib/validators.ts
+index 7191cdd..f2e742f 100755
+--- a/src/lib/validators.ts
++++ b/src/lib/validators.ts
+@@ -402,6 +402,74 @@ export const sessionSettingsSchema = z
+     { message: "Peringatan harus lebih singkat dari durasi sesi", path: ["warning_seconds"] }
+   );
+ 
++/**
++ * Kustomisasi tampilan booth — milik DEVICE, bukan cloud.
++ *
++ * Booth punya layar, ukuran, dan sudut pandang sendiri; teks dan warna yang
++ * terbaca di satu booth belum tentu terbaca di booth lain. Karena itu
++ * kustomisasi disimpan di mesin booth (`PUT /v1/settings`) dan menang atas
++ * `business_settings.branding` milik cloud.
++ *
++ * Yang tetap milik cloud: identitas brand (nama bisnis, logo, warna brand
++ * primary/secondary), aset video (storage key), harga, paket, dan payment
++ * gateway. Semua itu "informasi" yang harus sama di seluruh booth.
++ *
++ * `video_key` sengaja TIDAK ada di sini: video adalah objek storage milik
++ * cloud, bukan nilai yang bisa dikarang mesin.
++ */
++const appearancePageSchema = z.object({
++  bg_color: hexColor.optional(),
++  text_color: hexColor.optional(),
++  font_scale: z.number().min(0.8).max(1.4).optional(),
++  button_radius: z.number().int().min(0).max(24).optional(),
++  padding: z.number().int().min(0).max(96).optional(),
++  align: z.enum(PAGE_ALIGNS).optional(),
++});
++
++export const appearanceSettingsSchema = z.object({
++  bg_color: hexColor.optional(),
++  text_color: hexColor.optional(),
++  font_family: z.enum(["display", "sans", "mono"]).optional(),
++  font_scale: z.number().min(0.8).max(1.4).optional(),
++  button_radius: z.number().int().min(0).max(24).optional(),
++  padding: z.number().int().min(0).max(96).optional(),
++  align: z.enum(PAGE_ALIGNS).optional(),
++  welcome_layout: z.enum(WELCOME_LAYOUTS).optional(),
++  result_layout: z.enum(RESULT_LAYOUTS).optional(),
++  welcome_title: z.string().trim().max(120).optional(),
++  welcome_tagline: z.string().trim().max(200).optional(),
++  welcome_button: z.string().trim().min(1).max(24).optional(),
++  payment_title: z.string().trim().max(80).optional(),
++  payment_hint: z.string().trim().max(160).optional(),
++  capture_title: z.string().trim().max(80).optional(),
++  capture_hint: z.string().trim().max(160).optional(),
++  editor_title: z.string().trim().max(80).optional(),
++  editor_hint: z.string().trim().max(160).optional(),
++  result_title: z.string().trim().max(80).optional(),
++  result_hint: z.string().trim().max(160).optional(),
++  guide_title: z.string().trim().max(80).optional(),
++  guide_button: z.string().trim().min(1).max(24).optional(),
++  package_title: z.string().trim().max(80).optional(),
++  template_title: z.string().trim().max(80).optional(),
++  show_logo: z.boolean().optional(),
++  show_tagline: z.boolean().optional(),
++  show_mirror_toggle: z.boolean().optional(),
++  allow_zoom_pan: z.boolean().optional(),
++  guide_steps: z.array(z.string().trim().min(1).max(160)).max(8).optional(),
++  pages: z
++    .object({
++      welcome: appearancePageSchema.optional(),
++      guide: appearancePageSchema.optional(),
++      package: appearancePageSchema.optional(),
++      payment: appearancePageSchema.optional(),
++      template: appearancePageSchema.optional(),
++      capture: appearancePageSchema.optional(),
++      edit: appearancePageSchema.optional(),
++      result: appearancePageSchema.optional(),
++    })
++    .optional(),
++});
++
+ // ---------------------------------------------------------------------------
+ // Kepemilikan setelan: cloud (uang) vs device (mesin).
+ //
+@@ -414,15 +482,38 @@ export const DEVICE_SETTING_GROUPS = [
+   "camera_settings",
+   "print_settings",
+   "session_settings",
++  "appearance_settings",
+ ] as const;
+ export type DeviceSettingGroup = (typeof DEVICE_SETTING_GROUPS)[number];
+ 
++/**
++ * Grup yang ikut disinkronkan ke cloud (`PATCH .../devices/settings`).
++ *
++ * `appearance_settings` sengaja TIDAK di sini: kustomisasi tampilan berlaku
++ * untuk satu booth dan tidak boleh menular ke booth lain lewat baris
++ * `photoboxes`. Cloud menolak grup ini dengan `LOCAL_ONLY_SETTING`, bukan
++ * membuangnya diam-diam.
++ */
++export const CLOUD_SYNCED_DEVICE_GROUPS = [
++  "camera_settings",
++  "print_settings",
++  "session_settings",
++] as const;
++
++/** Grup yang hanya hidup di mesin booth. */
++export const LOCAL_ONLY_DEVICE_GROUPS = ["appearance_settings"] as const;
++
++export function isLocalOnlySettingGroup(key: string): boolean {
++  return (LOCAL_ONLY_DEVICE_GROUPS as readonly string[]).includes(key);
++}
++
+ /** Field milik cloud yang berada di dalam grup milik device. */
+ export const CLOUD_OWNED_SETTING_FIELDS: Record<DeviceSettingGroup, readonly string[]> = {
+   camera_settings: [],
+   // copies = biaya bahan, layout = bentuk output pelanggan.
+   print_settings: ["copies", "layout"],
+   session_settings: [],
++  appearance_settings: [],
+ };
+ 
+ /** Setelan yang boleh ditulis device. `strict()`: kunci asing ditolak. */
+@@ -431,6 +522,7 @@ export const deviceSettingsSchema = z
+     camera_settings: cameraSettingsSchema.optional(),
+     print_settings: printSettingsSchema.optional(),
+     session_settings: sessionSettingsSchema.optional(),
++    appearance_settings: appearanceSettingsSchema.optional(),
+   })
+   .strict();
+ 
+@@ -440,6 +532,7 @@ const DEVICE_SETTING_SHAPES: Record<DeviceSettingGroup, Record<string, unknown>>
+   camera_settings: cameraSettingsSchema.shape,
+   print_settings: printSettingsSchema.shape,
+   session_settings: sessionSettingsSchema.shape,
++  appearance_settings: appearanceSettingsSchema.shape,
+ };
+ 
+ export function isDeviceSettingGroup(key: string): key is DeviceSettingGroup {
+@@ -453,6 +546,18 @@ export function deviceSettingFields(group: DeviceSettingGroup): string[] {
+   );
+ }
+ 
++/**
++ * Grup setelan yang HANYA boleh ditulis ke runtime lokal, tidak ke cloud.
++ *
++ * `appearance_settings` = kustomisasi tampilan satu booth. Kalau grup ini
++ * diterima `PATCH /api/v1/public/devices/settings`, satu booth yang mengganti
++ * warna latar akan menulis ke baris `photoboxes` yang dibaca semua booth.
++ * Pemanggil menjawab 403 `LOCAL_ONLY_SETTING`, bukan membuangnya diam-diam.
++ */
++export function localOnlySettingKeys(payload: Record<string, unknown>): string[] {
++  return Object.keys(payload).filter((key) => isLocalOnlySettingGroup(key));
++}
++
+ /**
+  * Field di payload yang BUKAN milik device. Kosong berarti payload boleh
+  * ditulis; selain itu pemanggil menjawab 403 `FIELD_NOT_DEVICE_OWNED`.
+@@ -699,10 +804,6 @@ export const voucherCreateSchema = voucherBaseSchema
+   .refine((v) => v.type !== "percentage" || v.amount <= 100, {
+     message: "Diskon persen maksimal 100",
+     path: ["amount"],
+-  })
+-  .refine((v) => !v.max_discount || !v.min_transaction || v.min_transaction <= v.max_discount, {
+-    message: "min_transaction tidak boleh melebihi max_discount",
+-    path: ["min_transaction"],
+   });
+ 
+ // zod v4: .partial() hanya pada object schema — jangan partial hasil refine.
+@@ -715,15 +816,7 @@ export const voucherUpdateSchema = voucherBaseSchema
+   .refine((v) => v.type !== "percentage" || v.amount === undefined || v.amount <= 100, {
+     message: "Diskon persen maksimal 100",
+     path: ["amount"],
+-  })
+-  .refine(
+-    (v) =>
+-      !v.max_discount ||
+-      !v.min_transaction ||
+-      v.min_transaction === undefined ||
+-      v.min_transaction <= v.max_discount,
+-    { message: "min_transaction tidak boleh melebihi max_discount", path: ["min_transaction"] }
+-  );
++  });
+ 
+ /**
+  * Invariant diskon yang bergantung pada type: persentase maksimal 100.
+@@ -776,12 +869,9 @@ export function voucherInvariantError(
+   if (
+     merged.max_discount !== null &&
+     merged.max_discount !== undefined &&
+-    merged.min_transaction > merged.max_discount
++    merged.max_discount < 0
+   ) {
+-    issues.push({
+-      path: ["min_transaction"],
+-      message: "min_transaction tidak boleh melebihi max_discount",
+-    });
++    issues.push({ path: ["max_discount"], message: "Maksimum diskon minimal 0" });
+   }
+ 
+   return issues;
+diff --git a/src/server/devices.ts b/src/server/devices.ts
+index c245d6f..92c254b 100755
+--- a/src/server/devices.ts
++++ b/src/server/devices.ts
+@@ -21,6 +21,7 @@ import {
+ } from "@/lib/device-token";
+ import {
+   foreignSettingKeys,
++  localOnlySettingKeys,
+   mergeDeviceSettings,
+   type DeviceActivateInput,
+   type DeviceExitInput,
+@@ -457,6 +458,14 @@ export async function verifyDeviceExit(input: DeviceExitInput) {
+  * hilang hanya karena booth melaporkan `paper_size`.
+  */
+ export async function updateDeviceSettings(input: DeviceSettingsPatchInput) {
++  const localOnly = localOnlySettingKeys(input.settings as Record<string, unknown>);
++  if (localOnly.length > 0) {
++    throw new ApiError(
++      "LOCAL_ONLY_SETTING",
++      `Setelan ini hanya berlaku di mesin booth dan tidak disinkronkan: ${localOnly.join(", ")}.`,
++      { fields: localOnly }
++    );
++  }
+   const foreign = foreignSettingKeys(input.settings);
+   if (foreign.length > 0) {
+     throw new ApiError(
+diff --git a/tests/runtime-settings.test.ts b/tests/runtime-settings.test.ts
+index bea17a0..3c38e1b 100644
+--- a/tests/runtime-settings.test.ts
++++ b/tests/runtime-settings.test.ts
+@@ -213,3 +213,92 @@ test("export tanpa exit_pin dan ber-schema_version 1", async () => {
+   assert.equal(body.photobox_slug, "booth-01");
+   assert.equal(body.settings.session_settings.timer_seconds, 120);
+ });
++
++// ---------------------------------------------------------------------------
++// Kustomisasi tampilan booth: tersimpan lokal, tidak naik ke cloud.
++// ---------------------------------------------------------------------------
++
++test("appearance_settings tersimpan di booth dan terbaca kembali", async () => {
++  const res = await sendJson("PUT", "/v1/settings", {
++    appearance_settings: {
++      bg_color: "#101820",
++      text_color: "#f0f0f0",
++      font_scale: 1.15,
++      padding: 32,
++      welcome_title: "Selamat datang di booth ini",
++      pages: { payment: { bg_color: "#203040" } },
++    },
++  });
++  assert.equal(res.status, 200, await res.clone().text());
++
++  const body = (await (await call("/v1/settings")).json()) as {
++    settings: { appearance_settings: Record<string, unknown> };
++  };
++  const appearance = body.settings.appearance_settings;
++  assert.equal(appearance.bg_color, "#101820");
++  assert.equal(appearance.font_scale, 1.15);
++  assert.equal(appearance.welcome_title, "Selamat datang di booth ini");
++  assert.deepEqual(appearance.pages, { payment: { bg_color: "#203040" } });
++});
++
++test("appearance_settings tidak menghapus setelan mesin lain", async () => {
++  await sendJson("PUT", "/v1/settings", {
++    print_settings: { printer_name: "Snapy-02", paper_size: "4x6" },
++  });
++  await sendJson("PUT", "/v1/settings", {
++    appearance_settings: { bg_color: "#222222" },
++  });
++
++  const body = (await (await call("/v1/settings")).json()) as {
++    settings: { print_settings: Record<string, unknown> };
++  };
++  assert.equal(body.settings.print_settings.printer_name, "Snapy-02");
++  assert.equal(body.settings.print_settings.paper_size, "4x6");
++});
++
++test("appearance_settings menolak nilai di luar kontrak", async () => {
++  const bad = await sendJson("PUT", "/v1/settings", {
++    appearance_settings: { bg_color: "biru" },
++  });
++  assert.equal(bad.status, 400);
++
++  const scale = await sendJson("PUT", "/v1/settings", {
++    appearance_settings: { font_scale: 3 },
++  });
++  assert.equal(scale.status, 400);
++});
++
++test("field uang tetap ditolak meski dikirim bersama appearance", async () => {
++  const res = await sendJson("PUT", "/v1/settings", {
++    appearance_settings: { bg_color: "#333333" },
++    print_settings: { copies: 5 },
++  });
++  assert.equal(res.status, 403);
++  const body = (await res.json()) as { error?: string };
++  assert.equal(body.error, "FIELD_NOT_DEVICE_OWNED");
++});
++
++test("export/import membawa appearance_settings tanpa PIN", async () => {
++  const exported = await call("/v1/settings/export");
++  assert.equal(exported.status, 200);
++  const text = await exported.text();
++  assert.ok(!text.includes("exit_pin"), "export tidak boleh membawa PIN");
++  const parsed = JSON.parse(text) as {
++    settings: { appearance_settings?: Record<string, unknown> };
++  };
++  // Nilai dari tes sebelumnya (#333333) DITOLAK 403 karena payload-nya juga
++  // membawa `copies` milik cloud — yang tersimpan tetap nilai sah terakhir.
++  assert.equal(parsed.settings.appearance_settings?.bg_color, "#222222");
++
++  // Impor ke booth yang sama diterapkan kembali.
++  const imported = await sendJson("POST", "/v1/settings/import", {
++    schema_version: 1,
++    photobox_slug: "booth-01",
++    settings: { appearance_settings: { bg_color: "#abcdef" } },
++  });
++  assert.equal(imported.status, 200);
++  const read = (await (await call("/v1/settings")).json()) as {
++    settings: { appearance_settings: Record<string, unknown> };
++  };
++  assert.equal(read.settings.appearance_settings.bg_color, "#abcdef");
++});
+diff --git a/tests/runtime-sync.test.ts b/tests/runtime-sync.test.ts
+index ee26a48..5c25048 100644
+--- a/tests/runtime-sync.test.ts
++++ b/tests/runtime-sync.test.ts
+@@ -393,3 +393,63 @@ test("merge mempertahankan copies milik cloud saat device mengirim paper_size",
+   assert.equal(print.printer_name, "Booth", "field device menang");
+   assert.equal(merged.payment_mode, "gateway", "field di luar grup tidak tersentuh");
+ });
++
++test("appearance_settings tidak pernah ikut PATCH ke cloud", async () => {
++  const fixture = makeFixture();
++  try {
++    // Booth mengkustomisasi tampilannya sendiri.
++    setMeta(fixture.db, "photobox_slug", PHOTOBOX_SLUG);
++    fixture.db
++      .prepare(
++        `insert into device_settings (key, value_json, updated_at)
++         values (?, ?, ?)
++         on conflict (key) do update set value_json = excluded.value_json`
++      )
++      .run(
++        "appearance_settings",
++        JSON.stringify({ bg_color: "#101820", padding: 40 }),
++        new Date(fixture.clock.value).toISOString()
++      );
++    fixture.db
++      .prepare(
++        `insert into device_settings (key, value_json, updated_at)
++         values (?, ?, ?)
++         on conflict (key) do update set value_json = excluded.value_json`
++      )
++      .run(
++        "print_settings",
++        JSON.stringify({ paper_size: "A6", printer_name: "DNP QW410" }),
++        new Date(fixture.clock.value).toISOString()
++      );
++
++    const { impl, calls } = fakeFetch(({ url, method }) => {
++      if (url.endsWith("/devices/settings") && method === "PATCH") {
++        return { status: 200, body: { data: { ok: true } } };
++      }
++      return { status: 200, body: { data: {} } };
++    });
++    fixture.ctx.fetchImpl = impl;
++
++    await runSyncOnce(fixture.ctx);
++
++    const patch = calls.find(
++      (c) => c.method === "PATCH" && c.url.endsWith("/devices/settings")
++    );
++    assert.ok(patch, "worker harus melaporkan setelan mesin ke cloud");
++
++    const sent = JSON.parse(String(patch.body)) as {
++      settings: Record<string, unknown>;
++    };
++    // Setelan mesin ikut — dashboard owner butuh nilai ini.
++    assert.ok(sent.settings.print_settings, "print_settings harus ikut");
++    // Kustomisasi tampilan TIDAK ikut: kalau ikut, satu booth akan menimpa
++    // baris photoboxes yang dibaca seluruh booth di business yang sama.
++    assert.equal(
++      sent.settings.appearance_settings,
++      undefined,
++      "appearance_settings tidak boleh naik ke cloud"
++    );
++  } finally {
++    cleanup(fixture);
++  }
++});
+diff --git a/src/lib/appearance-merge.ts b/src/lib/appearance-merge.ts
+new file mode 100644
+index 0000000..793259c
+--- /dev/null
++++ b/src/lib/appearance-merge.ts
+@@ -0,0 +1,217 @@
++/**
++ * Kustomisasi tampilan booth: nilai mesin menang atas nilai cloud.
++ *
++ * Alur yang dijaga berkas ini:
++ *
++ * 1. **Cloud** mengirim *identitas & informasi* — nama bisnis, logo, warna brand
++ *    primary/secondary, aset video, harga, paket, payment gateway.
++ * 2. **Aplikasi booth** menyimpan *tampilan satu booth* — warna latar, warna
++ *    teks, tipografi, radius, padding, perataan, judul/hint tiap layar,
++ *    panduan, dan override per-layar.
++ *
++ * Nilai booth menang karena hanya mesin di lokasi yang tahu layarnya: teks yang
++ * muat di booth A belum tentu muat di booth B dengan rasio berbeda. Karena itu
++ * `appearance_settings` hidup di store lokal booth (`PUT /v1/settings`) dan
++ * TIDAK pernah dikirim ke cloud — lihat `LOCAL_ONLY_DEVICE_GROUPS`.
++ *
++ * Modul ini murni (tanpa `@/`, tanpa `server-only`) supaya bisa diuji langsung
++ * dan dipakai komponen kiosk tanpa menarik bundel server.
++ */
++
++import type { BrandingConfig, KioskPageConfig, KioskPageId } from "./kiosk-types.ts";
++
++/** Bentuk `appearance_settings` seperti yang disimpan runtime lokal. */
++export type AppearanceSettings = {
++  bg_color?: string;
++  text_color?: string;
++  font_family?: "display" | "sans" | "mono";
++  font_scale?: number;
++  button_radius?: number;
++  padding?: number;
++  align?: "left" | "center" | "right";
++  welcome_layout?: "split-left" | "split-right" | "center";
++  result_layout?: "qr-right" | "qr-left" | "qr-below";
++  welcome_title?: string;
++  welcome_tagline?: string;
++  welcome_button?: string;
++  payment_title?: string;
++  payment_hint?: string;
++  capture_title?: string;
++  capture_hint?: string;
++  editor_title?: string;
++  editor_hint?: string;
++  result_title?: string;
++  result_hint?: string;
++  guide_title?: string;
++  guide_button?: string;
++  package_title?: string;
++  template_title?: string;
++  show_logo?: boolean;
++  show_tagline?: boolean;
++  show_mirror_toggle?: boolean;
++  allow_zoom_pan?: boolean;
++  guide_steps?: string[];
++  pages?: Partial<Record<KioskPageId, AppearancePageSettings>>;
++};
++
++export type AppearancePageSettings = {
++  bg_color?: string;
++  text_color?: string;
++  font_scale?: number;
++  button_radius?: number;
++  padding?: number;
++  align?: "left" | "center" | "right";
++};
++
++/**
++ * Field kustomisasi yang boleh datang dari booth. Dipakai panel setelan untuk
++ * memastikan hanya field ini yang dikirim ke `PUT /v1/settings`, dan oleh tes
++ * agar daftar ini tidak pernah menyimpang dari schema zod.
++ */
++export const APPEARANCE_FIELDS = [
++  "bg_color",
++  "text_color",
++  "font_family",
++  "font_scale",
++  "button_radius",
++  "padding",
++  "align",
++  "welcome_layout",
++  "result_layout",
++  "welcome_title",
++  "welcome_tagline",
++  "welcome_button",
++  "payment_title",
++  "payment_hint",
++  "capture_title",
++  "capture_hint",
++  "editor_title",
++  "editor_hint",
++  "result_title",
++  "result_hint",
++  "guide_title",
++  "guide_button",
++  "package_title",
++  "template_title",
++  "show_logo",
++  "show_tagline",
++  "show_mirror_toggle",
++  "allow_zoom_pan",
++  "guide_steps",
++  "pages",
++] as const;
++
++/** Layar yang bisa di-override per-layar (cermin `KioskPageId`). */
++export const APPEARANCE_PAGES: readonly KioskPageId[] = [
++  "welcome",
++  "guide",
++  "package",
++  "payment",
++  "template",
++  "capture",
++  "edit",
++  "result",
++];
++
++function isPlainObject(value: unknown): value is Record<string, unknown> {
++  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
++}
++
++/** Buang `undefined` dan kunci yang bukan milik kustomisasi booth. */
++export function pickAppearance(input: unknown): AppearanceSettings {
++  if (!isPlainObject(input)) return {};
++  const allowed = new Set<string>(APPEARANCE_FIELDS);
++  const out: Record<string, unknown> = {};
++  for (const [key, value] of Object.entries(input)) {
++    if (!allowed.has(key) || value === undefined) continue;
++    if (key === "pages") {
++      if (!isPlainObject(value)) continue;
++      const pages: Record<string, AppearancePageSettings> = {};
++      for (const page of APPEARANCE_PAGES) {
++        const row = (value as Record<string, unknown>)[page];
++        if (!isPlainObject(row)) continue;
++        const clean: Record<string, unknown> = {};
++        for (const field of [
++          "bg_color",
++          "text_color",
++          "font_scale",
++          "button_radius",
++          "padding",
++          "align",
++        ]) {
++          if (row[field] !== undefined) clean[field] = row[field];
++        }
++        if (Object.keys(clean).length > 0) {
++          pages[page] = clean as AppearancePageSettings;
++        }
++      }
++      if (Object.keys(pages).length > 0) out.pages = pages;
++      continue;
++    }
++    out[key] = value;
++  }
++  return out as AppearanceSettings;
++}
++
++/**
++ * Tempelkan kustomisasi booth di atas branding cloud.
++ *
++ * `null`/kosong berarti booth belum pernah dikustomisasi → branding cloud
++ * dipakai apa adanya. Field yang tidak disebut booth tetap milik cloud, jadi
++ * logo, warna brand, dan video tidak pernah hilang hanya karena operator
++ * mengubah satu judul layar.
++ */
++export function mergeAppearance(
++  cloud: BrandingConfig | null | undefined,
++  appearance: AppearanceSettings | null | undefined
++): BrandingConfig {
++  const base: BrandingConfig = cloud ? { ...cloud } : {};
++  if (!appearance || Object.keys(appearance).length === 0) return base;
++
++  const next: BrandingConfig = { ...base };
++  // Field tingkat atas `BrandingConfig` yang boleh ditimpa booth.
++  for (const key of [
++    "welcome_title",
++    "welcome_tagline",
++    "welcome_button",
++  ] as const) {
++    const value = appearance[key];
++    if (value !== undefined) next[key] = value;
++  }
++
++  // `kiosk` = seluruh tampilan kiosk; digabung per-field.
++  const cloudKiosk = isPlainObject(base.kiosk) ? { ...base.kiosk } : {};
++  const deviceKiosk: Record<string, unknown> = {};
++  for (const key of APPEARANCE_FIELDS) {
++    if (key === "pages") continue;
++    if (key === "welcome_title" || key === "welcome_tagline" || key === "welcome_button") continue;
++    const value = (appearance as Record<string, unknown>)[key];
++    if (value !== undefined) deviceKiosk[key] = value;
++  }
++
++  // Override per-layar: gabung per layar, booth menang per-field. `video_key`
++  // tetap milik cloud — mesin tidak boleh mengarang objek storage.
++  const cloudPages = isPlainObject(cloudKiosk.pages)
++    ? (cloudKiosk.pages as Record<string, KioskPageConfig>)
++    : {};
++  const devicePages = appearance.pages ?? {};
++  const pages: Record<string, KioskPageConfig> = { ...cloudPages };
++  for (const page of APPEARANCE_PAGES) {
++    const devicePage = devicePages[page];
++    if (!devicePage) continue;
++    const cloudPage = cloudPages[page] ?? {};
++    const mergedPage: KioskPageConfig = { ...cloudPage };
++    for (const [field, value] of Object.entries(devicePage)) {
++      if (value === undefined) continue;
++      (mergedPage as Record<string, unknown>)[field] = value;
++    }
++    pages[page] = mergedPage;
++  }
++
++  next.kiosk = {
++    ...cloudKiosk,
++    ...deviceKiosk,
++    ...(Object.keys(pages).length > 0 ? { pages } : {}),
++  } as BrandingConfig["kiosk"];
++  return next;
++}
+diff --git a/src/lib/booth-settings-payload.ts b/src/lib/booth-settings-payload.ts
+new file mode 100644
+index 0000000..87d0435
+--- /dev/null
++++ b/src/lib/booth-settings-payload.ts
+@@ -0,0 +1,124 @@
++/**
++ * Bentuk payload setelan booth — dipisah dari komponen supaya bisa diuji.
++ *
++ * Aturan yang dijaga di sini (dan ditegakkan ulang server, bukan hanya UI):
++ *
++ * - Hanya grup milik booth yang dikirim: kamera, printer, sesi, tampilan.
++ * - `print_settings.copies` dan `print_settings.layout` TIDAK PERNAH
++ *   disertakan. Keduanya milik cloud (biaya bahan & bentuk produk); kalau
++ *   ikut terkirim, runtime menjawab `403 FIELD_NOT_DEVICE_OWNED`.
++ * - Harga, paket, payment gateway, logo, dan warna brand tidak punya
++ *   representasi di sini — semuanya diatur di website.
++ *
++ * Modul ini murni (tanpa React, tanpa `@/`) agar bisa diuji langsung.
++ */
++
++import type { AppearanceSettings } from "./appearance-merge.ts";
++
++export type BoothCameraDraft = {
++  provider: "browser" | "gphoto2";
++  countdown_seconds: number;
++  capture_width: number;
++  capture_height: number;
++  mirror_preview: boolean;
++  screen_orientation: "landscape" | "portrait";
++};
++
++export type BoothPrintDraft = {
++  enabled: boolean;
++  mode: "browser" | "bluetooth" | "cups";
++  paper_size: "4x6" | "A6";
++  orientation: "portrait" | "landscape";
++  auto_print: boolean;
++  margins_mm: number;
++  printer_name: string;
++};
++
++export type BoothSessionDraft = {
++  timer_seconds: number;
++  warning_seconds: number;
++  max_retakes: number | null;
++};
++
++export type BoothAppearanceDraft = {
++  bg_color: string;
++  text_color: string;
++  font_scale: number;
++  button_radius: number;
++  padding: number;
++  welcome_title: string;
++  welcome_tagline: string;
++  guide_steps: string;
++};
++
++export type BoothDraft = {
++  camera: BoothCameraDraft;
++  print: BoothPrintDraft;
++  session: BoothSessionDraft;
++  appearance: BoothAppearanceDraft;
++};
++
++/** Setelan booth yang siap dikirim ke `PUT /v1/settings`. */
++export type BoothSettingsPayload = {
++  camera_settings: Record<string, unknown>;
++  print_settings: Record<string, unknown>;
++  session_settings: Record<string, unknown>;
++  appearance_settings: Record<string, unknown>;
++};
++
++/**
++ * Draft form → payload `PUT /v1/settings`.
++ *
++ * `copies` dan `layout` sengaja tidak ada di tipe draft, jadi tidak mungkin
++ * ikut terkirim. Itu bukan kelalaian: keduanya milik cloud.
++ */
++export function boothDraftToSettings(draft: BoothDraft): BoothSettingsPayload {
++  const guideSteps = draft.appearance.guide_steps
++    .split("\n")
++    .map((line) => line.trim())
++    .filter(Boolean)
++    .slice(0, 8);
++
++  const appearance: AppearanceSettings = {
++    bg_color: draft.appearance.bg_color,
++    text_color: draft.appearance.text_color,
++    font_scale: draft.appearance.font_scale,
++    button_radius: draft.appearance.button_radius,
++    padding: draft.appearance.padding,
++  };
++  if (draft.appearance.welcome_title.trim()) {
++    appearance.welcome_title = draft.appearance.welcome_title.trim();
++  }
++  if (draft.appearance.welcome_tagline.trim()) {
++    appearance.welcome_tagline = draft.appearance.welcome_tagline.trim();
++  }
++  if (guideSteps.length > 0) appearance.guide_steps = guideSteps;
++
++  return {
++    camera_settings: {
++      provider: draft.camera.provider,
++      countdown_seconds: draft.camera.countdown_seconds,
++      capture_width: draft.camera.capture_width,
++      capture_height: draft.camera.capture_height,
++      mirror_preview: draft.camera.mirror_preview,
++      screen_orientation: draft.camera.screen_orientation,
++    },
++    print_settings: {
++      enabled: draft.print.enabled,
++      mode: draft.print.mode,
++      paper_size: draft.print.paper_size,
++      orientation: draft.print.orientation,
++      auto_print: draft.print.auto_print,
++      margins_mm: draft.print.margins_mm,
++      ...(draft.print.printer_name.trim()
++        ? { printer_name: draft.print.printer_name.trim() }
++        : {}),
++    },
++    session_settings: {
++      timer_seconds: draft.session.timer_seconds,
++      warning_seconds: draft.session.warning_seconds,
++      max_retakes: draft.session.max_retakes,
++    },
++    appearance_settings: appearance as Record<string, unknown>,
++  };
++}
+diff --git a/src/components/kiosk/BoothSettingsPanel.tsx b/src/components/kiosk/BoothSettingsPanel.tsx
+new file mode 100644
+index 0000000..34bd960
+--- /dev/null
++++ b/src/components/kiosk/BoothSettingsPanel.tsx
+@@ -0,0 +1,600 @@
++"use client";
++
++/**
++ * Panel setelan booth — dijalankan DI DALAM aplikasi booth, bukan di dashboard.
++ *
++ * Pembagian yang dijaga panel ini (dan ditegakkan server, bukan hanya UI):
++ *
++ * | Milik booth (di sini)            | Milik cloud (website)              |
++ * | -------------------------------- | ---------------------------------- |
++ * | kamera: provider, countdown,     | harga & paket                      |
++ * |   resolusi, mirror, orientasi    | payment gateway & kredensial       |
++ * | printer: mode, kertas, margin    | `print_settings.copies` (biaya)    |
++ * | sesi: timer, peringatan, retake  | `print_settings.layout` (produk)   |
++ * | tampilan: warna, font, teks      | logo, warna brand, video, nama     |
++ *
++ * Panel hanya mengirim grup milik booth. `copies`/`layout` tidak dirender
++ * sebagai input, dan kalau tetap terkirim runtime menjawab
++ * `403 FIELD_NOT_DEVICE_OWNED` — bukan membuang nilainya diam-diam.
++ *
++ * Kenapa PIN: panel ini membuka akses ke kamera/printer dan bisa mengubah
++ * tampilan yang dilihat pelanggan. Tanpa gerbang, siapa pun yang menyentuh
++ * layar booth bisa mengacak setelan. PIN yang dipakai sama dengan PIN keluar
++ * kiosk (diverifikasi cloud; PIN darurat lokal saat internet mati).
++ */
++
++import { useCallback, useState } from "react";
++import { Loader2, Save, SlidersHorizontal, TriangleAlert } from "lucide-react";
++import { KioskError } from "@/components/kiosk/api";
++import { saveDeviceSettings } from "@/components/kiosk/local-runtime";
++import type { DeviceSettings } from "@/lib/settings-merge";
++import { APPEARANCE_PAGES, type AppearanceSettings } from "@/lib/appearance-merge";
++import {
++  boothDraftToSettings,
++  type BoothAppearanceDraft,
++  type BoothCameraDraft,
++  type BoothPrintDraft,
++  type BoothSessionDraft,
++} from "@/lib/booth-settings-payload";
++
++type Props = {
++  /** Setelan aktif dari runtime (`GET /v1/settings`); `null` = runtime mati. */
++  initial: DeviceSettings | null;
++  /** `camera_settings.bridge_url` booth — tujuan `PUT /v1/settings`. */
++  bridgeUrl?: string | null;
++  /** Nama booth untuk judul panel — operator sering mengurus >1 booth. */
++  photoboxName?: string;
++  onSaved?: (settings: DeviceSettings) => void;
++  onClose: () => void;
++};
++
++type Draft = {
++  camera: BoothCameraDraft;
++  print: BoothPrintDraft;
++  session: BoothSessionDraft;
++  appearance: BoothAppearanceDraft;
++};
++
++const DEFAULT_DRAFT: Draft = {
++  camera: {
++    provider: "browser",
++    countdown_seconds: 3,
++    capture_width: 1920,
++    capture_height: 1080,
++    mirror_preview: true,
++    screen_orientation: "landscape",
++  },
++  print: {
++    enabled: true,
++    mode: "browser",
++    paper_size: "4x6",
++    orientation: "portrait",
++    auto_print: true,
++    margins_mm: 0,
++    printer_name: "",
++  },
++  session: {
++    timer_seconds: 300,
++    warning_seconds: 60,
++    max_retakes: 2,
++  },
++  appearance: {
++    bg_color: "#f5f1e8",
++    text_color: "#111111",
++    font_scale: 1,
++    button_radius: 0,
++    padding: 24,
++    welcome_title: "",
++    welcome_tagline: "",
++    guide_steps: "",
++  },
++};
++
++function num(value: unknown, fallback: number): number {
++  const parsed = typeof value === "number" ? value : Number(value);
++  return Number.isFinite(parsed) ? parsed : fallback;
++}
++
++function str(value: unknown, fallback: string): string {
++  return typeof value === "string" ? value : fallback;
++}
++
++function bool(value: unknown, fallback: boolean): boolean {
++  return typeof value === "boolean" ? value : fallback;
++}
++
++/** Bentuk setelan tersimpan → draft form (semua field punya nilai). */
++function toDraft(settings: DeviceSettings | null): Draft {
++  const camera = settings?.camera_settings ?? {};
++  const print = settings?.print_settings ?? {};
++  const session = settings?.session_settings ?? {};
++  const appearance = (settings?.appearance_settings ?? {}) as AppearanceSettings;
++  return {
++    camera: {
++      provider: camera.provider === "gphoto2" ? "gphoto2" : "browser",
++      countdown_seconds: num(camera.countdown_seconds, DEFAULT_DRAFT.camera.countdown_seconds),
++      capture_width: num(camera.capture_width, DEFAULT_DRAFT.camera.capture_width),
++      capture_height: num(camera.capture_height, DEFAULT_DRAFT.camera.capture_height),
++      mirror_preview: bool(camera.mirror_preview, DEFAULT_DRAFT.camera.mirror_preview),
++      screen_orientation:
++        camera.screen_orientation === "portrait" ? "portrait" : "landscape",
++    },
++    print: {
++      enabled: bool(print.enabled, DEFAULT_DRAFT.print.enabled),
++      mode:
++        print.mode === "bluetooth" || print.mode === "cups" ? print.mode : DEFAULT_DRAFT.print.mode,
++      paper_size: print.paper_size === "A6" ? "A6" : "4x6",
++      orientation: print.orientation === "landscape" ? "landscape" : "portrait",
++      auto_print: bool(print.auto_print, DEFAULT_DRAFT.print.auto_print),
++      margins_mm: num(print.margins_mm, DEFAULT_DRAFT.print.margins_mm),
++      printer_name: str(print.printer_name, DEFAULT_DRAFT.print.printer_name),
++    },
++    session: {
++      timer_seconds: num(session.timer_seconds, DEFAULT_DRAFT.session.timer_seconds),
++      warning_seconds: num(session.warning_seconds, DEFAULT_DRAFT.session.warning_seconds),
++      max_retakes:
++        session.max_retakes === null
++          ? null
++          : num(session.max_retakes, DEFAULT_DRAFT.session.max_retakes ?? 0),
++    },
++    appearance: {
++      bg_color: str(appearance.bg_color, DEFAULT_DRAFT.appearance.bg_color),
++      text_color: str(appearance.text_color, DEFAULT_DRAFT.appearance.text_color),
++      font_scale: num(appearance.font_scale, DEFAULT_DRAFT.appearance.font_scale),
++      button_radius: num(appearance.button_radius, DEFAULT_DRAFT.appearance.button_radius),
++      padding: num(appearance.padding, DEFAULT_DRAFT.appearance.padding),
++      welcome_title: str(appearance.welcome_title, DEFAULT_DRAFT.appearance.welcome_title),
++      welcome_tagline: str(appearance.welcome_tagline, DEFAULT_DRAFT.appearance.welcome_tagline),
++      guide_steps: Array.isArray(appearance.guide_steps)
++        ? appearance.guide_steps.join("\n")
++        : DEFAULT_DRAFT.appearance.guide_steps,
++    },
++  };
++}
++
++const sectionClass = "flex flex-col gap-3 border-2 border-ink bg-surface p-4 md:p-5";
++const labelClass = "font-mono text-[10px] font-bold uppercase tracking-[0.16em]";
++const inputClass =
++  "min-h-11 w-full border-2 border-ink bg-bg px-3 font-mono text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
++const headingClass = "font-display text-lg uppercase leading-none tracking-[-0.01em]";
++
++export function BoothSettingsPanel({
++  initial,
++  bridgeUrl,
++  photoboxName,
++  onSaved,
++  onClose,
++}: Props) {
++  const [draft, setDraft] = useState<Draft>(() => toDraft(initial));
++  const [busy, setBusy] = useState(false);
++  const [saved, setSaved] = useState(false);
++  const [error, setError] = useState<string | null>(null);
++
++  // Tidak ada sinkronisasi efek dari props: panel di-mount ulang setiap kali
++  // dibuka (induk merender kondisional), jadi `initial` hanya dibaca sekali
++  // saat mount. Sinkronisasi lewat effect akan menimpa editan operator ketika
++  // induk mengirim objek setelan baru di tengah pengisian form.
++
++  const runtimeDown = initial === null;
++
++  const update = useCallback(<K extends keyof Draft>(group: K, patch: Partial<Draft[K]>) => {
++    setSaved(false);
++    setError(null);
++    setDraft((prev) => ({ ...prev, [group]: { ...prev[group], ...patch } }));
++  }, []);
++
++  async function handleSave() {
++    setBusy(true);
++    setError(null);
++    setSaved(false);
++    try {
++      const payload = boothDraftToSettings(draft);
++      const result = await saveDeviceSettings(payload, bridgeUrl);
++      setSaved(true);
++      onSaved?.(result);
++    } catch (cause) {
++      setError(
++        cause instanceof KioskError
++          ? cause.message
++          : "Setelan gagal disimpan. Periksa runtime booth."
++      );
++    } finally {
++      setBusy(false);
++    }
++  }
++
++  return (
++    <div className="fixed inset-0 z-[70] flex flex-col overflow-y-auto bg-bg px-4 py-6 md:px-8">
++      <header className="mx-auto flex w-full max-w-[860px] flex-col gap-2 border-b-2 border-ink/15 pb-4">
++        <p className="font-mono text-[10px] font-bold uppercase leading-none tracking-[0.24em] text-muted-foreground">
++          {`SETELAN BOOTH${photoboxName ? ` · ${photoboxName}` : ""}`}
++        </p>
++        <h1 className="font-display text-2xl uppercase leading-[0.95] tracking-[-0.02em] md:text-3xl">
++          Setelan teknis booth ini
++        </h1>
++        <p className="max-w-[64ch] text-sm leading-relaxed text-muted-foreground">
++          Nilai di sini hanya berlaku untuk booth ini. Harga, paket, payment gateway, logo, dan
++          warna brand tetap diatur dari website.
++        </p>
++      </header>
++
++      {runtimeDown && (
++        <div
++          role="alert"
++          className="mx-auto mt-4 flex w-full max-w-[860px] items-start gap-3 border-2 border-ink bg-accent-2 p-4"
++        >
++          <TriangleAlert className="mt-0.5 size-5 shrink-0" aria-hidden />
++          <p className="text-sm leading-relaxed">
++            Runtime lokal booth tidak menjawab. Setelan tidak bisa disimpan sampai runtime hidup
++            (aplikasi booth harus berjalan di komputer ini).
++          </p>
++        </div>
++      )}
++
++      <div className="mx-auto mt-5 flex w-full max-w-[860px] flex-col gap-4">
++        {/* --- Kamera --- */}
++        <section className={sectionClass} aria-labelledby="bs-camera">
++          <h2 id="bs-camera" className={headingClass}>
++            Kamera
++          </h2>
++          <div className="grid gap-3 sm:grid-cols-2">
++            <label className="flex flex-col gap-1">
++              <span className={labelClass}>Sumber kamera</span>
++              <select
++                className={inputClass}
++                value={draft.camera.provider}
++                onChange={(e) =>
++                  update("camera", {
++                    provider: e.target.value === "gphoto2" ? "gphoto2" : "browser",
++                  })
++                }
++              >
++                <option value="browser">Kamera browser (webcam/USB)</option>
++                <option value="gphoto2">DSLR via gphoto2</option>
++              </select>
++            </label>
++            <label className="flex flex-col gap-1">
++              <span className={labelClass}>Hitung mundur (detik)</span>
++              <input
++                type="number"
++                min={1}
++                max={10}
++                className={inputClass}
++                value={draft.camera.countdown_seconds}
++                onChange={(e) => update("camera", { countdown_seconds: Number(e.target.value) })}
++              />
++            </label>
++            <label className="flex flex-col gap-1">
++              <span className={labelClass}>Lebar capture (px)</span>
++              <input
++                type="number"
++                min={640}
++                max={7680}
++                className={inputClass}
++                value={draft.camera.capture_width}
++                onChange={(e) => update("camera", { capture_width: Number(e.target.value) })}
++              />
++            </label>
++            <label className="flex flex-col gap-1">
++              <span className={labelClass}>Tinggi capture (px)</span>
++              <input
++                type="number"
++                min={480}
++                max={4320}
++                className={inputClass}
++                value={draft.camera.capture_height}
++                onChange={(e) => update("camera", { capture_height: Number(e.target.value) })}
++              />
++            </label>
++            <label className="flex flex-col gap-1">
++              <span className={labelClass}>Orientasi layar booth</span>
++              <select
++                className={inputClass}
++                value={draft.camera.screen_orientation}
++                onChange={(e) =>
++                  update("camera", {
++                    screen_orientation: e.target.value === "portrait" ? "portrait" : "landscape",
++                  })
++                }
++              >
++                <option value="landscape">Landscape</option>
++                <option value="portrait">Portrait</option>
++              </select>
++            </label>
++            <label className="flex min-h-11 items-center gap-3 border-2 border-ink bg-bg px-3">
++              <input
++                type="checkbox"
++                checked={draft.camera.mirror_preview}
++                onChange={(e) => update("camera", { mirror_preview: e.target.checked })}
++                className="size-5"
++              />
++              <span className={labelClass}>Pratinjau mirror</span>
++            </label>
++          </div>
++        </section>
++
++        {/* --- Printer --- */}
++        <section className={sectionClass} aria-labelledby="bs-print">
++          <h2 id="bs-print" className={headingClass}>
++            Printer
++          </h2>
++          <div className="grid gap-3 sm:grid-cols-2">
++            <label className="flex flex-col gap-1">
++              <span className={labelClass}>Jalur cetak</span>
++              <select
++                className={inputClass}
++                value={draft.print.mode}
++                onChange={(e) =>
++                  update("print", {
++                    mode:
++                      e.target.value === "bluetooth"
++                        ? "bluetooth"
++                        : e.target.value === "cups"
++                          ? "cups"
++                          : "browser",
++                  })
++                }
++              >
++                <option value="browser">Dialog OS (browser)</option>
++                <option value="cups">CUPS / spooler (runtime)</option>
++                <option value="bluetooth">Thermal Bluetooth</option>
++              </select>
++            </label>
++            <label className="flex flex-col gap-1">
++              <span className={labelClass}>Ukuran kertas</span>
++              <select
++                className={inputClass}
++                value={draft.print.paper_size}
++                onChange={(e) =>
++                  update("print", { paper_size: e.target.value === "A6" ? "A6" : "4x6" })
++                }
++              >
++                <option value="4x6">4x6 (10x15 cm)</option>
++                <option value="A6">A6</option>
++              </select>
++            </label>
++            <label className="flex flex-col gap-1">
++              <span className={labelClass}>Orientasi kertas</span>
++              <select
++                className={inputClass}
++                value={draft.print.orientation}
++                onChange={(e) =>
++                  update("print", {
++                    orientation: e.target.value === "landscape" ? "landscape" : "portrait",
++                  })
++                }
++              >
++                <option value="portrait">Portrait</option>
++                <option value="landscape">Landscape</option>
++              </select>
++            </label>
++            <label className="flex flex-col gap-1">
++              <span className={labelClass}>Margin (mm)</span>
++              <input
++                type="number"
++                min={0}
++                max={20}
++                className={inputClass}
++                value={draft.print.margins_mm}
++                onChange={(e) => update("print", { margins_mm: Number(e.target.value) })}
++              />
++            </label>
++            <label className="flex flex-col gap-1 sm:col-span-2">
++              <span className={labelClass}>Nama printer (kosong = default OS)</span>
++              <input
++                type="text"
++                maxLength={128}
++                className={inputClass}
++                placeholder="mis. DNP DS620"
++                value={draft.print.printer_name}
++                onChange={(e) => update("print", { printer_name: e.target.value })}
++              />
++            </label>
++            <label className="flex min-h-11 items-center gap-3 border-2 border-ink bg-bg px-3">
++              <input
++                type="checkbox"
++                checked={draft.print.enabled}
++                onChange={(e) => update("print", { enabled: e.target.checked })}
++                className="size-5"
++              />
++              <span className={labelClass}>Cetak aktif</span>
++            </label>
++            <label className="flex min-h-11 items-center gap-3 border-2 border-ink bg-bg px-3">
++              <input
++                type="checkbox"
++                checked={draft.print.auto_print}
++                onChange={(e) => update("print", { auto_print: e.target.checked })}
++                className="size-5"
++              />
++              <span className={labelClass}>Cetak otomatis</span>
++            </label>
++          </div>
++          <p className="text-xs leading-relaxed text-muted-foreground">
++            Jumlah salinan dan bentuk layout (single/strip) diatur owner di website — keduanya
++            menyangkut biaya bahan dan bentuk produk, bukan kondisi mesin.
++          </p>
++        </section>
++
++        {/* --- Sesi --- */}
++        <section className={sectionClass} aria-labelledby="bs-session">
++          <h2 id="bs-session" className={headingClass}>
++            Sesi
++          </h2>
++          <div className="grid gap-3 sm:grid-cols-3">
++            <label className="flex flex-col gap-1">
++              <span className={labelClass}>Durasi sesi (detik)</span>
++              <input
++                type="number"
++                min={60}
++                max={3600}
++                className={inputClass}
++                value={draft.session.timer_seconds}
++                onChange={(e) => update("session", { timer_seconds: Number(e.target.value) })}
++              />
++            </label>
++            <label className="flex flex-col gap-1">
++              <span className={labelClass}>Peringatan (detik)</span>
++              <input
++                type="number"
++                min={10}
++                max={600}
++                className={inputClass}
++                value={draft.session.warning_seconds}
++                onChange={(e) => update("session", { warning_seconds: Number(e.target.value) })}
++              />
++            </label>
++            <label className="flex flex-col gap-1">
++              <span className={labelClass}>Maks. ulang foto</span>
++              <input
++                type="number"
++                min={0}
++                max={50}
++                className={inputClass}
++                value={draft.session.max_retakes ?? ""}
++                placeholder="tanpa batas"
++                onChange={(e) =>
++                  update("session", {
++                    max_retakes: e.target.value === "" ? null : Number(e.target.value),
++                  })
++                }
++              />
++            </label>
++          </div>
++          <p className="text-xs leading-relaxed text-muted-foreground">
++            Peringatan harus lebih singkat dari durasi sesi — runtime menolak kombinasi sebaliknya.
++          </p>
++        </section>
++
++        {/* --- Tampilan booth --- */}
++        <section className={sectionClass} aria-labelledby="bs-appearance">
++          <h2 id="bs-appearance" className={headingClass}>
++            Tampilan booth ini
++          </h2>
++          <div className="grid gap-3 sm:grid-cols-2">
++            <label className="flex flex-col gap-1">
++              <span className={labelClass}>Warna latar</span>
++              <input
++                type="color"
++                className="h-11 w-full border-2 border-ink bg-bg"
++                value={draft.appearance.bg_color}
++                onChange={(e) => update("appearance", { bg_color: e.target.value })}
++              />
++            </label>
++            <label className="flex flex-col gap-1">
++              <span className={labelClass}>Warna teks</span>
++              <input
++                type="color"
++                className="h-11 w-full border-2 border-ink bg-bg"
++                value={draft.appearance.text_color}
++                onChange={(e) => update("appearance", { text_color: e.target.value })}
++              />
++            </label>
++            <label className="flex flex-col gap-1">
++              <span className={labelClass}>Skala font (0.8–1.4)</span>
++              <input
++                type="number"
++                step={0.05}
++                min={0.8}
++                max={1.4}
++                className={inputClass}
++                value={draft.appearance.font_scale}
++                onChange={(e) => update("appearance", { font_scale: Number(e.target.value) })}
++              />
++            </label>
++            <label className="flex flex-col gap-1">
++              <span className={labelClass}>Radius tombol (px)</span>
++              <input
++                type="number"
++                min={0}
++                max={24}
++                className={inputClass}
++                value={draft.appearance.button_radius}
++                onChange={(e) => update("appearance", { button_radius: Number(e.target.value) })}
++              />
++            </label>
++            <label className="flex flex-col gap-1">
++              <span className={labelClass}>Padding layar (px)</span>
++              <input
++                type="number"
++                min={0}
++                max={96}
++                className={inputClass}
++                value={draft.appearance.padding}
++                onChange={(e) => update("appearance", { padding: Number(e.target.value) })}
++              />
++            </label>
++            <label className="flex flex-col gap-1">
++              <span className={labelClass}>Judul sambutan (kosong = ikut website)</span>
++              <input
++                type="text"
++                maxLength={120}
++                className={inputClass}
++                value={draft.appearance.welcome_title}
++                onChange={(e) => update("appearance", { welcome_title: e.target.value })}
++              />
++            </label>
++            <label className="flex flex-col gap-1 sm:col-span-2">
++              <span className={labelClass}>Tagline (kosong = ikut website)</span>
++              <input
++                type="text"
++                maxLength={200}
++                className={inputClass}
++                value={draft.appearance.welcome_tagline}
++                onChange={(e) => update("appearance", { welcome_tagline: e.target.value })}
++              />
++            </label>
++            <label className="flex flex-col gap-1 sm:col-span-2">
++              <span className={labelClass}>Panduan (satu langkah per baris, maks 8)</span>
++              <textarea
++                rows={4}
++                className="w-full border-2 border-ink bg-bg px-3 py-2 font-mono text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
++                value={draft.appearance.guide_steps}
++                onChange={(e) => update("appearance", { guide_steps: e.target.value })}
++              />
++            </label>
++          </div>
++          <p className="text-xs leading-relaxed text-muted-foreground">
++            Logo, warna brand, dan video promosi tetap milik website supaya brand konsisten di
++            semua booth. Yang di sini hanya penyesuaian layar booth ini (
++            {APPEARANCE_PAGES.length} layar didukung).
++          </p>
++        </section>
++
++        {error && (
++          <p role="alert" className="border-2 border-ink bg-accent-2 p-3 text-sm leading-relaxed">
++            {error}
++          </p>
++        )}
++        {saved && (
++          <p role="status" className="border-2 border-ink bg-accent-3 p-3 text-sm font-bold">
++            Setelan tersimpan di booth ini.
++          </p>
++        )}
++
++        <div className="sticky bottom-0 flex flex-col gap-2 border-t-2 border-ink/15 bg-bg py-3 sm:flex-row">
++          <button
++            type="button"
++            onClick={() => void handleSave()}
++            disabled={busy || runtimeDown}
++            className="flex min-h-12 items-center justify-center gap-2 border-2 border-ink bg-accent px-5 font-display text-base font-bold uppercase tracking-[-0.01em] shadow-[4px_4px_0_0_#111111] transition-transform active:translate-y-[2px] disabled:opacity-50"
++          >
++            {busy ? (
++              <Loader2 className="size-4 animate-spin" aria-hidden />
++            ) : (
++              <Save className="size-4" aria-hidden />
++            )}
++            Simpan setelan
++          </button>
++          <button
++            type="button"
++            onClick={onClose}
++            className="flex min-h-12 items-center justify-center gap-2 border-2 border-ink bg-surface px-5 font-display text-base font-bold uppercase tracking-[-0.01em]"
++          >
++            <SlidersHorizontal className="size-4" aria-hidden />
++            Tutup
++          </button>
++        </div>
++      </div>
++    </div>
++  );
++}
+diff --git a/tests/settings-ownership.test.ts b/tests/settings-ownership.test.ts
+new file mode 100644
+index 0000000..aa88e88
+--- /dev/null
++++ b/tests/settings-ownership.test.ts
+@@ -0,0 +1,442 @@
++/**
++ * Pemisahan setelan: kustomisasi booth vs informasi cloud.
++ *
++ * Flow yang dikunci berkas ini:
++ *
++ * 1. **Aplikasi booth** menyimpan setelan teknis satu booth (kamera, printer,
++ *    sesi, tampilan) di store lokal, dan panel setelan menulis lewat
++ *    `PUT /v1/settings`.
++ * 2. **Cloud (website)** memegang informasi yang harus sama di semua booth:
++ *    harga, paket, payment gateway, logo, warna brand, video.
++ * 3. Kustomisasi tampilan booth TIDAK boleh naik ke cloud — kalau naik, satu
++ *    booth yang mengganti warna latar akan menimpa seluruh booth di business.
++ *
++ * Run: npm test
++ */
++
++import assert from "node:assert/strict";
++import { test } from "node:test";
++
++import {
++  APPEARANCE_FIELDS,
++  APPEARANCE_PAGES,
++  mergeAppearance,
++  pickAppearance,
++  type AppearanceSettings,
++} from "../src/lib/appearance-merge.ts";
++import { mergeSettings } from "../src/lib/settings-merge.ts";
++import { boothDraftToSettings } from "../src/lib/booth-settings-payload.ts";
++import {
++  CLOUD_OWNED_SETTING_FIELDS,
++  CLOUD_SYNCED_DEVICE_GROUPS,
++  DEVICE_SETTING_GROUPS,
++  LOCAL_ONLY_DEVICE_GROUPS,
++  appearanceSettingsSchema,
++  deviceSettingFields,
++  deviceSettingsSchema,
++  foreignSettingKeys,
++  isLocalOnlySettingGroup,
++  localOnlySettingKeys,
++} from "../src/lib/validators.ts";
++
++// ---------------------------------------------------------------------------
++// 1. Kontrak kepemilikan
++// ---------------------------------------------------------------------------
++
++test("appearance_settings adalah grup milik booth", () => {
++  assert.ok(
++    (DEVICE_SETTING_GROUPS as readonly string[]).includes("appearance_settings"),
++    "appearance_settings harus terdaftar sebagai grup setelan booth"
++  );
++  assert.ok(isLocalOnlySettingGroup("appearance_settings"));
++});
++
++test("appearance_settings TIDAK ikut disinkronkan ke cloud", () => {
++  assert.ok(
++    !(CLOUD_SYNCED_DEVICE_GROUPS as readonly string[]).includes("appearance_settings"),
++    "kustomisasi tampilan tidak boleh naik ke cloud"
++  );
++  assert.deepEqual([...LOCAL_ONLY_DEVICE_GROUPS], ["appearance_settings"]);
++});
++
++test("tiga grup mesin tetap disinkronkan ke cloud", () => {
++  // Regresi: kalau grup ini ikut hilang, laporan setelan dari booth berhenti
++  // dan dashboard owner menampilkan nilai basi.
++  for (const group of ["camera_settings", "print_settings", "session_settings"] as const) {
++    assert.ok((CLOUD_SYNCED_DEVICE_GROUPS as readonly string[]).includes(group), group);
++  }
++});
++
++test("localOnlySettingKeys hanya menyebut grup lokal", () => {
++  assert.deepEqual(localOnlySettingKeys({ appearance_settings: {}, camera_settings: {} }), [
++    "appearance_settings",
++  ]);
++  assert.deepEqual(localOnlySettingKeys({ camera_settings: {}, print_settings: {} }), []);
++});
++
++// ---------------------------------------------------------------------------
++// 2. Field milik cloud tidak bisa ditulis booth
++// ---------------------------------------------------------------------------
++
++test("copies dan layout tetap milik cloud di dalam print_settings", () => {
++  const owned = CLOUD_OWNED_SETTING_FIELDS.print_settings;
++  assert.ok(owned.includes("copies"), "copies = biaya bahan, milik cloud");
++  assert.ok(owned.includes("layout"), "layout = bentuk produk, milik cloud");
++
++  const deviceFields = deviceSettingFields("print_settings");
++  assert.ok(!deviceFields.includes("copies"), "booth tidak boleh menulis copies");
++  assert.ok(!deviceFields.includes("layout"), "booth tidak boleh menulis layout");
++  // Field mesin tetap boleh.
++  assert.ok(deviceFields.includes("paper_size"));
++  assert.ok(deviceFields.includes("printer_name"));
++});
++
++test("payload booth yang membawa copies ditolak sebagai field cloud", () => {
++  const foreign = foreignSettingKeys({ print_settings: { copies: 3, paper_size: "A6" } });
++  assert.deepEqual(foreign, ["print_settings.copies"]);
++});
++
++test("field tampilan booth semuanya boleh ditulis booth", () => {
++  const allowed = new Set(deviceSettingFields("appearance_settings"));
++  for (const field of APPEARANCE_FIELDS) {
++    assert.ok(allowed.has(field), `appearance_settings.${field} harus boleh ditulis booth`);
++  }
++  // Tidak ada satu pun field tampilan yang disita cloud.
++  assert.deepEqual([...CLOUD_OWNED_SETTING_FIELDS.appearance_settings], []);
++});
++
++test("schema appearance menolak warna non-hex", () => {
++  const bad = appearanceSettingsSchema.safeParse({ bg_color: "hitam" });
++  assert.equal(bad.success, false);
++  const good = appearanceSettingsSchema.safeParse({ bg_color: "#112233" });
++  assert.equal(good.success, true);
++});
++
++test("schema appearance menolak font_scale di luar 0.8–1.4", () => {
++  assert.equal(appearanceSettingsSchema.safeParse({ font_scale: 0.5 }).success, false);
++  assert.equal(appearanceSettingsSchema.safeParse({ font_scale: 2 }).success, false);
++  assert.equal(appearanceSettingsSchema.safeParse({ font_scale: 1.2 }).success, true);
++});
++
++// ---------------------------------------------------------------------------
++// 3. Merge: booth menang atas cloud, identitas cloud tidak hilang
++// ---------------------------------------------------------------------------
++
++const cloudBranding = {
++  welcome_title: "Judul dari Website",
++  welcome_tagline: "Tagline website",
++  welcome_button: "MULAI",
++  primary_color: "#ff0000",
++  secondary_color: "#111111",
++  logo_url: "https://cdn.example.test/logo.png",
++  kiosk: {
++    bg_color: "#ffffff",
++    text_color: "#000000",
++    font_scale: 1,
++    padding: 24,
++    video_url: "https://cdn.example.test/promo.mp4",
++    guide_steps: ["Langkah website"],
++    pages: {
++      payment: { bg_color: "#eeeeee", video_url: "https://cdn.example.test/pay.mp4" },
++    },
++  },
++};
++
++test("tanpa kustomisasi booth, branding cloud dipakai apa adanya", () => {
++  assert.deepEqual(mergeAppearance(cloudBranding, null), cloudBranding);
++  assert.deepEqual(mergeAppearance(cloudBranding, {}), cloudBranding);
++});
++
++test("kustomisasi booth menang atas branding cloud", () => {
++  const merged = mergeAppearance(cloudBranding, {
++    bg_color: "#123456",
++    font_scale: 1.2,
++    padding: 48,
++    welcome_title: "Judul Booth Ini",
++  });
++
++  assert.equal(merged.kiosk?.bg_color, "#123456");
++  assert.equal(merged.kiosk?.font_scale, 1.2);
++  assert.equal(merged.kiosk?.padding, 48);
++  assert.equal(merged.welcome_title, "Judul Booth Ini");
++});
++
++test("identitas cloud tidak hilang saat booth hanya mengubah satu field", () => {
++  const merged = mergeAppearance(cloudBranding, { bg_color: "#123456" });
++
++  // Milik cloud — harus utuh.
++  assert.equal(merged.primary_color, "#ff0000");
++  assert.equal(merged.secondary_color, "#111111");
++  assert.equal(merged.logo_url, "https://cdn.example.test/logo.png");
++  assert.equal(merged.kiosk?.video_url, "https://cdn.example.test/promo.mp4");
++  assert.equal(merged.welcome_tagline, "Tagline website");
++  // Field lain milik cloud yang tidak disentuh booth tetap nilai cloud.
++  assert.equal(merged.kiosk?.text_color, "#000000");
++  assert.deepEqual(merged.kiosk?.guide_steps, ["Langkah website"]);
++});
++
++test("override per-layar digabung, video cloud dipertahankan", () => {
++  const merged = mergeAppearance(cloudBranding, {
++    pages: { payment: { bg_color: "#abcdef" } },
++  });
++
++  const page = merged.kiosk?.pages?.payment;
++  assert.equal(page?.bg_color, "#abcdef", "booth menang untuk warna latar layar");
++  assert.equal(
++    page?.video_url,
++    "https://cdn.example.test/pay.mp4",
++    "video tetap milik cloud — mesin tidak boleh mengarang objek storage"
++  );
++});
++
++test("booth bisa menambah override layar yang belum diatur cloud", () => {
++  const merged = mergeAppearance(cloudBranding, {
++    pages: { result: { text_color: "#00ff00", align: "center" } },
++  });
++  assert.deepEqual(merged.kiosk?.pages?.result, { text_color: "#00ff00", align: "center" });
++  // Override cloud untuk layar lain tidak hilang.
++  assert.equal(merged.kiosk?.pages?.payment?.bg_color, "#eeeeee");
++});
++
++test("mergeAppearance tidak memutasi masukan", () => {
++  const cloud = structuredClone(cloudBranding);
++  const appearance: AppearanceSettings = { bg_color: "#000000" };
++  const snapshotCloud = structuredClone(cloud);
++  const snapshotAppearance = structuredClone(appearance);
++
++  mergeAppearance(cloud, appearance);
++
++  assert.deepEqual(cloud, snapshotCloud);
++  assert.deepEqual(appearance, snapshotAppearance);
++});
++
++test("booth tanpa branding cloud tetap menghasilkan objek sah", () => {
++  const merged = mergeAppearance(null, { bg_color: "#101010" });
++  assert.equal(merged.kiosk?.bg_color, "#101010");
++});
++
++// ---------------------------------------------------------------------------
++// 4. pickAppearance menyaring field asing
++// ---------------------------------------------------------------------------
++
++test("pickAppearance membuang field yang bukan milik tampilan", () => {
++  const picked = pickAppearance({
++    bg_color: "#111111",
++    // Bukan milik tampilan booth — jangan pernah ikut tersimpan.
++    copies: 5,
++    payment_mode: "voucher",
++    price: 50000,
++  });
++  assert.deepEqual(picked, { bg_color: "#111111" });
++});
++
++test("pickAppearance membuang video_key (objek storage milik cloud)", () => {
++  const picked = pickAppearance({ bg_color: "#111111", video_key: "branding/x.mp4" });
++  assert.deepEqual(picked, { bg_color: "#111111" });
++});
++
++test("pickAppearance hanya menerima layar yang dikenal", () => {
++  const picked = pickAppearance({
++    pages: {
++      payment: { bg_color: "#222222" },
++      layar_asing: { bg_color: "#333333" },
++    },
++  });
++  assert.deepEqual(Object.keys(picked.pages ?? {}), ["payment"]);
++});
++
++test("semua layar kiosk bisa di-override", () => {
++  for (const page of APPEARANCE_PAGES) {
++    const picked = pickAppearance({ pages: { [page]: { padding: 8 } } });
++    assert.ok(picked.pages?.[page], `layar ${page} harus bisa di-override`);
++  }
++});
++
++// ---------------------------------------------------------------------------
++// 5. Kiosk: setelan booth menang, field uang tetap milik cloud
++// ---------------------------------------------------------------------------
++
++test("kiosk memakai appearance booth di atas branding cloud", () => {
++  const device = {
++    appearance_settings: { bg_color: "#0f0f0f", padding: 40 },
++  };
++  const merged = mergeAppearance(cloudBranding, device.appearance_settings);
++  assert.equal(merged.kiosk?.bg_color, "#0f0f0f");
++  assert.equal(merged.kiosk?.padding, 40);
++});
++
++test("runtime mati: branding cloud dipakai, kiosk tetap jalan", () => {
++  const merged = mergeAppearance(cloudBranding, null);
++  assert.equal(merged.kiosk?.bg_color, "#ffffff");
++  assert.equal(merged.welcome_title, "Judul dari Website");
++});
++
++test("mergeSettings tetap menolak appearance menimpa field uang", () => {
++  // `copies`/`layout` milik cloud meski device mengirim grup print_settings.
++  const merged = mergeSettings(
++    { print_settings: { copies: 2, layout: "strip" } } as Record<string, unknown>,
++    { print_settings: { copies: 9, layout: "single", paper_size: "A6" } }
++  ) as { print_settings: Record<string, unknown> };
++  assert.equal(merged.print_settings.copies, 2, "copies milik cloud");
++  assert.equal(merged.print_settings.layout, "strip", "layout milik cloud");
++  assert.equal(merged.print_settings.paper_size, "A6", "paper_size milik booth");
++});
++
++// ---------------------------------------------------------------------------
++// 6. Payload panel setelan booth
++// ---------------------------------------------------------------------------
++
++const baseDraft = {
++  camera: {
++    provider: "gphoto2" as const,
++    countdown_seconds: 5,
++    capture_width: 1920,
++    capture_height: 1080,
++    mirror_preview: true,
++    screen_orientation: "portrait" as const,
++  },
++  print: {
++    enabled: true,
++    mode: "cups" as const,
++    paper_size: "A6" as const,
++    orientation: "portrait" as const,
++    auto_print: true,
++    margins_mm: 2,
++    printer_name: "  DNP QW410  ",
++  },
++  session: { timer_seconds: 300, warning_seconds: 60, max_retakes: 2 },
++  appearance: {
++    bg_color: "#101820",
++    text_color: "#f0f0f0",
++    font_scale: 1.1,
++    button_radius: 4,
++    padding: 32,
++    welcome_title: "  Halo  ",
++    welcome_tagline: "",
++    guide_steps: "Langkah satu\n\n  Langkah dua  \n",
++  },
++};
++
++test("payload panel tidak pernah membawa copies atau layout", () => {
++  const payload = boothDraftToSettings(baseDraft);
++  assert.equal(
++    (payload.print_settings as Record<string, unknown>).copies,
++    undefined,
++    "copies milik cloud, tidak boleh dikirim panel booth"
++  );
++  assert.equal(
++    (payload.print_settings as Record<string, unknown>).layout,
++    undefined,
++    "layout milik cloud, tidak boleh dikirim panel booth"
++  );
++});
++
++test("payload panel tidak membawa harga, paket, atau payment gateway", () => {
++  const payload = boothDraftToSettings(baseDraft);
++  const keys = Object.keys(payload).sort();
++  assert.deepEqual(keys, [
++    "appearance_settings",
++    "camera_settings",
++    "print_settings",
++    "session_settings",
++  ]);
++  const flat = JSON.stringify(payload);
++  for (const forbidden of ["payment_mode", "price", "package", "gateway", "merchant_id"]) {
++    assert.ok(!flat.includes(forbidden), `payload tidak boleh membawa ${forbidden}`);
++  }
++});
++
++test("payload panel merapikan nilai teks dan panduan", () => {
++  const payload = boothDraftToSettings(baseDraft);
++  assert.equal(
++    (payload.print_settings as Record<string, unknown>).printer_name,
++    "DNP QW410",
++    "spasi tepi dibuang"
++  );
++  assert.equal((payload.appearance_settings as Record<string, unknown>).welcome_title, "Halo");
++  // Tagline kosong tidak dikirim supaya nilai cloud tidak tertimpa string kosong.
++  assert.equal(
++    (payload.appearance_settings as Record<string, unknown>).welcome_tagline,
++    undefined
++  );
++  assert.deepEqual((payload.appearance_settings as Record<string, unknown>).guide_steps, [
++    "Langkah satu",
++    "Langkah dua",
++  ]);
++});
++
++test("payload panel membatasi panduan maksimal 8 langkah", () => {
++  const payload = boothDraftToSettings({
++    ...baseDraft,
++    appearance: {
++      ...baseDraft.appearance,
++      guide_steps: Array.from({ length: 20 }, (_, i) => `Langkah ${i + 1}`).join("\n"),
++    },
++  });
++  const steps = (payload.appearance_settings as Record<string, unknown>).guide_steps as string[];
++  assert.equal(steps.length, 8);
++});
++
++test("payload panel tanpa nama printer tidak mengirim kunci kosong", () => {
++  const payload = boothDraftToSettings({
++    ...baseDraft,
++    print: { ...baseDraft.print, printer_name: "   " },
++  });
++  assert.equal(
++    "printer_name" in (payload.print_settings as Record<string, unknown>),
++    false,
++    "printer_name kosong = biarkan nilai tersimpan"
++  );
++});
++
++test("max_retakes null dikirim sebagai null (tanpa batas)", () => {
++  const payload = boothDraftToSettings({
++    ...baseDraft,
++    session: { ...baseDraft.session, max_retakes: null },
++  });
++  assert.equal((payload.session_settings as Record<string, unknown>).max_retakes, null);
++});
++
++test("payload panel lolos schema device (tidak ada kunci asing)", () => {
++  const payload = boothDraftToSettings(baseDraft);
++  assert.deepEqual(foreignSettingKeys(payload as Record<string, unknown>), []);
++  assert.equal(deviceSettingsSchema.safeParse(payload).success, true);
++});
++
++// ---------------------------------------------------------------------------
++// 7. Dokumentasi harus sesuai kode
++// ---------------------------------------------------------------------------
++
++import { readFileSync } from "node:fs";
++import { join } from "node:path";
++
++const repo = process.cwd();
++const read = (p: string) => readFileSync(join(repo, p), "utf8");
++
++test("dokumen menyebut appearance_settings sebagai milik booth", () => {
++  const owner = read("docs/04-owner-dashboard.md");
++  assert.ok(owner.includes("appearance_settings"), "04-owner-dashboard harus menyebut grup tampilan");
++  assert.ok(
++    owner.includes("LOCAL_ONLY_SETTING"),
++    "dokumen harus menyebut penolakan cloud untuk setelan lokal"
++  );
++
++  const kiosk = read("docs/05-customer-photobox.md");
++  assert.ok(kiosk.includes("appearance-merge"), "05 harus menunjuk modul merge yang sebenarnya");
++});
++
++test("status.md mencatat panel setelan booth dan kustomisasi mesin", () => {
++  const status = read("docs/status.md");
++  assert.ok(status.includes("BoothSettingsPanel"), "status harus menyebut panel setelan");
++  assert.ok(status.includes("appearance-merge"), "status harus menyebut merge tampilan");
++});
++
++test("modul yang dirujuk dokumen benar-benar ada", () => {
++  for (const file of [
++    "src/lib/appearance-merge.ts",
++    "src/lib/booth-settings-payload.ts",
++    "src/components/kiosk/BoothSettingsPanel.tsx",
++  ]) {
++    assert.ok(read(file).length > 0, `${file} harus ada`);
++  }
++});
+diff --git a/docs/21-skema-cloud-vs-booth.md b/docs/21-skema-cloud-vs-booth.md
+new file mode 100644
+index 0000000..f6fad65
+--- /dev/null
++++ b/docs/21-skema-cloud-vs-booth.md
+@@ -0,0 +1,290 @@
++# Skema Aplikasi SNAPY OS — Cloud vs Aplikasi Booth
++
++Status: active
++Audience: developer, operator, owner
++Last updated: 2026-10-27
++Last verified: 2026-10-27
++Source of truth: `src/`, `runtime/`, `src-tauri/`, `src/lib/validators.ts`
++
++Dokumen ini menjelaskan pembagian tugas antara **cloud (website)** dan **aplikasi booth
++(EXE Tauri + runtime lokal)**, khususnya siapa yang berhak menulis setelan apa.
++
++---
++
++## 1. Dua program, satu kontrak
++
++```
++┌─────────────────────────────────────────────────────────────┐
++│  CLOUD — Next.js di test.snapyos.biz.id                     │
++│                                                             │
++│  • Dashboard owner/admin/staff                              │
++│  • Harga, paket, voucher                                    │
++│  • Payment gateway (kredensial per business)                │
++│  • Logo, warna brand, video promosi                         │
++│  • Halaman kiosk yang dirender ke WebView                   │
++│  • Sesi cloud, transaksi, laporan                           │
++└───────────────▲──────────────────────────┬──────────────────┘
++                │                          │
++   HTTPS        │  POST sesi/finalize      │  GET halaman kiosk
++   (device      │  PATCH setelan mesin     │  (HTML + config publik)
++    token)      │  POST laporan/report     │
++                │                          ▼
++┌───────────────┴─────────────────────────────────────────────┐
++│  APLIKASI BOOTH — EXE Tauri v2 (Windows)                    │
++│                                                             │
++│  ┌───────────────────────────────────────────────────────┐  │
++│  │  Jendela WebView2 (kiosk fullscreen, tanpa dekorasi)   │  │
++│  │  memuat halaman kiosk cloud                           │  │
++│  └───────────────────────┬───────────────────────────────┘  │
++│                          │ HTTP loopback 127.0.0.1:17777    │
++│                          │ header X-Bridge-Token            │
++│  ┌───────────────────────▼───────────────────────────────┐  │
++│  │  SIDECAR Node (runtime lokal) — dijalankan Rust       │  │
++│  │  • SQLite lokal (sesi, capture, antrean sync)         │  │
++│  │  • Kamera (browser / gphoto2 / digiCamControl)        │  │
++│  │  • Printer (dialog OS / CUPS / thermal Bluetooth)     │  │
++│  │  • PIN darurat offline                                │  │
++│  │  • SETELAN BOOTH (4 grup)                             │  │
++│  └───────────────────────────────────────────────────────┘  │
++└─────────────────────────────────────────────────────────────┘
++```
++
++Yang membuat booth bisa jalan saat internet mati: halaman kiosk di-cache service worker,
++sesi ditutup lokal lebih dulu, lalu dikirim ke cloud oleh sync worker saat jaringan pulih.
++
++---
++
++## 2. Aturan kepemilikan setelan
++
++Prinsipnya satu kalimat: **yang berhubungan dengan uang dan brand milik cloud; yang
++berhubungan dengan mesin di lokasi milik booth.**
++
++| Grup setelan           | Pemilik | Kenapa                                                              |
++| ---------------------- | ------- | ------------------------------------------------------------------- |
++| `camera_settings`      | Booth   | Hanya mesin itu yang tahu kamera mana yang terpasang                |
++| `print_settings`       | Booth   | Mode cetak, kertas, margin, nama printer = kondisi perangkat        |
++| `session_settings`     | Booth   | Durasi & retake mengikuti antrean dan kenyamanan lokasi             |
++| `appearance_settings`  | Booth   | Ukuran/rasio layar tiap booth berbeda; teks bisa muat di A, tidak di B |
++| `print_settings.copies`| **Cloud** | Biaya bahan — satu booth tidak boleh menurunkan/menaikkan sendiri  |
++| `print_settings.layout`| **Cloud** | Bentuk produk yang dijual ke pelanggan                             |
++| `payment_mode`         | **Cloud** | Kanal bayar = kebijakan bisnis                                    |
++| Harga, paket, voucher  | **Cloud** | Sumber pendapatan                                                  |
++| Payment gateway        | **Cloud** | Kredensial merchant, terenkripsi di server                         |
++| Logo, `primary_color`, `secondary_color`, video | **Cloud** | Identitas brand harus sama di semua booth        |
++
++Tabel ini hidup di **satu tempat**: `src/lib/validators.ts`
++(`DEVICE_SETTING_GROUPS`, `CLOUD_OWNED_SETTING_FIELDS`, `CLOUD_SYNCED_DEVICE_GROUPS`,
++`LOCAL_ONLY_DEVICE_GROUPS`). Runtime, route cloud, kiosk, dan panel setelan semuanya membaca
++dari sana — tidak ada salinan aturan yang bisa berbeda pendapat.
++
++### 2.1 Dua jalur tulis, dua penolakan
++
++```
++Panel Setelan Booth (di aplikasi booth)
++        │  PUT /v1/settings        (loopback + X-Bridge-Token)
++        ▼
++   runtime lokal ──► SQLite lokal (device_settings)
++        │                    ├─ camera_settings
++        │                    ├─ print_settings
++        │                    ├─ session_settings
++        │                    └─ appearance_settings   ← TIDAK PERNAH naik ke cloud
++        │
++        │  PATCH /api/v1/public/devices/settings   (sync worker, tiap 15 dtk)
++        ▼
++      cloud ──► photoboxes.camera_settings / print_settings / session_settings
++```
++
++Penolakan yang disengaja (bukan dibuang diam-diam):
++
++| Payload berisi                          | Dijawab                          |
++| --------------------------------------- | -------------------------------- |
++| `print_settings.copies`                 | `403 FIELD_NOT_DEVICE_OWNED`     |
++| `print_settings.layout`                 | `403 FIELD_NOT_DEVICE_OWNED`     |
++| `payment_mode`, `status`, `price`       | `403 FIELD_NOT_DEVICE_OWNED`     |
++| `appearance_settings` (ke cloud)        | `403 LOCAL_ONLY_SETTING`         |
++| Nilai di luar kontrak (mis. `font_scale: 3`) | `400 INVALID_SETTINGS`      |
++
++`appearance_settings` sengaja ditolak di cloud karena baris `photoboxes` dibaca **semua**
++booth di business yang sama. Kalau satu booth boleh menulisnya lewat cloud, mengganti warna
++latar di booth A akan mengubah tampilan booth B.
++
++---
++
++## 3. Alur setelan: cloud → booth → cloud
++
++### 3.1 Yang dibaca booth dari cloud
++
++`GET /api/v1/public/:businessSlug?photobox=:slug` mengembalikan `PublicConfig`:
++
++```
++PublicConfig
++├─ business      { name, slug, logo_url }
++├─ branding      ← identitas & tampilan DASAR dari website
++│   ├─ welcome_title / tagline / button
++│   ├─ primary_color / secondary_color
++│   ├─ logo_url
++│   └─ kiosk { bg_color, text_color, font_scale, padding, align,
++│              judul+hint tiap layar, guide_steps,
++│              pages { welcome…result: { bg_color, video_url, … } } }
++├─ photobox      { id, slug, name, status,
++│                  camera_settings, print_settings, session_settings,
++│                  device_status }
++├─ packages      [ { id, name, price, photo_count, print_count, … } ]
++└─ checkout      { offline_enabled }
++```
++
++Kiosk mem-poll ini tiap 3 detik dengan `If-None-Match`; server menjawab `304` bila tidak
++berubah (tanpa presign R2, tanpa render ulang).
++
++### 3.2 Yang dibaca booth dari mesinnya sendiri
++
++`GET /v1/settings` (loopback, wajib token):
++
++```json
++{
++  "ok": true,
++  "photobox_slug": "booth-01",
++  "business_slug": "snapy-demo",
++  "settings": {
++    "camera_settings":     { "provider": "gphoto2", "countdown_seconds": 4 },
++    "print_settings":      { "paper_size": "A6", "printer_name": "DNP QW410" },
++    "session_settings":    { "timer_seconds": 300, "warning_seconds": 60 },
++    "appearance_settings": { "bg_color": "#101820", "padding": 40 }
++  }
++}
++```
++
++### 3.3 Cara keduanya digabung di kiosk
++
++```
++branding cloud  ──┐
++                  ├─► mergeAppearance() ─► branding efektif ─► semua layar kiosk
++appearance booth ─┘    (booth menang per-field;
++                        logo/warna brand/video tetap cloud)
++```
++
++```
++photobox cloud  ──┐
++                  ├─► mergeSettings() ─► setelan efektif ─► kamera, printer, timer
++setelan booth   ──┘    (copies & layout tetap cloud)
++```
++
++Runtime mati (`GET /v1/settings` gagal/timeout 1,5 dtk) → `null` → cloud dipakai apa adanya.
++Booth tetap bisa menjual; itu keadaan normal untuk kiosk browser tanpa runtime.
++
++---
++
++## 4. Panel Setelan Booth (di dalam aplikasi booth)
++
++**Lokasi:** ikon ⚙ kecil di kiri-bawah layar kiosk → dialog PIN petugas → panel penuh.
++
++**Kenapa PIN:** panel ini mengubah kamera, printer, dan tampilan yang dilihat pelanggan.
++Tanpa gerbang, siapa pun yang menyentuh layar bisa mengacaknya. PIN yang dipakai sama dengan
++PIN keluar kiosk (diverifikasi cloud; PIN darurat lokal saat internet mati).
++
++**Bedanya dengan keluar kiosk:** PIN untuk setelan **tidak** melepas fullscreen dan **tidak**
++menghentikan sesi pelanggan — hanya membuka panel di atas kiosk.
++
++| Seksi     | Field yang bisa diubah                                                                 |
++| --------- | -------------------------------------------------------------------------------------- |
++| Kamera    | `provider`, `countdown_seconds`, `capture_width/height`, `mirror_preview`, `screen_orientation` |
++| Printer   | `enabled`, `mode`, `paper_size`, `orientation`, `auto_print`, `margins_mm`, `printer_name`      |
++| Sesi      | `timer_seconds`, `warning_seconds`, `max_retakes`                                       |
++| Tampilan  | `bg_color`, `text_color`, `font_scale`, `button_radius`, `padding`, judul & tagline sambutan, `guide_steps` |
++
++**Yang TIDAK ada di panel (dan kenapa):**
++
++| Tidak ada                   | Alasan                                              |
++| --------------------------- | --------------------------------------------------- |
++| `copies`, `layout`          | Biaya bahan & bentuk produk = kebijakan bisnis      |
++| Harga, paket, voucher       | Sumber pendapatan, harus terpusat                   |
++| Payment gateway             | Kredensial merchant, terenkripsi di server          |
++| Logo, warna brand, video    | Identitas brand harus konsisten di semua booth      |
++| Nama bisnis                 | Milik tenant                                        |
++
++**Kalau panel tetap mengirim field terlarang:** runtime menjawab `403` dengan pesan yang
++menyebut nama field-nya, dan panel menampilkannya apa adanya. Tidak ada nilai yang dibuang
++diam-diam — operator harus tahu setelannya tidak berlaku.
++
++**Kenapa panel tidak punya input `copies`/`layout` sama sekali:** tipenya
++(`src/lib/booth-settings-payload.ts`) tidak punya field itu, jadi mustahil ikut terkirim.
++Ada tes yang gagal kalau seseorang menambahkannya.
++
++---
++
++## 5. Alur data booth (offline-first)
++
++```
++Pelanggan bayar
++      │
++      ▼
++Sesi dibuka ──► online?  ── ya ──► POST /sessions (cloud) ──► sesi cloud
++      │                │
++      │                └─ tidak ─► POST /v1/sessions (runtime) ─► SQLite lokal
++      ▼                                                              │
++Capture foto ──► disk lokal (media/)                                 │
++      ▼                                                              │
++Finalize ──► online? ── ya ──► POST /sessions/:id/finalize           │
++      │          │                                                 │
++      │          └─ tidak ─► POST /v1/sessions/:id/finalize ────────┘
++      ▼
++Sync worker (tiap 15 dtk, backoff min(2^n × 1 dtk, 5 mnt) ± 20%)
++  1. POST /sessions            → simpan cloud_id SEGERA (anti sesi ganda)
++  2. POST /sessions/:id/finalize (foto dari disk; idempoten)
++  3. tandai synced_at
++  4. PATCH /devices/settings   → setelan mesin (TANPA appearance_settings)
++
++Cloud menolak 410 / SESSION_EXPIRED
++  → media disalin ke data/quarantine/<session_id>/ LEBIH DULU
++  → baru baris lokal dihapus. Foto yang sudah dibayar tidak boleh hilang.
++```
++
++---
++
++## 6. Keamanan & isolasi
++
++| Permukaan                  | Kontrol                                                                 |
++| -------------------------- | ----------------------------------------------------------------------- |
++| Runtime lokal (17777)      | Hanya `127.0.0.1`, wajib `X-Bridge-Token` (sha256 + constant-time); `/health` satu-satunya rute terbuka |
++| Origin kiosk               | Allowlist `PHOTOBOOTH_BRIDGE_ORIGINS`; origin asing → `403` sebelum routing |
++| Endpoint device cloud      | Bearer `device_token` di-hash; device/business non-`active` → `403`     |
++| Rate limit                 | Per IP + per device token pada tiap endpoint device                     |
++| Tenant                     | Semua query cloud di-scope `business_id`; RLS `svc_all` untuk service_role |
++| PIN petugas                | Cloud dulu; PIN darurat lokal hanya saat jaringan mati (agar `PIN_LOCKED` tidak bisa diakali dengan mencabut kabel) |
++| Kunci PIN                  | 5 gagal → kunci 5 menit, disimpan di `meta` (bertahan setelah restart)  |
++| Setelan tampilan di cloud  | Ditolak `LOCAL_ONLY_SETTING` agar tidak bocor antar-booth               |
++
++---
++
++## 7. Peta berkas
++
++| Berkas                                        | Peran                                                      |
++| --------------------------------------------- | ---------------------------------------------------------- |
++| `src/lib/validators.ts`                       | **Satu-satunya** tabel kepemilikan setelan + schema zod    |
++| `src/lib/appearance-merge.ts`                 | Merge branding cloud + tampilan booth (murni, bisa diuji)  |
++| `src/lib/booth-settings-payload.ts`           | Bentuk payload panel → `PUT /v1/settings` (murni)          |
++| `src/lib/settings-merge.ts`                   | Merge setelan mesin di atas `photobox` cloud               |
++| `src/lib/photobox-form-fields.ts`             | Field yang ditolak form dashboard                          |
++| `src/components/kiosk/BoothSettingsPanel.tsx` | Panel setelan booth (PIN-gated)                            |
++| `src/components/kiosk/local-runtime.ts`       | Klien runtime lokal (GET/PUT settings, sesi, PIN)          |
++| `runtime/settings/index.ts`                   | `GET/PUT /v1/settings`, export/import, `cloudSyncedSettings` |
++| `runtime/sync/worker.ts`                      | Kirim sesi + setelan mesin ke cloud                        |
++| `runtime/db/schema.ts`                        | Skema SQLite lokal (migrasi `PRAGMA user_version`)         |
++| `src-tauri/src/main.rs`                       | Jendela kiosk, izin kamera, siklus hidup sidecar           |
++| `scripts/build-kiosk-runtime.mjs`             | Bundel runtime → `src-tauri/runtime-dist/`                 |
++| `scripts/build-booth.ps1`                     | Build EXE/MSI di Windows (7 langkah)                       |
++
++---
++
++## 8. Batas yang jujur
++
++Hal-hal berikut **belum** bisa dijanjikan kode ini:
++
++- **EXE/MSI belum pernah dibangun di mesin Windows.** Build hanya bisa dilakukan di Windows
++  x64 (sidecar `node.exe`, `@node-rs/argon2-win32-x64-msvc`, WiX/NSIS).
++- **Runtime belum diuji di hardware booth sungguhan.** Kamera DSLR (digiCamControl/gphoto2),
++  printer spooler (SumatraPDF/CUPS), dan thermal Bluetooth belum diuji di perangkat nyata.
++- **Tidak ada kanal perintah cloud → booth.** Perubahan dari dashboard terlihat lewat poll
++  3 detik; setelan mesin hanya berubah dari panel booth.
++- **`sha256` dan ukuran installer tidak diverifikasi sistem.** Owner memeriksa manual.
++- **Updater belum aktif.** `SNAPYOS_UPDATE_ENDPOINT` sengaja kosong di `bridge.env`.

@@ -1,17 +1,11 @@
 import { redirect } from "next/navigation";
 
 import { Sidebar } from "@/components/dashboard/Sidebar";
-import { buildNavGroups } from "@/components/dashboard/nav";
 import { Topbar } from "@/components/dashboard/Topbar";
 import { CashPaymentNotifier } from "@/components/dashboard/CashPaymentNotifier";
 import { InstallPWA } from "@/components/dashboard/InstallPWA";
-import { StorageIndicator } from "@/components/dashboard/StorageIndicator";
 import { WorkspaceSwitcher } from "@/components/dashboard/WorkspaceSwitcher";
-import { EfferdShell } from "@/components/efferd/shell";
-import { toEfferdNav } from "@/components/efferd/nav";
-import { DashboardThemeProvider } from "@/components/theme/dashboard-theme-context";
 import { CollapsibleShell } from "@/components/layout/CollapsibleShell";
-import { getDashboardTheme } from "@/lib/dashboard-theme-server";
 import { destinationFor } from "@/lib/destination";
 import { can } from "@/lib/rbac";
 import { getSidebarCollapsed } from "@/lib/sidebar-collapse-server";
@@ -25,7 +19,7 @@ import { hasPosEntitlement } from "@/server/pos-entitlement";
  * - Tanpa user → /login (docs/12 Phase 1 DoD).
  * - Tanpa membership → /welcome (pemilih peran: owner/staff).
  * - User role staff-only → /staff (operational shell, dipisah).
- * Shell: brutalist single (Neo-Brutalism satu-satunya).
+ * Shell: satu bahasa visual Neo-Brutalism (tanpa tema alternatif).
  */
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
@@ -55,50 +49,20 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const isAdmin = (await getAdminUser()) !== null;
 
-  // Tema shell dipilih per-browser di /dashboard/settings. Brutalis = default.
-  const theme = await getDashboardTheme();
-  if (theme === "modern") {
-    return (
-      <div className="theme-modern min-h-[100dvh]">
-        <DashboardThemeProvider theme="modern">
-        <EfferdShell
-          navGroups={toEfferdNav(buildNavGroups(showPos, showPwaKiosk))}
-          rootHref="/dashboard"
-          homeHref="/dashboard"
-          user={{ name: user.name, email: user.email }}
-          isAdmin={isAdmin}
-          workspaceSlot={
-            <WorkspaceSwitcher
-              businesses={dashboardMemberships.map((m) => ({
-                id: m.business.id,
-                name: m.business.name,
-              }))}
-              activeId={active?.business.id ?? null}
-            />
-          }
-          headerActions={
-            active ? (
-              <div className="hidden sm:flex">
-                <StorageIndicator businessId={active.business.id} />
-              </div>
-            ) : null
-          }
-        >
-          {children}
-        </EfferdShell>
-        {showCashConfirm && active && <CashPaymentNotifier businessId={active.business.id} />}
-        </DashboardThemeProvider>
-      </div>
-    );
-  }
-
   return (
     <div className="flex min-h-[100dvh] flex-col">
-      <DashboardThemeProvider theme="brutalist">
       <Topbar
         user={{ name: user.name, email: user.email }}
-        businesses={dashboardMemberships.map((m) => ({ id: m.business.id, name: m.business.name }))}
-        activeBusiness={active ? { id: active.business.id, name: active.business.name } : null}
+        workspaceSlot={
+          <WorkspaceSwitcher
+            businesses={dashboardMemberships.map((m) => ({
+              id: m.business.id,
+              name: m.business.name,
+            }))}
+            activeId={active?.business.id ?? null}
+          />
+        }
+        activeBusinessId={active?.business.id ?? null}
         isAdmin={isAdmin}
       />
       <CollapsibleShell
@@ -111,7 +75,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <div className="mx-auto w-full max-w-[1400px] px-4 pb-4 md:px-6">
         <InstallPWA />
       </div>
-      </DashboardThemeProvider>
     </div>
   );
 }

@@ -17,7 +17,7 @@ export function StorageUsageCard({ usage }: { usage: StorageUsage }) {
     >
       <div className="mb-5 flex items-center justify-between gap-4 border-b-2 border-ink pb-4">
         <h2 id="storage-usage-heading" className="font-display text-lg uppercase tracking-tight">
-          Storage Penyimpanan
+          Penyimpanan
         </h2>
         <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
           02 / STORAGE
@@ -51,7 +51,7 @@ export function StorageUsageCard({ usage }: { usage: StorageUsage }) {
               {"PENYIMPANAN PENUH: upload frame & hasil foto diblokir"}
             </p>
             <Button size="sm" nativeButton={false} render={<Link href="/dashboard/subscription" />}>
-              Upgrade Storage
+              Tambah Penyimpanan
             </Button>
           </div>
         )}

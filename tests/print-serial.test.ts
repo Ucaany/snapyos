@@ -368,3 +368,66 @@ test("close yang menggantung tidak menahan hasil cetak", async () => {
   });
   assert.equal(sent, true);
 });
+
+/**
+ * Regresi: dua job cetak ke port yang sama tidak boleh saling menyisip.
+ *
+ * Bug nyata (terukur 2026-10-27 lewat E2E struk POS): auto-print dan tombol
+ * manual sama-sama memanggil jalur tulis. Tanpa antrean per-port, chunk
+ * 256-byte dari dua job bercampur sehingga struk keluar dengan teks tergabung
+ * ("WaktKLIK FOTO DEV") dan baris melewati lebar kolom.
+ */
+test("serial: dua job bersamaan ke port yang sama tidak bercampur", async () => {
+  const received: number[] = [];
+  // Tiap job membuka stream baru (getWriter per job), jadi yang diukur adalah
+  // apakah ada DUA penulisan yang tumpang tindih di dalam satu stream.
+  let writesInFlight = 0;
+  let maxOverlap = 0;
+
+  const port: SerialPortLike = {
+    getInfo: () => ({}),
+    async open() {},
+    async close() {},
+    get writable() {
+      return new WritableStream<Uint8Array>({
+        async write(chunk) {
+          writesInFlight += 1;
+          maxOverlap = Math.max(maxOverlap, writesInFlight);
+          // Beri kesempatan job lain menyisip bila tidak ada antrean.
+          await new Promise((resolve) => setTimeout(resolve, 1));
+          received.push(...Array.from(chunk));
+          writesInFlight -= 1;
+        },
+      });
+    },
+  };
+
+  const serial: SerialLike = {
+    async requestPort() {
+      return port;
+    },
+    async getPorts() {
+      return [port];
+    },
+  };
+
+  const jobA = Uint8Array.from([0xaa, 0xaa, 0xaa, 0xaa]);
+  const jobB = Uint8Array.from([0xbb, 0xbb, 0xbb, 0xbb]);
+
+  // Jalankan bersamaan: job B tidak boleh menulis sebelum job A selesai.
+  await Promise.all([
+    writeEscPosSerial(jobA, { serial, sleep: noSleep, chunkSize: 2 }),
+    writeEscPosSerialGranted(jobB, { serial, sleep: noSleep, chunkSize: 2 }),
+  ]);
+
+  assert.equal(maxOverlap, 1, "penulisan dua job tidak boleh tumpang tindih");
+
+  // Byte harus utuh per job, bukan berselang-seling.
+  const text = received.join(",");
+  const aRun = "170,170,170,170";
+  const bRun = "187,187,187,187";
+  assert.ok(
+    text === `${aRun},${bRun}` || text === `${bRun},${aRun}`,
+    `byte dua job harus berurutan utuh, dapat: ${text}`
+  );
+});

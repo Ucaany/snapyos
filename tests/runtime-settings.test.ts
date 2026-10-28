@@ -213,3 +213,92 @@ test("export tanpa exit_pin dan ber-schema_version 1", async () => {
   assert.equal(body.photobox_slug, "booth-01");
   assert.equal(body.settings.session_settings.timer_seconds, 120);
 });
+
+// ---------------------------------------------------------------------------
+// Kustomisasi tampilan booth: tersimpan lokal, tidak naik ke cloud.
+// ---------------------------------------------------------------------------
+
+test("appearance_settings tersimpan di booth dan terbaca kembali", async () => {
+  const res = await sendJson("PUT", "/v1/settings", {
+    appearance_settings: {
+      bg_color: "#101820",
+      text_color: "#f0f0f0",
+      font_scale: 1.15,
+      padding: 32,
+      welcome_title: "Selamat datang di booth ini",
+      pages: { payment: { bg_color: "#203040" } },
+    },
+  });
+  assert.equal(res.status, 200, await res.clone().text());
+
+  const body = (await (await call("/v1/settings")).json()) as {
+    settings: { appearance_settings: Record<string, unknown> };
+  };
+  const appearance = body.settings.appearance_settings;
+  assert.equal(appearance.bg_color, "#101820");
+  assert.equal(appearance.font_scale, 1.15);
+  assert.equal(appearance.welcome_title, "Selamat datang di booth ini");
+  assert.deepEqual(appearance.pages, { payment: { bg_color: "#203040" } });
+});
+
+test("appearance_settings tidak menghapus setelan mesin lain", async () => {
+  await sendJson("PUT", "/v1/settings", {
+    print_settings: { printer_name: "Snapy-02", paper_size: "4x6" },
+  });
+  await sendJson("PUT", "/v1/settings", {
+    appearance_settings: { bg_color: "#222222" },
+  });
+
+  const body = (await (await call("/v1/settings")).json()) as {
+    settings: { print_settings: Record<string, unknown> };
+  };
+  assert.equal(body.settings.print_settings.printer_name, "Snapy-02");
+  assert.equal(body.settings.print_settings.paper_size, "4x6");
+});
+
+test("appearance_settings menolak nilai di luar kontrak", async () => {
+  const bad = await sendJson("PUT", "/v1/settings", {
+    appearance_settings: { bg_color: "biru" },
+  });
+  assert.equal(bad.status, 400);
+
+  const scale = await sendJson("PUT", "/v1/settings", {
+    appearance_settings: { font_scale: 3 },
+  });
+  assert.equal(scale.status, 400);
+});
+
+test("field uang tetap ditolak meski dikirim bersama appearance", async () => {
+  const res = await sendJson("PUT", "/v1/settings", {
+    appearance_settings: { bg_color: "#333333" },
+    print_settings: { copies: 5 },
+  });
+  assert.equal(res.status, 403);
+  const body = (await res.json()) as { error?: string };
+  assert.equal(body.error, "FIELD_NOT_DEVICE_OWNED");
+});
+
+test("export/import membawa appearance_settings tanpa PIN", async () => {
+  const exported = await call("/v1/settings/export");
+  assert.equal(exported.status, 200);
+  const text = await exported.text();
+  assert.ok(!text.includes("exit_pin"), "export tidak boleh membawa PIN");
+  const parsed = JSON.parse(text) as {
+    settings: { appearance_settings?: Record<string, unknown> };
+  };
+  // Nilai dari tes sebelumnya (#333333) DITOLAK 403 karena payload-nya juga
+  // membawa `copies` milik cloud — yang tersimpan tetap nilai sah terakhir.
+  assert.equal(parsed.settings.appearance_settings?.bg_color, "#222222");
+
+  // Impor ke booth yang sama diterapkan kembali.
+  const imported = await sendJson("POST", "/v1/settings/import", {
+    schema_version: 1,
+    photobox_slug: "booth-01",
+    settings: { appearance_settings: { bg_color: "#abcdef" } },
+  });
+  assert.equal(imported.status, 200);
+  const read = (await (await call("/v1/settings")).json()) as {
+    settings: { appearance_settings: Record<string, unknown> };
+  };
+  assert.equal(read.settings.appearance_settings.bg_color, "#abcdef");
+});

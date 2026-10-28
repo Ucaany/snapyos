@@ -157,6 +157,12 @@ function withSurface(
   };
 }
 
+/** Radius tombol kiosk dijaga pada 0–4px (DESIGN.md §2: bukan pill). */
+export function clampKioskRadius(value: number | undefined): number {
+  if (value === undefined || !Number.isFinite(value)) return 0;
+  return Math.min(4, Math.max(0, value));
+}
+
 export function kioskVisualStyle(
   k: KioskBrandingConfig | undefined,
   page?: KioskPageId,
@@ -169,7 +175,7 @@ export function kioskVisualStyle(
     text: k?.text_color || defaultBrandColors.ink,
     fontFamily: KIOSK_FONT_FAMILIES[k?.font_family ?? "display"],
     fontScale: k?.font_scale ?? 1,
-    radius: k?.button_radius ?? 0,
+    radius: clampKioskRadius(k?.button_radius),
     padding: k?.padding ?? 24,
     // payment_align adalah field legacy: layar payment lama bergantung padanya,
     // jadi ia dibaca sebagai align hanya ketika align global belum diset.
@@ -185,7 +191,7 @@ export function kioskVisualStyle(
     text: p.text_color ?? global.text,
     fontFamily: global.fontFamily,
     fontScale: p.font_scale ?? global.fontScale,
-    radius: p.button_radius ?? global.radius,
+    radius: clampKioskRadius(p.button_radius ?? global.radius),
     padding: p.padding ?? global.padding,
     align: p.align ?? global.align,
     accent: global.accent,
@@ -206,8 +212,19 @@ export type BrandingConfig = {
 };
 
 export type CameraSettings = {
-  /** browser = getUserMedia, gphoto2 = kamera DSLR melalui bridge lokal. */
-  provider?: "browser" | "gphoto2";
+  /**
+   * browser = getUserMedia. Nilai lain (bridge/gphoto2/libcamera/v4l2/pyav)
+   * berarti kamera fisik lewat runtime lokal — adapter konkretnya ditentukan
+   * env runtime booth, bukan nilai ini.
+   */
+  provider?:
+    | "browser"
+    | "bridge"
+    | "gphoto2"
+    | "digicamcontrol"
+    | "libcamera"
+    | "v4l2"
+    | "pyav";
   /** URL bridge lokal, default http://127.0.0.1:17777. */
   bridge_url?: string;
   countdown_seconds?: number;
@@ -341,11 +358,11 @@ export type PhotoEdit = {
 };
 
 export const FILTER_PRESETS: { id: string; label: string; css: string }[] = [
-  { id: "original", label: "Original", css: "none" },
+  { id: "original", label: "Asli", css: "none" },
   { id: "film", label: "Film", css: "contrast(1.05) saturate(0.85) brightness(1.02)" },
-  { id: "warm", label: "Warm", css: "sepia(0.25) saturate(1.2)" },
-  { id: "cool", label: "Cool", css: "hue-rotate(-10deg) saturate(1.1)" },
-  { id: "bw", label: "B&W", css: "grayscale(1) contrast(1.1)" },
+  { id: "warm", label: "Hangat", css: "sepia(0.25) saturate(1.2)" },
+  { id: "cool", label: "Dingin", css: "hue-rotate(-10deg) saturate(1.1)" },
+  { id: "bw", label: "Hitam putih", css: "grayscale(1) contrast(1.1)" },
   { id: "retro", label: "Retro", css: "sepia(0.4) contrast(1.1) saturate(1.15)" },
   { id: "vintage", label: "Vintage", css: "sepia(0.5) brightness(0.95) contrast(0.95)" },
   { id: "y2k", label: "Y2K", css: "saturate(1.6) contrast(1.1) brightness(1.05)" },

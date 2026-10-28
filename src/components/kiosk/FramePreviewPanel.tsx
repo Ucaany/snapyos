@@ -19,7 +19,7 @@ type Props = {
   activeSlot: number;
   /** Elemen <video> kamera yang sedang hidup (null saat review/unmount). */
   videoEl: HTMLVideoElement | null;
-  /** URL preview still-frame dari bridge GPhoto2. */
+  /** URL preview still-frame dari bridge kamera. */
   liveImageUrl?: string | null;
   /** Hasil baru yang belum dikonfirmasi (tampil saat stage review). */
   activeOverride: Blob | null;
@@ -234,7 +234,9 @@ export function FramePreviewPanel({
     const paint = () => {
       const ordered = effectiveSlots(previewLayout);
       const sources = ordered.map((_, i) => sourceAt(i));
-      composeFrame(canvas, previewLayout, frameRef.current, sources, [], maxW, "blank");
+      composeFrame(canvas, previewLayout, frameRef.current, sources, [], maxW, {
+        emptySlot: "blank",
+      });
     };
 
     paint();
@@ -265,7 +267,7 @@ export function FramePreviewPanel({
       >
         {"PREVIEW FRAME"}
       </p>
-      <div className="relative mx-auto w-fit max-w-full border-2 border-ink bg-ink shadow-[4px_4px_0_0_#111111]">
+      <div className="relative mx-auto w-fit max-w-full border-2 border-ink bg-ink shadow-hard">
         <canvas
           ref={canvasRef}
           className="block h-auto max-h-[30vh] w-auto max-w-full object-contain lg:max-h-[36vh]"

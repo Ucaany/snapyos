@@ -3,6 +3,15 @@ import { notFound } from "next/navigation";
 
 import { AdminActionButton } from "@/components/admin/AdminActionForm";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
+import { PageHeader } from "@/components/ui/page-header";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { updateUserAction } from "@/server/admin-actions";
 import { getUserDetail } from "@/server/admin";
 import { formatIDR } from "@/lib/dashboard-math";
@@ -12,7 +21,7 @@ import { formatIDR } from "@/lib/dashboard-math";
  * docs/10 §10.2. Link masuk dari /admin/users.
  *
  * Catatan: `notFound()` di sini mengembalikan HTTP 200 + UI 404 (bukan 404
- * asli) karena `(admin)/loading.tsx` men-stream shell lebih dulu — perilaku
+ * asli) karena `(admin)/loading.tsx` men-stream shell lebih dulu, perilaku
  * Next.js terdokumentasi (docs `notFound` §"after streaming has started"),
  * konsisten di seluruh halaman detail admin.
  */
@@ -21,11 +30,11 @@ const dateFmt = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyl
 
 function MoneyCell({ amount, status }: { amount: number; status: string }) {
   return (
-    <td className="px-4 py-2 font-mono text-xs tabular-nums">
+    <td className="px-4 py-3 font-mono text-xs tabular-nums">
       {formatIDR(amount)}
       {/* Satu sumber warna status: StatusBadge. Map duplikat di sini pernah
           drift (refunded text-ink di atas accent-4 = 3.2:1, gagal AA). */}
-      <StatusBadge status={status} className="ml-2 h-5 px-1.5 text-[9px] tracking-[0.08em]" />
+      <StatusBadge status={status} className="ml-2 px-1.5" />
     </td>
   );
 }
@@ -44,20 +53,11 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
 
   return (
     <div className="flex flex-col gap-8 p-6 md:p-10">
-      <header className="flex flex-col gap-3">
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {"ADMIN - USERS / DETAIL"}
-        </p>
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="font-display text-3xl uppercase tracking-tight md:text-4xl">
-              {user.name ?? user.email}
-            </h1>
-            <p className="mt-2 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
-              {user.email} · {user.role.toUpperCase()} · TERDAFTAR{" "}
-              {dateFmt.format(new Date(user.created_at))}
-            </p>
-          </div>
+      <PageHeader
+        eyebrow="ADMIN - USERS / DETAIL"
+        title={user.name ?? user.email}
+        meta={`${user.email} · ${user.role.toUpperCase()} · TERDAFTAR ${dateFmt.format(new Date(user.created_at))}`}
+        right={
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={user.status === "suspended" ? "inactive" : "active"} />
             <AdminActionButton
@@ -87,13 +87,13 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
             />
             <Link
               href="/admin/users"
-              className="border-2 border-ink bg-surface px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.15em] hover:bg-muted"
+              className="inline-flex min-h-11 items-center border-2 border-ink bg-surface px-3 font-mono text-[11px] font-bold uppercase tracking-[0.15em] hover:bg-muted"
             >
               {"< KEMBALI"}
             </Link>
           </div>
-        </div>
-      </header>
+        }
+      />
 
       <dl className="grid grid-cols-2 gap-[2px] border-2 border-ink bg-ink md:grid-cols-6">
         {[
@@ -105,7 +105,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
           { label: "Payment", value: String(payments) },
         ].map((cell) => (
           <div key={cell.label} className="flex flex-col gap-1 bg-surface p-3">
-            <dt className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+            <dt className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
               {cell.label}
             </dt>
             <dd className="font-mono text-sm font-bold leading-none">{cell.value}</dd>
@@ -174,35 +174,33 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
             Tidak ada invoice
           </p>
         ) : (
-          <div className="overflow-x-auto border-2 border-ink">
-            <table className="w-full min-w-[640px] border-collapse bg-surface text-left">
-              <thead>
-                <tr className="bg-ink font-mono text-[10px] uppercase tracking-[0.12em] text-bg">
-                  <th className="px-4 py-2 font-bold">Invoice</th>
-                  <th className="px-4 py-2 font-bold">Bisnis</th>
-                  <th className="px-4 py-2 font-bold">Jumlah</th>
-                  <th className="px-4 py-2 font-bold">Dibuat</th>
-                </tr>
-              </thead>
-              <tbody>
-                {invoices.map((i) => (
-                  <tr key={i.id} className="border-t-2 border-ink/10 align-top">
-                    <td className="px-4 py-2 font-mono text-xs font-bold">
-                      {i.number}
-                      <span className="block font-mono text-[10px] text-muted-foreground">
-                        {i.paid_at ? `PAID ${dateFmt.format(new Date(i.paid_at))}` : "-"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 text-xs">{i.business_name}</td>
-                    <MoneyCell amount={i.amount} status={i.status} />
-                    <td className="px-4 py-2 font-mono text-xs text-muted-foreground">
-                      {dateFmt.format(new Date(i.created_at))}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Invoice</TableHead>
+                <TableHead className="hidden sm:table-cell">Bisnis</TableHead>
+                <TableHead>Jumlah</TableHead>
+                <TableHead className="hidden md:table-cell">Dibuat</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {invoices.map((i) => (
+                <TableRow key={i.id} className="align-top">
+                  <TableCell className="font-bold">
+                    {i.number}
+                    <span className="block text-[11px] text-muted-foreground">
+                      {i.paid_at ? `PAID ${dateFmt.format(new Date(i.paid_at))}` : "-"}
+                    </span>
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell">{i.business_name}</TableCell>
+                  <MoneyCell amount={i.amount} status={i.status} />
+                  <TableCell className="hidden text-muted-foreground md:table-cell">
+                    {dateFmt.format(new Date(i.created_at))}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </section>
 
@@ -216,35 +214,33 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
             Tidak ada transaksi
           </p>
         ) : (
-          <div className="overflow-x-auto border-2 border-ink">
-            <table className="w-full min-w-[640px] border-collapse bg-surface text-left">
-              <thead>
-                <tr className="bg-ink font-mono text-[10px] uppercase tracking-[0.12em] text-bg">
-                  <th className="px-4 py-2 font-bold">No. Transaksi</th>
-                  <th className="px-4 py-2 font-bold">Bisnis</th>
-                  <th className="px-4 py-2 font-bold">Jumlah</th>
-                  <th className="px-4 py-2 font-bold">Dibuat</th>
-                </tr>
-              </thead>
-              <tbody>
-                {transactions.map((t) => (
-                  <tr key={t.id} className="border-t-2 border-ink/10 align-top">
-                    <td className="px-4 py-2 font-mono text-xs font-bold">
-                      {t.number}
-                      <span className="block font-mono text-[10px] text-muted-foreground">
-                        {t.paid_at ? `PAID ${dateFmt.format(new Date(t.paid_at))}` : "-"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 text-xs">{t.business_name}</td>
-                    <MoneyCell amount={t.final_amount} status={t.status} />
-                    <td className="px-4 py-2 font-mono text-xs text-muted-foreground">
-                      {dateFmt.format(new Date(t.created_at))}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>No. Transaksi</TableHead>
+                <TableHead className="hidden sm:table-cell">Bisnis</TableHead>
+                <TableHead>Jumlah</TableHead>
+                <TableHead className="hidden md:table-cell">Dibuat</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {transactions.map((t) => (
+                <TableRow key={t.id} className="align-top">
+                  <TableCell className="font-bold">
+                    {t.number}
+                    <span className="block text-[11px] text-muted-foreground">
+                      {t.paid_at ? `PAID ${dateFmt.format(new Date(t.paid_at))}` : "-"}
+                    </span>
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell">{t.business_name}</TableCell>
+                  <MoneyCell amount={t.final_amount} status={t.status} />
+                  <TableCell className="hidden text-muted-foreground md:table-cell">
+                    {dateFmt.format(new Date(t.created_at))}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </section>
     </div>

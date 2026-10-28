@@ -160,7 +160,11 @@ Konfigurasi kiosk (`branding.kiosk`) mencakup:
 - **Tutorial custom** (`guide_steps`): langkah ditampilkan sebelum pemilihan paket, dapat ditambah/dihapus/diurutkan (max 8). Kosong = dilewati.
 - **Video promo** (`video_key` global + `pages.*.video_key` per-layar): looping muted; layar kamera awal bisa menampilkan video attract di latar panel preview.
 - **Kontrol interaksi**: `show_mirror_toggle` (tampilkan tombol mirror di layar kamera) dan `allow_zoom_pan` (izinkan customer zoom/pan foto di editor).
-- **Override per-booth**: pilih booth di dashboard → simpan snapshot config sendiri, atau reset ke inherit global.
+- **Override per-booth**: dua lapis, dan urutannya menentukan pemenang.
+  1. **Website** (`/dashboard/branding`) menyimpan snapshot override di `photoboxes.branding` — dipakai saat booth belum dikustomisasi di mesin.
+  2. **Aplikasi booth** (panel **Setelan booth** → grup `appearance_settings`) menyimpan kustomisasi di store lokal mesin. Nilai ini menang atas branding cloud, dan **tidak** dikirim ke cloud supaya tidak menimpa booth lain.
+
+  Kiosk me-merge keduanya lewat `src/lib/appearance-merge.ts`: identitas brand (logo, `primary_color`, `secondary_color`, `video_url`) selalu dari cloud; warna/teks/tata letak boleh ditimpa booth. Runtime mati → branding cloud dipakai apa adanya.
 
 ---
 
@@ -333,6 +337,8 @@ Jumlah foto mengikuti **template terpilih** — jumlah slot pada `templates.layo
 - Transform: crop, rotate, **zoom & pan/posisi** — menyesuaikan foto **di dalam slot** template terpilih (bukan full canvas); zoom minimal = cover-fit, clamp per slot (`15-template-builder.md` §15.4). Template legacy (tanpa slot) = perilaku lama full-canvas.
 - Adjust: brightness, contrast, saturation, blur, grain, vignette
 - **Filters:** Original, Film, Warm, Cool, Black & White, Retro, Vintage, Y2K
+- **Latar layar hijau (opsional per booth):** `camera_settings.chroma_key_enabled`. Saat aktif, editor menampilkan tombol "Hapus latar hijau"; warna kunci diambil dari sudut foto. Piksel yang dihapus menampilkan `templates.layout.canvas.background` (default putih) — bukan transparan, karena output final disimpan sebagai JPEG.
+- **Layer teks/stiker:** digambar di atas frame, bukan di dalam foto, agar tidak terpotong clip slot.
 
 **Components:** `EditorCanvas` (canvas-based, memakai `composeFrame`), `FilterRow`, `AdjustSlider`, `CropTool`, `RotateButton`, `ZoomSlider`, `PanTool`.
 
@@ -415,7 +421,7 @@ YOUR PHOTOS ARE READY!
 
 Menyediakan:
 
-- **Unduh GIF animasi slideshow** — semua foto berframe bergantian otomatis; digenerate **server-side saat finalize**; storage key di `sessions.result_gif_key`. Preview GIF autoplay loop di atas halaman.
+- **Unduh GIF animasi slideshow** — foto bergantian otomatis; digenerate **server-side saat finalize**; storage key di `sessions.result_gif_key`. Template legacy memakai foto berframe; frame ber-slot memakai capture mentah (composite tunggal tidak bisa jadi slideshow). Preview GIF autoplay loop di atas halaman.
 - **Unduh foto berframe** (statis, per foto — hasil edit + frame pilihan customer), tampil sebagai grid thumbnail, bisa diunduh per foto. **BACKLOG: unduh semua (ZIP)** — belum diimplementasi (lihat blok Status Implementasi).
 - Tombol unduh bekerja lintas origin: URL unduh membawa `Content-Disposition: attachment` (`gif_download_url`, `photos[].download_url` dari `getResult`) — atribut `download` pada `<a>` cross-origin diabaikan browser.
 - (Slot future: kirim ke email — **OUT OF SCOPE sekarang, jangan diproses**.)

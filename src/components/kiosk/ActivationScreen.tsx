@@ -72,7 +72,7 @@ export function ActivationScreen({ initialCode, onActivated }: Props) {
         </div>
 
         <form
-          className="flex w-full flex-col gap-4 border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111] md:p-6"
+          className="flex w-full flex-col gap-4 border-2 border-ink bg-surface p-5 shadow-hard md:p-6"
           onSubmit={(e) => {
             e.preventDefault();
             void submit(code);

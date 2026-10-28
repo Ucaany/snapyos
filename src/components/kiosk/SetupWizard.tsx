@@ -16,7 +16,7 @@ import { isKioskExe } from "@/lib/kiosk-shell";
 import { getDeviceProfile } from "@/lib/device-profile";
 import {
   cameraBridgeUrl,
-  captureGphoto2,
+  captureFromBridge,
   checkCameraBridge,
   resolveCameraProvider,
 } from "@/lib/camera-provider";
@@ -168,57 +168,57 @@ export function SetupWizard({
     }
   }
 
-  async function checkGphoto2() {
+  async function checkBridge() {
     setCameraError(null);
     setCameraLive(false);
     setCameraCaptureTested(false);
     try {
       const result = await checkCameraBridge(cameraSettings);
       if (!result.ok || !result.camera)
-        throw new Error(result.message || "Kamera GPhoto2 tidak terdeteksi.");
-      setResLabel("GPHOTO2");
+        throw new Error(result.message || "Kamera bridge tidak terdeteksi.");
+      setResLabel("BRIDGE");
       setCameraLive(true);
       await report({
-        camera: { provider: "gphoto2", status: "ok", bridge_url: cameraBridgeUrl(cameraSettings) },
+        camera: { provider: "bridge", status: "ok", bridge_url: cameraBridgeUrl(cameraSettings) },
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "GPhoto2 tidak siap.";
+      const message = error instanceof Error ? error.message : "Kamera bridge tidak siap.";
       setCameraError({ message, action: "COBA LAGI" });
-      await report({ camera: { provider: "gphoto2", status: "error", error: message } });
+      await report({ camera: { provider: "bridge", status: "error", error: message } });
     }
   }
 
-  async function testGphoto2Capture() {
+  async function testBridgeCapture() {
     setCameraError(null);
     setCameraCaptureTested(false);
     try {
       const result = await checkCameraBridge(cameraSettings);
       if (!result.ok || !result.camera) {
-        throw new Error(result.message || "Kamera GPhoto2 tidak terdeteksi.");
+        throw new Error(result.message || "Kamera bridge tidak terdeteksi.");
       }
-      const photo = await captureGphoto2(cameraSettings);
-      if (photo.size === 0) throw new Error("GPhoto2 tidak mengembalikan foto.");
-      setResLabel("GPHOTO2 · CAPTURE OK");
+      const photo = await captureFromBridge(cameraSettings);
+      if (photo.size === 0) throw new Error("Kamera bridge tidak mengembalikan foto.");
+      setResLabel("BRIDGE · CAPTURE OK");
       setCameraLive(true);
       setCameraCaptureTested(true);
       await report({
         camera: {
-          provider: "gphoto2",
+          provider: "bridge",
           status: "ok",
           capture_test: "ok",
           bridge_url: cameraBridgeUrl(cameraSettings),
         },
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "GPhoto2 gagal mengambil foto.";
+      const message = error instanceof Error ? error.message : "Kamera bridge gagal mengambil foto.";
       setCameraError({ message, action: "COBA LAGI" });
-      await report({ camera: { provider: "gphoto2", status: "error", capture_test: message } });
+      await report({ camera: { provider: "bridge", status: "error", capture_test: message } });
     }
   }
 
   useEffect(() => {
-    if (cameraProvider === "gphoto2") {
-      const timer = setTimeout(() => void checkGphoto2(), 0);
+    if (cameraProvider === "bridge") {
+      const timer = setTimeout(() => void checkBridge(), 0);
       return () => {
         clearTimeout(timer);
         stopStream();
@@ -280,23 +280,24 @@ export function SetupWizard({
 
       {stage === "camera" ? (
         <div className="flex w-full max-w-[760px] flex-col gap-5">
-          {cameraProvider === "gphoto2" ? (
-            <div className="flex flex-col gap-4 border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111] md:p-6">
+          {cameraProvider === "bridge" ? (
+            <div className="flex flex-col gap-4 border-2 border-ink bg-surface p-5 shadow-hard md:p-6">
               <p className="max-w-[56ch] text-sm leading-relaxed text-muted-foreground">
-                Mode GPhoto2 memakai kamera DSLR melalui bridge lokal. Pastikan `gphoto2` terpasang,
-                kamera terhubung USB, dan `npm run bridge:gphoto2` sedang berjalan di komputer
+                Mode bridge memakai kamera fisik melalui runtime lokal. Pastikan adapter yang dipilih
+                terpasang (gphoto2 / libcamera-still / ffmpeg / PyAV),
+                kamera terhubung USB, dan `npm run bridge:local` sedang berjalan di komputer
                 kiosk.
               </p>
               <p className="font-mono text-xs uppercase tracking-[0.08em]">
                 Bridge: {cameraBridgeUrl(cameraSettings)}
               </p>
-              <BridgeTokenField onSaved={() => void checkGphoto2()} />
+              <BridgeTokenField onSaved={() => void checkBridge()} />
               <Button
                 size="lg"
-                onClick={() => void testGphoto2Capture()}
+                onClick={() => void testBridgeCapture()}
                 className="w-fit bg-accent"
               >
-                <Camera className="size-5" aria-hidden /> Uji capture GPhoto2
+                <Camera className="size-5" aria-hidden /> Uji capture kamera
               </Button>
               {cameraLive && !cameraCaptureTested && (
                 <p role="status" className="font-mono text-xs font-bold uppercase">
@@ -305,7 +306,7 @@ export function SetupWizard({
               )}
               {cameraCaptureTested && (
                 <p role="status" className="font-mono text-xs font-bold uppercase">
-                  Kamera GPhoto2 siap · capture berhasil
+                  Kamera bridge siap · capture berhasil
                 </p>
               )}
               {cameraError && (
@@ -347,7 +348,7 @@ export function SetupWizard({
             </div>
           ) : (
             <>
-              <div className="relative aspect-video w-full overflow-hidden border-2 border-ink bg-ink shadow-[4px_4px_0_0_#111111]">
+              <div className="relative aspect-video w-full overflow-hidden border-2 border-ink bg-ink shadow-hard">
                 {cameraError ? (
                   <div className="flex h-full flex-col items-center justify-center gap-3 bg-bg p-6 text-center">
                     <Camera className="size-8" aria-hidden />
@@ -435,7 +436,7 @@ export function SetupWizard({
           ) : (
             <>
               {resolvePrintMode(printSettings) === "cups" && (
-                <div className="border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111] md:p-6">
+                <div className="border-2 border-ink bg-surface p-5 shadow-hard md:p-6">
                   <BridgeTokenField />
                 </div>
               )}

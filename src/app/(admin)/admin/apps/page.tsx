@@ -12,9 +12,10 @@ import {
   updateAppReleaseAction,
 } from "@/server/admin-actions";
 import { listAppReleases, type AdminAppReleaseRow } from "@/server/admin";
+import { PageHeader } from "@/components/ui/page-header";
 
 /**
- * Admin Katalog Aplikasi — docs/10 §10.7 (migration 0081).
+ * Admin Katalog Aplikasi, docs/10 §10.7 (migration 0081).
  * Yang disimpan hanya TAUTAN: file installer diunggah admin ke Google Drive,
  * tidak pernah melewati storage SNAPY OS.
  */
@@ -44,17 +45,11 @@ export default async function AdminAppsPage() {
 
   return (
     <div className="flex flex-col gap-8 p-6 md:p-10">
-      <header>
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {"ADMIN - KATALOG APLIKASI"}
-        </p>
-        <h1 className="mt-2 font-display text-3xl uppercase tracking-tight md:text-4xl">
-          Katalog Aplikasi
-        </h1>
-        <p className="mt-2 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
-          {releases.length} rilis terdaftar · tautan unduhan saja
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="ADMIN - KATALOG APLIKASI"
+        title="Katalog Aplikasi"
+        meta={`${releases.length} rilis terdaftar · tautan unduhan saja`}
+      />
 
       {/* Batas jujur: tanpa kalimat ini owner mengira integritas file dijamin platform. */}
       <div className="border-2 border-ink bg-accent/30 p-4 md:p-5">
@@ -88,7 +83,7 @@ export default async function AdminAppsPage() {
             <div className="flex flex-col gap-1">
               <label
                 htmlFor="release-version"
-                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                className="font-mono text-[11px] uppercase tracking-[0.12em]"
               >
                 Versi (1.2.3)
               </label>
@@ -97,7 +92,7 @@ export default async function AdminAppsPage() {
             <div className="flex flex-col gap-1">
               <label
                 htmlFor="release-file-name"
-                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                className="font-mono text-[11px] uppercase tracking-[0.12em]"
               >
                 Nama file
               </label>
@@ -111,7 +106,7 @@ export default async function AdminAppsPage() {
             <div className="flex flex-col gap-1 sm:col-span-2">
               <label
                 htmlFor="release-url"
-                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                className="font-mono text-[11px] uppercase tracking-[0.12em]"
               >
                 URL unduhan (https://)
               </label>
@@ -126,7 +121,7 @@ export default async function AdminAppsPage() {
             <div className="flex flex-col gap-1">
               <label
                 htmlFor="release-size"
-                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                className="font-mono text-[11px] uppercase tracking-[0.12em]"
               >
                 Ukuran (byte, opsional)
               </label>
@@ -141,7 +136,7 @@ export default async function AdminAppsPage() {
             <div className="flex flex-col gap-1">
               <label
                 htmlFor="release-sha"
-                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                className="font-mono text-[11px] uppercase tracking-[0.12em]"
               >
                 SHA-256 (opsional)
               </label>
@@ -157,7 +152,7 @@ export default async function AdminAppsPage() {
             <div className="flex flex-col gap-1 sm:col-span-2">
               <label
                 htmlFor="release-notes"
-                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                className="font-mono text-[11px] uppercase tracking-[0.12em]"
               >
                 Catatan rilis (opsional)
               </label>
@@ -227,7 +222,7 @@ function ReleaseRow({ release: r }: { release: AdminAppReleaseRow }) {
       </div>
 
       {r.sha256 ? (
-        <p className="mt-3 break-all font-mono text-[10px] uppercase tracking-[0.06em] text-muted-foreground">
+        <p className="mt-3 break-all font-mono text-[11px] uppercase tracking-[0.06em] text-muted-foreground">
           sha256 {r.sha256}
         </p>
       ) : null}
@@ -245,7 +240,7 @@ function ReleaseRow({ release: r }: { release: AdminAppReleaseRow }) {
           <div className="flex flex-col gap-1">
             <label
               htmlFor={`version-${r.id}`}
-              className="font-mono text-[10px] uppercase tracking-[0.12em]"
+              className="font-mono text-[11px] uppercase tracking-[0.12em]"
             >
               Versi
             </label>
@@ -254,7 +249,7 @@ function ReleaseRow({ release: r }: { release: AdminAppReleaseRow }) {
           <div className="flex flex-col gap-1">
             <label
               htmlFor={`file-${r.id}`}
-              className="font-mono text-[10px] uppercase tracking-[0.12em]"
+              className="font-mono text-[11px] uppercase tracking-[0.12em]"
             >
               Nama file
             </label>
@@ -263,7 +258,7 @@ function ReleaseRow({ release: r }: { release: AdminAppReleaseRow }) {
           <div className="flex flex-col gap-1 sm:col-span-2">
             <label
               htmlFor={`url-${r.id}`}
-              className="font-mono text-[10px] uppercase tracking-[0.12em]"
+              className="font-mono text-[11px] uppercase tracking-[0.12em]"
             >
               URL unduhan (https://)
             </label>
@@ -278,7 +273,7 @@ function ReleaseRow({ release: r }: { release: AdminAppReleaseRow }) {
           <div className="flex flex-col gap-1">
             <label
               htmlFor={`size-${r.id}`}
-              className="font-mono text-[10px] uppercase tracking-[0.12em]"
+              className="font-mono text-[11px] uppercase tracking-[0.12em]"
             >
               Ukuran (byte)
             </label>
@@ -293,7 +288,7 @@ function ReleaseRow({ release: r }: { release: AdminAppReleaseRow }) {
           <div className="flex flex-col gap-1">
             <label
               htmlFor={`sha-${r.id}`}
-              className="font-mono text-[10px] uppercase tracking-[0.12em]"
+              className="font-mono text-[11px] uppercase tracking-[0.12em]"
             >
               SHA-256
             </label>
@@ -309,7 +304,7 @@ function ReleaseRow({ release: r }: { release: AdminAppReleaseRow }) {
           <div className="flex flex-col gap-1 sm:col-span-2">
             <label
               htmlFor={`notes-${r.id}`}
-              className="font-mono text-[10px] uppercase tracking-[0.12em]"
+              className="font-mono text-[11px] uppercase tracking-[0.12em]"
             >
               Catatan rilis
             </label>

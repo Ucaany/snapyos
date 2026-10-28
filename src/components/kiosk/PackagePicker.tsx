@@ -131,7 +131,7 @@ export function PackagePicker({
                   type="button"
                   onClick={() => onSelect(pkg)}
                   disabled={busy}
-                  className="group flex h-full flex-col gap-3 border-2 border-ink p-4 text-left shadow-[4px_4px_0_0_#111111] transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink active:translate-y-[2px] active:shadow-none disabled:pointer-events-none disabled:opacity-60 md:p-5"
+                  className="group flex h-full flex-col gap-3 border-2 border-ink p-4 text-left shadow-hard transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink active:translate-y-[2px] active:shadow-none disabled:pointer-events-none disabled:opacity-60 md:p-5"
                   style={{
                     borderRadius: radius,
                     backgroundColor: featured ? primary : undefined,

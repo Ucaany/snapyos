@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   buildKioskPaymentMethods,
   decodeKioskPaymentPayload,
+  ensureFreeSettlementMethod,
   encodeKioskPaymentPayload,
   filterKioskPaymentMethods,
   paymentDisplay,
@@ -112,5 +113,24 @@ test("per-booth channel filter hides the opposite channel", () => {
   assert.deepEqual(
     both.map((m) => m.id),
     ids
+  );
+});
+
+test("checkout bersisa nol tetap menawarkan voucher di booth hanya-gateway", () => {
+  const all = buildKioskPaymentMethods([{ provider: "midtrans", enabledMethods: ["qris"] }]);
+  const gatewayOnly = filterKioskPaymentMethods(all, "gateway");
+  assert.equal(gatewayOnly.some((m) => m.kind === "voucher"), false);
+  // finalAmount > 0 → filter booth dihormati
+  assert.equal(
+    ensureFreeSettlementMethod(gatewayOnly, all, 25000).some((m) => m.kind === "voucher"),
+    false
+  );
+  // finalAmount 0 → voucher (pelunasan gratis) wajib tersedia
+  const free = ensureFreeSettlementMethod(gatewayOnly, all, 0);
+  assert.equal(free.some((m) => m.kind === "voucher"), true);
+  // idempoten: tidak menambah voucher dua kali
+  assert.equal(
+    free.filter((m) => m.kind === "voucher").length,
+    1
   );
 });

@@ -21,6 +21,7 @@ import {
 } from "@/lib/device-token";
 import {
   foreignSettingKeys,
+  localOnlySettingKeys,
   mergeDeviceSettings,
   type DeviceActivateInput,
   type DeviceExitInput,
@@ -457,6 +458,14 @@ export async function verifyDeviceExit(input: DeviceExitInput) {
  * hilang hanya karena booth melaporkan `paper_size`.
  */
 export async function updateDeviceSettings(input: DeviceSettingsPatchInput) {
+  const localOnly = localOnlySettingKeys(input.settings as Record<string, unknown>);
+  if (localOnly.length > 0) {
+    throw new ApiError(
+      "LOCAL_ONLY_SETTING",
+      `Setelan ini hanya berlaku di mesin booth dan tidak disinkronkan: ${localOnly.join(", ")}.`,
+      { fields: localOnly }
+    );
+  }
   const foreign = foreignSettingKeys(input.settings);
   if (foreign.length > 0) {
     throw new ApiError(

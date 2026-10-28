@@ -1,4 +1,5 @@
 import { FILTER_PRESETS, type KioskOverlay, type PhotoEdit } from "@/lib/kiosk-types";
+import { drawOverlays } from "@/lib/compose-frame";
 import {
   applyChromaKey,
   DEFAULT_CHROMA_KEY,
@@ -52,27 +53,19 @@ function chromaPreparedImage(
   return canvas;
 }
 
-function drawOverlay(ctx: CanvasRenderingContext2D, o: KioskOverlay, w: number, h: number) {
-  const sizePx = o.size * h;
-  ctx.save();
-  ctx.translate(o.x * w, o.y * h);
-  ctx.rotate((o.rotation * Math.PI) / 180);
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  if (o.kind === "text") {
-    ctx.fillStyle = o.color;
-    ctx.font = `700 ${sizePx}px "Archivo Black", "IBM Plex Sans", sans-serif`;
-  } else {
-    ctx.fillStyle = o.color || "#111111";
-    ctx.font = `${sizePx}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
-  }
-  ctx.fillText(o.content, 0, 0);
-  ctx.restore();
+/** Overlay teks/stiker di atas canvas yang sudah final (frame included). */
+export function drawOverlayLayer(canvas: HTMLCanvasElement, overlays: readonly KioskOverlay[]) {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  drawOverlays(ctx, overlays, canvas.width, canvas.height);
 }
 
 /**
  * Gambar foto + editan ke canvas. maxW membatasi lebar output (preview);
  * pass Infinity untuk resolusi penuh (final render).
+ *
+ * Overlay teks/stiker TIDAK digambar di sini: layer itu harus di atas frame
+ * (`drawOverlayLayer`), bukan di dalam foto yang ter-clip slot.
  */
 export function drawPhoto(
   canvas: HTMLCanvasElement,
@@ -80,7 +73,11 @@ export function drawPhoto(
   edit: PhotoEdit,
   maxW = 640,
   /** Aktif → warna latar (diambil dari sudut foto) dibuat transparan. */
-  chroma: boolean | ChromaKeyOptions = false
+  chroma: boolean | ChromaKeyOptions = false,
+  /** Warna dasar di bawah piksel transparan. Kosong = biarkan transparan —
+   *  jalur slot mengandalkan `composeFrame` mengisi latar, jadi mengisi di sini
+   *  akan menutup lubang chroma. */
+  background?: string
 ): void {
   const source = chroma ? chromaPreparedImage(img, chroma) : img;
   const rot = normRot(edit.adjust.rotation);
@@ -97,6 +94,13 @@ export function drawPhoto(
   canvas.height = ch;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
+
+  // Chroma key membuat piksel berlubang; jalur legacy (foto full-canvas tanpa
+  // composeFrame) perlu isian dasar agar hasil JPEG tidak menghitam.
+  if (chroma && background) {
+    ctx.fillStyle = background;
+    ctx.fillRect(0, 0, cw, ch);
+  }
 
   const base = FILTER_PRESETS.find((f) => f.id === edit.adjust.filter)?.css ?? "none";
   const a = edit.adjust;
@@ -159,7 +163,6 @@ export function drawPhoto(
     ctx.fillRect(0, 0, cw, ch);
     ctx.restore();
   }
-  for (const o of edit.overlays) drawOverlay(ctx, o, cw, ch);
 }
 
 /**
@@ -174,20 +177,22 @@ export function drawFrameOverlay(canvas: HTMLCanvasElement, frame: HTMLImageElem
   ctx.drawImage(frame, 0, 0, canvas.width, canvas.height);
 }
 
-/** Foto + editan, lalu frame legacy digambar penuh di atasnya (full-canvas,
- *  docs/05 §5.9). Dipakai jalur final template tanpa slot. */
+/** Foto + editan, lalu frame legacy digambar penuh di atasnya, lalu overlay
+ *  teks/stiker paling atas (docs/05 §5.9). Dipakai jalur final tanpa slot. */
 export async function renderFramedPhotoBlob(
   blob: Blob,
   edit: PhotoEdit,
   frame: HTMLImageElement | null,
-  chroma: boolean | ChromaKeyOptions = false
+  chroma: boolean | ChromaKeyOptions = false,
+  background = "#ffffff"
 ): Promise<Blob> {
   const url = URL.createObjectURL(blob);
   try {
     const img = await loadImage(url);
     const canvas = document.createElement("canvas");
-    drawPhoto(canvas, img, edit, Number.POSITIVE_INFINITY, chroma);
+    drawPhoto(canvas, img, edit, Number.POSITIVE_INFINITY, chroma, background);
     drawFrameOverlay(canvas, frame);
+    drawOverlayLayer(canvas, edit.overlays);
     return await canvasToBlob(canvas);
   } finally {
     URL.revokeObjectURL(url);

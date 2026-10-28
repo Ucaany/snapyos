@@ -13,8 +13,22 @@ import { createHash } from "node:crypto";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-export const CAMERA_KINDS = ["digicamcontrol", "gphoto2", "mock"] as const;
+export const CAMERA_KINDS = [
+  "digicamcontrol",
+  "gphoto2",
+  "libcamera",
+  "v4l2",
+  "pyav",
+  "mock",
+] as const;
 export type CameraKind = (typeof CAMERA_KINDS)[number];
+
+/**
+ * Peran adapter. Satu booth boleh memakai DUA kamera: DSLR untuk foto
+ * berkualitas (stills) dan webcam untuk preview hidup (stream). Bila stream
+ * tidak dikonfigurasi, stills dipakai untuk keduanya.
+ */
+export type CameraRole = "stills" | "stream";
 
 export const PRINTER_KINDS = ["windows", "cups", "mock"] as const;
 export type PrinterKind = (typeof PRINTER_KINDS)[number];
@@ -28,11 +42,26 @@ export type RuntimeConfig = {
   /** DB + media + karantina. Terpisah dari kode agar update tidak menyentuh data. */
   dataDir: string;
   camera: CameraKind;
+  /** Adapter preview terpisah (opsional). `null` = pakai adapter stills. */
+  cameraStream: CameraKind | null;
   printer: PrinterKind;
   /** true bila salah satu adapter mock dipakai (UI wajib melabelinya). */
   mock: boolean;
   gphotoBin: string;
   captureTarget: string;
+  /** libcamera-still (Raspberry Pi OS Bookworm) / rpicam-still (Trixie+). */
+  libcameraBin: string;
+  rpicamBin: string;
+  libcameraSize: string;
+  libcameraSizeStream: string;
+  /** ffmpeg untuk webcam V4L2 dan (Phase 3) transcode video. */
+  ffmpegBin: string;
+  v4l2Device: string;
+  v4l2DeviceStream: string;
+  v4l2Size: string;
+  v4l2SizeStream: string;
+  /** Interpreter python3 untuk adapter PyAV (butuh paket `av` + Pillow). */
+  pyavPython: string;
   timeoutMs: number;
   digicamPort: number;
   digicamCmd: string;
@@ -117,7 +146,13 @@ export function loadConfig(env: EnvLike): RuntimeConfig {
     win32 ? "windows" : "cups",
     "SNAPYOS_PRINTER"
   );
-  const mock = camera === "mock" || printer === "mock";
+  // Preview terpisah harus dipilih eksplisit; kosong berarti booth memakai satu
+  // kamera untuk stills dan preview (perilaku lama, tidak berubah).
+  const streamRaw = env.SNAPYOS_CAMERA_STREAM?.trim();
+  const cameraStream: CameraKind | null = streamRaw
+    ? pickOne(streamRaw, CAMERA_KINDS, camera, "SNAPYOS_CAMERA_STREAM")
+    : null;
+  const mock = camera === "mock" || printer === "mock" || cameraStream === "mock";
 
   // Mock tidak boleh diam-diam jadi produksi: kamera palsu di booth berarti
   // pelanggan membayar foto yang bukan dirinya.
@@ -144,10 +179,22 @@ export function loadConfig(env: EnvLike): RuntimeConfig {
     allowedOrigins: new Set(origins),
     dataDir: env.SNAPYOS_DATA_DIR?.trim() || defaultDataDir(),
     camera,
+    cameraStream,
     printer,
     mock,
     gphotoBin: env.GPHOTO2_BIN?.trim() || "gphoto2",
     captureTarget: env.GPHOTO2_CAPTURE_TARGET?.trim() || "",
+    libcameraBin: env.LIBCAMERA_BIN?.trim() || "libcamera-still",
+    // Trixie ke atas mengganti nama binary-nya; adapter mencoba keduanya.
+    rpicamBin: env.RPICAM_BIN?.trim() || "rpicam-still",
+    libcameraSize: env.LIBCAMERA_SIZE?.trim() || "3280x2464",
+    libcameraSizeStream: env.LIBCAMERA_SIZE_STREAM?.trim() || "1280x720",
+    ffmpegBin: env.FFMPEG_BIN?.trim() || "ffmpeg",
+    v4l2Device: env.V4L2_DEVICE?.trim() || "/dev/video0",
+    v4l2DeviceStream: env.V4L2_DEVICE_STREAM?.trim() || env.V4L2_DEVICE?.trim() || "/dev/video0",
+    v4l2Size: env.V4L2_SIZE?.trim() || "1280x720",
+    v4l2SizeStream: env.V4L2_SIZE_STREAM?.trim() || "640x480",
+    pyavPython: env.PYAV_PYTHON?.trim() || "python3",
     timeoutMs,
     digicamPort: readPort(env.DIGICAMCONTROL_PORT, "DIGICAMCONTROL_PORT", 5513),
     digicamCmd:

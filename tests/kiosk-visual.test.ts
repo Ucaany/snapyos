@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  clampKioskRadius,
   kioskThemeVars,
   kioskVisualStyle,
   KIOSK_FONT_FAMILIES,
@@ -30,7 +31,8 @@ test("kioskVisualStyle: tanpa page, global override", () => {
   assert.equal(s.bg, "#000000");
   assert.equal(s.text, "#ffffff");
   assert.equal(s.fontScale, 1.2);
-  assert.equal(s.radius, 8);
+  // Radius dijaga pada maks 4px (DESIGN.md §2: bukan pill).
+  assert.equal(s.radius, 4);
   assert.equal(s.padding, 48);
 });
 
@@ -63,8 +65,17 @@ test("kioskVisualStyle: page override menimpa global", () => {
   assert.equal(s.bg, "#FF0000");
   assert.equal(s.text, "#00FF00");
   assert.equal(s.fontScale, 1.4);
-  assert.equal(s.radius, 12);
+  // Radius per-layar juga dijaga pada maks 4px.
+  assert.equal(s.radius, 4);
   assert.equal(s.padding, 64);
+});
+
+test("clampKioskRadius: dijaga pada rentang 0–4px", () => {
+  assert.equal(clampKioskRadius(undefined), 0);
+  assert.equal(clampKioskRadius(-6), 0);
+  assert.equal(clampKioskRadius(2), 2);
+  assert.equal(clampKioskRadius(24), 4);
+  assert.equal(clampKioskRadius(Number.NaN), 0);
 });
 
 test("kioskVisualStyle: page override parsial (sebagian fallback global)", () => {

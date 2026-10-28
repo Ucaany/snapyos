@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
+import { PageHeader } from "@/components/ui/page-header";
 import {
   activateIntentFailureAction,
   dismissIntentFailureAction,
@@ -79,27 +80,19 @@ export default async function AdminSubscriptionPendingReviewPage({
   return (
     <div className="flex flex-col gap-8 p-6 md:p-10">
       {/* Header - micro-typography + massive header per docs/11 §11.1 */}
-      <header className="flex flex-col gap-3">
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {"ADMIN - SUBSCRIPTIONS / PENDING REVIEW"}
-        </p>
-        <h1 className="font-display text-3xl uppercase tracking-tight md:text-4xl">
-          Antrian Aktivasi Manual
-        </h1>
-        <p className="max-w-[70ch] text-sm leading-relaxed text-muted-foreground">
-          Invoice sudah paid (uang settled di provider), tapi aktivasi plan atau add-on gagal karena
-          subscription tidak berada pada status yang valid - biasanya owner cancel + cron transisi
-          terjadi sebelum webhook paid diterima. Setiap kasus memerlukan keputusan manual:{" "}
-          <strong>aktivasi</strong> (perbaiki via /admin/subscriptions, lalu tutup tiket) atau{" "}
-          <strong>refund</strong> (via dashboard Pakasir).
-        </p>
-        <Link
-          href="/admin/subscriptions"
-          className="inline-flex min-h-11 w-fit items-center border-2 border-ink bg-surface px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-ink hover:bg-muted"
-        >
-          {"< KEMBALI KE SUBSCRIPTIONS"}
-        </Link>
-      </header>
+      <PageHeader
+        eyebrow="ADMIN - SUBSCRIPTIONS / PENDING REVIEW"
+        title="Antrian Aktivasi Manual"
+        description="Invoice sudah lunas (uang settled di provider), tapi aktivasi plan atau add-on gagal karena subscription tidak berada pada status yang valid. Biasanya owner cancel + cron transisi terjadi sebelum webhook paid diterima. Setiap kasus memerlukan keputusan manual: aktivasi (perbaiki via /admin/subscriptions, lalu tutup tiket) atau refund (via dashboard Pakasir)."
+        right={
+          <Link
+            href="/admin/subscriptions"
+            className="inline-flex min-h-11 items-center border-2 border-ink bg-surface px-3 font-mono text-[11px] font-bold uppercase tracking-[0.15em] text-ink hover:bg-muted"
+          >
+            {"< KEMBALI"}
+          </Link>
+        }
+      />
 
       {/* Tabs status + counts */}
       <nav
@@ -124,8 +117,8 @@ export default async function AdminSubscriptionPendingReviewPage({
               <span
                 className={
                   active
-                    ? "border-2 border-ink bg-bg px-1.5 py-0.5 text-[10px] tabular-nums"
-                    : "border-2 border-ink/40 bg-muted/60 px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground"
+                    ? "border-2 border-ink bg-bg px-1.5 py-0.5 text-[11px] tabular-nums"
+                    : "border-2 border-ink/40 bg-muted/60 px-1.5 py-0.5 text-[11px] tabular-nums text-muted-foreground"
                 }
               >
                 {String(count).padStart(2, "0")}
@@ -159,12 +152,12 @@ export default async function AdminSubscriptionPendingReviewPage({
                   <span className="font-display text-lg uppercase tracking-tight">
                     {f.business_name}
                   </span>
-                  <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+                  <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
                     INVOICE {f.invoice_number} · {dateFmt.format(new Date(f.created_at))}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="border-2 border-ink bg-accent-2 px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-ink">
+                  <span className="border-2 border-ink bg-accent-2 px-2 py-1 font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-ink">
                     {formatIDR(f.amount)}
                   </span>
                   <StatusBadge status={f.status} />
@@ -174,7 +167,7 @@ export default async function AdminSubscriptionPendingReviewPage({
               {/* Body - reason + intent snapshot */}
               <div className="grid grid-cols-[minmax(0,1fr)] gap-4 p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
                 <div className="flex min-w-0 flex-col gap-2">
-                  <p className="font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+                  <p className="font-mono text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
                     [ REASON ]
                   </p>
                   <p className="w-fit border-2 border-ink bg-accent-2 px-2 py-1 font-mono text-sm font-bold uppercase tracking-[0.05em] text-ink">
@@ -189,19 +182,19 @@ export default async function AdminSubscriptionPendingReviewPage({
                     </pre>
                   ) : null}
                   {f.subscription_id ? (
-                    <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+                    <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
                       SUBSCRIPTION_ID{" "}
                       <code className="bg-muted px-1 py-0.5 text-ink">{f.subscription_id}</code>
                     </p>
                   ) : (
-                    <p className="mt-2 inline-block w-fit border-2 border-ink bg-accent-2 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.1em] text-ink">
+                    <p className="mt-2 inline-block w-fit border-2 border-ink bg-accent-2 px-1.5 py-0.5 font-mono text-[11px] uppercase tracking-[0.1em] text-ink">
                       SUBSCRIPTION_ID {"<NULL>"}
                     </p>
                   )}
                 </div>
 
                 <div className="flex min-w-0 flex-col gap-2">
-                  <p className="font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+                  <p className="font-mono text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
                     [ INTENT SNAPSHOT ]
                   </p>
                   <pre className="max-h-64 overflow-auto border-2 border-ink/20 bg-muted p-3 font-mono text-[11px] leading-relaxed text-ink">
@@ -213,7 +206,7 @@ export default async function AdminSubscriptionPendingReviewPage({
               {/* Resolution meta (kalau bukan pending) */}
               {f.status !== "pending" ? (
                 <div className="flex flex-col gap-1 border-t-2 border-ink/10 bg-muted/50 p-4">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+                  <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
                     RESOLVED{f.resolved_by_name ? ` BY ${f.resolved_by_name}` : ""}
                     {f.resolved_at ? ` · ${dateFmt.format(new Date(f.resolved_at))}` : ""}
                   </p>
@@ -226,7 +219,7 @@ export default async function AdminSubscriptionPendingReviewPage({
               {/* Aksi resolusi - hanya untuk kasus pending */}
               {f.status === "pending" ? (
                 <div className="flex flex-col gap-3 border-t-2 border-ink/10 bg-muted/40 p-4">
-                  <p className="font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+                  <p className="font-mono text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
                     [ RESOLUSI ]
                   </p>
                   <div className="grid gap-3 md:grid-cols-3">
@@ -323,7 +316,7 @@ function ResolveForm({
     >
       <label
         htmlFor={noteId}
-        className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-ink"
+        className="font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-ink"
       >
         Catatan (opsional)
       </label>
@@ -335,7 +328,7 @@ function ResolveForm({
         placeholder="referensi refund / plan yang di-attach / dsb."
         className="min-h-[3rem] w-full resize-y border-2 border-ink bg-bg px-2 py-1.5 font-mono text-xs text-ink outline-none focus:bg-accent/20"
       />
-      <p className="font-mono text-[10px] leading-snug text-muted-foreground">{hint}</p>
+      <p className="font-mono text-[11px] leading-snug text-muted-foreground">{hint}</p>
     </AdminActionForm>
   );
 }

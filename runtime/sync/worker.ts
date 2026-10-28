@@ -22,7 +22,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import type { RuntimeConfig } from "../config.ts";
-import { activeSettings, type SettingsShape } from "../settings/index.ts";
+import { activeSettings, cloudSyncedSettings, type SettingsShape } from "../settings/index.ts";
 import { insertEvent } from "../db/index.ts";
 import { VERSION } from "../version.ts";
 
@@ -333,7 +333,9 @@ export async function pushSettings(
   lastPushed: { value: string | null } = { value: null }
 ): Promise<SyncReport["settings"]> {
   if (!canSync(ctx)) return "skipped";
-  const settings: SettingsShape = activeSettings(ctx.db, ctx.config);
+  // `appearance_settings` sengaja dibuang: kustomisasi tampilan milik satu
+  // booth dan tidak boleh menimpa baris photoboxes milik seluruh booth.
+  const settings: SettingsShape = cloudSyncedSettings(activeSettings(ctx.db, ctx.config));
   const serialized = JSON.stringify(settings);
   if (serialized === lastPushed.value) return "unchanged";
 

@@ -2,7 +2,7 @@
 import { ArrowLeft, Tag } from "lucide-react";
 import type { KioskVisualStyle } from "@/lib/kiosk-types";
 import { OnScreenKeyboard } from "./OnScreenKeyboard";
-import { KioskAction, KioskCard, KioskEyebrow } from "@/components/kiosk/ui";
+import { KioskAction, KioskCard, KioskEyebrow, KIOSK_FIELD } from "@/components/kiosk/ui";
 
 export function VoucherPayment({
   code,
@@ -43,7 +43,7 @@ export function VoucherPayment({
         <input
           value={code}
           onChange={(event) => onCode(event.target.value.toUpperCase())}
-          className="w-full border-2 border-ink bg-bg px-3 py-3 text-center font-mono text-lg font-bold uppercase tracking-[0.16em] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+          className={`${KIOSK_FIELD} bg-bg py-3 text-center font-mono text-lg font-bold uppercase tracking-[0.16em]`}
           style={{ borderRadius: radius }}
           autoComplete="off"
           spellCheck={false}

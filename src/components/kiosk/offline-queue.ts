@@ -122,11 +122,12 @@ export function purgeLegacyDeviceTokenStore(): void {
 }
 
 /**
- * Grace sebelum item yatim dibuang: satu jam. Token bisa hilang sementara
+ * Grace sebelum item yatim dibuang: 24 jam. Token bisa hilang sementara
  * (operator membersihkan storage, aktivasi ulang booth) dan foto pelanggan yang
- * belum tersinkron tidak boleh ikut hilang dalam hitungan detik.
+ * belum tersinkron tidak boleh ikut hilang pada reload berikutnya — satu malam
+ * event + hari berikutnya tetap tertahan.
  */
-export const ORPHAN_GRACE_MS = 60 * 60 * 1000;
+export const ORPHAN_GRACE_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Sapu item yatim — dipanggil setelah drain, saat antrian memang tidak bisa

@@ -301,7 +301,7 @@ export function BluetoothPrintScreen({
   const busy = state === "connecting" || state === "preparing" || state === "printing";
 
   return (
-    <div className="fixed inset-0 z-40 flex flex-col items-center justify-center gap-5 overflow-y-auto bg-bg p-6 text-center md:p-8">
+    <div className="fixed inset-0 z-30 flex flex-col items-center justify-center gap-5 overflow-y-auto bg-bg p-6 text-center md:p-8">
       {!supported && !serialSupported ? (
         <>
           <TriangleAlert className="size-10 shrink-0 text-destructive" aria-hidden />
@@ -367,7 +367,7 @@ export function BluetoothPrintScreen({
         </>
       ) : busy ? (
         <>
-          <Loader2 className="size-10 shrink-0 animate-spin" aria-hidden />
+          <Loader2 className="size-10 shrink-0 motion-safe:animate-spin" aria-hidden />
           <p className="font-display text-xl uppercase leading-none tracking-[-0.02em] md:text-2xl">
             {state === "connecting"
               ? "Menghubungkan printer"
@@ -439,7 +439,7 @@ export function BluetoothPrintScreen({
             <button
               type="button"
               onClick={() => void connectAndPrintSerial()}
-              className="min-h-11 border-2 border-ink bg-surface px-3 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-ink shadow-[2px_2px_0_0_#111111] transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+              className="min-h-11 border-2 border-ink bg-surface px-3 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-ink shadow-hard-sm transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
             >
               Printer Classic (SPP) · Web Serial
             </button>

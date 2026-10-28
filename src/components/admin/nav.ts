@@ -34,22 +34,22 @@ export type AdminNavGroup = { label: string; items: NavItem[] };
 export const NAV_GROUPS: AdminNavGroup[] = [
   {
     label: "Utama",
-    items: [{ label: "Overview", href: "/admin", icon: Gauge }],
+    items: [{ label: "Ringkasan", href: "/admin", icon: Gauge }],
   },
   {
     label: "Tenant",
     items: [
-      { label: "Users", href: "/admin/users", icon: Users },
-      { label: "Businesses", href: "/admin/businesses", icon: Building2 },
+      { label: "Pengguna", href: "/admin/users", icon: Users },
+      { label: "Bisnis", href: "/admin/businesses", icon: Building2 },
     ],
   },
   {
     label: "Monetisasi",
     items: [
-      { label: "Plans", href: "/admin/plans", icon: CreditCard },
-      { label: "Add-ons", href: "/admin/add-ons", icon: Package },
-      { label: "Promos", href: "/admin/promos", icon: Tag },
-      { label: "Subscriptions", href: "/admin/subscriptions", icon: Receipt },
+      { label: "Paket", href: "/admin/plans", icon: CreditCard },
+      { label: "Add-on", href: "/admin/add-ons", icon: Package },
+      { label: "Promo", href: "/admin/promos", icon: Tag },
+      { label: "Langganan", href: "/admin/subscriptions", icon: Receipt },
       // Antrian review manual aktivasi post-payment - docs/02 §2.4b.
       {
         label: "Antrian Aktivasi Manual",
@@ -61,18 +61,18 @@ export const NAV_GROUPS: AdminNavGroup[] = [
   {
     label: "Keuangan",
     items: [
-      { label: "Payments", href: "/admin/payments", icon: Landmark },
-      { label: "Gateways", href: "/admin/gateways", icon: CreditCard },
+      { label: "Pembayaran", href: "/admin/payments", icon: Landmark },
+      { label: "Gateway", href: "/admin/gateways", icon: CreditCard },
     ],
   },
   {
     label: "Konten & Sistem",
     items: [
-      { label: "Templates", href: "/admin/templates", icon: ImageIcon },
+      { label: "Template", href: "/admin/templates", icon: ImageIcon },
       { label: "Katalog Aplikasi", href: "/admin/apps", icon: Download },
       { label: "Tiket Bantuan", href: "/admin/support", icon: CircleHelp },
-      { label: "Settings", href: "/admin/settings", icon: Settings },
-      { label: "Audit Log", href: "/admin/audit", icon: ScrollText },
+      { label: "Pengaturan", href: "/admin/settings", icon: Settings },
+      { label: "Log Audit", href: "/admin/audit", icon: ScrollText },
     ],
   },
   {
@@ -81,7 +81,7 @@ export const NAV_GROUPS: AdminNavGroup[] = [
   },
   {
     // Admin = CEO platform, TAPI tetap bisa pakai semua fitur user
-    // (dashboard bisnis / onboarding) — satu akun, dua sisi. Keluar dari
+    // (dashboard bisnis / onboarding), satu akun, dua sisi. Keluar dari
     // shell admin, jadi ditaruh terpisah di bawah, bukan di grup "Utama".
     label: "Sisi Owner",
     items: [{ label: "Buka Dashboard Bisnis", href: "/dashboard", icon: Store }],

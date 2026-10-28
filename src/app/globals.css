@@ -2,7 +2,6 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "../styles/tokens.css";
-@import "../styles/theme-modern.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -51,6 +50,14 @@
   ::selection {
     background: var(--color-accent);
     color: var(--color-ink);
+  }
+  /* Satu indikator fokus untuk kontrol yang tidak memakai ring komponen
+     (link tabel, paginator, summary, item nav). */
+  a:focus-visible,
+  summary:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
   }
 }
 

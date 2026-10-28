@@ -391,8 +391,9 @@
 ### O11. Template Builder (Slot Editor)
 
 - **Page**: `/dashboard/templates/builder/[id]` (+ admin mirror `/admin/templates/builder/[id]`).
-- **Komponen**: `src/components/dashboard/TemplateBuilder.tsx` (~996 baris): drag/resize/rotate slot di atas frame PNG, z-order, clip-path, preview `composeFrame`, upload frame/thumbnail, chroma-key.
-- **Lib**: `src/lib/template-layout.ts` (`layoutSchema`, `slotCount`, `slotsByZ`), `src/lib/template-cleanup.ts`.
+- **Komponen**: `src/components/dashboard/TemplateBuilder.tsx` (~1080 baris): drag/resize/rotate slot di atas frame PNG, z-order, clip-path, warna dasar kanvas (`canvas.background`), preview `composeFrame`, upload frame/thumbnail, chroma-key frame.
+- **Lib**: `src/lib/template-layout.ts` (`layoutSchema`, `slotCount`, `slotsByZ`, `canvasBackground`), `src/lib/compose-frame.ts`, `src/lib/template-cleanup.ts`.
+- **Validasi**: layout divalidasi `layoutSchema` di jalur owner (`templateUpdateSchema`) **dan** admin global (`updateGlobalTemplateLayout`).
 - **DB**: `templates.layout` (jsonb).
 - **Catatan status**: god-component terdaftar sebagai known-issue (H7).
 
@@ -678,12 +679,13 @@
 - **Lib**: `src/lib/camera-capture.ts`, `camera-provider.ts`, `camera-errors.ts`, `photo-render.ts`.
 - **API**: `POST /api/v1/public/devices/report` (status).
 - **DB**: tidak langsung; hasil disimpan di state sampai finalize.
-- **Batasan**: `camera_settings` (deviceId, mirror, countdown, resolution, rotasi/zoom kalibrasi, chroma key); frame ber-slot menentukan kuota capture, template legacy memakai `package.photo_count`; slot lebih banyak dari foto yang tersedia diisi bergiliran; finalize memvalidasi capture mentah terhadap frame/paket dan menyimpan composite final; `max_retakes` opsional dari `session_settings` (tidak diset = retake tak terbatas, docs/05 §5.5.2).
+- **Batasan**: `camera_settings` (deviceId, mirror, countdown, resolution, rotasi/zoom kalibrasi, `chroma_key_enabled`); frame ber-slot menentukan kuota capture, template legacy memakai `package.photo_count`; slot lebih banyak dari foto yang tersedia diisi bergiliran; finalize memvalidasi capture mentah terhadap frame/paket dan menyimpan composite final; `max_retakes` opsional dari `session_settings` (tidak diset = retake tak terbatas, docs/05 §5.5.2).
+- **Chroma key**: toggle per booth ada di aplikasi booth (`BoothSettingsPanel` → grup Kamera), bukan dashboard — dashboard menolak field mesin. Chroma kiosk menghapus latar foto; warna pengganti = `layout.canvas.background` (default putih).
 
 ### K10. Editor (Edit Foto)
 
 - **Komponen**: `Editor` (dynamic import) + `StickerPicker`.
-- **Fitur**: filter preset (`FILTER_PRESETS`), adjust (brightness/contrast/saturation/…), overlay teks/sticker, drag/zoom/pan, compose frame (`composeFrame`), layout slot (`slotClipPath`).
+- **Fitur**: filter preset (`FILTER_PRESETS`), adjust (brightness/contrast/saturation/…), overlay teks/sticker (layer teratas, di atas frame), drag/zoom/pan, compose frame (`composeFrame`), layout slot (`slotClipPath`), chroma key opsional.
 - **Lib**: `src/lib/compose-frame.ts`, `template-layout.ts`, `src/components/kiosk/photo-render.ts`.
 - **Dampak**: menghasilkan `FinalPhoto[]` untuk finalize + print.
 
@@ -1029,7 +1031,7 @@
 **Fungsi SQL/RPC (32)**:
 `set_updated_at` (trigger) · `activate_device_atomically` · `pos_complete_payment` · `pos_decrement_stock` · `pos_decrement_stock_batch` · `pos_create_order_with_items` · `pos_set_booth_enabled` · `settle_paid_payment_atomically` · `create_voucher_payment_atomically` · `exit_pin_register_failure` · `dashboard_tx_summary` · `dashboard_daily_revenue` · `finance_expense_summary` · `revenue_breakdown` · `tx_insights_summary` · `metrics_tx_status` · `metrics_returning_customers` · `metrics_revenue_per_booth` · `metrics_sessions_per_booth` · `metrics_session_summary` · `metrics_popular_package` · `metrics_popular_template` · `staff_directory_today` · `customer_spending` · `operational_metrics` · `tg_subscription_intent_failures_touch` · `storage_account_add` · `storage_account_sub` · `bootstrap_admin` (promosi eksplisit satu user ke role admin, migration 0052; service_role-only) · **`create_outlet_with_quota` · `create_photobox_with_quota` · `add_business_member_with_quota`** (kuota atomik 0069 — advisory lock per `(business, jenis)`, `SECURITY DEFINER`, `PLAN_LIMIT_REACHED` bila lewat limit).
 
-**Konvensi**: uang integer IDR; RLS + policy `svc_all` service_role di semua tabel publik (0064); semua RPC `revoke` anon/authenticated + `grant` service_role (0065); `search_path` dipin `public, pg_temp` pada seluruh RPC aplikasi (0071 — **ditulis & diuji statis, BELUM di-apply**); migration POS 0073 menambah snapshot setting struk, RPC order/item atomic, dan RPC toggle booth atomic; 0074 menutup race retry pembayaran terhadap decrement stok.
+**Konvensi**: uang integer IDR; RLS + policy `svc_all` service_role di semua tabel publik (0064); semua RPC `revoke` anon/authenticated + `grant` service_role (0065); `search_path` dipin `public, pg_temp` pada seluruh RPC aplikasi (0071 — **ditulis & diuji statis, BELUM di-apply**); migration POS 0073 menambah snapshot setting struk, RPC order/item atomic, dan RPC toggle booth atomic (**0073 terukur SUDAH diterapkan 2026-10-27**); 0074 menutup race retry pembayaran terhadap decrement stok (**terukur SUDAH diterapkan**); **0076 (`pos_decrement_stock_batch`) sudah diterapkan 2026-10-27** (sebelumnya tidak ada sementara `src/server/pos-orders.ts` memanggilnya tanpa fallback).
 
 **Tabel tanpa UI aktif** (dormant/backlog): `bookings` (+anti-overlap gist), `events`, `event_templates`, `stickers`, `device_logs`, `storage_objects` (dipakai akuntansi).
 

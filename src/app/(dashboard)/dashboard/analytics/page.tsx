@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 const TABS = [
   { key: "day", label: "Per Hari" },
   { key: "outlet", label: "Per Outlet" },
-  { key: "package", label: "Per Package" },
+  { key: "package", label: "Per Paket" },
   { key: "photobox", label: "Per Photobox" },
   { key: "method", label: "Per Metode Bayar" },
 ] as const;
@@ -153,7 +153,7 @@ export default async function AnalyticsPage({
           )}
           {tab !== "day" && (breakdown?.items.length ?? 0) > 0 && (
             <div className="mt-6 overflow-x-auto">
-              <table className="w-full min-w-[480px] border-collapse text-left">
+              <table className="w-full md:min-w-[480px] border-collapse text-left">
                 <caption className="sr-only">Rincian breakdown</caption>
                 <thead>
                   <tr className="border-b-2 border-ink font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">

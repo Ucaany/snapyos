@@ -1,8 +1,20 @@
+import Link from "next/link";
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminPaginator } from "@/components/admin/AdminPaginator";
 import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
+import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { PageHeader } from "@/components/ui/page-header";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { updateSupportTicketStatusAction } from "@/server/admin-actions";
 import { listSupportTicketsAdmin } from "@/server/admin";
 import { STATUS_LABEL } from "@/lib/support-ticket-constants";
@@ -32,94 +44,91 @@ export default async function AdminSupportPage({
 
   return (
     <div className="flex flex-col gap-8 p-6 md:p-10">
-      <header>
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {"ADMIN - SUPPORT TICKETS"}
-        </p>
-        <h1 className="mt-2 font-display text-3xl uppercase tracking-tight md:text-4xl">
-          Tiket Bantuan
-        </h1>
-        <p className="mt-2 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
-          SEMUA TENANT · {total} TIKET COCOK FILTER
-        </p>
-      </header>
-
-      <form method="GET" className="flex flex-wrap items-end gap-3" role="search">
-        <BrutalistSelect
-          name="status"
-          label="Status"
-          defaultValue={q.status ?? ""}
-          options={[
-            { value: "", label: "SEMUA" },
-            ...STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label })),
-          ]}
-        />
-        <button
-          type="submit"
-          className="h-11 border-2 border-ink bg-surface px-4 font-mono text-xs font-bold uppercase tracking-[0.1em] shadow-[2px_2px_0_0_#111111] active:translate-y-[2px]"
-        >
-          Filter tiket
-        </button>
-      </form>
+      <PageHeader
+        eyebrow="ADMIN - SUPPORT TICKETS"
+        title="Tiket Bantuan"
+        meta={`SEMUA TENANT · ${total} TIKET COCOK FILTER`}
+        right={
+          <form method="GET" className="flex flex-wrap items-end gap-3" role="search">
+            <BrutalistSelect
+              name="status"
+              label="Status"
+              defaultValue={q.status ?? ""}
+              options={[
+                { value: "", label: "SEMUA" },
+                ...STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label })),
+              ]}
+            />
+            <Button type="submit" size="sm" variant="secondary">
+              Filter tiket
+            </Button>
+          </form>
+        }
+      />
 
       {items.length === 0 ? (
-        <AdminEmptyState heading="TIDAK ADA TIKET">
-          Belum ada tiket yang cocok dengan filter saat ini.
+        <AdminEmptyState
+          heading="TIDAK ADA TIKET"
+          action={
+            q.status ? (
+              <Link
+                href="/admin/support"
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+              >
+                Hapus filter
+              </Link>
+            ) : null
+          }
+        >
+          {q.status
+            ? "Belum ada tiket dengan status ini. Hapus filter untuk melihat seluruh antrian."
+            : "Belum ada tiket masuk. Tiket muncul di sini setelah owner mengirim laporan dari dashboard."}
         </AdminEmptyState>
       ) : (
-        <div className="overflow-x-auto border-2 border-ink shadow-[4px_4px_0_0_#111111]">
-          <table className="w-full min-w-[960px] border-collapse bg-surface text-left">
-            <thead>
-              <tr className="bg-ink font-mono text-[10px] uppercase tracking-[0.12em] text-bg">
-                <th className="px-4 py-3 font-bold">Subjek</th>
-                <th className="px-4 py-3 font-bold">Bisnis</th>
-                <th className="px-4 py-3 font-bold">Kategori · Area</th>
-                <th className="px-4 py-3 font-bold">Status</th>
-                <th className="px-4 py-3 font-bold">Waktu</th>
-                <th className="px-4 py-3 font-bold">Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((t) => (
-                <tr key={t.id} className="border-t-2 border-ink/10">
-                  <td className="max-w-[280px] px-4 py-3 text-sm font-semibold">{t.subject}</td>
-                  <td className="px-4 py-3 text-sm">{t.business_name}</td>
-                  <td className="px-4 py-3 font-mono text-[10px] uppercase text-muted-foreground">
-                    {t.category} · {t.area}
-                  </td>
-                  <td className="px-4 py-3">
-                    <StatusBadge status={t.status} label={STATUS_LABEL[t.status]} />
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                    {dateFmt.format(new Date(t.created_at))}
-                  </td>
-                  <td className="px-4 py-3">
-                    <AdminActionForm
-                      action={updateSupportTicketStatusAction}
-                      hidden={{ ticketId: t.id }}
-                      submitLabel="SIMPAN"
-                      size="lg"
-                      className="flex items-center gap-2"
-                    >
-                      <select
-                        name="status"
-                        defaultValue={t.status}
-                        aria-label={`Status tiket: ${t.subject}`}
-                        className="h-9 rounded-none border-2 border-ink bg-bg px-2 font-mono text-xs uppercase"
-                      >
-                        {STATUS_OPTIONS.map((s) => (
-                          <option key={s.value} value={s.value}>
-                            {s.label}
-                          </option>
-                        ))}
-                      </select>
-                    </AdminActionForm>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Subjek</TableHead>
+              <TableHead className="hidden md:table-cell">Bisnis</TableHead>
+              <TableHead className="hidden lg:table-cell">Kategori · Area</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="hidden lg:table-cell">Waktu</TableHead>
+              <TableHead>Aksi</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items.map((t) => (
+              <TableRow key={t.id}>
+                <TableCell className="max-w-[280px] text-sm font-semibold">{t.subject}</TableCell>
+                <TableCell className="hidden md:table-cell">{t.business_name}</TableCell>
+                <TableCell className="hidden text-[11px] uppercase text-muted-foreground lg:table-cell">
+                  {t.category} · {t.area}
+                </TableCell>
+                <TableCell>
+                  <StatusBadge status={t.status} label={STATUS_LABEL[t.status]} />
+                </TableCell>
+                <TableCell className="hidden text-muted-foreground lg:table-cell">
+                  {dateFmt.format(new Date(t.created_at))}
+                </TableCell>
+                <TableCell>
+                  <AdminActionForm
+                    action={updateSupportTicketStatusAction}
+                    hidden={{ ticketId: t.id }}
+                    submitLabel="Simpan"
+                    className="flex flex-wrap items-center gap-2"
+                  >
+                    <BrutalistSelect
+                      name="status"
+                      defaultValue={t.status}
+                      aria-label={`Status tiket: ${t.subject}`}
+                      options={STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label }))}
+                    />
+                  </AdminActionForm>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
 
       <AdminPaginator

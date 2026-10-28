@@ -1,8 +1,9 @@
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 /**
- * StatusBadge — pill status Neo-Brutalist (docs/11 §11.4 Badge).
- * Server component; pemetaan warna status → accent token.
+ * StatusBadge — pemetaan status → accent token, memakai geometri `Badge`
+ * supaya hanya ada satu ukuran badge di seluruh aplikasi.
  */
 
 const STYLE: Record<string, string> = {
@@ -21,7 +22,7 @@ const STYLE: Record<string, string> = {
   cancelled: "bg-muted text-muted-foreground",
   expired: "bg-muted text-muted-foreground",
   inactive: "bg-muted text-muted-foreground",
-  offline: "bg-muted text-muted-foreground",
+  offline: "bg-accent",
   refunded: "bg-accent-4 text-bg",
   open: "bg-accent-3",
   needs_action: "bg-accent",
@@ -38,14 +39,11 @@ export function StatusBadge({
   className?: string;
 }) {
   return (
-    <span
-      className={cn(
-        "inline-flex h-6 items-center border-2 border-ink px-2 font-mono text-[10px] font-bold uppercase tracking-[0.1em]",
-        STYLE[status] ?? "bg-muted text-muted-foreground",
-        className
-      )}
+    <Badge
+      variant="outline"
+      className={cn("min-h-6", STYLE[status] ?? "bg-muted text-muted-foreground", className)}
     >
       {label ?? status}
-    </span>
+    </Badge>
   );
 }

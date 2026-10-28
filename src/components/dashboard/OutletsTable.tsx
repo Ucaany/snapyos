@@ -4,6 +4,7 @@ import { Fragment, useActionState, useState } from "react";
 import { ChevronDown, Pencil, Plus, Store } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -11,7 +12,6 @@ import { WilayahPicker } from "@/components/dashboard/WilayahPicker";
 import { DeleteConfirmForm } from "@/components/dashboard/DeleteConfirmForm";
 import { OutletEditForm } from "@/components/dashboard/OutletEditForm";
 import { LABEL_CLASS as labelClass, fieldError } from "@/lib/form-ui";
-import { cn } from "@/lib/utils";
 import type { OutletRow } from "@/server/outlets";
 import type { FormState } from "@/server/auth-actions";
 import { createOutletAction, deleteOutletAction } from "@/server/booth-actions";
@@ -164,23 +164,23 @@ export function OutletsTable({ outlets, canWrite, maxOutlets }: Props) {
         )
       ) : (
         <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
-          <table className="w-full min-w-[760px] border-collapse text-left">
+          <table className="w-full border-collapse text-left md:min-w-[760px]">
             <caption className="sr-only">Daftar outlet</caption>
             <thead>
-              <tr className="border-b-2 border-ink bg-ink font-mono text-[10px] uppercase tracking-[0.12em] text-bg">
+              <tr className="border-b-2 border-ink bg-ink font-mono text-[11px] uppercase tracking-[0.12em] text-bg">
                 <th scope="col" className="px-4 py-3.5 text-right">
                   No
                 </th>
                 <th scope="col" className="px-4 py-3.5">
                   Outlet
                 </th>
-                <th scope="col" className="px-4 py-3.5">
+                <th scope="col" className="hidden px-4 py-3.5 md:table-cell">
                   Wilayah / Alamat
                 </th>
                 <th scope="col" className="px-4 py-3.5">
                   Status
                 </th>
-                <th scope="col" className="px-4 py-3.5 text-right">
+                <th scope="col" className="hidden px-4 py-3.5 text-right md:table-cell">
                   Photobox
                 </th>
                 {canWrite && (
@@ -200,25 +200,16 @@ export function OutletsTable({ outlets, canWrite, maxOutlets }: Props) {
                     <td className="px-4 py-4 font-mono text-sm font-bold uppercase tracking-[0.05em]">
                       {outlet.name}
                     </td>
-                    <td className="px-4 py-4 font-mono text-xs text-muted-foreground">
+                    <td className="hidden px-4 py-4 font-mono text-xs text-muted-foreground md:table-cell">
                       <span className="text-ink">
                         {[outlet.city, outlet.province].filter(Boolean).join(" · ") || "-"}
                       </span>
                       {outlet.address && <span className="mt-1 block">{outlet.address}</span>}
                     </td>
                     <td className="px-4 py-4">
-                      <span
-                        className={cn(
-                          "inline-flex h-6 items-center border-2 border-ink px-2 font-mono text-[10px] font-bold uppercase tracking-[0.1em]",
-                          outlet.status === "active"
-                            ? "bg-accent-3 text-ink"
-                            : "bg-muted text-muted-foreground"
-                        )}
-                      >
-                        {outlet.status}
-                      </span>
+                      <StatusBadge status={outlet.status} />
                     </td>
-                    <td className="px-4 py-4 text-right font-mono text-sm font-bold">
+                    <td className="hidden px-4 py-4 text-right font-mono text-sm font-bold md:table-cell">
                       {outlet.photobox_count}
                     </td>
                     {canWrite && (

@@ -71,7 +71,7 @@ export function PosReportsPanel({ data, timeZone }: { data: PosReportsData; time
   return (
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Metric label="Revenue POS" value={formatIDR(revenue.totalFinal)} />
+        <Metric label="Pendapatan POS" value={formatIDR(revenue.totalFinal)} />
         <Metric label="Transaksi" value={String(revenue.count)} />
         <Metric label="Rata-rata" value={formatIDR(revenue.average)} />
         <Metric
@@ -107,7 +107,7 @@ export function PosReportsPanel({ data, timeZone }: { data: PosReportsData; time
             </div>
           </dl>
           <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.06em] text-muted-foreground">
-            {`diskon ${formatIDR(revenue.totalDiscount)} \u00b7 gross ${formatIDR(revenue.totalGross)}`}
+            {`diskon ${formatIDR(revenue.totalDiscount)} \u00b7 kotor ${formatIDR(revenue.totalGross)}`}
           </p>
         </div>
 
@@ -149,10 +149,10 @@ export function PosReportsPanel({ data, timeZone }: { data: PosReportsData; time
           </p>
         ) : (
           <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
-            <table className="w-full min-w-[420px] border-collapse text-left">
+            <table className="w-full md:min-w-[420px] border-collapse text-left">
               <caption className="sr-only">{`Breakdown POS per ${tab}`}</caption>
               <thead>
-                <tr className="border-b-2 border-ink bg-ink font-mono text-[10px] uppercase tracking-[0.12em] text-bg">
+                <tr className="border-b-2 border-ink bg-ink font-mono text-[11px] uppercase tracking-[0.12em] text-bg">
                   <th scope="col" className="px-4 py-3">
                     {tab === "product"
                       ? "Produk (snapshot)"

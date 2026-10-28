@@ -1,6 +1,7 @@
 "use client";
 
 import { Delete } from "lucide-react";
+import { KIOSK_PAD_KEY } from "@/components/kiosk/ui";
 
 /**
  * OnScreenKeyboard — papan ketik layar sentuh untuk kiosk (offline/voucher).
@@ -16,9 +17,6 @@ const ROWS: string[][] = [
   ["Z", "X", "C", "V", "B", "N", "M"],
 ];
 
-const keyClass =
-  "min-h-11 flex-1 border-2 border-ink bg-surface font-display text-base font-bold uppercase leading-none tracking-[-0.01em] shadow-[2px_2px_0_0_#111111] transition-transform duration-150 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:pointer-events-none disabled:opacity-50";
-
 export function OnScreenKeyboard({
   onKey,
   onBackspace,
@@ -29,20 +27,21 @@ export function OnScreenKeyboard({
   disabled?: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-1.5" role="group" aria-label="Papan ketik layar">
+    <div className="flex flex-col gap-2" role="group" aria-label="Papan ketik layar">
       {ROWS.map((row, i) => {
         // Baris terakhir (Z–M) punya 7 huruf; backspace mengisi lebar dua
-        // tombol supaya total lebarnya sejajar baris A–L (9 satuan).
+        // tombol. flex-wrap + min-w-11 menjamin setiap tombol tetap ≥44px
+        // walau viewport menyempit (360px) — tombol pindah ke baris berikutnya.
         const isLast = i === ROWS.length - 1;
         return (
-          <div key={i} className="flex justify-center gap-1.5">
+          <div key={i} className="flex flex-wrap justify-center gap-2">
             {row.map((key) => (
               <button
                 key={key}
                 type="button"
                 disabled={disabled}
                 onClick={() => onKey(key)}
-                className={keyClass}
+                className={KIOSK_PAD_KEY}
               >
                 {key}
               </button>
@@ -53,7 +52,7 @@ export function OnScreenKeyboard({
                 aria-label="Hapus satu karakter"
                 disabled={disabled}
                 onClick={onBackspace}
-                className={`${keyClass} flex-[2]`}
+                className={`${KIOSK_PAD_KEY} flex-[2]`}
               >
                 <Delete className="mx-auto size-5" aria-hidden />
               </button>

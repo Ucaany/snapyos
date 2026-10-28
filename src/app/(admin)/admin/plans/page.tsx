@@ -1,7 +1,10 @@
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
+import { BrutalistCheckbox } from "@/components/admin/BrutalistCheckbox";
+import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/ui/page-header";
 import { formatIDR } from "@/lib/dashboard-math";
 import { createPlanAction, updatePlanAction } from "@/server/admin-actions";
 import { listPlans } from "@/server/admin";
@@ -53,7 +56,7 @@ function Field({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="font-mono text-[10px] uppercase tracking-[0.12em]">
+      <label htmlFor={id} className="font-mono text-[11px] uppercase tracking-[0.12em]">
         {label}
       </label>
       <Input
@@ -73,17 +76,11 @@ export default async function AdminPlansPage() {
 
   return (
     <div className="flex flex-col gap-8 p-6 md:p-10">
-      <header>
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {"ADMIN - PLANS"}
-        </p>
-        <h1 className="mt-2 font-display text-3xl uppercase tracking-tight md:text-4xl">
-          Manajemen Plan
-        </h1>
-        <p className="mt-2 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
-          HARGA · LIMIT SESI KONKUREN · FEATURE FLAGS · PLATFORM FEE
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="ADMIN - PLANS"
+        title="Manajemen Paket"
+        meta="HARGA · LIMIT SESI KONKUREN · FEATURE FLAGS · PLATFORM FEE"
+      />
 
       <Card>
         <CardHeader>
@@ -97,7 +94,7 @@ export default async function AdminPlansPage() {
           <AdminActionForm
             action={createPlanAction}
             submitLabel="Buat Plan"
-            className="grid grid-cols-2 gap-4 md:grid-cols-4"
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4"
           >
             <Field id="new-code" label="Kode" name="code" placeholder="starter" />
             <Field id="new-name" label="Nama" name="name" placeholder="Starter" />
@@ -172,52 +169,35 @@ export default async function AdminPlansPage() {
               type="number"
               defaultValue={0}
             />
-            <div className="flex flex-col gap-1">
-              <label
-                htmlFor="new-cycle"
-                className="font-mono text-[10px] uppercase tracking-[0.12em]"
-              >
-                Siklus Billing
-              </label>
-              <select
-                id="new-cycle"
-                name="billing_cycle"
-                defaultValue="monthly"
-                className="h-8 w-full min-w-0 rounded-none border-2 border-ink bg-surface px-2.5 text-sm text-ink outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ink"
-              >
-                <option value="monthly">Bulanan</option>
-                <option value="yearly">Tahunan</option>
-              </select>
-            </div>
-            <div className="col-span-2 flex flex-col gap-2 md:col-span-4">
-              <fieldset className="flex flex-wrap gap-3">
-                <legend className="mb-2 w-full font-mono text-[10px] uppercase tracking-[0.12em]">
+            <BrutalistSelect
+              id="new-cycle"
+              name="billing_cycle"
+              label="Siklus Billing"
+              defaultValue="monthly"
+              options={[
+                { value: "monthly", label: "Bulanan" },
+                { value: "yearly", label: "Tahunan" },
+              ]}
+            />
+            <div className="col-span-1 flex flex-col gap-2 sm:col-span-2 md:col-span-4">
+              <fieldset className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                <legend className="mb-2 w-full font-mono text-[11px] uppercase tracking-[0.12em]">
                   Feature flags (default: nonaktif)
                 </legend>
                 {FEATURE_KEYS.map((key) => (
-                  <label key={key} className="flex items-center gap-2 font-mono text-xs uppercase">
-                    <input type="hidden" name={`feature_${key}`} value="false" />
-                    <input
-                      type="checkbox"
-                      name={`feature_${key}`}
-                      value="true"
-                      className="size-4 accent-[#ffd400]"
-                    />
-                    {FEATURE_LABELS[key] ?? key.replace(/_/g, " ")}
-                  </label>
+                  <BrutalistCheckbox
+                    key={key}
+                    name={`feature_${key}`}
+                    label={FEATURE_LABELS[key] ?? key.replace(/_/g, " ")}
+                    defaultChecked={false}
+                  />
                 ))}
               </fieldset>
-              <label className="flex items-center gap-2 font-mono text-xs uppercase">
-                <input type="hidden" name="is_active" value="false" />
-                <input
-                  type="checkbox"
-                  name="is_active"
-                  value="true"
-                  defaultChecked
-                  className="size-4 accent-[#ffd400]"
-                />
-                Plan aktif (bisa dipilih owner)
-              </label>
+              <BrutalistCheckbox
+                name="is_active"
+                label="Plan aktif (bisa dipilih owner)"
+                defaultChecked
+              />
             </div>
           </AdminActionForm>
         </CardContent>
@@ -264,7 +244,7 @@ export default async function AdminPlansPage() {
                   { label: "Fee flat", value: formatIDR(p.platform_fee_flat) },
                 ].map((cell) => (
                   <div key={cell.label} className="flex flex-col gap-1 bg-surface p-3">
-                    <dt className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                    <dt className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
                       {cell.label}
                     </dt>
                     <dd className="font-mono text-xs font-bold uppercase">{cell.value}</dd>
@@ -275,7 +255,7 @@ export default async function AdminPlansPage() {
                 action={updatePlanAction}
                 hidden={{ planId: p.id }}
                 submitLabel="Simpan Perubahan"
-                className="grid grid-cols-2 gap-4 md:grid-cols-4"
+                className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4"
               >
                 <Field id={`name-${p.id}`} label="Nama" name="name" defaultValue={p.name} />
                 <Field
@@ -349,58 +329,35 @@ export default async function AdminPlansPage() {
                   type="number"
                   defaultValue={p.platform_fee_flat}
                 />
-                <div className="flex flex-col gap-1">
-                  <label
-                    htmlFor={`cycle-${p.id}`}
-                    className="font-mono text-[10px] uppercase tracking-[0.12em]"
-                  >
-                    Siklus Billing
-                  </label>
-                  <select
-                    id={`cycle-${p.id}`}
-                    name="billing_cycle"
-                    defaultValue={p.billing_cycle}
-                    className="h-8 w-full min-w-0 rounded-none border-2 border-ink bg-surface px-2.5 text-sm text-ink outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ink"
-                  >
-                    <option value="monthly">Bulanan</option>
-                    <option value="yearly">Tahunan</option>
-                  </select>
-                </div>
-                <div className="col-span-2 flex flex-col gap-2 md:col-span-4">
-                  <fieldset className="flex flex-wrap gap-3">
-                    <legend className="mb-2 w-full font-mono text-[10px] uppercase tracking-[0.12em]">
+                <BrutalistSelect
+                  id={`cycle-${p.id}`}
+                  name="billing_cycle"
+                  label="Siklus Billing"
+                  defaultValue={p.billing_cycle}
+                  options={[
+                    { value: "monthly", label: "Bulanan" },
+                    { value: "yearly", label: "Tahunan" },
+                  ]}
+                />
+                <div className="col-span-1 flex flex-col gap-2 sm:col-span-2 md:col-span-4">
+                  <fieldset className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    <legend className="mb-2 w-full font-mono text-[11px] uppercase tracking-[0.12em]">
                       Feature flags
                     </legend>
                     {FEATURE_KEYS.map((key) => (
-                      <label
+                      <BrutalistCheckbox
                         key={key}
-                        className="flex items-center gap-2 font-mono text-xs uppercase"
-                      >
-                        {/* hidden "false" dulu → unchecked tetap terkirim (H2 audit) */}
-                        <input type="hidden" name={`feature_${key}`} value="false" />
-                        <input
-                          type="checkbox"
-                          name={`feature_${key}`}
-                          value="true"
-                          defaultChecked={Boolean(p.features?.[key])}
-                          className="size-4 accent-[#ffd400]"
-                        />
-                        {FEATURE_LABELS[key] ?? key.replace(/_/g, " ")}
-                      </label>
+                        name={`feature_${key}`}
+                        label={FEATURE_LABELS[key] ?? key.replace(/_/g, " ")}
+                        defaultChecked={Boolean(p.features?.[key])}
+                      />
                     ))}
                   </fieldset>
-                  <label className="flex items-center gap-2 font-mono text-xs uppercase">
-                    {/* hidden "false" dulu → unchecked tetap terkirim (H2 audit) */}
-                    <input type="hidden" name="is_active" value="false" />
-                    <input
-                      type="checkbox"
-                      name="is_active"
-                      value="true"
-                      defaultChecked={p.is_active}
-                      className="size-4 accent-[#ffd400]"
-                    />
-                    Plan aktif (bisa dipilih owner)
-                  </label>
+                  <BrutalistCheckbox
+                    name="is_active"
+                    label="Plan aktif (bisa dipilih owner)"
+                    defaultChecked={p.is_active}
+                  />
                 </div>
               </AdminActionForm>
             </div>

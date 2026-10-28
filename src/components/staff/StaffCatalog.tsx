@@ -7,22 +7,24 @@ import {
 } from "lucide-react";
 
 import {
-  StaffEmptyState,
   StaffMeta,
   StaffPanel,
   StaffPanelHeader,
+  STAFF_CARD_SURFACE,
 } from "@/components/staff/StaffPrimitives";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
+import { EmptyState } from "@/components/ui/empty-state";
 import { formatDate, formatIDR } from "@/lib/dashboard-math";
 import type { OutletRow } from "@/server/outlets";
 import type { PackageRow } from "@/server/packages";
 import type { PhotoboxRow } from "@/server/photoboxes";
 import type { TemplateRow } from "@/server/templates";
+import { cn } from "@/lib/utils";
 
 const BOOTH_STATUS_LABEL: Record<string, string> = {
-  online: "ONLINE",
-  offline: "OFFLINE",
-  maintenance: "MAINT",
+  online: "Online",
+  offline: "Offline",
+  maintenance: "Perawatan",
 };
 
 export function StaffBoothsBoard({
@@ -36,7 +38,8 @@ export function StaffBoothsBoard({
 }) {
   if (photoboxes.length === 0) {
     return (
-      <StaffEmptyState
+      <EmptyState
+        size="sm"
         icon={Camera}
         eyebrow="BELUM ADA BOOTH"
         title="Belum ada booth yang di-assign ke Anda."
@@ -52,24 +55,24 @@ export function StaffBoothsBoard({
         return (
           <li
             key={booth.id}
-            className="flex flex-col border-2 border-ink bg-surface shadow-[3px_3px_0_0_#111111]"
+            className={cn("flex flex-col", STAFF_CARD_SURFACE)}
           >
             <div className="flex flex-wrap items-start justify-between gap-2 border-b-2 border-ink bg-bg px-4 py-3">
               <div className="min-w-0">
-                <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
+                <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                   {booth.outlet_name ?? "TANPA OUTLET"}
                 </p>
-                <h2 className="truncate font-display text-lg uppercase leading-tight tracking-tight">
+                <h3 className="truncate font-display text-lg uppercase leading-tight tracking-tight">
                   {booth.name}
-                </h2>
+                </h3>
               </div>
               <StatusBadge
                 status={booth.status}
-                label={BOOTH_STATUS_LABEL[booth.status] ?? booth.status.toUpperCase()}
+                label={BOOTH_STATUS_LABEL[booth.status] ?? booth.status}
               />
             </div>
 
-            <dl className="grid gap-3 px-4 py-3 sm:grid-cols-2">
+            <dl className="grid gap-3 px-4 py-3 md:grid-cols-2">
               <StaffMeta label="URL PERANGKAT">
                 <span className="break-all">/p/{businessSlug}/{booth.slug}</span>
               </StaffMeta>
@@ -84,8 +87,8 @@ export function StaffBoothsBoard({
               </StaffMeta>
             </dl>
 
-            <div className="mt-auto border-t-2 border-ink/15 px-4 py-3">
-              <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
+            <div className="mt-auto border-t-2 border-ink/20 px-4 py-3">
+              <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                 PERANGKAT TERDETEKSI
               </p>
               <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
@@ -93,28 +96,28 @@ export function StaffBoothsBoard({
                   devices.map((device) => (
                     <span
                       key={device}
-                      className="border-2 border-ink bg-bg px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.06em]"
+                      className="border-2 border-ink bg-bg px-1.5 py-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.06em]"
                     >
                       {device}
                     </span>
                   ))
                 ) : (
-                  <span className="font-mono text-[10px] uppercase tracking-[0.06em] text-muted-foreground">
+                  <span className="font-mono text-[11px] uppercase tracking-[0.06em] text-muted-foreground">
                     Belum ada perangkat terdeteksi
                   </span>
                 )}
                 {booth.chroma_key_enabled ? (
-                  <span className="border-2 border-ink bg-accent px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.06em]">
+                  <span className="border-2 border-ink bg-accent px-1.5 py-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.06em]">
                     CHROMA KEY
                   </span>
                 ) : null}
               </div>
               {!booth.has_exit_pin ? (
-                <p className="mt-2 border-2 border-destructive bg-destructive/10 px-2 py-1.5 font-mono text-[9px] font-bold uppercase leading-snug tracking-[0.06em]">
+                <p className="mt-2 border-2 border-destructive bg-destructive/10 px-2 py-1.5 font-mono text-[11px] font-bold uppercase leading-snug tracking-[0.06em]">
                   PIN keluar kiosk belum diset. Minta owner mengaturnya sebelum booth dipakai.
                 </p>
               ) : booth.has_legacy_exit_pin ? (
-                <p className="mt-2 border-2 border-ink bg-accent px-2 py-1.5 font-mono text-[9px] font-bold uppercase leading-snug tracking-[0.06em]">
+                <p className="mt-2 border-2 border-ink bg-accent px-2 py-1.5 font-mono text-[11px] font-bold uppercase leading-snug tracking-[0.06em]">
                   PIN legacy terdeteksi. Minta owner menyetel ulang PIN.
                 </p>
               ) : null}
@@ -129,7 +132,8 @@ export function StaffBoothsBoard({
 export function StaffOutletsBoard({ outlets }: { outlets: OutletRow[] }) {
   if (outlets.length === 0) {
     return (
-      <StaffEmptyState
+      <EmptyState
+        size="sm"
         icon={Store}
         eyebrow="BELUM ADA OUTLET"
         title="Belum ada outlet yang bisa Anda akses."
@@ -143,30 +147,30 @@ export function StaffOutletsBoard({ outlets }: { outlets: OutletRow[] }) {
       {outlets.map((outlet, index) => (
         <li
           key={outlet.id}
-          className="flex flex-col border-2 border-ink bg-surface shadow-[3px_3px_0_0_#111111]"
+          className={cn("flex flex-col", STAFF_CARD_SURFACE)}
         >
           <div className="flex flex-wrap items-start justify-between gap-2 border-b-2 border-ink bg-bg px-4 py-3">
             <div className="flex min-w-0 items-start gap-3">
-              <span className="flex size-8 shrink-0 items-center justify-center border-2 border-ink bg-accent font-mono text-[10px] font-bold">
+              <span className="flex size-8 shrink-0 items-center justify-center border-2 border-ink bg-accent font-mono text-[11px] font-bold">
                 {String(index + 1).padStart(2, "0")}
               </span>
               <div className="min-w-0">
-                <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
+                <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                   OUTLET
                 </p>
-                <h2 className="truncate font-display text-lg uppercase leading-tight tracking-tight">
+                <h3 className="truncate font-display text-lg uppercase leading-tight tracking-tight">
                   {outlet.name}
-                </h2>
+                </h3>
               </div>
             </div>
-            <StatusBadge status={outlet.status} />
+            <StatusBadge status={outlet.status} label={outlet.status === "active" ? "Aktif" : "Nonaktif"} />
           </div>
-          <dl className="grid gap-3 px-4 py-3 sm:grid-cols-2">
+          <dl className="grid gap-3 px-4 py-3 md:grid-cols-2">
             <StaffMeta label="WILAYAH">
               {[outlet.city, outlet.province].filter(Boolean).join(" · ") || "-"}
             </StaffMeta>
             <StaffMeta label="PHOTOBOX">{String(outlet.photobox_count).padStart(2, "0")}</StaffMeta>
-            <StaffMeta label="ALAMAT" className="sm:col-span-2">
+            <StaffMeta label="ALAMAT" className="md:col-span-2">
               {outlet.address ?? "-"}
             </StaffMeta>
           </dl>
@@ -185,7 +189,8 @@ export function StaffPackagesBoard({
 }) {
   if (packages.length === 0) {
     return (
-      <StaffEmptyState
+      <EmptyState
+        size="sm"
         icon={Package}
         eyebrow="BELUM ADA PACKAGE"
         title="Belum ada paket untuk booth yang Anda akses."
@@ -199,28 +204,28 @@ export function StaffPackagesBoard({
       {packages.map((pkg) => (
         <li
           key={pkg.id}
-          className="flex flex-col border-2 border-ink bg-surface shadow-[3px_3px_0_0_#111111]"
+          className={cn("flex flex-col", STAFF_CARD_SURFACE)}
         >
           <div className="flex flex-wrap items-start justify-between gap-3 border-b-2 border-ink bg-bg px-4 py-3">
             <div className="min-w-0">
-              <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
+              <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                 PACKAGE · {pkg.capture_mode.toUpperCase()}
               </p>
-              <h2 className="truncate font-display text-lg uppercase leading-tight tracking-tight">
+              <h3 className="truncate font-display text-lg uppercase leading-tight tracking-tight">
                 {pkg.name}
-              </h2>
+              </h3>
               {pkg.description ? (
-                <p className="mt-1 line-clamp-2 font-mono text-[10px] leading-relaxed text-muted-foreground">
+                <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
                   {pkg.description}
                 </p>
               ) : null}
             </div>
-            <StatusBadge status={pkg.is_active ? "active" : "inactive"} />
+            <StatusBadge status={pkg.is_active ? "active" : "inactive"} label={pkg.is_active ? "Aktif" : "Nonaktif"} />
           </div>
 
           <div className="flex flex-wrap items-end justify-between gap-3 px-4 py-3">
             <div>
-              <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
+              <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                 HARGA
               </p>
               <p className="font-mono text-2xl font-bold leading-none">{formatIDR(pkg.price)}</p>
@@ -232,7 +237,7 @@ export function StaffPackagesBoard({
             </div>
           </div>
 
-          <dl className="mt-auto grid gap-3 border-t-2 border-ink/15 px-4 py-3 sm:grid-cols-2">
+          <dl className="mt-auto grid gap-3 border-t-2 border-ink/20 px-4 py-3 md:grid-cols-2">
             <StaffMeta label="ASSIGN">
               {`${pkg.template_count} template · ${pkg.outlet_count} outlet · ${pkg.photobox_count} booth`}
             </StaffMeta>
@@ -247,7 +252,8 @@ export function StaffPackagesBoard({
 export function StaffTemplatesBoard({ templates }: { templates: TemplateRow[] }) {
   if (templates.length === 0) {
     return (
-      <StaffEmptyState
+      <EmptyState
+        size="sm"
         icon={ImageIcon}
         eyebrow="BELUM ADA TEMPLATE"
         title="Belum ada frame yang tersedia untuk Anda."
@@ -257,13 +263,20 @@ export function StaffTemplatesBoard({ templates }: { templates: TemplateRow[] })
   }
 
   return (
-    <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-label="Daftar template">
+    <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" aria-label="Daftar template">
       {templates.map((template) => (
         <li
           key={template.id}
-          className="flex flex-col border-2 border-ink bg-surface shadow-[3px_3px_0_0_#111111]"
+          className={cn("flex flex-col", STAFF_CARD_SURFACE)}
         >
-          <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden border-b-2 border-ink bg-[repeating-linear-gradient(45deg,#FFFDF5_0_10px,#F4F4F0_10px_20px)]">
+          <div
+            className={cn(
+              "relative flex aspect-[4/3] items-center justify-center overflow-hidden border-b-2 border-ink",
+              template.preview_url
+                ? "bg-muted"
+                : "bg-[repeating-linear-gradient(45deg,#FFFDF5_0_10px,#F4F4F0_10px_20px)]"
+            )}
+          >
             {template.preview_url ? (
               <Image
                 src={template.preview_url}
@@ -275,20 +288,20 @@ export function StaffTemplatesBoard({ templates }: { templates: TemplateRow[] })
                 unoptimized
               />
             ) : (
-              <span className="px-3 text-center font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">
+              <span className="px-3 text-center font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
                 PREVIEW TIDAK TERSEDIA
               </span>
             )}
-            <span className="absolute left-2 top-2 border-2 border-ink bg-bg px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.08em]">
+            <span className="absolute left-2 top-2 border-2 border-ink bg-bg px-1.5 py-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.08em]">
               {template.category}
             </span>
           </div>
           <div className="flex flex-1 flex-col gap-3 p-4">
             <div className="flex items-start justify-between gap-2">
-              <h2 className="min-w-0 font-display text-base uppercase leading-tight tracking-tight">
+              <h3 className="min-w-0 font-display text-base uppercase leading-tight tracking-tight">
                 {template.name}
-              </h2>
-              <StatusBadge status={template.is_active ? "active" : "inactive"} />
+              </h3>
+              <StatusBadge status={template.is_active ? "active" : "inactive"} label={template.is_active ? "Aktif" : "Nonaktif"} />
             </div>
             <dl className="grid grid-cols-2 gap-2">
               <StaffMeta label="SLOT">
@@ -299,11 +312,11 @@ export function StaffTemplatesBoard({ templates }: { templates: TemplateRow[] })
               </StaffMeta>
             </dl>
             {template.is_active && template.assigned === false ? (
-              <p className="border-2 border-destructive bg-destructive/10 px-2 py-1.5 font-mono text-[9px] font-bold uppercase leading-snug tracking-[0.06em]">
+              <p className="border-2 border-destructive bg-destructive/10 px-2 py-1.5 font-mono text-[11px] font-bold uppercase leading-snug tracking-[0.06em]">
                 Belum di-assign ke paket, jadi tidak muncul di kiosk.
               </p>
             ) : (
-              <p className="border-2 border-ink/20 bg-muted px-2 py-1.5 font-mono text-[9px] uppercase leading-snug tracking-[0.06em] text-muted-foreground">
+              <p className="border-2 border-ink/20 bg-muted px-2 py-1.5 font-mono text-[11px] uppercase leading-snug tracking-[0.06em] text-muted-foreground">
                 {template.assigned_packages && template.assigned_packages.length > 0
                   ? `Dipakai: ${template.assigned_packages.map((p) => p.name).join(", ")}`
                   : "Tampil di semua paket booth Anda."}
@@ -335,8 +348,8 @@ export function StaffCatalogShell({
 
 function PackageCount({ label, value }: { label: string; value: number | string }) {
   return (
-    <div className="min-w-[3.25rem] border-2 border-ink bg-bg px-2 py-1 text-center">
-      <p className="font-mono text-[8px] uppercase tracking-[0.1em] text-muted-foreground">
+    <div className="min-w-[3.5rem] border-2 border-ink bg-bg px-2 py-1 text-center">
+      <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
         {label}
       </p>
       <p className="font-mono text-sm font-bold leading-none">{value}</p>

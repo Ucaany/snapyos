@@ -38,7 +38,7 @@ export function BrutalistCheckbox({
     <label
       htmlFor={cbId}
       className={cn(
-        "flex items-start gap-2 border-2 border-ink/20 bg-muted/40 p-3 font-mono text-xs uppercase tracking-[0.1em]",
+        "flex min-h-11 items-start gap-2 border-2 border-ink/20 bg-muted/40 p-3 font-mono text-xs uppercase tracking-[0.1em]",
         wrapperClassName
       )}
     >
@@ -56,7 +56,7 @@ export function BrutalistCheckbox({
       <span className="flex flex-col gap-0.5">
         <span className="font-bold">{label}</span>
         {description ? (
-          <span className="text-[10px] normal-case tracking-normal text-muted-foreground">
+          <span className="text-[11px] normal-case tracking-normal text-muted-foreground">
             {description}
           </span>
         ) : null}

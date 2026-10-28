@@ -37,9 +37,6 @@ export function FeatureError({ title, description, error, reset }: FeatureErrorP
         className="flex max-w-xl flex-col items-start gap-4 border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111]"
       >
         <h1 className="font-display text-2xl uppercase tracking-tight text-ink">{title}</h1>
-        <p className="font-mono text-sm font-bold uppercase tracking-[0.15em] text-destructive">
-          {`${title}`}
-        </p>
         <p className="text-sm leading-relaxed text-muted-foreground">{description}</p>
         <p className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
           {error.digest ? `REF ${error.digest}` : "REF -"}
