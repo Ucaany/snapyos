@@ -5,6 +5,15 @@ import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { toggleGatewayAction } from "@/server/admin-actions";
 import { getGatewayState, GATEWAY_PROVIDERS } from "@/server/admin";
 
@@ -28,17 +37,11 @@ export default async function AdminGatewaysPage({
 
   return (
     <div className="flex flex-col gap-8 p-6 md:p-10">
-      <header>
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {"ADMIN - PAYMENT GATEWAYS"}
-        </p>
-        <h1 className="mt-2 font-display text-3xl uppercase tracking-tight md:text-4xl">
-          Payment Gateway
-        </h1>
-        <p className="mt-2 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
-          {state.total} CREDENTIAL · ENABLE/DISABLE GLOBAL PER PROVIDER
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="ADMIN - PAYMENT GATEWAYS"
+        title="Payment Gateway"
+        meta={`${state.total} CREDENTIAL · ENABLE/DISABLE GLOBAL PER PROVIDER`}
+      />
 
       <Card>
         <CardHeader>
@@ -112,36 +115,34 @@ export default async function AdminGatewaysPage({
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto border-2 border-ink shadow-[4px_4px_0_0_#111111]">
-          <table className="w-full min-w-[960px] border-collapse bg-surface text-left">
-            <thead>
-              <tr className="bg-ink font-mono text-[10px] uppercase tracking-[0.12em] text-bg">
-                <th className="px-4 py-3 font-bold">Bisnis</th>
-                <th className="px-4 py-3 font-bold">Provider</th>
-                <th className="px-4 py-3 font-bold">Merchant ID</th>
-                <th className="px-4 py-3 font-bold">Environment</th>
-                <th className="px-4 py-3 font-bold">Status</th>
-                <th className="px-4 py-3 font-bold">Dibuat</th>
-              </tr>
-            </thead>
-            <tbody>
-              {state.credentials.map((c) => (
-                <tr key={c.id} className="border-t-2 border-ink/10">
-                  <td className="px-4 py-3 text-sm font-bold">{c.business_name}</td>
-                  <td className="px-4 py-3 font-mono text-xs uppercase font-bold">{c.provider}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{c.merchant_id}</td>
-                  <td className="px-4 py-3 font-mono text-xs uppercase">{c.environment}</td>
-                  <td className="px-4 py-3">
-                    <StatusBadge status={c.is_active ? "active" : "inactive"} />
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                    {dateFmt.format(new Date(c.created_at))}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Bisnis</TableHead>
+              <TableHead>Provider</TableHead>
+              <TableHead className="hidden md:table-cell">Merchant ID</TableHead>
+              <TableHead className="hidden lg:table-cell">Environment</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="hidden lg:table-cell">Dibuat</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {state.credentials.map((c) => (
+              <TableRow key={c.id}>
+                <TableCell className="text-sm font-bold">{c.business_name}</TableCell>
+                <TableCell className="font-bold uppercase">{c.provider}</TableCell>
+                <TableCell className="hidden md:table-cell">{c.merchant_id}</TableCell>
+                <TableCell className="hidden uppercase lg:table-cell">{c.environment}</TableCell>
+                <TableCell>
+                  <StatusBadge status={c.is_active ? "active" : "inactive"} />
+                </TableCell>
+                <TableCell className="hidden text-muted-foreground lg:table-cell">
+                  {dateFmt.format(new Date(c.created_at))}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
 
       {totalPages > 1 ? (

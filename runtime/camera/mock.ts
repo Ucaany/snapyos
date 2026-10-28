@@ -4,9 +4,10 @@
  * kegagalan produk, bukan sekadar bug.
  */
 
+import type { CameraRole } from "../config.ts";
 import type { CameraAdapter, CameraStatus } from "./types.ts";
 
-export function createMockCamera(): CameraAdapter {
+export function createMockCamera(role: CameraRole = "stills"): CameraAdapter {
   let counter = 0;
 
   async function frame(label: string): Promise<Buffer> {
@@ -33,12 +34,12 @@ export function createMockCamera(): CameraAdapter {
     },
 
     async preview(): Promise<Buffer> {
-      return frame("preview");
+      return frame(`${role} preview`);
     },
 
     async capture(): Promise<Buffer> {
       counter += 1;
-      return frame(`capture #${counter}`);
+      return frame(`${role} capture #${counter}`);
     },
   };
 }

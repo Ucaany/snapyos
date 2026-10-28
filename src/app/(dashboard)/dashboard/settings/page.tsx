@@ -5,10 +5,7 @@ import { BusinessProfileEditor } from "@/components/dashboard/BusinessProfileEdi
 import { CheckoutSettingsEditor } from "@/components/dashboard/CheckoutSettingsEditor";
 import { RetentionSettingsEditor } from "@/components/dashboard/RetentionSettingsEditor";
 import { StorageUsageCard } from "@/components/dashboard/StorageUsageCard";
-import { ThemeSwitcher } from "@/components/theme/ThemeSwitcher";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
-import { getDashboardTheme } from "@/lib/dashboard-theme-server";
 import { can } from "@/lib/rbac";
 import { getActiveBusiness, requireUser } from "@/lib/tenant";
 import { getBusinessProfile, getSettings } from "@/server/business";
@@ -31,7 +28,6 @@ export default async function SettingsPage() {
   if (!active) redirect("/dashboard");
 
   const canWrite = can(active.role, "business:update");
-  const theme = await getDashboardTheme();
 
   let qrisExpiryMinutes: number | null = null;
   let retentionDays: number | null = null;
@@ -76,10 +72,9 @@ export default async function SettingsPage() {
   return (
     <div className="flex flex-col gap-8 p-6 md:p-10">
       <PageHeader
-        eyebrow="PENGATURAN: PROFIL, STORAGE & KEBIJAKAN"
+        eyebrow="PROFIL · PENYIMPANAN · CHECKOUT · RETENSI"
         title="Pengaturan"
-        description="Profil bisnis, kuota penyimpanan, durasi kedaluwarsa QRIS, dan masa simpan hasil foto (1–3 hari). Kustomisasi tampilan kiosk ada di Branding & Kiosk; chroma key template diatur dari menu Template."
-        meta="[ 4 MODUL ] PROFIL · STORAGE · CHECKOUT · RETENTION"
+        description="Profil bisnis, kuota penyimpanan, durasi kedaluwarsa QRIS, dan masa simpan hasil foto (1 sampai 3 hari). Kustomisasi tampilan kiosk ada di Branding & Kiosk; chroma key template diatur dari menu Template."
       />
 
       <div className="grid max-w-6xl grid-cols-1 gap-8 lg:grid-cols-2">
@@ -87,15 +82,6 @@ export default async function SettingsPage() {
         <StorageUsageCard usage={storage} />
         <CheckoutSettingsEditor qrisExpiryMinutes={qrisExpiryMinutes} canWrite={canWrite} />
         <RetentionSettingsEditor retentionDays={retentionDays} canWrite={canWrite} />
-        <Card className="gap-3 p-5">
-          <CardHeader className="gap-1">
-            <CardTitle className="text-base">Tampilan</CardTitle>
-            <CardDescription>
-              Pilih tema dashboard untuk browser ini. Pilihan tidak mengubah tampilan kiosk.
-            </CardDescription>
-          </CardHeader>
-          <ThemeSwitcher current={theme} />
-        </Card>
       </div>
     </div>
   );

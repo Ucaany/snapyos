@@ -175,7 +175,11 @@ export async function createCheckout(businessSlug: string, input: CheckoutCreate
     discount_amount: checkout.discount_amount,
     final_amount: checkout.final_amount,
     voucher: voucher ? { code: voucher.code, discount_amount: voucher.discount } : null,
-    payment_methods: await listKioskPaymentMethods(device.businessId, device.photobox.id),
+    payment_methods: await listKioskPaymentMethods(
+      device.businessId,
+      device.photobox.id,
+      checkout.final_amount
+    ),
   };
 }
 

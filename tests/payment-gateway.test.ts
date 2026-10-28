@@ -90,9 +90,16 @@ test("Midtrans: settlement + accept = paid", () => {
   assert.equal(mapMidtransStatus("settlement", "accept"), "paid");
 });
 
-test("Midtrans: settlement without fraud_status accept = NOT paid", () => {
-  assert.equal(mapMidtransStatus("settlement", null), "failed");
-  assert.equal(mapMidtransStatus("settlement"), "failed");
+test("Midtrans: settlement tanpa fraud_status tetap paid (docs: settlement = dana masuk)", () => {
+  // QRIS/e-wallet/VA tidak mengirim fraud_status. settlement adalah status final
+  // "dana sudah dikreditkan" menurut reference/transaction-status Midtrans.
+  assert.equal(mapMidtransStatus("settlement", null), "paid");
+  assert.equal(mapMidtransStatus("settlement"), "paid");
+});
+
+test("Midtrans: fraud_status deny ditolak walau status settlement/capture", () => {
+  assert.equal(mapMidtransStatus("settlement", "deny"), "failed");
+  assert.equal(mapMidtransStatus("capture", "deny"), "failed");
 });
 
 test("Midtrans: capture + challenge = NOT paid (failed)", () => {

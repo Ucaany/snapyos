@@ -13,10 +13,36 @@ import type { KioskVisualStyle } from "@/lib/kiosk-types";
 export const KIOSK_FOCUS =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
 
-/** Gutter horizontal aman: hormati setelan owner, tetapi jangan sampai 0px. */
+/**
+ * Gutter horizontal aman: hormati setelan owner, tetapi dijaga pada rentang
+ * 16–48px. Batas atas mencegah padding owner yang ekstrem (≤96px) menyisakan
+ * konten terlalu sempit di layar 360px sehingga memicu overflow horizontal.
+ */
 export function kioskGutter(padding: number | undefined): number {
-  return Math.max(16, padding ?? 24);
+  return Math.min(48, Math.max(16, padding ?? 24));
 }
+
+/**
+ * Kontrak isian (input/select/textarea) kiosk. Satu sumber kelas supaya border,
+ * tinggi target 44px, dan focus ring tidak diduplikasi di tiap layar.
+ */
+export const KIOSK_FIELD =
+  "min-h-11 w-full min-w-0 border-2 border-ink px-3 text-sm text-ink outline-none placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:pointer-events-none disabled:opacity-50";
+
+/**
+ * Isian tanpa border/latar sendiri — untuk input di dalam wrapper yang sudah
+ * ber-border (mis. search field dengan ikon). Fokus ditampilkan oleh wrapper
+ * lewat `focus-within`.
+ */
+export const KIOSK_FIELD_BARE =
+  "h-11 w-full min-w-0 flex-1 border-0 bg-transparent px-1 text-sm text-ink outline-none placeholder:text-muted-foreground disabled:pointer-events-none disabled:opacity-50";
+
+/**
+ * Tombol papan ketik layar sentuh. `min-w-11` (44px) + `flex-wrap` pemanggil
+ * menjamin target tetap 44px walau viewport menyempit.
+ */
+export const KIOSK_PAD_KEY =
+  "inline-flex min-h-11 min-w-11 flex-1 items-center justify-center border-2 border-ink bg-surface px-1 font-display text-base font-bold uppercase leading-none tracking-[-0.01em] shadow-hard-sm transition-transform duration-150 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:pointer-events-none disabled:opacity-50";
 
 /**
  * Ukuran judul responsif yang tetap menghormati `font_scale` owner.
@@ -156,11 +182,7 @@ export function KioskCard({
 }) {
   return (
     <div
-      className={cn(
-        "border-2 border-ink bg-surface",
-        elevated && "shadow-[4px_4px_0_0_#111111]",
-        className
-      )}
+      className={cn("border-2 border-ink bg-surface", elevated && "shadow-hard", className)}
       style={style}
     >
       {children}
@@ -179,14 +201,21 @@ const ACTION_SIZES: Record<ActionSize, string> = {
   icon: "size-12 p-0",
 };
 
+/**
+ * Kontrak tombol kiosk customer. Berbeda dari primitif dashboard
+ * (`ui/button` = kontrol sistem, sans, hard shadow 2px) karena aksi customer
+ * memakai font display uppercase dan target ≥44px. Perbedaan ini disengaja:
+ * satu permukaan customer, satu permukaan sistem. Keduanya memakai token
+ * `shadow-hard`/`shadow-hard-sm` dan border 2px yang sama.
+ */
 const ACTION_TONES: Record<ActionTone, string> = {
   primary:
-    "border-ink bg-accent text-ink shadow-[4px_4px_0_0_#111111] hover:shadow-[2px_2px_0_0_#111111] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none",
+    "border-ink bg-accent text-ink shadow-hard hover:shadow-hard-sm active:translate-x-[2px] active:translate-y-[2px] active:shadow-none",
   secondary:
-    "border-ink bg-surface text-ink shadow-[3px_3px_0_0_#111111] hover:shadow-[1px_1px_0_0_#111111] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none",
+    "border-ink bg-surface text-ink shadow-hard-sm hover:shadow-none active:translate-x-[2px] active:translate-y-[2px] active:shadow-none",
   ghost: "border-transparent bg-transparent text-ink hover:bg-muted",
   danger:
-    "border-destructive bg-destructive text-destructive-foreground shadow-[3px_3px_0_0_#111111] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none",
+    "border-destructive bg-destructive text-destructive-foreground shadow-hard-sm active:translate-x-[2px] active:translate-y-[2px] active:shadow-none",
 };
 
 export function KioskAction({
@@ -256,24 +285,30 @@ export function KioskChip({
   );
 }
 
-/** Kerangka layar: satu sumbu scroll internal, gutter dari setelan owner. */
-export function KioskScreen({
-  children,
+/** Skeleton loading bersama (DESIGN.md §4: skeletal, bukan spinner generik). */
+export function KioskLoading({
+  label = "Memuat",
+  rows = 3,
   className,
-  style,
-  gutter,
 }: {
-  children: ReactNode;
+  label?: string;
+  rows?: number;
   className?: string;
-  style?: CSSProperties;
-  gutter?: number;
 }) {
   return (
     <div
-      className={cn("relative flex min-h-0 flex-1 flex-col overflow-y-auto", className)}
-      style={{ paddingLeft: gutter, paddingRight: gutter, ...style }}
+      role="status"
+      aria-live="polite"
+      className={cn("flex w-full flex-col gap-2", className)}
     >
-      {children}
+      <span className="sr-only">{label}</span>
+      {Array.from({ length: Math.max(1, rows) }).map((_, i) => (
+        <span
+          key={i}
+          aria-hidden
+          className="block h-11 w-full animate-pulse border-2 border-ink/15 bg-muted"
+        />
+      ))}
     </div>
   );
 }

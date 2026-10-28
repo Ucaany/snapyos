@@ -23,6 +23,8 @@
 - [ ] Backup DB produksi (snapshot Supabase) — rutin, meski migration murni additive.
 - [ ] Verifikasi migration hanya additive: grep `drop\|alter column .* not null` di `0019_pos_addon.sql` → nol hasil (kecuali default).
 - [ ] Pastikan migration `0073_pos_receipt_snapshot_and_untracked_stock.sql` dan `0074_pos_payment_idempotency_race.sql` siap diterapkan setelah `0019`–`0072`; keduanya wajib untuk kode POS terbaru.
+- [ ] **Verifikasi status migrasi dengan `node scripts/probe-migration-status.mjs`** sebelum deploy, jangan mengandalkan dokumen.
+- [x] **`0076_pos_stock_batch.sql` SUDAH diterapkan 2026-10-27.** RPC `pos_decrement_stock_batch` terverifikasi ada, `service_role`-only, `search_path` ter-pin, dan diuji fungsional (normal/shortfall/stok `null`/qty 0/isolasi tenant). Tanpa migrasi ini checkout POS menandai order `paid` lalu gagal decrement stok tanpa kompensasi.
 - [ ] `ROOT_DOMAIN` env TIDAK diset (Phase 6 skip default).
 
 ---
@@ -30,13 +32,21 @@
 ## 2. Urutan Eksekusi
 
 ```
+0. (Baru, 2026-10-27) Jalankan `node scripts/probe-migration-status.mjs` dan catat hasilnya.
+   → `0073` dan `0074` terukur SUDAH diterapkan, jadi langkah 2 dan 3 di bawah
+     bersifat idempotent (aman diulang, tidak wajib bila probe sudah APPLIED).
 1. Terapkan `db/migrations/0019_pos_addon.sql` di produksi
    → additive: tabel baru + kolom photoboxes.pos_enabled + kolom transactions POS + seed.
      Kode lama tidak membaca kolom/tabel baru → aman sebelum deploy.
 2. Terapkan `db/migrations/0073_pos_receipt_snapshot_and_untracked_stock.sql` di produksi.
    → menambah snapshot struk, RPC order/item atomic, dan RPC toggle booth atomic.
+   → STATUS 2026-10-27: SUDAH diterapkan (probe APPLIED). Lewati bila probe setuju.
 3. Terapkan `db/migrations/0074_pos_payment_idempotency_race.sql` di produksi.
    → mencegah retry pembayaran mengurangi stok dua kali, memaksa transaksi POS `withdrawable=false`; refresh schema cache PostgREST.
+   → STATUS 2026-10-27: SUDAH diterapkan (probe APPLIED). Lewati bila probe setuju.
+3b. (SELESAI 2026-10-27) `db/migrations/0076_pos_stock_batch.sql` sudah diterapkan.
+   → RPC `pos_decrement_stock_batch` terverifikasi ada. Tanpa migrasi ini checkout
+     POS membayar order lalu gagal decrement stok tanpa kompensasi.
 4. Deploy Vercel (branch → production).
 5. Admin: verifikasi add-on POS muncul di /admin/add-ons; set harga final produksi.
 6. (Tenant pilot) Owner: aktifkan add-on POS via /dashboard/subscription → bayar invoice QRIS
@@ -75,13 +85,13 @@ Smoke produksi (tenant pilot, checklist tertulis):
 
 ## 5. Rollback
 
-| Situasi                         | Aksi                                                                                                                                        |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Bug fitur POS (non-finance)     | Redeploy versi lama — tabel/kolom dibiarkan (harmless, tak dibaca kode lama)                                                                |
-| Matikan POS global TANPA deploy | Admin: `add_ons.is_active=false` utk `code='pos'` → semua `requirePosAccess` → `POS_NOT_SUBSCRIBED`                                         |
-| Matikan POS per tenant          | Admin: `subscription_add_ons.status='cancelled'` utk tenant itu                                                                             |
-| Matikan POS per booth           | Owner: toggle `pos_enabled=false` di `/dashboard/pos` (atau admin via DB)                                                                   |
-| Migration 0073/0074 bermasalah | Hentikan deploy, ambil snapshot DB, lalu rollback hanya setelah review operator; 0074 melakukan backfill `transactions.withdrawable=false` yang tidak boleh dibalik otomatis |
+| Situasi                         | Aksi                                                                                                                                                                         |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Bug fitur POS (non-finance)     | Redeploy versi lama — tabel/kolom dibiarkan (harmless, tak dibaca kode lama)                                                                                                 |
+| Matikan POS global TANPA deploy | Admin: `add_ons.is_active=false` utk `code='pos'` → semua `requirePosAccess` → `POS_NOT_SUBSCRIBED`                                                                          |
+| Matikan POS per tenant          | Admin: `subscription_add_ons.status='cancelled'` utk tenant itu                                                                                                              |
+| Matikan POS per booth           | Owner: toggle `pos_enabled=false` di `/dashboard/pos` (atau admin via DB)                                                                                                    |
+| Migration 0073/0074 bermasalah  | Hentikan deploy, ambil snapshot DB, lalu rollback hanya setelah review operator; 0074 melakukan backfill `transactions.withdrawable=false` yang tidak boleh dibalik otomatis |
 
 ---
 

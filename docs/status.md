@@ -8,26 +8,28 @@ Source of truth: `src/`, `runtime/`, `db/schema.sql`, `README.md`
 
 ## Active
 
-| Area                                    | Status                                       | Canonical source                                                   |
-| --------------------------------------- | -------------------------------------------- | ------------------------------------------------------------------ |
-| Auth.js credential auth                 | Active                                       | `src/lib/auth.ts`, `auth_sessions`                                 |
-| Multi-tenant business                   | Active                                       | `businesses`, `business_members`, tenant helpers                   |
-| Owner dashboard                         | Active                                       | `src/app/(dashboard)/dashboard/`                                   |
-| Staff shell                             | Active, operational read-only                | `src/app/(staff)/staff/`                                           |
-| Admin platform                          | Active                                       | `src/app/(admin)/admin/`                                           |
-| Customer kiosk                          | Active, pay-first                            | `src/app/p/[businessSlug]/[photoboxSlug]/`                         |
-| Online result                           | Active                                       | `src/app/r/[token]/`                                               |
-| Direct merchant payment                 | Active                                       | Pakasir, Midtrans, Tripay credentials per business                 |
-| Voucher payment                         | Active                                       | public checkout actions and voucher server logic                   |
-| Offline cash kiosk                      | Active when owner enables it                 | `business_settings.checkout.offline_enabled`                       |
-| POS add-on                              | Active, offline-only                         | `src/server/pos-actions.ts`, `photoboxes.pos_enabled`              |
-| Template builder                        | Active                                       | `src/components/dashboard/TemplateBuilder.tsx`                     |
-| Storage quota                           | Active when plan feature is enabled          | `src/server/storage-usage.ts` (jumlah kedua provider)              |
-| Dual storage (R2 write + Supabase read) | Active — Fase 3                              | `src/server/storage` (`getWriteStorage`, `resolveStorage`)         |
-| Aplikasi booth (EXE Windows)            | Partial — kode ada, `.exe`/`.msi` NOT TESTED | `src-tauri/` (Tauri v2, jendela kiosk + sidecar runtime)           |
-| Kiosk offline runtime (lokal)           | Active — sesi lokal + sync ke cloud          | `runtime/` (`node:sqlite`, `/v1/*` loopback, token bridge)         |
-| Katalog aplikasi (admin)                | Active — tautan saja, tanpa upload           | `src/app/(admin)/admin/apps/`, `app_releases` (0081)               |
-| Unduh aplikasi booth (owner)            | Active — tautan + status versi per booth     | `src/app/(dashboard)/dashboard/apps/`, `device_status.app_version` |
+| Area                                    | Status                                                  | Canonical source                                                   |
+| --------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------ |
+| Auth.js credential auth                 | Active                                                  | `src/lib/auth.ts`, `auth_sessions`                                 |
+| Multi-tenant business                   | Active                                                  | `businesses`, `business_members`, tenant helpers                   |
+| Owner dashboard                         | Active                                                  | `src/app/(dashboard)/dashboard/`                                   |
+| Staff shell                             | Active, operational read-only                           | `src/app/(staff)/staff/`                                           |
+| Admin platform                          | Active                                                  | `src/app/(admin)/admin/`                                           |
+| Customer kiosk                          | Active, pay-first                                       | `src/app/p/[businessSlug]/[photoboxSlug]/`                         |
+| Online result                           | Active                                                  | `src/app/r/[token]/`                                               |
+| Direct merchant payment                 | Active                                                  | Pakasir, Midtrans, Tripay credentials per business                 |
+| Voucher payment                         | Active                                                  | public checkout actions and voucher server logic                   |
+| Offline cash kiosk                      | Active when owner enables it                            | `business_settings.checkout.offline_enabled`                       |
+| POS add-on                              | Active, offline-only                                    | `src/server/pos-actions.ts`, `photoboxes.pos_enabled`              |
+| Template builder                        | Active                                                  | `src/components/dashboard/TemplateBuilder.tsx`                     |
+| Storage quota                           | Active when plan feature is enabled                     | `src/server/storage-usage.ts` (jumlah kedua provider)              |
+| Dual storage (R2 write + Supabase read) | Active — Fase 3                                         | `src/server/storage` (`getWriteStorage`, `resolveStorage`)         |
+| Aplikasi booth (EXE Windows)            | Partial — kode ada, `.exe`/`.msi` NOT TESTED            | `src-tauri/` (Tauri v2, jendela kiosk + sidecar runtime)           |
+| Kiosk offline runtime (lokal)           | Active — sesi lokal + sync ke cloud                     | `runtime/` (`node:sqlite`, `/v1/*` loopback, token bridge)         |
+| Setelan booth di aplikasi booth         | Active — panel PIN-gated, 4 grup                        | `src/components/kiosk/BoothSettingsPanel.tsx`, `PUT /v1/settings`  |
+| Kustomisasi tampilan per booth (mesin)  | Active — `appearance_settings` lokal, menang atas cloud | `src/lib/appearance-merge.ts`, `runtime/settings`                  |
+| Katalog aplikasi (admin)                | Active — tautan saja, tanpa upload                      | `src/app/(admin)/admin/apps/`, `app_releases` (0081)               |
+| Unduh aplikasi booth (owner)            | Active — tautan + status versi per booth                | `src/app/(dashboard)/dashboard/apps/`, `device_status.app_version` |
 
 ## Partial or constrained
 
@@ -128,7 +130,58 @@ terekspos dan diuji langsung: pemanggilan dengan kuota `0` mengembalikan
 `P0001 PLAN_LIMIT_REACHED`, pemanggilan dengan kuota cukup berhasil membuat row
 lalu row uji dihapus kembali.
 
-`0071`, `0073`, dan `0074` belum di-apply. `0073` lalu `0074` wajib diterapkan sebelum deploy kode POS terbaru karena menambah snapshot setting struk, RPC atomic order/item dan toggle booth, menutup race pembayaran yang dapat menggandakan decrement stok, serta memastikan transaksi POS offline `withdrawable=false`.
+`0071` belum di-apply (keputusan pemilik).
+
+### Status migrasi cloud (DITERAPKAN & terverifikasi 2026-10-27)
+
+Bagian sebelumnya sempat menyatakan `0072`/`0075`/`0076` "BELUM". Ketiganya
+**kini sudah diterapkan** ke cloud memakai
+`db/migrations/APPLY_0072_0075_0076_combined.sql` (idempotent, tiga blok
+transaksi terpisah). Verifikasi dilakukan dua lapis, bukan asumsi:
+
+1. **Probe** `node scripts/probe-migration-status.mjs` — semua panggilan no-op,
+   exit code 0. Hasil akhir: **13 applied, 0 not applied, 0 unverifiable, 0 error**.
+2. Skrip yang sama memakai **katalog Postgres** via `supabase db query --linked`
+   (role `postgres`) untuk yang tidak diekspos PostgREST: index, aksi `ON DELETE`,
+   dan signature fungsi. Bila CLI tidak tersedia, item tersebut dilaporkan
+   `UNVERIFIABLE` (bukan PASS).
+
+| Migrasi | Status akhir   | Bukti verifikasi                                                                                               |
+| ------- | -------------- | -------------------------------------------------------------------------------------------------------------- |
+| `0072`  | **DITERAPKAN** | `add_ons.name` = `Tambah Storage 1.024 MB`, `storage_mb` tetap 1024                                            |
+| `0073`  | **DITERAPKAN** | kolom snapshot struk ada; `pos_set_booth_enabled` 200; `pos_create_order_with_items` 409 FK (fungsi ada)       |
+| `0074`  | **DITERAPKAN** | `pos_complete_payment` mengembalikan `null` untuk order yang sudah punya transaksi                             |
+| `0075`  | **DITERAPKAN** | `photoboxes_default_template_id_fkey` ada, `confdeltype='n'` (SET NULL); 3 index ada (`idx75`=3)               |
+| `0076`  | **DITERAPKAN** | `to_regprocedure` = `pos_decrement_stock_batch(uuid,jsonb)`; `prosecdef=false`; `search_path=public, pg_temp`  |
+| `0077`  | **DITERAPKAN** | kolom `plans.max_packages/max_templates` ada                                                                   |
+| `0078`  | **DITERAPKAN** | ketiga index ada (`idx78`=3), terverifikasi via katalog Postgres                                               |
+| `0079`  | **DITERAPKAN** | keempat FK `customers` `confdeltype='r'` (RESTRICT) di `sessions`/`transactions`/`pos_orders`/`voucher_usages` |
+| `0080`  | **DITERAPKAN** | hint `transactions_payment_id_fkey` → `PGRST200` (FK sudah dihapus)                                            |
+| `0081`  | **DITERAPKAN** | tabel `app_releases` dapat dibaca                                                                              |
+
+**Uji fungsional `0076`** (di dalam transaksi yang di-`rollback`, tidak ada data
+berubah): decrement normal 10→7 `ok=true`; permintaan melebihi stok `ok=false`
+dan stok **tidak** berubah; stok `null` (tidak dilacak) `ok=true`; `qty=0`
+diabaikan (0 baris); bisnis lain ditolak `ok=false` tanpa mengubah stok; `anon`
+mendapat `42501 permission denied`. Hak eksekusi hanya `service_role` + owner.
+
+**`0071` tetap belum di-apply** (keputusan pemilik). Tidak memblokir: `0073`,
+`0074`, dan `0076` sudah memakai `set search_path = public, pg_temp` di
+definisinya sendiri.
+
+#### Bug yang tersingkap setelah `0076` masuk
+
+E2E `pos-receipt-serial` yang sebelumnya BLOCKED kini berjalan dan menemukan bug
+nyata: dua jalur cetak (auto-print dan tombol manual) menulis ke port Web Serial
+yang sama **tanpa antrean**. Chunk 256-byte dari dua job saling menyisip,
+sehingga struk keluar rusak — teks tergabung (`WaktKLIK FOTO DEV`) dan baris
+melewati lebar kolom. Perbaikan: antrean tulis per-port di
+`src/lib/print/serial.ts` (`writeChains` + `writeJobToPort`, sekaligus
+menghapus duplikasi dua fungsi tulis). Dijaga
+`tests/print-serial.test.ts` → "dua job bersamaan ke port yang sama tidak
+bercampur"; test ini **gagal pada kode lama** dan lulus pada kode baru.
+
+Hasil E2E struk POS: **16/16 PASS** (58mm + 80mm).
 
 ## Baseline gate (2026-10-16, commit `a56483b`)
 

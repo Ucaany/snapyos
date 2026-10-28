@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { apiGet } from "@/components/kiosk/api";
+import { KIOSK_FIELD_BARE, KioskLoading } from "@/components/kiosk/ui";
 
 type EmojiItem = { char: string; name: string; group: string };
 
@@ -79,7 +80,7 @@ export function StickerPicker({ onPick }: Props) {
   return (
     <div className="flex flex-col gap-2">
       <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em]">Stiker</p>
-      <div className="flex items-center gap-2 border-2 border-ink bg-surface px-2">
+      <div className="flex items-center gap-2 border-2 border-ink bg-surface px-2 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ink">
         <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden />
         <input
           type="text"
@@ -87,15 +88,13 @@ export function StickerPicker({ onPick }: Props) {
           onChange={(e) => onSearch(e.target.value)}
           placeholder="Cari emoji..."
           aria-label="Cari emoji"
-          className="h-11 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground focus-visible:outline-none"
+          className={KIOSK_FIELD_BARE}
         />
       </div>
 
       <div className="max-h-[180px] overflow-y-auto border-2 border-ink bg-surface p-1">
         {loading ? (
-          <div className="flex items-center justify-center py-6" role="status" aria-label="Memuat emoji">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden />
-          </div>
+          <KioskLoading label="Memuat emoji" rows={2} className="p-1" />
         ) : showFallback ? (
           <div className="flex flex-col gap-1">
             <p className="px-1 py-1 text-[9px] uppercase tracking-[0.1em] text-muted-foreground">

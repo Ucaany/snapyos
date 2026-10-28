@@ -23,12 +23,12 @@ export default async function StaffPhotoboxesPage() {
   return (
     <div className="flex flex-col gap-6 p-4 pb-10 sm:gap-8 sm:p-6 md:p-8 lg:p-10">
       <StaffPageHeader
-        eyebrow="BOOTH · READ ONLY"
+        eyebrow="BOOTH · HANYA LIHAT"
         title="Photobox"
         description="Pantau status booth, URL perangkat, dan perangkat yang terdeteksi. Perubahan konfigurasi dan PIN dikontrol owner."
         aside={
           <div className="border-2 border-ink bg-bg px-3 py-2">
-            <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">
+            <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
               AKSES ANDA
             </p>
             <p className="font-mono text-xl font-bold leading-none">
@@ -38,7 +38,7 @@ export default async function StaffPhotoboxesPage() {
         }
       />
       <StaffCatalogShell
-        title="BOOTH.REGISTER"
+        title="DAFTAR.BOOTH"
         meta={`${String(photoboxes.length).padStart(2, "0")} UNIT`}
       >
         <StaffBoothsBoard

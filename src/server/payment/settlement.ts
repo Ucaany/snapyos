@@ -11,6 +11,7 @@ import { generateResultToken } from "@/lib/device-token";
 import { formatTxNumber, todayISO } from "@/lib/dashboard-math";
 import { insertAudit } from "@/server/audit";
 import type { CheckoutRow, PaymentRow } from "./checkout-shared";
+import { getBusinessTimezone } from "./checkout-shared";
 
 // ---------------------------------------------------------------------------
 // Status transitions (docs/06 §6.7, §6.12)
@@ -64,8 +65,9 @@ export async function transitionPaymentToExpired(paymentId: string): Promise<boo
  */
 export async function runPaidSideEffects(payment: PaymentRow, checkout: CheckoutRow) {
   const resultToken = checkout.result_token ?? generateResultToken();
+  const tz = await getBusinessTimezone(payment.business_id);
   const txNumber = formatTxNumber(
-    todayISO("Asia/Jakarta"),
+    todayISO(tz),
     randomUUID().replace(/-/g, "").slice(0, 6)
   );
   const { data, error } = await createServerClient().rpc("settle_paid_payment_atomically", {

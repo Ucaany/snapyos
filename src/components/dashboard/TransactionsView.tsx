@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import Link from "next/link";
 import { Receipt, Wallet } from "lucide-react";
 
@@ -60,6 +60,14 @@ export function TransactionsView({
   timeZone,
 }: Props) {
   const [state, action, pending] = useActionState(createManualTxAction, initial);
+  // Outlet menentukan booth mana yang valid: server menolak booth di luar outlet
+  // (assertBoothInOutlet), jadi UI hanya menawarkan booth milik outlet terpilih
+  // agar owner tidak memilih kombinasi yang pasti ditolak.
+  const [outletId, setOutletId] = useState("");
+  const [photoboxId, setPhotoboxId] = useState("");
+  const boothOptions = outletId
+    ? photoboxes.filter((b) => b.outlet_id === outletId)
+    : photoboxes;
 
   return (
     <div className="flex flex-col gap-6">
@@ -95,7 +103,11 @@ export function TransactionsView({
                     id="mtx-outlet"
                     name="outlet_id"
                     required
-                    defaultValue=""
+                    value={outletId}
+                    onChange={(e) => {
+                      setOutletId(e.currentTarget.value);
+                      setPhotoboxId("");
+                    }}
                     disabled={pending}
                     aria-invalid={Boolean(fieldError(state, "outlet_id"))}
                   >
@@ -122,14 +134,15 @@ export function TransactionsView({
                     id="mtx-box"
                     name="photobox_id"
                     required
-                    defaultValue=""
-                    disabled={pending}
+                    value={photoboxId}
+                    onChange={(e) => setPhotoboxId(e.currentTarget.value)}
+                    disabled={pending || !outletId}
                     aria-invalid={Boolean(fieldError(state, "photobox_id"))}
                   >
                     <option value="" disabled>
-                      Pilih photobox
+                      {outletId ? "Pilih photobox" : "Pilih outlet dulu"}
                     </option>
-                    {photoboxes.map((b) => (
+                    {boothOptions.map((b) => (
                       <option key={b.id} value={b.id}>
                         {b.name}
                       </option>
@@ -143,7 +156,7 @@ export function TransactionsView({
                 </div>
                 <div className="flex flex-col gap-2">
                   <label htmlFor="mtx-package" className={labelClass}>
-                    Package
+                    Paket
                   </label>
                   <Select id="mtx-package" name="package_id" defaultValue="" disabled={pending}>
                     <option value="">Tanpa package</option>
@@ -163,7 +176,7 @@ export function TransactionsView({
                 </div>
                 <div className="flex flex-col gap-2">
                   <label htmlFor="mtx-gross" className={labelClass}>
-                    Gross (IDR) *
+                    Kotor (IDR) *
                   </label>
                   <Input
                     id="mtx-gross"
@@ -227,44 +240,44 @@ export function TransactionsView({
         />
       ) : (
         <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
-          <table className="w-full min-w-[1240px] border-collapse text-left">
+          <table className="w-full border-collapse text-left md:min-w-[1240px]">
             <caption className="sr-only">Daftar transaksi</caption>
             <thead>
-              <tr className="border-b-2 border-ink bg-ink font-mono text-[10px] uppercase tracking-[0.12em] text-bg">
+              <tr className="border-b-2 border-ink bg-ink font-mono text-[11px] uppercase tracking-[0.12em] text-bg">
                 <th scope="col" className="px-4 py-3.5">
                   Nomor
                 </th>
-                <th scope="col" className="px-4 py-3.5">
+                <th scope="col" className="hidden px-4 py-3.5 md:table-cell">
                   Tanggal
                 </th>
-                <th scope="col" className="px-4 py-3.5">
-                  Customer
+                <th scope="col" className="hidden px-4 py-3.5 md:table-cell">
+                  Pelanggan
                 </th>
-                <th scope="col" className="px-4 py-3.5">
-                  Package
+                <th scope="col" className="hidden px-4 py-3.5 md:table-cell">
+                  Paket
                 </th>
-                <th scope="col" className="px-4 py-3.5">
+                <th scope="col" className="hidden px-4 py-3.5 lg:table-cell">
                   Outlet / Booth
                 </th>
-                <th scope="col" className="px-4 py-3.5">
+                <th scope="col" className="hidden px-4 py-3.5 md:table-cell">
                   Metode
                 </th>
-                <th scope="col" className="px-4 py-3.5">
+                <th scope="col" className="hidden px-4 py-3.5 lg:table-cell">
                   Saldo
                 </th>
-                <th scope="col" className="px-4 py-3.5 text-right">
-                  Gross
+                <th scope="col" className="hidden px-4 py-3.5 text-right md:table-cell">
+                  Kotor
                 </th>
-                <th scope="col" className="px-4 py-3.5 text-right">
+                <th scope="col" className="hidden px-4 py-3.5 text-right lg:table-cell">
                   Diskon
                 </th>
                 <th scope="col" className="px-4 py-3.5 text-right">
-                  Final
+                  Akhir
                 </th>
                 <th scope="col" className="px-4 py-3.5">
                   Status
                 </th>
-                <th scope="col" className="px-4 py-3.5">
+                <th scope="col" className="hidden px-4 py-3.5 lg:table-cell">
                   Sumber
                 </th>
               </tr>
@@ -276,30 +289,34 @@ export function TransactionsView({
                   className="border-b-2 border-ink/10 transition-colors hover:bg-muted/60"
                 >
                   <td className="px-4 py-4 font-mono text-xs font-bold">{tx.number}</td>
-                  <td className="px-4 py-4 font-mono text-xs">
+                  <td className="hidden px-4 py-4 font-mono text-xs md:table-cell">
                     {formatDate(tx.paid_at ?? tx.created_at, timeZone)}
                   </td>
-                  <td className="px-4 py-4 font-mono text-xs">{tx.customer_name ?? "-"}</td>
-                  <td className="px-4 py-4 font-mono text-xs">{tx.package_name ?? "-"}</td>
-                  <td className="px-4 py-4 font-mono text-xs text-muted-foreground">
+                  <td className="hidden px-4 py-4 font-mono text-xs md:table-cell">
+                    {tx.customer_name ?? "-"}
+                  </td>
+                  <td className="hidden px-4 py-4 font-mono text-xs md:table-cell">
+                    {tx.package_name ?? "-"}
+                  </td>
+                  <td className="hidden px-4 py-4 font-mono text-xs text-muted-foreground lg:table-cell">
                     {[tx.outlet_name, tx.photobox_name].filter(Boolean).join(" · ") || "-"}
                   </td>
-                  <td className="px-4 py-4 font-mono text-xs uppercase">
+                  <td className="hidden px-4 py-4 font-mono text-xs uppercase md:table-cell">
                     {METHOD_LABEL[tx.payment_method] ?? tx.payment_method}
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="hidden px-4 py-4 lg:table-cell">
                     {tx.payment_method === "manual" || tx.withdrawable === false ? (
-                      <span className="inline-block border-2 border-ink bg-accent-2 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.08em]">
-                        Non-Withdrawable
+                      <span className="inline-block border-2 border-ink bg-accent-2 px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.08em]">
+                        Tidak Dapat Ditarik
                       </span>
                     ) : (
                       <span className="font-mono text-xs text-muted-foreground">-</span>
                     )}
                   </td>
-                  <td className="px-4 py-4 text-right font-mono text-xs">
+                  <td className="hidden px-4 py-4 text-right font-mono text-xs md:table-cell">
                     {formatIDR(tx.gross_amount)}
                   </td>
-                  <td className="px-4 py-4 text-right font-mono text-xs text-muted-foreground">
+                  <td className="hidden px-4 py-4 text-right font-mono text-xs text-muted-foreground lg:table-cell">
                     {tx.discount_amount > 0 ? `- ${formatIDR(tx.discount_amount)}` : "-"}
                   </td>
                   <td className="px-4 py-4 text-right font-mono text-sm font-bold">
@@ -308,9 +325,9 @@ export function TransactionsView({
                   <td className="px-4 py-4">
                     <StatusBadge status={tx.status} />
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="hidden px-4 py-4 lg:table-cell">
                     {tx.pos_order_id ? (
-                      <span className="inline-block border-2 border-ink bg-accent px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.08em]">
+                      <span className="inline-block border-2 border-ink bg-accent px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.08em]">
                         POS
                       </span>
                     ) : (
@@ -340,7 +357,7 @@ export function TransactionsView({
                 nativeButton={false}
                 render={<Link href={prevHref} />}
               >
-                ← Sebelumnya
+                Sebelumnya
               </Button>
             )}
             {nextHref && (
@@ -350,7 +367,7 @@ export function TransactionsView({
                 nativeButton={false}
                 render={<Link href={nextHref} />}
               >
-                Berikutnya →
+                Berikutnya
               </Button>
             )}
           </div>

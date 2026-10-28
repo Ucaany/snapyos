@@ -6,7 +6,7 @@ import { Camera, ChevronDown, Pencil, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { cn } from "@/lib/utils";
+import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { PhotoboxForm } from "@/components/dashboard/PhotoboxForm";
 import { DeviceDialog } from "@/components/dashboard/DeviceDialog";
@@ -22,12 +22,6 @@ type Props = {
   canWrite: boolean;
   maxPhotoboxes: number;
   pwaKioskEnabled?: boolean;
-};
-
-const STATUS_STYLE: Record<string, string> = {
-  online: "bg-accent-3",
-  maintenance: "bg-accent",
-  offline: "bg-muted text-muted-foreground",
 };
 
 /**
@@ -175,23 +169,23 @@ export function PhotoboxesTable({
         )
       ) : (
         <div className="overflow-x-auto border-2 border-ink shadow-[4px_4px_0_0_#111111]">
-          <table className="w-full min-w-[820px] border-collapse bg-surface text-left">
+          <table className="w-full border-collapse bg-surface text-left md:min-w-[820px]">
             <caption className="sr-only">Daftar photobox</caption>
             <thead>
-              <tr className="border-b-2 border-ink bg-ink font-mono text-[10px] uppercase tracking-[0.12em] text-bg">
+              <tr className="border-b-2 border-ink bg-ink font-mono text-[11px] uppercase tracking-[0.12em] text-bg">
                 <th scope="col" className="px-4 py-3">
                   Booth
                 </th>
-                <th scope="col" className="px-4 py-3">
+                <th scope="col" className="hidden px-4 py-3 md:table-cell">
                   URL Perangkat
                 </th>
-                <th scope="col" className="px-4 py-3">
+                <th scope="col" className="hidden px-4 py-3 md:table-cell">
                   Outlet
                 </th>
                 <th scope="col" className="px-4 py-3">
                   Status
                 </th>
-                <th scope="col" className="px-4 py-3">
+                <th scope="col" className="hidden px-4 py-3 lg:table-cell">
                   Perangkat
                 </th>
                 {canWrite && (
@@ -206,21 +200,14 @@ export function PhotoboxesTable({
                 <Fragment key={box.id}>
                   <tr className="border-b-2 border-ink/10 font-mono text-xs">
                     <td className="px-4 py-3 font-bold uppercase tracking-[0.05em]">{box.name}</td>
-                    <td className="px-4 py-3 text-muted-foreground">
+                    <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">
                       /p/{businessSlug}/{box.slug}
                     </td>
-                    <td className="px-4 py-3">{box.outlet_name ?? "-"}</td>
+                    <td className="hidden px-4 py-3 md:table-cell">{box.outlet_name ?? "-"}</td>
                     <td className="px-4 py-3">
-                      <span
-                        className={cn(
-                          "inline-block border-2 border-ink px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]",
-                          STATUS_STYLE[box.status] ?? "bg-muted"
-                        )}
-                      >
-                        {box.status}
-                      </span>
+                      <StatusBadge status={box.status} />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="hidden px-4 py-3 lg:table-cell">
                       <span className="flex flex-wrap items-center gap-2">
                         {[box.camera, box.printer, box.display].filter(Boolean).join(" · ") || (
                           <span className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">

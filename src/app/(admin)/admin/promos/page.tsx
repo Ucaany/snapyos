@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { formatIDR } from "@/lib/dashboard-math";
 import { createPromoAction, updatePromoAction } from "@/server/admin-actions";
 import { listPromos } from "@/server/admin";
+import { PageHeader } from "@/components/ui/page-header";
 
 /**
  * Admin Subscription Promos - docs/10 §10.2 (migration 0014).
@@ -32,17 +33,11 @@ export default async function AdminPromosPage() {
 
   return (
     <div className="flex flex-col gap-8 p-6 md:p-10">
-      <header>
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {"ADMIN - SUBSCRIPTION PROMOS"}
-        </p>
-        <h1 className="mt-2 font-display text-3xl uppercase tracking-tight md:text-4xl">
-          Promo Berlangganan
-        </h1>
-        <p className="mt-2 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
-          {promos.length} kode promo · diskon billing plan (docs/02 §2.5)
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="ADMIN - SUBSCRIPTION PROMOS"
+        title="Promo Berlangganan"
+        meta={`${promos.length} kode promo · diskon billing plan`}
+      />
 
       <Card>
         <CardHeader>
@@ -60,7 +55,7 @@ export default async function AdminPromosPage() {
             <div className="flex flex-col gap-1">
               <label
                 htmlFor="promo-code"
-                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                className="font-mono text-[11px] uppercase tracking-[0.12em]"
               >
                 Kode
               </label>
@@ -75,7 +70,7 @@ export default async function AdminPromosPage() {
             <div className="flex flex-col gap-1">
               <label
                 htmlFor="promo-amount"
-                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                className="font-mono text-[11px] uppercase tracking-[0.12em]"
               >
                 Nilai (persen atau IDR)
               </label>
@@ -91,7 +86,7 @@ export default async function AdminPromosPage() {
             <div className="flex flex-col gap-1">
               <label
                 htmlFor="promo-min-tx"
-                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                className="font-mono text-[11px] uppercase tracking-[0.12em]"
               >
                 Min. transaksi (IDR)
               </label>
@@ -106,7 +101,7 @@ export default async function AdminPromosPage() {
             <div className="flex flex-col gap-1">
               <label
                 htmlFor="promo-max"
-                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                className="font-mono text-[11px] uppercase tracking-[0.12em]"
               >
                 Max diskon (IDR, opsional)
               </label>
@@ -121,7 +116,7 @@ export default async function AdminPromosPage() {
             <div className="flex flex-col gap-1">
               <label
                 htmlFor="promo-start"
-                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                className="font-mono text-[11px] uppercase tracking-[0.12em]"
               >
                 Berlaku mulai (opsional)
               </label>
@@ -130,7 +125,7 @@ export default async function AdminPromosPage() {
             <div className="flex flex-col gap-1">
               <label
                 htmlFor="promo-end"
-                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                className="font-mono text-[11px] uppercase tracking-[0.12em]"
               >
                 Berlaku sampai (opsional)
               </label>
@@ -139,7 +134,7 @@ export default async function AdminPromosPage() {
             <div className="flex flex-col gap-1">
               <label
                 htmlFor="promo-limit"
-                className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                className="font-mono text-[11px] uppercase tracking-[0.12em]"
               >
                 Batas pemakaian (opsional)
               </label>
@@ -211,7 +206,7 @@ export default async function AdminPromosPage() {
                     <div className="flex flex-col gap-1">
                       <label
                         htmlFor={`code-${p.id}`}
-                        className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                        className="font-mono text-[11px] uppercase tracking-[0.12em]"
                       >
                         Kode
                       </label>
@@ -226,7 +221,7 @@ export default async function AdminPromosPage() {
                     <div className="flex flex-col gap-1">
                       <label
                         htmlFor={`amt-${p.id}`}
-                        className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                        className="font-mono text-[11px] uppercase tracking-[0.12em]"
                       >
                         Nilai
                       </label>
@@ -240,7 +235,7 @@ export default async function AdminPromosPage() {
                     <div className="flex flex-col gap-1">
                       <label
                         htmlFor={`min-${p.id}`}
-                        className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                        className="font-mono text-[11px] uppercase tracking-[0.12em]"
                       >
                         Min. transaksi
                       </label>
@@ -254,7 +249,7 @@ export default async function AdminPromosPage() {
                     <div className="flex flex-col gap-1">
                       <label
                         htmlFor={`max-${p.id}`}
-                        className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                        className="font-mono text-[11px] uppercase tracking-[0.12em]"
                       >
                         Max diskon
                       </label>
@@ -268,7 +263,7 @@ export default async function AdminPromosPage() {
                     <div className="flex flex-col gap-1">
                       <label
                         htmlFor={`start-${p.id}`}
-                        className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                        className="font-mono text-[11px] uppercase tracking-[0.12em]"
                       >
                         Mulai
                       </label>
@@ -282,7 +277,7 @@ export default async function AdminPromosPage() {
                     <div className="flex flex-col gap-1">
                       <label
                         htmlFor={`end-${p.id}`}
-                        className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                        className="font-mono text-[11px] uppercase tracking-[0.12em]"
                       >
                         Sampai
                       </label>
@@ -296,7 +291,7 @@ export default async function AdminPromosPage() {
                     <div className="flex flex-col gap-1">
                       <label
                         htmlFor={`limit-${p.id}`}
-                        className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                        className="font-mono text-[11px] uppercase tracking-[0.12em]"
                       >
                         Batas pemakaian
                       </label>

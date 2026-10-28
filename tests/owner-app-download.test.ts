@@ -102,7 +102,7 @@ test("versi lebih rendah -> badge perlu update", () => {
   assert.equal(needsAppUpdate("1.10.0", "1.9.0"), false, "bandingkan numerik, bukan string");
   assert.equal(needsAppUpdate(null, "1.2.0"), false, "tanpa laporan bukan perlu update");
   assert.equal(compareAppVersions("1.2.3", "1.2.4"), -1);
-  assert.match(read(PAGE), /Perlu update/i);
+  assert.match(read(PAGE), /Perlu diperbarui/i);
 });
 
 // ---------------------------------------------------------------------------

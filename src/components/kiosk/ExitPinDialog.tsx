@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Delete, Loader2, LockKeyhole } from "lucide-react";
+import { Delete, LockKeyhole } from "lucide-react";
 import { apiPost } from "@/components/kiosk/api";
 import { submitExit } from "@/components/kiosk/exit-fallback";
 import { submitLocalExit } from "@/components/kiosk/local-runtime";
@@ -10,15 +10,41 @@ type Props = {
   deviceToken: string | null;
   /** `bridge_url` booth — jalur PIN darurat saat internet mati. */
   bridgeUrl?: string | null;
-  /** Dipanggil setelah PIN diverifikasi server — keluar TANPA reset sesi. */
+  /** Dipanggil setelah PIN diverifikasi server. */
   onSuccess: () => void;
   onCancel: () => void;
+  /**
+   * Tujuan verifikasi PIN. Keduanya memakai PIN petugas yang sama, tetapi
+   * akibatnya berbeda: `exit` melepas kiosk, `settings` membuka panel setelan
+   * booth TANPA keluar dari kiosk. Tanpa pemisahan ini, membuka setelan akan
+   * ikut melepas fullscreen dan meninggalkan booth dalam keadaan tak terkunci.
+   */
+  purpose?: "exit" | "settings";
 };
+
+const COPY = {
+  exit: {
+    eyebrow: "AKSES PETUGAS",
+    title: "Keluar mode kiosk",
+    hint: "Masukkan PIN keluar yang diatur owner. Sesi foto yang sedang berjalan tidak terputus, kembali ke kiosk untuk melanjutkan.",
+    submit: "Keluar",
+    cancel: "Batal. Kembali ke kiosk",
+    aria: "Keluar mode kiosk",
+  },
+  settings: {
+    eyebrow: "AKSES PETUGAS",
+    title: "Setelan booth",
+    hint: "Masukkan PIN petugas untuk membuka setelan kamera, printer, sesi, dan tampilan booth ini. Kiosk tidak keluar; sesi pelanggan tidak terputus.",
+    submit: "Buka",
+    cancel: "Batal. Kembali ke kiosk",
+    aria: "Buka setelan booth",
+  },
+} as const;
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
 
 const keyBtn =
-  "min-h-14 border-2 border-ink bg-bg font-display text-xl font-bold uppercase tracking-tight shadow-[3px_3px_0_0_#111111] transition-transform duration-150 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-50";
+  "min-h-14 border-2 border-ink bg-bg font-display text-xl font-bold uppercase tracking-tight shadow-hard-sm transition-transform duration-150 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-50";
 
 /**
  * Dialog PIN keluar kiosk — petugas memasukkan PIN (diatur owner di dashboard
@@ -26,7 +52,14 @@ const keyBtn =
  * hanya melepas fullscreen lock, tanpa reload/reset (sesi berjalan utuh dan
  * resume otomatis bila halaman dibuka ulang).
  */
-export function ExitPinDialog({ deviceToken, bridgeUrl, onSuccess, onCancel }: Props) {
+export function ExitPinDialog({
+  deviceToken,
+  bridgeUrl,
+  onSuccess,
+  onCancel,
+  purpose = "exit",
+}: Props) {
+  const copy = COPY[purpose];
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -127,30 +160,27 @@ export function ExitPinDialog({ deviceToken, bridgeUrl, onSuccess, onCancel }: P
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Keluar mode kiosk"
+      aria-label={copy.aria}
       className="fixed inset-0 z-[70] flex items-center justify-center bg-ink/40 p-3 sm:p-4"
     >
       <div
         ref={dialogRef}
         tabIndex={-1}
-        className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[400px] flex-col gap-4 overflow-y-auto border-2 border-ink bg-bg p-4 shadow-[6px_6px_0_0_#111111] outline-none sm:max-h-[calc(100dvh-2rem)] sm:p-5 md:p-6"
+        className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[400px] flex-col gap-4 overflow-y-auto border-2 border-ink bg-bg p-4 shadow-hard focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ink sm:max-h-[calc(100dvh-2rem)] sm:p-5 md:p-6"
       >
         <div className="flex items-center gap-3">
           <LockKeyhole className="size-6 shrink-0" aria-hidden />
           <div className="flex min-w-0 flex-col gap-1">
             <p className="font-mono text-[10px] font-bold uppercase leading-none tracking-[0.24em] text-muted-foreground">
-              {"AKSES PETUGAS"}
+              {copy.eyebrow}
             </p>
             <h2 className="font-display text-xl uppercase leading-none tracking-[-0.02em] md:text-2xl">
-              Keluar mode kiosk
+              {copy.title}
             </h2>
           </div>
         </div>
 
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          Masukkan PIN keluar yang diatur owner. Sesi foto yang sedang berjalan tidak terputus,
-          kembali ke kiosk untuk melanjutkan.
-        </p>
+        <p className="text-xs leading-relaxed text-muted-foreground">{copy.hint}</p>
 
         {!deviceToken ? (
           <>
@@ -158,12 +188,12 @@ export function ExitPinDialog({ deviceToken, bridgeUrl, onSuccess, onCancel }: P
               role="alert"
               className="border-2 border-ink bg-accent px-3 py-2 text-xs font-bold uppercase leading-relaxed tracking-[0.04em]"
             >
-              Perangkat belum diaktivasi. Selesaikan aktivasi sebelum keluar kiosk.
+              Perangkat belum diaktivasi. Selesaikan aktivasi sebelum membuka akses petugas.
             </p>
             <button
               type="button"
               onClick={onCancel}
-              className="min-h-12 self-center border-2 border-ink bg-surface px-5 py-2 font-mono text-xs font-bold uppercase tracking-[0.1em] shadow-[3px_3px_0_0_#111111] transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+              className="min-h-12 self-center border-2 border-ink bg-surface px-5 py-2 font-mono text-xs font-bold uppercase tracking-[0.1em] shadow-hard-sm transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
             >
               Kembali
             </button>
@@ -216,9 +246,9 @@ export function ExitPinDialog({ deviceToken, bridgeUrl, onSuccess, onCancel }: P
                 type="button"
                 onClick={() => void submit(pin)}
                 disabled={busy || pin.length < 4}
-                className="min-h-14 border-2 border-ink bg-accent font-display text-base font-bold uppercase tracking-[-0.01em] shadow-[3px_3px_0_0_#111111] transition-transform active:translate-y-[2px] active:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-50"
+                className="min-h-14 border-2 border-ink bg-accent font-display text-base font-bold uppercase tracking-[-0.01em] shadow-hard-sm transition-transform active:translate-y-[2px] active:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-50"
               >
-                {busy ? <Loader2 className="mx-auto size-5 animate-spin" aria-hidden /> : "Keluar"}
+                {busy ? "Memverifikasi" : copy.submit}
               </button>
             </div>
 
@@ -230,9 +260,9 @@ export function ExitPinDialog({ deviceToken, bridgeUrl, onSuccess, onCancel }: P
               type="button"
               onClick={onCancel}
               disabled={busy}
-              className="min-h-12 self-center border-2 border-ink bg-surface px-5 py-2 font-mono text-xs font-bold uppercase tracking-[0.1em] shadow-[3px_3px_0_0_#111111] transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-50"
+              className="min-h-12 self-center border-2 border-ink bg-surface px-5 py-2 font-mono text-xs font-bold uppercase tracking-[0.1em] shadow-hard-sm transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-50"
             >
-              Batal. Kembali ke kiosk
+              {copy.cancel}
             </button>
           </>
         )}

@@ -164,29 +164,32 @@ export async function openSerialPort(
  * Minta port ke pengguna lalu tulis job. Port selalu ditutup di `finally`.
  * `requestPort` boleh melempar NotFoundError saat dialog dibatalkan.
  */
-export async function writeEscPosSerial(
+/**
+ * Antrean tulis per-port.
+ *
+ * Web Serial hanya mengizinkan satu writer, tetapi dua jalur (auto-print dan
+ * tombol manual) bisa menulis ke port yang sama hampir bersamaan. Tanpa
+ * antrean, chunk 256-byte dari dua job saling menyisip: struk keluar rusak
+ * dengan teks tergabung ("WaktKLIK FOTO DEV") dan baris melewati lebar kolom.
+ */
+const writeChains = new WeakMap<object, Promise<unknown>>();
+
+function enqueueWrite<T>(port: object, task: () => Promise<T>): Promise<T> {
+  const prev = writeChains.get(port) ?? Promise.resolve();
+  const next = prev.then(task, task);
+  writeChains.set(
+    port,
+    next.catch(() => undefined)
+  );
+  return next;
+}
+
+/** Satu siklus open→write→close untuk satu port. Selalu dipanggil di antrean. */
+async function writeJobToPort(
+  port: SerialPortLike,
   bytes: Uint8Array,
-  options: SerialWriteOptions = {}
+  options: SerialWriteOptions
 ): Promise<void> {
-  const serial = options.serial ?? getSerialApi();
-  if (!serial) {
-    throw new SerialPrintError(
-      "UNSUPPORTED",
-      "Browser ini tidak mendukung Web Serial. Gunakan Chrome desktop atau dialog cetak sistem."
-    );
-  }
-  if (options.signal?.aborted) throw abortError();
-
-  let port: SerialPortLike;
-  try {
-    port = await serial.requestPort();
-  } catch (error) {
-    if (error instanceof Error && error.name === "NotFoundError") {
-      throw new SerialPrintError("NO_PORT", "Tidak ada printer dipilih.");
-    }
-    throw new SerialPrintError("NO_PORT", "Printer tidak bisa dipilih.");
-  }
-
   try {
     await openSerialPort(port, options);
     if (!port.writable) {
@@ -233,6 +236,32 @@ export async function writeEscPosSerial(
   }
 }
 
+export async function writeEscPosSerial(
+  bytes: Uint8Array,
+  options: SerialWriteOptions = {}
+): Promise<void> {
+  const serial = options.serial ?? getSerialApi();
+  if (!serial) {
+    throw new SerialPrintError(
+      "UNSUPPORTED",
+      "Browser ini tidak mendukung Web Serial. Gunakan Chrome desktop atau dialog cetak sistem."
+    );
+  }
+  if (options.signal?.aborted) throw abortError();
+
+  let port: SerialPortLike;
+  try {
+    port = await serial.requestPort();
+  } catch (error) {
+    if (error instanceof Error && error.name === "NotFoundError") {
+      throw new SerialPrintError("NO_PORT", "Tidak ada printer dipilih.");
+    }
+    throw new SerialPrintError("NO_PORT", "Printer tidak bisa dipilih.");
+  }
+
+  await enqueueWrite(port, () => writeJobToPort(port, bytes, options));
+}
+
 /**
  * Tulis ke port yang SUDAH diizinkan tanpa membuka chooser.
  *
@@ -258,49 +287,6 @@ export async function writeEscPosSerialGranted(
   }
   if (!port) return false;
 
-  try {
-    await openSerialPort(port, options);
-    if (!port.writable) {
-      throw new SerialPrintError("WRITE_FAILED", "Port printer tidak bisa ditulis.");
-    }
-    const writer = port.writable.getWriter();
-    const chunkSize = Math.max(1, options.chunkSize ?? SERIAL_CHUNK_DEFAULT);
-    const sleep = options.sleep ?? defaultSleep;
-    try {
-      const writeTimeoutMs = options.writeTimeoutMs ?? SERIAL_WRITE_TIMEOUT_MS;
-      for (let offset = 0; offset < bytes.length; offset += chunkSize) {
-        if (options.signal?.aborted) throw abortError();
-        const chunk = bytes.slice(offset, offset + chunkSize);
-        try {
-          await withTimeout(writer.write(chunk), writeTimeoutMs, writeTimeoutError);
-        } catch (error) {
-          if (error instanceof SerialPrintError) throw error;
-          throw new SerialPrintError("WRITE_FAILED", "Gagal mengirim data ke printer.");
-        }
-        if (offset + chunkSize < bytes.length) {
-          await sleep(options.writeGapMs ?? SERIAL_WRITE_GAP_MS);
-        }
-      }
-      await withTimeout(writer.ready, writeTimeoutMs, writeTimeoutError);
-    } finally {
-      try {
-        writer.releaseLock();
-      } catch {
-        /* writer masih menggantung setelah timeout — kunci dilepas saat stream tutup */
-      }
-    }
-  } finally {
-    try {
-      // `close()` pada link SPP yang sudah putus bisa menggantung; jangan
-      // sampai hasil cetak (dan tombol retry) menunggu selamanya.
-      await withTimeout(
-        port.close(),
-        options.closeTimeoutMs ?? SERIAL_CLOSE_TIMEOUT_MS,
-        () => new Error("close timeout")
-      );
-    } catch {
-      /* port mungkin sudah tertutup setelah error */
-    }
-  }
+  await enqueueWrite(port, () => writeJobToPort(port, bytes, options));
   return true;
 }

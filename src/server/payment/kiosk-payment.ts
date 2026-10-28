@@ -80,6 +80,22 @@ export function buildKioskPaymentMethods(
   ];
 }
 
+/**
+ * Checkout bersisa nol (voucher 100%/diskon penuh) tidak punya tagihan untuk
+ * gateway, jadi kanal voucher wajib tetap ditawarkan walau booth difilter ke
+ * "hanya gateway". Tanpa ini customer terjebak pada pembayaran tunai Rp0.
+ * Murni agar bisa diuji tanpa DB.
+ */
+export function ensureFreeSettlementMethod(
+  filtered: readonly KioskPaymentMethod[],
+  all: readonly KioskPaymentMethod[],
+  finalAmount: number | undefined
+): KioskPaymentMethod[] {
+  if (finalAmount === undefined || finalAmount > 0) return [...filtered];
+  if (filtered.some((method) => method.kind === "voucher")) return [...filtered];
+  return [...filtered, ...all.filter((method) => method.kind === "voucher")];
+}
+
 export type PhotoboxPaymentMode = "gateway" | "voucher" | null;
 
 /** Per-booth channel filter (0055): null = keduanya; gateway/voucher = sembunyikan lawannya. */

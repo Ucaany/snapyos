@@ -1,0 +1,277 @@
+[
+  {
+    "verdict": "needs_validation",
+    "fingerprint": "branding.foreign-storage-key",
+    "title": "Tenant can make the platform sign another tenant's business-asset key",
+    "description": "The kiosk branding server action forwards the caller's object to updateBranding without narrowing it, and brandingSchema accepts logo_key and kiosk video_key as free-form strings. updateBranding stores them and the public kiosk config signs them with the service role in the shared business-assets bucket, so a member of tenant A can persist tenant B's object key and then receive a working signed URL for it.",
+    "claimed_root_cause": "Storage keys are accepted from client input and signed without checking that the key belongs to the caller's business prefix.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "src/server/branding-actions.ts",
+        "line": 97,
+        "scope": "saveBrandingKioskAction",
+        "description": "Server action receives a caller-supplied object typed with welcome/colour/kiosk fields; TypeScript types are erased at runtime."
+      },
+      {
+        "kind": "propagation",
+        "file": "src/server/branding-actions.ts",
+        "line": 119,
+        "scope": "saveBrandingKioskAction payload spread",
+        "description": "Everything except reset_pages is spread into payload, so an extra logo_key or kiosk.video_key supplied by the caller survives."
+      },
+      {
+        "kind": "propagation",
+        "file": "src/server/branding.ts",
+        "line": 116,
+        "scope": "updateBranding",
+        "description": "payload is parsed with brandingSchema, which allows logo_key and kiosk video_key but performs no ownership check."
+      },
+      {
+        "kind": "propagation",
+        "file": "src/server/branding.ts",
+        "line": 179,
+        "scope": "updateBranding persist",
+        "description": "The merged branding, including the foreign key, is written to business_settings.branding."
+      },
+      {
+        "kind": "sink",
+        "file": "src/server/public-config.ts",
+        "line": 158,
+        "scope": "buildPublicConfig signedUrls",
+        "description": "getPublicConfig signs logo_key and video keys with the service role in the business-assets bucket and returns the URLs to an unauthenticated caller."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "src/lib/validators.ts",
+        "line": 301,
+        "description": "logo_key is a plain optional string with a 300-character cap; no prefix or business check."
+      },
+      {
+        "file": "src/lib/validators.ts",
+        "line": 286,
+        "description": "kiosk video_key has the same free-form shape."
+      },
+      {
+        "file": "src/server/branding.ts",
+        "line": 68,
+        "description": "logoSignedUrl signs whatever key it is given via loadSignedUrl(BRAND_ASSETS_BUCKET, key)."
+      },
+      {
+        "file": "src/server/public-config.ts",
+        "line": 41,
+        "description": "signedUrls batches keys into signedUrlMap for the shared business-assets bucket without any prefix filter."
+      },
+      {
+        "file": "src/server/public-config.ts",
+        "line": 227,
+        "description": "The signed logo URL is part of the unauthenticated public kiosk config, so an object key can be learned from any booth page."
+      }
+    ],
+    "blockers": [
+      "No local Supabase project or object store is available in this environment, so the signed fetch of a foreign key could not be executed and observed.",
+      "Whether the deployed bucket policy narrows signed reads by prefix is a storage configuration fact that source cannot establish."
+    ],
+    "validation_plan": {
+      "local": "With a local Supabase stack and two dummy businesses, create business A and business B, upload a logo for B, read B's public config to obtain its logo_key, then call saveBrandingKioskAction as a member of A with logo_key set to B's key and fetch A's public config. A working signed URL for B's object confirms the cross-tenant read.",
+      "deployment": "Ask the storage owner whether the business-assets bucket or its R2 equivalent restricts signed URL issuance to a business prefix; if it does not, the signed URL returned for a foreign key is the confirmation."
+    }
+  },
+  {
+    "verdict": "rejected",
+    "fingerprint": "device.device-status-stored-xss",
+    "title": "Device report could store script in device_status",
+    "description": "A device token holder posts camera and printer diagnostics that are merged into photoboxes.device_status and shown in the owner dashboard, which raised the question of stored script execution.",
+    "claimed_root_cause": "A device can write arbitrary JSON into a field the owner dashboard renders.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "src/app/api/v1/public/devices/report/route.ts",
+        "line": 14,
+        "scope": "POST /api/v1/public/devices/report",
+        "description": "Public route accepts a device report payload."
+      },
+      {
+        "kind": "sink",
+        "file": "src/server/devices.ts",
+        "line": 546,
+        "scope": "reportDevice deviceStatus merge",
+        "description": "Camera and printer sub-objects are merged into device_status."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "src/lib/validators.ts",
+        "line": 1117,
+        "description": "camera is a strict object with resolution (40 chars), width (integer) and error (200 chars); printer is limited to confirmed, last_test_at, mode enum and device_name (60 chars)."
+      },
+      {
+        "file": "src/lib/validators.ts",
+        "line": 1113,
+        "description": "The report schema has no free-form record field, so no arbitrary keys or markup-bearing structures can be stored."
+      }
+    ],
+    "reason": "The payload shape is fixed and length-bounded, and the dashboard renders these values through React text nodes, so no script context is reachable. This is a refuted candidate, not a hardening note."
+  },
+  {
+    "verdict": "rejected",
+    "fingerprint": "payment.checkout-booth-binding",
+    "title": "Device can act on a checkout belonging to another booth",
+    "description": "createPayment, applyVoucherToCheckout and abortSession load the checkout or session by business only and do not compare checkout.photobox_id with the authenticated device's photobox.",
+    "claimed_root_cause": "Missing per-booth binding lets a device act on a sibling booth's checkout.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "src/server/payment/payment-create.ts",
+        "line": 33,
+        "scope": "createPayment",
+        "description": "Checkout is loaded with the device's businessId only."
+      },
+      {
+        "kind": "sink",
+        "file": "src/server/payment/checkout-shared.ts",
+        "line": 75,
+        "scope": "loadCheckout",
+        "description": "The query filters by id and business_id but not by photobox_id."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "src/server/kiosk-sessions.ts",
+        "line": 464,
+        "description": "Session finalize and abort do compare session.photobox_id with the device, so the sensitive media path is bound; the checkout-only paths move no data across principals."
+      },
+      {
+        "file": "src/server/payment/checkout-shared.ts",
+        "line": 66,
+        "description": "The device must still belong to the same business, and both booths are owned by the same tenant, so no tenant boundary is crossed."
+      }
+    ],
+    "reason": "The affected resources belong to the same business and the same principal, and money still flows to that business's own credential. This is intra-tenant state confusion, not a boundary violation; it is recorded as a hardening note instead of a finding."
+  },
+  {
+    "verdict": "needs_validation",
+    "fingerprint": "payment.voucher-usage-limit-at-settlement",
+    "title": "Voucher usage_limit is enforced at checkout creation, not at settlement",
+    "description": "validateVoucherForCheckout rejects a voucher only when voucher_usages already contains usage_limit rows. Those rows are written during settlement, so several open checkouts that all reference the same voucher can each be paid and each insert a usage row, exceeding the owner's configured limit.",
+    "claimed_root_cause": "The settlement path inserts voucher_usages without re-checking vouchers.usage_limit, so the limit only counts already-settled redemptions at the moment a checkout is created.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "src/server/payment/checkout-create.ts",
+        "line": 143,
+        "scope": "createCheckout voucher validation",
+        "description": "Voucher eligibility is validated once, while the checkout is created and still unpaid."
+      },
+      {
+        "kind": "propagation",
+        "file": "src/server/payment/checkout-shared.ts",
+        "line": 177,
+        "scope": "validateVoucherForCheckout usage_limit",
+        "description": "The limit is compared against a count of voucher_usages rows; rows do not exist yet for any open checkout."
+      },
+      {
+        "kind": "propagation",
+        "file": "src/server/payment/settlement.ts",
+        "line": 71,
+        "scope": "runPaidSideEffects",
+        "description": "After payment is confirmed, settlement is delegated to the settle_paid_payment_atomically database function."
+      },
+      {
+        "kind": "sink",
+        "file": "db/schema.sql",
+        "line": 1436,
+        "scope": "settle_paid_payment_atomically voucher_usages insert",
+        "description": "The function inserts a voucher_usages row whenever the payment carries a voucher_id, with no usage_limit read or check."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "db/schema.sql",
+        "line": 1477,
+        "description": "usage_limit is enforced only inside create_voucher_payment_atomically, the zero-amount voucher path, which locks the voucher row and counts usages."
+      },
+      {
+        "file": "db/schema.sql",
+        "line": 1016,
+        "description": "vouchers.usage_limit is a plain nullable integer with no database-level enforcement."
+      },
+      {
+        "file": "src/server/payment/checkout-create.ts",
+        "line": 95,
+        "description": "expireStaleCheckoutsForPhotobox keeps one open checkout per booth, so the number of simultaneous redemptions scales with the number of booths in the business."
+      }
+    ],
+    "blockers": [
+      "No local Postgres/Supabase instance is available, so two concurrent settlements against one voucher could not be executed to observe the second insert.",
+      "Whether a deployment trigger or policy outside db/schema.sql enforces the limit is a database configuration fact not visible in the repository."
+    ],
+    "validation_plan": {
+      "local": "On a local Supabase stack, seed one voucher with usage_limit = 1 and two booths. Create one checkout with the voucher on each booth, pay both through the cash or gateway path, then count voucher_usages for that voucher; two rows confirm the bypass.",
+      "deployment": "Ask the database owner to run select count(*) from voucher_usages where voucher_id = '<id>' for a voucher whose usage_limit is 1 and that was offered on multiple booths during one campaign."
+    }
+  },
+  {
+    "verdict": "needs_validation",
+    "fingerprint": "ratelimit.client-ip-header-trust",
+    "title": "Rate-limit key trusts a client-settable forwarding header",
+    "description": "getClientIp returns cf-connecting-ip before any proxy-verified header. The shipped nginx configuration sets X-Real-IP and X-Forwarded-For but neither sets nor strips cf-connecting-ip, so on that deployment a caller can rotate the header per request and never share a rate-limit bucket.",
+    "claimed_root_cause": "A header that the requester can supply is treated as a trusted client identity for every per-IP rate limit.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "src/lib/request-ip.ts",
+        "line": 20,
+        "scope": "getClientIp",
+        "description": "cf-connecting-ip is returned first, before x-real-ip and x-forwarded-for."
+      },
+      {
+        "kind": "propagation",
+        "file": "src/lib/auth.ts",
+        "line": 175,
+        "scope": "authorize IP limit",
+        "description": "The login IP limit is keyed on that value."
+      },
+      {
+        "kind": "propagation",
+        "file": "src/app/api/v1/public/devices/activate/route.ts",
+        "line": 13,
+        "scope": "activate rate limit",
+        "description": "Activation-code attempts are limited only per that IP value."
+      },
+      {
+        "kind": "sink",
+        "file": "src/lib/rate-limit.ts",
+        "line": 142,
+        "scope": "rateLimit key",
+        "description": "The derived value becomes the Redis or in-memory counter key, so a new value means a fresh bucket."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "deploy/nginx-snapyos.conf",
+        "line": 35,
+        "description": "nginx sets X-Real-IP from $remote_addr but does not touch cf-connecting-ip."
+      },
+      {
+        "file": "deploy/nginx-snapyos.conf",
+        "line": 36,
+        "description": "X-Forwarded-For is appended to, so the client-supplied cf-connecting-ip still passes through."
+      },
+      {
+        "file": "src/lib/request-ip.ts",
+        "line": 22,
+        "description": "x-real-ip and x-forwarded-for are only consulted when cf-connecting-ip is absent, so the proxy-set headers never override a supplied one."
+      }
+    ],
+    "blockers": [
+      "Whether a CDN in front of the origin overwrites cf-connecting-ip is a deployment fact that source cannot establish.",
+      "No HTTP edge is running in this environment, so header handling by the actual proxy chain could not be observed."
+    ],
+    "validation_plan": {
+      "local": "Run the app behind the shipped nginx config on loopback and send 50 login or activation requests with a different cf-connecting-ip each time; absence of a 429 while the same requests with a fixed header are limited confirms the bypass.",
+      "deployment": "Ask the operator whether requests reach the origin through Cloudflare (which overwrites the header) or directly; if directly, capture one request at the origin and check that cf-connecting-ip equals the value the client sent."
+    }
+  }
+]

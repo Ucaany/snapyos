@@ -91,13 +91,13 @@ export default async function FinancePage({
           className="md:col-span-6"
           label="Estimasi Laba"
           value={formatIDR(summary.profit)}
-          sub={`Margin ${formatBp(summary.marginBp)} · net − biaya`}
+          sub={`Margin ${formatBp(summary.marginBp)} · bersih - biaya`}
         />
         <div className="grid grid-cols-1 gap-6 md:col-span-6 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2">
           <MetricCard
-            label="Pendapatan Net"
+            label="Pendapatan Bersih"
             value={formatIDR(summary.net)}
-            sub={`Gross ${formatIDR(summary.gross)} − diskon ${formatIDR(summary.discount)}`}
+            sub={`Kotor ${formatIDR(summary.gross)} - diskon ${formatIDR(summary.discount)}`}
           />
           <MetricCard
             label="Biaya"

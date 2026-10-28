@@ -89,10 +89,11 @@ Catatan tradeoff: DB strategy butuh query session tiap request (overhead kecil, 
 ## 9.5 Input Validation & Security Controls
 
 - Validasi semua input (zod schema) di server.
-- Rate limiting (login, public checkout, aktivasi device). Counter **in-memory
-  per proses** (`src/lib/rate-limit.ts`, interface `rateLimit(key, limit,
-windowMs)` async). Tidak ada backend shared, jadi di deployment multi-instance
-  limit efektif = limit × jumlah instance yang melayani.
+- Rate limiting (login, public checkout, aktivasi device). Backend **Upstash
+  Redis sliding-window** bila `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN`
+  diisi, dengan fallback **in-memory fixed-window per proses** saat Redis mati
+  (`src/lib/rate-limit.ts`, interface `rateLimit(key, limit, windowMs)` async).
+  Tanpa Redis, limit efektif = limit × jumlah instance yang melayani.
 - CSRF protection untuk mutasi berbasis cookie (Next.js server actions sudah menangani sebagian; tambahkan token bila perlu).
 - Sanitasi output (hindari XSS) — React escape default; hati-hati render HTML kustom.
 - Parameterized queries (supabase-js) → hindari SQL injection.
@@ -230,7 +231,8 @@ R2_ACCOUNT_ID / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY
 R2_BUCKET_BUSINESS_ASSETS / R2_BUCKET_GENERATED_PHOTOS  # bucket per area
 R2_BUCKET                 # legacy/opsional: satu bucket fallback semua area
 R2_ENDPOINT               # endpoint opsional (default turun dari account id)
-# Rate limiting (in-memory per proses; tidak ada env)
+# Rate limiting (Upstash opsional: UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN;
+# tanpa env = fallback in-memory per proses)
 # Admin
 ADMIN_EMAILS
 # Cron retention
@@ -269,7 +271,7 @@ Sumber: audit keamanan 2026-10-09. Status: **fixed**, **documented-residual**, a
 | P1-a | high           | Injeksi key storage via `page` kiosk → `kiosk-page-${page}` (`src/server/branding.ts:309`)                                        | **fixed** — allowlist `KIOSK_PAGE_IDS` divalidasi di sink + action                            | `tests/phase3.test.ts`                               |
 | P1-b | high           | Path traversal key R2                                                                                                             | **fixed** — guard `..`/backslash di `r2Key` (`src/lib/r2/areas.ts`)                           | `tests/storage-abstraction.test.ts`                  |
 | P1-c | medium (laten) | SVG lolos sebagai logo → XSS bila disajikan inline                                                                                | **fixed** — SVG dihapus dari `LOGO_ALLOWED_TYPES` + `sniffImageType`                          | `tests/upload-magic.test.ts`, `tests/phase3.test.ts` |
-| P2-a | medium         | Rate limiter in-memory (hanya 1 instance)                                                                                         | **diterima**: backend shared dihapus 2026-10-17; counter per proses, didokumentasikan di §9.5 | `tests/rate-limit.test.ts`                           |
+| P2-a | medium         | Rate limiter in-memory (hanya 1 instance)                                                                                         | **fixed** — Upstash Redis sliding-window + fallback in-memory; lihat §9.5                              | `tests/rate-limit.test.ts`                           |
 | P2-b | medium         | Verifikasi secret webhook Pakasir                                                                                                 | **sudah** `timingSafeEqual` + fail-closed; ditambah test eksplisit                            | `tests/pakasir-webhook-credential.test.ts`           |
 
 ### Potensial / defense-in-depth (documented-residual)

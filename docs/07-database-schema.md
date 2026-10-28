@@ -1,12 +1,12 @@
 # 7. Database Schema
 
-> **Sinkron dengan `db/schema.sql` aktual per audit 2026-10-24** (55 tabel + 32 fungsi; migration terbaru `0081_app_releases.sql`; `0071_rpc_search_path_hardening.sql`, `0073`, `0074`, `0077`, `0078`, `0079`, `0080`, `0081` disiapkan, **belum di-apply** ke cloud). Tabel/kolom di bawah = realita schema; deviasi dari draft awal ditandai. Paritas schema ↔ migrasi dijaga `tests/schema-migration-parity.test.ts`.
+> **Sinkron dengan `db/schema.sql` aktual per audit 2026-10-24** (55 tabel + 32 fungsi; migration terbaru `0081_app_releases.sql`). **Semua migrasi `0072`–`0081` sudah diterapkan ke cloud dan diverifikasi 2026-10-27** lewat probe PostgREST (`scripts/probe-migration-status.mjs`) plus katalog Postgres (`supabase db query --linked`) untuk index, aksi FK, dan signature fungsi. Hanya `0071` yang sengaja belum dijalankan. Tabel/kolom di bawah = realita schema; deviasi dari draft awal ditandai. Paritas schema ↔ migrasi dijaga `tests/schema-migration-parity.test.ts`.
 >
 > **RLS (C1, migrasi 0064):** setiap tabel `public.*` punya `alter table ... enable row level security` + policy `svc_all` (`for all to service_role using (true) with check (true)`); `anon`/`authenticated` di-revoke, `service_role` di-grant. Tidak ada policy `to public/anon/authenticated`.
 >
 > **RPC privilege (H1, migrasi 0065):** setiap fungsi aplikasi di `db/schema.sql` di-lock `revoke execute from public, anon, authenticated` + `grant execute to service_role` (fungsi trigger `set_updated_at`/`tg_*` dikecualikan).
 >
-> **RPC search_path (0071):** seluruh RPC aplikasi di-pin `set search_path = public, pg_temp` (defense-in-depth; 0065 sudah menutup EXECUTE). Migrasi ini **disiapkan, belum dijalankan** di Supabase.
+> **RPC search_path (0071):** seluruh RPC aplikasi di-pin `set search_path = public, pg_temp` (defense-in-depth; 0065 sudah menutup EXECUTE). Migrasi `0071` **belum dijalankan** di Supabase (keputusan pemilik). RPC yang lahir dari `0073`/`0074` sudah memakai `set search_path` langsung di definisinya, jadi tidak bergantung pada `0071`.
 
 PostgreSQL (Supabase). Konvensi:
 

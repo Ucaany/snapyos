@@ -11,7 +11,7 @@
 
 import { join } from "node:path";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { createCamera } from "./camera/index.ts";
+import { createCameraRoles } from "./camera/index.ts";
 import { ConfigError, loadConfig, type RuntimeConfig } from "./config.ts";
 import { getMeta, openDatabase, readVersion, type DatabaseSync } from "./db/index.ts";
 import { handleExitRoute } from "./exit/index.ts";
@@ -69,7 +69,11 @@ async function main(): Promise<void> {
   // Setelan tersimpan menang atas env saat memilih adapter; env tetap nilai
   // awal bila store kosong. Ganti provider berlaku setelah runtime restart.
   const effective = effectiveConfig(config, activeSettings(db, config));
-  const camera = createCamera(effective);
+  // Dua peran kamera: stills (foto) dan stream (preview). Adapter yang sama
+  // dipakai untuk keduanya bila stream tidak dikonfigurasi.
+  const cameras = createCameraRoles(effective);
+  const camera = cameras.stills;
+  const streamCamera = cameras.stream;
   const printer = createPrinter(effective);
 
   if (config.mock) {
@@ -150,6 +154,15 @@ async function main(): Promise<void> {
             mock: printer.mock,
             last_error: error instanceof Error ? error.message : "Adapter printer error",
           }));
+        const streamStatus =
+          streamCamera === camera
+            ? null
+            : await streamCamera.status().catch((error: unknown) => ({
+                adapter: config.cameraStream ?? config.camera,
+                connected: false,
+                mock: streamCamera.mock,
+                last_error: error instanceof Error ? error.message : "Adapter preview error",
+              }));
         return json(
           res,
           200,
@@ -157,6 +170,8 @@ async function main(): Promise<void> {
             ok: true,
             version: VERSION,
             camera: cameraStatus,
+            // Aditif: kiosk lama mengabaikan kunci ini.
+            camera_stream: streamStatus,
             printer: printerStatus,
             data_dir: config.dataDir,
             db_version: readVersion(db),
@@ -220,7 +235,7 @@ async function main(): Promise<void> {
       }
 
       if (req.method === "GET" && url.pathname === "/camera/preview") {
-        const body = await camera.preview();
+        const body = await streamCamera.preview();
         res.statusCode = 200;
         res.setHeader("Content-Type", "image/jpeg");
         res.setHeader("Cache-Control", "no-store");

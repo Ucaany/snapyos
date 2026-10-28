@@ -24,6 +24,16 @@ export const metadata: Metadata = {
   title: "Dashboard | SnapyOS",
 };
 
+const STATUS_LABEL: Record<string, string> = {
+  active: "Aktif",
+  trialing: "Uji coba",
+  past_due: "Tertunggak",
+  cancelled: "Dibatalkan",
+  canceled: "Dibatalkan",
+  expired: "Kedaluwarsa",
+  pending: "Menunggu",
+};
+
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -82,9 +92,9 @@ export default async function DashboardPage({
         title={active.business.name}
         meta={
           <span>
-            /p/{active.business.slug} · {active.business.timezone} · PLAN{" "}
-            {subscription?.plan?.name ?? "Tidak ada paket"} /{" "}
-            {subscription?.status ?? "Tidak diketahui"}
+            /p/{active.business.slug} · {active.business.timezone} · PAKET{" "}
+            {subscription?.plan?.name ?? "Tidak ada paket"} ·{" "}
+            {STATUS_LABEL[subscription?.status ?? ""] ?? "Status tidak diketahui"}
           </span>
         }
         right={
@@ -137,11 +147,11 @@ export default async function DashboardPage({
             items={[
               { label: "Hari Ini", value: formatIDR(summary.revenueToday) },
               { label: "Bulan Ini", value: formatIDR(summary.revenueMonth) },
-              { label: "Transaksi Paid", value: String(summary.paidTx) },
-              { label: "Rata-rata / Tx", value: formatIDR(summary.avgTransaction) },
+              { label: "Transaksi Lunas", value: String(summary.paidTx) },
+              { label: "Rata-rata / Transaksi", value: formatIDR(summary.avgTransaction) },
               { label: "Sesi Foto", value: String(metrics.sessions) },
               { label: "Pelanggan", value: String(metrics.customers) },
-              { label: "Booth Online", value: String(metrics.activePhotoboxes) },
+              { label: "Booth Terhubung", value: String(metrics.activePhotoboxes) },
               { label: "Outlet Aktif", value: String(metrics.activeOutlets) },
             ]}
           />

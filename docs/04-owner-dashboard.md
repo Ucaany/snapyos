@@ -237,8 +237,9 @@ Contoh: Business `KLIK FOTO` → Outlet `Malioboro` → Photobox `Booth 01`.
 
 ### 4.6.1 Setelan mesin: milik aplikasi booth
 
-Kamera, printer fisik, dan durasi sesi **tidak** diatur dari dashboard. Ketiganya milik
-aplikasi booth (runtime lokal), karena hanya mesin di lokasi yang tahu nilai sebenarnya.
+Kamera, printer fisik, durasi sesi, dan **kustomisasi tampilan per booth** tidak diatur dari
+dashboard. Semuanya milik aplikasi booth (runtime lokal), karena hanya mesin di lokasi yang
+tahu nilai sebenarnya.
 
 **Yang diatur dari dashboard** (form ubah booth, dua seksi):
 
@@ -246,9 +247,31 @@ aplikasi booth (runtime lokal), karena hanya mesin di lokasi yang tahu nilai seb
 - **Kebijakan bisnis**: `payment_mode`, `print_settings.copies` (biaya bahan),
   `print_settings.layout` (bentuk output pelanggan).
 
+**Yang diatur di aplikasi booth** (panel **Setelan booth**, dibuka dengan PIN petugas):
+
+| Grup                 | Field                                                                                        |
+| -------------------- | -------------------------------------------------------------------------------------------- |
+| `camera_settings`    | `provider`, `countdown_seconds`, `capture_width/height`, `mirror_preview`, `screen_orientation` |
+| `print_settings`     | `enabled`, `mode`, `paper_size`, `orientation`, `auto_print`, `margins_mm`, `printer_name`     |
+| `session_settings`   | `timer_seconds`, `warning_seconds`, `max_retakes`                                              |
+| `appearance_settings`| `bg_color`, `text_color`, `font_scale`, `button_radius`, `padding`, judul/hint layar, `guide_steps`, override per-layar |
+
 Field mesin yang dikirim lewat form dashboard **ditolak** dengan pesan yang menyebut nama
-field-nya (`src/lib/photobox-form-fields.ts`), bukan dibuang diam-diam. Jalur sah satu-satunya
-adalah device token (`PATCH /api/v1/public/devices/settings`).
+field-nya (`src/lib/photobox-form-fields.ts`), bukan dibuang diam-diam.
+
+Jalur tulis setelan ada dua, dan keduanya tidak bisa saling menimpa:
+
+- **`PUT /v1/settings`** (runtime lokal) — semua grup di atas, termasuk `appearance_settings`.
+- **`PATCH /api/v1/public/devices/settings`** (cloud) — hanya tiga grup mesin. Payload yang
+  membawa `appearance_settings` dijawab `403 LOCAL_ONLY_SETTING`; payload yang membawa
+  `copies`/`layout`/`payment_mode` dijawab `403 FIELD_NOT_DEVICE_OWNED`.
+
+**Kustomisasi tampilan adalah milik satu booth.** `appearance_settings` disimpan di store
+lokal booth dan **tidak** ikut laporan ke cloud: kalau ikut, satu booth yang mengganti warna
+latar akan menimpa `photoboxes.*` yang dibaca seluruh booth di business yang sama. Di kiosk,
+nilai booth di-merge **di atas** branding cloud (`src/lib/appearance-merge.ts`), sehingga logo,
+warna brand, dan video promosi tetap milik website. Runtime mati → branding cloud dipakai apa
+adanya dan booth tetap bisa menjual.
 
 **Panel cermin** (dialog **Perangkat**, `DeviceDialog`) menampilkan laporan booth:
 

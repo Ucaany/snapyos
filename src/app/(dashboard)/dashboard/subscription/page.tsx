@@ -43,7 +43,7 @@ export default async function SubscriptionPage() {
   return (
     <div className="flex flex-col gap-8 p-6 md:p-10">
       <PageHeader
-        eyebrow="SUBSCRIPTION: PLAN & TAGIHAN"
+        eyebrow="LANGGANAN · PAKET & TAGIHAN"
         title="Langganan"
         description="Kelola plan aktif, add-on, dan riwayat invoice."
       />

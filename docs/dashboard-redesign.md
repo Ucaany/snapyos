@@ -1,9 +1,15 @@
-# Dashboard Themes — Brutalis (default) + Modern (shadcn/efferd)
+# Dashboard Themes — Brutalis (default) + Modern (shadcn/efferd) — DIHAPUS
 
-> **Status: AKTIF (2026-10-25).** Dokumen ini menggantikan catatan historis
-> "DIBATALKAN 2026-08-30" (dual-shell Dashboard-01). Tema kedua sekarang
-> berbasis **`@efferd/app-shell-3`** + primitif shadcn `base-nova`, bukan
-> dashboard-01, dan dipilih per-browser lewat cookie.
+> **Status: DIHAPUS 2026-10-28.** Tema `modern` dan seluruh pendukungnya sudah
+> dihapus dari kode: `src/components/efferd/*`, `src/components/theme/*`,
+> `src/lib/dashboard-theme.ts`, `src/lib/dashboard-theme-server.ts`,
+> `src/styles/theme-modern.css`, `src/components/ui/modern-classes.ts`, dan
+> `tests/dashboard-theme.test.ts`. Shell owner/admin/staff sekarang brutalist
+> saja (`Topbar` + `CollapsibleShell` + `Sidebar`), tanpa cookie
+> `snapyos_dashboard_theme`. Dokumen ini disimpan sebagai catatan historis;
+> sumber kebenaran gaya ada di `docs/11-design-system.md`.
+>
+> Isi di bawah menggambarkan desain yang **sudah tidak berlaku**.
 
 ## Ringkas
 

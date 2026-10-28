@@ -62,7 +62,14 @@ test("voucherInvariantError: rentang tanggal dan min/max divalidasi setelah merg
     { ...current, max_discount: 10_000 },
     { min_transaction: 20_000 }
   );
-  assert.equal(minMaxIssues[0]!.path[0], "min_transaction");
+  // min_transaction dan max_discount adalah syarat INDEPENDEN (docs/06 §6.2):
+  // minimum belanja 20.000 dengan plafon diskon 10.000 adalah konfigurasi sah.
+  assert.deepEqual(minMaxIssues, []);
+  // Yang tetap ilegal: plafon diskon negatif.
+  assert.equal(
+    voucherInvariantError(current, { max_discount: -1 })[0]!.path[0],
+    "max_discount"
+  );
 });
 
 test("promoInvariantError: type tersimpan percentage + amount besar ditolak", () => {

@@ -93,7 +93,7 @@ export function QrisPayment({
         <p className="flex items-center gap-2 font-display text-base uppercase leading-none tracking-[-0.01em] md:text-lg">
           <span
             className={`inline-block size-2.5 shrink-0 rounded-full border-2 ${
-              online ? "animate-pulse border-current bg-current" : "border-current"
+              online ? "motion-safe:animate-pulse border-current bg-current" : "border-current"
             }`}
             aria-hidden
           />
@@ -132,7 +132,7 @@ export function PaidNotice({
   const radius = kioskStyle?.radius ?? 0;
   return (
     <div
-      className="flex min-h-[46dvh] flex-col items-center justify-center gap-4 border-2 border-ink bg-accent p-6 text-center shadow-[4px_4px_0_0_#111111]"
+      className="flex min-h-[46dvh] flex-col items-center justify-center gap-4 border-2 border-ink bg-accent p-6 text-center shadow-hard"
       style={
         kioskStyle
           ? {
@@ -143,7 +143,7 @@ export function PaidNotice({
           : { borderRadius: radius }
       }
     >
-      <Loader2 className="size-7 animate-spin" aria-hidden />
+      <Loader2 className="size-7 motion-safe:animate-spin" aria-hidden />
       <p className="font-display text-lg uppercase leading-none tracking-[-0.01em] md:text-xl">
         {busy ? "Pembayaran berhasil. Membuka sesi foto" : "Pembayaran berhasil."}
       </p>

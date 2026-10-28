@@ -13,7 +13,7 @@
  */
 
 import type { DatabaseSync } from "node:sqlite";
-import { mergeDeviceSettings } from "../../src/lib/validators.ts";
+import { CLOUD_SYNCED_DEVICE_GROUPS, mergeDeviceSettings } from "../../src/lib/validators.ts";
 import type { RuntimeConfig } from "../config.ts";
 import { getMeta, getSetting, setSetting } from "../db/index.ts";
 import { HttpError, type RouteResult } from "../http.ts";
@@ -101,16 +101,54 @@ export function mergeSettings(cloud: CloudSettings, device: SettingsShape): Clou
 }
 
 /**
+ * Setelan yang boleh naik ke cloud (`PATCH .../devices/settings`).
+ *
+ * `appearance_settings` TIDAK ikut: kustomisasi tampilan adalah milik satu
+ * booth dan tidak boleh menular ke booth lain lewat baris `photoboxes`.
+ * Tanpa penyaringan ini, satu booth yang mengganti warna latar akan menimpa
+ * photoboxes.print_settings/… untuk seluruh booth di business yang sama.
+ */
+export function cloudSyncedSettings(settings: SettingsShape): SettingsShape {
+  const out: SettingsShape = {};
+  for (const group of CLOUD_SYNCED_DEVICE_GROUPS) {
+    const value = settings[group];
+    if (value) out[group] = value;
+  }
+  return out;
+}
+
+/**
  * Adapter dipilih saat start dari setelan tersimpan; env tetap nilai awal bila
  * store kosong. Mock tidak pernah ditimpa setelan — kamera palsu di booth
  * berarti pelanggan membayar foto yang bukan dirinya.
+ *
+ * Nilai `browser`/`bridge`/kosong berarti "jangan menimpa env": operator hanya
+ * menyatakan jalur mana yang dipakai, sedangkan merek adapter (gphoto2 /
+ * libcamera / v4l2 / pyav) milik mesin booth. Nilai adapter yang eksplisit
+ * (dipilih teknisi) tetap menang supaya booth bisa ganti kamera tanpa mengubah
+ * service env.
  */
+export const STORED_BRIDGE_KINDS = [
+  "digicamcontrol",
+  "gphoto2",
+  "libcamera",
+  "v4l2",
+  "pyav",
+] as const;
+
+function storedCameraKind(provider: unknown): RuntimeConfig["camera"] | null {
+  return typeof provider === "string" && (STORED_BRIDGE_KINDS as readonly string[]).includes(provider)
+    ? (provider as RuntimeConfig["camera"])
+    : null;
+}
+
 export function effectiveConfig(config: RuntimeConfig, settings: SettingsShape): RuntimeConfig {
   const provider = settings.camera_settings?.provider;
   const printMode = settings.print_settings?.mode;
+  const stored = config.camera === "mock" ? null : storedCameraKind(provider);
   return {
     ...config,
-    camera: config.camera !== "mock" && provider === "gphoto2" ? "gphoto2" : config.camera,
+    camera: stored ?? config.camera,
     printer: config.printer !== "mock" && printMode === "cups" ? "cups" : config.printer,
   };
 }
@@ -172,6 +210,8 @@ function present(db: DatabaseSync, config: RuntimeConfig) {
       camera_settings: stripSecrets(active.camera_settings ?? {}),
       print_settings: stripSecrets(active.print_settings ?? {}),
       session_settings: stripSecrets(active.session_settings ?? {}),
+      // Kustomisasi tampilan booth — hidup hanya di mesin ini.
+      appearance_settings: stripSecrets(active.appearance_settings ?? {}),
     },
   };
 }

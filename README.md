@@ -60,9 +60,12 @@ psql "postgresql://postgres.<ref>:<DB_PASSWORD>@aws-0-<region>.pooler.supabase.c
 node scripts/backfill-storage-usage.mjs
 ```
 
-- **Sudah diterapkan ke cloud** (diverifikasi 2026-10-20 lewat probe PostgREST): `0061`, `0062`, `0063`, `0068`, `0069`, `0070`. `0069` menghadirkan RPC kuota atomik (`create_outlet_with_quota`, `create_photobox_with_quota`, `add_business_member_with_quota`) yang dipanggil `src/server/outlets.ts`, `photoboxes.ts`, dan `staff.ts`.
-- **Belum diterapkan:** `0073_pos_receipt_snapshot_and_untracked_stock.sql` lalu `0074_pos_payment_idempotency_race.sql` — wajib sebelum deploy kode POS terbaru; menambah kolom snapshot struk, RPC order/item atomic, RPC toggle booth atomic, mencegah pembayaran retry mengurangi stok dua kali, dan menandai transaksi POS offline `withdrawable=false`. Setelah menjalankan SQL, refresh schema cache PostgREST lalu ulangi E2E transaksi POS.
-- **Belum diterapkan (sengaja):** `0071_rpc_search_path_hardening.sql`. Ini keputusan pemilik, lihat `docs/status.md`. Jalankan sebelum mengaktifkan hardening `search_path` di produksi.
+Status migrasi cloud **diterapkan dan diverifikasi 2026-10-27**. Jalankan `node scripts/probe-migration-status.mjs` (exit 0 = cocok); skrip itu memakai probe PostgREST plus katalog Postgres via `supabase db query --linked` untuk index, aksi `ON DELETE`, dan signature fungsi. Hasil akhir: **13 applied, 0 not applied, 0 unverifiable, 0 error**.
+
+- **Sudah diterapkan (terukur):** `0061`, `0062`, `0063`, `0068`, `0069`, `0070`, **`0072`**, **`0073`**, **`0074`**, **`0075`**, **`0076`**, **`0077`**, **`0078`**, **`0079`**, **`0080`**, **`0081`**. `0069` menghadirkan RPC kuota atomik (`create_outlet_with_quota`, `create_photobox_with_quota`, `add_business_member_with_quota`) yang dipanggil `src/server/outlets.ts`, `photoboxes.ts`, dan `staff.ts`.
+- **`0072`/`0075`/`0076` diterapkan 2026-10-27** lewat `db/migrations/APPLY_0072_0075_0076_combined.sql` (idempotent, tiga blok transaksi terpisah). Verifikasi: label add-on menjadi `Tambah Storage 1.024 MB`; FK `photoboxes_default_template_id_fkey` ada dengan `on delete set null`; RPC `pos_decrement_stock_batch` ada, `service_role`-only, `search_path` ter-pin, dan diuji fungsional (decrement normal, shortfall tidak mengubah stok, stok `null` selalu `ok`, qty 0 diabaikan, isolasi tenant menolak bisnis lain).
+- **Belum diterapkan (sengaja):** `0071_rpc_search_path_hardening.sql`. Ini keputusan pemilik, lihat `docs/status.md`. Catatan: `0073`, `0074`, dan `0076` sudah memakai `set search_path = public, pg_temp` di definisinya, jadi RPC tersebut sudah ter-pin tanpa `0071`.
+- **`0075`/`0078`/`0079` diverifikasi lewat katalog Postgres** (PostgREST tidak mengekspos index maupun aksi FK): 3 index `0075` + 3 index `0078` ada; keempat FK `customers` di `sessions`/`transactions`/`pos_orders`/`voucher_usages` memakai `confdeltype = 'r'` (RESTRICT) sesuai `0079`.
 - `0061` = plan device/addon model (DML UPDATE pada `plans`); `0062` = storage_usage accounting (`storage_objects` + `storage_usage` + RPC `storage_account_add`/`storage_account_sub`).
 - Jalur baca enforcement storage (`assertStorageAvailable` → `getBusinessUsedBytes(id, failOpen=false)`) **fail-closed: melempar** saat query gagal. Pemanggilnya (`src/server/branding.ts`, `src/server/kiosk-sessions.ts`, `src/server/templates.ts`) `await` tanpa try/catch, jadi `0062` wajib ada di setiap environment sebelum upload/finalize dipakai.
 
@@ -92,15 +95,75 @@ npm run bridge:gphoto2   # sama, adapter kamera DSLR via gphoto2
 Gate yang diverifikasi di mesin pengembang sebelum deploy:
 
 ```bash
-npm run typecheck        # PASS
+npm run typecheck        # PASS (exit 0)
 npm run lint             # PASS, 0 error, 12 warning <img> yang disengaja
-npm test                 # PASS 957/957
-npm run build            # PASS (Next.js 16, 93 static pages)
-npm run format:check     # PASS untuk file scope audit; repo-wide masih memiliki 34 file legacy tidak terformat
+npm test                 # PASS 1154/1154
+npm run build            # PASS (Next.js 16, 93 static pages + standalone)
 npm run test:e2e:print   # PASS 4/4
 npm run test:e2e:bluetooth # PASS 2/2 suite (12 assertion: BLE 2, SPP/foto 10)
-node tests/e2e/pos-receipt-serial.spec.mjs # BLOCKED sampai migration 0073–0074 diterapkan
+node tests/e2e/pos-receipt-serial.spec.mjs # PASS 16/16 (58mm + 80mm)
+node scripts/probe-migration-status.mjs    # PASS 13/13 applied, exit 0
 ```
+
+> **Dua suite E2E gagal karena sebab yang SUDAH ADA sebelum pekerjaan migrasi
+> 2026-10-27** (dibuktikan dengan `git stash` pada perubahan yang sama):
+>
+> - `kiosk-print-serial.spec.mjs` — test menunggu heading "Test printer" di
+>   `/dashboard/photoboxes/[id]/camera`, rute yang **dihapus sengaja** di Phase 8
+>   (commit `51edd43`, "setelan mesin pindah ke aplikasi booth"). Test-nya
+>   kedaluwarsa, bukan regresi.
+> - `kiosk-full-frame-flow.spec.mjs` — timeout menunggu heading "Pilih frame".
+>   Gagal juga tanpa perubahan ini.
+>
+> Keduanya perlu diperbarui/dipindahkan ke alur baru; tidak terkait migrasi.
+
+> **Pembaruan 2026-10-28 — audit template & chroma.** Empat jalur render
+> (builder preview, editor kiosk, cetak, GIF) dirapikan agar satu kontrak:
+>
+> - **Chroma key tidak lagi menghitam.** Piksel yang dihapus chroma key
+>   sebelumnya jatuh ke transparan, lalu di-encode JPEG (tanpa alpha) menjadi
+>   hitam. Kini `composeFrame` mengisi `layout.canvas.background` (default
+>   `#ffffff`) sebelum slot, dan jalur legacy mengisi hal yang sama di
+>   `drawPhoto`. Builder punya pemilih **warna dasar**; `layoutSchema` menolak
+>   nilai bukan hex. Detail: `docs/15-template-builder.md` §15.2/§15.4.
+> - **Teks & stiker kini di atas frame.** Sebelumnya overlay digambar di dalam
+>   foto (ter-clip slot, lalu tertutup frame). Sekarang `composeFrame` menerima
+>   `options.overlays` dan menggambarnya setelah frame; jalur legacy memakai
+>   `drawOverlayLayer` setelah `drawFrameOverlay`.
+> - **Layout template global admin divalidasi** dengan `layoutSchema`
+>   (`updateGlobalTemplateLayout`). Sebelumnya JSON mentah tersimpan apa adanya
+>   dan layout rusak diam-diam terbaca sebagai legacy (`slotCount` = 0).
+> - **GIF sesuai tipe template.** Frame ber-slot menghasilkan satu composite,
+>   jadi GIF memakai capture mentah; template legacy memakai foto berframe.
+>   Validasi jumlah capture hanya jalan bila `gif_photos` dikirim, sehingga
+>   klien lama tanpa field itu tetap bisa finalize.
+> - **Chroma key per booth kini bisa dinyalakan owner** dari Setelan Booth
+>   (`BoothSettingsPanel` → grup Kamera), bukan hanya default global admin.
+> - **Builder:** pembulatan slot dilakukan sebelum clamp (sebelumnya
+>   `x=0.5,w=1199.5` bisa jadi `1+1200 > 1200` dan ditolak server); editor
+>   memetakan slot aktif ke indeks foto lewat `fillSlots`.
+>
+> Gate setelah perubahan: `typecheck` PASS, `lint` PASS (0 error), `test`
+> PASS 1154/1154, `build` PASS. Test regresi baru ada di
+> `tests/template-layout.test.ts` (warna dasar + validasi hex).
+> Risiko residual (jujur): `sessions` belum menyimpan `template_id` — lihat
+> `docs/15-template-builder.md` §15.10.
+>
+> Audit Cloudflare/R2 (checklist cloud & deployment): bucket privat dengan
+> signed URL TTL 1 jam (`SIGNED_URL_TTL_SECONDS`), `r2Key()` menolak path
+> traversal, CORS hanya origin aplikasi dan metode `GET`/`HEAD`
+> (`scripts/configure-r2-cors.mjs`), kredensial `server-only` tanpa prefix
+> `NEXT_PUBLIC_` (`src/lib/r2/config.ts`). Tidak ada temuan baru; eksposur
+> bucket/CORS live tetap `needs_validation` karena itu keputusan akun.
+
+> **Pembaruan 2026-10-27:** E2E struk POS kini **16/16 PASS**. Sebelumnya BLOCKED
+> karena `0076` belum diterapkan; setelah `0076` masuk, suite berjalan dan
+> menyingkap satu bug nyata yang sudah diperbaiki: dua jalur cetak (auto-print
+> dan tombol manual) menulis ke port serial yang sama tanpa antrean, sehingga
+> chunk 256-byte saling menyisip dan struk keluar rusak (teks tergabung
+> `WaktKLIK FOTO DEV`, baris melewati lebar kolom). Perbaikan: antrean tulis
+> per-port di `src/lib/print/serial.ts`, dijaga `tests/print-serial.test.ts`
+> ("dua job bersamaan ke port yang sama tidak bercampur").
 
 ### Cetak thermal Bluetooth (2026-10-20)
 

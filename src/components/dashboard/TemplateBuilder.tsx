@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  useActionState,
   useCallback,
   useEffect,
   useMemo,
@@ -29,6 +28,7 @@ import {
   MAX_SLOTS,
   SLOT_FITS,
   SLOT_SHAPES,
+  canvasBackground,
   clampSlot,
   emptyLayout,
   layoutSchema,
@@ -154,26 +154,12 @@ export function TemplateBuilder({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState(false);
   const [frameVersion, setFrameVersion] = useState(0);
-  const [saveState, action, saving] = useActionState(saveAction, initial);
-  const [, startSaveTransition] = useTransition();
+  const [saveState, setSaveState] = useState<FormState>(initial);
+  const [saving, startSaveTransition] = useTransition();
   const router = useRouter();
   // Umpan balik simpan: tanpa ini user tidak tahu apakah frame/layout tersimpan
   // (frame hasil chroma hanya terlihat setelah halaman memuat ulang URL signed).
-  const pendingSaveRef = useRef(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!pendingSaveRef.current || saving) return;
-    pendingSaveRef.current = false;
-    const hasError = Boolean(
-      saveState?.error ??
-        (saveState?.fieldErrors && Object.keys(saveState.fieldErrors).length > 0)
-    );
-    if (!hasError) {
-      setSavedAt(Date.now());
-      router.refresh();
-    }
-  }, [saving, saveState, router]);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const frameRef = useRef<HTMLImageElement | null>(null);
@@ -243,7 +229,7 @@ export function TemplateBuilder({
     canvas.height = Math.max(1, Math.round(layout.canvas.height * scale));
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    ctx.fillStyle = "#FFFDF5";
+    ctx.fillStyle = canvasBackground(layout);
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     if (frameRef.current) {
       ctx.drawImage(frameRef.current, 0, 0, canvas.width, canvas.height);
@@ -380,9 +366,15 @@ export function TemplateBuilder({
         preset === "custom"
           ? { width: prev.canvas.width, height: prev.canvas.height }
           : CANVAS_PRESETS[preset];
-      const canvas = { width: dims.width, height: dims.height, preset };
+      // `background` ikut dipertahankan: mengganti preset tidak boleh
+      // mengembalikan warna dasar ke default diam-diam.
+      const canvas = { ...prev.canvas, width: dims.width, height: dims.height, preset };
       return { ...prev, canvas, slots: prev.slots.map((s) => clampSlot(s, canvas)) };
     });
+  }
+
+  function changeBackground(value: string) {
+    setLayout((prev) => ({ ...prev, canvas: { ...prev.canvas, background: value } }));
   }
 
   function changeCustomSize(which: "width" | "height", value: number) {
@@ -526,26 +518,33 @@ export function TemplateBuilder({
     e.currentTarget.releasePointerCapture(e.pointerId);
   }
 
-  /** Layout dibulatkan sebelum disimpan (kontrak px design, docs/15 §15.2). */
-  const roundedLayout: TemplateLayout = useMemo(
-    () => ({
+  /** Layout dibulatkan sebelum disimpan (kontrak px design, docs/15 §15.2).
+   *  Bulatkan DULU, clamp setelahnya: `x=0.5, w=1199.5` akan menjadi 1+1200
+   *  dan melewati canvas kalau urutannya dibalik. */
+  const roundedLayout: TemplateLayout = useMemo(() => {
+    const canvas = {
+      ...layout.canvas,
+      width: Math.round(layout.canvas.width),
+      height: Math.round(layout.canvas.height),
+    };
+    return {
       ...layout,
-      canvas: {
-        ...layout.canvas,
-        width: Math.round(layout.canvas.width),
-        height: Math.round(layout.canvas.height),
-      },
-      slots: layout.slots.map((s) => ({
-        ...s,
-        x: Math.round(s.x),
-        y: Math.round(s.y),
-        width: Math.round(s.width),
-        height: Math.round(s.height),
-        radius: s.radius !== undefined ? Math.round(s.radius) : undefined,
-      })),
-    }),
-    [layout]
-  );
+      canvas,
+      slots: layout.slots.map((s) =>
+        clampSlot(
+          {
+            ...s,
+            x: Math.round(s.x),
+            y: Math.round(s.y),
+            width: Math.round(s.width),
+            height: Math.round(s.height),
+            radius: s.radius !== undefined ? Math.round(s.radius) : undefined,
+          },
+          canvas
+        )
+      ),
+    };
+  }, [layout]);
 
   /** Thumbnail otomatis dari preview slot terisi (docs/15 §15.3).
    *  `toBlob` pada Chromium kadang TIDAK memanggil callback (canvas besar /
@@ -681,10 +680,18 @@ export function TemplateBuilder({
     }
     const chromaFile = chromaInputRef.current?.files?.[0];
     if (chromaFile) formData.set("chroma_file", chromaFile);
-    pendingSaveRef.current = true;
     setSavedAt(null);
-    startSaveTransition(() => {
-      void action(formData);
+    startSaveTransition(async () => {
+      const result = await saveAction(initial, formData);
+      setSaveState(result ?? {});
+      const hasError = Boolean(
+        result?.error || (result?.fieldErrors && Object.keys(result.fieldErrors).length > 0)
+      );
+      if (!hasError) {
+        setSavedAt(Date.now());
+        // URL signed frame berubah setelah chroma key; muat ulang data server.
+        router.refresh();
+      }
     });
   }
 
@@ -759,6 +766,18 @@ export function TemplateBuilder({
                   </label>
                 </div>
               )}
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <span className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]">
+                  Dasar
+                </span>
+                <input
+                  type="color"
+                  value={canvasBackground(layout)}
+                  onChange={(e) => changeBackground(e.target.value)}
+                  aria-label="Warna dasar kanvas di balik foto"
+                  className="h-9 w-12 cursor-pointer rounded-none border-2 border-ink bg-surface p-0.5"
+                />
+              </label>
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -836,41 +855,32 @@ export function TemplateBuilder({
             ) : (
               <ul className="flex flex-col">
                 {orderedSlots.map((slot, i) => (
-                  <li key={slot.id} className="border-t first:border-t-0">
+                  <li key={slot.id} className="flex items-center gap-1 border-t first:border-t-0">
                     <button
                       type="button"
                       onClick={() => {
                         setSelectedId(slot.id);
                         setPreviewMode(false);
                       }}
-                      className={`flex w-full items-center justify-between gap-2 py-2 text-left text-sm ${
+                      aria-pressed={slot.id === selectedId}
+                      className={`flex min-h-11 flex-1 items-center justify-between gap-2 py-2 text-left text-sm ${
                         slot.id === selectedId ? "font-medium text-ink" : "text-muted-foreground"
                       }`}
                     >
                       <span className="min-w-0 truncate">
-                        <span className="mr-2 inline-flex size-5 shrink-0 items-center justify-center rounded-none border-2 border-ink text-[10px] font-medium">
+                        <span className="mr-2 inline-flex size-5 shrink-0 items-center justify-center rounded-none border-2 border-ink text-[11px] font-medium">
                           {i + 1}
                         </span>
                         {`${slot.shape} ${Math.round(slot.width)}×${Math.round(slot.height)}`}
                       </span>
-                      <span
-                        role="button"
-                        tabIndex={0}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeSlot(slot.id);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.stopPropagation();
-                            removeSlot(slot.id);
-                          }
-                        }}
-                        className="shrink-0 border border-transparent px-1 py-0.5 text-destructive hover:border-destructive"
-                        aria-label={`Hapus slot ${i + 1}`}
-                      >
-                        <Trash2 className="size-4" aria-hidden />
-                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeSlot(slot.id)}
+                      aria-label={`Hapus slot ${i + 1}`}
+                      className="flex size-11 shrink-0 items-center justify-center border-2 border-transparent text-destructive hover:border-destructive focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+                    >
+                      <Trash2 className="size-4" aria-hidden />
                     </button>
                   </li>
                 ))}

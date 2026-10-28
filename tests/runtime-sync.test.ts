@@ -22,7 +22,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { RuntimeConfig } from "../runtime/config.ts";
+import { loadConfig, type RuntimeConfig } from "../runtime/config.ts";
 import { closeDatabase, insertSession, openDatabase, setMeta } from "../runtime/db/index.ts";
 import {
   backoffDelay,
@@ -42,31 +42,17 @@ const DEVICE_TOKEN = "test-device-token-0123456789abcdef";
 const BUSINESS_SLUG = "snapy-demo";
 const PHOTOBOX_SLUG = "booth-01";
 
+/** Dibangun lewat `loadConfig` supaya field baru tidak mematahkan fixture. */
 function baseConfig(dataDir: string): RuntimeConfig {
-  // Hanya field yang dibaca sync worker yang diisi; sisanya tidak pernah
-  // disentuh jalur ini.
-  return {
-    host: "127.0.0.1",
-    port: 0,
-    tokenDigest: Buffer.alloc(32),
-    allowedOrigins: new Set<string>(),
-    dataDir,
-    camera: "mock",
-    printer: "mock",
-    mock: true,
-    gphotoBin: "gphoto2",
-    captureTarget: "",
-    timeoutMs: 5_000,
-    digicamPort: 5513,
-    digicamCmd: "",
-    sumatraBin: "",
-    powershellBin: "powershell",
-    cupsBin: "lp",
-    lpstatBin: "lpstat",
-    maxBodyBytes: 1_048_576,
-    cloudUrl: "https://cloud.test",
-    deviceToken: DEVICE_TOKEN,
-  };
+  return loadConfig({
+    PHOTOBOOTH_BRIDGE_TOKEN: "test-bridge-token-0123456789",
+    SNAPYOS_CAMERA: "mock",
+    SNAPYOS_PRINTER: "mock",
+    SNAPYOS_ALLOW_MOCK: "1",
+    SNAPYOS_DATA_DIR: dataDir,
+    SNAPYOS_CLOUD_URL: "https://cloud.test",
+    SNAPYOS_DEVICE_TOKEN: DEVICE_TOKEN,
+  });
 }
 
 type Fixture = {
@@ -392,4 +378,64 @@ test("merge mempertahankan copies milik cloud saat device mengirim paper_size", 
   assert.equal(print.paper_size, "A6");
   assert.equal(print.printer_name, "Booth", "field device menang");
   assert.equal(merged.payment_mode, "gateway", "field di luar grup tidak tersentuh");
+});
+
+test("appearance_settings tidak pernah ikut PATCH ke cloud", async () => {
+  const fixture = makeFixture();
+  try {
+    // Booth mengkustomisasi tampilannya sendiri.
+    setMeta(fixture.db, "photobox_slug", PHOTOBOX_SLUG);
+    fixture.db
+      .prepare(
+        `insert into device_settings (key, value_json, updated_at)
+         values (?, ?, ?)
+         on conflict (key) do update set value_json = excluded.value_json`
+      )
+      .run(
+        "appearance_settings",
+        JSON.stringify({ bg_color: "#101820", padding: 40 }),
+        new Date(fixture.clock.value).toISOString()
+      );
+    fixture.db
+      .prepare(
+        `insert into device_settings (key, value_json, updated_at)
+         values (?, ?, ?)
+         on conflict (key) do update set value_json = excluded.value_json`
+      )
+      .run(
+        "print_settings",
+        JSON.stringify({ paper_size: "A6", printer_name: "DNP QW410" }),
+        new Date(fixture.clock.value).toISOString()
+      );
+
+    const { impl, calls } = fakeFetch(({ url, method }) => {
+      if (url.endsWith("/devices/settings") && method === "PATCH") {
+        return { status: 200, body: { data: { ok: true } } };
+      }
+      return { status: 200, body: { data: {} } };
+    });
+    fixture.ctx.fetchImpl = impl;
+
+    await runSyncOnce(fixture.ctx);
+
+    const patch = calls.find(
+      (c) => c.method === "PATCH" && c.url.endsWith("/devices/settings")
+    );
+    assert.ok(patch, "worker harus melaporkan setelan mesin ke cloud");
+
+    const sent = JSON.parse(String(patch.body)) as {
+      settings: Record<string, unknown>;
+    };
+    // Setelan mesin ikut — dashboard owner butuh nilai ini.
+    assert.ok(sent.settings.print_settings, "print_settings harus ikut");
+    // Kustomisasi tampilan TIDAK ikut: kalau ikut, satu booth akan menimpa
+    // baris photoboxes yang dibaca seluruh booth di business yang sama.
+    assert.equal(
+      sent.settings.appearance_settings,
+      undefined,
+      "appearance_settings tidak boleh naik ke cloud"
+    );
+  } finally {
+    cleanup(fixture);
+  }
 });

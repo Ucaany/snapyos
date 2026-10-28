@@ -4,7 +4,7 @@ import { toErrorResponse } from "@/lib/api-route";
 import { rateLimit, rateLimitByDevice } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/request-ip";
 import { updateDeviceSettings } from "@/server/devices";
-import { deviceSettingsPatchSchema, foreignSettingKeys } from "@/lib/validators";
+import { deviceSettingsPatchSchema, foreignSettingKeys, localOnlySettingKeys } from "@/lib/validators";
 
 /**
  * PATCH /api/v1/public/devices/settings — booth menulis balik setelan miliknya
@@ -35,6 +35,16 @@ export async function PATCH(request: Request) {
     if (body && typeof body === "object" && !Array.isArray(body)) {
       const settings = (body as { settings?: unknown }).settings;
       if (settings && typeof settings === "object" && !Array.isArray(settings)) {
+        // Kustomisasi tampilan hanya hidup di mesin booth. Kalau diterima di
+        // sini, satu booth akan menimpa tampilan seluruh booth di business.
+        const localOnly = localOnlySettingKeys(settings as Record<string, unknown>);
+        if (localOnly.length > 0) {
+          throw new ApiError(
+            "LOCAL_ONLY_SETTING",
+            `Setelan ini hanya berlaku di mesin booth dan tidak disinkronkan: ${localOnly.join(", ")}.`,
+            { fields: localOnly }
+          );
+        }
         const foreign = foreignSettingKeys(settings as Record<string, unknown>);
         if (foreign.length > 0) {
           throw new ApiError(

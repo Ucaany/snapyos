@@ -9,6 +9,7 @@ import {
   ImageIcon,
   Landmark,
   LayoutDashboard,
+  MonitorDown,
   Package,
   Palette,
   Receipt,
@@ -61,7 +62,7 @@ export function buildNavGroups(showPos = false, showPwaKiosk = false): NavGroup[
         ...(showPos ? [{ label: "POS", href: "/dashboard/pos", icon: ScanBarcode }] : []),
         ...(showPwaKiosk ? [{ label: "Unduh PWA", href: "/dashboard/pwa", icon: Download }] : []),
         // Installer booth (EXE) — tautan admin, bukan unggahan SNAPY OS.
-        { label: "Aplikasi Booth", href: "/dashboard/apps", icon: Download },
+        { label: "Aplikasi Booth", href: "/dashboard/apps", icon: MonitorDown },
       ],
     },
     {

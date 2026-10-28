@@ -29,7 +29,7 @@ function initials(name: string): string {
 export function WelcomeScreen({ business, branding, onStart }: Props) {
   const k: KioskBrandingConfig = branding.kiosk ?? {};
   const title = branding.welcome_title || business.name;
-  const tagline = branding.welcome_tagline || "Capture your moment.";
+  const tagline = branding.welcome_tagline || "Abadikan momenmu.";
   const button = branding.welcome_button || "Mulai";
   const showLogo = k.show_logo !== false;
   const showTagline = k.show_tagline !== false;
@@ -62,7 +62,7 @@ export function WelcomeScreen({ business, branding, onStart }: Props) {
         // rekaan) supaya kolom brand punya jangkar visual, bukan ruang kosong.
         <span
           aria-hidden
-          className="flex size-24 items-center justify-center border-2 border-ink font-display text-3xl font-bold uppercase leading-none tracking-[-0.04em] shadow-[6px_6px_0_0_#111111] md:size-32 md:text-4xl"
+          className="flex size-24 items-center justify-center border-2 border-ink font-display text-3xl font-bold uppercase leading-none tracking-[-0.04em] shadow-hard md:size-32 md:text-4xl"
           style={{ backgroundColor: primary, color: secondary, borderRadius: vs.radius }}
         >
           {initials(business.name)}
@@ -102,14 +102,14 @@ export function WelcomeScreen({ business, branding, onStart }: Props) {
         tone="primary"
         size="xl"
         onClick={onStart}
-        className="mt-1 min-w-[220px] tracking-[-0.02em]"
+        className="mt-1 w-full max-w-[280px] tracking-[-0.02em] sm:w-auto sm:min-w-[220px]"
         style={{
           backgroundColor: primary,
           borderColor: secondary,
           color: secondary,
           borderRadius: vs.radius,
           fontFamily: vs.fontFamily,
-          boxShadow: `6px 6px 0 0 ${defaultBrandColors.ink}`,
+          boxShadow: `var(--shadow-hard)`,
         }}
       >
         {button}

@@ -132,7 +132,7 @@ export function CupsPrintScreen({
 
   return (
     <>
-      <div className="fixed inset-0 z-40 flex flex-col items-center justify-center gap-5 overflow-y-auto bg-bg p-6 text-center md:p-8">
+      <div className="fixed inset-0 z-30 flex flex-col items-center justify-center gap-5 overflow-y-auto bg-bg p-6 text-center md:p-8">
         {state === "error" ? (
           <>
             <TriangleAlert className="size-10 text-destructive" aria-hidden />
@@ -173,7 +173,7 @@ export function CupsPrintScreen({
           </>
         ) : (
           <>
-            <Loader2 className="size-10 animate-spin" aria-hidden />
+            <Loader2 className="size-10 motion-safe:animate-spin" aria-hidden />
             <p className="font-display text-xl uppercase leading-none tracking-[-0.02em] md:text-2xl">
               {state === "loading" ? "Menyiapkan cetak" : "Mengirim ke CUPS"}
             </p>

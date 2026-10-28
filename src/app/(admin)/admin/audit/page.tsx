@@ -4,6 +4,15 @@ import { AdminPaginator } from "@/components/admin/AdminPaginator";
 import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/ui/page-header";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { deleteAuditLogsAction } from "@/server/admin-actions";
 import { listAuditLogs } from "@/server/admin";
 
@@ -42,17 +51,11 @@ export default async function AdminAuditPage({
 
   return (
     <div className="flex flex-col gap-8 p-6 md:p-10">
-      <header>
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {"ADMIN - AUDIT LOG"}
-        </p>
-        <h1 className="mt-2 font-display text-3xl uppercase tracking-tight md:text-4xl">
-          Log Audit
-        </h1>
-        <p className="mt-2 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
-          {total} ENTRY · SEMUA AKSI ADMIN & FINANSIAL TERCATAT
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="ADMIN - AUDIT LOG"
+        title="Log Audit"
+        meta={`${total} ENTRY · SEMUA AKSI ADMIN & FINANSIAL TERCATAT`}
+      />
 
       <section className="border-2 border-ink bg-muted p-4 shadow-[4px_4px_0_0_#111111]">
         <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
@@ -72,7 +75,7 @@ export default async function AdminAuditPage({
           <div className="flex flex-col gap-1">
             <label
               htmlFor="audit-before"
-              className="font-mono text-[10px] uppercase tracking-[0.12em]"
+              className="font-mono text-[11px] uppercase tracking-[0.12em]"
             >
               Hapus sebelum tanggal
             </label>
@@ -94,7 +97,7 @@ export default async function AdminAuditPage({
         <div className="flex flex-col gap-1">
           <label
             htmlFor="audit-search"
-            className="font-mono text-[10px] uppercase tracking-[0.12em]"
+            className="font-mono text-[11px] uppercase tracking-[0.12em]"
           >
             Cari aksi / target
           </label>
@@ -116,49 +119,50 @@ export default async function AdminAuditPage({
           Tidak ada entry audit yang cocok dengan filter.
         </AdminEmptyState>
       ) : (
-        <div className="overflow-x-auto border-2 border-ink shadow-[4px_4px_0_0_#111111]">
-          <table className="w-full min-w-[960px] border-collapse bg-surface text-left">
-            <thead>
-              <tr className="bg-ink font-mono text-[10px] uppercase tracking-[0.12em] text-bg">
-                <th className="px-4 py-3 font-bold">Waktu</th>
-                <th className="px-4 py-3 font-bold">Aktor</th>
-                <th className="px-4 py-3 font-bold">Aksi</th>
-                <th className="px-4 py-3 font-bold">Target</th>
-                <th className="px-4 py-3 font-bold">Bisnis</th>
-                <th className="px-4 py-3 font-bold">Meta</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((log) => (
-                <tr key={log.id} className="border-t-2 border-ink/10 align-top">
-                  <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground">
-                    {dateTimeFmt.format(new Date(log.created_at))}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="font-mono text-xs font-bold">
-                      {log.actor_email ?? "system"}
-                    </span>
-                    {log.actor_name ? (
-                      <span className="block font-mono text-[10px] text-muted-foreground">
-                        {log.actor_name}
-                      </span>
-                    ) : null}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs font-bold break-all">{log.action}</td>
-                  <td className="px-4 py-3 font-mono text-xs break-all text-muted-foreground">
-                    {log.target ?? "-"}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                    {log.business_name ?? "-"}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-[10px] text-muted-foreground">
-                    <pre className="whitespace-pre-wrap break-all">{JSON.stringify(log.meta)}</pre>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Waktu</TableHead>
+              <TableHead>Aktor</TableHead>
+              <TableHead>Aksi</TableHead>
+              <TableHead className="hidden md:table-cell">Target</TableHead>
+              <TableHead className="hidden lg:table-cell">Bisnis</TableHead>
+              <TableHead className="hidden xl:table-cell">Meta</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items.map((log) => (
+              <TableRow key={log.id} className="align-top">
+                <TableCell className="whitespace-nowrap text-muted-foreground">
+                  {dateTimeFmt.format(new Date(log.created_at))}
+                </TableCell>
+                <TableCell>
+                  <span className="font-bold">{log.actor_email ?? "system"}</span>
+                  {log.actor_name ? (
+                    <span className="block text-[11px] text-muted-foreground">{log.actor_name}</span>
+                  ) : null}
+                </TableCell>
+                <TableCell className="break-all font-bold">{log.action}</TableCell>
+                <TableCell className="hidden break-all text-muted-foreground md:table-cell">
+                  {log.target ?? "-"}
+                </TableCell>
+                <TableCell className="hidden text-muted-foreground lg:table-cell">
+                  {log.business_name ?? "-"}
+                </TableCell>
+                <TableCell className="hidden xl:table-cell">
+                  <details>
+                    <summary className="flex min-h-11 cursor-pointer items-center text-[11px] text-muted-foreground">
+                      Lihat meta
+                    </summary>
+                    <pre className="mt-1 max-w-[40ch] whitespace-pre-wrap break-all text-[11px] text-muted-foreground">
+                      {JSON.stringify(log.meta)}
+                    </pre>
+                  </details>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
 
       <AdminPaginator

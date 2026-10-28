@@ -274,7 +274,7 @@ function BoothsEditor({
                 </span>
                 <span
                   className={cn(
-                    "border-2 border-ink px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase",
+                    "border-2 border-ink px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase",
                     STATUS_STYLE[booth.status] ?? "bg-muted"
                   )}
                 >
@@ -427,23 +427,23 @@ export function StaffPanel({
         />
       ) : (
         <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
-          <table className="w-full min-w-[960px] border-collapse text-left">
+          <table className="w-full border-collapse text-left md:min-w-[960px]">
             <caption className="sr-only">
               Daftar staff, role, akses booth, dan transaksi hari ini
             </caption>
             <thead>
-              <tr className="border-b-2 border-ink bg-ink font-mono text-[10px] uppercase tracking-[0.12em] text-bg">
+              <tr className="border-b-2 border-ink bg-ink font-mono text-[11px] uppercase tracking-[0.12em] text-bg">
                 <th scope="col" className="px-4 py-3.5">
-                  Member
+                  Anggota
                 </th>
                 <th scope="col" className="px-4 py-3.5">
-                  Role
+                  Peran
                 </th>
-                <th scope="col" className="px-4 py-3.5">
+                <th scope="col" className="hidden px-4 py-3.5 md:table-cell">
                   Akses booth
                 </th>
-                <th scope="col" className="px-4 py-3.5">
-                  Trx hari ini
+                <th scope="col" className="hidden px-4 py-3.5 md:table-cell">
+                  Transaksi Hari Ini
                 </th>
                 <th scope="col" className="px-4 py-3.5 text-right">
                   Aksi
@@ -468,7 +468,7 @@ export function StaffPanel({
                     <td className="px-4 py-4">
                       <RoleForm member={member} currentUserId={currentUserId} />
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="hidden px-4 py-4 md:table-cell">
                       {member.role === "owner" ? (
                         <p className="font-mono text-xs font-bold uppercase tracking-[0.05em]">
                           Semua booth
@@ -495,7 +495,7 @@ export function StaffPanel({
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="hidden px-4 py-4 md:table-cell">
                       <p className="font-mono text-sm font-bold">{member.todayCount}</p>
                       <p className="mt-1 font-mono text-xs text-muted-foreground">
                         {formatIDR(member.todayRevenue)}

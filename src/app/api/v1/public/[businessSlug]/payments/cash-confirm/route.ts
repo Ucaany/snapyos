@@ -26,7 +26,7 @@ export const POST = authRoute<
   }
   const device = await requireDevice(businessSlug, input.device_token);
   const membership = await getMembership(user.id, device.businessId);
-  if (!membership || !can(membership.role, "transaction:write")) {
+  if (!membership || !can(membership.role, "payment:confirm")) {
     throw new ApiError("FORBIDDEN", "Anda tidak punya izin mengonfirmasi tunai");
   }
   return confirmCashPayment(businessSlug, input.payment_reference, input.device_token);

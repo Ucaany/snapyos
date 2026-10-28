@@ -145,11 +145,11 @@ export function TemplatePicker({
               onClick={() => setSelected(null)}
               className={`flex aspect-[3/4] w-full flex-col items-center justify-center gap-3 border-2 p-3 transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink active:translate-y-[2px] ${
                 selected === null
-                  ? "border-ink bg-accent shadow-[4px_4px_0_0_#111111]"
-                  : "border-ink/30 bg-surface shadow-[4px_4px_0_0_#111111]"
+                  ? "border-ink bg-accent shadow-hard"
+                  : "border-ink/30 bg-surface shadow-hard"
               }`}
               style={{
-                width: "min(100%, calc(min(52vh, 460px) * 0.75))",
+                width: "min(100%, calc(min(52dvh, 460px) * 0.75))",
                 borderRadius: ks?.radius ?? 0,
               }}
             >
@@ -208,14 +208,14 @@ export function TemplatePicker({
                     type="button"
                     aria-pressed={active}
                     onClick={() => setSelected(t)}
-                    className={`group relative mx-auto overflow-hidden border-2 bg-muted shadow-[4px_4px_0_0_#111111] transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink active:translate-y-[2px] ${
+                    className={`group relative mx-auto overflow-hidden border-2 bg-muted shadow-hard transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink active:translate-y-[2px] ${
                       active ? "border-ink" : "border-ink/30 hover:border-ink"
                     }`}
                     // Lebar dibatasi lebar sel DAN tinggi kartu; `aspect-ratio`
                     // saja akan memaksa lebar penuh lalu memotong tinggi di strip.
                     style={{
                       aspectRatio: `${cw} / ${ch}`,
-                      width: `min(100%, calc(min(52vh, 460px) * ${cw / ch}))`,
+                      width: `min(100%, calc(min(52dvh, 460px) * ${cw / ch}))`,
                       borderRadius: ks?.radius ?? 0,
                     }}
                   >
@@ -252,7 +252,7 @@ export function TemplatePicker({
 
           {selected !== undefined && (
             <div
-              className="grid gap-4 border-2 border-ink bg-surface p-4 shadow-[4px_4px_0_0_#111111] md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
+              className="grid gap-4 border-2 border-ink bg-surface p-4 shadow-hard md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
               style={{ borderRadius: ks?.radius ?? 0 }}
             >
               <div className="flex min-w-0 items-center gap-4">

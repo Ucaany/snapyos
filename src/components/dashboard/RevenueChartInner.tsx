@@ -13,7 +13,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { useChartStyle } from "@/components/ui/chart-style";
+import { CHART_STYLE } from "@/components/ui/chart-style";
 import { formatIDR } from "@/lib/dashboard-math";
 
 const chartConfig = {
@@ -38,7 +38,7 @@ export function RevenueChartInner({
   data: { date: string; amount: number }[];
   timeZone?: string;
 }) {
-  const chart = useChartStyle();
+  const chart = CHART_STYLE;
 
   return (
     <ChartContainer config={chartConfig} className="aspect-auto h-[280px] w-full">

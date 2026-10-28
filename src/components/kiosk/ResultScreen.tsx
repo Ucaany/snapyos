@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
-import { Check, Download, Loader2, Printer, RefreshCcw, TriangleAlert } from "lucide-react";
+import { Check, Download, Printer, RefreshCcw, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { defaultBrandColors } from "@/lib/brand-defaults";
 import { kioskThemeVars, type KioskVisualStyle } from "@/lib/kiosk-types";
@@ -248,11 +248,15 @@ export function ResultScreen({
           <img
             src={previewPhoto}
             alt="Hasil foto berframe"
-            className="max-h-[46vh] max-w-full border-2 border-ink object-contain shadow-[4px_4px_0_0_#111111] lg:max-h-[62vh]"
+            className="max-h-[46vh] max-w-full border-2 border-ink object-contain shadow-hard lg:max-h-[62vh]"
           />
         ) : (
-          <div className="flex h-[38vh] w-[min(46vh,78vw)] items-center justify-center border-2 border-dashed border-ink/30 bg-muted">
-            <Loader2 className="size-8 animate-spin text-muted-foreground" aria-hidden />
+          <div
+            role="status"
+            aria-label="Memuat foto"
+            className="flex h-[38vh] w-[min(46vh,78vw)] items-center justify-center border-2 border-dashed border-ink/30 bg-muted p-6"
+          >
+            <span className="h-3/4 w-3/4 animate-pulse border-2 border-ink/15 bg-ink/10" aria-hidden />
           </div>
         )}
 
@@ -311,7 +315,7 @@ export function ResultScreen({
         </div>
 
         <div
-          className="flex flex-col items-center gap-3 border-2 border-ink bg-surface p-4 shadow-[4px_4px_0_0_#111111] md:p-5"
+          className="flex flex-col items-center gap-3 border-2 border-ink bg-surface p-4 shadow-hard md:p-5"
           style={ks ? { borderRadius: radius } : undefined}
         >
           <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase leading-none tracking-[0.1em]">
@@ -320,7 +324,7 @@ export function ResultScreen({
           </p>
           {pendingSync && (
             <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase leading-snug tracking-[0.08em] text-muted-foreground">
-              <RefreshCcw className="size-4 shrink-0 animate-spin" aria-hidden />
+              <RefreshCcw className="size-4 shrink-0 motion-safe:animate-spin" aria-hidden />
               Menunggu sinkronisasi. Hasil online aktif setelah koneksi kembali
             </p>
           )}
@@ -338,8 +342,12 @@ export function ResultScreen({
                 : "Hasil tersimpan di perangkat. QR aktif setelah sinkronisasi selesai."}
             </div>
           ) : qrLoading ? (
-            <div className="flex h-[clamp(140px,22vh,220px)] w-[clamp(140px,22vh,220px)] items-center justify-center border-2 border-ink bg-muted">
-              <Loader2 className="size-8 animate-spin text-muted-foreground" aria-hidden />
+            <div
+              role="status"
+              aria-label="Memuat QR"
+              className="flex h-[clamp(140px,22vh,220px)] w-[clamp(140px,22vh,220px)] items-center justify-center border-2 border-ink bg-muted p-4"
+            >
+              <span className="size-3/4 animate-pulse border-2 border-ink/15 bg-ink/10" aria-hidden />
             </div>
           ) : qrForToken ? (
             // eslint-disable-next-line @next/next/no-img-element

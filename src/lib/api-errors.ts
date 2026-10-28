@@ -8,6 +8,12 @@ export const API_ERRORS = {
   FORBIDDEN: 403,
   /** Payload setelan memuat field milik cloud (harga, `copies`, `payment_mode`). */
   FIELD_NOT_DEVICE_OWNED: 403,
+  /**
+   * Payload setelan memuat grup yang hanya hidup di mesin booth
+   * (`appearance_settings`). Menolak di sini mencegah satu booth menimpa
+   * tampilan seluruh booth lewat baris `photoboxes`.
+   */
+  LOCAL_ONLY_SETTING: 403,
   NOT_FOUND: 404,
   VALIDATION_ERROR: 422,
   PLAN_LIMIT_REACHED: 422,

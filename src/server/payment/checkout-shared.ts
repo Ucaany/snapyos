@@ -124,6 +124,21 @@ export async function getQrisExpiryMinutes(businessId: string): Promise<number |
   return checkout?.qris_expiry_minutes ?? null;
 }
 
+/**
+ * Timezone bisnis untuk penomoran transaksi harian. Nomor TX memakai tanggal
+ * lokal bisnis — bukan Jakarta tetap — supaya laporan harian WITA/WIT tidak
+ * beda hari dari transaksinya.
+ */
+export async function getBusinessTimezone(businessId: string): Promise<string> {
+  const supabase = createServerClient();
+  const { data } = await supabase
+    .from("businesses")
+    .select("timezone")
+    .eq("id", businessId)
+    .maybeSingle();
+  return (data as { timezone?: string } | null)?.timezone ?? "Asia/Jakarta";
+}
+
 // ---------------------------------------------------------------------------
 // Voucher — validasi server-side lengkap (docs/06 §6.2)
 // ---------------------------------------------------------------------------
