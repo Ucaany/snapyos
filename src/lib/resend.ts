@@ -16,6 +16,21 @@ export function resendFromAddress(): string {
   return from;
 }
 
+/**
+ * Resend's shared test sender (onboarding@resend.dev) HANYA mengirim ke email
+ * pemilik akun; penerima lain dijawab 200 + message id lalu dibuang diam-diam.
+ * Karena itu produksi wajib punya RESEND_FROM di domain terverifikasi —
+ * tanpa ini admin melihat status "sent" padahal user tidak menerima apa pun.
+ */
+export function resendFromIssue(): string | null {
+  const from = (process.env.RESEND_FROM ?? "").trim();
+  if (!from) return "RESEND_FROM belum dikonfigurasi (pengirim masih onboarding@resend.dev)";
+  if (/@resend\.dev/i.test(from)) {
+    return "RESEND_FROM memakai domain uji resend.dev — hanya terkirim ke pemilik akun Resend";
+  }
+  return null;
+}
+
 export function hasResendKey(): boolean {
   return Boolean(process.env.RESEND_API_KEY);
 }

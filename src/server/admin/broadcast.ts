@@ -7,6 +7,7 @@
  */
 
 import "server-only";
+import { resolveMx } from "node:dns/promises";
 import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
 import {
@@ -15,7 +16,7 @@ import {
   type BroadcastKind,
   type BroadcastTemplateKey,
 } from "@/lib/broadcast-email";
-import { sendEmailWithResend, hasResendKey } from "@/lib/resend";
+import { sendEmailWithResend, hasResendKey, resendFromIssue } from "@/lib/resend";
 import { requireAdmin, audit } from "./guard";
 import { broadcastCreateSchema, type BroadcastCreateInput } from "@/lib/validators";
 
@@ -327,6 +328,12 @@ async function deliverCampaign(campaign: AdminBroadcastRow, onlyFailed: boolean)
       "RESEND_API_KEY belum dikonfigurasi: email tidak dapat dikirim"
     );
   }
+  // Pengirim uji resend.dev menerima 200 dari API tetapi hanya mengantar ke
+  // pemilik akun — jangan biarkan admin mengira kampanye terkirim.
+  const fromIssue = resendFromIssue();
+  if (fromIssue) {
+    throw new ApiError("VALIDATION_ERROR", fromIssue);
+  }
 
   const kind = campaign.kind ?? "announcement";
   const templateKey = campaign.template_key;
@@ -334,6 +341,15 @@ async function deliverCampaign(campaign: AdminBroadcastRow, onlyFailed: boolean)
   let failed = 0;
 
   for (const row of rows) {
+    if (!(await domainAcceptsMail(row.email))) {
+      const reason = "Domain email tidak punya MX — alamat ini tidak bisa menerima email";
+      await supabase
+        .from("broadcast_recipients")
+        .update({ status: "failed", error: reason, last_error: reason })
+        .eq("id", row.id);
+      failed += 1;
+      continue;
+    }
     const html = renderBroadcastHtml({
       subject: campaign.subject,
       body: campaign.body,
@@ -383,6 +399,31 @@ async function deliverCampaign(campaign: AdminBroadcastRow, onlyFailed: boolean)
   }
 
   return { sent, failed, total: rows.length };
+}
+
+/**
+ * Apakah domain penerima punya MX? Tanpa MX, email tidak mungkin sampai —
+ * Resend tetap menjawab "sent" untuk alamat yang tidak bisa menerima, jadi
+ * admin melihat kampanye sukses padahal penerima tidak pernah dapat apa pun.
+ * Hasil di-cache per domain: satu kampanye biasanya hanya menyentuh beberapa
+ * domain, dan resolveMx per baris akan membebani resolusi.
+ */
+const mailDomainCache = new Map<string, boolean>();
+async function domainAcceptsMail(email: string): Promise<boolean> {
+  const domain = email.split("@")[1]?.trim().toLowerCase();
+  if (!domain) return false;
+  // TLD .test/.invalid/.localhost dijamin tidak punya MX (alamat fixture).
+  if (/(\.test|\.invalid|\.example|\.localhost)$/.test(domain)) return false;
+  const cached = mailDomainCache.get(domain);
+  if (cached !== undefined) return cached;
+  let ok = false;
+  try {
+    ok = (await resolveMx(domain)).length > 0;
+  } catch {
+    ok = false;
+  }
+  mailDomainCache.set(domain, ok);
+  return ok;
 }
 
 export async function sendBroadcast(
