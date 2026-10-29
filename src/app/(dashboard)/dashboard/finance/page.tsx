@@ -23,9 +23,9 @@ const CATEGORY_LABEL: Record<string, string> = {
   internet: "Internet",
   paper: "Kertas",
   ink: "Tinta",
-  maintenance: "Maintenance",
-  staff: "Staff",
-  equipment: "Equipment",
+  maintenance: "Perawatan",
+  staff: "Gaji staff",
+  equipment: "Peralatan",
   advertising: "Iklan",
   other: "Lainnya",
 };
@@ -69,7 +69,7 @@ export default async function FinancePage({
   ]);
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <PageHeader
           eyebrow="KEUANGAN: ESTIMASI LABA"
@@ -117,8 +117,8 @@ export default async function FinancePage({
         <CardContent>
           {summary.expensesByCategory.length === 0 ? (
             <EmptyState
-              eyebrow="BELUM ADA EXPENSE PADA PERIODE INI"
-              title="Belum ada catatan expense"
+              eyebrow="BELUM ADA PENGELUARAN PADA PERIODE INI"
+              title="Belum ada catatan pengeluaran"
             />
           ) : (
             <ul className="divide-y-2 divide-ink/10 border-2 border-ink">

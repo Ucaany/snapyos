@@ -24,7 +24,7 @@ export default async function PaymentGatewayPage() {
   const credentials = await listCredentials(user.id, active.business.id);
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
       <PageHeader
         eyebrow="KEUANGAN / PAYMENT GATEWAY"
         title="Payment Gateway"

@@ -23,7 +23,7 @@ const securityHeaders = [
       // Runtime lokal kiosk (kamera + printer) berjalan di loopback dengan
       // skema http, jadi `'self'` dan `https:` tidak menjangkaunya. Tanpa entri
       // ini SEMUA panggilan kiosk → http://127.0.0.1:17777 diblokir CSP.
-      "connect-src 'self' https: wss: http://127.0.0.1:* http://localhost:*",
+      "connect-src 'self' https: wss: ws://127.0.0.1:* ws://localhost:* http://127.0.0.1:* http://localhost:*",
       "frame-src 'self' https://challenges.cloudflare.com",
     ].join("; "),
   },

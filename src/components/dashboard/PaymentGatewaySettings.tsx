@@ -34,7 +34,7 @@ export function PaymentGatewaySettings({ initialCredentials }: Props) {
         </div>
 
         {initialCredentials.length === 0 && (
-          <p className="border-2 border-ink bg-muted p-5 font-mono text-xs uppercase tracking-[0.08em]">
+          <p className="border-2 border-ink bg-muted p-5 text-sm leading-relaxed text-muted-foreground">
             Belum ada gateway. Tambahkan credential sandbox terlebih dahulu. Kiosk customer hanya
             lihat Voucher + Tunai sampai gateway aktif tersimpan.
           </p>

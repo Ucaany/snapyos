@@ -6,6 +6,31 @@ import { cn } from "@/lib/utils";
  * supaya hanya ada satu ukuran badge di seluruh aplikasi.
  */
 
+const LABEL: Record<string, string> = {
+  paid: "Lunas",
+  completed: "Selesai",
+  active: "Aktif",
+  online: "Online",
+  confirmed: "Terkonfirmasi",
+  sent: "Terkirim",
+  pending: "Menunggu",
+  scheduled: "Terjadwal",
+  maintenance: "Perawatan",
+  processing: "Diproses",
+  partial: "Sebagian",
+  failed: "Gagal",
+  cancelled: "Dibatalkan",
+  expired: "Kedaluwarsa",
+  inactive: "Nonaktif",
+  offline: "Offline",
+  refunded: "Refund",
+  open: "Terbuka",
+  needs_action: "Butuh tindakan",
+  resolved: "Selesai",
+  trial: "Uji coba",
+  past_due: "Tertunggak",
+};
+
 const STYLE: Record<string, string> = {
   paid: "bg-accent-3",
   completed: "bg-accent-3",
@@ -43,7 +68,7 @@ export function StatusBadge({
       variant="outline"
       className={cn("min-h-6", STYLE[status] ?? "bg-muted text-muted-foreground", className)}
     >
-      {label ?? status}
+      {label ?? LABEL[status] ?? status}
     </Badge>
   );
 }

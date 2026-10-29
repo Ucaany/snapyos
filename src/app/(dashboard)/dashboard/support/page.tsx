@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
+import { BookOpen } from "lucide-react";
 
 import { SupportTicketsPanel } from "@/components/dashboard/SupportTicketsPanel";
+import { IconLink } from "@/components/ui/icon-button";
 import { PageHeader } from "@/components/ui/page-header";
 import { getActiveBusiness, requireUser } from "@/lib/tenant";
 import { listSupportTickets } from "@/server/support-tickets";
@@ -24,19 +25,14 @@ export default async function SupportPage() {
   const tickets = await listSupportTickets();
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
       <PageHeader
         eyebrow={`BANTUAN: ${active.role.toUpperCase()}`}
         title="Tiket Bantuan"
         description="Laporkan masalah atau pertanyaan. Pantau status tiap tiket: terbuka, butuh tindakan, atau selesai. Cek panduan mandiri dan daftar hardware sebelum bikin tiket."
       />
       <div className="flex flex-wrap gap-2">
-        <Link
-          href="/docs"
-          className="inline-flex min-h-11 items-center border-2 border-ink bg-surface px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.05em] text-ink transition-colors hover:bg-accent active:translate-y-[2px]"
-        >
-          Dokumentasi
-        </Link>
+        <IconLink href="/docs" label="Dokumentasi" icon={BookOpen} compact />
       </div>
       <SupportTicketsPanel tickets={tickets} />
     </div>

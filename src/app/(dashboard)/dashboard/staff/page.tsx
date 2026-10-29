@@ -48,10 +48,10 @@ export default async function StaffPage() {
   ]);
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
       <PageHeader
         eyebrow="TIM: AKSES BOOTH"
-        title="Staff & Akses Booth"
+        title="Tim & Akses Booth"
         description="Kelola tim, role, dan booth yang bisa diakses tiap member. Transaksi hari ini dihitung dari transaksi berstatus PAID hari ini (zona waktu business) pada booth yang di-assign ke member tersebut."
       />
 

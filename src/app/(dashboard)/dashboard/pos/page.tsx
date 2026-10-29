@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Filter } from "lucide-react";
 
 import { PosProductsTable } from "@/components/dashboard/PosProductsTable";
 import { PosBoothsTable } from "@/components/dashboard/PosBoothsTable";
 import { PosReportsPanel } from "@/components/dashboard/PosReportsPanel";
 import { buttonVariants } from "@/components/ui/button-variants";
+import { IconButton } from "@/components/ui/icon-button";
 import { DateInput } from "@/components/ui/date-input";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
@@ -46,7 +48,7 @@ export default async function PosManagementPage({
   if (!entitled) {
     const addOn = await getPosAddOnInfo();
     return (
-      <div className="flex flex-col gap-8 p-6 md:p-10">
+      <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
         <PageHeader
           eyebrow={`POS: ${active.role.toUpperCase()}`}
           title="POS Kasir"
@@ -86,7 +88,7 @@ export default async function PosManagementPage({
   ]);
 
   return (
-    <div className="flex flex-col gap-10 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
       <PageHeader
         eyebrow={`POS: ${active.role.toUpperCase()}`}
         title="Manajemen POS"
@@ -137,12 +139,13 @@ export default async function PosManagementPage({
                 </label>
                 <DateInput id="pos-to" name="to" defaultValue={query.to ?? ""} />
               </div>
-              <button
+              <IconButton
                 type="submit"
-                className="h-11 border-2 border-ink bg-accent px-4 font-mono text-xs font-bold uppercase tracking-[0.08em] shadow-[2px_2px_0_0_#111111] transition-transform active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
-              >
-                Terapkan
-              </button>
+                variant="default"
+                label="Terapkan filter tanggal"
+                icon={Filter}
+                compact
+              />
             </form>
           </div>
           <PosReportsPanel
@@ -159,7 +162,7 @@ export default async function PosManagementPage({
               },
             }}
           />
-          <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+          <p className="text-xs leading-relaxed text-muted-foreground">
             {"revenue selalu dari transactions; breakdown dari pos_orders (snapshot nama produk)"}
           </p>
         </section>

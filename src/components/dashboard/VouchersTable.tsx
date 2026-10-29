@@ -1,10 +1,15 @@
 "use client";
 
 import { Fragment, useActionState, useState } from "react";
-import { Pencil, Plus, Ticket } from "lucide-react";
+import { Plus, Ticket } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { RecordCard } from "@/components/ui/record-card";
+import {
+  RecordCollection,
+  RecordEditButton,
+} from "@/components/ui/record-collection";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { DeleteConfirmForm } from "@/components/dashboard/DeleteConfirmForm";
@@ -25,10 +30,191 @@ type Props = {
   canWrite: boolean;
 };
 
-/** VouchersTable — CRUD voucher + ringkasan analytics inline (docs/04 §4.11). */
+function discountLabel(vcr: VoucherRow): string {
+  const base = vcr.type === "percentage" ? `${vcr.amount}%` : formatIDR(vcr.amount);
+  return vcr.max_discount ? `${base} (maks ${formatIDR(vcr.max_discount)})` : base;
+}
+
+function requirementLabel(vcr: VoucherRow): string {
+  return [
+    vcr.min_transaction > 0 ? `min ${formatIDR(vcr.min_transaction)}` : null,
+    `${vcr.usage_per_customer}x / pelanggan`,
+    vcr.usage_limit !== null ? `limit ${vcr.usage_limit}` : "tanpa limit",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/** VouchersTable - CRUD voucher + ringkasan analytics inline (docs/04 §4.11). */
 export function VouchersTable({ vouchers, analytics, packages, outlets, canWrite }: Props) {
   const [createState, createAction, creating] = useActionState(createVoucherAction, initial);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  const table = (
+    <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
+      <table className="w-full border-collapse text-left lg:min-w-[920px]">
+        <caption className="sr-only">Daftar voucher</caption>
+        <thead>
+          <tr className="border-b-2 border-ink bg-ink font-mono text-[11px] uppercase tracking-[0.12em] text-bg">
+            <th scope="col" className="px-4 py-3.5">
+              Kode
+            </th>
+            <th scope="col" className="px-4 py-3.5">
+              Diskon
+            </th>
+            <th scope="col" className="hidden px-4 py-3.5 md:table-cell">
+              Syarat
+            </th>
+            <th scope="col" className="hidden px-4 py-3.5 text-right md:table-cell">
+              Pemakaian
+            </th>
+            <th scope="col" className="hidden px-4 py-3.5 text-right lg:table-cell">
+              Total Diskon
+            </th>
+            <th scope="col" className="hidden px-4 py-3.5 text-right lg:table-cell">
+              Pendapatan
+            </th>
+            <th scope="col" className="px-4 py-3.5">
+              Status
+            </th>
+            {canWrite && (
+              <th scope="col" className="px-4 py-3.5 text-right">
+                Aksi
+              </th>
+            )}
+          </tr>
+        </thead>
+        <tbody>
+          {vouchers.map((vcr) => {
+            const stats = analytics[vcr.id];
+            return (
+              <Fragment key={vcr.id}>
+                <tr className="border-b-2 border-ink/10 transition-colors hover:bg-muted/60">
+                  <td className="px-4 py-3 font-mono text-sm font-bold uppercase tracking-[0.05em]">
+                    {vcr.code}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-sm tabular-nums">
+                    {discountLabel(vcr)}
+                  </td>
+                  <td className="hidden px-4 py-3 font-mono text-[11px] text-muted-foreground md:table-cell">
+                    {requirementLabel(vcr)}
+                  </td>
+                  <td className="hidden px-4 py-3 text-right font-mono text-sm font-bold tabular-nums md:table-cell">
+                    {vcr.usage}
+                    {vcr.usage_limit !== null ? `/${vcr.usage_limit}` : ""}
+                  </td>
+                  <td className="hidden px-4 py-3 text-right font-mono text-sm tabular-nums lg:table-cell">
+                    {formatIDR(stats?.totalDiscount ?? 0)}
+                  </td>
+                  <td className="hidden px-4 py-3 text-right font-mono text-sm tabular-nums lg:table-cell">
+                    {formatIDR(stats?.revenueGenerated ?? 0)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <StatusBadge status={vcr.status} />
+                  </td>
+                  {canWrite && (
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end gap-1.5">
+                        <RecordEditButton
+                          label={`Ubah voucher ${vcr.code}`}
+                          onEdit={() => setEditingId(vcr.id)}
+                        />
+                        <DeleteConfirmForm
+                          action={deleteVoucherAction}
+                          id={vcr.id}
+                          title="Hapus voucher?"
+                          description={
+                            vcr.usage > 0
+                              ? "Voucher sudah pernah digunakan dan tidak dapat dihapus. Nonaktifkan saja."
+                              : `Voucher ${vcr.code} akan dihapus permanen. Aksi ini tidak dapat dibatalkan.`
+                          }
+                          disabled={vcr.usage > 0}
+                          triggerLabel={`Hapus voucher ${vcr.code}`}
+                          triggerTitle={
+                            vcr.usage > 0
+                              ? "Sudah terpakai, nonaktifkan saja"
+                              : "Hapus voucher"
+                          }
+                          compact
+                        />
+                      </div>
+                    </td>
+                  )}
+                </tr>
+                {editingId === vcr.id && canWrite && (
+                  <tr className="border-b-2 border-ink/10 bg-muted">
+                    <td colSpan={8} className="px-4 py-3 md:px-6">
+                      <VoucherEditForm
+                        voucher={vcr}
+                        packages={packages}
+                        outlets={outlets}
+                        onDone={() => setEditingId(null)}
+                      />
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  const grid = (
+    <ul
+      className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
+      aria-label="Voucher (tampilan kotak)"
+    >
+      {vouchers.map((vcr) => {
+        const stats = analytics[vcr.id];
+        return (
+          <li key={vcr.id} className="min-w-0">
+            <RecordCard
+              title={vcr.code}
+              subtitle={requirementLabel(vcr)}
+              badge={<StatusBadge status={vcr.status} />}
+              meta={[
+                { label: "Diskon", value: discountLabel(vcr) },
+                {
+                  label: "Pemakaian",
+                  value: `${vcr.usage}${vcr.usage_limit !== null ? `/${vcr.usage_limit}` : ""}`,
+                },
+                { label: "Total diskon", value: formatIDR(stats?.totalDiscount ?? 0) },
+                { label: "Pendapatan", value: formatIDR(stats?.revenueGenerated ?? 0) },
+              ]}
+              actions={
+                canWrite ? (
+                  <>
+                    <RecordEditButton
+                      label={`Ubah voucher ${vcr.code}`}
+                      onEdit={() => setEditingId(vcr.id)}
+                    />
+                    <DeleteConfirmForm
+                      action={deleteVoucherAction}
+                      id={vcr.id}
+                      title="Hapus voucher?"
+                      description={
+                        vcr.usage > 0
+                          ? "Voucher sudah pernah digunakan dan tidak dapat dihapus. Nonaktifkan saja."
+                          : `Voucher ${vcr.code} akan dihapus permanen. Aksi ini tidak dapat dibatalkan.`
+                      }
+                      disabled={vcr.usage > 0}
+                      triggerLabel={`Hapus voucher ${vcr.code}`}
+                      triggerTitle={
+                        vcr.usage > 0 ? "Sudah terpakai, nonaktifkan saja" : "Hapus voucher"
+                      }
+                      compact
+                    />
+                  </>
+                ) : undefined
+              }
+            />
+          </li>
+        );
+      })}
+    </ul>
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -38,9 +224,13 @@ export function VouchersTable({ vouchers, analytics, packages, outlets, canWrite
             <p className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
               {`VOUCHER ${String(vouchers.length).padStart(2, "0")}`}
             </p>
-            <CollapsibleTrigger className="min-h-11 px-4" aria-label="Buka form voucher baru">
+            <CollapsibleTrigger
+              className="px-3"
+              aria-label="Buka form voucher baru"
+              title="Voucher baru"
+            >
               <Plus aria-hidden />
-              Voucher baru
+              <span className="sr-only">Voucher baru</span>
             </CollapsibleTrigger>
           </div>
           <CollapsiblePanel className="mt-4">
@@ -84,129 +274,12 @@ export function VouchersTable({ vouchers, analytics, packages, outlets, canWrite
           body="Contoh: GRANDOPENING untuk 20%, min. transaksi Rp50.000, maks. diskon Rp10.000."
         />
       ) : (
-        <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
-          <table className="w-full border-collapse text-left md:min-w-[920px]">
-            <caption className="sr-only">Daftar voucher</caption>
-            <thead>
-              <tr className="border-b-2 border-ink bg-ink font-mono text-[11px] uppercase tracking-[0.12em] text-bg">
-                <th scope="col" className="px-4 py-3.5">
-                  Kode
-                </th>
-                <th scope="col" className="px-4 py-3.5">
-                  Diskon
-                </th>
-                <th scope="col" className="hidden px-4 py-3.5 md:table-cell">
-                  Syarat
-                </th>
-                <th scope="col" className="hidden px-4 py-3.5 text-right md:table-cell">
-                  Pemakaian
-                </th>
-                <th scope="col" className="hidden px-4 py-3.5 text-right lg:table-cell">
-                  Total Diskon
-                </th>
-                <th scope="col" className="hidden px-4 py-3.5 text-right lg:table-cell">
-                  Pendapatan
-                </th>
-                <th scope="col" className="px-4 py-3.5">
-                  Status
-                </th>
-                {canWrite && (
-                  <th scope="col" className="px-4 py-3.5 text-right">
-                    Aksi
-                  </th>
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {vouchers.map((vcr) => {
-                const stats = analytics[vcr.id];
-                return (
-                  <Fragment key={vcr.id}>
-                    <tr className="border-b-2 border-ink/10 transition-colors hover:bg-muted/60">
-                      <td className="px-4 py-4 font-mono text-sm font-bold uppercase tracking-[0.05em]">
-                        {vcr.code}
-                      </td>
-                      <td className="px-4 py-4 font-mono text-sm">
-                        {vcr.type === "percentage" ? `${vcr.amount}%` : formatIDR(vcr.amount)}
-                        {vcr.max_discount ? (
-                          <span className="block text-[11px] text-muted-foreground">
-                            maks {formatIDR(vcr.max_discount)}
-                          </span>
-                        ) : null}
-                      </td>
-                      <td className="hidden px-4 py-4 font-mono text-[11px] text-muted-foreground md:table-cell">
-                        {[
-                          vcr.min_transaction > 0 ? `min ${formatIDR(vcr.min_transaction)}` : null,
-                          `${vcr.usage_per_customer}x / pelanggan`,
-                          vcr.usage_limit !== null ? `limit ${vcr.usage_limit}` : "tanpa limit",
-                        ]
-                          .filter(Boolean)
-                          .join(" \u00b7 ")}
-                      </td>
-                      <td className="hidden px-4 py-4 text-right font-mono text-sm font-bold md:table-cell">
-                        {vcr.usage}
-                        {vcr.usage_limit !== null ? `/${vcr.usage_limit}` : ""}
-                      </td>
-                      <td className="hidden px-4 py-4 text-right font-mono text-sm lg:table-cell">
-                        {formatIDR(stats?.totalDiscount ?? 0)}
-                      </td>
-                      <td className="hidden px-4 py-4 text-right font-mono text-sm lg:table-cell">
-                        {formatIDR(stats?.revenueGenerated ?? 0)}
-                      </td>
-                      <td className="px-4 py-4">
-                        <StatusBadge status={vcr.status} />
-                      </td>
-                      {canWrite && (
-                        <td className="px-4 py-4">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="outline"
-                              size="icon-sm"
-                              aria-label={`Ubah voucher ${vcr.code}`}
-                              aria-expanded={editingId === vcr.id}
-                              onClick={() => setEditingId(editingId === vcr.id ? null : vcr.id)}
-                            >
-                              <Pencil aria-hidden />
-                            </Button>
-                            <DeleteConfirmForm
-                              action={deleteVoucherAction}
-                              id={vcr.id}
-                              title="Hapus voucher?"
-                              description={
-                                vcr.usage > 0
-                                  ? "Voucher sudah pernah digunakan dan tidak dapat dihapus. Nonaktifkan saja."
-                                  : `Voucher ${vcr.code} akan dihapus permanen. Aksi ini tidak dapat dibatalkan.`
-                              }
-                              disabled={vcr.usage > 0}
-                              triggerLabel={`Hapus voucher ${vcr.code}`}
-                              triggerTitle={
-                                vcr.usage > 0
-                                  ? "Sudah terpakai \u2014 nonaktifkan saja"
-                                  : "Hapus voucher"
-                              }
-                            />
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                    {editingId === vcr.id && canWrite && (
-                      <tr className="border-b-2 border-ink/10 bg-muted">
-                        <td colSpan={8} className="px-4 py-4 md:px-6">
-                          <VoucherEditForm
-                            voucher={vcr}
-                            packages={packages}
-                            outlets={outlets}
-                            onDone={() => setEditingId(null)}
-                          />
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <RecordCollection
+          storageKey="snapyos.view.vouchers"
+          label="Daftar voucher"
+          list={table}
+          grid={grid}
+        />
       )}
     </div>
   );

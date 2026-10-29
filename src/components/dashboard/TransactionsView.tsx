@@ -1,12 +1,14 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import Link from "next/link";
-import { Receipt, Wallet } from "lucide-react";
+import { ChevronLeft, ChevronRight, Receipt, Wallet } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { IconLink } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
+import { RecordCard } from "@/components/ui/record-card";
+import { RecordCollection } from "@/components/ui/record-collection";
 import { Select } from "@/components/ui/select";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
@@ -33,9 +35,6 @@ type Props = {
   timeZone?: string;
 };
 
-// 'gateway' dihapus (migrasi 0036) — direct-merchant QRIS sekarang tercatat
-// sebagai 'qris' juga; bedanya tercermin di `payments.credential_id`, bukan
-// di kolom payment_method transaksi.
 const METHOD_LABEL: Record<string, string> = {
   qris: "QRIS",
   cash: "CASH",
@@ -46,7 +45,7 @@ const METHOD_LABEL: Record<string, string> = {
   voucher: "VOUCHER",
 };
 
-/** TransactionsView — tabel + form catat manual (docs/04 §4.5). */
+/** TransactionsView - tabel + form catat manual (docs/04 §4.5). */
 export function TransactionsView({
   transactions,
   outlets,
@@ -60,14 +59,152 @@ export function TransactionsView({
   timeZone,
 }: Props) {
   const [state, action, pending] = useActionState(createManualTxAction, initial);
-  // Outlet menentukan booth mana yang valid: server menolak booth di luar outlet
-  // (assertBoothInOutlet), jadi UI hanya menawarkan booth milik outlet terpilih
-  // agar owner tidak memilih kombinasi yang pasti ditolak.
   const [outletId, setOutletId] = useState("");
   const [photoboxId, setPhotoboxId] = useState("");
   const boothOptions = outletId
     ? photoboxes.filter((b) => b.outlet_id === outletId)
     : photoboxes;
+
+  const table = (
+    <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
+      <table className="w-full border-collapse text-left xl:min-w-[1240px]">
+        <caption className="sr-only">Daftar transaksi</caption>
+        <thead>
+          <tr className="border-b-2 border-ink bg-ink font-mono text-[11px] uppercase tracking-[0.12em] text-bg">
+            <th scope="col" className="px-4 py-3.5">
+              Nomor
+            </th>
+            <th scope="col" className="hidden px-4 py-3.5 md:table-cell">
+              Tanggal
+            </th>
+            <th scope="col" className="hidden px-4 py-3.5 md:table-cell">
+              Pelanggan
+            </th>
+            <th scope="col" className="hidden px-4 py-3.5 md:table-cell">
+              Paket
+            </th>
+            <th scope="col" className="hidden px-4 py-3.5 lg:table-cell">
+              Outlet / Booth
+            </th>
+            <th scope="col" className="hidden px-4 py-3.5 md:table-cell">
+              Metode
+            </th>
+            <th scope="col" className="hidden px-4 py-3.5 lg:table-cell">
+              Saldo
+            </th>
+            <th scope="col" className="hidden px-4 py-3.5 text-right md:table-cell">
+              Kotor
+            </th>
+            <th scope="col" className="hidden px-4 py-3.5 text-right lg:table-cell">
+              Diskon
+            </th>
+            <th scope="col" className="px-4 py-3.5 text-right">
+              Akhir
+            </th>
+            <th scope="col" className="px-4 py-3.5">
+              Status
+            </th>
+            <th scope="col" className="hidden px-4 py-3.5 lg:table-cell">
+              Sumber
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {transactions.map((tx) => (
+            <tr
+              key={tx.id}
+              className="border-b-2 border-ink/10 transition-colors hover:bg-muted/60"
+            >
+              <td className="px-4 py-3.5 font-mono text-xs font-bold">{tx.number}</td>
+              <td className="hidden px-4 py-3.5 font-mono text-xs md:table-cell">
+                {formatDate(tx.paid_at ?? tx.created_at, timeZone)}
+              </td>
+              <td className="hidden px-4 py-3.5 font-mono text-xs md:table-cell">
+                {tx.customer_name ?? "-"}
+              </td>
+              <td className="hidden px-4 py-3.5 font-mono text-xs md:table-cell">
+                {tx.package_name ?? "-"}
+              </td>
+              <td className="hidden px-4 py-3.5 font-mono text-xs text-muted-foreground lg:table-cell">
+                {[tx.outlet_name, tx.photobox_name].filter(Boolean).join(" · ") || "-"}
+              </td>
+              <td className="hidden px-4 py-3.5 font-mono text-xs uppercase md:table-cell">
+                {METHOD_LABEL[tx.payment_method] ?? tx.payment_method}
+              </td>
+              <td className="hidden px-4 py-3.5 lg:table-cell">
+                {tx.payment_method === "manual" || tx.withdrawable === false ? (
+                  <span className="inline-block border-2 border-ink bg-accent-2 px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.08em]">
+                    Tidak Dapat Ditarik
+                  </span>
+                ) : (
+                  <span className="font-mono text-xs text-muted-foreground">-</span>
+                )}
+              </td>
+              <td className="hidden px-4 py-3.5 text-right font-mono text-xs tabular-nums md:table-cell">
+                {formatIDR(tx.gross_amount)}
+              </td>
+              <td className="hidden px-4 py-3.5 text-right font-mono text-xs text-muted-foreground tabular-nums lg:table-cell">
+                {tx.discount_amount > 0 ? `- ${formatIDR(tx.discount_amount)}` : "-"}
+              </td>
+              <td className="px-4 py-3.5 text-right font-mono text-sm font-bold tabular-nums">
+                {formatIDR(tx.final_amount)}
+              </td>
+              <td className="px-4 py-3.5">
+                <StatusBadge status={tx.status} />
+              </td>
+              <td className="hidden px-4 py-3.5 lg:table-cell">
+                {tx.pos_order_id ? (
+                  <span className="inline-block border-2 border-ink bg-accent px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.08em]">
+                    POS
+                  </span>
+                ) : (
+                  <span className="font-mono text-xs text-muted-foreground">-</span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  const grid = (
+    <ul
+      className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
+      aria-label="Transaksi (tampilan kotak)"
+    >
+      {transactions.map((tx) => (
+        <li key={tx.id} className="min-w-0">
+          <RecordCard
+            title={tx.number}
+            subtitle={`${formatDate(tx.paid_at ?? tx.created_at, timeZone)}${
+              tx.customer_name ? ` · ${tx.customer_name}` : ""
+            }`}
+            badge={<StatusBadge status={tx.status} />}
+            meta={[
+              { label: "Paket", value: tx.package_name ?? "-" },
+              {
+                label: "Outlet / Booth",
+                value: [tx.outlet_name, tx.photobox_name].filter(Boolean).join(" · ") || "-",
+              },
+              { label: "Metode", value: METHOD_LABEL[tx.payment_method] ?? tx.payment_method },
+              { label: "Kotor", value: formatIDR(tx.gross_amount) },
+              { label: "Diskon", value: tx.discount_amount > 0 ? formatIDR(tx.discount_amount) : "-" },
+              { label: "Akhir", value: formatIDR(tx.final_amount) },
+              {
+                label: "Saldo",
+                value:
+                  tx.payment_method === "manual" || tx.withdrawable === false
+                    ? "Tidak dapat ditarik"
+                    : "Dapat ditarik",
+              },
+              { label: "Sumber", value: tx.pos_order_id ? "POS" : "Kiosk" },
+            ]}
+          />
+        </li>
+      ))}
+    </ul>
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -77,9 +214,13 @@ export function TransactionsView({
             <p className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
               CATAT MANUAL
             </p>
-            <CollapsibleTrigger className="min-h-11 px-4" aria-label="Buka form transaksi manual">
+            <CollapsibleTrigger
+              className="px-3"
+              aria-label="Buka form transaksi manual"
+              title="Catat transaksi manual"
+            >
               <Wallet aria-hidden />
-              Catat manual
+              <span className="sr-only">Catat transaksi manual</span>
             </CollapsibleTrigger>
           </div>
           <CollapsiblePanel className="mt-4">
@@ -159,7 +300,7 @@ export function TransactionsView({
                     Paket
                   </label>
                   <Select id="mtx-package" name="package_id" defaultValue="" disabled={pending}>
-                    <option value="">Tanpa package</option>
+                    <option value="">Tanpa paket</option>
                     {packages.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.name}
@@ -210,7 +351,7 @@ export function TransactionsView({
                   />
                 </div>
               </div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
+              <p className="text-xs leading-relaxed text-muted-foreground">
                 Nilai akhir dihitung server (kotor dikurangi diskon). Browser tidak dipercaya.
               </p>
               {state.error && (
@@ -223,7 +364,7 @@ export function TransactionsView({
               )}
               <div className="flex justify-end border-t-2 border-ink/10 pt-4">
                 <Button type="submit" size="sm" disabled={pending}>
-                  {pending ? "Menyimpan…" : "Catat transaksi"}
+                  {pending ? "Menyimpan..." : "Catat transaksi"}
                 </Button>
               </div>
             </form>
@@ -239,106 +380,12 @@ export function TransactionsView({
           body="Untuk transaksi non-QRIS, gunakan tombol Catat Manual pada bagian transaksi manual."
         />
       ) : (
-        <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
-          <table className="w-full border-collapse text-left md:min-w-[1240px]">
-            <caption className="sr-only">Daftar transaksi</caption>
-            <thead>
-              <tr className="border-b-2 border-ink bg-ink font-mono text-[11px] uppercase tracking-[0.12em] text-bg">
-                <th scope="col" className="px-4 py-3.5">
-                  Nomor
-                </th>
-                <th scope="col" className="hidden px-4 py-3.5 md:table-cell">
-                  Tanggal
-                </th>
-                <th scope="col" className="hidden px-4 py-3.5 md:table-cell">
-                  Pelanggan
-                </th>
-                <th scope="col" className="hidden px-4 py-3.5 md:table-cell">
-                  Paket
-                </th>
-                <th scope="col" className="hidden px-4 py-3.5 lg:table-cell">
-                  Outlet / Booth
-                </th>
-                <th scope="col" className="hidden px-4 py-3.5 md:table-cell">
-                  Metode
-                </th>
-                <th scope="col" className="hidden px-4 py-3.5 lg:table-cell">
-                  Saldo
-                </th>
-                <th scope="col" className="hidden px-4 py-3.5 text-right md:table-cell">
-                  Kotor
-                </th>
-                <th scope="col" className="hidden px-4 py-3.5 text-right lg:table-cell">
-                  Diskon
-                </th>
-                <th scope="col" className="px-4 py-3.5 text-right">
-                  Akhir
-                </th>
-                <th scope="col" className="px-4 py-3.5">
-                  Status
-                </th>
-                <th scope="col" className="hidden px-4 py-3.5 lg:table-cell">
-                  Sumber
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {transactions.map((tx) => (
-                <tr
-                  key={tx.id}
-                  className="border-b-2 border-ink/10 transition-colors hover:bg-muted/60"
-                >
-                  <td className="px-4 py-4 font-mono text-xs font-bold">{tx.number}</td>
-                  <td className="hidden px-4 py-4 font-mono text-xs md:table-cell">
-                    {formatDate(tx.paid_at ?? tx.created_at, timeZone)}
-                  </td>
-                  <td className="hidden px-4 py-4 font-mono text-xs md:table-cell">
-                    {tx.customer_name ?? "-"}
-                  </td>
-                  <td className="hidden px-4 py-4 font-mono text-xs md:table-cell">
-                    {tx.package_name ?? "-"}
-                  </td>
-                  <td className="hidden px-4 py-4 font-mono text-xs text-muted-foreground lg:table-cell">
-                    {[tx.outlet_name, tx.photobox_name].filter(Boolean).join(" · ") || "-"}
-                  </td>
-                  <td className="hidden px-4 py-4 font-mono text-xs uppercase md:table-cell">
-                    {METHOD_LABEL[tx.payment_method] ?? tx.payment_method}
-                  </td>
-                  <td className="hidden px-4 py-4 lg:table-cell">
-                    {tx.payment_method === "manual" || tx.withdrawable === false ? (
-                      <span className="inline-block border-2 border-ink bg-accent-2 px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.08em]">
-                        Tidak Dapat Ditarik
-                      </span>
-                    ) : (
-                      <span className="font-mono text-xs text-muted-foreground">-</span>
-                    )}
-                  </td>
-                  <td className="hidden px-4 py-4 text-right font-mono text-xs md:table-cell">
-                    {formatIDR(tx.gross_amount)}
-                  </td>
-                  <td className="hidden px-4 py-4 text-right font-mono text-xs text-muted-foreground lg:table-cell">
-                    {tx.discount_amount > 0 ? `- ${formatIDR(tx.discount_amount)}` : "-"}
-                  </td>
-                  <td className="px-4 py-4 text-right font-mono text-sm font-bold">
-                    {formatIDR(tx.final_amount)}
-                  </td>
-                  <td className="px-4 py-4">
-                    <StatusBadge status={tx.status} />
-                  </td>
-                  <td className="hidden px-4 py-4 lg:table-cell">
-                    {tx.pos_order_id ? (
-                      <span className="inline-block border-2 border-ink bg-accent px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.08em]">
-                        POS
-                      </span>
-                    ) : (
-                      <span className="font-mono text-xs text-muted-foreground">-</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <RecordCollection
+          storageKey="snapyos.view.transactions"
+          label="Daftar transaksi"
+          list={table}
+          grid={grid}
+        />
       )}
 
       {totalPages > 1 && (
@@ -351,24 +398,10 @@ export function TransactionsView({
           </p>
           <div className="flex gap-2">
             {prevHref && (
-              <Button
-                variant="outline"
-                size="sm"
-                nativeButton={false}
-                render={<Link href={prevHref} />}
-              >
-                Sebelumnya
-              </Button>
+              <IconLink href={prevHref} label="Halaman sebelumnya" icon={ChevronLeft} compact />
             )}
             {nextHref && (
-              <Button
-                variant="outline"
-                size="sm"
-                nativeButton={false}
-                render={<Link href={nextHref} />}
-              >
-                Berikutnya
-              </Button>
+              <IconLink href={nextHref} label="Halaman berikutnya" icon={ChevronRight} compact />
             )}
           </div>
         </nav>

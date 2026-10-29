@@ -7,6 +7,7 @@ import { Check, Lock, ShoppingCart } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { RecordCollection } from "@/components/ui/record-collection";
 import { formatIDR } from "@/lib/dashboard-math";
 import { purchaseTemplateAction } from "@/server/template-purchase-actions";
 import type { PremiumTemplateRow } from "@/server/template-purchase";
@@ -15,7 +16,7 @@ type Props = {
   templates: PremiumTemplateRow[];
 };
 
-/** Marketplace template premium — beli via QRIS invoice (docs/15 §15.9b). */
+/** Marketplace template premium - beli via QRIS invoice (docs/15 §15.9b). */
 export function PremiumTemplatesGrid({ templates }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -54,6 +55,119 @@ export function PremiumTemplatesGrid({ templates }: Props) {
     );
   }
 
+  const buyButton = (tpl: PremiumTemplateRow) =>
+    tpl.purchased ? (
+      <span className="flex items-center gap-1.5 font-mono text-xs font-bold uppercase text-muted-foreground">
+        <Check className="size-4" aria-hidden /> Dimiliki
+      </span>
+    ) : (
+      <Button
+        type="button"
+        size="sm"
+        onClick={() => buy(tpl.id)}
+        disabled={pending && buyingId === tpl.id}
+        aria-label={`Beli template ${tpl.name}`}
+      >
+        <ShoppingCart aria-hidden />
+        {pending && buyingId === tpl.id ? "Memproses..." : "Beli"}
+      </Button>
+    );
+
+  const list = (
+    <ul
+      className="flex flex-col divide-y-2 divide-ink/10 border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]"
+      aria-label="Template premium (tampilan daftar)"
+    >
+      {templates.map((tpl) => (
+        <li key={tpl.id} className="flex min-w-0 flex-wrap items-center gap-3 p-3">
+          <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden border-2 border-ink bg-bg">
+            {tpl.thumbnail_url || tpl.file_url ? (
+              <Image
+                src={tpl.thumbnail_url ?? tpl.file_url}
+                alt={`Preview template premium ${tpl.name}`}
+                width={120}
+                height={90}
+                className="max-h-full max-w-full object-contain p-1"
+                loading="lazy"
+                unoptimized
+              />
+            ) : (
+              <Lock className="size-5" aria-hidden />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="min-w-0 break-words font-mono text-sm font-bold uppercase tracking-[0.05em]">
+              {tpl.name}
+            </p>
+            <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
+              {tpl.category_name ?? "Tanpa kategori"} · {formatIDR(tpl.price)}
+            </p>
+          </div>
+          {buyButton(tpl)}
+        </li>
+      ))}
+    </ul>
+  );
+
+  const grid = (
+    <ul
+      className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3"
+      aria-label="Template premium"
+    >
+      {templates.map((tpl) => (
+        <li
+          key={tpl.id}
+          className="flex min-w-0 flex-col border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]"
+        >
+          <div className="flex h-44 items-center justify-center overflow-hidden border-b-2 border-ink bg-[repeating-linear-gradient(45deg,#FFFDF5_0_10px,#F4F4F0_10px_20px)]">
+            {tpl.thumbnail_url || tpl.file_url ? (
+              <Image
+                src={tpl.thumbnail_url ?? tpl.file_url}
+                alt={`Preview template premium ${tpl.name}`}
+                width={480}
+                height={320}
+                className="max-h-full max-w-full object-contain p-3"
+                loading="lazy"
+                unoptimized
+              />
+            ) : (
+              <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                PREVIEW TIDAK TERSEDIA
+              </span>
+            )}
+          </div>
+          <div className="flex flex-1 flex-col gap-3 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="min-w-0 break-words font-mono text-sm font-bold uppercase tracking-[0.05em]">
+                  {tpl.name}
+                </p>
+                <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
+                  {tpl.category_name ?? "Tanpa kategori"} · PREMIUM
+                </p>
+              </div>
+              <span className="inline-block border-2 border-ink bg-ink px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-bg">
+                PREMIUM
+              </span>
+            </div>
+
+            <div className="mt-auto flex items-center justify-between gap-2 border-t-2 border-ink/10 pt-3">
+              <span className="font-mono text-sm font-bold tabular-nums">
+                {formatIDR(tpl.price)}
+              </span>
+              {buyButton(tpl)}
+            </div>
+            {!tpl.is_active ? (
+              <p className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+                <Lock className="size-3" aria-hidden /> Sedang nonaktif
+              </p>
+            ) : null}
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+
   return (
     <div className="flex flex-col gap-4">
       {error && (
@@ -64,76 +178,12 @@ export function PremiumTemplatesGrid({ templates }: Props) {
           {error}
         </p>
       )}
-      <ul
-        className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3"
-        aria-label="Template premium"
-      >
-        {templates.map((tpl) => (
-          <li
-            key={tpl.id}
-            className="flex flex-col border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]"
-          >
-            <div className="flex h-44 items-center justify-center overflow-hidden border-b-2 border-ink bg-[repeating-linear-gradient(45deg,#FFFDF5_0_10px,#F4F4F0_10px_20px)]">
-              {tpl.thumbnail_url || tpl.file_url ? (
-                <Image
-                  src={tpl.thumbnail_url ?? tpl.file_url}
-                  alt={`Preview template premium ${tpl.name}`}
-                  width={480}
-                  height={320}
-                  className="max-h-full max-w-full object-contain p-3"
-                  loading="lazy"
-                  unoptimized
-                />
-              ) : (
-                <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                  PREVIEW TIDAK TERSEDIA
-                </span>
-              )}
-            </div>
-            <div className="flex flex-1 flex-col gap-3 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-mono text-sm font-bold uppercase tracking-[0.05em]">
-                    {tpl.name}
-                  </p>
-                  <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
-                    {tpl.category_name ?? "Tanpa kategori"} · PREMIUM
-                  </p>
-                </div>
-                <span className="inline-block border-2 border-ink bg-ink px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-bg">
-                  PREMIUM
-                </span>
-              </div>
-
-              <div className="mt-auto flex items-center justify-between gap-2 border-t-2 border-ink/10 pt-3">
-                <span className="font-mono text-sm font-bold tabular-nums">
-                  {formatIDR(tpl.price)}
-                </span>
-                {tpl.purchased ? (
-                  <span className="flex items-center gap-1.5 font-mono text-xs font-bold uppercase text-muted-foreground">
-                    <Check className="size-4" aria-hidden /> Dimiliki
-                  </span>
-                ) : (
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => buy(tpl.id)}
-                    disabled={pending && buyingId === tpl.id}
-                  >
-                    <ShoppingCart aria-hidden />
-                    {pending && buyingId === tpl.id ? "Memproses…" : "Beli"}
-                  </Button>
-                )}
-              </div>
-              {!tpl.is_active ? (
-                <p className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                  <Lock className="size-3" aria-hidden /> Sedang nonaktif
-                </p>
-              ) : null}
-            </div>
-          </li>
-        ))}
-      </ul>
+      <RecordCollection
+        storageKey="snapyos.view.premium-templates"
+        label="Template premium"
+        list={list}
+        grid={grid}
+      />
     </div>
   );
 }

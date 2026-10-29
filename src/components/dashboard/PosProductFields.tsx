@@ -171,7 +171,7 @@ export function PosProductFields({
           inputMode="numeric"
           value={stock}
           onChange={(event) => setStock(event.target.value)}
-          placeholder={product ? undefined : "\u2014"}
+          placeholder={product ? undefined : "-"}
           disabled={pending}
         />
       </div>

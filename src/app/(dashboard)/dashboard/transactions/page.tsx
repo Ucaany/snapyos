@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { Filter } from "lucide-react";
 
 import { DateRangeFilter } from "@/components/dashboard/DateRangeFilter";
 import { PreserveSearchParams } from "@/components/dashboard/PreserveSearchParams";
 import { TransactionsView } from "@/components/dashboard/TransactionsView";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { IconButton } from "@/components/ui/icon-button";
 import { PageHeader } from "@/components/ui/page-header";
 import { Select } from "@/components/ui/select";
 import { can } from "@/lib/rbac";
@@ -92,7 +94,7 @@ export default async function TransactionsPage({
   };
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
       <PageHeader
         eyebrow={`${result.total} TRANSAKSI DITEMUKAN`}
         title="Transaksi"
@@ -121,7 +123,7 @@ export default async function TransactionsPage({
           type="text"
           name="q"
           defaultValue={query.q ?? ""}
-          placeholder="Cari nomor / customer"
+          placeholder="Cari nomor / pelanggan"
           className={`${inputClass} col-span-2`}
           aria-label="Cari transaksi"
         />
@@ -157,12 +159,14 @@ export default async function TransactionsPage({
             </option>
           ))}
         </Select>
-        <button
+        <IconButton
           type="submit"
-          className="h-11 border-2 border-ink bg-accent px-4 font-mono text-xs font-bold uppercase tracking-[0.08em] shadow-[2px_2px_0_0_#111111] transition-transform active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
-        >
-          Terapkan
-        </button>
+          variant="default"
+          label="Terapkan filter"
+          icon={Filter}
+          compact
+          className="col-span-2 justify-self-end md:col-span-1"
+        />
       </form>
 
       <TransactionsView

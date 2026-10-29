@@ -42,6 +42,12 @@ export function CollapsibleShell({
       className="grid w-full flex-1 content-start grid-cols-1 md:content-stretch md:grid-cols-[var(--sidebar-w)_minmax(0,1fr)] md:transition-[grid-template-columns] md:duration-200 md:ease-in-out motion-reduce:transition-none"
       style={{ "--sidebar-w": collapsed ? "64px" : "240px" } as CSSProperties}
     >
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:border-2 focus:border-ink focus:bg-accent focus:px-3 focus:py-2 focus:font-mono focus:text-xs focus:font-bold focus:uppercase focus:tracking-[0.05em] focus:text-ink"
+      >
+        Lewati ke konten
+      </a>
       <div className="md:sticky md:top-16 md:flex md:max-h-[calc(100dvh-4rem)] md:flex-col md:overflow-hidden md:border-r-2 md:border-ink">
         <div
           className={cn(
@@ -62,7 +68,9 @@ export function CollapsibleShell({
         </div>
         <div className="min-h-0 flex-1 md:overflow-y-auto">{sidebarEl}</div>
       </div>
-      <main className="min-w-0">{children}</main>
+      <main id="main-content" className="min-w-0">
+        <div className="mx-auto w-full max-w-[1400px]">{children}</div>
+      </main>
     </div>
   );
 }

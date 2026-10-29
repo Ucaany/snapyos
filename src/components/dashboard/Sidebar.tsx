@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Fragment, useEffect, useRef } from "react";
 
 import { buildNavGroups, type NavItem } from "@/components/dashboard/nav";
 
@@ -28,14 +27,6 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const groups = buildNavGroups(showPos, showPwaKiosk);
-  const stripRef = useRef<HTMLDivElement | null>(null);
-
-  // Item aktif bisa berada jauh di kanan strip (mis. Pengaturan). Geser ke
-  // tengah saat rute berubah, hanya sumbu horizontal, tanpa menggeser halaman.
-  useEffect(() => {
-    const active = stripRef.current?.querySelector<HTMLElement>('[data-nav-active="true"]');
-    active?.scrollIntoView({ inline: "center", block: "nearest" });
-  }, [pathname]);
 
   const renderItem = (item: NavItem) => {
     // Link lintas-shell (`/docs`) tidak ditandai aktif di dashboard.
@@ -52,7 +43,9 @@ export function Sidebar({
         className={cn(
           "flex min-h-11 shrink-0 items-center gap-2 px-3 py-2 font-mono text-xs uppercase tracking-[0.05em] transition-colors",
           collapsed && "md:w-full md:justify-center md:gap-0 md:px-0",
-          active ? "border-2 border-ink bg-accent font-bold text-ink" : "text-ink hover:bg-muted"
+          active
+            ? "border-2 border-ink bg-accent font-bold text-ink"
+            : "border-2 border-transparent text-ink hover:bg-muted"
         )}
       >
         <item.icon className="size-4 shrink-0" />
@@ -64,28 +57,13 @@ export function Sidebar({
   return (
     <nav
       aria-label="Navigasi utama"
-      className="sticky top-16 z-[9] border-b-2 border-ink bg-bg md:static md:z-auto md:border-b-0"
+      className="hidden border-b-2 border-ink bg-bg md:sticky md:top-16 md:z-[9] md:block md:border-b-0"
     >
-      {/* Mobile: strip horizontal dengan label grup. */}
-      <div
-        ref={stripRef}
-        className="flex items-center gap-1 overflow-x-auto p-3 md:hidden"
-      >
-        {groups.map((group) => (
-          <Fragment key={group.label}>
-            <span className="shrink-0 px-1 font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-              {group.label}
-            </span>
-            {group.items.map(renderItem)}
-          </Fragment>
-        ))}
-      </div>
-
       {/* Desktop/tablet: kategori terpisah dengan header mono. */}
       <div
         className={cn(
-          "hidden md:flex md:flex-col md:gap-1 md:overflow-hidden",
-          collapsed ? "md:px-2 md:py-4" : "md:p-4"
+          "flex flex-col gap-1 overflow-hidden",
+          collapsed ? "px-2 py-4" : "p-4"
         )}
       >
         {groups.map((group, i) => (

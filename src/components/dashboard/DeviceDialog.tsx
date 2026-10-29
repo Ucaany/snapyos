@@ -225,7 +225,13 @@ export function DeviceDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
         render={
-          <Button variant="outline" size="icon-sm" aria-label={`Perangkat ${photobox.name}`}>
+          <Button
+            variant="outline"
+            size="icon-compact"
+            aria-label={`Perangkat ${photobox.name}`}
+            title={`Perangkat ${photobox.name}`}
+            className="relative after:absolute after:-inset-1"
+          >
             <MonitorSmartphone className="size-4" aria-hidden />
           </Button>
         }

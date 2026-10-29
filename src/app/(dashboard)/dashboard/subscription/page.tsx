@@ -41,7 +41,7 @@ export default async function SubscriptionPage() {
   const overview = await getSubscriptionOverview(user.id, active.business.id);
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
       <PageHeader
         eyebrow="LANGGANAN · PAKET & TAGIHAN"
         title="Langganan"

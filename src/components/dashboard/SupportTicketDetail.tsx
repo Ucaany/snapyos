@@ -1,10 +1,10 @@
 "use client";
 
 import { useActionState } from "react";
-import Link from "next/link";
 import { ArrowLeft, MessageSquare } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { IconLink } from "@/components/ui/icon-button";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { STATUS_LABEL } from "@/lib/support-ticket-constants";
 import type { SupportTicketDetail } from "@/server/support-tickets";
@@ -20,13 +20,7 @@ export function SupportTicketDetail({ ticket }: { ticket: SupportTicketDetail })
 
   return (
     <div className="flex flex-col gap-6">
-      <Link
-        href="/dashboard/support"
-        className="flex w-fit items-center gap-2 border-2 border-ink bg-surface px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.1em] shadow-[2px_2px_0_0_#111111] active:translate-y-[2px]"
-      >
-        <ArrowLeft className="size-4" aria-hidden />
-        Kembali
-      </Link>
+      <IconLink href="/dashboard/support" label="Kembali ke daftar tiket" icon={ArrowLeft} compact />
 
       <div className="border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111] md:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">

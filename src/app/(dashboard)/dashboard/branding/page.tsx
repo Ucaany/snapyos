@@ -32,9 +32,9 @@ export default async function BrandingKioskPage() {
   const photoboxes = await listPhotoboxes(user.id, active.business.id);
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
       <PageHeader
-        eyebrow="BRANDING: KIOSK CUSTOMIZATION"
+        eyebrow="BRANDING: KUSTOMISASI KIOSK"
         title="Branding & Kiosk"
         description="Satu halaman untuk seluruh tampilan kiosk customer: warna, tipografi, teks tiap layar, tombol, dan video background attract screen. Konfigurasi global berlaku untuk semua booth; tiap booth bisa override sebagian/seluruh tampilannya sendiri."
       />

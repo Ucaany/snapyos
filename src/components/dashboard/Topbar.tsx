@@ -1,7 +1,11 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { LogOut } from "lucide-react";
 
 import { logoutAction } from "@/server/auth-actions";
+import { IconButton } from "@/components/ui/icon-button";
+import { MobileNav } from "@/components/dashboard/MobileNav";
 import { StorageIndicator } from "@/components/dashboard/StorageIndicator";
 
 /**
@@ -15,11 +19,15 @@ export function Topbar({
   workspaceSlot,
   activeBusinessId,
   isAdmin = false,
+  showPos = false,
+  showPwaKiosk = false,
 }: {
   user: { name: string | null | undefined; email: string | null | undefined };
   workspaceSlot: ReactNode;
   activeBusinessId: string | null;
   isAdmin?: boolean;
+  showPos?: boolean;
+  showPwaKiosk?: boolean;
 }) {
   return (
     <header className="sticky top-0 z-10 border-b-2 border-ink bg-bg">
@@ -28,7 +36,14 @@ export function Topbar({
           href="/dashboard"
           className="flex min-h-11 shrink-0 items-center gap-2 font-display text-base font-bold uppercase tracking-tight md:text-lg"
         >
-          <img src="/snapyos-mark.png" alt="Logo SnapyOS" className="h-8 w-8 shrink-0" />
+          <Image
+            src="/snapyos-mark.png"
+            alt="Logo SnapyOS"
+            width={32}
+            height={32}
+            className="h-8 w-8 shrink-0"
+            priority
+          />
           <span className="hidden sm:inline">
             SnapyOS<span className="text-accent">®</span>
           </span>
@@ -37,6 +52,7 @@ export function Topbar({
         {workspaceSlot}
 
         <div className="ml-auto flex shrink-0 items-center gap-2 md:gap-3">
+          <MobileNav showPos={showPos} showPwaKiosk={showPwaKiosk} />
           {activeBusinessId && <StorageIndicator businessId={activeBusinessId} />}
           {isAdmin ? (
             <Link
@@ -53,12 +69,13 @@ export function Topbar({
             </p>
           </div>
           <form action={logoutAction}>
-            <button
+            <IconButton
               type="submit"
-              className="min-h-11 min-w-11 border-2 border-ink bg-surface px-2.5 py-2 font-mono text-[10px] uppercase tracking-[0.05em] text-ink transition-colors hover:bg-accent active:translate-y-[2px] md:px-3 md:text-xs"
-            >
-              Keluar
-            </button>
+              label="Keluar"
+              icon={LogOut}
+              compact
+              variant="outline"
+            />
           </form>
         </div>
       </div>

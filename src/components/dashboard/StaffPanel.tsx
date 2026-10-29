@@ -14,7 +14,13 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
+import { RecordCard } from "@/components/ui/record-card";
+import {
+  RecordCollection,
+  RecordEditButton,
+} from "@/components/ui/record-collection";
 import { Select } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { LABEL_CLASS as labelClass, fieldError } from "@/lib/form-ui";
@@ -106,14 +112,14 @@ function RoleForm({ member, currentUserId }: { member: StaffDirectoryRow; curren
           <option value="manager">MANAGER</option>
           <option value="staff">STAFF</option>
         </select>
-        <Button
+<IconButton
           type="submit"
           variant="outline"
-          size="sm"
+          label={`Simpan role ${member.name ?? member.email}`}
+          icon={Save}
+          compact
           disabled={pending || member.userId === currentUserId}
-        >
-          {pending ? "Menyimpan…" : "Simpan"}
-        </Button>
+        />
       </form>
       <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.05em] text-muted-foreground">
         {ROLE_DESC[member.role]}
@@ -143,7 +149,7 @@ function RemoveForm({
         <Button
           type="button"
           variant="destructive"
-          size="icon-sm"
+          size="icon-compact"
           aria-label={`Keluarkan ${member.email}`}
           disabled={disabled}
           title={
@@ -151,6 +157,7 @@ function RemoveForm({
               ? "Tidak bisa mengeluarkan sendiri"
               : "Keluarkan dari business"
           }
+          className="relative after:absolute after:-inset-1"
           onClick={() => setConfirmOpen(true)}
         >
           <Trash2 aria-hidden />
@@ -398,11 +405,15 @@ export function StaffPanel({
               {ROLE_DESC.manager}
             </p>
           </div>
-          <div className="flex items-end">
-            <Button type="submit" size="sm" disabled={inviting} className="w-full md:w-auto">
-              <UserPlus aria-hidden />
-              {inviting ? "Menambahkan…" : "Tambahkan"}
-            </Button>
+<div className="flex items-end">
+            <IconButton
+              type="submit"
+              variant="default"
+              label={inviting ? "Menambahkan staff" : "Tambahkan staff"}
+              icon={UserPlus}
+              compact
+              disabled={inviting}
+            />
           </div>
         </div>
         {inviteState.error && (
@@ -426,8 +437,12 @@ export function StaffPanel({
           title="Tambahkan staf melalui formulir undangan untuk mengatur peran dan akses booth."
         />
       ) : (
-        <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
-          <table className="w-full border-collapse text-left md:min-w-[960px]">
+        <RecordCollection
+          storageKey="snapyos.view.staff"
+          label="Daftar staff"
+          list={
+            <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
+              <table className="w-full border-collapse text-left lg:min-w-[960px]">
             <caption className="sr-only">
               Daftar staff, role, akses booth, dan transaksi hari ini
             </caption>
@@ -454,7 +469,7 @@ export function StaffPanel({
               {staff.map((member) => (
                 <Fragment key={member.userId}>
                   <tr className="border-b-2 border-ink/10 transition-colors hover:bg-muted/60">
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-3">
                       <p className="font-mono text-sm font-bold uppercase tracking-[0.05em]">
                         {member.name ?? "-"}
                         {member.userId === currentUserId && (
@@ -465,10 +480,10 @@ export function StaffPanel({
                       </p>
                       <p className="mt-1 font-mono text-xs text-muted-foreground">{member.email}</p>
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-3">
                       <RoleForm member={member} currentUserId={currentUserId} />
                     </td>
-                    <td className="hidden px-4 py-4 md:table-cell">
+                    <td className="hidden px-4 py-3 md:table-cell">
                       {member.role === "owner" ? (
                         <p className="font-mono text-xs font-bold uppercase tracking-[0.05em]">
                           Semua booth
@@ -495,18 +510,18 @@ export function StaffPanel({
                         </div>
                       )}
                     </td>
-                    <td className="hidden px-4 py-4 md:table-cell">
+                    <td className="hidden px-4 py-3 md:table-cell">
                       <p className="font-mono text-sm font-bold">{member.todayCount}</p>
                       <p className="mt-1 font-mono text-xs text-muted-foreground">
                         {formatIDR(member.todayRevenue)}
                       </p>
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-3">
                       <div className="flex items-start justify-end gap-2">
                         <Button
                           type="button"
                           variant="outline"
-                          size="icon-sm"
+                          size="icon-compact"
                           aria-label={`Atur akses booth ${member.name ?? member.email ?? ""}`}
                           title={
                             member.role === "owner"
@@ -514,6 +529,7 @@ export function StaffPanel({
                               : "Atur booth yang bisa diakses"
                           }
                           disabled={member.role === "owner"}
+                          className="relative after:absolute after:-inset-1"
                           onClick={() =>
                             setEditingBooths((prev) =>
                               prev === member.userId ? null : member.userId
@@ -541,7 +557,89 @@ export function StaffPanel({
               ))}
             </tbody>
           </table>
-        </div>
+            </div>
+          }
+          grid={
+            <ul
+              className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
+              aria-label="Staff (tampilan kotak)"
+            >
+              {staff.map((member) => (
+                <li key={member.userId} className="min-w-0">
+                  <RecordCard
+                    title={
+                      <>
+                        {member.name ?? "-"}
+                        {member.userId === currentUserId && (
+                          <span className="ml-2 border-2 border-ink bg-accent px-1.5 py-0.5 text-[10px]">
+                            ANDA
+                          </span>
+                        )}
+                      </>
+                    }
+                    subtitle={member.email}
+                    badge={
+                      <span className="border-2 border-ink bg-muted px-2 py-1 font-mono text-[10px] font-bold uppercase">
+                        {member.role}
+                      </span>
+                    }
+                    meta={[
+                      {
+                        label: "Akses booth",
+                        value:
+                          member.role === "owner"
+                            ? "Semua booth"
+                            : member.booths.length === 0
+                              ? "Belum diatur"
+                              : `${member.booths
+                                  .slice(0, 3)
+                                  .map((b) => b.name)
+                                  .join(" · ")}${
+                                  member.booths.length > 3
+                                    ? ` +${member.booths.length - 3}`
+                                    : ""
+                                }`,
+                      },
+                      {
+                        label: "Transaksi hari ini",
+                        value: `${member.todayCount} · ${formatIDR(member.todayRevenue)}`,
+                      },
+                    ]}
+                    footer={
+                      <p className="font-mono text-[10px] leading-relaxed text-muted-foreground">
+                        {ROLE_DESC[member.role]}
+                      </p>
+                    }
+                    actions={
+                      <>
+                        {member.role === "owner" ? (
+                          <IconButton
+                            label="Owner otomatis akses semua booth"
+                            icon={DoorOpen}
+                            compact
+                            disabled
+                          />
+                        ) : (
+                          <RecordEditButton
+                            label={`Atur akses booth ${member.name ?? member.email ?? ""}`}
+                            icon={DoorOpen}
+                            onEdit={() => setEditingBooths(member.userId)}
+                          />
+                        )}
+                        <RecordEditButton
+                          label={`Ubah role ${member.name ?? member.email ?? ""}`}
+                          icon={UserCog}
+                          onEdit={() => {}}
+                        />
+                        <RemoveForm member={member} currentUserId={currentUserId} />
+                      </>
+                    }
+                  />
+                </li>
+              ))}
+            </ul>
+          }
+        />
       )}
     </div>
   );

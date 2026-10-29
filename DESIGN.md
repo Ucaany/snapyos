@@ -53,7 +53,7 @@ Dilarang tampak seperti: generic Tailwind dashboard, generic AI SaaS, Linear/Str
   - **Eyebrow `LABEL`** di setiap `PageHeader` + panel (`font-mono`, uppercase, `tracking 0.2em`, warna muted). Alasan: penanda seksi ala print teknis yang konsisten di seluruh dashboard; ini motif identitas, bukan eyebrow dekoratif yang mengulang headline. Prefix literal `///` **tidak** dirender — ia terbaca sebagai artefak teks, bukan dekorasi.
   - **Panah `→` / `ArrowRight` pada CTA navigasi** ("Buka halaman transaksi →", "Upgrade Plan"). Alasan: menandai aksi yang meninggalkan halaman/panel saat ini. Bukan dipasang di setiap tombol; hanya pada CTA lintas-section.
   - **Role 4 warna non-netral** (R-29): kuning `--accent` (aksi/highlight), hijau `--accent-3` (status berhasil, mis. paid), merah `--destructive` (error/hapus), pink `--accent-2` (aksen identitas sekunder). Keempatnya punya peran fungsional; tidak boleh dipakai sebagai dekorasi bebas.
-- **Icons:** Lucide (wajib, per PRD).
+- **Icons:** Lucide (wajib, per PRD). Aksi berulang memakai `IconButton`/`IconLink`: ikon 36px visual dengan hit area 44px, `aria-label` + `title` + tooltip brutalist. Aksi uang/legal berkonsekuensi tinggi tetap memakai label teks.
 - **Kiosk icon rationale:** camera, printer, download, QR, banknote, tag, frame, and film icons directly identify capture, output, payment, or frame choices. Omit icons where the text already gives sufficient recognition.
 - **Kiosk payment hierarchy:** first available payment method receives accent fill as the default path; alternatives use surface fill so customer choice remains clear without implying equal operational priority.
 - **Kiosk branding contrast:** custom foreground/background pairs require WCAG AA contrast before save; invalid pairs are rejected at the validator boundary.
@@ -76,6 +76,8 @@ Dilarang tampak seperti: generic Tailwind dashboard, generic AI SaaS, Linear/Str
 - **Section repetition ban:** layout family sama max 1x per halaman.
 - Full-height: `min-h-[100dvh]`, bukan `h-screen`.
 - **Mobile collapse:** semua multi-column → single column di < 768px, eksplisit per section.
+- **Daftar owner:** desktop default list/tabel, mobile default grid/kartu lewat `RecordCollection`; preferensi per fitur di `localStorage` (`snapyos.view.<feature>`).
+- **Navigasi mobile:** panel menu di topbar (bukan strip horizontal panjang). Konten dashboard dibatasi `max-w-[1400px]` oleh shell.
 - **Skala spacing (kontrak):** container `p-6 md:p-10`; jarak antar section `gap-6 md:gap-8`; panel `p-4`; kartu `p-5`; sel metrik `p-3`; chip `px-3 py-2`. Nilai baru harus menambah level di daftar ini, bukan angka ad-hoc per halaman.
 - **Kolom aksi tabel:** tombol aksi memakai ikon 44px (`size="icon"`) dengan `aria-label` + `title`; label teks panjang hanya di dialog konfirmasi dan form, bukan di baris tabel.
 

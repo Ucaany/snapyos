@@ -33,6 +33,8 @@ type Props = {
   triggerTitle?: string;
   /** Field tambahan yang harus ikut dikirim (mis. user_id, business_id). */
   extraFields?: Record<string, string>;
+  /** Tombol trigger ringkas 36px (hit area tetap 44px) untuk tabel padat. */
+  compact?: boolean;
 };
 
 /**
@@ -52,6 +54,7 @@ export function DeleteConfirmForm({
   triggerIcon,
   triggerTitle,
   extraFields,
+  compact = false,
 }: Props) {
   const [open, setOpen] = useState(false);
 
@@ -72,7 +75,7 @@ export function DeleteConfirmForm({
         <Button
           type="button"
           variant={variant === "destructive" ? "destructive" : "secondary"}
-          size="icon"
+          size={compact ? "icon-compact" : "icon"}
           disabled={disabled}
           onClick={() => setOpen(true)}
           title={triggerTitle ?? triggerLabel}

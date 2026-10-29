@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
-import { Power, PowerOff } from "lucide-react";
+import { Loader2, Power, PowerOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { posToggleBoothAction } from "@/server/pos-actions";
@@ -53,24 +53,25 @@ function SubmitButton({
   const label = enabled ? "Aktifkan POS" : "Nonaktifkan";
 
   return (
-    <Button
+<Button
       type="submit"
       variant={enabled ? "default" : "outline"}
-      size="sm"
+      size="icon-compact"
       disabled={disabled || pending}
-      title={disabled ? "Nonaktifkan booth aktif dulu untuk memindahkan POS" : undefined}
+      title={
+        disabled
+          ? "Nonaktifkan booth aktif dulu untuk memindahkan POS"
+          : `${label} di booth ${boothName}`
+      }
       aria-label={`${label} di booth ${boothName}`}
+      className="relative after:absolute after:-inset-1"
     >
       {pending ? (
-        "Memproses…"
+        <Loader2 className="size-4 animate-spin" aria-hidden />
       ) : enabled ? (
-        <>
-          <Power aria-hidden /> {label}
-        </>
+        <Power className="size-4" aria-hidden />
       ) : (
-        <>
-          <PowerOff aria-hidden /> {label}
-        </>
+        <PowerOff className="size-4" aria-hidden />
       )}
     </Button>
   );
