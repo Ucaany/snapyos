@@ -456,6 +456,14 @@ export async function createSession(
  * Tanpa jalur ini sesi zombie mengunci booth sampai grace offline habis
  * (assertSessionCapacity) — "Sesi lain masih berjalan" padahal kiosk kosong.
  */
+/**
+ * Sesi yang sedang difinalisasi di proses ini. Abort tidak boleh membatalkan
+ * sesi yang uploadnya sedang berjalan: dulu abort bisa menang balapan, media
+ * dihapus, dan sesi yang sudah dibayar hancur. Satu proses Node melayani
+ * seluruh tenant di deployment ini, jadi set in-process cukup.
+ */
+const finalizingSessions = new Set<string>();
+
 export async function abortSession(
   businessSlug: string,
   sessionId: string,
@@ -470,6 +478,12 @@ export async function abortSession(
   const session = await loadSession(device.businessId, sessionId);
   if (session.photobox_id !== device.photobox.id) {
     throw new ApiError("FORBIDDEN", "Device tidak cocok dengan sesi ini");
+  }
+  if (finalizingSessions.has(session.id)) {
+    throw new ApiError(
+      "PAYMENT_ALREADY_PROCESSED",
+      "Sesi sedang difinalisasi. Tunggu sampai selesai."
+    );
   }
   const { data: aborted } = await supabase
     .from("sessions")
@@ -681,6 +695,11 @@ export async function finalizeSession(
     gifBodies.push(body);
   }
 
+  // Tandai sesi sedang difinalisasi SEBELUM byte pertama ditulis, supaya abort
+  // yang datang di tengah upload ditolak (lihat abortSession).
+  finalizingSessions.add(session.id);
+  try {
+
   // Upload paralel dengan konkurensi terbatas (I/O-bound; 4 cukup untuk tablet
   // kiosk tanpa membanjiri koneksi booth). Urutan key tetap deterministik.
   // Upload key deterministik + idempotent: pemanggil konkuren yang nanti kalah
@@ -771,7 +790,10 @@ export async function finalizeSession(
     }
   }
 
-  return await buildResult(device.businessId, claimedRow);
+    return await buildResult(device.businessId, claimedRow);
+  } finally {
+    finalizingSessions.delete(session.id);
+  }
 }
 
 /**
