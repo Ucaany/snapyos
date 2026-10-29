@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ChevronDown, ImageIcon, Pencil } from "lucide-react";
 import { AdminActionButton, AdminActionForm } from "@/components/admin/AdminActionForm";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { BrutalistCheckbox } from "@/components/admin/BrutalistCheckbox";
@@ -17,6 +18,7 @@ import {
 } from "@/server/admin-actions";
 import { listGlobalTemplates, listTemplateCategories, listTemplatePurchases } from "@/server/admin";
 import { PageHeader } from "@/components/ui/page-header";
+import { buttonVariants } from "@/components/ui/button-variants";
 import {
   Table,
   TableBody,
@@ -45,9 +47,10 @@ export default async function AdminTemplatesPage() {
   const categoryOptions = categories.map((c) => ({ value: c.id, label: c.name.toUpperCase() }));
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       <PageHeader
         eyebrow="ADMIN - TEMPLATES & CATEGORIES"
+        icon={ImageIcon}
         title="Template Global"
         meta={`${categories.length} KATEGORI · ${templates.length} TEMPLATE GLOBAL`}
       />
@@ -73,7 +76,12 @@ export default async function AdminTemplatesPage() {
               >
                 Nama kategori
               </label>
-              <Input id="cat-name" name="name" placeholder="cth. Wedding" className="w-56" />
+              <Input
+                id="cat-name"
+                name="name"
+                placeholder="cth. Wedding"
+                className="w-full sm:w-56"
+              />
             </div>
             <div className="flex flex-col gap-1">
               <label
@@ -88,7 +96,7 @@ export default async function AdminTemplatesPage() {
                 type="number"
                 min={0}
                 placeholder="Kosong = gratis"
-                className="w-44"
+                className="w-full sm:w-44"
               />
             </div>
           </AdminActionForm>
@@ -243,7 +251,7 @@ export default async function AdminTemplatesPage() {
         </CardHeader>
         <CardContent>
           {templates.length === 0 ? (
-            <AdminEmptyState heading="BELUM ADA TEMPLATE GLOBAL">
+            <AdminEmptyState heading="BELUM ADA TEMPLATE GLOBAL" icon={ImageIcon}>
               Upload template pertama lewat form &quot;Upload Template Global Baru&quot; di atas.
             </AdminEmptyState>
           ) : (
@@ -272,28 +280,35 @@ export default async function AdminTemplatesPage() {
                     <StatusBadge status={t.is_active ? "active" : "inactive"} />
                     <Link
                       href={`/admin/templates/builder/${t.id}`}
-                      className="border-2 border-ink bg-surface px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-[0.08em] shadow-[2px_2px_0_0_#111111] active:translate-y-[2px]"
+                      aria-label={`Edit slot ${t.name}`}
+                      title="Edit slot"
+                      className={buttonVariants({ variant: "outline", size: "icon" })}
                     >
-                      Edit slot
+                      <Pencil className="size-4" aria-hidden="true" />
                     </Link>
                     <AdminActionButton
                       action={toggleTemplateAction}
                       hidden={{ templateId: t.id, active: t.is_active ? "false" : "true" }}
                       submitLabel={t.is_active ? "Nonaktifkan" : "Aktifkan"}
+                      icon={t.is_active ? "eyeOff" : "eye"}
+                      iconOnly
                       variant={t.is_active ? "outline" : "secondary"}
                     />
                     <AdminActionButton
                       action={deleteGlobalTemplateAction}
                       hidden={{ templateId: t.id }}
                       submitLabel="Hapus template"
+                      icon="trash"
+                      iconOnly
                       variant="ghost"
                       confirm={`Hapus template "${t.name}"? Riwayat pembelian tenant untuk template ini ikut terhapus.`}
                       confirmTitle={`Hapus template ${t.name}`}
                     />
                   </span>
                   <details className="w-full border-t-2 border-ink/10 pt-3">
-                    <summary className="cursor-pointer font-mono text-xs uppercase tracking-[0.12em]">
+                    <summary className="flex min-h-11 cursor-pointer items-center gap-2 font-mono text-xs uppercase tracking-[0.12em]">
                       Edit harga / premium
+                      <ChevronDown className="summary-chevron size-3.5" aria-hidden="true" />
                     </summary>
                     <AdminActionForm
                       action={updateGlobalTemplateAction}
@@ -312,7 +327,7 @@ export default async function AdminTemplatesPage() {
                           id={`edit-name-${t.id}`}
                           name="name"
                           defaultValue={t.name}
-                          className="w-52"
+                          className="w-full sm:w-52"
                         />
                       </div>
                       <div className="flex flex-col gap-1">
@@ -329,7 +344,7 @@ export default async function AdminTemplatesPage() {
                           min={0}
                           defaultValue={t.price ?? ""}
                           placeholder="Kosong = gratis"
-                          className="w-40"
+                          className="w-full sm:w-40"
                         />
                       </div>
                       <BrutalistCheckbox

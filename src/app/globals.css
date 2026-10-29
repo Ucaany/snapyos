@@ -59,6 +59,16 @@
     outline: 2px solid var(--color-ink);
     outline-offset: 2px;
   }
+  /* Ringkasan <details> panel admin: satu penanda buka/tutup. Ikon digambar
+     sebagai anak langsung <summary> (`.summary-chevron`) supaya statusnya
+     terbaca tanpa mengubah struktur konten. */
+  summary > .summary-chevron {
+    flex: none;
+    transition: transform 150ms var(--ease-brutal);
+  }
+  details[open] > summary > .summary-chevron {
+    transform: rotate(180deg);
+  }
 }
 
 /* Global grain — fixed, pointer-events-none (never on scrolling containers) */

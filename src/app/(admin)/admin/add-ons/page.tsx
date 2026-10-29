@@ -1,3 +1,5 @@
+import { Package } from "lucide-react";
+
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
 import { BrutalistCheckbox } from "@/components/admin/BrutalistCheckbox";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
@@ -18,9 +20,10 @@ export default async function AdminAddOnsPage() {
   const addOns = await listAddOns();
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       <PageHeader
         eyebrow="ADMIN - ADD-ONS"
+        icon={Package}
         title="Manajemen Add-on"
         meta={`${addOns.length} add-on terdaftar`}
       />
@@ -94,7 +97,7 @@ export default async function AdminAddOnsPage() {
 
       <div className="flex flex-col gap-4">
         {addOns.length === 0 ? (
-          <AdminEmptyState heading="BELUM ADA ADD-ON">
+          <AdminEmptyState heading="BELUM ADA ADD-ON" icon={Package}>
             Buat add-on pertama di atas, dipakai owner untuk menambah limit sesi konkuren.
           </AdminEmptyState>
         ) : (
@@ -186,11 +189,7 @@ export default async function AdminAddOnsPage() {
                       defaultValue={a.storage_mb ?? ""}
                     />
                   </div>
-                  <BrutalistCheckbox
-                    name="is_active"
-                    label="Aktif"
-                    defaultChecked={a.is_active}
-                  />
+                  <BrutalistCheckbox name="is_active" label="Aktif" defaultChecked={a.is_active} />
                 </AdminActionForm>
               </div>
             </div>

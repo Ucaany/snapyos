@@ -1,3 +1,5 @@
+import { ChevronDown, Send } from "lucide-react";
+
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
@@ -61,9 +63,10 @@ export default async function AdminBroadcastsPage() {
   const statsByCampaign = new Map(stats.map((s) => [s.campaign_id, s]));
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       <PageHeader
         eyebrow="ADMIN - BROADCAST EMAIL"
+        icon={Send}
         title="Broadcast Email"
         meta="PENGUMUMAN · MARKETING · RESEND DENGAN LIMIT · RIWAYAT PENGIRIMAN"
       />
@@ -153,7 +156,7 @@ export default async function AdminBroadcastsPage() {
 
       <div className="flex flex-col gap-4">
         {broadcasts.length === 0 ? (
-          <AdminEmptyState heading="BELUM ADA BROADCAST">
+          <AdminEmptyState heading="BELUM ADA BROADCAST" icon={Send}>
             Buat draft pertama di atas, lalu kirim ke audiens terpilih.
           </AdminEmptyState>
         ) : (
@@ -183,6 +186,7 @@ export default async function AdminBroadcastsPage() {
                     </span>
                   </span>
                   <StatusBadge status={statusFor(b.status)} />
+                  <ChevronDown className="summary-chevron size-4 shrink-0" aria-hidden="true" />
                 </summary>
 
                 <div className="border-t-2 border-ink/10 p-4">

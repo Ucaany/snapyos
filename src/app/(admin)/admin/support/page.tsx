@@ -1,8 +1,12 @@
 import Link from "next/link";
+import { CircleHelp, Filter } from "lucide-react";
+
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminPaginator } from "@/components/admin/AdminPaginator";
+import { AdminRecordCard } from "@/components/admin/AdminRecordCard";
 import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
+import { RecordCollection } from "@/components/admin/RecordCollection";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
@@ -43,10 +47,11 @@ export default async function AdminSupportPage({
   const totalPages = Math.max(1, Math.ceil(total / 20));
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       <PageHeader
         eyebrow="ADMIN - SUPPORT TICKETS"
         title="Tiket Bantuan"
+        icon={CircleHelp}
         meta={`SEMUA TENANT · ${total} TIKET COCOK FILTER`}
         right={
           <form method="GET" className="flex flex-wrap items-end gap-3" role="search">
@@ -59,8 +64,14 @@ export default async function AdminSupportPage({
                 ...STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label })),
               ]}
             />
-            <Button type="submit" size="sm" variant="secondary">
-              Filter tiket
+            <Button
+              type="submit"
+              size="icon"
+              variant="secondary"
+              aria-label="Filter tiket"
+              title="Filter tiket"
+            >
+              <Filter className="size-4" aria-hidden="true" />
             </Button>
           </form>
         }
@@ -69,6 +80,7 @@ export default async function AdminSupportPage({
       {items.length === 0 ? (
         <AdminEmptyState
           heading="TIDAK ADA TIKET"
+          icon={CircleHelp}
           action={
             q.status ? (
               <Link
@@ -85,50 +97,93 @@ export default async function AdminSupportPage({
             : "Belum ada tiket masuk. Tiket muncul di sini setelah owner mengirim laporan dari dashboard."}
         </AdminEmptyState>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Subjek</TableHead>
-              <TableHead className="hidden md:table-cell">Bisnis</TableHead>
-              <TableHead className="hidden lg:table-cell">Kategori · Area</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="hidden lg:table-cell">Waktu</TableHead>
-              <TableHead>Aksi</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.map((t) => (
-              <TableRow key={t.id}>
-                <TableCell className="max-w-[280px] text-sm font-semibold">{t.subject}</TableCell>
-                <TableCell className="hidden md:table-cell">{t.business_name}</TableCell>
-                <TableCell className="hidden text-[11px] uppercase text-muted-foreground lg:table-cell">
-                  {t.category} · {t.area}
-                </TableCell>
-                <TableCell>
-                  <StatusBadge status={t.status} label={STATUS_LABEL[t.status]} />
-                </TableCell>
-                <TableCell className="hidden text-muted-foreground lg:table-cell">
-                  {dateFmt.format(new Date(t.created_at))}
-                </TableCell>
-                <TableCell>
-                  <AdminActionForm
-                    action={updateSupportTicketStatusAction}
-                    hidden={{ ticketId: t.id }}
-                    submitLabel="Simpan"
-                    className="flex flex-wrap items-center gap-2"
-                  >
-                    <BrutalistSelect
-                      name="status"
-                      defaultValue={t.status}
-                      aria-label={`Status tiket: ${t.subject}`}
-                      options={STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label }))}
-                    />
-                  </AdminActionForm>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <RecordCollection
+          storageKey="snapyos.view.admin.support"
+          label="Daftar tiket bantuan"
+          list={
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Subjek</TableHead>
+                  <TableHead className="hidden md:table-cell">Bisnis</TableHead>
+                  <TableHead className="hidden lg:table-cell">Kategori · Area</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="hidden lg:table-cell">Waktu</TableHead>
+                  <TableHead>Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.map((t) => (
+                  <TableRow key={t.id}>
+                    <TableCell className="max-w-[280px] text-sm font-semibold">
+                      {t.subject}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">{t.business_name}</TableCell>
+                    <TableCell className="hidden text-[11px] uppercase text-muted-foreground lg:table-cell">
+                      {t.category} · {t.area}
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={t.status} label={STATUS_LABEL[t.status]} />
+                    </TableCell>
+                    <TableCell className="hidden text-muted-foreground lg:table-cell">
+                      {dateFmt.format(new Date(t.created_at))}
+                    </TableCell>
+                    <TableCell>
+                      <AdminActionForm
+                        action={updateSupportTicketStatusAction}
+                        hidden={{ ticketId: t.id }}
+                        submitLabel="Simpan"
+                        className="flex flex-wrap items-center gap-2"
+                      >
+                        <BrutalistSelect
+                          name="status"
+                          defaultValue={t.status}
+                          aria-label={`Status tiket: ${t.subject}`}
+                          options={STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label }))}
+                        />
+                      </AdminActionForm>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          }
+          grid={
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {items.map((t) => (
+                <AdminRecordCard
+                  key={t.id}
+                  title={t.subject}
+                  subtitle={`${t.category} · ${t.area}`}
+                  badge={<StatusBadge status={t.status} label={STATUS_LABEL[t.status]} />}
+                  meta={[
+                    { label: "Bisnis", value: t.business_name },
+                    { label: "Waktu", value: dateFmt.format(new Date(t.created_at)) },
+                  ]}
+                  actions={
+                    <AdminActionForm
+                      action={updateSupportTicketStatusAction}
+                      hidden={{ ticketId: t.id }}
+                      submitLabel="Simpan status tiket"
+                      icon="check"
+                      iconOnly
+                      className="flex w-full items-end gap-2"
+                    >
+                      <BrutalistSelect
+                        id={`status-grid-${t.id}`}
+                        name="status"
+                        defaultValue={t.status}
+                        aria-label={`Status tiket: ${t.subject}`}
+                        options={STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label }))}
+                        wrapperClassName="min-w-0 flex-1"
+                      />
+                    </AdminActionForm>
+                  }
+                />
+              ))}
+            </div>
+          }
+        />
       )}
 
       <AdminPaginator

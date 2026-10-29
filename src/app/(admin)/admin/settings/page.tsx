@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Settings } from "lucide-react";
+
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
 import { BrutalistCheckbox } from "@/components/admin/BrutalistCheckbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,9 +20,10 @@ export default async function AdminSettingsPage() {
   const s = await getPlatformSettings();
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       <PageHeader
         eyebrow="ADMIN - PLATFORM SETTINGS"
+        icon={Settings}
         title="Konfigurasi Platform"
         meta="GLOBAL · BERLAKU UNTUK SEMUA TENANT"
       />
@@ -37,7 +40,7 @@ export default async function AdminSettingsPage() {
         <CardContent>
           <AdminActionForm
             action={updateSettingsAction}
-            submitLabel="Simpan settings global"
+            submitLabel="Simpan pengaturan global"
             className="grid grid-cols-1 gap-4 md:grid-cols-3"
           >
             <div className="flex flex-col gap-1">
@@ -54,7 +57,7 @@ export default async function AdminSettingsPage() {
                 step="0.5"
                 defaultValue={s.platform_fee_percent ?? 0}
               />
-              <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+              <p className="text-xs leading-relaxed text-muted-foreground">
                 Referensi tampilan; fee efektif per-plan.
               </p>
             </div>
@@ -88,8 +91,8 @@ export default async function AdminSettingsPage() {
                 step={1}
                 defaultValue={s.default_retention_days ?? 3}
               />
-              <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-                Rentang 1–3 hari (kebijakan privasi); diterapkan ke semua tenant.
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Rentang 1 sampai 3 hari (kebijakan privasi); diterapkan ke semua tenant.
               </p>
             </div>
             <div className="flex flex-col gap-1">
@@ -120,7 +123,7 @@ export default async function AdminSettingsPage() {
                 defaultValue={s.maintenance_message ?? ""}
                 placeholder="Platform sedang perawatan. Coba lagi nanti."
               />
-              <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+              <p className="text-xs leading-relaxed text-muted-foreground">
                 Ditampilkan di halaman /maintenance saat mode aktif.
               </p>
             </div>
@@ -147,8 +150,8 @@ export default async function AdminSettingsPage() {
         <CardHeader>
           <CardTitle>Payment Gateway Global</CardTitle>
           <CardDescription>
-            Enable/disable provider secara global. Credential nonaktif → checkout tenant fallback ke
-            aggregator. Pengaturan per-provider ini juga bisa diubah dari{" "}
+            Aktifkan atau nonaktifkan provider secara global. Tanpa credential aktif, checkout
+            tenant memakai fallback aggregator. Pengaturan per-provider ini juga bisa diubah dari{" "}
             <Link
               href="/admin/gateways"
               className="font-bold underline decoration-ink/40 underline-offset-2"

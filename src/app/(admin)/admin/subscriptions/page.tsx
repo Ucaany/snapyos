@@ -1,10 +1,13 @@
 import Link from "next/link";
+import { Receipt } from "lucide-react";
+
 import { AdminActionButton, AdminActionForm } from "@/components/admin/AdminActionForm";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminPaginator } from "@/components/admin/AdminPaginator";
 import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { PageHeader } from "@/components/ui/page-header";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -38,9 +41,10 @@ export default async function AdminSubscriptionsPage({
   const activeAddOns = addOns.filter((a) => a.is_active);
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       <PageHeader
         eyebrow="ADMIN - SUBSCRIPTIONS"
+        icon={Receipt}
         title="Manajemen Langganan"
         meta={`${total} langganan${q.status ? ` · filter: ${q.status}` : ""}`}
         right={
@@ -64,11 +68,12 @@ export default async function AdminSubscriptionsPage({
       {items.length === 0 ? (
         <AdminEmptyState
           heading="TIDAK ADA LANGGANAN"
+          icon={Receipt}
           action={
             q.status ? (
               <Link
                 href="/admin/subscriptions"
-                className="inline-flex min-h-11 items-center border-2 border-ink bg-surface px-3 font-mono text-[11px] font-bold uppercase tracking-[0.1em] hover:bg-muted"
+                className={buttonVariants({ variant: "outline", size: "sm" })}
               >
                 Hapus filter
               </Link>
@@ -94,7 +99,7 @@ export default async function AdminSubscriptionsPage({
                     {s.current_period_end
                       ? `s/d ${dateFmt.format(new Date(s.current_period_end))}`
                       : "tanpa periode"}
-                    {s.cancel_at_period_end ? " · CANCEL AT PERIOD END" : ""}
+                    {s.cancel_at_period_end ? " · BATAL DI AKHIR PERIODE" : ""}
                   </span>
                 </span>
                 <StatusBadge status={s.status} />
@@ -147,7 +152,9 @@ export default async function AdminSubscriptionsPage({
                       <AdminActionForm
                         action={cancelAddOnAction}
                         hidden={{ linkId: link.id }}
-                        submitLabel="Batalkan"
+                        submitLabel="Batalkan add-on"
+                        icon="xCircle"
+                        iconOnly
                         variant="outline"
                         confirm={`Batalkan add-on ${link.name} untuk ${s.business_name}? Mode SEGERA memutus fitur pelanggan seketika.`}
                         className="flex flex-wrap items-end gap-2"
@@ -161,7 +168,7 @@ export default async function AdminSubscriptionsPage({
                             { value: "deferred", label: "AKHIR PERIODE" },
                             { value: "immediate", label: "SEGERA (AUDIT)" },
                           ]}
-                              />
+                        />
                         <div className="flex flex-col gap-1">
                           <label
                             htmlFor={`cancel-reason-${link.id}`}
@@ -186,7 +193,9 @@ export default async function AdminSubscriptionsPage({
                 <AdminActionForm
                   action={updateSubscriptionAction}
                   hidden={{ subscriptionId: s.id }}
-                  submitLabel="Terapkan"
+                  submitLabel="Terapkan status langganan"
+                  icon="check"
+                  iconOnly
                   className="flex flex-wrap items-end gap-2"
                 >
                   <BrutalistSelect
@@ -217,7 +226,9 @@ export default async function AdminSubscriptionsPage({
                   <AdminActionButton
                     action={updateSubscriptionAction}
                     hidden={{ subscriptionId: s.id, cancel: "true" }}
-                    submitLabel="Cancel di Akhir Periode"
+                    submitLabel="Batalkan di akhir periode"
+                    icon="xCircle"
+                    iconOnly
                     variant="outline"
                   />
                 ) : null}
@@ -226,7 +237,9 @@ export default async function AdminSubscriptionsPage({
                   <AdminActionForm
                     action={attachAddOnAction}
                     hidden={{ subscription_id: s.id }}
-                    submitLabel="Tambah Add-on"
+                    submitLabel="Tambah add-on"
+                    icon="plus"
+                    iconOnly
                     className="flex flex-wrap items-end gap-2"
                   >
                     <BrutalistSelect
@@ -240,7 +253,7 @@ export default async function AdminSubscriptionsPage({
                           label: cancelled.has(a.id) ? `+ ${a.name} · REAKTIVASI` : a.name,
                         }));
                       })()}
-                      />
+                    />
                     <div className="flex flex-col gap-1">
                       <label
                         htmlFor={`qty-${s.id}`}

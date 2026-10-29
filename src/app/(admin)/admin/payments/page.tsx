@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { ChevronDown, Filter, Landmark } from "lucide-react";
+
 import { AdminPaginator } from "@/components/admin/AdminPaginator";
 import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -66,9 +68,10 @@ export default async function AdminPaymentsPage({
   const hasFilter = Boolean(q.status || q.provider || q.from || q.to);
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       <PageHeader
         eyebrow="ADMIN - PAYMENT MONITORING"
+        icon={Landmark}
         title="Monitoring Pembayaran"
         meta={`SEMUA TENANT · ${total} PAYMENT COCOK FILTER`}
       />
@@ -116,8 +119,14 @@ export default async function AdminPaymentsPage({
             className="w-full sm:w-40"
           />
         </div>
-        <Button type="submit" size="sm" variant="secondary">
-          Terapkan filter
+        <Button
+          type="submit"
+          size="icon"
+          variant="secondary"
+          aria-label="Terapkan filter"
+          title="Terapkan filter"
+        >
+          <Filter className="size-4" aria-hidden="true" />
         </Button>
         {hasFilter ? (
           <Link
@@ -133,30 +142,17 @@ export default async function AdminPaymentsPage({
         <CardHeader>
           <CardTitle>Ringkasan</CardTitle>
           <CardDescription>
-            {q.from || q.to
-              ? `Periode ${q.from ?? "…"} sampai ${q.to ?? "…"}.`
-              : "Seluruh waktu."}{" "}
+            {q.from || q.to ? `Periode ${q.from ?? "…"} sampai ${q.to ?? "…"}.` : "Seluruh waktu."}{" "}
             Angka ringkasan mengikuti filter tanggal saja, bukan status/provider.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <dl className="grid grid-cols-2 gap-[2px] border-2 border-ink bg-ink md:grid-cols-4 xl:grid-cols-6">
+          <dl className="grid grid-cols-2 gap-[2px] border-2 border-ink bg-ink md:grid-cols-4">
             {[
               { label: "Volume Bruto", value: formatIDR(summary.gross) },
               { label: "Biaya Platform", value: formatIDR(summary.fee) },
               { label: "Bersih", value: formatIDR(summary.net) },
               { label: "Dikembalikan", value: formatIDR(summary.refunded) },
-              { label: "Lunas", value: String(summary.counts.paid ?? 0) },
-              { label: "Menunggu", value: String(summary.counts.pending ?? 0) },
-              { label: "Gagal", value: String(summary.counts.failed ?? 0) },
-              { label: "Kedaluwarsa", value: String(summary.counts.expired ?? 0) },
-              { label: "Dibatalkan", value: String(summary.counts.cancelled ?? 0) },
-              {
-                label: "Webhook Invalid Sig",
-                value: String(summary.webhookIntegrity.invalidSignature),
-              },
-              { label: "Webhook Error", value: String(summary.webhookIntegrity.errors) },
-              { label: "Webhook Total", value: String(summary.webhookIntegrity.total) },
             ].map((cell) => (
               <div key={cell.label} className="flex flex-col gap-1 bg-surface p-3">
                 <dt className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
@@ -166,8 +162,37 @@ export default async function AdminPaymentsPage({
               </div>
             ))}
           </dl>
+
+          <details className="mt-2 border-2 border-ink bg-surface">
+            <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 px-3 font-mono text-[11px] font-bold uppercase tracking-[0.12em]">
+              Status pembayaran & webhook
+              <ChevronDown className="summary-chevron size-3.5" aria-hidden="true" />
+            </summary>
+            <dl className="grid grid-cols-2 gap-[2px] border-t-2 border-ink bg-ink md:grid-cols-4">
+              {[
+                { label: "Lunas", value: String(summary.counts.paid ?? 0) },
+                { label: "Menunggu", value: String(summary.counts.pending ?? 0) },
+                { label: "Gagal", value: String(summary.counts.failed ?? 0) },
+                { label: "Kedaluwarsa", value: String(summary.counts.expired ?? 0) },
+                { label: "Dibatalkan", value: String(summary.counts.cancelled ?? 0) },
+                {
+                  label: "Webhook Invalid Sig",
+                  value: String(summary.webhookIntegrity.invalidSignature),
+                },
+                { label: "Webhook Error", value: String(summary.webhookIntegrity.errors) },
+                { label: "Webhook Total", value: String(summary.webhookIntegrity.total) },
+              ].map((cell) => (
+                <div key={cell.label} className="flex flex-col gap-1 bg-surface p-3">
+                  <dt className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+                    {cell.label}
+                  </dt>
+                  <dd className="font-mono text-sm font-bold leading-none">{cell.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </details>
           {summary.byProvider.length > 0 ? (
-            <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
+            <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
               Provider:{" "}
               {summary.byProvider
                 .map((p) => `${p.provider} (${p.count}x · ${formatIDR(p.volume)})`)
@@ -187,8 +212,8 @@ export default async function AdminPaymentsPage({
         </CardHeader>
         <CardContent>
           {summary.byTenant.length === 0 ? (
-            <p className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
-              BELUM ADA PAYMENT LUNAS PADA PERIODE INI
+            <p className="text-xs text-muted-foreground">
+              Belum ada payment lunas pada periode ini.
             </p>
           ) : (
             <Table containerClassName="shadow-none">
@@ -229,9 +254,7 @@ export default async function AdminPaymentsPage({
         </CardHeader>
         <CardContent>
           {posRevenue.rows.length === 0 ? (
-            <p className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
-              BELUM ADA TRANSAKSI POS
-            </p>
+            <p className="text-xs text-muted-foreground">Belum ada transaksi POS.</p>
           ) : (
             <>
               <p className="mb-3 font-mono text-xs font-bold uppercase tracking-[0.08em]">

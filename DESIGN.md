@@ -4,7 +4,7 @@
 
 > **DEFAULT AESTHETIC = Neo-Brutalism** (`industrial-brutalist-ui`) — bahasa visual **seluruh** UI SnapyOS: marketing, auth, kiosk customer, result page, dashboard owner/admin/staff, dan semua API response. Skill lain hanya menyumbang perilaku interaksi, bukan tampilan.
 >
-> **Satu pengecualian (2026-10-25):** shell dashboard owner/admin/staff punya tema kedua opsional, `modern` (`@efferd/app-shell-3` + token zinc), dipilih per-browser lewat cookie `snapyos_dashboard_theme` di halaman Pengaturan. Brutalis tetap default dan satu-satunya tema untuk marketing, auth, kiosk, POS, dan result page. Isi halaman dashboard tidak diduplikasi: scope `.theme-modern` (`src/styles/theme-modern.css`) menetralkan border tebal/hard shadow/radius 0/uppercase. Lihat `docs/dashboard-redesign.md`.
+> **Koreksi (2026-10-29):** tema kedua `modern` **tidak dikirim**. Verifikasi kode: tidak ada `src/styles/theme-modern.css`, tidak ada cookie `snapyos_dashboard_theme`, dan `/admin/settings` maupun `/dashboard/settings` tidak punya pemilih tema. Satu-satunya bahasa visual yang berlaku adalah Neo-Brutalism di seluruh shell.
 
 ## 1. Visual Theme & Atmosphere
 
@@ -76,6 +76,8 @@ Dilarang tampak seperti: generic Tailwind dashboard, generic AI SaaS, Linear/Str
 - **Section repetition ban:** layout family sama max 1x per halaman.
 - Full-height: `min-h-[100dvh]`, bukan `h-screen`.
 - **Mobile collapse:** semua multi-column → single column di < 768px, eksplisit per section.
+- **Skala spacing (kontrak):** container `p-6 md:p-10`; jarak antar section `gap-6 md:gap-8`; panel `p-4`; kartu `p-5`; sel metrik `p-3`; chip `px-3 py-2`. Nilai baru harus menambah level di daftar ini, bukan angka ad-hoc per halaman.
+- **Kolom aksi tabel:** tombol aksi memakai ikon 44px (`size="icon"`) dengan `aria-label` + `title`; label teks panjang hanya di dialog konfirmasi dan form, bukan di baris tabel.
 
 ## 6. Motion & Interaction
 

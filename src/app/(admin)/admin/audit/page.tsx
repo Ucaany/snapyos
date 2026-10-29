@@ -1,7 +1,11 @@
+import { ChevronDown, ScrollText, Search } from "lucide-react";
+
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminPaginator } from "@/components/admin/AdminPaginator";
+import { AdminRecordCard } from "@/components/admin/AdminRecordCard";
 import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
+import { RecordCollection } from "@/components/admin/RecordCollection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
@@ -50,10 +54,11 @@ export default async function AdminAuditPage({
   const totalPages = Math.max(1, Math.ceil(total / 50));
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       <PageHeader
         eyebrow="ADMIN - AUDIT LOG"
         title="Log Audit"
+        icon={ScrollText}
         meta={`${total} ENTRY · SEMUA AKSI ADMIN & FINANSIAL TERCATAT`}
       />
 
@@ -79,7 +84,13 @@ export default async function AdminAuditPage({
             >
               Hapus sebelum tanggal
             </label>
-            <Input id="audit-before" name="before" type="date" required className="w-44" />
+            <Input
+              id="audit-before"
+              name="before"
+              type="date"
+              required
+              className="w-full sm:w-44"
+            />
           </div>
         </AdminActionForm>
       </section>
@@ -106,63 +117,104 @@ export default async function AdminAuditPage({
             name="search"
             defaultValue={q.search ?? ""}
             placeholder="admin.user.update"
-            className="w-56"
+            className="w-full sm:w-56"
           />
         </div>
-        <Button type="submit" size="sm" variant="secondary">
-          Filter log
+        <Button
+          type="submit"
+          size="icon"
+          variant="secondary"
+          aria-label="Filter log"
+          title="Filter log"
+        >
+          <Search className="size-4" aria-hidden="true" />
         </Button>
       </form>
 
       {items.length === 0 ? (
-        <AdminEmptyState heading="TIDAK ADA LOG">
+        <AdminEmptyState heading="TIDAK ADA LOG" icon={ScrollText}>
           Tidak ada entry audit yang cocok dengan filter.
         </AdminEmptyState>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Waktu</TableHead>
-              <TableHead>Aktor</TableHead>
-              <TableHead>Aksi</TableHead>
-              <TableHead className="hidden md:table-cell">Target</TableHead>
-              <TableHead className="hidden lg:table-cell">Bisnis</TableHead>
-              <TableHead className="hidden xl:table-cell">Meta</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.map((log) => (
-              <TableRow key={log.id} className="align-top">
-                <TableCell className="whitespace-nowrap text-muted-foreground">
-                  {dateTimeFmt.format(new Date(log.created_at))}
-                </TableCell>
-                <TableCell>
-                  <span className="font-bold">{log.actor_email ?? "system"}</span>
-                  {log.actor_name ? (
-                    <span className="block text-[11px] text-muted-foreground">{log.actor_name}</span>
-                  ) : null}
-                </TableCell>
-                <TableCell className="break-all font-bold">{log.action}</TableCell>
-                <TableCell className="hidden break-all text-muted-foreground md:table-cell">
-                  {log.target ?? "-"}
-                </TableCell>
-                <TableCell className="hidden text-muted-foreground lg:table-cell">
-                  {log.business_name ?? "-"}
-                </TableCell>
-                <TableCell className="hidden xl:table-cell">
-                  <details>
-                    <summary className="flex min-h-11 cursor-pointer items-center text-[11px] text-muted-foreground">
-                      Lihat meta
-                    </summary>
-                    <pre className="mt-1 max-w-[40ch] whitespace-pre-wrap break-all text-[11px] text-muted-foreground">
-                      {JSON.stringify(log.meta)}
-                    </pre>
-                  </details>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <RecordCollection
+          storageKey="snapyos.view.admin.audit"
+          label="Log audit"
+          list={
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Waktu</TableHead>
+                  <TableHead>Aktor</TableHead>
+                  <TableHead>Aksi</TableHead>
+                  <TableHead className="hidden md:table-cell">Target</TableHead>
+                  <TableHead className="hidden lg:table-cell">Bisnis</TableHead>
+                  <TableHead className="hidden xl:table-cell">Meta</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.map((log) => (
+                  <TableRow key={log.id} className="align-top">
+                    <TableCell className="whitespace-nowrap text-muted-foreground">
+                      {dateTimeFmt.format(new Date(log.created_at))}
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-bold">{log.actor_email ?? "system"}</span>
+                      {log.actor_name ? (
+                        <span className="block text-[11px] text-muted-foreground">
+                          {log.actor_name}
+                        </span>
+                      ) : null}
+                    </TableCell>
+                    <TableCell className="break-all font-bold">{log.action}</TableCell>
+                    <TableCell className="hidden break-all text-muted-foreground md:table-cell">
+                      {log.target ?? "-"}
+                    </TableCell>
+                    <TableCell className="hidden text-muted-foreground lg:table-cell">
+                      {log.business_name ?? "-"}
+                    </TableCell>
+                    <TableCell className="hidden xl:table-cell">
+                      <details>
+                        <summary className="flex min-h-11 cursor-pointer items-center gap-1 text-[11px] text-muted-foreground">
+                          Lihat meta
+                          <ChevronDown className="summary-chevron size-3.5" aria-hidden="true" />
+                        </summary>
+                        <pre className="mt-1 max-w-[40ch] whitespace-pre-wrap break-all text-[11px] text-muted-foreground">
+                          {JSON.stringify(log.meta)}
+                        </pre>
+                      </details>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          }
+          grid={
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {items.map((log) => (
+                <AdminRecordCard
+                  key={log.id}
+                  title={log.action}
+                  subtitle={`${log.actor_email ?? "system"} · ${dateTimeFmt.format(new Date(log.created_at))}`}
+                  meta={[
+                    { label: "Target", value: log.target ?? "-" },
+                    { label: "Bisnis", value: log.business_name ?? "-" },
+                  ]}
+                  footer={
+                    <details className="border-t-2 border-ink/10 pt-2">
+                      <summary className="flex min-h-11 cursor-pointer items-center gap-1 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
+                        Meta
+                        <ChevronDown className="summary-chevron size-3.5" aria-hidden="true" />
+                      </summary>
+                      <pre className="mt-1 max-w-full whitespace-pre-wrap break-all text-[11px] text-muted-foreground">
+                        {JSON.stringify(log.meta)}
+                      </pre>
+                    </details>
+                  }
+                />
+              ))}
+            </div>
+          }
+        />
       )}
 
       <AdminPaginator
