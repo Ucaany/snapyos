@@ -28,7 +28,17 @@ import { paymentResponse, type PaymentResponse } from "./payment-response";
 
 const ref = () => randomUUID().replace(/-/g, "").slice(0, 12);
 function inserted(data: unknown, error: unknown): PaymentRow {
-  if (error || !data) throw new ApiError("INTERNAL", "Gagal mencatat payment");
+  if (error || !data) {
+    // Trigger 0083 menolak payment yang melewati kuota voucher (P0001).
+    const e = error as { message?: string; code?: string } | null;
+    if (e && (e.code === "P0001" || /VOUCHER_LIMIT_REACHED/i.test(e.message ?? ""))) {
+      throw new ApiError(
+        "VALIDATION_ERROR",
+        "Kuota voucher sudah habis. Hapus voucher lalu buat pembayaran baru."
+      );
+    }
+    throw new ApiError("INTERNAL", "Gagal mencatat payment");
+  }
   return data as PaymentRow;
 }
 

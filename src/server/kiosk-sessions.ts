@@ -144,7 +144,11 @@ async function loadSession(businessId: string, sessionId: string): Promise<Sessi
 }
 
 /** Mulai sesi (syarat checkout paid / dev bypass / mode offline) — docs/08 §8.14. */
-export async function createSession(businessSlug: string, input: SessionCreateInput) {
+export async function createSession(
+  businessSlug: string,
+  input: SessionCreateInput,
+  idempotencyKey?: string | null
+) {
   const parsed = sessionCreateSchema.parse(input);
   const device = await resolveActiveDevice(parsed.device_token);
   if (device.businessSlug !== businessSlug) {
@@ -245,13 +249,26 @@ export async function createSession(businessSlug: string, input: SessionCreateIn
   // dan percobaan ulangnya sendiri ditolak SESSION_LIMIT_REACHED karena sesi
   // pertamanya masih aktif. Kuncinya = waktu jual, yang dikirim worker dari
   // `sessions.client_created_at` booth.
-  if (!parsed.checkout_session_id && parsed.client_created_at) {
-    const { data: replay } = await supabase
+  // Identitas asli satu sesi lokal = `photobox_slug:local_session_id` yang
+  // dikirim worker sebagai Idempotency-Key. Memakai started_at (turunan
+  // client_created_at) membuat dua sesi berbeda dengan waktu sama dianggap
+  // replay → satu penjualan hilang. Fallback lama dipertahankan untuk klien
+  // yang belum mengirim header.
+  const idemKey =
+    typeof idempotencyKey === "string" && /^[A-Za-z0-9._:-]{1,200}$/.test(idempotencyKey.trim())
+      ? idempotencyKey.trim()
+      : null;
+
+  if (!parsed.checkout_session_id && (idemKey || parsed.client_created_at)) {
+    let replayQuery = supabase
       .from("sessions")
       .select("id, expires_at, checkout_sessions ( id, result_token )")
       .eq("business_id", businessId)
-      .eq("photobox_id", photobox.id)
-      .eq("started_at", soldAt.toISOString())
+      .eq("photobox_id", photobox.id);
+    replayQuery = idemKey
+      ? replayQuery.eq("idempotency_key", idemKey)
+      : replayQuery.eq("started_at", soldAt.toISOString());
+    const { data: replay } = await replayQuery
       .order("created_at", { ascending: true })
       .limit(1)
       .maybeSingle();
@@ -338,22 +355,34 @@ export async function createSession(businessSlug: string, input: SessionCreateIn
     checkoutId = checkoutRow.id;
   }
 
-  const { data: session, error: sessionError } = await supabase
+  const sessionPayload = {
+    business_id: businessId,
+    outlet_id: photobox.outlet_id,
+    photobox_id: photobox.id,
+    package_id: packageId,
+    status: "active",
+    idempotency_key: idemKey,
+    started_at: soldAt.toISOString(),
+    expires_at: expiresAt,
+    // Waktu jual dari booth (sync offline). `expires_at` tetap dari `now`:
+    // sesi yang baru tiba lewat sync harus masih bisa difinalisasi.
+    ...(parsed.client_created_at ? { created_at: soldAt.toISOString() } : {}),
+  };
+  let { data: session, error: sessionError } = await supabase
     .from("sessions")
-    .insert({
-      business_id: businessId,
-      outlet_id: photobox.outlet_id,
-      photobox_id: photobox.id,
-      package_id: packageId,
-      status: "active",
-      started_at: soldAt.toISOString(),
-      expires_at: expiresAt,
-      // Waktu jual dari booth (sync offline). `expires_at` tetap dari `now`:
-      // sesi yang baru tiba lewat sync harus masih bisa difinalisasi.
-      ...(parsed.client_created_at ? { created_at: soldAt.toISOString() } : {}),
-    })
+    .insert(sessionPayload)
     .select("id, expires_at, status")
     .single();
+  // Migrasi 0083 belum diterapkan → kolom belum ada. Jangan gagalkan sesi
+  // offline hanya karena kolom opsional ini; ulangi tanpa kolom tersebut.
+  if (sessionError && /idempotency_key/i.test(sessionError.message ?? "")) {
+    const { idempotency_key: _ignored, ...legacy } = sessionPayload;
+    ({ data: session, error: sessionError } = await supabase
+      .from("sessions")
+      .insert(legacy)
+      .select("id, expires_at, status")
+      .single());
+  }
   // Race antar booth (TOCTOU pre-check): partial unique index 1 sesi aktif per
   // photobox (db/0004) menegakkan limit secara atomik di sini.
   if (sessionError && (sessionError as { code?: string }).code === "23505") {

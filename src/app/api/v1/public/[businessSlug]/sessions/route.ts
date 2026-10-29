@@ -30,6 +30,9 @@ export async function POST(request: Request, { params }: Params) {
     }
 
     const input = sessionCreateSchema.parse(await request.json());
+    // Kunci idempotensi per sesi lokal dari worker (photobox_slug:local_id).
+    // Dibaca dari header supaya tidak masuk body kontrak publik lama.
+    const idempotencyKey = request.headers.get("idempotency-key");
 
     // Lapis kedua per device (booth) — banyak booth di belakang satu NAT tidak
     // saling menstarvasi; limit IP tetap berlaku.
@@ -47,7 +50,7 @@ export async function POST(request: Request, { params }: Params) {
       );
     }
 
-    return NextResponse.json(dataEnvelope(await createSession(businessSlug, input)), {
+    return NextResponse.json(dataEnvelope(await createSession(businessSlug, input, idempotencyKey)), {
       status: 201,
     });
   } catch (error) {
