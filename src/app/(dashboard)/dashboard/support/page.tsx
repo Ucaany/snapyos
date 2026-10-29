@@ -32,7 +32,9 @@ export default async function SupportPage() {
         description="Laporkan masalah atau pertanyaan. Pantau status tiap tiket: terbuka, butuh tindakan, atau selesai. Cek panduan mandiri dan daftar hardware sebelum bikin tiket."
       />
       <div className="flex flex-wrap gap-2">
-        <IconLink href="/docs" label="Dokumentasi" icon={BookOpen} compact />
+        <IconLink href="/docs" label="Dokumentasi" compact>
+          <BookOpen className="size-4" aria-hidden="true" />
+        </IconLink>
       </div>
       <SupportTicketsPanel tickets={tickets} />
     </div>

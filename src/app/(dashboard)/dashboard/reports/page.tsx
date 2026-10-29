@@ -113,12 +113,9 @@ export default async function ReportsPage() {
               </Select>
             </div>
             <div className="sm:col-span-2 xl:col-span-4">
-              <IconButton
-                type="submit"
-                variant="default"
-                label="Unduh laporan"
-                icon={Download}
-              />
+              <IconButton type="submit" variant="default" label="Unduh laporan">
+                <Download className="size-4" aria-hidden="true" />
+              </IconButton>
             </div>
           </form>
         </CardContent>

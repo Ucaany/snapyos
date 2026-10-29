@@ -19,7 +19,13 @@ type Side = "top" | "bottom" | "left" | "right";
 
 type CommonProps = {
   label: string;
-  icon: LucideIcon;
+  /**
+   * Komponen ikon. Hanya boleh dipakai dari Client Component.
+   * Server Component WAJIB mengirim elemen lewat `children` (fungsi komponen
+   * tidak bisa menyeberang batas server→client dan membuat render 500/#441).
+   */
+  icon?: LucideIcon;
+  children?: ReactNode;
   variant?: Variant;
   compact?: boolean;
   side?: Side;
@@ -27,6 +33,11 @@ type CommonProps = {
   /** Teks tooltip tambahan saat label aksesibel perlu konteks (mis. alasan disabled). */
   hint?: string;
 };
+
+function IconContent({ icon: Icon, children }: { icon?: LucideIcon; children?: ReactNode }) {
+  if (children != null) return <>{children}</>;
+  return Icon ? <Icon className="size-4" aria-hidden="true" /> : null;
+}
 
 function TooltipShell({
   label,
@@ -53,6 +64,7 @@ function TooltipShell({
 export function IconButton({
   label,
   icon: Icon,
+  children,
   variant = "outline",
   compact = false,
   side = "top",
@@ -82,7 +94,7 @@ export function IconButton({
 
   return (
     <TooltipShell label={hint ?? label} side={side} trigger={trigger}>
-      <Icon className="size-4" aria-hidden="true" />
+      <IconContent icon={Icon}>{children}</IconContent>
     </TooltipShell>
   );
 }
@@ -92,6 +104,7 @@ export function IconLink({
   href,
   label,
   icon: Icon,
+  children,
   variant = "outline",
   compact = false,
   side = "top",
@@ -122,7 +135,7 @@ export function IconLink({
 
   return (
     <TooltipShell label={label} side={side} trigger={trigger}>
-      <Icon className="size-4" aria-hidden="true" />
+      <IconContent icon={Icon}>{children}</IconContent>
     </TooltipShell>
   );
 }

@@ -163,10 +163,11 @@ export default async function TransactionsPage({
           type="submit"
           variant="default"
           label="Terapkan filter"
-          icon={Filter}
           compact
           className="col-span-2 justify-self-end md:col-span-1"
-        />
+        >
+          <Filter className="size-4" aria-hidden="true" />
+        </IconButton>
       </form>
 
       <TransactionsView

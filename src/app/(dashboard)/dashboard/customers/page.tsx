@@ -78,13 +78,9 @@ export default async function CustomersPage({
               aria-label="Cari pelanggan"
               className="h-11 w-full rounded-none border-2 border-ink bg-surface px-3 font-mono text-sm shadow-[2px_2px_0_0_#111111] outline-none focus-visible:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink md:w-64"
             />
-            <IconButton
-              type="submit"
-              variant="default"
-              label="Cari pelanggan"
-              icon={Search}
-              compact
-            />
+            <IconButton type="submit" variant="default" label="Cari pelanggan" compact>
+              <Search className="size-4" aria-hidden="true" />
+            </IconButton>
           </form>
         }
       />

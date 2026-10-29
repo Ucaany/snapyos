@@ -526,18 +526,20 @@ export function SubscriptionPanel({
                           <IconLink
                             href={`/dashboard/subscription/invoice/${inv.id}`}
                             label={`Bayar invoice ${inv.number}`}
-                            icon={QrCode}
                             variant="default"
                             compact
-                          />
+                          >
+                            <QrCode className="size-4" aria-hidden="true" />
+                          </IconLink>
                         ) : inv.status === "paid" ? (
                           <IconLink
                             href={`/dashboard/subscription/invoice/${inv.id}/receipt?download=1`}
                             label={`Unduh bukti invoice ${inv.number}`}
-                            icon={Download}
                             compact
                             download={`${inv.number}.pdf`}
-                          />
+                          >
+                            <Download className="size-4" aria-hidden="true" />
+                          </IconLink>
                         ) : (
                           <span className="text-muted-foreground">Dibatalkan</span>
                         )}
@@ -567,18 +569,20 @@ export function SubscriptionPanel({
                           <IconLink
                             href={`/dashboard/subscription/invoice/${inv.id}`}
                             label={`Bayar invoice ${inv.number}`}
-                            icon={QrCode}
                             variant="default"
                             compact
-                          />
+                          >
+                            <QrCode className="size-4" aria-hidden="true" />
+                          </IconLink>
                         ) : inv.status === "paid" ? (
                           <IconLink
                             href={`/dashboard/subscription/invoice/${inv.id}/receipt?download=1`}
                             label={`Unduh bukti invoice ${inv.number}`}
-                            icon={Download}
                             compact
                             download={`${inv.number}.pdf`}
-                          />
+                          >
+                            <Download className="size-4" aria-hidden="true" />
+                          </IconLink>
                         ) : (
                           <span className="font-mono text-[10px] uppercase text-muted-foreground">
                             Dibatalkan

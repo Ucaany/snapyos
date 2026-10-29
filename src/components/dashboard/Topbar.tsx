@@ -69,13 +69,9 @@ export function Topbar({
             </p>
           </div>
           <form action={logoutAction}>
-            <IconButton
-              type="submit"
-              label="Keluar"
-              icon={LogOut}
-              compact
-              variant="outline"
-            />
+            <IconButton type="submit" label="Keluar" compact variant="outline">
+              <LogOut className="size-4" aria-hidden="true" />
+            </IconButton>
           </form>
         </div>
       </div>

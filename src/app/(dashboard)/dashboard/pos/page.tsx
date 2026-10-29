@@ -139,13 +139,9 @@ export default async function PosManagementPage({
                 </label>
                 <DateInput id="pos-to" name="to" defaultValue={query.to ?? ""} />
               </div>
-              <IconButton
-                type="submit"
-                variant="default"
-                label="Terapkan filter tanggal"
-                icon={Filter}
-                compact
-              />
+              <IconButton type="submit" variant="default" label="Terapkan filter tanggal" compact>
+                <Filter className="size-4" aria-hidden="true" />
+              </IconButton>
             </form>
           </div>
           <PosReportsPanel
