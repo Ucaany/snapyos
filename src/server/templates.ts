@@ -292,7 +292,14 @@ export async function uploadTemplate(
     })
     .select(COLUMNS)
     .single();
-  if (error) throw new ApiError("INTERNAL", "Gagal menyimpan template");
+  if (error) {
+    // Trigger 0085 menolak template yang melewati max_templates (P0001).
+    const e = error as { message?: string; code?: string };
+    if (e.code === "P0001" || /PLAN_LIMIT_REACHED/i.test(e.message ?? "")) {
+      throw new ApiError("PLAN_LIMIT_REACHED", "Batas jumlah template untuk plan Anda tercapai");
+    }
+    throw new ApiError("INTERNAL", "Gagal menyimpan template");
+  }
   return data;
 }
 

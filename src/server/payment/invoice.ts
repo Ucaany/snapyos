@@ -229,6 +229,28 @@ async function markInvoicePaid(payment: InvoicePaymentRow) {
     await applyInvoiceIntent(payment.business_id, payment.invoice_id);
     return;
   }
+  if (current?.status === "void") {
+    // Uang masuk untuk invoice yang sudah di-void (mis. pembelian template lain
+    // membatalkannya). Dulu ini no-op senyap: dana diterima, tanpa entitlement,
+    // dan tanpa jejak. Catat sebagai kegagalan intent agar bisa direfund.
+    const { data: inv } = await supabase
+      .from("invoices")
+      .select("intent")
+      .eq("id", payment.invoice_id)
+      .maybeSingle();
+    // Duplikat webhook tidak boleh menggagalkan handler: unique index
+    // (invoice_id, reason) menahan baris kedua, errornya diabaikan.
+    const { error: failErr } = await supabase.from("subscription_intent_failures").insert({
+      business_id: payment.business_id,
+      invoice_id: payment.invoice_id,
+      reason: "invoice_void_paid",
+      message: `Pembayaran ${payment.order_id} masuk setelah invoice di-void (amount ${payment.amount})`,
+      intent_snapshot: (inv as { intent?: unknown } | null)?.intent ?? {},
+      amount: payment.amount,
+    });
+    if (failErr) console.error("[invoice] gagal mencatat invoice_void_paid:", failErr.message);
+    return;
+  }
   if (current?.status !== "pending") return;
 
   const { data: paid } = await supabase

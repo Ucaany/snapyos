@@ -12,7 +12,7 @@ import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
 import { OFFLINE_FINALIZE_GRACE_MS } from "@/lib/session-timer";
-import { getPlanLimits } from "@/server/plan-limits";
+import { requirePlanLimits } from "@/server/plan-limits";
 import { countOnlineDevices } from "@/server/device-online";
 
 export async function assertSessionCapacity(businessId: string, photoboxId: string) {
@@ -42,7 +42,7 @@ export async function assertSessionCapacity(businessId: string, photoboxId: stri
       .select("id", { count: "exact", head: true })
       .eq("photobox_id", photoboxId)
       .eq("status", "active"),
-    getPlanLimits(businessId),
+    requirePlanLimits(businessId),
   ]);
 
   // Seat = device online. Device yang sudah online memegang seatnya sendiri,

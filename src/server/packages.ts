@@ -223,7 +223,14 @@ export async function createPackage(userId: string, businessId: string, input: P
     .insert({ business_id: businessId, ...fields })
     .select("id, name, price")
     .single();
-  if (error) throw new ApiError("INTERNAL", "Gagal membuat package");
+  if (error) {
+    // Trigger 0085 menolak paket yang melewati max_packages (P0001).
+    const e = error as { message?: string; code?: string };
+    if (e.code === "P0001" || /PLAN_LIMIT_REACHED/i.test(e.message ?? "")) {
+      throw new ApiError("PLAN_LIMIT_REACHED", "Batas jumlah paket untuk plan Anda tercapai");
+    }
+    throw new ApiError("INTERNAL", "Gagal membuat package");
+  }
 
   await Promise.all([
     syncM2M(businessId, data.id, "package_templates", "template_id", template_ids),
