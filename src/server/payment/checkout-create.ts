@@ -188,6 +188,23 @@ export async function createCheckout(businessSlug: string, input: CheckoutCreate
   };
 }
 
+type VoucherApplyRow = {
+  checkout_id: string;
+  gross_amount: number;
+  discount_amount: number;
+  final_amount: number;
+  reason: string;
+};
+
+/** PostgREST: fungsi RPC belum ada (migrasi belum diterapkan). */
+function isMissingRpc(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return (
+    error.code === "PGRST202" ||
+    (error.message ?? "").toLowerCase().includes("could not find the function")
+  );
+}
+
 /** Terapkan voucher ke checkout open (sebelum QRIS dibuat). */
 export async function applyVoucherToCheckout(
   businessSlug: string,
@@ -206,6 +223,60 @@ export async function applyVoucherToCheckout(
     throw new ApiError("PAYMENT_ALREADY_PROCESSED", "Checkout sudah diproses");
   }
 
+  const voucher = await validateVoucherForCheckout(device.businessId, parsed.voucher_code, {
+    packageId: checkout.package_id,
+    outletId: checkout.outlet_id,
+    grossAmount: checkout.gross_amount,
+  });
+
+  const final = computeFinalAmount(checkout.gross_amount, voucher.discount);
+
+  // Jalur utama: RPC mengunci baris checkout, memastikan belum ada payment
+  // creating/pending, lalu menulis total dalam SATU transaksi. Versi lama
+  // (count → update terpisah) bisa kalah balapan dengan createPayment sehingga
+  // payment tercatat pada harga pra-voucher.
+  const { data: rpcData, error: rpcError } = await supabase.rpc("apply_voucher_atomically", {
+    p_checkout_id: checkout.id,
+    p_business_id: device.businessId,
+    p_photobox_id: device.photobox.id,
+    p_voucher_id: voucher.voucherId,
+    p_discount: voucher.discount,
+    p_final: final,
+  });
+
+  if (!rpcError) {
+    const row = ((rpcData ?? []) as VoucherApplyRow[])[0];
+    if (!row) throw new ApiError("INTERNAL", "Gagal menerapkan voucher");
+    switch (row.reason) {
+      case "OK":
+        return {
+          checkout_session_id: row.checkout_id,
+          voucher: { code: voucher.code },
+          discount_amount: row.discount_amount,
+          final_amount: row.final_amount,
+          gross_amount: row.gross_amount,
+        };
+      case "PAYMENT_EXISTS":
+        throw new ApiError(
+          "PAYMENT_ALREADY_PROCESSED",
+          "QRIS sudah dibuat: voucher tidak bisa diubah. Mulai ulang untuk pakai voucher."
+        );
+      case "PROCESSED":
+        throw new ApiError("PAYMENT_ALREADY_PROCESSED", "Checkout sudah diproses");
+      case "NOT_FOUND":
+        throw new ApiError("PAYMENT_NOT_FOUND", "Checkout tidak ditemukan");
+      default:
+        throw new ApiError("VALIDATION_ERROR", "Voucher tidak bisa diterapkan");
+    }
+  }
+
+  // Migrasi 0082 belum diterapkan (PGRST202 = function tidak ada) → jalur lama
+  // supaya deployment tidak mengunci fitur voucher. Setelah migrasi dijalankan,
+  // percabangan ini tidak pernah dieksekusi.
+  if (!isMissingRpc(rpcError)) {
+    throw new ApiError("INTERNAL", "Gagal menerapkan voucher");
+  }
+
   const { count: pendingPayments } = await supabase
     .from("payments")
     .select("id", { count: "exact", head: true })
@@ -218,13 +289,6 @@ export async function applyVoucherToCheckout(
     );
   }
 
-  const voucher = await validateVoucherForCheckout(device.businessId, parsed.voucher_code, {
-    packageId: checkout.package_id,
-    outletId: checkout.outlet_id,
-    grossAmount: checkout.gross_amount,
-  });
-
-  const final = computeFinalAmount(checkout.gross_amount, voucher.discount);
   const { data: updated, error } = await supabase
     .from("checkout_sessions")
     .update({

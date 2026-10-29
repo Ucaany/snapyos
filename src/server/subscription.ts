@@ -588,7 +588,7 @@ export async function createSubscriptionInvoice(
   // terlalu ketat karena template purchase juga bikin invoice pending.
   const { data: pendingInvoices } = await supabase
     .from("invoices")
-    .select("intent")
+    .select("id, intent")
     .eq("business_id", businessId)
     .eq("status", "pending");
   await supabase
@@ -596,14 +596,25 @@ export async function createSubscriptionInvoice(
     .update({ status: "void" })
     .eq("business_id", businessId)
     .eq("status", "pending");
-  for (const inv of (pendingInvoices ?? []) as { intent: unknown }[]) {
+  for (const inv of (pendingInvoices ?? []) as { id: string; intent: unknown }[]) {
     const promoCode = (inv.intent as { promo?: { code?: string } } | null)?.promo?.code;
-    if (promoCode) {
-      try {
-        await releaseSubscriptionPromo(promoCode);
-      } catch {
-        // best-effort: gagal lepas kuota tidak membatalkan checkout.
+    if (!promoCode) continue;
+    try {
+      // RPC menandai invoice ini `promo_released` sebelum menurunkan counter,
+      // sehingga dua checkout konkuren tidak bisa melepas satu konsumsi dua kali.
+      const { error } = await supabase.rpc("release_subscription_promo_for_invoice", {
+        p_invoice_id: inv.id,
+        p_code: promoCode,
+      });
+      if (error) {
+        const missing =
+          error.code === "PGRST202" ||
+          (error.message ?? "").toLowerCase().includes("could not find the function");
+        // Migrasi 0082 belum diterapkan → perilaku lama (bisa dobel rilis).
+        if (missing) await releaseSubscriptionPromo(promoCode);
       }
+    } catch {
+      // best-effort: gagal lepas kuota tidak membatalkan checkout.
     }
   }
 
