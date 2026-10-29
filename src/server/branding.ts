@@ -14,6 +14,7 @@ import {
   brandingSchema,
   brandingContrastIssues,
   kioskPageIdSchema,
+  isBrandingStorageKey,
   type BrandingInput,
 } from "@/lib/validators";
 import { SIGNED_URL_TTL_SECONDS as SIGNED_URL_TTL } from "@/lib/constants";
@@ -69,6 +70,45 @@ async function logoSignedUrl(key: string): Promise<string | null> {
   return loadSignedUrl(BRAND_ASSETS_BUCKET, key);
 }
 
+/** Semua key storage yang dibawa input branding, beserta path field-nya. */
+function brandingKeys(input: BrandingInput): { path: string[]; key: string }[] {
+  const out: { path: string[]; key: string }[] = [];
+  if (input.logo_key) out.push({ path: ["logo_key"], key: input.logo_key });
+  if (input.kiosk?.video_key) {
+    out.push({ path: ["kiosk", "video_key"], key: input.kiosk.video_key });
+  }
+  for (const [page, cfg] of Object.entries(input.kiosk?.pages ?? {})) {
+    if (cfg?.video_key) {
+      out.push({ path: ["kiosk", "pages", page, "video_key"], key: cfg.video_key });
+    }
+  }
+  return out;
+}
+
+/**
+ * Tolak key yang menunjuk keluar folder tenant. Tanpa ini `logo_key` dari
+ * client bisa berisi key tenant lain (atau frame template global) yang lalu
+ * di-sign dan — saat upload berikutnya — dihapus dengan service role.
+ */
+function assertBrandingKeys(businessId: string, input: BrandingInput) {
+  const invalid = brandingKeys(input).filter(
+    ({ key }) => !isBrandingStorageKey(businessId, key)
+  );
+  if (invalid.length === 0) return;
+  const message = "File branding harus berada di folder bisnis ini";
+  const details: Record<string, string[]> = {};
+  for (const { path } of invalid) {
+    (details[path.join(".")] ??= []).push(message);
+    (details[path[0] ?? "logo_key"] ??= []).push(message);
+  }
+  throw new ApiError("VALIDATION_ERROR", "Key file branding tidak valid", details);
+}
+
+/** Key dari baris lama yang mungkin belum tervalidasi (mis. hasil data impor). */
+function safeBrandingKey(businessId: string, key: string | null | undefined): string | null {
+  return key && isBrandingStorageKey(businessId, key) ? key : null;
+}
+
 /**
  * DB read branding di-cache per business (tag `business:<id>:branding`).
  * Membership check TIDAK di-cache — harus per-user per-request.
@@ -98,9 +138,11 @@ export async function getBranding(userId: string, businessId: string): Promise<B
   if (!data) throw new ApiError("NOT_FOUND", "Settings tidak ditemukan");
 
   const branding = brandingSchema.catch({}).parse(data.branding ?? {});
+  const logoKey = safeBrandingKey(businessId, branding.logo_key);
+  const videoKey = safeBrandingKey(businessId, branding.kiosk?.video_key);
   const [logoUrl, videoUrl] = await Promise.all([
-    branding.logo_key ? logoSignedUrl(branding.logo_key) : null,
-    branding.kiosk?.video_key ? logoSignedUrl(branding.kiosk.video_key) : null,
+    logoKey ? logoSignedUrl(logoKey) : null,
+    videoKey ? logoSignedUrl(videoKey) : null,
   ]);
   return { ...branding, logo_url: logoUrl, kiosk_video_url: videoUrl };
 }
@@ -114,6 +156,7 @@ export async function updateBranding(
   options: { resetPages?: readonly string[] } = {}
 ): Promise<BrandingView> {
   const parsed = brandingSchema.parse(input);
+  assertBrandingKeys(businessId, parsed);
   await requireMembership(userId, businessId, true);
 
   const supabase = createServerClient();
@@ -187,9 +230,11 @@ export async function updateBranding(
   // juga agar perubahan branding langsung terlihat kiosk tanpa menunggu TTL.
   invalidatePublicConfig(businessId);
 
+  const logoKey = safeBrandingKey(businessId, merged.logo_key);
+  const kioskVideoKey = safeBrandingKey(businessId, merged.kiosk?.video_key);
   const [logoUrl, videoUrl] = await Promise.all([
-    merged.logo_key ? logoSignedUrl(merged.logo_key) : null,
-    merged.kiosk?.video_key ? logoSignedUrl(merged.kiosk.video_key) : null,
+    logoKey ? logoSignedUrl(logoKey) : null,
+    kioskVideoKey ? logoSignedUrl(kioskVideoKey) : null,
   ]);
   return { ...merged, logo_url: logoUrl, kiosk_video_url: videoUrl };
 }
@@ -238,7 +283,9 @@ export async function uploadLogo(
   // Bersihkan blob lama setelah update sukses (anti penumpukan storage).
   // ponytail: kegagalan cleanup tidak memengaruhi operasi utama — blob basi
   // dibersihkan batch nanti oleh scheduled job (storage lifecycle rule).
-  if (oldKey && oldKey !== key) {
+  // Hanya hapus blob yang memang milik tenant ini. Baris lama (sebelum
+  // validasi prefix) bisa berisi key tenant lain — jangan dihapus.
+  if (oldKey && oldKey !== key && isBrandingStorageKey(businessId, oldKey)) {
     try {
       const provider = await resolveStorage(BRAND_ASSETS_BUCKET, oldKey);
       await provider.remove(BRAND_ASSETS_BUCKET, [oldKey]);
@@ -284,7 +331,9 @@ async function uploadVideoBlob(
   // Bersihkan blob lama setelah upload sukses (anti penumpukan storage).
   // ponytail: kegagalan cleanup tidak memengaruhi operasi utama — blob basi
   // dibersihkan batch nanti oleh scheduled job (storage lifecycle rule).
-  if (oldKey && oldKey !== key) {
+  // Hanya hapus blob yang memang milik tenant ini. Baris lama (sebelum
+  // validasi prefix) bisa berisi key tenant lain — jangan dihapus.
+  if (oldKey && oldKey !== key && isBrandingStorageKey(businessId, oldKey)) {
     try {
       const provider = await resolveStorage(BRAND_ASSETS_BUCKET, oldKey);
       await provider.remove(BRAND_ASSETS_BUCKET, [oldKey]);

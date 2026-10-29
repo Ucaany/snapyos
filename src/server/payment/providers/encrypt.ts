@@ -9,7 +9,7 @@
  * NEVER log plaintext. Security boundary terpisah dari AUTH_SECRET.
  */
 
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 
 const ALGO = "aes-256-gcm";
 const IV_BYTES = 12;
@@ -64,19 +64,51 @@ function encryptRaw(plaintext: string, version: Version, key: Buffer): string {
   const cipher = createCipheriv(ALGO, key, iv);
   const encrypted = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
   const tag = cipher.getAuthTag();
-  return `${version}:${iv.toString("hex")}:${tag.toString("hex")}:${encrypted.toString("hex")}`;
+  // Format 5 segmen: versi:keyId:iv:tag:cipher. keyId = 8 hex pertama dari
+  // sha256(key). Tanpa ini, "v2" hanya berarti "slot env V2", bukan identitas
+  // kunci — rotasi kedua (V2 diganti nilai baru) tidak bisa dibedakan dari
+  // payload lama yang masih memakai V2 sebelumnya.
+  return `${version}:${keyIdOf(key)}:${iv.toString("hex")}:${tag.toString("hex")}:${encrypted.toString("hex")}`;
+}
+
+/** 8 hex pertama sha256(key) — penanda kunci, bukan rahasia. */
+export function keyIdOf(key: Buffer): string {
+  return createHash("sha256").update(key).digest("hex").slice(0, 8);
+}
+
+/** Semua kunci yang dikenal proses ini: v1, v2, dan keyring env opsional. */
+function knownKeys(): Map<string, Buffer> {
+  const out = new Map<string, Buffer>();
+  const v1 = (process.env.PAYMENT_ENCRYPTION_KEY ?? "").trim();
+  if (/^[0-9a-fA-F]{64}$/.test(v1)) out.set(keyIdOf(keyBuffer(v1)), keyBuffer(v1));
+  const v2 = (process.env.PAYMENT_ENCRYPTION_KEY_V2 ?? "").trim();
+  if (/^[0-9a-fA-F]{64}$/.test(v2)) out.set(keyIdOf(keyBuffer(v2)), keyBuffer(v2));
+  // PAYMENT_ENCRYPTION_KEYS="kid:hex,kid:hex" — kunci pensiun agar payload
+  // lama tetap bisa dibaca/dirotasi setelah kunci diganti.
+  for (const entry of (process.env.PAYMENT_ENCRYPTION_KEYS ?? "").split(",")) {
+    const [kid, hex] = entry.split(":").map((part) => part.trim());
+    if (kid && hex && /^[0-9a-fA-F]{64}$/.test(hex)) {
+      out.set(kid.toLowerCase(), keyBuffer(hex));
+    }
+  }
+  return out;
 }
 
 function decryptRaw(payload: string, key: Buffer): string {
   const parts = payload.split(":");
-  if (parts.length !== 4 || !SUPPORTED_VERSIONS.includes(parts[0] as Version)) {
+  const legacy = parts.length === 4;
+  if (!legacy && parts.length !== 5) {
     throw new Error(
-      `Payload enkripsi tidak dikenal (expected "v1|v2:iv:tag:cipher", got prefix "${parts[0] ?? ""}").`
+      `Payload enkripsi tidak dikenal (expected "v1|v2:[keyId:]iv:tag:cipher", got prefix "${parts[0] ?? ""}").`
     );
   }
-  const iv = Buffer.from(parts[1]!, "hex");
-  const tag = Buffer.from(parts[2]!, "hex");
-  const ciphertext = Buffer.from(parts[3]!, "hex");
+  if (!SUPPORTED_VERSIONS.includes(parts[0] as Version)) {
+    throw new Error(`Versi enkripsi tidak dikenal: ${parts[0] ?? ""}`);
+  }
+  const base = legacy ? 1 : 2;
+  const iv = Buffer.from(parts[base]!, "hex");
+  const tag = Buffer.from(parts[base + 1]!, "hex");
+  const ciphertext = Buffer.from(parts[base + 2]!, "hex");
   if (iv.length !== IV_BYTES) {
     throw new Error(`IV tidak valid: expected ${IV_BYTES} byte, got ${iv.length}`);
   }
@@ -103,19 +135,36 @@ export function encrypt(plaintext: string, keyHex?: string): string {
   return encryptRaw(plaintext, version, key);
 }
 
-/** Decrypt `v1|v2:<ivHex>:<tagHex>:<cipherHex>` → plaintext. */
+/** Decrypt `v1|v2:[keyId:]iv:tag:cipher` → plaintext. */
 // NEVER log plaintext
 export function decrypt(payload: string, keyHex?: string): string {
-  const version = payload.split(":")[0] as Version;
-  const key = resolveDecryptKey(version, keyHex);
-  return decryptRaw(payload, key);
+  const parts = payload.split(":");
+  const version = parts[0] as Version;
+  if (keyHex) return decryptRaw(payload, keyBuffer(keyHex));
+  if (parts.length === 5) {
+    const kid = (parts[1] ?? "").toLowerCase();
+    const key = knownKeys().get(kid);
+    if (!key) {
+      throw new Error(
+        `Kunci ${kid} tidak tersedia (set PAYMENT_ENCRYPTION_KEY_V2 atau daftarkan di PAYMENT_ENCRYPTION_KEYS).`
+      );
+    }
+    return decryptRaw(payload, key);
+  }
+  return decryptRaw(payload, resolveDecryptKey(version));
 }
 
-/** Re-encrypt payload dari versi/key lama ke key terbaru. Idempotent: payload sudah v2 → no-op. */
+/**
+ * Re-encrypt payload ke kunci aktif. Idempotent berdasarkan KEY ID, bukan tag
+ * versi: payload yang sudah memakai kunci aktif tidak disentuh walau V2 diganti
+ * nilai baru. Payload yang tidak bisa didekripsi melempar error (bukan
+ * dilaporkan sebagai "rotated: false").
+ */
 export function reEncrypt(payload: string): { rotated: boolean; payload: string } {
   const { version: targetVersion, key: targetKey } = resolveEncryptKey();
-  const currentVersion = payload.split(":")[0] as Version;
-  if (currentVersion === targetVersion) {
+  const targetKid = keyIdOf(targetKey);
+  const parts = payload.split(":");
+  if (parts.length === 5 && parts[0] === targetVersion && parts[1]?.toLowerCase() === targetKid) {
     return { rotated: false, payload };
   }
   const plaintext = decrypt(payload);

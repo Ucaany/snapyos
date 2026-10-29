@@ -110,16 +110,28 @@ export function validateJpegBytes(bytes: Uint8Array): boolean {
   return hasJpegStructure(bytes);
 }
 
-export function validateJpegDimensions(bytes: Uint8Array, maxPixels = 20_000_000): boolean {
-  if (!hasJpegStructure(bytes)) return false;
+/**
+ * Budget piksel AGREGAT untuk satu request finalize. Batas per-foto saja tidak
+ * cukup: 50 foto 20 MP = 1 GPixel, dan setiap frame didekode sinkron di satu
+ * thread — satu request bisa membekukan seluruh proses selama menit.
+ */
+export const FINALIZE_MAX_TOTAL_PIXELS = 60_000_000;
+
+/** Pesan tunggal untuk pelanggaran budget piksel (dipakai route & tes). */
+export const FINALIZE_PIXEL_BUDGET_MESSAGE =
+  "Total resolusi foto melebihi batas (maks 60 megapiksel)";
+
+/** Dimensi JPEG dari marker SOFn; null bila header tidak terbaca. */
+export function jpegPixelCount(bytes: Uint8Array): { width: number; height: number } | null {
+  if (!hasJpegStructure(bytes)) return null;
   let offset = 2;
   while (offset + 1 < bytes.length) {
-    if (bytes[offset] !== 0xff) return false;
+    if (bytes[offset] !== 0xff) return null;
     while (offset < bytes.length && bytes[offset] === 0xff) offset += 1;
     const marker = bytes[offset++];
-    if (marker === undefined || marker === 0xda || marker === 0xd9) return true;
+    if (marker === undefined || marker === 0xda || marker === 0xd9) return null;
     if (marker >= 0xc0 && marker <= 0xc3) {
-      if (offset + 7 >= bytes.length) return false;
+      if (offset + 7 >= bytes.length) return null;
       const heightHigh = bytes[offset + 3];
       const heightLow = bytes[offset + 4];
       const widthHigh = bytes[offset + 5];
@@ -130,21 +142,35 @@ export function validateJpegDimensions(bytes: Uint8Array, maxPixels = 20_000_000
         widthHigh === undefined ||
         widthLow === undefined
       )
-        return false;
+        return null;
       const height = (heightHigh << 8) | heightLow;
       const width = (widthHigh << 8) | widthLow;
-      return width > 0 && height > 0 && width * height <= maxPixels;
+      return width > 0 && height > 0 ? { width, height } : null;
     }
     if (marker === 0xd8 || (marker >= 0xd0 && marker <= 0xd7)) continue;
-    if (offset + 1 >= bytes.length) return false;
+    if (offset + 1 >= bytes.length) return null;
     const first = bytes[offset];
     const second = bytes[offset + 1];
-    if (first === undefined || second === undefined) return false;
+    if (first === undefined || second === undefined) return null;
     const length = (first << 8) | second;
-    if (length < 2 || offset + length > bytes.length) return false;
+    if (length < 2 || offset + length > bytes.length) return null;
     offset += length;
   }
-  return false;
+  return null;
+}
+
+/** Batas per-foto (20 MP) — dipakai validatePhotoPayload. */
+export const PHOTO_MAX_PIXELS = 20_000_000;
+
+export function validateJpegDimensions(
+  bytes: Uint8Array,
+  maxPixels = PHOTO_MAX_PIXELS
+): boolean {
+  const dims = jpegPixelCount(bytes);
+  // Header tanpa SOF (jarang) diperlakukan sebagai valid per-foto agar tidak
+  // menolak JPEG eksotis; budget agregat tetap membatasi dampaknya.
+  if (!dims) return true;
+  return dims.width * dims.height <= maxPixels;
 }
 
 export function validatePhotoPayload(bytes: Uint8Array): boolean {

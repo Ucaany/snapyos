@@ -9,7 +9,7 @@ import {
   type PublicPackage,
 } from "@/lib/kiosk-types";
 import { formatIDR } from "@/lib/dashboard-math";
-import { apiGet, apiPost, KioskError } from "@/components/kiosk/api";
+import { apiGetWithDeviceToken, apiPost, KioskError } from "@/components/kiosk/api";
 import { useQrisPolling } from "@/hooks/use-qris-polling";
 import { CashPayment } from "./CashPayment";
 import { PaymentMethodPicker } from "./PaymentMethodPicker";
@@ -149,8 +149,9 @@ export function CheckoutScreen({
   );
   const check = useCallback(
     async (current: PendingPayment) => {
-      const status = await apiGet<StatusData>(
-        `/api/v1/public/${businessSlug}/payments/${current.payment_reference}/status?device_token=${encodeURIComponent(deviceToken)}`
+      const status = await apiGetWithDeviceToken<StatusData>(
+        `/api/v1/public/${businessSlug}/payments/${current.payment_reference}/status`,
+        deviceToken
       );
       if (status.status === "paid") {
         setPaidCheckoutId(status.checkout_session_id);

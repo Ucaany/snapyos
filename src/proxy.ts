@@ -37,6 +37,15 @@ const ALWAYS_ALLOWED_PREFIXES = [
   "/api/webhooks", // provider webhooks (Pakasir): jangan blokir settlement in-flight
   "/_next",
   "/favicon.ico",
+  // Aset root yang dibutuhkan halaman maintenance / ikon PWA. Daftar ini
+  // eksplisit: jangan pernah menambah pengecualian berbasis ekstensi file,
+  // karena itu membuat `/api/v1/public/<slug>.png` melewati gate.
+  "/snapyos-mark.png",
+  "/snapyos-icon-192.png",
+  "/snapyos-icon-512.png",
+  "/snapyos-icon-maskable-512.png",
+  "/apple-touch-icon.png",
+  "/sw.js",
 ];
 
 function isAllowlisted(pathname: string): boolean {
@@ -100,7 +109,9 @@ export async function proxy(request: NextRequest) {
  */
 export const config = {
   matcher: [
-    // Semua path selain aset next/image, _next/static, file statis populer.
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|woff|woff2|ttf|otf)).*)",
+    // Semua path kecuali aset statis Next. JANGAN mengecualikan berdasarkan
+    // ekstensi file: segmen dinamis (mis. /api/v1/public/acme.png) akan ikut
+    // lolos dan gate maintenance/limiter jadi bisa dilewati.
+    "/((?!_next/static|_next/image|favicon.ico).*)",
   ],
 };

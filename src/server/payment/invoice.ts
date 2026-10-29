@@ -29,11 +29,7 @@ import {
 } from "@/server/payment/pakasir-utils";
 import { insertAudit } from "@/server/audit";
 import { applyInvoiceIntent, intentToItems } from "@/server/subscription";
-import {
-  resolveGateway,
-  resolveGatewayByCredential,
-  resolveCredential,
-} from "@/server/payment/providers/registry";
+import { resolveGatewayByCredential } from "@/server/payment/providers/registry";
 import { resolveGatewayFromCredential } from "@/server/payment/providers/gateway-factory";
 import {
   logPaymentWebhook,
@@ -94,16 +90,32 @@ async function loadInvoice(businessId: string, invoiceId: string): Promise<Invoi
   return row;
 }
 
-/** Gateway by stored credential with current-active fallback (anti credential-rotate drift). */
+/**
+ * Gateway untuk baris invoice_payments.
+ *
+ * Invoice langganan adalah tagihan PLATFORM: `credential_id` null berarti
+ * charge dibuat di akun aggregator platform. Jangan pernah fallback ke
+ * credential tenant — kalau fallback, tenant bisa menyelesaikan tagihannya
+ * sendiri di akun merchant-nya dan platform tidak menerima dana.
+ */
 async function resolvePaymentGateway(payment: {
-  business_id: string;
+  provider: string;
   credential_id: string | null;
 }) {
-  if (payment.credential_id) {
-    const byCredential = await resolveGatewayByCredential(payment.credential_id);
-    if (byCredential) return byCredential;
+  if (!payment.credential_id) {
+    const aggregator = resolveGatewayFromCredential(null);
+    if (aggregator.provider !== payment.provider) {
+      throw new ApiError("INTERNAL", "Provider pembayaran invoice tidak cocok");
+    }
+    return aggregator;
   }
-  return resolveGateway(payment.business_id);
+  const byCredential = await resolveGatewayByCredential(payment.credential_id);
+  if (!byCredential || byCredential.provider !== payment.provider) {
+    // Credential hilang/berputar/berbeda provider → fail closed. Status tidak
+    // bisa diverifikasi, jadi jangan settle.
+    throw new ApiError("INTERNAL", "Kredensial pembayaran invoice tidak tersedia");
+  }
+  return byCredential;
 }
 
 async function loadLatestInvoicePayment(invoiceId: string): Promise<InvoicePaymentRow | null> {
@@ -323,9 +335,11 @@ export async function createInvoiceQris(
     .eq("invoice_id", invoice.id)
     .eq("status", "pending");
 
-  // Resolve gateway per business (direct merchant credential → fallback aggregator).
-  const credential = await resolveCredential(businessId);
-  const gateway = resolveGatewayFromCredential(credential);
+  // Invoice langganan = tagihan PLATFORM. Selalu pakai aggregator platform
+  // (env PAKASIR_*), bukan credential merchant tenant: kalau memakai credential
+  // tenant, pembayaran masuk ke akun tenant dan tenant sendiri yang memegang
+  // kunci verifikasi status.
+  const gateway = resolveGatewayFromCredential(null);
 
   // Validate callback URL BEFORE reserving a row — direct merchant tanpa
   // callback terkonfigurasi aman harus gagal tanpa meninggalkan reservasi
@@ -347,7 +361,7 @@ export async function createInvoiceQris(
       order_id: orderId,
       payment_reference: paymentReference,
       provider: gateway.provider,
-      credential_id: credential?.id ?? null,
+      credential_id: null,
       status: "creating",
     })
     .select("id")

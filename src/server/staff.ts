@@ -343,6 +343,21 @@ export async function setStaffPin(
   if (assignmentError) throw new ApiError("INTERNAL", "Gagal memuat akses booth");
   if (!assignment) throw new ApiError("NOT_FOUND", "Booth belum di-assign ke staff ini");
 
+  // PIN hanya untuk akun staff. Manager/owner memakai password; memberi mereka
+  // PIN (4-6 digit, dibagikan antar-shift) berarti kredensial tingkat akun
+  // dengan assurance jauh lebih rendah.
+  const { data: targetMembership } = await supabase
+    .from("business_members")
+    .select("role")
+    .eq("business_id", businessId)
+    .eq("user_id", parsed.user_id)
+    .maybeSingle();
+  if ((targetMembership as { role?: string } | null)?.role !== "staff") {
+    throw new ApiError("VALIDATION_ERROR", "PIN hanya bisa diberikan ke akun staff", {
+      user_id: ["Pilih akun dengan role staff"],
+    });
+  }
+
   const pinHash = pin ? await hashDevicePin(pin) : null;
   const { error } = await supabase
     .from("member_photoboxes")

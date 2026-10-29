@@ -35,6 +35,10 @@ log "git pull"
 git pull --ff-only
 
 # --- 2. Dependensi ----------------------------------------------------------
+# Gagal-closed sebelum install: lockfile tanpa integrity = npm ci memasang apa
+# pun yang registry sajikan (substitusi = eksekusi kode saat build sebagai root).
+log "check lockfile integrity"
+node scripts/check-lockfile-integrity.mjs
 log "npm ci"
 npm ci --no-audit --no-fund
 

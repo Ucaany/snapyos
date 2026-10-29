@@ -93,6 +93,21 @@ export async function apiGet<T>(url: string, signal?: AbortSignal): Promise<T> {
   return request<T>(url, { signal });
 }
 
+/**
+ * GET yang membawa device token di header, bukan query string: URL tercatat
+ * di access log (nginx/CDN) dan token device adalah bearer penuh untuk booth.
+ */
+export async function apiGetWithDeviceToken<T>(
+  url: string,
+  deviceToken: string,
+  signal?: AbortSignal
+): Promise<T> {
+  return request<T>(url, {
+    signal,
+    headers: { "X-Device-Token": deviceToken },
+  });
+}
+
 export async function apiForm<T>(url: string, form: FormData): Promise<T> {
   return request<T>(url, { method: "POST", body: form });
 }

@@ -23,7 +23,8 @@ export type PremiumTemplateRow = {
   name: string;
   category_id: string | null;
   category_name: string | null;
-  file_url: string;
+  /** Signed URL frame penuh — hanya untuk template yang sudah dibeli. */
+  file_url: string | null;
   thumbnail_url: string | null;
   price: number;
   is_active: boolean;
@@ -96,23 +97,35 @@ export async function listPremiumTemplates(
   const rows = (templates ?? []) as unknown as Row[];
   // Bucket private → signed URL (docs/09 §9). Tanpa ini, <Image src> memakai
   // key mentah sebagai path relatif → 404 dan marketplace tampil tanpa preview.
-  const keys = Array.from(
-    new Set(rows.flatMap((t) => [t.thumbnail_url, t.file_url].filter((k): k is string => !!k)))
-  );
-  const urlByKey = await signedUrlMap(BUCKET, keys, SIGNED_URL_TTL);
-  return rows.map((t) => ({
-    id: t.id,
-    name: t.name,
-    category_id: t.category_id,
-    category_name:
-      (Array.isArray(t.template_categories) ? t.template_categories[0] : t.template_categories)
-        ?.name ?? null,
-    file_url: urlByKey.get(t.file_url) ?? t.file_url,
-    thumbnail_url: t.thumbnail_url ? (urlByKey.get(t.thumbnail_url) ?? null) : null,
-    price: t.price,
-    is_active: t.is_active,
-    purchased: ownedIds.has(t.id),
-  }));
+  //
+  // Frame PENUH hanya di-sign untuk template yang sudah dibeli: kalau tidak,
+  // marketplace membagikan aset berbayar (frame resolusi penuh) ke setiap
+  // tenant sebelum ada pembayaran. Thumbnail tetap di-sign untuk semua baris
+  // karena itulah yang ditampilkan grid.
+  const thumbKeys = rows
+    .map((t) => t.thumbnail_url)
+    .filter((k): k is string => !!k);
+  const frameKeys = rows
+    .filter((t) => ownedIds.has(t.id))
+    .map((t) => t.file_url)
+    .filter((k): k is string => !!k);
+  const urlByKey = await signedUrlMap(BUCKET, Array.from(new Set([...thumbKeys, ...frameKeys])), SIGNED_URL_TTL);
+  return rows.map((t) => {
+    const purchased = ownedIds.has(t.id);
+    return {
+      id: t.id,
+      name: t.name,
+      category_id: t.category_id,
+      category_name:
+        (Array.isArray(t.template_categories) ? t.template_categories[0] : t.template_categories)
+          ?.name ?? null,
+      file_url: purchased ? (urlByKey.get(t.file_url) ?? null) : null,
+      thumbnail_url: t.thumbnail_url ? (urlByKey.get(t.thumbnail_url) ?? null) : null,
+      price: t.price,
+      is_active: t.is_active,
+      purchased,
+    };
+  });
 }
 
 /** Template premium yang sudah dibeli business (riwayat). */

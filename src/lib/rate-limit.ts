@@ -155,23 +155,14 @@ export async function rateLimit(
   return inMemoryRateLimit(key, limit, windowMs);
 }
 
-/** Increment hitungan gagal (lockout per email — docs/09 §10). */
-export async function registerFailure(key: string, windowMs: number): Promise<number> {
-  if (redisAvailable && !redisDegraded) {
-    try {
-      const redisKey = `fail:${key}`;
-      const ttlSec = Math.ceil(windowMs / 1000);
-      const results = await redisPipeline([
-        ["INCR", redisKey],
-        ["EXPIRE", redisKey, ttlSec],
-      ]);
-      return results[0] as number;
-    } catch {
-      redisDegraded = true;
-      redisRetryAfter = Date.now() + 30_000;
-    }
-  }
+/** Hitungan lokal (in-memory) — dipakai juga untuk merge saat Redis pulih. */
+function localCount(key: string): number {
+  const bucket = buckets.get(key);
+  if (!bucket || bucket.resetAt <= Date.now()) return 0;
+  return bucket.count;
+}
 
+function localBump(key: string, windowMs: number): number {
   const now = Date.now();
   const bucket = buckets.get(key);
   if (!bucket || bucket.resetAt <= now) {
@@ -182,21 +173,44 @@ export async function registerFailure(key: string, windowMs: number): Promise<nu
   return bucket.count;
 }
 
-/** Baca hitungan gagal TANPA menambahnya. */
-export async function failureCount(key: string): Promise<number> {
+/** Increment hitungan gagal (lockout per email — docs/09 §10). */
+export async function registerFailure(key: string, windowMs: number): Promise<number> {
   if (redisAvailable && !redisDegraded) {
     try {
-      const val = await redisCommand<string | null>("GET", `fail:${key}`);
-      return val ? parseInt(val, 10) : 0;
+      const redisKey = `fail:${key}`;
+      const ttlSec = Math.ceil(windowMs / 1000);
+      const results = await redisPipeline([
+        ["INCR", redisKey],
+        ["EXPIRE", redisKey, ttlSec],
+      ]);
+      // Catat juga secara lokal: kegagalan yang terjadi saat Redis mati harus
+      // tetap terhitung setelah backend pulih (Shared value bisa lebih rendah).
+      return Math.max(results[0] as number, localBump(key, windowMs));
     } catch {
       redisDegraded = true;
       redisRetryAfter = Date.now() + 30_000;
     }
   }
 
-  const bucket = buckets.get(key);
-  if (!bucket || bucket.resetAt <= Date.now()) return 0;
-  return bucket.count;
+  return localBump(key, windowMs);
+}
+
+/** Baca hitungan gagal TANPA menambahnya. */
+export async function failureCount(key: string): Promise<number> {
+  if (redisAvailable && !redisDegraded) {
+    try {
+      const val = await redisCommand<string | null>("GET", `fail:${key}`);
+      const shared = val ? parseInt(val, 10) : 0;
+      // max(), bukan shared saja: counter lokal memuat kegagalan yang dicatat
+      // saat outage dan tidak boleh "turun" ketika shared value basi terbaca.
+      return Math.max(Number.isFinite(shared) ? shared : 0, localCount(key));
+    } catch {
+      redisDegraded = true;
+      redisRetryAfter = Date.now() + 30_000;
+    }
+  }
+
+  return localCount(key);
 }
 
 /**

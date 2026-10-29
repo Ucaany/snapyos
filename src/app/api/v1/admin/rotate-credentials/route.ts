@@ -24,8 +24,11 @@ export const POST = adminRawRoute(async ({ admin, request }) => {
     await audit(admin.id, "rotate_credentials", businessId, {
       total: result.total,
       rotated: result.rotated,
+      errors: result.errors,
     });
-    return NextResponse.json(dataEnvelope(result));
+    // Ada credential yang tidak terbaca → jangan balas 200 "sukses": admin
+    // harus tahu rotasi tidak selesai dan tenant itu belum bisa bayar.
+    return NextResponse.json(dataEnvelope(result), { status: result.errors > 0 ? 409 : 200 });
   }
 
   const result = await rotateAllCredentials();

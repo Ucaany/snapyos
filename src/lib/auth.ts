@@ -239,7 +239,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             await registerFailure(failKey, EMAIL_FAILURE_WINDOW_MS);
             return null;
           }
-          const ok = await verifyStaffPin(email, pin);
+          const ok = await verifyStaffPin(user.id, pin);
           if (!ok) {
             await registerFailure(pinKey, EMAIL_FAILURE_WINDOW_MS);
             await registerFailure(failKey, EMAIL_FAILURE_WINDOW_MS);

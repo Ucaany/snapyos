@@ -174,6 +174,16 @@ function isExpired(answer: CloudAnswer): boolean {
   return answer.status === 410 || answer.code === "SESSION_EXPIRED";
 }
 
+/**
+ * Kegagalan create yang TIDAK akan berubah kalau diulang dengan body yang sama:
+ * 422 (payload ditolak — mis. client_created_at > 24 jam) dan 404 (business
+ * tidak dikenal). Dulu keduanya di-retry selamanya, sehingga sesi berbayar
+ * tidak pernah sampai ke cloud dan medianya tertahan di booth.
+ */
+function isPermanentCreateFailure(answer: CloudAnswer): boolean {
+  return isExpired(answer) || answer.status === 422 || answer.status === 404;
+}
+
 async function createCloudSession(ctx: SyncContext, session: SyncSessionRow): Promise<CloudAnswer> {
   const response = await getFetch(ctx)(
     `${cloudBase(ctx)}/api/v1/public/${session.business_slug}/sessions`,
@@ -284,7 +294,7 @@ export async function syncSession(ctx: SyncContext, queue: QueueRow): Promise<Se
   if (!cloudId) {
     const created = await createCloudSession(ctx, session);
     if (!created.ok) {
-      if (isExpired(created)) {
+      if (isPermanentCreateFailure(created)) {
         quarantineSession(ctx, session, queue.payload_path);
         return "quarantined";
       }

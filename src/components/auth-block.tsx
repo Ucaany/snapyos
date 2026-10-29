@@ -132,7 +132,7 @@ export function AuthPage() {
                     inputMode="numeric"
                     autoComplete="current-password"
                     required
-                    placeholder="PIN staff (4–6 digit)"
+                    placeholder="PIN staff (6 digit)"
                     maxLength={6}
                     aria-invalid={Boolean(fieldErrors.pin)}
                     disabled={pending}

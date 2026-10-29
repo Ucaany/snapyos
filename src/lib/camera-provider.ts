@@ -6,6 +6,7 @@
 
 // Relatif (bukan `@/`) agar tes `node --experimental-strip-types` bisa impor modul ini.
 import { bridgeHeaders } from "./bridge-token.ts";
+import { DEFAULT_BRIDGE_URL, isLoopbackBridgeUrl } from "./bridge-url.ts";
 
 export type FacingMode = "user" | "environment";
 
@@ -42,7 +43,10 @@ export function resolveCameraProvider(settings?: CameraProviderSettings | null):
 
 export function cameraBridgeUrl(settings?: CameraProviderSettings | null): string {
   const configured = settings?.bridge_url?.trim();
-  return configured || "http://127.0.0.1:17777";
+  // Hanya loopback: nilai ini datang dari settings yang bisa ditulis device
+  // token, jadi ia tidak boleh menjadi tujuan fetch foto/token ke origin lain.
+  if (configured && isLoopbackBridgeUrl(configured)) return configured;
+  return DEFAULT_BRIDGE_URL;
 }
 
 async function fetchBridge(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {

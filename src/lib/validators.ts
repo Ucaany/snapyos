@@ -7,6 +7,10 @@ import { z } from "zod";
 import { layoutSchema } from "./template-layout.ts";
 import { MAX_RANGE_DAYS, rangeDays } from "./dashboard-math.ts";
 import { RETENTION_MAX_DAYS, RETENTION_MIN_DAYS } from "./retention.ts";
+import {
+  isLoopbackBridgeUrl,
+  LOOPBACK_BRIDGE_URL_MESSAGE,
+} from "./bridge-url.ts";
 
 /** UUID PostgreSQL canonical: shape hex, tanpa pembatasan version/variant RFC. */
 const uuid = z.string().guid();
@@ -134,11 +138,13 @@ export const loginSchema = z
 export const staffPinSchema = z.object({
   user_id: uuid,
   photobox_id: uuid,
-  // Kosong = hapus PIN (set null); non-kosong wajib 4–6 digit.
+  // Kosong = hapus PIN (set null); non-kosong wajib 6 digit. PIN lama 4–6
+  // digit tetap bisa dipakai login (jalur verifikasi tidak memakai schema ini),
+  // tapi PIN baru harus 6 digit.
   pin: z
     .string()
     .trim()
-    .refine((v) => v === "" || /^\d{4,6}$/.test(v), "PIN 4–6 digit"),
+    .refine((v) => v === "" || /^\d{6}$/.test(v), "PIN harus 6 digit"),
 });
 
 export const businessCreateSchema = z.object({
@@ -290,6 +296,19 @@ export const kioskBrandingSchema = z.object({
   allow_zoom_pan: z.boolean().optional(),
 });
 
+/**
+ * Key storage branding WAJIB berada di prefix tenant: `<businessId>/branding/`.
+ * Client mengirim key mentah (logo_key / video_key), jadi tanpa cek ini satu
+ * tenant bisa menunjuk — lalu di-sign dan dihapus — objek milik tenant lain.
+ */
+export function isBrandingStorageKey(businessId: string, key: string): boolean {
+  if (!businessId) return false;
+  const prefix = `${businessId}/branding/`;
+  if (!key.startsWith(prefix)) return false;
+  const rest = key.slice(prefix.length);
+  return rest.length > 0 && !rest.includes("..") && /^[A-Za-z0-9._/-]+$/.test(rest);
+}
+
 /** Branding jsonb — docs/04 §4.8 (Photobox Builder / branding + welcome). */
 export const brandingSchema = z.object({
   welcome_title: z.string().trim().max(120).optional(),
@@ -357,7 +376,12 @@ export const cameraSettingsSchema = z.object({
   provider: z
     .enum(["browser", "bridge", "gphoto2", "digicamcontrol", "libcamera", "v4l2", "pyav"])
     .optional(),
-  bridge_url: z.string().trim().url().max(300).optional(),
+  bridge_url: z
+    .string()
+    .trim()
+    .max(300)
+    .refine(isLoopbackBridgeUrl, LOOPBACK_BRIDGE_URL_MESSAGE)
+    .optional(),
   countdown_seconds: z.number().int().min(1).max(10).optional(),
   mirror_preview: z.boolean().optional(),
   chroma_key_enabled: z.boolean().optional(),
@@ -386,7 +410,12 @@ export const printSettingsSchema = z.object({
   bluetooth_paper_width_mm: z.union([z.literal(58), z.literal(80)]).optional(),
   /** Nama printer Bluetooth (informasi petugas, bukan kredensial). */
   bluetooth_device_name: z.string().trim().max(60).optional(),
-  bridge_url: z.string().trim().url().max(300).optional(),
+  bridge_url: z
+    .string()
+    .trim()
+    .max(300)
+    .refine(isLoopbackBridgeUrl, LOOPBACK_BRIDGE_URL_MESSAGE)
+    .optional(),
   printer_name: z.string().trim().max(128).optional(),
 });
 

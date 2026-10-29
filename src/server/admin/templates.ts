@@ -14,7 +14,11 @@ import { validateFrameFile } from "@/server/templates";
 import { LOGO_ALLOWED_TYPES } from "@/lib/upload-validation";
 import { SIGNED_URL_TTL_SECONDS } from "@/lib/constants";
 import { getStorage, resolveStorage, removeResolved } from "@/server/storage";
-import { staleTemplateKeys, storageKeysOnly } from "@/lib/template-cleanup";
+import {
+  staleTemplateKeys,
+  staleThumbnailKeys,
+  storageKeysOnly,
+} from "@/lib/template-cleanup";
 import { layoutSchema } from "@/lib/template-layout";
 
 // ---------------------------------------------------------------------------
@@ -373,13 +377,18 @@ export async function uploadGlobalTemplateThumbnail(
   const key = `global/templates/${Date.now()}-thumb-${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const supabase = createServerClient();
   // Thumbnail lama → dibersihkan setelah update sukses (anti orphan).
+  // `file_url` ikut dibaca: pada template global yang baru dibuat, thumbnail
+  // dan frame menunjuk key yang SAMA — menghapus thumbnail lama berarti
+  // menghapus frame yang masih direferensikan templates.file_url.
   const { data: existing } = await supabase
     .from("templates")
-    .select("thumbnail_url")
+    .select("thumbnail_url, file_url")
     .eq("id", templateId)
     .is("business_id", null)
     .maybeSingle();
-  const oldThumb = (existing as { thumbnail_url?: string | null } | null)?.thumbnail_url ?? null;
+  const row = existing as { thumbnail_url?: string | null; file_url?: string | null } | null;
+  const oldThumb = row?.thumbnail_url ?? null;
+  const currentFrame = row?.file_url ?? null;
 
   const { error } = await getStorage().upload("business-assets", key, body, {
     contentType: file.type ?? "application/octet-stream",
@@ -393,8 +402,11 @@ export async function uploadGlobalTemplateThumbnail(
     .is("business_id", null);
   if (updErr) throw new ApiError("INTERNAL", "Gagal menyimpan thumbnail");
 
-  if (oldThumb && oldThumb !== key) {
-    await removeResolved("business-assets", [oldThumb]);
+  const stale = storageKeysOnly(
+    staleThumbnailKeys({ oldThumbnail: oldThumb, newThumbnail: key, currentFrame })
+  );
+  if (stale.length > 0) {
+    await removeResolved("business-assets", stale);
   }
 }
 

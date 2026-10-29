@@ -12,7 +12,12 @@ import { resolveGateway, resolveGatewayByCredential } from "@/server/payment/pro
 import { checkoutApplyVoucherSchema, checkoutCreateSchema } from "@/lib/validators";
 import type { CheckoutApplyVoucherInput, CheckoutCreateInput } from "@/lib/validators";
 import type { PaymentRow } from "./checkout-shared";
-import { requireDevice, loadCheckout, validateVoucherForCheckout } from "./checkout-shared";
+import {
+  requireDevice,
+  loadCheckout,
+  loadCheckoutForPhotobox,
+  validateVoucherForCheckout,
+} from "./checkout-shared";
 import { transitionPaymentToPaid, runPaidSideEffects } from "./settlement";
 import { listKioskPaymentMethods } from "./payment-methods";
 
@@ -192,7 +197,11 @@ export async function applyVoucherToCheckout(
   const device = await requireDevice(businessSlug, parsed.device_token);
   const supabase = createServerClient();
 
-  const checkout = await loadCheckout(device.businessId, parsed.checkout_session_id);
+  const checkout = await loadCheckoutForPhotobox(
+    device.businessId,
+    device.photobox.id,
+    parsed.checkout_session_id
+  );
   if (checkout.status !== "open") {
     throw new ApiError("PAYMENT_ALREADY_PROCESSED", "Checkout sudah diproses");
   }

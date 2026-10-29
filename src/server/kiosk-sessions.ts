@@ -707,7 +707,12 @@ export async function finalizeSession(
     if (reloaded.status === "completed") {
       return await buildResult(device.businessId, reloaded);
     }
-    throw new ApiError("INTERNAL", "Gagal memfinalisasi sesi");
+    // Abort (atau expiry) menang saat upload masih berjalan. Objek yang baru
+    // saja kita tulis tidak akan pernah dirujuk baris `photos`, jadi hapus dan
+    // kembalikan meterannya — dulu objek ini tertinggal permanen (foto customer
+    // tanpa referensi, tenant tetap ditagih byte-nya).
+    await discardUploadedObjects(device.businessId, [...photoKeys, gifKey]);
+    throw new ApiError("SESSION_EXPIRED", "Sesi sudah dibatalkan");
   }
 
   // Pemenang klaim = satu-satunya penulis baris `photos`. Delete dulu agar retry

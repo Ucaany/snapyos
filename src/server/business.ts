@@ -15,6 +15,9 @@ import { brandingCacheTag } from "@/server/branding";
 import { invalidatePublicConfig } from "@/server/public-config";
 import { sendWelcomeEmail } from "@/server/lifecycle-email";
 
+/** Batas workspace paket Starter (docs/02 §2.3) — dipakai saat subscription tidak efektif. */
+const STARTER_MAX_BUSINESSES = 1;
+
 /** Tag data-cache business_settings (STEP 14). Dipakai getSettings + updateTag pada updateSettings (Next 16). */
 export const settingsCacheTag = (businessId: string) => `business:${businessId}:settings`;
 
@@ -91,22 +94,45 @@ export async function createBusiness(userId: string, input: BusinessCreateInput)
   // Plan limit: max_businesses (docs/02 §2.3) — starter = 1 workspace.
   // Subscription aktif terbaru (trial/active/past_due) menentukan limit owner —
   // owner paid juga dibatasi (bukan hanya trial) — H3 audit.
+  //
+  // Hitung dari `businesses.owner_id`, BUKAN dari membership aktif: business
+  // yang ditangguhkan tidak muncul di getUserMemberships lagi, jadi menghitung
+  // membership akan membuat tenant suspended bisa minta workspace baru.
   const memberships = await getUserMemberships(userId);
-  if (memberships.length > 0) {
+  const { count: ownedCount, error: ownedError } = await supabase
+    .from("businesses")
+    .select("id", { count: "exact", head: true })
+    .eq("owner_id", userId);
+  if (ownedError) throw new ApiError("INTERNAL", "Gagal menghitung business owner");
+  const owned = ownedCount ?? memberships.length;
+  if (owned > 0) {
+    // Tidak ada satu pun workspace aktif (mis. semuanya ditangguhkan):
+    // perlakukan sebagai batas Starter supaya suspend tidak bisa dilewati
+    // dengan membuat tenant baru.
+    if (memberships.length === 0) {
+      throw new ApiError("PLAN_LIMIT_REACHED", "Batas jumlah business untuk plan Anda tercapai");
+    }
     const ownedIds = memberships.map((m) => m.business.id);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("subscriptions")
       .select("plans ( max_businesses )")
       .in("business_id", ownedIds)
       .in("status", ["trial", "active", "past_due"])
       .order("created_at", { ascending: false })
       .limit(1);
+    // Query gagal ≠ "tanpa batas": dulu error diabaikan dan rows kosong
+    // dianggap max=null, sehingga langganan expired/cancelled bisa membuat
+    // workspace baru tanpa batas.
+    if (error) throw new ApiError("INTERNAL", "Gagal memeriksa batas plan");
     const rows = (data ?? []) as {
       plans: { max_businesses: number } | { max_businesses: number }[] | null;
     }[];
     const plan = rows[0]?.plans;
-    const max = plan && !Array.isArray(plan) ? (plan.max_businesses as number) : null;
-    if (max !== null && memberships.length >= max) {
+    const max =
+      plan && !Array.isArray(plan) && Number.isInteger(plan.max_businesses)
+        ? plan.max_businesses
+        : STARTER_MAX_BUSINESSES;
+    if (owned >= max) {
       throw new ApiError("PLAN_LIMIT_REACHED", "Batas jumlah business untuk plan Anda tercapai");
     }
   }

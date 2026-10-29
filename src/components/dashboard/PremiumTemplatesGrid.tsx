@@ -76,7 +76,7 @@ export function PremiumTemplatesGrid({ templates }: Props) {
             <div className="flex h-44 items-center justify-center overflow-hidden border-b-2 border-ink bg-[repeating-linear-gradient(45deg,#FFFDF5_0_10px,#F4F4F0_10px_20px)]">
               {tpl.thumbnail_url || tpl.file_url ? (
                 <Image
-                  src={tpl.thumbnail_url ?? tpl.file_url}
+                  src={(tpl.thumbnail_url ?? tpl.file_url) as string}
                   alt={`Preview template premium ${tpl.name}`}
                   width={480}
                   height={320}

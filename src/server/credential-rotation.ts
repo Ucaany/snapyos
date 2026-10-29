@@ -16,7 +16,7 @@ type CredentialRow = {
 
 export async function rotateCredentials(
   businessId: string
-): Promise<{ total: number; rotated: number }> {
+): Promise<{ total: number; rotated: number; errors: number }> {
   const supabase = createServerClient();
   const { data, error } = await supabase
     .from("payment_credentials")
@@ -26,9 +26,23 @@ export async function rotateCredentials(
 
   const rows = (data ?? []) as CredentialRow[];
   let rotated = 0;
+  let errors = 0;
 
   for (const row of rows) {
-    const serverKey = reEncrypt(row.server_key_encrypted);
+    // Payload yang tidak bisa didekripsi = kegagalan nyata, bukan "sudah
+    // terbaru". Tanpa ini endpoint melapor rotated:0 seolah sukses sementara
+    // seluruh credential tenant tidak terbaca aplikasi.
+    let serverKey: { rotated: boolean; payload: string };
+    try {
+      serverKey = reEncrypt(row.server_key_encrypted);
+    } catch (err) {
+      errors++;
+      console.error(
+        `[rotate-credentials] credential=${row.id} tidak bisa didekripsi:`,
+        err instanceof Error ? err.message : err
+      );
+      continue;
+    }
 
     let metadataChanged = false;
     const patchedMetadata = row.metadata ? { ...row.metadata } : null;
@@ -76,7 +90,7 @@ export async function rotateCredentials(
     rotated++;
   }
 
-  return { total: rows.length, rotated };
+  return { total: rows.length, rotated, errors };
 }
 
 export async function rotateAllCredentials(): Promise<{
@@ -105,6 +119,7 @@ export async function rotateAllCredentials(): Promise<{
       const result = await rotateCredentials(bizId);
       totalCredentials += result.total;
       rotated += result.rotated;
+      errors += result.errors;
     } catch (err) {
       errors++;
       console.error(

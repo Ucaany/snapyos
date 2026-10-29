@@ -1,15 +1,14 @@
 import { ApiError, authRoute } from "@/lib/api-route";
-import { can } from "@/lib/rbac";
-import { getMembership } from "@/lib/tenant";
 import { rateLimit, rateLimitByDevice } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/request-ip";
 import { cashConfirmSchema } from "@/lib/validators";
 import { requireDevice } from "@/server/payment/checkout-shared";
-import { confirmCashPayment } from "@/server/payment/checkout";
+import { confirmCashPaymentByOperator } from "@/server/cash-payment";
+import { requireEffectiveSubscription } from "@/server/require-subscription";
 
 /** Operator action. Auth.js session + transaction-write membership; no public bypass. */
 export const POST = authRoute<
-  Awaited<ReturnType<typeof confirmCashPayment>>,
+  Awaited<ReturnType<typeof confirmCashPaymentByOperator>>,
   { businessSlug: string }
 >(async ({ user, request, params }) => {
   const { businessSlug } = params;
@@ -24,10 +23,11 @@ export const POST = authRoute<
       retry_after: retryAfter,
     });
   }
+  // Device token hanya dipakai untuk menemukan business; otorisasi tetap milik
+  // user. Jalur operator menegakkan membership + payment:confirm + assign
+  // member_photoboxes untuk staff + feature cash_payment — route ini dulu
+  // memanggil jalur device sehingga staff bisa settle booth yang bukan tugasnya.
   const device = await requireDevice(businessSlug, input.device_token);
-  const membership = await getMembership(user.id, device.businessId);
-  if (!membership || !can(membership.role, "payment:confirm")) {
-    throw new ApiError("FORBIDDEN", "Anda tidak punya izin mengonfirmasi tunai");
-  }
-  return confirmCashPayment(businessSlug, input.payment_reference, input.device_token);
+  await requireEffectiveSubscription(device.businessId, "write");
+  return confirmCashPaymentByOperator(user.id, device.businessId, input.payment_reference);
 });

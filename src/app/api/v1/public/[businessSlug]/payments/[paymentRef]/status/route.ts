@@ -12,7 +12,14 @@ type Params = { params: Promise<{ businessSlug: string; paymentRef: string }> };
 export async function GET(request: Request, { params }: Params) {
   try {
     const { businessSlug, paymentRef } = await params;
-    const { device_token } = paymentStatusQuerySchema.parse(searchParamsToObject(request));
+    // Token device lewat header (bukan query string) supaya tidak ikut tercatat
+    // di access log nginx/CDN. Bentuk query dipertahankan sebagai fallback
+    // untuk kiosk versi lama.
+    const { device_token } = paymentStatusQuerySchema.parse({
+      device_token:
+        request.headers.get("x-device-token")?.trim() ||
+        searchParamsToObject(request).device_token,
+    });
     const ip = getClientIp(request.headers);
     // Kiosk poll 3 detik = 20 req/menit/booth. Batas IP harus longgar supaya
     // beberapa booth di satu NAT tidak saling mengunci; batas per device yang

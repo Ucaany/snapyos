@@ -43,10 +43,12 @@ test("encrypt/decrypt round-trip with valid key", () => {
   assert.equal(decrypt(encrypted, TEST_KEY), plaintext);
 });
 
-test("encrypt output has v1 prefix and 4 parts", () => {
+test("encrypt output has v1 prefix, key id, and 5 parts", () => {
   const parts = encrypt("test", TEST_KEY).split(":");
-  assert.equal(parts.length, 4);
+  // v1:<keyId>:<iv>:<tag>:<cipher> — key id membedakan kunci, bukan slot versi.
+  assert.equal(parts.length, 5);
   assert.equal(parts[0], "v1");
+  assert.match(parts[1]!, /^[0-9a-f]{8}$/);
 });
 
 test("decrypt with wrong key throws", () => {

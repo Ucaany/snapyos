@@ -1,11 +1,19 @@
 // Relatif (bukan `@/`) agar tes `node --experimental-strip-types` bisa impor modul ini.
 import { bridgeHeaders } from "../bridge-token.ts";
+import { DEFAULT_BRIDGE_URL, isLoopbackBridgeUrl } from "../bridge-url.ts";
 import type { PrintSettingsInput } from "@/lib/print-layout";
 
 export type CupsTestInput = { title: string; lines: string[] };
 
+/**
+ * Tujuan bridge CUPS. Nilai dari settings hanya dipakai bila loopback — baris
+ * lama (atau data yang lolos sebelum validasi) tidak boleh membelokkan foto
+ * customer + token bridge ke origin lain.
+ */
 export function cupsBridgeUrl(settings?: PrintSettingsInput | null): string {
-  return (settings?.bridge_url?.trim() || "http://127.0.0.1:17777").replace(/\/$/, "");
+  const configured = settings?.bridge_url?.trim();
+  const safe = configured && isLoopbackBridgeUrl(configured) ? configured : DEFAULT_BRIDGE_URL;
+  return safe.replace(/\/$/, "");
 }
 
 function blobBase64(blob: Blob): Promise<string> {

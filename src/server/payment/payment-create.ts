@@ -12,13 +12,14 @@ import { generateResultToken } from "@/lib/device-token";
 import { formatTxNumber, todayISO } from "@/lib/dashboard-math";
 import { createServerClient } from "@/lib/supabase/server";
 import { assertSessionCapacity } from "@/server/session-capacity";
+import { requireFeature } from "@/server/feature-gate";
 import { paymentCreateSchema, type PaymentCreateInput } from "@/lib/validators";
 import { resolveGatewayByCredential } from "./providers/registry";
 import type { PaymentRow } from "./checkout-shared";
 import {
   getBusinessTimezone,
   getQrisExpiryMinutes,
-  loadCheckout,
+  loadCheckoutForPhotobox,
   requireDevice,
 } from "./checkout-shared";
 import { resolveKioskPaymentMethod } from "./payment-methods";
@@ -38,7 +39,11 @@ export async function createPayment(
 ): Promise<PaymentResponse> {
   const parsed = paymentCreateSchema.parse(input);
   const device = await requireDevice(businessSlug, parsed.device_token);
-  const checkout = await loadCheckout(device.businessId, parsed.checkout_session_id);
+  const checkout = await loadCheckoutForPhotobox(
+    device.businessId,
+    device.photobox.id,
+    parsed.checkout_session_id
+  );
   if (checkout.status === "paid")
     throw new ApiError("PAYMENT_ALREADY_PROCESSED", "Checkout sudah dibayar");
   if (checkout.status !== "open")
@@ -97,6 +102,9 @@ export async function createPayment(
     payment_reference: paymentReference,
   };
   if (method.kind === "voucher") {
+    // Voucher = fitur plan berbayar; cek juga di titik settle (bukan hanya
+    // saat checkout dibuat) karena plan bisa turun di antara keduanya.
+    await requireFeature(device.businessId, "voucher");
     const tz = await getBusinessTimezone(device.businessId);
     const { data, error } = await supabase.rpc("create_voucher_payment_atomically", {
       p_checkout_id: checkout.id,

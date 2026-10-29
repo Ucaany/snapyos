@@ -7,8 +7,12 @@ import { getClientIp } from "@/lib/request-ip";
 import {
   FINALIZE_MAX_PHOTOS,
   FINALIZE_MAX_REQUEST_BYTES,
+  FINALIZE_MAX_TOTAL_PIXELS,
+  FINALIZE_PIXEL_BUDGET_MESSAGE,
   FINALIZE_TOO_LARGE_MESSAGE,
+  PHOTO_MAX_PIXELS,
   isFinalizeRequestTooLarge,
+  jpegPixelCount,
   validateFinalizeRequest,
   validatePhotoFile,
 } from "@/lib/upload-validation";
@@ -96,12 +100,21 @@ function filesInvalid(result: Extract<FilesValidation, { ok: false }>) {
   return result.tooLarge ? requestTooLarge() : uploadInvalid(result.message);
 }
 
-async function readValidatedPhotos(files: readonly PhotoFile[]): Promise<PhotoFile[]> {
+async function readValidatedPhotos(
+  files: readonly PhotoFile[],
+  pixelBudget: number
+): Promise<PhotoFile[]> {
   const validated: PhotoFile[] = [];
+  let pixels = 0;
   for (const file of files) {
     const bytes = new Uint8Array(await file.arrayBuffer());
     const result = validatePhotoFile(file, bytes);
     if (!result.ok) throw new Error(result.error);
+    // Budget dihitung dari header SOF (murah, tanpa decode). Header yang tidak
+    // terbaca dihitung sebesar batas per-foto supaya tetap fail-closed.
+    const dims = jpegPixelCount(bytes);
+    pixels += dims ? dims.width * dims.height : PHOTO_MAX_PIXELS;
+    if (pixels > pixelBudget) throw new Error(FINALIZE_PIXEL_BUDGET_MESSAGE);
     validated.push(withCachedBuffer(file, bytes));
   }
   return validated;
@@ -174,8 +187,9 @@ export async function POST(request: Request, { params }: Params) {
     let validatedPhotos: PhotoFile[];
     let validatedGifPhotos: PhotoFile[];
     try {
-      validatedPhotos = await readValidatedPhotos(photos);
-      validatedGifPhotos = gifPhotos.length > 0 ? await readValidatedPhotos(gifPhotos) : [];
+      validatedPhotos = await readValidatedPhotos(photos, FINALIZE_MAX_TOTAL_PIXELS);
+      validatedGifPhotos =
+        gifPhotos.length > 0 ? await readValidatedPhotos(gifPhotos, FINALIZE_MAX_TOTAL_PIXELS) : [];
     } catch (error) {
       return uploadInvalid(error instanceof Error ? error.message : "Foto tidak valid");
     }

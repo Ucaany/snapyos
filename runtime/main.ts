@@ -83,20 +83,44 @@ async function main(): Promise<void> {
   }
 
   /** Kontrak lama: `ok` berarti adapter-nya hidup, `camera` berarti perangkat terdeteksi. */
+  // /health terbuka tanpa token, jadi tidak boleh menyentuh kamera: probe
+  // mengambil mutex yang sama dengan capture berbayar, dan N request paralel
+  // mengantrekan shutter sampai capture kiosk timeout. Nilai status di-cache
+  // singkat supaya liveness tetap terlihat tanpa memblokir jalur uang.
+  let lastHealth: { at: number; body: { ok: boolean; camera: boolean; message?: string } } | null =
+    null;
+  let healthProbing = false;
+  const HEALTH_CACHE_MS = 5_000;
+
   async function health() {
+    if (lastHealth && Date.now() - lastHealth.at < HEALTH_CACHE_MS) return lastHealth.body;
+    // Single-flight: request yang datang saat probe berjalan memakai nilai
+    // terakhir, bukan ikut mengantre di mutex kamera.
+    if (healthProbing) return lastHealth?.body ?? { ok: true, camera: false };
+    healthProbing = true;
     try {
       const status = await camera.status();
-      return {
-        ok: true,
-        camera: status.connected,
-        message: status.connected ? undefined : status.last_error,
+      lastHealth = {
+        at: Date.now(),
+        body: {
+          ok: true,
+          camera: status.connected,
+          message: status.connected ? undefined : status.last_error,
+        },
       };
+      return lastHealth.body;
     } catch (error) {
-      return {
-        ok: false,
-        camera: false,
-        message: error instanceof Error ? error.message : "Adapter kamera error",
+      lastHealth = {
+        at: Date.now(),
+        body: {
+          ok: false,
+          camera: false,
+          message: error instanceof Error ? error.message : "Adapter kamera error",
+        },
       };
+      return lastHealth.body;
+    } finally {
+      healthProbing = false;
     }
   }
 
@@ -123,7 +147,15 @@ async function main(): Promise<void> {
       return json(res, 403, { message: "Origin tidak diizinkan." }, null);
     }
 
-    const url = new URL(req.url || "/", `http://${config.host}:${config.port}`);
+    // Parse target SEBELUM gate token, tapi jangan pernah membiarkan URL buruk
+    // (mis. target "//") melempar keluar dari handler: dulu satu request tanpa
+    // token bisa mematikan proses bridge (kamera + printer mati).
+    let url: URL;
+    try {
+      url = new URL(req.url || "/", `http://${config.host}:${config.port}`);
+    } catch {
+      return json(res, 400, { message: "Request tidak valid." }, origin);
+    }
 
     // /health terbuka: Setup Perangkat memanggilnya sebelum token diisi.
     if (

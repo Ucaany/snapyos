@@ -8,7 +8,11 @@ import { unstable_cache, updateTag } from "next/cache";
 import { createHash } from "node:crypto";
 import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
-import { brandingSchema, type BrandingInput } from "@/lib/validators";
+import {
+  brandingSchema,
+  isBrandingStorageKey,
+  type BrandingInput,
+} from "@/lib/validators";
 import { slotCount, type TemplateLayout } from "@/lib/template-layout";
 import { selectVisibleTemplates } from "@/lib/template-visibility";
 import type {
@@ -154,7 +158,16 @@ async function buildPublicConfig(
   const pageVideoKeys = Object.values(merged.kiosk?.pages ?? {})
     .map((p) => p?.video_key)
     .filter((k): k is string => Boolean(k));
-  const videoKeys = [merged.logo_key, merged.kiosk?.video_key, ...pageVideoKeys];
+  const videoKeys = [
+    merged.logo_key,
+    merged.kiosk?.video_key,
+    ...pageVideoKeys,
+  ].filter(
+    // Hanya key di folder tenant ini yang boleh di-sign — baris lama bisa
+    // menunjuk objek tenant lain (lihat isBrandingStorageKey).
+    (k): k is string =>
+      typeof k === "string" && k.length > 0 && isBrandingStorageKey(business.id, k)
+  );
   const urlMap = await signedUrls(videoKeys);
 
   const logoUrl = merged.logo_key ? (urlMap.get(merged.logo_key) ?? null) : null;

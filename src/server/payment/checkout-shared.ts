@@ -8,6 +8,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
 import { computeVoucherDiscount } from "@/lib/checkout-math";
 import { resolveActiveDevice } from "@/server/devices";
+import { requireFeature } from "@/server/feature-gate";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -92,6 +93,29 @@ export async function loadCheckout(businessId: string, checkoutId: string): Prom
   return row;
 }
 
+/**
+ * Checkout untuk jalur KIOSK: selain milik business, harus milik booth yang
+ * memegang device token. Tanpa filter photobox_id, token booth A bisa membuat
+ * pembayaran (dan mengubah harga) untuk checkout booth B di tenant yang sama.
+ */
+export async function loadCheckoutForPhotobox(
+  businessId: string,
+  photoboxId: string,
+  checkoutId: string
+): Promise<CheckoutRow> {
+  const supabase = createServerClient();
+  const { data } = await supabase
+    .from("checkout_sessions")
+    .select("*")
+    .eq("id", checkoutId)
+    .eq("business_id", businessId)
+    .eq("photobox_id", photoboxId)
+    .maybeSingle();
+  const row = (data ?? null) as unknown as CheckoutRow | null;
+  if (!row) throw new ApiError("PAYMENT_NOT_FOUND", "Checkout tidak ditemukan");
+  return row;
+}
+
 export async function loadPaymentByReference(
   businessId: string,
   paymentReference: string
@@ -105,6 +129,32 @@ export async function loadPaymentByReference(
     .from("payments")
     .select("*")
     .eq("business_id", businessId)
+    .or(`payment_reference.eq.${paymentReference},order_id.eq.${paymentReference}`)
+    .maybeSingle();
+  const row = (data ?? null) as unknown as PaymentRow | null;
+  if (!row) throw new ApiError("PAYMENT_NOT_FOUND", "Payment tidak ditemukan");
+  return row;
+}
+
+/**
+ * Payment untuk jalur KIOSK: harus milik booth pemegang device token. Tanpa
+ * filter photobox_id, token booth A bisa membaca status, menyettlekan, dan
+ * mengambil result_token pembayaran booth B (foto customer lain).
+ */
+export async function loadPaymentByReferenceForPhotobox(
+  businessId: string,
+  photoboxId: string,
+  paymentReference: string
+): Promise<PaymentRow> {
+  if (!/^[A-Za-z0-9-]{6,40}$/.test(paymentReference)) {
+    throw new ApiError("PAYMENT_NOT_FOUND", "Payment tidak ditemukan");
+  }
+  const supabase = createServerClient();
+  const { data } = await supabase
+    .from("payments")
+    .select("*")
+    .eq("business_id", businessId)
+    .eq("photobox_id", photoboxId)
     .or(`payment_reference.eq.${paymentReference},order_id.eq.${paymentReference}`)
     .maybeSingle();
   const row = (data ?? null) as unknown as PaymentRow | null;
@@ -150,6 +200,10 @@ export async function validateVoucherForCheckout(
   code: string,
   ctx: VoucherContext
 ): Promise<{ voucherId: string; code: string; discount: number }> {
+  // Entitlement dicek di jalur KONSUMSI, bukan hanya CRUD dashboard: tenant
+  // yang downgrade tetap menyimpan vouchers aktif, dan tanpa cek ini voucher
+  // (fitur Business) masih bisa dipakai di kiosk.
+  await requireFeature(businessId, "voucher");
   const supabase = createServerClient();
   const { data: voucher } = await supabase
     .from("vouchers")

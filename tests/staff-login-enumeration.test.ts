@@ -23,7 +23,9 @@ test("staff-pin memverifikasi PIN tanpa mengembalikan daftar booth", async () =>
   const src = await readFile(new URL("src/server/staff-pin.ts", root), "utf8");
   assert.doesNotMatch(src, /listStaffLoginBooths/);
   assert.doesNotMatch(src, /return \[\{ photobox_id/);
-  assert.match(src, /export async function verifyStaffPin\(email: string, pin: string\)/);
+  assert.match(src, /export async function verifyStaffPin\(userId: string, pin: string\)/);
+  // PIN hanya untuk membership ber-role staff (bukan kredensial akun penuh).
+  assert.match(src, /row\.role === "staff"/);
   assert.match(src, /MAX_PIN_CANDIDATES/);
   assert.match(src, /\.not\("pin_hash", "is", null\)/);
 });
@@ -31,7 +33,7 @@ test("staff-pin memverifikasi PIN tanpa mengembalikan daftar booth", async () =>
 test("authorize memakai jalur PIN tanpa photobox_id wajib", async () => {
   const src = await readFile(new URL("src/lib/auth.ts", root), "utf8");
   assert.match(src, /if \(pin\) \{/);
-  assert.match(src, /verifyStaffPin\(email, pin\)/);
+  assert.match(src, /verifyStaffPin\(user\.id, pin\)/);
   // Lockout PIN per email (bukan per booth) karena booth tidak lagi dipilih.
   assert.match(src, /login:pin:\$\{email\}/);
   // Booth tidak lagi bagian dari kontrak credentials, jadi tidak ada jalur yang

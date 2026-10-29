@@ -192,7 +192,7 @@ function PinField({
           type="password"
           inputMode="numeric"
           maxLength={6}
-          placeholder="PIN 4–6 digit"
+          placeholder="PIN 6 digit"
           autoComplete="off"
           disabled={pending}
           aria-label={`PIN login ${booth.name}`}

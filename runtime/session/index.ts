@@ -343,12 +343,32 @@ export function finalizeSession(
   const photos: string[] = [];
   const gifPhotos: string[] = [];
 
+  // Batas SEBELUM writeFileSync: satu request tanpa batas bisa membuat >1 juta
+  // file (satu per part) dan menghabiskan volume booth sampai SQLite gagal baca.
+  const MAX_MEDIA_PARTS = 32;
+  const MAX_PART_BYTES = 12 * 1024 * 1024;
+  const MAX_TOTAL_MEDIA_BYTES = 60 * 1024 * 1024;
+  let mediaBytes = 0;
+
   for (const part of parts) {
     if (part.name === "photos" || part.name === "gif_photos") {
-      const list = part.name === "photos" ? photos : gifPhotos;
-      const file = join(dir, `final-${list.length}.jpg`);
+      const target = part.name === "photos" ? photos : gifPhotos;
+      if (photos.length + gifPhotos.length >= MAX_MEDIA_PARTS) {
+        throw new HttpError("Jumlah foto melebihi batas.", 400);
+      }
+      if (part.data.length > MAX_PART_BYTES) {
+        throw new HttpError("Ukuran satu foto melebihi batas.", 413);
+      }
+      mediaBytes += part.data.length;
+      if (mediaBytes > MAX_TOTAL_MEDIA_BYTES) {
+        throw new HttpError("Ukuran total foto melebihi batas.", 413);
+      }
+      // Namespace terpisah: dulu keduanya memakai `final-<n>.jpg`, sehingga
+      // gif_photos menimpa photos pada indeks yang sama.
+      const prefix = part.name === "photos" ? "final" : "gif";
+      const file = join(dir, `${prefix}-${target.length}.jpg`);
       writeFileSync(file, part.data);
-      list.push(file);
+      target.push(file);
       continue;
     }
     if (!part.filename) fields[part.name] = part.data.toString("utf8");

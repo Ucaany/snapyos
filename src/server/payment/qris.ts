@@ -6,7 +6,7 @@ import { resolveGatewayFromCredential } from "./providers/gateway-factory";
 import { resolveGatewayByCredential } from "./providers/registry";
 import {
   loadCheckout,
-  loadPaymentByReference,
+  loadPaymentByReferenceForPhotobox,
   requireDevice,
   type PaymentRow,
 } from "./checkout-shared";
@@ -31,7 +31,11 @@ export async function getPaymentStatus(
   deviceToken: string
 ) {
   const device = await requireDevice(businessSlug, deviceToken);
-  const payment = await loadPaymentByReference(device.businessId, paymentReference);
+  const payment = await loadPaymentByReferenceForPhotobox(
+    device.businessId,
+    device.photobox.id,
+    paymentReference
+  );
   if (
     (payment.status === "pending" || payment.status === "expired") &&
     payment.provider !== "cash"
@@ -130,8 +134,12 @@ export async function confirmCashPayment(
   deviceToken: string
 ) {
   const device = await requireDevice(businessSlug, deviceToken);
-  const payment = await loadPaymentByReference(device.businessId, paymentReference);
-  if (payment.provider !== "cash" || payment.photobox_id !== device.photobox.id)
+  const payment = await loadPaymentByReferenceForPhotobox(
+    device.businessId,
+    device.photobox.id,
+    paymentReference
+  );
+  if (payment.provider !== "cash")
     throw new ApiError("PAYMENT_NOT_FOUND", "Permintaan tunai tidak ditemukan");
   return settleCashPayment(payment);
 }

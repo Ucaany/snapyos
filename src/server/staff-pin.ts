@@ -13,16 +13,33 @@ export const MAX_PIN_CANDIDATES = 10;
 
 /**
  * Verifikasi PIN login staff TANPA mengungkap daftar booth ke browser.
- * Semua assignment PIN milik email dicoba (dibatasi MAX_PIN_CANDIDATES)
- * sehingga halaman login tidak perlu enumerasi booth dan PIN tetap berlaku
- * per (staff × booth) di DB.
+ *
+ * PIN hanya berlaku untuk membership ber-role `staff`. Tanpa batas ini, PIN
+ * booth (4–6 digit, dibagikan antar-shift dan diketik di tempat publik) menjadi
+ * faktor autentikasi tingkat akun: manager/owner yang punya PIN bisa masuk
+ * sebagai manager/owner penuh tanpa password.
+ *
+ * Assignment dicari lewat user_id (bukan email) supaya tidak butuh join users;
+ * pemanggil sudah punya user.id dari lookup login.
  */
-export async function verifyStaffPin(email: string, pin: string): Promise<boolean> {
+export async function verifyStaffPin(userId: string, pin: string): Promise<boolean> {
   const supabase = createServerClient();
+
+  // Hanya business tempat user ini benar-benar staff.
+  const { data: memberships } = await supabase
+    .from("business_members")
+    .select("business_id, role")
+    .eq("user_id", userId);
+  const staffBusinesses = ((memberships ?? []) as { business_id: string; role: string }[])
+    .filter((row) => row.role === "staff")
+    .map((row) => row.business_id);
+  if (staffBusinesses.length === 0) return false;
+
   const { data } = await supabase
     .from("member_photoboxes")
-    .select("pin_hash, users!inner ( email )")
-    .eq("users.email", email)
+    .select("pin_hash, photobox_id")
+    .eq("user_id", userId)
+    .in("business_id", staffBusinesses)
     .not("pin_hash", "is", null)
     // Urutan deterministik: tanpa `order by`, subset 10 hash yang diperiksa
     // berubah-ubah saat staff punya lebih dari MAX_PIN_CANDIDATES assignment,

@@ -62,9 +62,15 @@ export const getUserMemberships = cache(async (userId: string): Promise<Membersh
     throw new ApiError("INTERNAL", "Gagal memuat membership user");
   }
 
+  type BusinessRow = Membership["business"];
   return (data ?? []).flatMap((row) => {
-    const business = row.businesses;
+    const business = row.businesses as BusinessRow | BusinessRow[] | null;
     if (!business || Array.isArray(business)) return [];
+    // Business yang ditangguhkan platform tidak boleh muncul sebagai workspace
+    // yang bisa dipakai. Ini keputusan otorisasi, bukan sekadar kosmetik:
+    // tanpa filter ini, suspend hanya menghapus session sekali dan tenant
+    // masuk lagi pada login berikutnya.
+    if (business.status !== "active") return [];
     return [{ business, role: row.role as BusinessRole }];
   });
 });
@@ -111,8 +117,12 @@ export const getMembership = cache(
       throw new ApiError("INTERNAL", "Gagal memeriksa membership business");
     }
 
-    const business = data?.businesses;
+    const business = data?.businesses as Membership["business"] | Membership["business"][] | null;
     if (!data || !business || Array.isArray(business)) return null;
+    // Fail-closed di lapisan otorisasi: semua server function memakai helper
+    // ini, jadi business yang ditangguhkan tidak bisa dipakai lagi walau
+    // session-nya masih hidup.
+    if (business.status !== "active") return null;
     return { business, role: data.role as BusinessRole };
   }
 );
