@@ -18,7 +18,7 @@ function Card({
       data-slot="card"
       data-size={size}
       className={cn(
-        "flex flex-col gap-4 border-2 border-ink bg-surface p-5 text-ink shadow-[4px_4px_0_0_#111111]",
+        "flex flex-col gap-4 border-2 border-ink bg-surface p-4 text-ink shadow-[4px_4px_0_0_#111111] lg:p-5",
         className
       )}
       {...props}

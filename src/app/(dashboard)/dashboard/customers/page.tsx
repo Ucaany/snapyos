@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { Search } from "lucide-react";
 
 import { CustomersTable } from "@/components/dashboard/CustomersTable";
+import { IconButton } from "@/components/ui/icon-button";
 import { PreserveSearchParams } from "@/components/dashboard/PreserveSearchParams";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
@@ -32,7 +34,7 @@ export default async function CustomersPage({
           <CardHeader>
             <CardTitle>Akses terbatas</CardTitle>
             <CardDescription>
-              Role {active.role.toUpperCase()} tidak melihat data customer.
+              Role {active.role.toUpperCase()} tidak melihat data pelanggan.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -55,7 +57,7 @@ export default async function CustomersPage({
   };
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
       <PageHeader
         eyebrow={`${result.total} PELANGGAN`}
         title="Pelanggan"
@@ -76,12 +78,9 @@ export default async function CustomersPage({
               aria-label="Cari pelanggan"
               className="h-11 w-full rounded-none border-2 border-ink bg-surface px-3 font-mono text-sm shadow-[2px_2px_0_0_#111111] outline-none focus-visible:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink md:w-64"
             />
-            <button
-              type="submit"
-              className="h-11 border-2 border-ink bg-accent px-4 font-mono text-xs font-bold uppercase tracking-[0.08em] shadow-[2px_2px_0_0_#111111] transition-transform active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
-            >
-              Cari
-            </button>
+            <IconButton type="submit" variant="default" label="Cari pelanggan" compact>
+              <Search className="size-4" aria-hidden="true" />
+            </IconButton>
           </form>
         }
       />

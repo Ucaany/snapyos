@@ -32,7 +32,7 @@ export default async function PhotoboxesPage() {
   ]);
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
       <PageHeader
         eyebrow={`PHOTOBOX: ${active.role.toUpperCase()}`}
         title="Photobox"

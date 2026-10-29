@@ -1,3 +1,5 @@
+import { ChevronDown, Tag } from "lucide-react";
+
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { BrutalistCheckbox } from "@/components/admin/BrutalistCheckbox";
@@ -32,9 +34,10 @@ export default async function AdminPromosPage() {
   const dateFmt = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" });
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       <PageHeader
         eyebrow="ADMIN - SUBSCRIPTION PROMOS"
+        icon={Tag}
         title="Promo Berlangganan"
         meta={`${promos.length} kode promo · diskon billing plan`}
       />
@@ -158,7 +161,7 @@ export default async function AdminPromosPage() {
 
       <div className="flex flex-col gap-4">
         {promos.length === 0 ? (
-          <AdminEmptyState heading="BELUM ADA PROMO">
+          <AdminEmptyState heading="BELUM ADA PROMO" icon={Tag}>
             Buat promo pertama di atas, dipakai saat owner meng-upgrade atau renew plan.
           </AdminEmptyState>
         ) : (
@@ -194,8 +197,9 @@ export default async function AdminPromosPage() {
                 </p>
 
                 <details className="mt-4 border-t-2 border-ink/10 pt-4">
-                  <summary className="cursor-pointer font-mono text-xs uppercase tracking-[0.12em]">
+                  <summary className="flex min-h-11 cursor-pointer items-center gap-2 font-mono text-xs uppercase tracking-[0.12em]">
                     Edit promo
+                    <ChevronDown className="summary-chevron size-3.5" aria-hidden="true" />
                   </summary>
                   <AdminActionForm
                     action={updatePromoAction}

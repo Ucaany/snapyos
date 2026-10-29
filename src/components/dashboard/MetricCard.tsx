@@ -28,9 +28,9 @@ export function MetricCard({
     <div
       data-slot="metric-card"
       className={cn(
-        "flex flex-col justify-between gap-3 border-2 border-ink p-4 shadow-[4px_4px_0_0_#111111]",
+        "flex flex-col justify-between gap-3 border-2 border-ink p-3 shadow-[4px_4px_0_0_#111111] lg:p-4",
         accent ? "bg-accent text-ink" : "bg-surface text-ink",
-        size === "hero" && "p-5",
+        size === "hero" && "p-4 lg:p-5",
         className
       )}
     >

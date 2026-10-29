@@ -4,7 +4,7 @@
 
 > **DEFAULT AESTHETIC = Neo-Brutalism** (`industrial-brutalist-ui`) — bahasa visual **seluruh** UI SnapyOS: marketing, auth, kiosk customer, result page, dashboard owner/admin/staff, dan semua API response. Skill lain hanya menyumbang perilaku interaksi, bukan tampilan.
 >
-> **Satu pengecualian (2026-10-25):** shell dashboard owner/admin/staff punya tema kedua opsional, `modern` (`@efferd/app-shell-3` + token zinc), dipilih per-browser lewat cookie `snapyos_dashboard_theme` di halaman Pengaturan. Brutalis tetap default dan satu-satunya tema untuk marketing, auth, kiosk, POS, dan result page. Isi halaman dashboard tidak diduplikasi: scope `.theme-modern` (`src/styles/theme-modern.css`) menetralkan border tebal/hard shadow/radius 0/uppercase. Lihat `docs/dashboard-redesign.md`.
+> **Koreksi (2026-10-29):** tema kedua `modern` **tidak dikirim**. Verifikasi kode: tidak ada `src/styles/theme-modern.css`, tidak ada cookie `snapyos_dashboard_theme`, dan `/admin/settings` maupun `/dashboard/settings` tidak punya pemilih tema. Satu-satunya bahasa visual yang berlaku adalah Neo-Brutalism di seluruh shell.
 
 ## 1. Visual Theme & Atmosphere
 
@@ -53,7 +53,7 @@ Dilarang tampak seperti: generic Tailwind dashboard, generic AI SaaS, Linear/Str
   - **Eyebrow `LABEL`** di setiap `PageHeader` + panel (`font-mono`, uppercase, `tracking 0.2em`, warna muted). Alasan: penanda seksi ala print teknis yang konsisten di seluruh dashboard; ini motif identitas, bukan eyebrow dekoratif yang mengulang headline. Prefix literal `///` **tidak** dirender — ia terbaca sebagai artefak teks, bukan dekorasi.
   - **Panah `→` / `ArrowRight` pada CTA navigasi** ("Buka halaman transaksi →", "Upgrade Plan"). Alasan: menandai aksi yang meninggalkan halaman/panel saat ini. Bukan dipasang di setiap tombol; hanya pada CTA lintas-section.
   - **Role 4 warna non-netral** (R-29): kuning `--accent` (aksi/highlight), hijau `--accent-3` (status berhasil, mis. paid), merah `--destructive` (error/hapus), pink `--accent-2` (aksen identitas sekunder). Keempatnya punya peran fungsional; tidak boleh dipakai sebagai dekorasi bebas.
-- **Icons:** Lucide (wajib, per PRD).
+- **Icons:** Lucide (wajib, per PRD). Aksi berulang memakai `IconButton`/`IconLink`: ikon 36px visual dengan hit area 44px, `aria-label` + `title` + tooltip brutalist. Aksi uang/legal berkonsekuensi tinggi tetap memakai label teks.
 - **Kiosk icon rationale:** camera, printer, download, QR, banknote, tag, frame, and film icons directly identify capture, output, payment, or frame choices. Omit icons where the text already gives sufficient recognition.
 - **Kiosk payment hierarchy:** first available payment method receives accent fill as the default path; alternatives use surface fill so customer choice remains clear without implying equal operational priority.
 - **Kiosk branding contrast:** custom foreground/background pairs require WCAG AA contrast before save; invalid pairs are rejected at the validator boundary.
@@ -76,6 +76,10 @@ Dilarang tampak seperti: generic Tailwind dashboard, generic AI SaaS, Linear/Str
 - **Section repetition ban:** layout family sama max 1x per halaman.
 - Full-height: `min-h-[100dvh]`, bukan `h-screen`.
 - **Mobile collapse:** semua multi-column → single column di < 768px, eksplisit per section.
+- **Daftar owner:** desktop default list/tabel, mobile default grid/kartu lewat `RecordCollection`; preferensi per fitur di `localStorage` (`snapyos.view.<feature>`).
+- **Navigasi mobile:** panel menu di topbar (bukan strip horizontal panjang). Konten dashboard dibatasi `max-w-[1400px]` oleh shell.
+- **Skala spacing (kontrak):** container `p-6 md:p-10`; jarak antar section `gap-6 md:gap-8`; panel `p-4`; kartu `p-5`; sel metrik `p-3`; chip `px-3 py-2`. Nilai baru harus menambah level di daftar ini, bukan angka ad-hoc per halaman.
+- **Kolom aksi tabel:** tombol aksi memakai ikon 44px (`size="icon"`) dengan `aria-label` + `title`; label teks panjang hanya di dialog konfirmasi dan form, bukan di baris tabel.
 
 ## 6. Motion & Interaction
 

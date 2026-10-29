@@ -7,7 +7,9 @@ import { DateRangeFilter } from "@/components/dashboard/DateRangeFilter";
 import { RevenueChart } from "@/components/dashboard/RevenueChart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { PageHeader } from "@/components/ui/page-header";
+import { cn } from "@/lib/utils";
 import { can } from "@/lib/rbac";
 import { formatIDR } from "@/lib/dashboard-math";
 import { getActiveBusiness, requireUser } from "@/lib/tenant";
@@ -85,7 +87,7 @@ export default async function AnalyticsPage({
   };
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
       <PageHeader
         eyebrow="ANALITIK: PENDAPATAN"
         title="Analitik Pendapatan"
@@ -105,17 +107,19 @@ export default async function AnalyticsPage({
         }
       />
 
-      <nav aria-label="Breakdown revenue" className="flex flex-wrap gap-2">
+      <nav aria-label="Breakdown revenue" className="flex gap-2 overflow-x-auto pb-1">
         {TABS.map((t) => (
           <Link
             key={t.key}
             href={base({ tab: t.key })}
             aria-current={tab === t.key ? "page" : undefined}
-            className={
-              tab === t.key
-                ? "inline-flex min-h-11 items-center border-2 border-ink bg-accent px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.08em] shadow-[2px_2px_0_0_#111111]"
-                : "inline-flex min-h-11 items-center border-2 border-ink bg-surface px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.08em] hover:bg-muted"
-            }
+            className={cn(
+              buttonVariants({
+                variant: tab === t.key ? "default" : "outline",
+                size: "sm",
+              }),
+              "shrink-0 font-mono uppercase tracking-[0.08em]"
+            )}
           >
             {t.label}
           </Link>

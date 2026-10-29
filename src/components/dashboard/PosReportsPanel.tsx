@@ -79,7 +79,7 @@ export function PosReportsPanel({ data, timeZone }: { data: PosReportsData; time
           value={
             dominant
               ? `${dominant.key.toUpperCase()} \u00b7 ${formatIDR(dominant.amount)}`
-              : "\u2014"
+              : "-"
           }
         />
       </div>

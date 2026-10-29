@@ -42,7 +42,7 @@ export default async function PwaPage() {
   if (!(await hasFeature(active.business.id, "pwa_kiosk"))) redirect("/dashboard");
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
       <PageHeader
         eyebrow="PWA MOBILE"
         title="Unduh PWA"

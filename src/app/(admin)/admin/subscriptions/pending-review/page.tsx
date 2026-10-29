@@ -1,8 +1,12 @@
 import Link from "next/link";
+import { AlertOctagon, ArrowLeft } from "lucide-react";
 
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { PageHeader } from "@/components/ui/page-header";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { AdminPaginator } from "@/components/admin/AdminPaginator";
+import { cn } from "@/lib/utils";
 import {
   activateIntentFailureAction,
   dismissIntentFailureAction,
@@ -78,18 +82,21 @@ export default async function AdminSubscriptionPendingReviewPage({
   const totalPages = Math.max(1, Math.ceil(total / 25));
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       {/* Header - micro-typography + massive header per docs/11 §11.1 */}
       <PageHeader
         eyebrow="ADMIN - SUBSCRIPTIONS / PENDING REVIEW"
+        icon={AlertOctagon}
         title="Antrian Aktivasi Manual"
         description="Invoice sudah lunas (uang settled di provider), tapi aktivasi plan atau add-on gagal karena subscription tidak berada pada status yang valid. Biasanya owner cancel + cron transisi terjadi sebelum webhook paid diterima. Setiap kasus memerlukan keputusan manual: aktivasi (perbaiki via /admin/subscriptions, lalu tutup tiket) atau refund (via dashboard Pakasir)."
         right={
           <Link
             href="/admin/subscriptions"
-            className="inline-flex min-h-11 items-center border-2 border-ink bg-surface px-3 font-mono text-[11px] font-bold uppercase tracking-[0.15em] text-ink hover:bg-muted"
+            aria-label="Kembali ke manajemen langganan"
+            title="Kembali ke manajemen langganan"
+            className={buttonVariants({ variant: "outline", size: "icon" })}
           >
-            {"< KEMBALI"}
+            <ArrowLeft className="size-4" aria-hidden="true" />
           </Link>
         }
       />
@@ -107,11 +114,10 @@ export default async function AdminSubscriptionPendingReviewPage({
               key={tab.key}
               href={`/admin/subscriptions/pending-review?status=${tab.key}`}
               aria-current={active ? "page" : undefined}
-              className={
-                active
-                  ? "inline-flex min-h-11 items-center gap-2 border-2 border-ink bg-accent px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-[0.1em] text-ink"
-                  : "inline-flex min-h-11 items-center gap-2 border-2 border-ink bg-surface px-3 py-1.5 font-mono text-xs uppercase tracking-[0.1em] text-ink hover:bg-muted"
-              }
+              className={cn(
+                buttonVariants({ variant: active ? "default" : "outline", size: "sm" }),
+                "gap-2 font-mono uppercase tracking-[0.1em]"
+              )}
             >
               <span>{tab.label}</span>
               <span
@@ -256,27 +262,12 @@ export default async function AdminSubscriptionPendingReviewPage({
       )}
 
       {/* Paginator */}
-      {totalPages > 1 ? (
-        <nav
-          aria-label="Paginasi antrian review"
-          className="flex flex-wrap items-center gap-2 font-mono text-xs uppercase tracking-[0.1em]"
-        >
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-            <Link
-              key={p}
-              href={`/admin/subscriptions/pending-review?status=${activeStatus}&page=${p}`}
-              aria-current={p === page ? "page" : undefined}
-              className={
-                p === page
-                  ? "border-2 border-ink bg-accent px-3 py-1.5 font-bold"
-                  : "border-2 border-ink bg-surface px-3 py-1.5 hover:bg-muted"
-              }
-            >
-              {String(p).padStart(2, "0")}
-            </Link>
-          ))}
-        </nav>
-      ) : null}
+      <AdminPaginator
+        basePath="/admin/subscriptions/pending-review"
+        page={page}
+        totalPages={totalPages}
+        searchParams={{ status: activeStatus }}
+      />
     </div>
   );
 }

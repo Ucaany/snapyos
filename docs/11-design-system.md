@@ -69,6 +69,8 @@ Font: display bold (misal "Space Grotesk"/"Archivo Black" untuk heading), body r
 | Tabs                              | Breakdown analytics, settings                                                 |
 | Badge                             | Status (paid/pending/expired, photobox online/offline)                        |
 | Table / DataTable                 | Transactions, customers, vouchers                                             |
+| RecordCollection / RecordCard     | Daftar owner: toggle list (tabel) / grid (kartu); default mobile = kartu       |
+| IconButton / IconLink             | Aksi berulang: ikon 36px visual, hit area 44px, tooltip + aria-label          |
 | Form + zod                        | Semua form                                                                    |
 | Calendar / Popover                | Date range filter                                                             |
 | Tooltip                           | Info                                                                          |
@@ -122,7 +124,9 @@ Order summary (package, voucher input, discount, total), `[ PAY WITH QRIS ]`, la
 ## 11.9 Responsive
 
 - Desktop, tablet, mobile.
-- Owner dashboard: desktop-first.
+- Owner dashboard: desktop, tablet, dan mobile. Daftar memakai `RecordCollection`: desktop default list/tabel, mobile default grid/kartu. Preferensi per fitur disimpan di `localStorage` dengan kunci `snapyos.view.<feature>`.
+- Aksi berulang memakai `IconButton`/`IconLink` (ikon Lucide relevan, `aria-label` + `title` + tooltip). Ukuran visual 36px di desktop dengan hit area 44px; pada pointer kasar target tetap 44px. Aksi uang/legal berkonsekuensi tinggi tetap memakai label teks.
+- Navigasi mobile memakai panel menu di topbar, bukan strip horizontal panjang. Konten dashboard dibatasi `max-w-[1400px]` oleh shell.
 - Customer app: mobile/tablet/desktop, kamera responsif terhadap aspect ratio.
 
 ## 11.10 Accessibility

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CreditCard, Filter } from "lucide-react";
 import { AdminActionButton } from "@/components/admin/AdminActionForm";
 import { AdminPaginator } from "@/components/admin/AdminPaginator";
 import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
@@ -36,9 +37,10 @@ export default async function AdminGatewaysPage({
   const totalPages = Math.max(1, Math.ceil(state.total / 20));
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       <PageHeader
         eyebrow="ADMIN - PAYMENT GATEWAYS"
+        icon={CreditCard}
         title="Payment Gateway"
         meta={`${state.total} CREDENTIAL · ENABLE/DISABLE GLOBAL PER PROVIDER`}
       />
@@ -93,8 +95,14 @@ export default async function AdminGatewaysPage({
             ...GATEWAY_PROVIDERS.map((p) => ({ value: p, label: p.toUpperCase() })),
           ]}
         />
-        <Button type="submit" size="sm" variant="secondary">
-          Filter provider
+        <Button
+          type="submit"
+          size="icon"
+          variant="secondary"
+          aria-label="Filter provider"
+          title="Filter provider"
+        >
+          <Filter className="size-4" aria-hidden="true" />
         </Button>
       </form>
 

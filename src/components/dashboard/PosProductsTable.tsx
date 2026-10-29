@@ -4,6 +4,9 @@ import { Fragment, useActionState, useState } from "react";
 import { Pencil, Plus, PowerOff, Tag } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
+import { RecordCard } from "@/components/ui/record-card";
+import { RecordCollection } from "@/components/ui/record-collection";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DeleteConfirmForm } from "@/components/dashboard/DeleteConfirmForm";
 import { PosProductEditForm } from "@/components/dashboard/PosProductEditForm";
@@ -19,7 +22,7 @@ const initial: FormState = {};
 const DEFAULT_CATEGORIES: readonly string[] = POS_CATEGORIES;
 
 /**
- * PosProductsTable — CRUD produk POS (docs/pos/03 §3.2).
+ * PosProductsTable - CRUD produk POS (docs/pos/03 §3.2).
  * Pola OutletsTable: create di Collapsible, edit inline per baris, soft delete.
  */
 export function PosProductsTable({
@@ -36,6 +39,169 @@ export function PosProductsTable({
 
   const allCategories = [...new Set([...DEFAULT_CATEGORIES, ...categories])];
 
+  const statusBadge = (active: boolean) => (
+    <span
+      className={
+        active
+          ? "inline-flex h-6 items-center border-2 border-ink bg-accent-3 px-2 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-ink"
+          : "inline-flex h-6 items-center border-2 border-ink bg-muted px-2 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground"
+      }
+    >
+      {active ? "aktif" : "nonaktif"}
+    </span>
+  );
+
+  const table = (
+    <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
+      <table className="w-full border-collapse text-left lg:min-w-[820px]">
+        <caption className="sr-only">Daftar produk POS</caption>
+        <thead>
+          <tr className="border-b-2 border-ink bg-ink font-mono text-[11px] uppercase tracking-[0.12em] text-bg">
+            <th scope="col" className="hidden px-4 py-3.5 text-right md:table-cell">
+              No
+            </th>
+            <th scope="col" className="px-4 py-3.5">
+              Produk
+            </th>
+            <th scope="col" className="hidden px-4 py-3.5 lg:table-cell">
+              SKU
+            </th>
+            <th scope="col" className="hidden px-4 py-3.5 md:table-cell">
+              Kategori
+            </th>
+            <th scope="col" className="px-4 py-3.5 text-right">
+              Harga
+            </th>
+            <th scope="col" className="hidden px-4 py-3.5 text-right lg:table-cell">
+              Stok
+            </th>
+            <th scope="col" className="px-4 py-3.5">
+              Status
+            </th>
+            {canManage && (
+              <th scope="col" className="px-4 py-3.5 text-right">
+                Aksi
+              </th>
+            )}
+          </tr>
+        </thead>
+        <tbody>
+          {products.map((product, index) => (
+            <Fragment key={product.id}>
+              <tr className="border-b-2 border-ink/10 transition-colors hover:bg-muted/60">
+                <td className="hidden px-4 py-3 text-right font-mono text-xs font-bold text-muted-foreground md:table-cell">
+                  {String(index + 1).padStart(2, "0")}
+                </td>
+                <td className="px-4 py-3 font-mono text-sm font-bold uppercase tracking-[0.05em]">
+                  {product.name}
+                </td>
+                <td className="hidden px-4 py-3 font-mono text-xs text-muted-foreground lg:table-cell">
+                  {product.sku ?? "-"}
+                </td>
+                <td className="hidden px-4 py-3 font-mono text-xs uppercase md:table-cell">
+                  {product.category}
+                </td>
+                <td className="px-4 py-3 text-right font-mono text-sm font-bold tabular-nums">
+                  {formatIDR(product.price)}
+                </td>
+                <td className="hidden px-4 py-3 text-right font-mono text-sm tabular-nums lg:table-cell">
+                  {product.stock === null ? "-" : product.stock}
+                </td>
+                <td className="px-4 py-3">{statusBadge(product.is_active)}</td>
+                {canManage && (
+                  <td className="px-4 py-3">
+                    <div className="flex justify-end gap-1.5">
+                      <IconButton
+                        label={`Ubah produk ${product.name}`}
+                        icon={Pencil}
+                        compact
+                        aria-expanded={editingId === product.id}
+                        onClick={() => setEditingId(editingId === product.id ? null : product.id)}
+                      />
+                      {product.is_active && (
+                        <DeleteConfirmForm
+                          action={posDeactivateProductAction}
+                          id={product.id}
+                          title="Nonaktifkan produk?"
+                          description={`Produk ${product.name} tidak akan muncul di kasir POS. Riwayat order tetap utuh dan dapat diaktifkan kembali kapan saja.`}
+                          confirmLabel="Nonaktifkan"
+                          variant="default"
+                          triggerLabel={`Nonaktifkan produk ${product.name}`}
+                          triggerTitle="Nonaktifkan (riwayat order tetap utuh)"
+                          triggerIcon={<PowerOff className="h-4 w-4" aria-hidden="true" />}
+                          compact
+                        />
+                      )}
+                    </div>
+                  </td>
+                )}
+              </tr>
+              {editingId === product.id && canManage && (
+                <tr className="border-b-2 border-ink/10 bg-muted">
+                  <td colSpan={8} className="px-4 py-3 md:px-6">
+                    <PosProductEditForm
+                      product={product}
+                      categories={allCategories}
+                      onDone={() => setEditingId(null)}
+                    />
+                  </td>
+                </tr>
+              )}
+            </Fragment>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  const grid = (
+    <ul
+      className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
+      aria-label="Produk POS (tampilan kotak)"
+    >
+      {products.map((product) => (
+        <li key={product.id} className="min-w-0">
+          <RecordCard
+            title={product.name}
+            subtitle={product.sku ?? undefined}
+            badge={statusBadge(product.is_active)}
+            meta={[
+              { label: "Kategori", value: product.category },
+              { label: "Harga", value: formatIDR(product.price) },
+              { label: "Stok", value: product.stock === null ? "-" : product.stock },
+            ]}
+            actions={
+              canManage ? (
+                <>
+                  <IconButton
+                    label={`Ubah produk ${product.name}`}
+                    icon={Pencil}
+                    compact
+                    onClick={() => setEditingId(product.id)}
+                  />
+                  {product.is_active && (
+                    <DeleteConfirmForm
+                      action={posDeactivateProductAction}
+                      id={product.id}
+                      title="Nonaktifkan produk?"
+                      description={`Produk ${product.name} tidak akan muncul di kasir POS. Riwayat order tetap utuh dan dapat diaktifkan kembali kapan saja.`}
+                      confirmLabel="Nonaktifkan"
+                      variant="default"
+                      triggerLabel={`Nonaktifkan produk ${product.name}`}
+                      triggerTitle="Nonaktifkan (riwayat order tetap utuh)"
+                      triggerIcon={<PowerOff className="h-4 w-4" aria-hidden="true" />}
+                      compact
+                    />
+                  )}
+                </>
+              ) : undefined
+            }
+          />
+        </li>
+      ))}
+    </ul>
+  );
+
   return (
     <div className="flex flex-col gap-6">
       {canManage && (
@@ -49,9 +215,13 @@ export function PosProductsTable({
                 {String(products.length).padStart(2, "0")}
               </span>
             </div>
-            <CollapsibleTrigger className="min-h-11 px-4" aria-label="Buka form produk baru">
+            <CollapsibleTrigger
+              className="px-3"
+              aria-label="Buka form produk baru"
+              title="Produk baru"
+            >
               <Plus aria-hidden />
-              Produk baru
+              <span className="sr-only">Produk baru</span>
             </CollapsibleTrigger>
           </div>
           <CollapsiblePanel className="mt-4">
@@ -97,117 +267,12 @@ export function PosProductsTable({
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
-          <table className="w-full md:min-w-[820px] border-collapse text-left">
-            <caption className="sr-only">Daftar produk POS</caption>
-            <thead>
-              <tr className="border-b-2 border-ink bg-ink font-mono text-[11px] uppercase tracking-[0.12em] text-bg">
-                <th scope="col" className="px-4 py-3.5 text-right">
-                  No
-                </th>
-                <th scope="col" className="px-4 py-3.5">
-                  Produk
-                </th>
-                <th scope="col" className="px-4 py-3.5">
-                  SKU
-                </th>
-                <th scope="col" className="px-4 py-3.5">
-                  Kategori
-                </th>
-                <th scope="col" className="px-4 py-3.5 text-right">
-                  Harga
-                </th>
-                <th scope="col" className="px-4 py-3.5 text-right">
-                  Stok
-                </th>
-                <th scope="col" className="px-4 py-3.5">
-                  Status
-                </th>
-                {canManage && (
-                  <th scope="col" className="px-4 py-3.5 text-right">
-                    Aksi
-                  </th>
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {products.map((product, index) => (
-                <Fragment key={product.id}>
-                  <tr className="border-b-2 border-ink/10 transition-colors hover:bg-muted/60">
-                    <td className="px-4 py-4 text-right font-mono text-xs font-bold text-muted-foreground">
-                      {String(index + 1).padStart(2, "0")}
-                    </td>
-                    <td className="px-4 py-4 font-mono text-sm font-bold uppercase tracking-[0.05em]">
-                      {product.name}
-                    </td>
-                    <td className="px-4 py-4 font-mono text-xs text-muted-foreground">
-                      {product.sku ?? "-"}
-                    </td>
-                    <td className="px-4 py-4 font-mono text-xs uppercase">{product.category}</td>
-                    <td className="px-4 py-4 text-right font-mono text-sm font-bold">
-                      {formatIDR(product.price)}
-                    </td>
-                    <td className="px-4 py-4 text-right font-mono text-sm">
-                      {product.stock === null ? "-" : product.stock}
-                    </td>
-                    <td className="px-4 py-4">
-                      <span
-                        className={
-                          product.is_active
-                            ? "inline-flex h-6 items-center border-2 border-ink bg-accent-3 px-2 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-ink"
-                            : "inline-flex h-6 items-center border-2 border-ink bg-muted px-2 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground"
-                        }
-                      >
-                        {product.is_active ? "aktif" : "nonaktif"}
-                      </span>
-                    </td>
-                    {canManage && (
-                      <td className="px-4 py-4">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="icon-sm"
-                            aria-label={`Ubah produk ${product.name}`}
-                            aria-expanded={editingId === product.id}
-                            onClick={() =>
-                              setEditingId(editingId === product.id ? null : product.id)
-                            }
-                          >
-                            <Pencil aria-hidden />
-                          </Button>
-                          {product.is_active && (
-                            <DeleteConfirmForm
-                              action={posDeactivateProductAction}
-                              id={product.id}
-                              title="Nonaktifkan produk?"
-                              description={`Produk ${product.name} tidak akan muncul di kasir POS. Riwayat order tetap utuh dan dapat diaktifkan kembali kapan saja.`}
-                              confirmLabel="Nonaktifkan"
-                              variant="default"
-                              triggerLabel={`Nonaktifkan produk ${product.name}`}
-                              triggerTitle="Nonaktifkan (riwayat order tetap utuh)"
-                              triggerIcon={<PowerOff className="h-4 w-4" aria-hidden="true" />}
-                            />
-                          )}
-                        </div>
-                      </td>
-                    )}
-                  </tr>
-                  {editingId === product.id && canManage && (
-                    <tr className="border-b-2 border-ink/10 bg-muted">
-                      <td colSpan={8} className="px-4 py-4 md:px-6">
-                        <PosProductEditForm
-                          product={product}
-                          categories={allCategories}
-                          onDone={() => setEditingId(null)}
-                        />
-                      </td>
-                    </tr>
-                  )}
-                </Fragment>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <RecordCollection
+          storageKey="snapyos.view.pos-products"
+          label="Daftar produk POS"
+          list={table}
+          grid={grid}
+        />
       )}
     </div>
   );

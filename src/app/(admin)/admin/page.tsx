@@ -1,10 +1,13 @@
 import Link from "next/link";
+import { ChevronDown, Gauge } from "lucide-react";
+
 import { AdminTrendChart } from "@/components/dashboard/AdminTrendChart";
 import { BreakdownChart } from "@/components/dashboard/BreakdownChart";
 import { RevenueChart } from "@/components/dashboard/RevenueChart";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { formatIDR } from "@/lib/dashboard-math";
 import {
   getAdminAnalytics,
@@ -38,16 +41,25 @@ export default async function AdminOverviewPage() {
   }));
 
   const attention = [
-    { label: "Antrian aktivasi manual", value: health.pendingReview, href: "/admin/subscriptions/pending-review" },
+    {
+      label: "Antrian aktivasi manual",
+      value: health.pendingReview,
+      href: "/admin/subscriptions/pending-review",
+    },
     { label: "Webhook error", value: health.webhookErrors, href: "/admin/payments" },
-    { label: "Signature invalid", value: payments.webhookIntegrity.invalidSignature, href: "/admin/payments" },
+    {
+      label: "Signature invalid",
+      value: payments.webhookIntegrity.invalidSignature,
+      href: "/admin/payments",
+    },
   ];
   const needsAttention = settings.maintenance_mode || attention.some((item) => item.value > 0);
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       <PageHeader
         size="hero"
+        icon={Gauge}
         eyebrow="ADMIN - PLATFORM CONTROL"
         title="Operasi SnapyOS"
         meta={`SEMUA TENANT · AGREGAT PLATFORM · ${payments.webhookIntegrity.total} WEBHOOK TEREKAM`}
@@ -160,8 +172,8 @@ export default async function AdminOverviewPage() {
                 </div>
               ))}
             </dl>
-            <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
-              Webhook: {payments.webhookIntegrity.invalidSignature} signature invalid ·{" "}
+            <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+              Webhook: {payments.webhookIntegrity.invalidSignature} signature invalid,{" "}
               {payments.webhookIntegrity.errors} error
             </p>
           </CardContent>
@@ -242,7 +254,7 @@ export default async function AdminOverviewPage() {
           <div className="mt-3 flex flex-wrap gap-2">
             <Link
               href="/admin/subscriptions/pending-review"
-              className="inline-flex min-h-11 items-center border-2 border-ink bg-surface px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.1em] hover:bg-muted"
+              className={buttonVariants({ variant: "outline", size: "sm" })}
             >
               Antrian Aktivasi Manual ({health.pendingReview})
             </Link>
@@ -251,8 +263,9 @@ export default async function AdminOverviewPage() {
       </Card>
 
       <details className="border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
-        <summary className="flex min-h-11 cursor-pointer items-center px-5 font-mono text-[11px] font-bold uppercase tracking-[0.12em]">
+        <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 px-5 font-mono text-[11px] font-bold uppercase tracking-[0.12em]">
           Rincian user seluruh platform
+          <ChevronDown className="summary-chevron size-4" aria-hidden="true" />
         </summary>
         <div className="border-t-2 border-ink p-5">
           <dl className="grid grid-cols-2 gap-[2px] border-2 border-ink bg-ink md:grid-cols-3">

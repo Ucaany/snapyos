@@ -1,12 +1,17 @@
 "use client";
 
 import { Fragment, useActionState, useState } from "react";
-import { ChevronDown, Pencil, Plus, Store } from "lucide-react";
+import { ChevronDown, Plus, Store } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
+import { RecordCard } from "@/components/ui/record-card";
+import {
+  RecordCollection,
+  RecordEditButton,
+} from "@/components/ui/record-collection";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { WilayahPicker } from "@/components/dashboard/WilayahPicker";
 import { DeleteConfirmForm } from "@/components/dashboard/DeleteConfirmForm";
@@ -25,7 +30,7 @@ type Props = {
 };
 
 /**
- * OutletsTable — CRUD outlet (docs/04 §4.7, docs/12 Phase 3).
+ * OutletsTable - CRUD outlet (docs/04 §4.7, docs/12 Phase 3).
  * Create form di Collapsible; wilayah via data self-hosted emsifa dump.
  */
 export function OutletsTable({ outlets, canWrite, maxOutlets }: Props) {
@@ -33,6 +38,151 @@ export function OutletsTable({ outlets, canWrite, maxOutlets }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const limitReached = outlets.length >= maxOutlets;
+
+  const table = (
+    <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
+      <table className="w-full border-collapse text-left lg:min-w-[760px]">
+        <caption className="sr-only">Daftar outlet</caption>
+        <thead>
+          <tr className="border-b-2 border-ink bg-ink font-mono text-[11px] uppercase tracking-[0.12em] text-bg">
+            <th scope="col" className="px-4 py-3.5 text-right">
+              No
+            </th>
+            <th scope="col" className="px-4 py-3.5">
+              Outlet
+            </th>
+            <th scope="col" className="hidden px-4 py-3.5 md:table-cell">
+              Wilayah / Alamat
+            </th>
+            <th scope="col" className="px-4 py-3.5">
+              Status
+            </th>
+            <th scope="col" className="hidden px-4 py-3.5 text-right md:table-cell">
+              Photobox
+            </th>
+            {canWrite && (
+              <th scope="col" className="px-4 py-3.5 text-right">
+                Aksi
+              </th>
+            )}
+          </tr>
+        </thead>
+        <tbody>
+          {outlets.map((outlet, index) => (
+            <Fragment key={outlet.id}>
+              <tr className="border-b-2 border-ink/10 transition-colors hover:bg-muted/60">
+                <td className="px-4 py-3 text-right font-mono text-xs font-bold text-muted-foreground">
+                  {String(index + 1).padStart(2, "0")}
+                </td>
+                <td className="px-4 py-3 font-mono text-sm font-bold uppercase tracking-[0.05em]">
+                  {outlet.name}
+                </td>
+                <td className="hidden px-4 py-3 font-mono text-xs text-muted-foreground md:table-cell">
+                  <span className="text-ink">
+                    {[outlet.city, outlet.province].filter(Boolean).join(" · ") || "-"}
+                  </span>
+                  {outlet.address && <span className="mt-1 block">{outlet.address}</span>}
+                </td>
+                <td className="px-4 py-3">
+                  <StatusBadge status={outlet.status} />
+                </td>
+                <td className="hidden px-4 py-3 text-right font-mono text-sm font-bold tabular-nums md:table-cell">
+                  {outlet.photobox_count}
+                </td>
+                {canWrite && (
+                  <td className="px-4 py-3">
+                    <div className="flex justify-end gap-1.5">
+                      <RecordEditButton
+                        label={`Ubah outlet ${outlet.name}`}
+                        onEdit={() => setEditingId(outlet.id)}
+                      />
+                      <DeleteConfirmForm
+                        action={deleteOutletAction}
+                        id={outlet.id}
+                        title="Hapus outlet?"
+                        description={
+                          outlet.photobox_count > 0
+                            ? "Outlet memiliki photobox aktif. Hapus atau pindahkan photobox terlebih dahulu."
+                            : `Outlet ${outlet.name} akan dihapus permanen. Aksi ini tidak dapat dibatalkan.`
+                        }
+                        disabled={outlet.photobox_count > 0}
+                        triggerLabel={`Hapus outlet ${outlet.name}`}
+                        triggerTitle={
+                          outlet.photobox_count > 0
+                            ? "Hapus photobox di outlet ini dahulu"
+                            : "Hapus outlet"
+                        }
+                        compact
+                      />
+                    </div>
+                  </td>
+                )}
+              </tr>
+              {editingId === outlet.id && canWrite && (
+                <tr className="border-b-2 border-ink/10 bg-muted">
+                  <td colSpan={6} className="px-4 py-3 md:px-6">
+                    <OutletEditForm outlet={outlet} onDone={() => setEditingId(null)} />
+                  </td>
+                </tr>
+              )}
+            </Fragment>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  const grid = (
+    <ul
+      className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
+      aria-label="Outlet (tampilan kotak)"
+    >
+      {outlets.map((outlet) => (
+        <li key={outlet.id} className="min-w-0">
+          <RecordCard
+            title={outlet.name}
+            subtitle={outlet.address ?? undefined}
+            badge={<StatusBadge status={outlet.status} />}
+            meta={[
+              {
+                label: "Wilayah",
+                value: [outlet.city, outlet.province].filter(Boolean).join(" · ") || "-",
+              },
+              { label: "Photobox", value: outlet.photobox_count },
+            ]}
+            actions={
+              canWrite ? (
+                <>
+                  <RecordEditButton
+                    label={`Ubah outlet ${outlet.name}`}
+                    onEdit={() => setEditingId(outlet.id)}
+                  />
+                  <DeleteConfirmForm
+                    action={deleteOutletAction}
+                    id={outlet.id}
+                    title="Hapus outlet?"
+                    description={
+                      outlet.photobox_count > 0
+                        ? "Outlet memiliki photobox aktif. Hapus atau pindahkan photobox terlebih dahulu."
+                        : `Outlet ${outlet.name} akan dihapus permanen. Aksi ini tidak dapat dibatalkan.`
+                    }
+                    disabled={outlet.photobox_count > 0}
+                    triggerLabel={`Hapus outlet ${outlet.name}`}
+                    triggerTitle={
+                      outlet.photobox_count > 0
+                        ? "Hapus photobox di outlet ini dahulu"
+                        : "Hapus outlet"
+                    }
+                    compact
+                  />
+                </>
+              ) : undefined
+            }
+          />
+        </li>
+      ))}
+    </ul>
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -53,9 +203,13 @@ export function OutletsTable({ outlets, canWrite, maxOutlets }: Props) {
                 Plan limit
               </span>
             </div>{" "}
-            <CollapsibleTrigger className="min-h-11 px-4" aria-label="Buka form outlet baru">
+            <CollapsibleTrigger
+              className="px-3"
+              aria-label="Buka form outlet baru"
+              title="Outlet baru"
+            >
               <Plus aria-hidden />
-              Outlet baru
+              <span className="sr-only">Outlet baru</span>
               <ChevronDown
                 className="transition-transform duration-100 [[data-panel-open]_&]:rotate-180"
                 aria-hidden
@@ -116,7 +270,7 @@ export function OutletsTable({ outlets, canWrite, maxOutlets }: Props) {
               )}
               <div className="flex items-center justify-end gap-3 border-t-2 border-ink/10 pt-4">
                 <Button type="submit" size="sm" disabled={creating}>
-                  {creating ? "Menyimpan…" : "Simpan outlet"}
+                  {creating ? "Menyimpan..." : "Simpan outlet"}
                 </Button>
               </div>
             </form>
@@ -163,100 +317,12 @@ export function OutletsTable({ outlets, canWrite, maxOutlets }: Props) {
           />
         )
       ) : (
-        <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
-          <table className="w-full border-collapse text-left md:min-w-[760px]">
-            <caption className="sr-only">Daftar outlet</caption>
-            <thead>
-              <tr className="border-b-2 border-ink bg-ink font-mono text-[11px] uppercase tracking-[0.12em] text-bg">
-                <th scope="col" className="px-4 py-3.5 text-right">
-                  No
-                </th>
-                <th scope="col" className="px-4 py-3.5">
-                  Outlet
-                </th>
-                <th scope="col" className="hidden px-4 py-3.5 md:table-cell">
-                  Wilayah / Alamat
-                </th>
-                <th scope="col" className="px-4 py-3.5">
-                  Status
-                </th>
-                <th scope="col" className="hidden px-4 py-3.5 text-right md:table-cell">
-                  Photobox
-                </th>
-                {canWrite && (
-                  <th scope="col" className="px-4 py-3.5 text-right">
-                    Aksi
-                  </th>
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {outlets.map((outlet, index) => (
-                <Fragment key={outlet.id}>
-                  <tr className="border-b-2 border-ink/10 transition-colors hover:bg-muted/60">
-                    <td className="px-4 py-4 text-right font-mono text-xs font-bold text-muted-foreground">
-                      {String(index + 1).padStart(2, "0")}
-                    </td>
-                    <td className="px-4 py-4 font-mono text-sm font-bold uppercase tracking-[0.05em]">
-                      {outlet.name}
-                    </td>
-                    <td className="hidden px-4 py-4 font-mono text-xs text-muted-foreground md:table-cell">
-                      <span className="text-ink">
-                        {[outlet.city, outlet.province].filter(Boolean).join(" · ") || "-"}
-                      </span>
-                      {outlet.address && <span className="mt-1 block">{outlet.address}</span>}
-                    </td>
-                    <td className="px-4 py-4">
-                      <StatusBadge status={outlet.status} />
-                    </td>
-                    <td className="hidden px-4 py-4 text-right font-mono text-sm font-bold md:table-cell">
-                      {outlet.photobox_count}
-                    </td>
-                    {canWrite && (
-                      <td className="px-4 py-4">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="icon-sm"
-                            aria-label={`Ubah outlet ${outlet.name}`}
-                            aria-expanded={editingId === outlet.id}
-                            onClick={() => setEditingId(editingId === outlet.id ? null : outlet.id)}
-                          >
-                            <Pencil aria-hidden />
-                          </Button>
-                          <DeleteConfirmForm
-                            action={deleteOutletAction}
-                            id={outlet.id}
-                            title="Hapus outlet?"
-                            description={
-                              outlet.photobox_count > 0
-                                ? "Outlet memiliki photobox aktif. Hapus atau pindahkan photobox terlebih dahulu."
-                                : `Outlet ${outlet.name} akan dihapus permanen. Aksi ini tidak dapat dibatalkan.`
-                            }
-                            disabled={outlet.photobox_count > 0}
-                            triggerLabel={`Hapus outlet ${outlet.name}`}
-                            triggerTitle={
-                              outlet.photobox_count > 0
-                                ? "Hapus photobox di outlet ini dahulu"
-                                : "Hapus outlet"
-                            }
-                          />
-                        </div>
-                      </td>
-                    )}
-                  </tr>
-                  {editingId === outlet.id && canWrite && (
-                    <tr className="border-b-2 border-ink/10 bg-muted">
-                      <td colSpan={6} className="px-4 py-4 md:px-6">
-                        <OutletEditForm outlet={outlet} onDone={() => setEditingId(null)} />
-                      </td>
-                    </tr>
-                  )}
-                </Fragment>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <RecordCollection
+          storageKey="snapyos.view.outlets"
+          label="Daftar outlet"
+          list={table}
+          grid={grid}
+        />
       )}
     </div>
   );

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CircleHelp, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { RecordCollection } from "@/components/ui/record-collection";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -28,6 +29,33 @@ const dateFmt = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyl
 export function SupportTicketsPanel({ tickets }: { tickets: SupportTicket[] }) {
   const [state, action, pending] = useActionState(submitSupportTicketAction, initial);
 
+  function ticketCard(t: SupportTicket) {
+    return (
+      <Link
+        href={`/dashboard/support/${t.id}`}
+        className="block border-2 border-ink bg-surface p-4 shadow-[4px_4px_0_0_#111111] transition-transform active:translate-y-[2px]"
+      >
+        <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+              {`${t.category} · ${t.area}`}
+            </p>
+            <h3 className="min-w-0 break-words font-display text-lg uppercase tracking-tight">
+              {t.subject}
+            </h3>
+          </div>
+          <StatusBadge status={t.status} label={STATUS_LABEL[t.status]} />
+        </div>
+        <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+          {t.description}
+        </p>
+        <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+          {dateFmt.format(new Date(t.created_at))} · {STATUS_LABEL[t.status]}
+        </p>
+      </Link>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <Collapsible>
@@ -35,9 +63,13 @@ export function SupportTicketsPanel({ tickets }: { tickets: SupportTicket[] }) {
           <p className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
             {`TIKET ${String(tickets.length).padStart(2, "0")}`}
           </p>
-          <CollapsibleTrigger className="min-h-11 px-4" aria-label="Buka form tiket baru">
+          <CollapsibleTrigger
+            className="px-3"
+            aria-label="Buka form tiket baru"
+            title="Tiket baru"
+          >
             <Plus aria-hidden />
-            Tiket baru
+            <span className="sr-only">Tiket baru</span>
           </CollapsibleTrigger>
         </div>
         <CollapsiblePanel className="mt-4">
@@ -111,32 +143,30 @@ export function SupportTicketsPanel({ tickets }: { tickets: SupportTicket[] }) {
           body="Laporkan masalah atau pertanyaan Anda melalui tombol Tiket baru. Tim SnapyOS akan menindaklanjuti dari sini."
         />
       ) : (
-        <ul className="flex flex-col gap-3">
-          {tickets.map((t) => (
-            <li key={t.id}>
-              <Link
-                href={`/dashboard/support/${t.id}`}
-                className="block border-2 border-ink bg-surface p-4 shadow-[4px_4px_0_0_#111111] transition-transform active:translate-y-[2px]"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="flex flex-col gap-1">
-                    <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                      {`${t.category} · ${t.area}`}
-                    </p>
-                    <h3 className="font-display text-lg uppercase tracking-tight">{t.subject}</h3>
-                  </div>
-                  <StatusBadge status={t.status} label={STATUS_LABEL[t.status]} />
-                </div>
-                <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-                  {t.description}
-                </p>
-                <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                  {dateFmt.format(new Date(t.created_at))} · {STATUS_LABEL[t.status]}
-                </p>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <RecordCollection
+          storageKey="snapyos.view.support-tickets"
+          label="Daftar tiket bantuan"
+          mobileDefault="list"
+          list={
+            <ul className="flex flex-col gap-3">
+              {tickets.map((t) => (
+                <li key={t.id}>{ticketCard(t)}</li>
+              ))}
+            </ul>
+          }
+          grid={
+            <ul
+              className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
+              aria-label="Tiket bantuan (tampilan kotak)"
+            >
+              {tickets.map((t) => (
+                <li key={t.id} className="min-w-0">
+                  {ticketCard(t)}
+                </li>
+              ))}
+            </ul>
+          }
+        />
       )}
     </div>
   );

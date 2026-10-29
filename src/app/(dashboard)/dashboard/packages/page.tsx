@@ -32,11 +32,11 @@ export default async function PackagesPage() {
   ]);
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
       <PageHeader
         eyebrow={`PAKET: ${active.role.toUpperCase()}`}
-        title="Package"
-        description="Package menentukan harga dan jumlah foto/cetak di kiosk. Harga integer IDR; final amount saat checkout selalu dihitung server-side."
+        title="Paket"
+        description="Paket menentukan harga dan jumlah foto/cetak di kiosk. Harga integer IDR; final amount saat checkout selalu dihitung server-side."
       />
 
       <PackagesTable

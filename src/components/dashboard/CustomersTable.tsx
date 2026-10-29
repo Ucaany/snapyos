@@ -1,13 +1,14 @@
 "use client";
 
 import { Fragment, useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import { Users } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Users } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { IconButton, IconLink } from "@/components/ui/icon-button";
+import { RecordCard } from "@/components/ui/record-card";
+import { RecordCollection } from "@/components/ui/record-collection";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { formatDate, formatIDR } from "@/lib/dashboard-math";
 import type { CustomerRow, CustomerDetail } from "@/server/customers";
 
@@ -21,7 +22,99 @@ type Props = {
   timeZone?: string;
 };
 
-/** CustomersTable — list + detail on-demand via API (docs/04 §4.12). */
+function DetailBlock({
+  detail,
+  loading,
+  error,
+  customerName,
+  timeZone,
+}: {
+  detail: CustomerDetail | null;
+  loading: boolean;
+  error: string | null;
+  customerName: string | null;
+  timeZone?: string;
+}) {
+  return (
+    <div className="mt-4">
+      <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
+        {`Riwayat: ${(customerName ?? "PELANGGAN").toUpperCase()}`}
+      </p>
+      {loading && (
+        <div className="mt-4 flex gap-3" aria-label="Memuat detail">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-4 w-32" />
+        </div>
+      )}
+      {error && (
+        <p
+          role="alert"
+          className="mt-4 border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink"
+        >
+          {error}
+        </p>
+      )}
+      {detail && (
+        <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <section aria-label="Riwayat transaksi">
+            <h3 className="font-mono text-[11px] font-bold uppercase tracking-[0.12em]">
+              Transaksi ({detail.transactions.length})
+            </h3>
+            {detail.transactions.length === 0 ? (
+              <p className="mt-2 font-mono text-xs text-muted-foreground">
+                Belum ada transaksi.
+              </p>
+            ) : (
+              <ul className="mt-2 divide-y-2 divide-ink/10 border-2 border-ink bg-surface">
+                {detail.transactions.map((t) => (
+                  <li
+                    key={t.id}
+                    className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 font-mono text-xs"
+                  >
+                    <span className="font-bold">{t.number}</span>
+                    <span className="text-muted-foreground">
+                      {t.paidAt ? formatDate(t.paidAt, timeZone) : "-"}
+                    </span>
+                    <span className="tabular-nums">{formatIDR(t.finalAmount)}</span>
+                    <StatusBadge status={t.status} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+          <section aria-label="Riwayat sesi">
+            <h3 className="font-mono text-[11px] font-bold uppercase tracking-[0.12em]">
+              Sesi foto ({detail.sessions.length})
+            </h3>
+            {detail.sessions.length === 0 ? (
+              <p className="mt-2 font-mono text-xs text-muted-foreground">Belum ada sesi.</p>
+            ) : (
+              <ul className="mt-2 divide-y-2 divide-ink/10 border-2 border-ink bg-surface">
+                {detail.sessions.map((s) => (
+                  <li
+                    key={s.id}
+                    className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 font-mono text-xs"
+                  >
+                    <span className="text-muted-foreground">
+                      {formatDate(s.createdAt, timeZone)}
+                    </span>
+                    <span>{s.photobox ?? "-"}</span>
+                    <StatusBadge status={s.status} />
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
+              Riwayat sesi terbaru ditampilkan lebih dahulu.
+            </p>
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** CustomersTable - list + detail on-demand via API (docs/04 §4.12). */
 export function CustomersTable({
   customers,
   businessId,
@@ -38,18 +131,12 @@ export function CustomersTable({
 
   const openIdRef = useRef<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  // Cache detail per-mount (bukan scope modul), ikut mati saat komponen
-  // unmount, jadi tidak menumpuk lintas sesi/navigasi. Dibatasi 20 entri:
-  // lebih dari itu buang yang paling lama diakses.
   const detailCache = useRef(new Map<string, CustomerDetail>());
 
-  // Sinkron `openIdRef` dengan state supaya handler fetch bisa cek
-  // nilai terbaru tanpa terkena stale closure.
   useEffect(() => {
     openIdRef.current = openId;
   }, [openId]);
 
-  // Cleanup: abort fetch in-flight saat unmount.
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
@@ -57,7 +144,6 @@ export function CustomersTable({
   }, []);
 
   async function toggle(id: string) {
-    // Abort request sebelumnya (racing rapid-click).
     abortRef.current?.abort();
 
     if (openId === id) {
@@ -88,7 +174,6 @@ export function CustomersTable({
       const cache = detailCache.current;
       cache.set(id, json.data);
       if (cache.size > 20) cache.delete(cache.keys().next().value as string);
-      // Guard: pastikan user masih membuka baris yang sama (bukan closure lama).
       if (openIdRef.current === id) setDetail(json.data);
     } catch (err) {
       if ((err as Error).name === "AbortError") return;
@@ -100,6 +185,130 @@ export function CustomersTable({
     }
   }
 
+  const table = (
+    <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
+      <table className="w-full border-collapse text-left lg:min-w-[860px]">
+        <caption className="sr-only">Daftar pelanggan</caption>
+        <thead>
+          <tr className="border-b-2 border-ink bg-ink font-mono text-[11px] uppercase tracking-[0.12em] text-bg">
+            <th scope="col" className="px-4 py-3.5">
+              Pelanggan
+            </th>
+            <th scope="col" className="hidden px-4 py-3.5 md:table-cell">
+              Kontak
+            </th>
+            <th scope="col" className="hidden px-4 py-3.5 md:table-cell">
+              Sejak
+            </th>
+            <th scope="col" className="hidden px-4 py-3.5 text-center md:table-cell">
+              Transaksi
+            </th>
+            <th scope="col" className="px-4 py-3.5 text-right">
+              Total Belanja
+            </th>
+            <th scope="col" className="px-4 py-3.5 text-right">
+              Detail
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {customers.map((c) => (
+            <Fragment key={c.id}>
+              <tr className="border-b-2 border-ink/10 transition-colors hover:bg-muted/60">
+                <td className="px-4 py-3 font-mono text-sm font-bold uppercase tracking-[0.05em]">
+                  {c.name ?? "Tanpa nama"}
+                </td>
+                <td className="hidden px-4 py-3 font-mono text-xs text-muted-foreground md:table-cell">
+                  {[c.phone, c.email].filter(Boolean).join(" \u00b7 ") || "-"}
+                </td>
+                <td className="hidden px-4 py-3 font-mono text-xs md:table-cell">
+                  {formatDate(c.created_at, timeZone)}
+                </td>
+                <td className="hidden px-4 py-3 text-center font-mono text-sm md:table-cell">
+                  {c.transactionCount}
+                </td>
+                <td className="px-4 py-3 text-right font-mono text-sm font-bold tabular-nums">
+                  {formatIDR(c.totalSpending)}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <IconButton
+                    label={
+                      openId === c.id
+                        ? `Tutup detail ${c.name ?? "pelanggan"}`
+                        : `Buka detail ${c.name ?? "pelanggan"}`
+                    }
+                    icon={openId === c.id ? ChevronUp : ChevronDown}
+                    compact
+                    aria-expanded={openId === c.id}
+                    onClick={() => void toggle(c.id)}
+                  />
+                </td>
+              </tr>
+              {openId === c.id && (
+                <tr className="border-b-2 border-ink/10 bg-muted">
+                  <td colSpan={6} className="px-4 py-3 md:px-6">
+                    <DetailBlock
+                      detail={detail}
+                      loading={loading}
+                      error={error}
+                      customerName={c.name}
+                      timeZone={timeZone}
+                    />
+                  </td>
+                </tr>
+              )}
+            </Fragment>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  const grid = (
+    <ul
+      className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
+      aria-label="Pelanggan (tampilan kotak)"
+    >
+      {customers.map((c) => (
+        <li key={c.id} className="min-w-0">
+          <RecordCard
+            title={c.name ?? "Tanpa nama"}
+            subtitle={[c.phone, c.email].filter(Boolean).join(" · ") || undefined}
+            meta={[
+              { label: "Sejak", value: formatDate(c.created_at, timeZone) },
+              { label: "Transaksi", value: c.transactionCount },
+              { label: "Total belanja", value: formatIDR(c.totalSpending) },
+            ]}
+            actions={
+              <IconButton
+                label={
+                  openId === c.id
+                    ? `Tutup detail ${c.name ?? "pelanggan"}`
+                    : `Buka detail ${c.name ?? "pelanggan"}`
+                }
+                icon={openId === c.id ? ChevronUp : ChevronDown}
+                compact
+                aria-expanded={openId === c.id}
+                onClick={() => void toggle(c.id)}
+              />
+            }
+          />
+          {openId === c.id && (
+            <div className="border-2 border-t-0 border-ink bg-muted p-3">
+              <DetailBlock
+                detail={detail}
+                loading={loading}
+                error={error}
+                customerName={c.name}
+                timeZone={timeZone}
+              />
+            </div>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+
   return (
     <div className="flex flex-col gap-6">
       {customers.length === 0 ? (
@@ -110,147 +319,12 @@ export function CustomersTable({
           body="Nama dan kontak yang diberikan saat checkout atau booking akan ditampilkan di sini."
         />
       ) : (
-        <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
-          <table className="w-full border-collapse text-left md:min-w-[860px]">
-            <caption className="sr-only">Daftar pelanggan</caption>
-            <thead>
-              <tr className="border-b-2 border-ink bg-ink font-mono text-[11px] uppercase tracking-[0.12em] text-bg">
-                <th scope="col" className="px-4 py-3.5">
-                  Pelanggan
-                </th>
-                <th scope="col" className="hidden px-4 py-3.5 md:table-cell">
-                  Kontak
-                </th>
-                <th scope="col" className="hidden px-4 py-3.5 md:table-cell">
-                  Sejak
-                </th>
-                <th scope="col" className="hidden px-4 py-3.5 text-center md:table-cell">
-                  Transaksi
-                </th>
-                <th scope="col" className="px-4 py-3.5 text-right">
-                  Total Belanja
-                </th>
-                <th scope="col" className="px-4 py-3.5 text-right">
-                  Detail
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {customers.map((c) => (
-                <Fragment key={c.id}>
-                  <tr className="border-b-2 border-ink/10 transition-colors hover:bg-muted/60">
-                    <td className="px-4 py-4 font-mono text-sm font-bold uppercase tracking-[0.05em]">
-                      {c.name ?? "Tanpa nama"}
-                    </td>
-                    <td className="hidden px-4 py-4 font-mono text-xs text-muted-foreground md:table-cell">
-                      {[c.phone, c.email].filter(Boolean).join(" \u00b7 ") || "-"}
-                    </td>
-                    <td className="hidden px-4 py-4 font-mono text-xs md:table-cell">
-                      {formatDate(c.created_at, timeZone)}
-                    </td>
-                    <td className="hidden px-4 py-4 text-center font-mono text-sm md:table-cell">
-                      {c.transactionCount}
-                    </td>
-                    <td className="px-4 py-4 text-right font-mono text-sm font-bold">
-                      {formatIDR(c.totalSpending)}
-                    </td>
-                    <td className="px-4 py-4 text-right">
-                      <button
-                        type="button"
-                        onClick={() => void toggle(c.id)}
-                        aria-expanded={openId === c.id}
-                        className="border-2 border-ink bg-surface px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em] shadow-[2px_2px_0_0_#111111] transition-transform active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
-                      >
-                        {openId === c.id ? "Tutup" : "Buka"}
-                      </button>
-                    </td>
-                  </tr>
-                  {openId === c.id && (
-                    <tr className="border-b-2 border-ink/10 bg-muted">
-                      <td colSpan={6} className="px-4 py-4 md:px-6">
-                        <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-                          {`Riwayat: ${(c.name ?? "PELANGGAN").toUpperCase()}`}
-                        </p>
-                        {loading && (
-                          <div className="mt-4 flex gap-3" aria-label="Memuat detail">
-                            <Skeleton className="h-4 w-40" />
-                            <Skeleton className="h-4 w-32" />
-                          </div>
-                        )}
-                        {error && (
-                          <p
-                            role="alert"
-                            className="mt-4 border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs text-ink"
-                          >
-                            {error}
-                          </p>
-                        )}
-                        {detail && (
-                          <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-2">
-                            <section aria-label="Riwayat transaksi">
-                              <h3 className="font-mono text-[11px] font-bold uppercase tracking-[0.12em]">
-                                Transaksi ({detail.transactions.length})
-                              </h3>
-                              {detail.transactions.length === 0 ? (
-                                <p className="mt-2 font-mono text-xs text-muted-foreground">
-                                  Belum ada transaksi.
-                                </p>
-                              ) : (
-                                <ul className="mt-2 divide-y-2 divide-ink/10 border-2 border-ink bg-surface">
-                                  {detail.transactions.map((t) => (
-                                    <li
-                                      key={t.id}
-                                      className="flex items-center justify-between gap-3 px-3 py-2 font-mono text-xs"
-                                    >
-                                      <span className="font-bold">{t.number}</span>
-                                      <span className="text-muted-foreground">
-                                        {t.paidAt ? formatDate(t.paidAt, timeZone) : "\u2014"}
-                                      </span>
-                                      <span>{formatIDR(t.finalAmount)}</span>
-                                      <StatusBadge status={t.status} />
-                                    </li>
-                                  ))}
-                                </ul>
-                              )}
-                            </section>
-                            <section aria-label="Riwayat sesi">
-                              <h3 className="font-mono text-[11px] font-bold uppercase tracking-[0.12em]">
-                                Sesi foto ({detail.sessions.length})
-                              </h3>
-                              {detail.sessions.length === 0 ? (
-                                <p className="mt-2 font-mono text-xs text-muted-foreground">
-                                  Belum ada sesi.
-                                </p>
-                              ) : (
-                                <ul className="mt-2 divide-y-2 divide-ink/10 border-2 border-ink bg-surface">
-                                  {detail.sessions.map((s) => (
-                                    <li
-                                      key={s.id}
-                                      className="flex items-center justify-between gap-3 px-3 py-2 font-mono text-xs"
-                                    >
-                                      <span className="text-muted-foreground">
-                                        {formatDate(s.createdAt, timeZone)}
-                                      </span>
-                                      <span>{s.photobox ?? "\u2014"}</span>
-                                      <StatusBadge status={s.status} />
-                                    </li>
-                                  ))}
-                                </ul>
-                              )}
-                              <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
-                                Riwayat sesi terbaru ditampilkan lebih dahulu.
-                              </p>
-                            </section>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  )}
-                </Fragment>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <RecordCollection
+          storageKey="snapyos.view.customers"
+          label="Daftar pelanggan"
+          list={table}
+          grid={grid}
+        />
       )}
 
       {totalPages > 1 && (
@@ -263,14 +337,10 @@ export function CustomersTable({
           </p>
           <div className="flex gap-2">
             {prevHref && (
-              <Button variant="outline" size="sm" nativeButton={false} render={<Link href={prevHref} />}>
-                Sebelumnya
-              </Button>
+              <IconLink href={prevHref} label="Halaman sebelumnya" icon={ChevronLeft} compact />
             )}
             {nextHref && (
-              <Button variant="outline" size="sm" nativeButton={false} render={<Link href={nextHref} />}>
-                Berikutnya
-              </Button>
+              <IconLink href={nextHref} label="Halaman berikutnya" icon={ChevronRight} compact />
             )}
           </div>
         </nav>

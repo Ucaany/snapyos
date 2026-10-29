@@ -64,6 +64,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
         }
         activeBusinessId={active?.business.id ?? null}
         isAdmin={isAdmin}
+        showPos={showPos}
+        showPwaKiosk={showPwaKiosk}
       />
       <CollapsibleShell
         sidebar={<Sidebar showPos={showPos} showPwaKiosk={showPwaKiosk} />}

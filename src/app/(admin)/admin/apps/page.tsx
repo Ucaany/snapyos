@@ -1,3 +1,5 @@
+import { ChevronDown, Download } from "lucide-react";
+
 import { AdminActionButton, AdminActionForm } from "@/components/admin/AdminActionForm";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { BrutalistCheckbox } from "@/components/admin/BrutalistCheckbox";
@@ -44,9 +46,10 @@ export default async function AdminAppsPage() {
   const releases = await listAppReleases();
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       <PageHeader
         eyebrow="ADMIN - KATALOG APLIKASI"
+        icon={Download}
         title="Katalog Aplikasi"
         meta={`${releases.length} rilis terdaftar · tautan unduhan saja`}
       />
@@ -169,7 +172,7 @@ export default async function AdminAppsPage() {
 
       <div className="flex flex-col gap-4">
         {releases.length === 0 ? (
-          <AdminEmptyState heading="BELUM ADA RILIS">
+          <AdminEmptyState heading="BELUM ADA RILIS" icon={Download}>
             Daftarkan rilis pertama di atas. Owner melihat rilis aktif di dashboard mereka.
           </AdminEmptyState>
         ) : (
@@ -209,12 +212,16 @@ function ReleaseRow({ release: r }: { release: AdminAppReleaseRow }) {
             action={toggleAppReleaseAction}
             hidden={{ releaseId: r.id, active: r.is_active ? "false" : "true" }}
             submitLabel={r.is_active ? "Nonaktifkan" : "Aktifkan"}
+            icon={r.is_active ? "eyeOff" : "eye"}
+            iconOnly
             variant={r.is_active ? "outline" : "secondary"}
           />
           <AdminActionButton
             action={deleteAppReleaseAction}
             hidden={{ releaseId: r.id }}
             submitLabel="Hapus"
+            icon="trash"
+            iconOnly
             variant="ghost"
             confirm={`Hapus rilis v${r.version} dari katalog? File di host eksternal tidak ikut terhapus.`}
           />
@@ -228,8 +235,9 @@ function ReleaseRow({ release: r }: { release: AdminAppReleaseRow }) {
       ) : null}
 
       <details className="mt-4 border-t-2 border-ink/10 pt-3">
-        <summary className="cursor-pointer font-mono text-xs uppercase tracking-[0.12em]">
+        <summary className="flex min-h-11 cursor-pointer items-center gap-2 font-mono text-xs uppercase tracking-[0.12em]">
           Ubah rilis
+          <ChevronDown className="summary-chevron size-3.5" aria-hidden="true" />
         </summary>
         <AdminActionForm
           action={updateAppReleaseAction}

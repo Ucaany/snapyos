@@ -20,7 +20,7 @@ export function StatStrip({
         "grid grid-cols-2 gap-[2px] border-2 border-ink bg-ink shadow-[4px_4px_0_0_#111111]",
         columns === 4 && "md:grid-cols-4",
         columns === 6 && "sm:grid-cols-3 lg:grid-cols-6",
-        columns === 8 && "md:grid-cols-4 xl:grid-cols-8"
+        columns === 8 && "grid-cols-3 sm:grid-cols-4 xl:grid-cols-8"
       )}
     >
       {items.map((item) => (

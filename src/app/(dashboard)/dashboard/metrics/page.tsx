@@ -49,7 +49,7 @@ export default async function MetricsPage({
   });
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
       <PageHeader
         eyebrow={`METRIK: ${active.business.name.toUpperCase()}`}
         title="Metrik Bisnis"
@@ -89,7 +89,7 @@ export default async function MetricsPage({
       </section>
 
       <div
-        className="grid grid-cols-1 gap-[2px] border-2 border-ink bg-ink shadow-[4px_4px_0_0_#111111] lg:grid-cols-3"
+        className="grid grid-cols-3 gap-[2px] border-2 border-ink bg-ink shadow-[4px_4px_0_0_#111111]"
         aria-label="Ringkasan metrik"
       >
         {[

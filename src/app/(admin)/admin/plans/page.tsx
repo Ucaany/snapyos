@@ -1,3 +1,5 @@
+import { ChevronDown, CreditCard } from "lucide-react";
+
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
 import { BrutalistCheckbox } from "@/components/admin/BrutalistCheckbox";
 import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
@@ -75,9 +77,10 @@ export default async function AdminPlansPage() {
   const plans = await listPlans();
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       <PageHeader
         eyebrow="ADMIN - PLANS"
+        icon={CreditCard}
         title="Manajemen Paket"
         meta="HARGA · LIMIT SESI KONKUREN · FEATURE FLAGS · PLATFORM FEE"
       />
@@ -221,6 +224,7 @@ export default async function AdminPlansPage() {
                   : ""}
                 <StatusBadge status={p.is_active ? "active" : "inactive"} />
               </span>
+              <ChevronDown className="summary-chevron size-4 shrink-0" aria-hidden="true" />
             </summary>
             <div className="border-t-2 border-ink/10 p-4">
               <dl className="mb-4 grid grid-cols-2 gap-[2px] border-2 border-ink/20 bg-ink/20 md:grid-cols-4">

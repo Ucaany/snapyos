@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowLeft, Users } from "lucide-react";
 
 import { AdminActionButton } from "@/components/admin/AdminActionForm";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { PageHeader } from "@/components/ui/page-header";
+import { buttonVariants } from "@/components/ui/button-variants";
 import {
   Table,
   TableBody,
@@ -52,9 +54,10 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
   const { user, businesses, invoices, transactions, sessions, payments } = detail;
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       <PageHeader
         eyebrow="ADMIN - USERS / DETAIL"
+        icon={Users}
         title={user.name ?? user.email}
         meta={`${user.email} · ${user.role.toUpperCase()} · TERDAFTAR ${dateFmt.format(new Date(user.created_at))}`}
         right={
@@ -67,6 +70,8 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
                 status: user.status === "suspended" ? "active" : "suspended",
               }}
               submitLabel={user.status === "suspended" ? "Aktifkan" : "Suspend"}
+              icon={user.status === "suspended" ? "circleCheck" : "ban"}
+              iconOnly
               variant={user.status === "suspended" ? "secondary" : "destructive"}
               confirm={
                 user.status === "suspended"
@@ -78,6 +83,8 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
               action={updateUserAction}
               hidden={{ userId: user.id, role: user.role === "admin" ? "user" : "admin" }}
               submitLabel={user.role === "admin" ? "Jadikan User" : "Jadikan Admin"}
+              icon={user.role === "admin" ? "shieldOff" : "shieldCheck"}
+              iconOnly
               variant="outline"
               confirm={
                 user.role === "admin"
@@ -87,9 +94,11 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
             />
             <Link
               href="/admin/users"
-              className="inline-flex min-h-11 items-center border-2 border-ink bg-surface px-3 font-mono text-[11px] font-bold uppercase tracking-[0.15em] hover:bg-muted"
+              aria-label="Kembali ke daftar user"
+              title="Kembali ke daftar user"
+              className={buttonVariants({ variant: "outline", size: "icon" })}
             >
-              {"< KEMBALI"}
+              <ArrowLeft className="size-4" aria-hidden="true" />
             </Link>
           </div>
         }

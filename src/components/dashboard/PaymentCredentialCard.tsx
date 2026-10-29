@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { Copy, Pencil, PlugZap, Power, PowerOff, Trash2 } from "lucide-react";
 
 import { PaymentCredentialForm } from "@/components/dashboard/PaymentCredentialForm";
-import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import { canTestPaymentCredential, type PaymentCredentialPublic } from "@/lib/payment-credentials";
 import {
   deleteCredentialAction,
@@ -121,7 +122,7 @@ export function PaymentCredentialCard({ credential, onChanged }: Props) {
 
       {credential.provider === "pakasir" ? (
         <div className="grid gap-2 border-2 border-ink bg-muted p-3">
-          <p className="font-mono text-xs">
+          <p className="text-sm leading-relaxed text-muted-foreground">
             Verifikasi pembayaran server-to-server + header X-Secret. Dana QRIS masuk project
             merchant owner langsung (ditarik via dashboard Pakasir).
           </p>
@@ -131,12 +132,15 @@ export function PaymentCredentialCard({ credential, onChanged }: Props) {
                 Webhook URL: daftarkan di Detail Proyek Pakasir
               </span>
               <code className="break-all font-mono text-xs">{credential.webhook_url}</code>
-              <Button type="button" variant="outline" onClick={() => void copyWebhookUrl()}>
-                Salin URL
-              </Button>
+              <IconButton
+                label="Salin webhook URL"
+                icon={Copy}
+                compact
+                onClick={() => void copyWebhookUrl()}
+              />
             </>
           ) : (
-            <p className="font-mono text-xs">
+            <p className="text-sm leading-relaxed text-muted-foreground">
               Webhook URL tersedia setelah SnapyOS_PUBLIC_BASE_URL dikonfigurasi.
             </p>
           )}
@@ -145,12 +149,15 @@ export function PaymentCredentialCard({ credential, onChanged }: Props) {
         <div className="grid gap-2 border-2 border-ink bg-muted p-3">
           <span className="font-mono text-[10px] uppercase tracking-[0.1em]">Webhook URL</span>
           <code className="break-all font-mono text-xs">{credential.webhook_url}</code>
-          <Button type="button" variant="outline" onClick={() => void copyWebhookUrl()}>
-            Salin URL
-          </Button>
+          <IconButton
+            label="Salin webhook URL"
+            icon={Copy}
+            compact
+            onClick={() => void copyWebhookUrl()}
+          />
         </div>
       ) : (
-        <p className="border-l-4 border-accent bg-muted p-3 font-mono text-xs">
+        <p className="border-2 border-ink bg-muted p-3 text-sm leading-relaxed text-muted-foreground">
           Webhook URL tersedia setelah SnapyOS_PUBLIC_BASE_URL dikonfigurasi.
         </p>
       )}
@@ -166,27 +173,34 @@ export function PaymentCredentialCard({ credential, onChanged }: Props) {
         </p>
       )}
 
-      <div className="flex flex-wrap gap-3">
-        <Button
-          type="button"
+      <div className="flex flex-wrap gap-2">
+        <IconButton
+          label={testLabel}
+          hint={testDisabledReason ?? undefined}
+          icon={PlugZap}
           variant="secondary"
+          compact
           disabled={pending || !testable}
-          title={testDisabledReason ?? undefined}
           onClick={() =>
             void run(
               () => testCredentialAction(credential.id),
               "Koneksi sandbox berhasil terverifikasi"
             )
           }
-        >
-          {testLabel}
-        </Button>
-        <Button type="button" variant="outline" disabled={pending} onClick={() => setEditing(true)}>
-          Ubah
-        </Button>
-        <Button
-          type="button"
+        />
+        <IconButton
+          label="Ubah credential"
+          icon={Pencil}
           variant="outline"
+          compact
+          disabled={pending}
+          onClick={() => setEditing(true)}
+        />
+        <IconButton
+          label={credential.is_active ? "Nonaktifkan credential" : "Aktifkan credential"}
+          icon={credential.is_active ? PowerOff : Power}
+          variant="outline"
+          compact
           disabled={pending}
           onClick={() =>
             void run(
@@ -196,12 +210,12 @@ export function PaymentCredentialCard({ credential, onChanged }: Props) {
                 : "Credential diaktifkan; metode tersedia di kiosk"
             )
           }
-        >
-          {credential.is_active ? "Nonaktifkan" : "Aktifkan"}
-        </Button>
-        <Button
-          type="button"
+        />
+        <IconButton
+          label="Hapus credential"
+          icon={Trash2}
           variant="destructive"
+          compact
           disabled={pending}
           onClick={() => {
             if (
@@ -210,9 +224,7 @@ export function PaymentCredentialCard({ credential, onChanged }: Props) {
               void run(() => deleteCredentialAction(credential.id), "Credential dihapus");
             }
           }}
-        >
-          Hapus
-        </Button>
+        />
       </div>
 
       {!testable && testDisabledReason && (

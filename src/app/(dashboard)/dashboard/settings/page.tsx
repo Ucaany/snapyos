@@ -70,9 +70,9 @@ export default async function SettingsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
       <PageHeader
-        eyebrow="PROFIL · PENYIMPANAN · CHECKOUT · RETENSI"
+        eyebrow="PROFIL · PENYIMPANAN · PEMBAYARAN · MASA SIMPAN"
         title="Pengaturan"
         description="Profil bisnis, kuota penyimpanan, durasi kedaluwarsa QRIS, dan masa simpan hasil foto (1 sampai 3 hari). Kustomisasi tampilan kiosk ada di Branding & Kiosk; chroma key template diatur dari menu Template."
       />

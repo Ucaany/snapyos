@@ -118,7 +118,7 @@ export function DateRangeFilter({
   const label = `${dateFmt.format(range.from!)} → ${dateFmt.format(range.to!)}`;
 
   return (
-    <div className="flex w-full flex-col gap-3 border-2 border-ink bg-surface p-3 shadow-[4px_4px_0_0_#111111] sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+    <div className="flex w-full flex-col gap-2 border-2 border-ink bg-surface p-2 shadow-[4px_4px_0_0_#111111] sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 sm:p-3">
       <div className="flex min-w-0 items-center gap-3">
         <span className="flex shrink-0 items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
           <CalendarRange aria-hidden className="size-4" />

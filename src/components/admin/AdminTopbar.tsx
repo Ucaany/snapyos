@@ -1,3 +1,5 @@
+import { LogOut } from "lucide-react";
+
 import { logoutAction } from "@/server/auth-actions";
 
 /**
@@ -24,7 +26,13 @@ export function AdminTopbar({
           href="/admin"
           className="flex min-h-11 shrink-0 items-center gap-2 font-display text-base font-bold uppercase tracking-tight md:text-lg"
         >
-          <img src="/snapyos-mark.png" alt="Logo SnapyOS" className="h-8 w-8 shrink-0" />
+          <img
+            src="/snapyos-mark.png"
+            alt="Logo SnapyOS"
+            width={32}
+            height={32}
+            className="h-8 w-8 shrink-0"
+          />
           SnapyOS<span className="text-accent">®</span>
         </a>
 
@@ -49,9 +57,11 @@ export function AdminTopbar({
           <form action={logoutAction}>
             <button
               type="submit"
-              className="min-h-11 min-w-11 border-2 border-ink bg-surface px-2.5 py-2 font-mono text-[11px] uppercase tracking-[0.05em] text-ink transition-colors duration-150 ease-[var(--ease-brutal)] hover:bg-accent active:translate-y-[2px] md:px-3 md:text-xs"
+              aria-label="Keluar"
+              title="Keluar"
+              className="flex size-11 min-h-11 min-w-11 items-center justify-center border-2 border-ink bg-surface text-ink transition-colors duration-150 ease-[var(--ease-brutal)] hover:bg-accent active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
             >
-              Keluar
+              <LogOut className="size-4" aria-hidden="true" />
             </button>
           </form>
         </div>

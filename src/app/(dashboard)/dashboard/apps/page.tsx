@@ -36,7 +36,7 @@ export default async function AppsPage() {
   const latest = releases[0] ?? null;
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
       <PageHeader
         eyebrow="APLIKASI BOOTH"
         title="Aplikasi Booth"

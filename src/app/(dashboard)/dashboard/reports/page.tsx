@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { Download } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateInput } from "@/components/ui/date-input";
+import { IconButton } from "@/components/ui/icon-button";
 import { PageHeader } from "@/components/ui/page-header";
 import { Select } from "@/components/ui/select";
 import { LABEL_CLASS as labelClass } from "@/lib/form-ui";
@@ -54,9 +56,9 @@ export default async function ReportsPage() {
   const fromDefault = `${today.slice(0, 8)}01`;
 
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10">
+    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
       <PageHeader
-        eyebrow="EXPORT DATA"
+        eyebrow="LAPORAN: EKSPOR DATA"
         title="Laporan"
         description="Buat laporan dari data transaksi, biaya, dan voucher. Format CSV dan XLSX."
       />
@@ -111,12 +113,9 @@ export default async function ReportsPage() {
               </Select>
             </div>
             <div className="sm:col-span-2 xl:col-span-4">
-              <button
-                type="submit"
-                className="h-11 border-2 border-ink bg-accent px-6 font-mono text-sm font-bold uppercase tracking-[0.08em] shadow-[4px_4px_0_0_#111111] transition-transform active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
-              >
-                Unduh Report
-              </button>
+              <IconButton type="submit" variant="default" label="Unduh laporan">
+                <Download className="size-4" aria-hidden="true" />
+              </IconButton>
             </div>
           </form>
         </CardContent>
