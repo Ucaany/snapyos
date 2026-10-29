@@ -16,6 +16,11 @@
 begin;
 
 -- --------------------------- fixture ---------------------------------------
+-- Owner user wajib ada: businesses.owner_id punya FK ke users.
+insert into users (id, email, name, status)
+values ('11111111-1111-4111-8111-111111111112', 'owner@verify.test', 'Owner Verify', 'active')
+on conflict (id) do nothing;
+
 insert into businesses (id, owner_id, slug, name, status)
 values ('11111111-1111-4111-8111-111111111111',
         '11111111-1111-4111-8111-111111111112',
@@ -45,10 +50,10 @@ on conflict (id) do nothing;
 insert into photoboxes (id, business_id, outlet_id, slug, name, status)
 values ('55555555-5555-4555-8555-555555555551',
         '11111111-1111-4111-8111-111111111111',
-        '44444444-4444-4444-8444-444444444444', 'booth-a', 'Booth A', 'active'),
+        '44444444-4444-4444-8444-444444444444', 'booth-a', 'Booth A', 'online'),
        ('55555555-5555-4555-8555-555555555552',
         '11111111-1111-4111-8111-111111111111',
-        '44444444-4444-4444-8444-444444444444', 'booth-b', 'Booth B', 'active')
+        '44444444-4444-4444-8444-444444444444', 'booth-b', 'Booth B', 'online')
 on conflict (id) do nothing;
 
 insert into packages (id, business_id, name, price, photo_count, print_count, is_active)
