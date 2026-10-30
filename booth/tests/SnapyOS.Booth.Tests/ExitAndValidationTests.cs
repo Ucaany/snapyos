@@ -112,6 +112,76 @@ public sealed class BridgeTokenTests
     }
 }
 
+public sealed class Phase1AdapterGuardTests
+{
+    private static Dictionary<string, string?> Env(params (string Key, string Value)[] overrides)
+    {
+        var env = new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            ["PHOTOBOOTH_BRIDGE_TOKEN"] = "test-token-0123456789",
+            ["SNAPYOS_DATA_DIR"] = ":memory:",
+            ["SNAPYOS_CAMERA"] = "mock",
+            ["SNAPYOS_PRINTER"] = "mock",
+            ["SNAPYOS_ALLOW_MOCK"] = "1",
+        };
+        foreach (var (key, value) in overrides)
+        {
+            env[key] = value;
+        }
+        return env;
+    }
+
+    [Fact]
+    public void all_mock_config_is_accepted()
+    {
+        var config = RuntimeConfig.Load(Env());
+        config.EnsurePhase1Adapters();
+        Assert.True(config.AllMock);
+    }
+
+    [Fact]
+    public void real_adapter_config_is_rejected_with_phase3_message()
+    {
+        // Semua adapter nyata: bukan config campuran, jadi pesannya pesan Fase 3.
+        var config = RuntimeConfig.Load(Env(
+            ("SNAPYOS_CAMERA", "digicamcontrol"),
+            ("SNAPYOS_PRINTER", "windows")));
+
+        var error = Assert.Throws<ConfigException>(config.EnsurePhase1Adapters);
+        Assert.Contains("belum tersedia (Fase 3)", error.Message);
+        Assert.False(config.Mock);
+    }
+
+    [Fact]
+    public void mixed_config_is_rejected_with_its_own_message()
+    {
+        // Kamera nyata + printer mock: Load lolos (mock=true + ALLOW_MOCK=1),
+        // guard adapter yang menolaknya.
+        var config = RuntimeConfig.Load(Env(("SNAPYOS_CAMERA", "digicamcontrol")));
+
+        var error = Assert.Throws<ConfigException>(config.EnsurePhase1Adapters);
+        Assert.Contains("Config campuran", error.Message);
+        Assert.True(config.Mock);
+    }
+
+    [Fact]
+    public void mock_without_allow_flag_is_rejected_at_load()
+    {
+        var error = Assert.Throws<ConfigException>(
+            () => RuntimeConfig.Load(Env(("SNAPYOS_ALLOW_MOCK", "0"))));
+        Assert.Contains("SNAPYOS_ALLOW_MOCK=1", error.Message);
+    }
+
+    [Fact]
+    public void stream_adapter_must_also_be_mock()
+    {
+        var config = RuntimeConfig.Load(Env(("SNAPYOS_CAMERA_STREAM", "v4l2")));
+
+        var error = Assert.Throws<ConfigException>(config.EnsurePhase1Adapters);
+        Assert.Contains("Config campuran", error.Message);
+    }
+}
+
 public sealed class SessionTimerTests
 {
     private static readonly DateTimeOffset Now = DateTimeOffset.Parse("2026-01-01T00:00:00Z");

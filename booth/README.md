@@ -97,10 +97,17 @@ Sekali per versi — bukan sekali per mesin.
 4. Operator cukup mengunduh ZIP, ekstrak ke folder permanen, klik dua kali
    `Jalankan-Booth.cmd`. **Tidak perlu .NET SDK, Node, atau build di mesinnya.**
 
-`Jalankan-Booth.cmd` membuat `bridge-token.txt` (32 hex) pada eksekusi pertama bila
-`PHOTOBOOTH_BRIDGE_TOKEN` belum di-set, lalu mencetak token itu di jendela konsol
-supaya bisa dicocokkan dengan dashboard. Token tidak pernah ditulis ke UI atau
-`localStorage`; Shell menyuntiknya ke WebView2 saat dokumen dibuat.
+`Jalankan-Booth.cmd` (Fase 1) selalu menyalakan adapter mock, membuat
+`bridge-token.txt` (32 hex) pada eksekusi pertama bila `PHOTOBOOTH_BRIDGE_TOKEN`
+belum di-set atau isinya kurang dari 16 karakter, lalu mencetak token itu di
+jendela konsol supaya bisa dicocokkan dengan dashboard. Token tidak pernah ditulis
+ke UI atau `localStorage`; Shell menyuntiknya ke WebView2 saat dokumen dibuat.
+
+Launcher sengaja tidak memakai satu pun blok `if (...)`: ekspansi `%VAR%` di
+dalamnya terjadi saat parse, bukan saat jalan, dan itu yang dulu menulis teks
+`ECHO is off.` ke `bridge-token.txt` sehingga aplikasi gagal start. Pemeriksa
+statisnya: `bash booth/scripts/test-launcher.sh` (jalan di macOS/Linux, tidak
+butuh Windows; membuktikan bentuk berkas, bukan perilaku cmd.exe).
 
 Prasyarat mesin operator hanya Windows 10 1809+/11 x64 dan WebView2 Runtime
 (sudah ada di Windows 11 dan Windows 10 yang terbarui).

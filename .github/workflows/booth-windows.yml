@@ -103,8 +103,14 @@ jobs:
         run: |
           $exe = "dist/booth/SnapyOS.Booth.Shell.exe"
           $ui = "dist/booth/Assets/ui/index.html"
+          $launcher = "dist/booth/Jalankan-Booth.cmd"
           if (-not (Test-Path $exe)) { throw "EXE tidak ada: $exe" }
           if (-not (Test-Path $ui)) { throw "UI tidak ikut publish: $ui" }
+          if (-not (Test-Path $launcher)) { throw "Peluncur tidak ikut publish: $launcher" }
+          # Regresi launcher: blok `if (...)` menulis "ECHO is off." ke token.
+          if (Select-String -Path $launcher -Pattern '^\s*if\s+.*\($' -Quiet) {
+            throw "Peluncur memakai blok if (...) sehingga token akan rusak"
+          }
           $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
           $count = (Get-ChildItem dist/booth -Recurse -File).Count
           $lines = @(
@@ -162,9 +168,10 @@ jobs:
 
             ## Mode uji (mock)
 
-            `Jalankan-Booth.cmd` memakai adapter mock bila dipanggil dengan `-Mock`.
-            Mock **wajib** `SNAPYOS_ALLOW_MOCK=1` dan dilabeli di UI; jangan dipakai
-            untuk melayani pelanggan.
+            Fase 1 hanya punya adapter mock: `Jalankan-Booth.cmd` selalu memakai mock
+            dan menyalakan `SNAPYOS_ALLOW_MOCK=1`. Adapter nyata belum tersedia
+            (Fase 3); aplikasi menolak config nyata maupun campuran, bukan
+            menggantinya diam-diam dengan mock.
 
             ## Verifikasi unduhan
 

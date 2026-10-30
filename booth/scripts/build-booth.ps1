@@ -77,6 +77,11 @@ $publishedUi = Join-Path $outDir "Assets\ui\index.html"
 if (-not (Test-Path $publishedUi)) { throw "UI tidak ikut ter-publish: $publishedUi" }
 $launcher = Join-Path $outDir "Jalankan-Booth.cmd"
 if (-not (Test-Path $launcher)) { throw "Peluncur tidak ikut ter-publish: $launcher" }
+# Blok `if (...)` mengekspansi %VAR% saat parse; itu yang dulu menulis
+# "ECHO is off." ke bridge-token.txt sehingga aplikasi gagal start.
+if (Select-String -Path $launcher -Pattern '^\s*if\s+.*\($' -Quiet) {
+    throw "Peluncur memakai blok if (...) sehingga token akan rusak: $launcher"
+}
 
 $exeHash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
 $fileCount = (Get-ChildItem $outDir -Recurse -File).Count
@@ -93,6 +98,8 @@ Write-Host ""
 Write-Host "Jalankan (PowerShell):" -ForegroundColor Green
 Write-Host '  $env:PHOTOBOOTH_BRIDGE_TOKEN = "<token 16+ karakter>"'
 Write-Host '  $env:SNAPYOS_ALLOW_MOCK = "1"   # Fase 1: adapter mock sampai Fase 3'
+Write-Host '  $env:SNAPYOS_CAMERA = "mock"'
+Write-Host '  $env:SNAPYOS_PRINTER = "mock"'
 Write-Host "  & '$exe'"
 Write-Host ""
-Write-Host "Atau klik dua kali: Jalankan-Booth.cmd (token dibuat otomatis bila belum ada)." -ForegroundColor Green
+Write-Host "Atau klik dua kali: Jalankan-Booth.cmd (mock + token otomatis, Fase 1)." -ForegroundColor Green

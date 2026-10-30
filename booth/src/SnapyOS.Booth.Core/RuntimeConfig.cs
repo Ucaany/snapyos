@@ -81,6 +81,35 @@ public sealed record RuntimeConfig
     /// <summary>Token device dari aktivasi; dipakai sync sesi + tulis balik setelan.</summary>
     public required string DeviceToken { get; init; }
 
+    /// <summary>True bila SEMUA adapter yang dipakai adalah mock.</summary>
+    public bool AllMock =>
+        Camera == "mock" && CameraStream is null or "mock" && Printer == "mock";
+
+    /// <summary>
+    /// Adapter perangkat keras nyata baru ada di Fase 3. Sampai itu, config nyata
+    /// dan config campuran sama-sama ditolak: menjalankannya dengan mock berarti
+    /// pelanggan membayar foto yang bukan dirinya, dan mencampur nyata+mock
+    /// membuat satu booth berperilaku dua cara tanpa terlihat operator.
+    ///
+    /// Dipakai Shell (in-process) dan host bridge headless, supaya keduanya tidak
+    /// bisa menyimpang. <c>SNAPYOS_ALLOW_MOCK</c> sudah ditegakkan di
+    /// <see cref="Load"/>, jadi tidak diulang di sini.
+    /// </summary>
+    public void EnsurePhase1Adapters()
+    {
+        if (AllMock)
+        {
+            return;
+        }
+
+        throw new ConfigException(Mock
+            ? "Config campuran: sebagian adapter mock, sebagian perangkat keras nyata. " +
+              "Adapter nyata belum tersedia (Fase 3); pakai mock untuk ketiganya " +
+              "(SNAPYOS_CAMERA=mock SNAPYOS_PRINTER=mock SNAPYOS_CAMERA_STREAM=mock)."
+            : "Adapter perangkat keras nyata belum tersedia (Fase 3). " +
+              "Jalankan dengan SNAPYOS_CAMERA=mock SNAPYOS_PRINTER=mock SNAPYOS_ALLOW_MOCK=1.");
+    }
+
     private static string PickOne(string? raw, string[] allowed, string fallback, string name)
     {
         var value = raw?.Trim();

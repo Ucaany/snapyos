@@ -25,15 +25,15 @@ catch (ConfigException error)
 
 using var store = Store.Open(config.DataDir);
 
-// Adapter perangkat keras nyata (digiCamControl/WIA + printer spooler)
-// diimplementasikan pada Fase 3. Sampai itu, hanya adapter mock yang tersedia:
-// memakai mock untuk config nyata akan diam-diam memalsukan foto pelanggan, jadi
-// start digagalkan, bukan disubstitusi.
-if (config.Camera != "mock" || config.Printer != "mock" || config.CameraStream is not (null or "mock"))
+// Aturan adapter Fase 1 dipakai bersama Shell, jadi keduanya tidak bisa
+// menyimpang: config nyata maupun campuran digagalkan, bukan disubstitusi mock.
+try
 {
-    Console.Error.WriteLine(
-        "[snapyos-bridge] Adapter perangkat keras belum tersedia (Fase 3). " +
-        "Jalankan dengan SNAPYOS_CAMERA=mock SNAPYOS_PRINTER=mock SNAPYOS_ALLOW_MOCK=1.");
+    config.EnsurePhase1Adapters();
+}
+catch (ConfigException error)
+{
+    Console.Error.WriteLine($"[snapyos-bridge] {error.Message}");
     return 1;
 }
 

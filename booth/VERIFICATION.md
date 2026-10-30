@@ -287,6 +287,34 @@ sesi Windows interaktif.
 
 **Commit:** `9b5ac44`
 
+### Fase 1 revisi: 2026-10-31, launcher + guard adapter bersama
+
+`Jalankan-Booth.cmd` di HEAD masih memakai blok `if (...)` yang membuat
+`bridge-token.txt` berisi `ECHO is off.` (12 karakter) → `RuntimeConfig.Load`
+menolak token < 16 → aplikasi menampilkan overlay startup gagal. Ini bug yang
+ikut ke ZIP rilis, bukan hanya working tree.
+
+| Gate                                                    | Perintah                                          | Hasil                                                                                      |
+| ------------------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Pemeriksa launcher                                      | `bash booth/scripts/test-launcher.sh`              | **PASS**: 8/8 (bentuk berkas). Terbukti **FAIL** pada launcher lama (`/tmp/old-launcher.cmd`), jadi pemeriksa tidak vakum. |
+| Pemeriksa launcher di Windows (cmd.exe benar-benar jalan) | klik `Jalankan-Booth.cmd` di Windows            | **belum diuji**                                                                            |
+| Tes xUnit                                               | `dotnet test booth/tests/SnapyOS.Booth.Tests -c Debug` | **PASS**: 60/60 (sebelumnya 55; +5 tes guard adapter)                                  |
+| Kompilasi C# Shell (harness stub XAML)                  | `/tmp/snapy-shellcheck`                            | **PASS**: build succeeded, 0 error                                                          |
+| YAML workflow                                           | `python3 -c "yaml.safe_load(...)"`                 | **PASS**                                                                                    |
+
+**Yang diubah:**
+
+| Berkas | Perubahan |
+| ------ | --------- |
+| `booth/scripts/Jalankan-Booth.cmd` | Ditulis ulang tanpa satu pun blok `if (...)`, tanpa delayed expansion; setiap baris `set` di-parse sendiri sehingga `%VAR%` selalu segar. Token tak sah (< 16) dibuat ulang; kegagalan PowerShell → pesan jelas + `exit /b 1`. Fase 1: mock untuk kamera, printer, dan stream. |
+| `booth/scripts/test-launcher.sh` | Pemeriksa statis (macOS/Linux, tanpa Windows): tidak ada blok `if (`, tidak ada `!VAR!`, semua `goto` punya label, tiga adapter + `ALLOW_MOCK` disetel, token ditulis dari variabel. |
+| `Core/RuntimeConfig.cs` | `AllMock` + `EnsurePhase1Adapters()`. Rule config nyata/campuran sekarang di **satu** tempat. |
+| `Shell/MainWindow.xaml.cs` | Guard manual diganti `_config.EnsurePhase1Adapters()`. |
+| `Bridge/Program.cs` | Guard duplikat diganti pemanggilan helper yang sama. |
+| `Tests/ExitAndValidationTests.cs` | +5 tes: semua mock diterima, config nyata ditolak (pesan Fase 3), campuran ditolak (pesan sendiri), mock tanpa `ALLOW_MOCK` ditolak saat Load, stream non-mock ditolak. |
+| `.github/workflows/booth-windows.yml`, `scripts/build-booth.ps1` | Gagal build bila launcher terbit memuat blok `if (...)`, atau bila launcher tidak ikut ter-publish. |
+| `booth/README.md` | Catatan perilaku launcher Fase 1 + pemeriksa statis. |
+
 ---
 
 ## Fase 2 — Port runtime

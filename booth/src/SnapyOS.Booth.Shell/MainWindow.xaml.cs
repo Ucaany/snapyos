@@ -62,30 +62,10 @@ public sealed partial class MainWindow : Window
             _bridgeToken = Environment.GetEnvironmentVariable("PHOTOBOOTH_BRIDGE_TOKEN")?.Trim() ?? string.Empty;
             _tokenWeak = IsWeakToken(_bridgeToken);
 
-            // Adapter nyata belum ada (Fase 3). Config nyata DITOLAK, bukan
-            // ditutupi mock: kamera palsu berarti pelanggan membayar foto yang
-            // bukan dirinya. Config campuran (kamera nyata + printer mock) juga
-            // ditolak, karena itu mencampur dua perilaku di satu booth.
-            var allMock = _config.Camera == "mock"
-                && _config.CameraStream is null or "mock"
-                && _config.Printer == "mock";
-            if (!allMock)
-            {
-                throw new ConfigException(_config.Mock
-                    ? "Config campuran: sebagian adapter mock, sebagian perangkat keras nyata. " +
-                      "Adapter nyata belum tersedia (Fase 3); pakai mock untuk ketiganya " +
-                      "(SNAPYOS_CAMERA=mock SNAPYOS_PRINTER=mock SNAPYOS_CAMERA_STREAM=mock)."
-                    : "Adapter perangkat keras nyata belum tersedia (Fase 3). " +
-                      "Jalankan dengan SNAPYOS_CAMERA=mock SNAPYOS_PRINTER=mock SNAPYOS_ALLOW_MOCK=1.");
-            }
-
-            // Mock hanya boleh dipakai bila memang dinyatakan.
-            var allowMock = Environment.GetEnvironmentVariable("SNAPYOS_ALLOW_MOCK");
-            if (!string.Equals(allowMock, "1", StringComparison.Ordinal))
-            {
-                throw new ConfigException(
-                    "Adapter mock dipakai tanpa izin. Set SNAPYOS_ALLOW_MOCK=1 bila ini memang uji coba.");
-            }
+            // Config nyata dan config campuran ditolak di satu tempat yang sama
+            // dengan host bridge headless. ALLOW_MOCK sudah ditegakkan
+            // RuntimeConfig.Load, tidak diulang di sini.
+            _config.EnsurePhase1Adapters();
 
             var store = Store.Open(_config.DataDir);
             ICamera camera = new MockCamera();
