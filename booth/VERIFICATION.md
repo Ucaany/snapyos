@@ -247,18 +247,22 @@ binary Windows. Artinya kesalahan di `MainWindow.xaml` (nama properti, `x:Name`,
 ## Fase 1 revisi D2/D3/D4/D10/D12/D16 — 2026-10-30, macOS (darwin 27.2.0, arm64), .NET 8.0.427
 
 Mesin ini **macOS**, tanpa Windows dan tanpa VM. Tidak ada UTM VM yang bisa
-di-boot; perintah Windows di bawah karena itu **belum diuji**, bukan PASS.
+di-boot; perintah Windows di bawah karena itu dijalankan **lewat runner CI**, bukan
+di mesin lokal.
 
 | Gate                                                    | Perintah                                                          | Hasil                                                                                                     |
 | ------------------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| Build Core + Bridge                                     | `dotnet build booth/src/SnapyOS.Booth.{Core,Bridge} -c Debug`      | **PASS**: 0 warning, 0 error                                                                              |
-| Tes xUnit                                               | `dotnet test booth/tests/SnapyOS.Booth.Tests -c Debug`            | **PASS**: 55/55 (sebelumnya 46; +9 tes HTTP)                                                              |
-| Build solusi penuh                                      | `dotnet build booth/SnapyOS.Booth.sln -c Debug`                   | **GAGAL, diharapkan**: `NETSDK1100` (Shell target `net8.0-windows`). Bukan regresi.                        |
+| Build Core + Bridge                                     | `dotnet build booth/src/SnapyOS.Booth.{Core,Bridge} -c Debug`      | **PASS** (macOS): 0 warning, 0 error                                                                      |
+| Tes xUnit                                               | `dotnet test booth/tests/SnapyOS.Booth.Tests -c Debug`            | **PASS** (macOS): 55/55 (sebelumnya 46; +9 tes HTTP)                                                      |
+| Build solusi penuh (macOS)                              | `dotnet build booth/SnapyOS.Booth.sln -c Debug`                   | **GAGAL, diharapkan**: `NETSDK1100` (Shell target `net8.0-windows`). Bukan regresi.                        |
 | Kompilasi C# Shell (harness stub XAML, `TreatWarningsAsErrors`) | harness `/tmp/snapy-shellcheck`                           | **PASS**: build succeeded, 0 error                                                                        |
 | YAML workflow                                           | `python3 -c "yaml.safe_load(...)"`                                | **PASS**: `on` = push/pull_request/workflow_dispatch, env rilis terparse                                  |
-| `dotnet build ... -c Debug` (Windows)                   | perintah verifikasi fase 1                                        | **belum diuji**: tidak ada Windows                                                         |
-| `.\booth\scripts\build-booth.ps1`                       | perintah verifikasi fase 1                                        | **belum diuji**: `pwsh` tidak terpasang; publish butuh Windows                                            |
-| `curl /health` 200 · `/v1/status` 401 · token 200        | perintah verifikasi fase 1                                        | **belum diuji** di EXE; padanannya diuji in-process (baris tes HTTP di bawah)                             |
+| `dotnet build SnapyOS.Booth.sln -c Debug` (Windows)     | CI run `41094546649` langkah "Build solusi"                       | **PASS**: success                                                                                         |
+| `dotnet test … -c Debug` (Windows)                      | CI run `41094546649` langkah "Tes xUnit"                          | **PASS**: `Total tests: 55`, `Passed: 55` (9 di antaranya `BridgeHttpTests`)                              |
+| `.github/workflows/booth-windows.yml` push `feat/**`     | CI run `41094546649` dipicu `push` ke `feat/landing-operational-value` | **PASS**: workflow jalan tanpa `workflow_dispatch`; `RELEASE_TAG` kosong, `PRERELEASE: false`       |
+| `.\booth\scripts\build-booth.ps1`                       | perintah verifikasi fase 1                                        | **belum diuji**: `pwsh` tidak ada lokal; publish setara dijalankan CI langkah "Publish"                   |
+| Publish self-contained win-x64                          | CI run `41094546649`                                              | **PASS**: `dist/booth` 599 berkas, **SHA-256 EXE** `52c7ba610284168c5e25e06e098418c2288263028866df628641d62d44b25df7` |
+| `curl /health` 200 · `/v1/status` 401 · token 200        | perintah verifikasi fase 1                                        | **belum diuji** di EXE; padanannya lulus in-process (`BridgeHttpTests`, CI run di atas)                   |
 | Fullscreen, Alt+F4 tertahan, instance kedua             | uji manual                                                        | **belum diuji**: butuh sesi Windows interaktif                                                            |
 | Startup-gagal bisa ditutup                              | uji manual                                                        | **belum diuji**: butuh sesi Windows interaktif                                                            |
 | UI (bukan curl) memanggil `/v1/status`                  | uji manual                                                        | **belum diuji**: bukti kode ada (`App.tsx` `refresh()` → `bridge.status()` tiap 5 dtk), bukan bukti jalan  |
@@ -275,7 +279,13 @@ di-boot; perintah Windows di bawah karena itu **belum diuji**, bukan PASS.
 | D4 | `booth/README.md` | Tabel penyimpangan #6: Win key/Alt+Tab/Task Manager tidak diblokir, Assigned Access direncanakan Fase 5. |
 | 1.7 | `Shell/SnapyOS.Booth.Shell.csproj` | `RuntimeIdentifiers` = `win-x64;win-arm64` (build di Mac ARM lewat UTM). Distribusi tetap `win-x64`. |
 
-**Commit:** _lihat `git log` setelah commit ini._
+**Bukti CI:** commit `9b5ac44` → run `41094546649`
+(`push` ke `feat/landing-operational-value`), semua langkah `success`:
+build solusi, 55/55 tes, publish 599 berkas, artefak terunggah. Dua gate
+(`build-booth.ps1` lokal dan curl ke EXE) tetap **belum diuji** karena butuh
+sesi Windows interaktif.
+
+**Commit:** `9b5ac44`
 
 ---
 
