@@ -71,16 +71,51 @@ Kesimpulan: **bukan bug kode**. Belum ada satu pun baris aplikasi yang dieksekus
 | `Jalankan-Booth.cmd` dipublikasikan bersama EXE                                               | Rilis satu klik untuk operator: tanpa PowerShell manual, token dibuat sekali lalu disimpan                    |
 | `.gitattributes` — `*.sln`, `booth/scripts/*.{ps1,cmd}` = CRLF                                | MSBuild & cmd.exe mengharapkan CRLF                                                                           |
 
+### Percobaan 2 — 2026-10-30, GitHub Actions `windows-latest` — **HIJAU**
+
+Run: `41035205471` · commit `62a089c` · branch `feat/landing-operational-value`
+
+**Toolchain (dari log langkah "Versi toolchain"):**
+
+| Komponen          | Versi            |
+| ----------------- | ---------------- |
+| .NET SDK          | `8.0.427`        |
+| Node.js           | `v24.22.1`       |
+| npm               | `11.19.1`        |
+| WebView2 Runtime  | `155.0.4283.62`  |
+
+**Semua langkah `success`:**
+
+| Langkah                        | Hasil                                                              |
+| ------------------------------ | ------------------------------------------------------------------ |
+| Regenerasi kontrak setelan      | success                                                            |
+| Kontrak tidak basi              | success (`git diff --exit-code` bersih)                            |
+| Build UI React                  | success                                                            |
+| Build solusi (`-c Debug`)       | success — XAML compiler + `SnapyOS.Booth.Shell.dll` terbentuk      |
+| Tes xUnit                       | success — 43/43                                                    |
+| Publish self-contained win-x64  | success → `dist/booth`                                             |
+| Verifikasi keluaran             | EXE ada, `Assets/ui/index.html` ada, **599 berkas**                |
+| Unggah artefak                  | `snapyos-booth-win-x64-62a089c` — 78 949 364 byte (~75,3 MB)       |
+
+**SHA-256 EXE:** `ed6a84d5ea230d550655840b3162dd94925fb4be6741e5181cecabebbd30859f`
+
+**Tiga kegagalan CI sebelum hijau (riwayat apa adanya):**
+
+| # | Langkah merah      | Pesan galat                                                                                                   | Sebab                                                                                                                     | Perbaikan                                                                        |
+| - | ------------------ | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| 1 | Build UI React     | `[vite:css] Failed to load PostCSS config … Cannot find module '@tailwindcss/postcss'`                        | Vite mencari `postcss.config` ke atas dan menemukan milik root repo; plugin itu hanya ada di `node_modules` root (mesin lokal) | `booth/ui/postcss.config.mjs` dengan `plugins: {}`                                |
+| 2 | Build solusi       | `MSB4062: task "Microsoft.Build.Packaging.Pri.Tasks.ExpandPriContent" could not be loaded … Microsoft.Build.Packaging.Pri.Tasks.dll` | `dotnet build` memakai `MSBuildExtensionsPath` folder SDK .NET; task MSIX hanya dikirim bersama Visual Studio                 | Percobaan `AppxMSBuildToolsPath` → tetap gagal (runner tanpa workload UWP)        |
+| 3 | Build solusi       | sama (MSB4062) setelah perbaikan #2                                                                            | Assembly task memang tidak ada di runner                                                                                    | `EnableCoreMrtTooling=false` (aman: tanpa `.resw`/`ms-appx`; PRI framework tetap tersalin) |
+
 ### Gate yang **belum** dijalankan (bukan lulus)
 
-| Gate                                                        | Status                                                                 |
-| ----------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `dotnet build booth\SnapyOS.Booth.sln -c Debug`              | **belum diuji** — tidak ada mesin Windows ber-.NET 8 SDK               |
-| `dotnet test booth\tests\SnapyOS.Booth.Tests -c Debug`       | **belum diuji**                                                        |
-| `.\booth\scripts\build-booth.ps1`                            | **belum diuji**                                                        |
-| `.\booth\scripts\run-local.ps1 -Token ... -Mock`             | **belum diuji**                                                        |
-| `curl /health` 200 · `/v1/status` 401 · dengan token 200      | **belum diuji**                                                        |
-| Fullscreen, Alt+F4 tertahan, instance kedua, UI memanggil `/v1/status` | **belum diuji** — butuh sesi desktop Windows                   |
+| Gate                                                                   | Status                                                          |
+| ---------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `curl /health` 200 · `/v1/status` 401 · dengan token 200                | **belum diuji** — butuh sesi Windows interaktif                 |
+| Fullscreen, Alt+F4 tertahan, instance kedua, UI memanggil `/v1/status`  | **belum diuji**                                                 |
+| `.\booth\scripts\run-local.ps1 -Token … -Mock`                          | **belum diuji**                                                 |
+| Unlock PIN darurat 200 → jendela tertutup                               | **belum diuji** — butuh `exit_pin_emergency_hash` ter-seed      |
+| Rilis tag `v*` → ZIP di GitHub Release                                  | **belum diuji** — langkah rilis `skipped` pada run ini          |
 
 ### Gate yang **sudah** dijalankan (macOS, .NET 8.0.427 di `~/.dotnet`)
 
