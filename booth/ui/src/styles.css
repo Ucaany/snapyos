@@ -294,3 +294,200 @@ pre.code {
   content: " ]";
   color: var(--accent);
 }
+
+/* --- shell operator: aksi di topbar -------------------------------------- */
+
+.topbar-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+/* --- permukaan kiosk pelanggan ------------------------------------------- */
+
+.kiosk {
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  height: 100%;
+  background: var(--bg);
+}
+
+.kiosk-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 24px;
+  background: var(--panel);
+  border-bottom: 2px solid var(--accent);
+}
+
+.kiosk-logo {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.kiosk-slug {
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  margin-right: auto;
+}
+
+.kiosk-mock {
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  padding: 6px 10px;
+}
+
+.kiosk-warn {
+  border: 1px solid var(--accent);
+  border-top: 0;
+  background: rgba(230, 25, 25, 0.1);
+  padding: 10px 24px;
+  font-size: 12px;
+}
+
+.kiosk-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 20px;
+  padding: 40px 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.kiosk-eyebrow {
+  margin: 0;
+  color: var(--accent);
+  font-size: 12px;
+  letter-spacing: 0.3em;
+}
+
+.kiosk-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2.4rem, 8vw, 6.5rem);
+  line-height: 0.86;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+}
+
+.kiosk-tagline {
+  margin: 0;
+  font-size: clamp(0.95rem, 1.6vw, 1.2rem);
+  color: var(--muted);
+  max-width: 46ch;
+  line-height: 1.5;
+}
+
+.kiosk-cta {
+  align-self: flex-start;
+  background: var(--accent);
+  color: #fff;
+  border: 0;
+  padding: 22px 48px;
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.kiosk-cta:disabled {
+  background: var(--line);
+  color: var(--muted);
+  cursor: progress;
+}
+
+.kiosk-cta:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 4px;
+}
+
+.kiosk-result {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  max-width: 60ch;
+  line-height: 1.6;
+}
+
+.kiosk-result.ok {
+  color: var(--ok);
+}
+
+.kiosk-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 12px 24px;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+}
+
+.kiosk-ready {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+
+.kiosk-staff {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  padding: 10px 18px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.kiosk-staff:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+.kiosk-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(5, 5, 5, 0.9);
+}
+
+.kiosk-pin {
+  width: 100%;
+  max-width: 440px;
+  background: var(--panel);
+  border: 2px solid var(--ink);
+  padding: 24px;
+}
+
+.kiosk-pin h2 {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  letter-spacing: -0.02em;
+  margin: 0 0 12px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--accent);
+}
+
+.kiosk-pin label {
+  grid-template-columns: 80px 1fr;
+}

@@ -6,11 +6,18 @@
 export type BridgeHandle = {
   url: string;
   token: string;
+  /** True bila token terlalu pendek/variasinya sedikit — UI wajib memperingatkan. */
+  tokenWeak?: boolean;
+};
+
+type WebViewHost = {
+  postMessage: (message: unknown) => void;
 };
 
 declare global {
   interface Window {
     __SNAPY_BRIDGE__?: BridgeHandle;
+    chrome?: { webview?: WebViewHost };
   }
 }
 
@@ -95,6 +102,11 @@ export type SettingsResponse = {
   settings: Record<string, Record<string, unknown>>;
 };
 
+export type ExitResponse = {
+  ok: boolean;
+  emergency: boolean;
+};
+
 export type StatusResponse = {
   ok: boolean;
   version: string;
@@ -112,4 +124,45 @@ export const bridge = {
   writeSettings: (payload: unknown) => bridgeSend<SettingsResponse>("/v1/settings", "PUT", payload),
   exportSettings: () => bridgeGet<Record<string, unknown>>("/v1/settings/export"),
   importSettings: (payload: unknown) => bridgeSend<SettingsResponse>("/v1/settings/import", "POST", payload),
+  /**
+   * Satu-satunya jalan keluar kiosk. Server memverifikasi PIN, menegakkan
+   * lockout 5 menit, lalu Shell membuka kunci jendela hanya bila ini 200.
+   */
+  exit: (pin: string) => bridgeSend<ExitResponse>("/v1/exit", "POST", { pin }),
 };
+
+/** Peringatan token lemah — dihitung Shell saat menyuntik handle, bukan di sini. */
+export function bridgeTokenWeak(): boolean {
+  return window.__SNAPY_BRIDGE__?.tokenWeak === true;
+}
+
+export function bridgeTokenMissing(): boolean {
+  return !window.__SNAPY_BRIDGE__?.token;
+}
+
+/**
+ * Minta Shell masuk mode kiosk penuh (menyembunyikan dekorasi jendela).
+ * Shell hanya menerima permintaan masuk; keluar tetap wewenang bridge.
+ */
+export function notifyKioskEnter(): void {
+  window.chrome?.webview?.postMessage({ type: "kiosk-enter" });
+}
+
+/**
+ * Uji jalur kamera sungguhan (bukan hanya membaca status): ambil satu frame
+ * dan kembalikan ukurannya. Dipakai tombol kesiapan di permukaan kiosk.
+ */
+export async function bridgeCaptureSize(): Promise<number> {
+  const { url, token } = handle();
+  const response = await fetch(`${url}/camera/capture`, {
+    method: "POST",
+    headers: { "X-Bridge-Token": token },
+  });
+  if (!response.ok) {
+    const body = await parse(response);
+    const { message, code } = messageOf(body, `Kamera gagal (${response.status}).`);
+    throw new BridgeError(message, response.status, code);
+  }
+  const buffer = await response.arrayBuffer();
+  return buffer.byteLength;
+}
