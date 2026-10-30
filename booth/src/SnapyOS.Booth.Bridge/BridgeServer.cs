@@ -37,6 +37,14 @@ public sealed class BridgeServer
     private readonly Action<string>? _log;
     private WebApplication? _app;
 
+    /// <summary>
+    /// Dipicu HANYA setelah <c>POST /v1/exit</c> mengembalikan 200 (PIN darurat
+    /// benar, tidak terkunci). Shell memakainya untuk membuka kunci jendela —
+    /// event, bukan polling, supaya tidak ada jendela waktu di mana kiosk
+    /// menanyakan status ke dirinya sendiri.
+    /// </summary>
+    public event Action? ExitGranted;
+
     public BridgeServer(
         RuntimeConfig config,
         Store store,
@@ -297,6 +305,20 @@ public sealed class BridgeServer
                 : null;
             var response = _exit.Verify(pin);
             await WriteJsonAsync(context, response.Status, response.Body).ConfigureAwait(false);
+
+            // Sinyal keluar dikirim setelah respons tertulis: Shell baru boleh
+            // membuka kunci bila klien sudah menerima 200.
+            if (response.Status == 200)
+            {
+                try
+                {
+                    ExitGranted?.Invoke();
+                }
+                catch (Exception error)
+                {
+                    _log?.Invoke($"[snapyos-bridge] handler ExitGranted gagal: {error.Message}");
+                }
+            }
         });
 
         // --- printer lama ---

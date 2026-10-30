@@ -2,6 +2,69 @@
 <Window
     x:Class="SnapyOS.Booth.Shell.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid x:Name="RootGrid" Background="#0A0A0A" />
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Microsoft.UI.Xaml.Controls">
+    <Grid x:Name="RootGrid" Background="#0A0A0A">
+        <controls:WebView2 x:Name="WebView" />
+
+        <!--
+          Galat start tampil di lapisan XAML, bukan disuntik ke DOM. Versi lama
+          menimpa document.body setelah Navigate, lalu React menghapusnya —
+          operator melihat layar kosong tanpa sebab.
+        -->
+        <Grid
+            x:Name="ErrorOverlay"
+            Background="#0A0A0A"
+            Padding="48"
+            Visibility="Collapsed">
+            <StackPanel MaxWidth="960" HorizontalAlignment="Left" VerticalAlignment="Center" Spacing="16">
+                <Border Background="#E61919" Padding="12" HorizontalAlignment="Left">
+                    <TextBlock
+                        FontFamily="Consolas"
+                        FontSize="13"
+                        FontWeight="Bold"
+                        Foreground="#FFFFFF"
+                        Text="/// BOOTH TIDAK BISA START" />
+                </Border>
+                <TextBlock
+                    FontFamily="Segoe UI"
+                    FontSize="30"
+                    FontWeight="Black"
+                    Foreground="#EAEAEA"
+                    TextWrapping="Wrap"
+                    Text="Bridge lokal tidak berjalan." />
+                <Border BorderBrush="#2A2A2A" BorderThickness="1" Background="#121212" Padding="16">
+                    <TextBlock
+                        x:Name="ErrorText"
+                        FontFamily="Consolas"
+                        FontSize="13"
+                        Foreground="#EAEAEA"
+                        TextWrapping="Wrap"
+                        IsTextSelectionEnabled="True" />
+                </Border>
+                <TextBlock
+                    FontFamily="Consolas"
+                    FontSize="12"
+                    Foreground="#8A8A8A"
+                    TextWrapping="Wrap"
+                    Text="Perbaiki penyebab di atas lalu jalankan ulang aplikasi. Berkas log: %LOCALAPPDATA%\SNAPYOS\booth.log" />
+                <Border BorderBrush="#2A2A2A" BorderThickness="1" Background="#121212" Padding="16">
+                    <StackPanel Spacing="8">
+                        <TextBlock
+                            FontFamily="Consolas"
+                            FontSize="11"
+                            FontWeight="Bold"
+                            Foreground="#8A8A8A"
+                            Text="PERIKSA BERURUTAN" />
+                        <TextBlock
+                            FontFamily="Consolas"
+                            FontSize="12"
+                            Foreground="#EAEAEA"
+                            TextWrapping="Wrap"
+                            Text="1. PHOTOBOOTH_BRIDGE_TOKEN minimal 16 karakter.&#x0a;2. Mode mock butuh SNAPYOS_ALLOW_MOCK=1.&#x0a;3. Port 17777 tidak dipakai proses lain (netstat -ano | findstr :17777).&#x0a;4. Folder data %ProgramData%\SNAPYOS\data bisa ditulis." />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Grid>
+    </Grid>
 </Window>
