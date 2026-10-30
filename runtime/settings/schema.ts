@@ -17,7 +17,7 @@ import {
 } from "../../src/lib/validators.ts";
 
 /** Versi berkas export. Naikkan hanya bila bentuknya berubah. */
-export const SETTINGS_SCHEMA_VERSION = 1;
+export { SETTINGS_SCHEMA_VERSION } from "../../src/lib/generated/device-settings.gen.ts";
 
 export const DEVICE_GROUPS = DEVICE_SETTING_GROUPS;
 export type DeviceGroup = DeviceSettingGroup;

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Model kontrak setelan ter-generate (booth/contracts/generate.mjs). -->
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>SnapyOS.Booth.Contracts</RootNamespace>
+    <Platforms>AnyCPU;x64</Platforms>
+    <!-- Berkas .g.cs mendeklarasikan sendiri using-nya; matikan implicit usings
+         agar tidak ada using ganda (CS0105 → error karena TreatWarningsAsErrors). -->
+    <ImplicitUsings>disable</ImplicitUsings>
+    <NoWarn>CS1591</NoWarn>
+  </PropertyGroup>
+
+</Project>

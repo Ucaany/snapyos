@@ -1,0 +1,296 @@
+/*
+ * SNAPY OS BOOTH — Tactical Telemetry / Industrial Brutalism.
+ * Satu substrat gelap, aksen hazard red, tipografi mono + grotesk berat,
+ * sudut 90°, garis 1px sebagai pembatas struktural. Tidak ada gradient,
+ * tidak ada shadow lembut, tidak ada border-radius.
+ */
+
+:root {
+  --bg: #0a0a0a;
+  --panel: #121212;
+  --ink: #eaeaea;
+  --muted: #8a8a8a;
+  --line: #2a2a2a;
+  --accent: #e61919;
+  --ok: #4af626;
+  --font-mono: "JetBrains Mono", "IBM Plex Mono", "Courier New", monospace;
+  --font-display: "Archivo Black", "Inter", "Helvetica Neue", Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  -webkit-font-smoothing: none;
+  text-transform: uppercase;
+}
+
+/* Simulasi CRT: sapuan garis horizontal halus, bukan dekorasi yang mengganggu. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.12) 2px,
+    rgba(0, 0, 0, 0.12) 4px
+  );
+  z-index: 9999;
+}
+
+.app {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  height: 100%;
+  gap: 1px;
+  background: var(--line);
+}
+
+.topbar,
+.bottombar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: var(--panel);
+  padding: 10px 16px;
+}
+
+.topbar h1 {
+  font-family: var(--font-display);
+  font-size: clamp(1.1rem, 2vw, 1.6rem);
+  letter-spacing: -0.03em;
+  margin: 0;
+  line-height: 0.9;
+  text-transform: uppercase;
+}
+
+.brand-mark {
+  color: var(--accent);
+}
+
+.nav {
+  display: flex;
+  gap: 1px;
+  background: var(--line);
+}
+
+.nav button {
+  background: var(--panel);
+  color: var(--muted);
+  border: 0;
+  padding: 10px 16px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.nav button[aria-current="page"] {
+  background: var(--accent);
+  color: #fff;
+}
+
+.nav button:hover:not([aria-current="page"]) {
+  color: var(--ink);
+}
+
+.main {
+  background: var(--bg);
+  overflow: auto;
+  padding: 20px;
+}
+
+.grid {
+  display: grid;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+}
+
+.grid.cols-2 {
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.panel {
+  background: var(--panel);
+  padding: 16px;
+}
+
+.panel h2 {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+  margin: 0 0 12px;
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: 8px;
+}
+
+.meta {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 16px;
+  margin: 0;
+}
+
+.meta dt {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.meta dd {
+  margin: 0;
+  font-size: 12px;
+}
+
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  background: var(--accent);
+  vertical-align: middle;
+}
+
+.status-dot.ok {
+  background: var(--ok);
+}
+
+fieldset {
+  border: 1px solid var(--line);
+  margin: 0 0 12px;
+  padding: 12px;
+}
+
+legend {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  padding: 0 6px;
+}
+
+label {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+input,
+select,
+textarea {
+  background: #050505;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 8px;
+  text-transform: none;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.actions {
+  display: flex;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  margin-top: 12px;
+  width: max-content;
+}
+
+button.btn {
+  background: var(--panel);
+  color: var(--ink);
+  border: 0;
+  padding: 10px 16px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+button.btn.primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+button.btn:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.note {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.note strong {
+  color: var(--ink);
+}
+
+.alert {
+  border: 1px solid var(--accent);
+  background: rgba(230, 25, 25, 0.08);
+  padding: 10px 12px;
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+
+.alert.ok {
+  border-color: var(--ok);
+  background: rgba(74, 246, 38, 0.06);
+}
+
+.empty {
+  color: var(--muted);
+  font-size: 12px;
+  padding: 24px;
+  text-align: center;
+}
+
+pre.code {
+  background: #050505;
+  border: 1px solid var(--line);
+  padding: 12px;
+  overflow: auto;
+  max-height: 320px;
+  font-size: 11px;
+  text-transform: none;
+}
+
+.framing::before {
+  content: "[ ";
+  color: var(--accent);
+}
+
+.framing::after {
+  content: " ]";
+  color: var(--accent);
+}

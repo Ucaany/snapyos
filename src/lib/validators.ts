@@ -7,6 +7,13 @@ import { z } from "zod";
 import { layoutSchema } from "./template-layout.ts";
 import { MAX_RANGE_DAYS, rangeDays } from "./dashboard-math.ts";
 import { RETENTION_MAX_DAYS, RETENTION_MIN_DAYS } from "./retention.ts";
+import {
+  CLOUD_OWNED_SETTING_FIELDS,
+  CLOUD_SYNCED_DEVICE_GROUPS,
+  DEVICE_SETTING_FIELDS,
+  DEVICE_SETTING_GROUPS,
+  LOCAL_ONLY_DEVICE_GROUPS,
+} from "./generated/device-settings.gen.ts";
 
 /** UUID PostgreSQL canonical: shape hex, tanpa pembatasan version/variant RFC. */
 const uuid = z.string().guid();
@@ -480,43 +487,30 @@ export const appearanceSettingsSchema = z.object({
 // pernah berbeda pendapat. Field cloud DITOLAK (403), bukan dibuang diam-diam.
 // ---------------------------------------------------------------------------
 
-export const DEVICE_SETTING_GROUPS = [
-  "camera_settings",
-  "print_settings",
-  "session_settings",
-  "appearance_settings",
-] as const;
-export type DeviceSettingGroup = (typeof DEVICE_SETTING_GROUPS)[number];
-
 /**
- * Grup yang ikut disinkronkan ke cloud (`PATCH .../devices/settings`).
+ * Daftar grup & kepemilikan berasal dari satu sumber: kontrak JSON Schema di
+ * `booth/contracts/device-settings.schema.json`, di-generate ke
+ * `./generated/device-settings.gen.ts` dan dipakai bersama cloud (TS) dan
+ * aplikasi booth (C#). Jangan menyalin aturannya di sini.
  *
- * `appearance_settings` sengaja TIDAK di sini: kustomisasi tampilan berlaku
- * untuk satu booth dan tidak boleh menular ke booth lain lewat baris
+ * `appearance_settings` sengaja TIDAK ikut cloud-sync: kustomisasi tampilan
+ * berlaku untuk satu booth dan tidak boleh menular ke booth lain lewat baris
  * `photoboxes`. Cloud menolak grup ini dengan `LOCAL_ONLY_SETTING`, bukan
  * membuangnya diam-diam.
  */
-export const CLOUD_SYNCED_DEVICE_GROUPS = [
-  "camera_settings",
-  "print_settings",
-  "session_settings",
-] as const;
+export type DeviceSettingGroup = (typeof DEVICE_SETTING_GROUPS)[number];
 
-/** Grup yang hanya hidup di mesin booth. */
-export const LOCAL_ONLY_DEVICE_GROUPS = ["appearance_settings"] as const;
+export {
+  CLOUD_OWNED_SETTING_FIELDS,
+  CLOUD_SYNCED_DEVICE_GROUPS,
+  DEVICE_SETTING_FIELDS,
+  DEVICE_SETTING_GROUPS,
+  LOCAL_ONLY_DEVICE_GROUPS,
+};
 
 export function isLocalOnlySettingGroup(key: string): boolean {
   return (LOCAL_ONLY_DEVICE_GROUPS as readonly string[]).includes(key);
 }
-
-/** Field milik cloud yang berada di dalam grup milik device. */
-export const CLOUD_OWNED_SETTING_FIELDS: Record<DeviceSettingGroup, readonly string[]> = {
-  camera_settings: [],
-  // copies = biaya bahan, layout = bentuk output pelanggan.
-  print_settings: ["copies", "layout"],
-  session_settings: [],
-  appearance_settings: [],
-};
 
 /** Setelan yang boleh ditulis device. `strict()`: kunci asing ditolak. */
 export const deviceSettingsSchema = z
@@ -543,9 +537,17 @@ export function isDeviceSettingGroup(key: string): key is DeviceSettingGroup {
 
 /** Nama field yang boleh ditulis device pada satu grup. */
 export function deviceSettingFields(group: DeviceSettingGroup): string[] {
-  return Object.keys(DEVICE_SETTING_SHAPES[group]).filter(
+  return [...DEVICE_SETTING_FIELDS[group]].filter(
     (key) => !CLOUD_OWNED_SETTING_FIELDS[group].includes(key)
   );
+}
+
+/**
+ * Nama field di zod schema untuk satu grup — dipakai tes paritas agar daftar di
+ * JSON Schema dan validator zod tidak pernah berbeda pendapat.
+ */
+export function zodDeviceSettingFields(group: DeviceSettingGroup): string[] {
+  return Object.keys(DEVICE_SETTING_SHAPES[group]);
 }
 
 /**

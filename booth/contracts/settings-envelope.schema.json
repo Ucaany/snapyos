@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://snapyos.biz.id/contracts/settings-envelope.schema.json",
+  "title": "SnapyOSSettingsEnvelope",
+  "description": "Berkas hasil GET /v1/settings/export dan masukan POST /v1/settings/import. Tidak pernah memuat kunci rahasia exit_pin_*.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "settings"],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Versi bentuk berkas. Import menolak nilai lebih besar dari yang didukung → 400 SCHEMA_VERSION_TOO_NEW."
+    },
+    "exported_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Waktu export (ISO-8601). Tidak diperiksa saat import."
+    },
+    "photobox_slug": {
+      "type": ["string", "null"],
+      "description": "Booth asal berkas. Import menolak slug berbeda → 409 PHOTOBOX_MISMATCH."
+    },
+    "business_slug": {
+      "type": ["string", "null"]
+    },
+    "settings": {
+      "$ref": "device-settings.schema.json",
+      "description": "Hanya grup milik device. appearance_settings boleh ada (local-only); kunci exit_pin_* selalu dibuang."
+    }
+  }
+}

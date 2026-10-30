@@ -1,0 +1,18 @@
+<Project>
+
+  <PropertyGroup>
+    <LangVersion>12.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <!--
+      RuntimeIdentifier TIDAK dipasang di sini: developer di macOS/Linux harus
+      bisa `dotnet build` + `dotnet test` proyek lintas-platform (Core, Bridge).
+      Proyek Shell yang Windows-only memasang win-x64 sendiri; skrip build
+      memakai `dotnet publish -r win-x64`.
+    -->
+  </PropertyGroup>
+
+</Project>

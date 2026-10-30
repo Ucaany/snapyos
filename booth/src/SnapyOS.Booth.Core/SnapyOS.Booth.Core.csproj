@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>SnapyOS.Booth.Core</RootNamespace>
+    <Platforms>AnyCPU;x64</Platforms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.10" />
+    <!-- argon2id untuk verifikasi PIN darurat, interoperabel dengan @node-rs/argon2. -->
+    <PackageReference Include="Konscious.Security.Cryptography.Argon2" Version="1.3.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SnapyOS.Booth.Contracts\SnapyOS.Booth.Contracts.csproj" />
+  </ItemGroup>
+
+  <!-- Kontrak setelan di-embed: berkas yang sama menggerakkan model C# dan tipe TS. -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\contracts\device-settings.schema.json">
+      <LogicalName>SnapyOS.Booth.Core.device-settings.schema.json</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+</Project>

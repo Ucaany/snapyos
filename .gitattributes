@@ -1,0 +1,4 @@
+# Berkas ter-generate: paksa LF agar `git diff --exit-code` di CI tidak gagal
+# hanya karena checkout Windows memakai CRLF.
+src/lib/generated/device-settings.gen.ts text eol=lf
+booth/src/SnapyOS.Booth.Contracts/DeviceSettings.g.cs text eol=lf

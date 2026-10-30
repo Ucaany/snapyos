@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>SnapyOS.Booth.Shell</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Platforms>x64</Platforms>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <UseWinUI>true</UseWinUI>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <!-- Fase 1: unpackaged + Windows App SDK self-contained supaya `dotnet build`
+         lalu jalankan EXE langsung bekerja tanpa memasang runtime. Fase 5
+         mengganti ke MSIX (WindowsPackageType=MSIX) + code signing. -->
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <EnableMsixTooling>false</EnableMsixTooling>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.240923002" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SnapyOS.Booth.Bridge\SnapyOS.Booth.Bridge.csproj" />
+    <ProjectReference Include="..\SnapyOS.Booth.Core\SnapyOS.Booth.Core.csproj" />
+  </ItemGroup>
+
+  <!-- UI React hasil build (booth/ui) disalin ke Assets/ui dan dipetakan ke
+       https://snapyos.app/ lewat SetVirtualHostNameToFolderMapping. -->
+  <ItemGroup>
+    <Content Include="Assets\ui\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- UI dibangun lebih dulu supaya Assets/ui selalu segar. Lewati dengan
+       -p:SkipUiBuild=true bila UI sudah dibangun terpisah. -->
+  <Target Name="BuildUi" BeforeTargets="BeforeBuild" Condition="'$(SkipUiBuild)' != 'true'">
+    <Exec Command="npm ci" WorkingDirectory="$(MSBuildProjectDirectory)\..\..\ui" Condition="!Exists('$(MSBuildProjectDirectory)\..\..\ui\node_modules')" />
+    <Exec Command="npm run build" WorkingDirectory="$(MSBuildProjectDirectory)\..\..\ui" />
+  </Target>
+
+</Project>
