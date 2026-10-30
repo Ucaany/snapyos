@@ -244,6 +244,41 @@ binary Windows. Artinya kesalahan di `MainWindow.xaml` (nama properti, `x:Name`,
 
 ---
 
+## Fase 1 revisi D2/D3/D4/D10/D12/D16 — 2026-10-30, macOS (darwin 27.2.0, arm64), .NET 8.0.427
+
+Mesin ini **macOS**, tanpa Windows dan tanpa VM. Tidak ada UTM VM yang bisa
+di-boot; perintah Windows di bawah karena itu **belum diuji**, bukan PASS.
+
+| Gate                                                    | Perintah                                                          | Hasil                                                                                                     |
+| ------------------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Build Core + Bridge                                     | `dotnet build booth/src/SnapyOS.Booth.{Core,Bridge} -c Debug`      | **PASS**: 0 warning, 0 error                                                                              |
+| Tes xUnit                                               | `dotnet test booth/tests/SnapyOS.Booth.Tests -c Debug`            | **PASS**: 55/55 (sebelumnya 46; +9 tes HTTP)                                                              |
+| Build solusi penuh                                      | `dotnet build booth/SnapyOS.Booth.sln -c Debug`                   | **GAGAL, diharapkan**: `NETSDK1100` (Shell target `net8.0-windows`). Bukan regresi.                        |
+| Kompilasi C# Shell (harness stub XAML, `TreatWarningsAsErrors`) | harness `/tmp/snapy-shellcheck`                           | **PASS**: build succeeded, 0 error                                                                        |
+| YAML workflow                                           | `python3 -c "yaml.safe_load(...)"`                                | **PASS**: `on` = push/pull_request/workflow_dispatch, env rilis terparse                                  |
+| `dotnet build ... -c Debug` (Windows)                   | perintah verifikasi fase 1                                        | **belum diuji**: tidak ada Windows                                                         |
+| `.\booth\scripts\build-booth.ps1`                       | perintah verifikasi fase 1                                        | **belum diuji**: `pwsh` tidak terpasang; publish butuh Windows                                            |
+| `curl /health` 200 · `/v1/status` 401 · token 200        | perintah verifikasi fase 1                                        | **belum diuji** di EXE; padanannya diuji in-process (baris tes HTTP di bawah)                             |
+| Fullscreen, Alt+F4 tertahan, instance kedua             | uji manual                                                        | **belum diuji**: butuh sesi Windows interaktif                                                            |
+| Startup-gagal bisa ditutup                              | uji manual                                                        | **belum diuji**: butuh sesi Windows interaktif                                                            |
+| UI (bukan curl) memanggil `/v1/status`                  | uji manual                                                        | **belum diuji**: bukti kode ada (`App.tsx` `refresh()` → `bridge.status()` tiap 5 dtk), bukan bukti jalan  |
+
+**Yang diubah:**
+
+| # | Berkas | Perubahan |
+| - | ------ | --------- |
+| D2 | `Shell/MainWindow.xaml.cs` | Guard dibalik: config **nyata** ditolak dengan pesan "adapter belum tersedia (Fase 3)" dan **tidak** disubstitusi mock; config **campuran** (mis. kamera nyata + printer mock) ditolak dengan pesan sendiri; mock hanya jalan bila `SNAPYOS_ALLOW_MOCK=1`. |
+| D3 | `Shell/MainWindow.xaml.cs` | `_startupError != null` → `_locked = false`, presenter kembali `Overlapped` + border/judul, `EnterKiosk` keluar lebih awal. Operator bisa menutup jendela. |
+| D16 | `Shell/MainWindow.xaml.cs` | `OnClosed` memakai `StopAsync().Wait(2 dtk)` dan mencatat timeout; `GetAwaiter().GetResult()` (deadlock UI thread) dihapus. |
+| D12 | `.github/workflows/booth-windows.yml` | `push.branches: [main, "feat/**"]`; rilis dipicu `env.RELEASE_TAG` (tag `v*` atau input `release_tag`), `prerelease` dari input `prerelease` untuk dispatch, bukan `true` hardcode. |
+| D10 | `Bridge/BridgeServer.cs`, `Tests/BridgeHttpTests.cs` | Ctor menerima `port` (0 = OS pilih) + `Urls`; 9 tes HTTP in-process: `/health` 200 tanpa token, `/v1/status` 401/200, CORS origin allowlist (echo, preflight 204, origin asing 403), fallback 404, finalize multipart tanpa boundary 400, finalize tanpa foto 400. |
+| D4 | `booth/README.md` | Tabel penyimpangan #6: Win key/Alt+Tab/Task Manager tidak diblokir, Assigned Access direncanakan Fase 5. |
+| 1.7 | `Shell/SnapyOS.Booth.Shell.csproj` | `RuntimeIdentifiers` = `win-x64;win-arm64` (build di Mac ARM lewat UTM). Distribusi tetap `win-x64`. |
+
+**Commit:** _lihat `git log` setelah commit ini._
+
+---
+
 ## Fase 2 — Port runtime
 
 **Kode ada, build Windows terbukti di CI run `41035205471` (43/43 tes xUnit hijau);

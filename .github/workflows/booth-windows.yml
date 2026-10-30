@@ -8,7 +8,7 @@ name: Booth Windows
 
 on:
   push:
-    branches: [main]
+    branches: [main, "feat/**"]
     tags: ["v*"]
     paths:
       - "booth/**"
@@ -18,6 +18,18 @@ on:
       - "booth/**"
       - ".github/workflows/booth-windows.yml"
   workflow_dispatch:
+    # Rilis manual: tag yang dipakai untuk ZIP. Prerelease hanya bila diminta,
+    # sehingga rilis manual tidak selamanya berlabel prerelease.
+    inputs:
+      release_tag:
+        description: "Tag rilis (kosong = tidak menerbitkan Release)"
+        required: false
+        type: string
+      prerelease:
+        description: "Tandai Release sebagai prerelease"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: booth-windows-${{ github.ref }}
@@ -30,6 +42,11 @@ jobs:
   build:
     runs-on: windows-latest
     timeout-minutes: 40
+    env:
+      # Satu sumber kebenaran untuk "ini rilis?". Tag push = selalu rilis;
+      # workflow_dispatch hanya bila release_tag diisi.
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || (startsWith(github.ref, 'refs/tags/v') && github.ref_name || '') }}
+      PRERELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || 'false' }}
     defaults:
       run:
         shell: pwsh
@@ -107,9 +124,9 @@ jobs:
           retention-days: 14
 
       - name: Kemas ZIP rilis
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: env.RELEASE_TAG != ''
         run: |
-          $tag = "${{ github.ref_name }}"
+          $tag = $env:RELEASE_TAG
           $zip = "dist/snapyos-booth-$tag-win-x64.zip"
           Compress-Archive -Path dist/booth/* -DestinationPath $zip -CompressionLevel Optimal
           $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
@@ -118,18 +135,19 @@ jobs:
           "SHA-256: $hash"
 
       - name: Terbitkan GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: env.RELEASE_TAG != ''
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
           files: |
-            booth/dist/snapyos-booth-${{ github.ref_name }}-win-x64.zip
-            booth/dist/snapyos-booth-${{ github.ref_name }}-win-x64.zip.sha256
+            booth/dist/snapyos-booth-${{ env.RELEASE_TAG }}-win-x64.zip
+            booth/dist/snapyos-booth-${{ env.RELEASE_TAG }}-win-x64.zip.sha256
           body: |
-            Rilis aplikasi booth SNAPY OS ${{ github.ref_name }} (Windows x64).
+            Rilis aplikasi booth SNAPY OS ${{ env.RELEASE_TAG }} (Windows x64).
 
             ## Cara pakai (tanpa .NET SDK)
 
-            1. Unduh `snapyos-booth-${{ github.ref_name }}-win-x64.zip`.
+            1. Unduh `snapyos-booth-${{ env.RELEASE_TAG }}-win-x64.zip`.
             2. Ekstrak ke folder permanen, mis. `C:\SNAPYOS\booth`.
             3. Jalankan `Jalankan-Booth.cmd`.
 
@@ -153,9 +171,9 @@ jobs:
             Cocokkan SHA-256 ZIP dengan berkas `.sha256` di rilis ini:
 
             ```powershell
-            Get-FileHash .\snapyos-booth-${{ github.ref_name }}-win-x64.zip -Algorithm SHA256
+            Get-FileHash .\snapyos-booth-${{ env.RELEASE_TAG }}-win-x64.zip -Algorithm SHA256
             ```
-          prerelease: true
+          prerelease: ${{ env.PRERELEASE == 'true' }}
           fail_on_unmatched_files: true
 
       - name: Catat hasil verifikasi

@@ -7,7 +7,9 @@
     <RootNamespace>SnapyOS.Booth.Shell</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>x64</Platforms>
-    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <!-- win-arm64: build di Mac ARM (UTM/Parallels) menghasilkan exe ARM64.
+         Distribusi tetap win-x64 lewat build-booth.ps1. -->
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
     <UseWinUI>true</UseWinUI>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>

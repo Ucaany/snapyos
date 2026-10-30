@@ -132,6 +132,7 @@ Dicatat supaya tidak dianggap drift tak sengaja.
 | 3 | Token visual dari `src/styles/tokens.css` (light paper)    | `booth/ui/src/styles.css` — substrat gelap `#0A0A0A` + hazard red         | Kiosk dilihat dari jarak dekat di ruang gelap; palet kertas putih menyilaukan. Aturan Neo-Brutalism tetap: sudut 90°, garis 1px, tanpa gradient/shadow lembut. |
 | 4 | Mutex `Global\SnapyOS.Booth`                              | `Local\SnapyOS.Booth` + event `Local\SnapyOS.Booth.Activate`              | Mutex global butuh `SeCreateGlobalPrivilege`; user booth biasa tidak punya, sehingga instance kedua akan crash alih-alih keluar rapi. |
 | 5 | Presenter kiosk dari `OverlappedPresenter` saja            | `OverlappedPresenter` (border/title off, no resize/max/min) **lalu** `SetPresenter(FullScreen)` | `OverlappedPresenter` mengatur dekorasi; `FullScreen` mengisi layar. Keduanya dipakai berurutan, bukan salah satu. |
+| 6 | Kiosk terkunci penuh (tanpa jalan keluar OS)              | Hanya `AppWindow.Closing` yang ditahan: **Win key, Alt+Tab, dan Task Manager tidak diblokir**. Assigned Access (kiosk mode Windows) direncanakan Fase 5 | Aplikasi unpackaged tidak bisa menolak shortcut level OS maupun menutup Task Manager; klaim sebaliknya akan menyesatkan operator. Jalur keluar resmi tetap PIN darurat `POST /v1/exit`. |
 
 ## Status fase
 

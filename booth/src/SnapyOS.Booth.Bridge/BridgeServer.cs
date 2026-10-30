@@ -35,6 +35,7 @@ public sealed class BridgeServer
     private readonly SerialQueue _captureLock = new();
     private readonly SerialQueue _printLock = new();
     private readonly Action<string>? _log;
+    private readonly int _port;
     private WebApplication? _app;
 
     /// <summary>
@@ -52,8 +53,16 @@ public sealed class BridgeServer
         ICamera? streamCamera,
         IPrinter printer,
         SyncWorker? sync = null,
-        Action<string>? log = null)
+        Action<string>? log = null,
+        int? port = null)
     {
+        // Port 0 = biarkan OS memilih; hanya untuk uji in-process. Kiosk
+        // selalu memakai port tetap supaya URL WebView2 tidak berubah.
+        if (port is < 0 or > 65535)
+        {
+            throw new ArgumentOutOfRangeException(nameof(port));
+        }
+        _port = port ?? config.Port;
         _config = config;
         _store = store;
         _settings = new SettingsService(store, config);
@@ -69,13 +78,16 @@ public sealed class BridgeServer
         _log = log;
     }
 
+    /// <summary>Alamat yang benar-benar di-bind. Berguna saat <c>port: 0</c> di uji.</summary>
+    public IReadOnlyList<string> Urls => _app is null ? [] : [.. _app.Urls];
+
     public WebApplication Build()
     {
         var builder = WebApplication.CreateSlimBuilder();
         builder.Logging.ClearProviders();
         builder.WebHost.ConfigureKestrel((context, options) =>
         {
-            options.Listen(IPAddress.Parse(_config.Host), _config.Port);
+            options.Listen(IPAddress.Parse(_config.Host), _port);
         });
 
         var app = builder.Build();

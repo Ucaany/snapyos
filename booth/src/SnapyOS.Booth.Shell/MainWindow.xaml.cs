@@ -62,19 +62,29 @@ public sealed partial class MainWindow : Window
             _bridgeToken = Environment.GetEnvironmentVariable("PHOTOBOOTH_BRIDGE_TOKEN")?.Trim() ?? string.Empty;
             _tokenWeak = IsWeakToken(_bridgeToken);
 
-            // Mock hanya boleh dipakai bila memang dinyatakan: kamera palsu di
-            // booth berarti pelanggan membayar foto yang bukan dirinya.
+            // Adapter nyata belum ada (Fase 3). Config nyata DITOLAK, bukan
+            // ditutupi mock: kamera palsu berarti pelanggan membayar foto yang
+            // bukan dirinya. Config campuran (kamera nyata + printer mock) juga
+            // ditolak, karena itu mencampur dua perilaku di satu booth.
+            var allMock = _config.Camera == "mock"
+                && _config.CameraStream is null or "mock"
+                && _config.Printer == "mock";
+            if (!allMock)
+            {
+                throw new ConfigException(_config.Mock
+                    ? "Config campuran: sebagian adapter mock, sebagian perangkat keras nyata. " +
+                      "Adapter nyata belum tersedia (Fase 3); pakai mock untuk ketiganya " +
+                      "(SNAPYOS_CAMERA=mock SNAPYOS_PRINTER=mock SNAPYOS_CAMERA_STREAM=mock)."
+                    : "Adapter perangkat keras nyata belum tersedia (Fase 3). " +
+                      "Jalankan dengan SNAPYOS_CAMERA=mock SNAPYOS_PRINTER=mock SNAPYOS_ALLOW_MOCK=1.");
+            }
+
+            // Mock hanya boleh dipakai bila memang dinyatakan.
             var allowMock = Environment.GetEnvironmentVariable("SNAPYOS_ALLOW_MOCK");
-            if (_config.Mock && !string.Equals(allowMock, "1", StringComparison.Ordinal))
+            if (!string.Equals(allowMock, "1", StringComparison.Ordinal))
             {
                 throw new ConfigException(
                     "Adapter mock dipakai tanpa izin. Set SNAPYOS_ALLOW_MOCK=1 bila ini memang uji coba.");
-            }
-            if (!_config.Mock)
-            {
-                throw new ConfigException(
-                    "Adapter perangkat keras nyata belum tersedia (Fase 3). " +
-                    "Jalankan dengan SNAPYOS_CAMERA=mock SNAPYOS_PRINTER=mock SNAPYOS_ALLOW_MOCK=1.");
             }
 
             var store = Store.Open(_config.DataDir);
@@ -92,6 +102,9 @@ public sealed partial class MainWindow : Window
             _bridge = null;
             _config = null;
             _startupError = error.Message;
+            // Jendela tanpa bridge tidak perlu dikunci; WebView Loaded akan
+            // menampilkan overlay dan mengembalikan dekorasi.
+            _locked = false;
             _log.Write($"config gagal: {error}");
         }
 
@@ -270,6 +283,11 @@ public sealed partial class MainWindow : Window
     /// </summary>
     private void EnterKiosk()
     {
+        // Startup gagal: jendela sengaja tidak dikunci, jangan dikunci lagi.
+        if (_startupError is not null)
+        {
+            return;
+        }
         _locked = true;
         if (!_kioskEntered)
         {
@@ -321,6 +339,15 @@ public sealed partial class MainWindow : Window
     {
         ErrorText.Text = _startupError ?? "Penyebab tidak diketahui.";
         ErrorOverlay.Visibility = Visibility.Visible;
+
+        // Tidak ada kiosk yang perlu dilindungi: buka kunci dan kembalikan
+        // dekorasi, supaya operator bisa menutup jendela tanpa Task Manager.
+        _locked = false;
+        AppWindow.SetPresenter(AppWindowPresenterKind.Overlapped);
+        if (AppWindow.Presenter is OverlappedPresenter presenter)
+        {
+            presenter.SetBorderAndTitleBar(true, true);
+        }
         _log.Write($"startup gagal: {_startupError}");
     }
 
@@ -340,9 +367,19 @@ public sealed partial class MainWindow : Window
     private void OnClosed(object sender, WindowEventArgs args)
     {
         _log.Write("jendela ditutup");
+        var bridge = _bridge;
+        if (bridge is null)
+        {
+            return;
+        }
         try
         {
-            _bridge?.StopAsync().GetAwaiter().GetResult();
+            // Jangan menunggu tanpa batas di UI thread: 2 detik cukup untuk
+            // menutup listener, sisanya dibiarkan proses keluar.
+            if (!bridge.StopAsync().Wait(TimeSpan.FromSeconds(2)))
+            {
+                _log.Write("bridge stop timeout 2 dtk; proses keluar apa adanya");
+            }
         }
         catch (Exception error)
         {
