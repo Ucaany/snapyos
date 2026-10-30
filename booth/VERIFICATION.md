@@ -107,6 +107,34 @@ Run: `41035205471` · commit `62a089c` · branch `feat/landing-operational-value
 | 2 | Build solusi       | `MSB4062: task "Microsoft.Build.Packaging.Pri.Tasks.ExpandPriContent" could not be loaded … Microsoft.Build.Packaging.Pri.Tasks.dll` | `dotnet build` memakai `MSBuildExtensionsPath` folder SDK .NET; task MSIX hanya dikirim bersama Visual Studio                 | Percobaan `AppxMSBuildToolsPath` → tetap gagal (runner tanpa workload UWP)        |
 | 3 | Build solusi       | sama (MSB4062) setelah perbaikan #2                                                                            | Assembly task memang tidak ada di runner                                                                                    | `EnableCoreMrtTooling=false` (aman: tanpa `.resw`/`ms-appx`; PRI framework tetap tersalin) |
 
+### Percobaan 3 — 2026-10-30, tag `v0.1.0` → GitHub Release — **HIJAU**
+
+Run: `41037358809` · commit `dc1cf16` · ref `v0.1.0`
+
+| Langkah                  | Hasil                                                    |
+| ------------------------ | -------------------------------------------------------- |
+| Build solusi             | success                                                  |
+| Tes xUnit                | success — 43/43                                          |
+| Publish self-contained   | success                                                  |
+| Kemas ZIP rilis          | success                                                  |
+| Terbitkan GitHub Release | success                                                  |
+
+**Artefak rilis (terverifikasi ada di GitHub):**
+
+| Berkas                                  | Ukuran       |
+| --------------------------------------- | ------------ |
+| `snapyos-booth-v0.1.0-win-x64.zip`      | 79 217 394 B |
+| `snapyos-booth-v0.1.0-win-x64.zip.sha256` | 100 B      |
+
+**SHA-256 ZIP:** `60b50f913df4f881c816e408ff88acdb62e6e44d8c809c6cce524d8fdd05c93b`
+**SHA-256 EXE (di dalam ZIP):** `9edc85a074c1194a8f90fa53b498c618127a5678b738ce6d771d4c625bcd3ae7`
+**Jumlah berkas di `dist/booth`:** 599
+
+Rilis ditandai **prerelease** karena gate runtime Windows di bawah belum dijalankan.
+
+Kegagalan ke-4 sebelum hijau: langkah "Kemas ZIP rilis" menulis
+`dist/dist/….sha256` (`$zip` sudah memuat `dist/`). Diperbaiki jadi `"$zip.sha256"`.
+
 ### Gate yang **belum** dijalankan (bukan lulus)
 
 | Gate                                                                   | Status                                                          |
@@ -115,7 +143,8 @@ Run: `41035205471` · commit `62a089c` · branch `feat/landing-operational-value
 | Fullscreen, Alt+F4 tertahan, instance kedua, UI memanggil `/v1/status`  | **belum diuji**                                                 |
 | `.\booth\scripts\run-local.ps1 -Token … -Mock`                          | **belum diuji**                                                 |
 | Unlock PIN darurat 200 → jendela tertutup                               | **belum diuji** — butuh `exit_pin_emergency_hash` ter-seed      |
-| Rilis tag `v*` → ZIP di GitHub Release                                  | **belum diuji** — langkah rilis `skipped` pada run ini          |
+
+Rilis tag `v*` → ZIP di GitHub Release **sudah terbukti** (Percobaan 3).
 
 ### Gate yang **sudah** dijalankan (macOS, .NET 8.0.427 di `~/.dotnet`)
 
