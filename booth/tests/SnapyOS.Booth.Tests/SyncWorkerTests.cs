@@ -92,7 +92,13 @@ public sealed class SyncWorkerTests : IDisposable
             var report = await worker.RunOnceAsync(default);
 
             Assert.Equal(1, report.Synced);
-            Assert.Equal(2, cloud.Requests.Count); // create + finalize
+            // 1 push setelan + create sesi + finalize. Yang dihitung sebagai
+            // "sesi" hanya dua yang terakhir; push setelan terjadi sekali di
+            // awal setiap RunOnce.
+            Assert.Equal(3, cloud.Requests.Count);
+            Assert.Equal(
+                2,
+                cloud.Requests.Count(r => r.RequestUri!.AbsolutePath.Contains("/sessions")));
             Assert.Contains(cloud.Requests, r => r.Headers.Contains("Idempotency-Key"));
             // cloud_id tersimpan segera
             var session = sessions.ReadSession(id).Body!.AsObject();
@@ -135,9 +141,9 @@ public sealed class SyncWorkerTests : IDisposable
 
             Assert.Equal(1, report.Retrying);
             var session = sessions.ReadSession(id).Body!.AsObject();
-            Assert.Null(session["cloud_id"]!.GetValue<string?>());
+            Assert.Null(session["cloud_id"]?.GetValue<string?>());
             // Tetap ada + tidak terkunci permanen (next_attempt_at di masa depan).
-            Assert.Null(session["synced_at"]!.GetValue<string?>());
+            Assert.Null(session["synced_at"]?.GetValue<string?>());
         }
     }
 

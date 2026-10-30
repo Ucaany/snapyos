@@ -35,7 +35,20 @@
        https://snapyos.app/ lewat SetVirtualHostNameToFolderMapping. -->
   <ItemGroup>
     <Content Include="Assets\ui\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Peluncur satu klik ikut ke folder publish, jadi ZIP rilis bisa dipakai
+         operator tanpa PowerShell manual. -->
+    <Content Include="..\..\scripts\Jalankan-Booth.cmd"
+             Link="Jalankan-Booth.cmd"
+             CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+
+  <!-- Ikon di-generate, bukan di-commit (booth/.gitignore). Tanpa target ini
+       clone bersih dan runner CI gagal di CoreCompile karena Assets\app.ico
+       belum ada (CS7064). Node sudah jadi prasyarat build lewat BuildUi. -->
+  <Target Name="GenerateAssets" BeforeTargets="BeforeBuild"
+          Condition="!Exists('$(MSBuildProjectDirectory)\Assets\app.ico')">
+    <Exec Command="node &quot;$(MSBuildProjectDirectory)\..\..\scripts\generate-assets.mjs&quot;" />
+  </Target>
 
   <!-- UI dibangun lebih dulu supaya Assets/ui selalu segar. Lewati dengan
        -p:SkipUiBuild=true bila UI sudah dibangun terpisah. -->

@@ -1,13 +1,15 @@
 name: Booth Windows
 
-# Build + test aplikasi booth di runner Windows. Artefak EXE siap jalan
-# diunggah, jadi clone repo tidak perlu .NET SDK untuk mencoba aplikasi.
+# Build + test aplikasi booth di runner Windows, lalu:
+#   - push/PR        → artefak build (14 hari)
+#   - tag v*         → GitHub Release berisi ZIP siap pakai (tanpa .NET SDK di mesin operator)
 #
 # MSIX + code signing ditambahkan pada fase 5 (booth/plan.md).
 
 on:
   push:
     branches: [main]
+    tags: ["v*"]
     paths:
       - "booth/**"
       - ".github/workflows/booth-windows.yml"
@@ -20,6 +22,9 @@ on:
 concurrency:
   group: booth-windows-${{ github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -47,9 +52,12 @@ jobs:
 
       - name: Versi toolchain
         run: |
-          dotnet --version
-          node --version
-          npm --version
+          "dotnet SDK : " + (dotnet --version)
+          "node       : " + (node --version)
+          "npm        : " + (npm --version)
+          $edge = "HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+          $wv2 = if (Test-Path $edge) { (Get-ItemProperty $edge).pv } else { "tidak terdeteksi" }
+          "WebView2   : $wv2"
 
       - name: Regenerasi kontrak setelan
         working-directory: .
@@ -81,8 +89,14 @@ jobs:
           if (-not (Test-Path $exe)) { throw "EXE tidak ada: $exe" }
           if (-not (Test-Path $ui)) { throw "UI tidak ikut publish: $ui" }
           $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
-          "EXE SHA-256: $hash" | Tee-Object -FilePath dist/booth/SHA256SUMS.txt
-          "versi: ${{ github.sha }}" | Add-Content dist/booth/SHA256SUMS.txt
+          $count = (Get-ChildItem dist/booth -Recurse -File).Count
+          $lines = @(
+            "versi: ${{ github.sha }}",
+            "exe sha256: $hash",
+            "berkas di dist/booth: $count"
+          )
+          $lines | Tee-Object -FilePath dist/booth/SHA256SUMS.txt
+          $lines | ForEach-Object { $_ }
 
       - name: Unggah artefak
         uses: actions/upload-artifact@v4
@@ -91,6 +105,57 @@ jobs:
           path: booth/dist/booth
           if-no-files-found: error
           retention-days: 14
+
+      - name: Kemas ZIP rilis
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $zip = "dist/snapyos-booth-$tag-win-x64.zip"
+          Compress-Archive -Path dist/booth/* -DestinationPath $zip -CompressionLevel Optimal
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          "$hash  snapyos-booth-$tag-win-x64.zip" | Set-Content "dist/$zip.sha256" -Encoding ascii
+          "ZIP: $zip"
+          "SHA-256: $hash"
+
+      - name: Terbitkan GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            booth/dist/snapyos-booth-${{ github.ref_name }}-win-x64.zip
+            booth/dist/snapyos-booth-${{ github.ref_name }}-win-x64.zip.sha256
+          body: |
+            Rilis aplikasi booth SNAPY OS ${{ github.ref_name }} (Windows x64).
+
+            ## Cara pakai (tanpa .NET SDK)
+
+            1. Unduh `snapyos-booth-${{ github.ref_name }}-win-x64.zip`.
+            2. Ekstrak ke folder permanen, mis. `C:\SNAPYOS\booth`.
+            3. Jalankan `Jalankan-Booth.cmd`.
+
+            Tidak perlu memasang .NET 8 SDK — runtime sudah dibundel (self-contained).
+
+            ## Prasyarat mesin
+
+            - Windows 10 1809+ / Windows 11, x64.
+            - WebView2 Runtime. Sudah ada di Windows 11 dan Windows 10 yang
+              terbarui. Bila aplikasi menolak start, pasang "Evergreen Runtime"
+              dari Microsoft.
+
+            ## Mode uji (mock)
+
+            `Jalankan-Booth.cmd` memakai adapter mock bila dipanggil dengan `-Mock`.
+            Mock **wajib** `SNAPYOS_ALLOW_MOCK=1` dan dilabeli di UI; jangan dipakai
+            untuk melayani pelanggan.
+
+            ## Verifikasi unduhan
+
+            Cocokkan SHA-256 ZIP dengan berkas `.sha256` di rilis ini:
+
+            ```powershell
+            Get-FileHash .\snapyos-booth-${{ github.ref_name }}-win-x64.zip -Algorithm SHA256
+            ```
+          fail_on_unmatched_files: true
 
       - name: Catat hasil verifikasi
         if: always()

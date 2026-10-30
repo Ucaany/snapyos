@@ -2,3 +2,8 @@
 # hanya karena checkout Windows memakai CRLF.
 src/lib/generated/device-settings.gen.ts text eol=lf
 booth/src/SnapyOS.Booth.Contracts/DeviceSettings.g.cs text eol=lf
+
+# Alat Windows (MSBuild, cmd.exe) mengharapkan CRLF.
+*.sln text eol=crlf
+booth/scripts/*.ps1 text eol=crlf
+booth/scripts/*.cmd text eol=crlf

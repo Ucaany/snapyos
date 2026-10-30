@@ -42,19 +42,103 @@ Fase 1 boleh dimulai, tetapi seluruh gate fase 1 (build, test, runtime) wajib di
 
 ## Fase 1 — Shell kiosk + bridge
 
-**Status: belum dijalankan.** Butuh Windows x64 + .NET 8 SDK + WebView2 Runtime.
+### Percobaan 1 — 2026-10-30, macOS + Windows tanpa .NET SDK
 
-Yang sudah disiapkan (belum terbukti jalan):
+**Mesin A (macOS, darwin):** `dotnet` **tidak terpasang** (`command -v dotnet` kosong).
+Node v24.19.0, npm 12.0.2. Tidak ada Windows App SDK/WebView2. Semua gate .NET tidak
+bisa dijalankan di sini.
 
-| Item                                | Berkas                                | Status                                               |
-| ----------------------------------- | ------------------------------------- | ---------------------------------------------------- |
-| Build + tes + artefak di CI Windows | `.github/workflows/booth-windows.yml` | ditulis, **belum pernah jalan** (belum di-push)      |
-| Jalankan dari clone                 | `booth/scripts/run-local.ps1`         | ditulis, **belum pernah dijalankan**                 |
-| Build lokal                         | `booth/scripts/build-booth.ps1`       | sudah ada sejak fase 1 awal, belum pernah dieksekusi |
+**Mesin B (Windows, milik operator):** `dotnet` **tidak terpasang** —
+`The term 'dotnet' is not recognized`. Itu penyebab tunggal "curl gagal connect":
 
-Cara mendapatkan bukti pertama: push branch → buka tab Actions → workflow "Booth Windows"
-→ kalau gagal, salin log langkah yang merah ke sini. Itu menggantikan `dotnet build` lokal
-dan tidak butuh mesin Windows pribadi.
+| Perintah                                                                     | Hasil                                                    |
+| ---------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `Get-Process SnapyOS.Booth.Shell`                                            | kosong — aplikasi tidak pernah berjalan                  |
+| `Get-NetTCPConnection -LocalPort 17777` / `netstat -ano \| findstr :17777`   | kosong — tidak ada yang listen                           |
+| `Test-Path "$env:ProgramData\SNAPYOS\data\snapyos.db"`                       | `False` — `Store.Open` tidak pernah tercapai             |
+| `dotnet run --project booth\src\SnapyOS.Booth.Bridge`                        | **gagal**: `dotnet` tidak dikenal                        |
+
+Kesimpulan: **bukan bug kode**. Belum ada satu pun baris aplikasi yang dieksekusi.
+
+### Yang dikerjakan sebagai akibatnya (1.1)
+
+| Perubahan                                                                                     | Alasan                                                                                                        |
+| --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `.github/workflows/booth-windows.yml` — job `build` + job rilis pada tag `v*`                 | Build & rilis terjadi di runner Windows, jadi mesin operator tidak perlu .NET SDK                             |
+| Workflow mencetak versi `dotnet`, `node`, `npm`, dan **WebView2 Runtime** (registry EdgeUpdate) | 1.1 mewajibkan versi toolchain dicatat; sekarang tercatat di log setiap run                                   |
+| `SnapyOS.Booth.sln` — tambah konfigurasi solusi `Debug\|Any CPU` dan `Release\|Any CPU`        | `dotnet build ... -c Debug` (perintah verifikasi & CI) gagal `MSB4126` karena solusi hanya punya `x64`        |
+| `SnapyOS.Booth.Shell.csproj` — target `GenerateAssets`                                        | `Assets/app.ico` gitignored & tidak pernah di-commit → `CS7064` di clone bersih. Ikon sekarang di-generate saat build |
+| `Jalankan-Booth.cmd` dipublikasikan bersama EXE                                               | Rilis satu klik untuk operator: tanpa PowerShell manual, token dibuat sekali lalu disimpan                    |
+| `.gitattributes` — `*.sln`, `booth/scripts/*.{ps1,cmd}` = CRLF                                | MSBuild & cmd.exe mengharapkan CRLF                                                                           |
+
+### Gate yang **belum** dijalankan (bukan lulus)
+
+| Gate                                                        | Status                                                                 |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `dotnet build booth\SnapyOS.Booth.sln -c Debug`              | **belum diuji** — tidak ada mesin Windows ber-.NET 8 SDK               |
+| `dotnet test booth\tests\SnapyOS.Booth.Tests -c Debug`       | **belum diuji**                                                        |
+| `.\booth\scripts\build-booth.ps1`                            | **belum diuji**                                                        |
+| `.\booth\scripts\run-local.ps1 -Token ... -Mock`             | **belum diuji**                                                        |
+| `curl /health` 200 · `/v1/status` 401 · dengan token 200      | **belum diuji**                                                        |
+| Fullscreen, Alt+F4 tertahan, instance kedua, UI memanggil `/v1/status` | **belum diuji** — butuh sesi desktop Windows                   |
+
+### Gate yang **sudah** dijalankan (macOS, .NET 8.0.427 di `~/.dotnet`)
+
+SDK ternyata terpasang tapi tidak ada di `PATH`. Hasil nyata:
+
+| Gate                                                                 | Hasil                                                                                     |
+| -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `node booth/contracts/generate.mjs` + `git diff --exit-code`          | **PASS** — dua berkas ter-generate tidak berubah                                          |
+| `cd booth/ui && npm run typecheck`                                    | **PASS** — keluar 0                                                                        |
+| `cd booth/ui && npm run build`                                        | **PASS** — 34 modul, `Assets/ui/index.html` + `assets/*.{js,css}`                          |
+| `dotnet build src/SnapyOS.Booth.Core -c Debug`                        | **PASS** — 0 warning, 0 error                                                              |
+| `dotnet build src/SnapyOS.Booth.Bridge -c Debug`                      | **PASS** — 0 warning, 0 error                                                              |
+| `dotnet test tests/SnapyOS.Booth.Tests -c Debug`                      | **PASS** — 43/43 lulus setelah 2 tes diperbaiki (lihat di bawah)                           |
+| Kompilasi C# Shell (harness `net8.0-windows` + stub XAML)             | **PASS** — `ShellCheck.dll` terbentuk, 0 warning, 0 error (`TreatWarningsAsErrors=true`)   |
+| `MainWindow.xaml` / `App.xaml` / manifest — XML well-formed           | **PASS** — diparse `xml.etree`                                                             |
+| `dotnet build SnapyOS.Booth.sln -c Debug` (macOS)                     | **GAGAL, diharapkan** — `NETSDK1100` / `XamlCompiler.exe` adalah binary Windows            |
+
+**Dua tes yang gagal lalu diperbaiki (bukan bug produk, ekspektasi tes basi):**
+
+| Tes                                                                  | Gejala                                              | Sebab                                                                                                                        |
+| -------------------------------------------------------------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `successful_sync_creates_cloud_session_finalizes_and_marks_synced`    | `Expected: 2, Actual: 3`                            | `RunOnceAsync` juga melakukan `PATCH /devices/settings` sebelum create+finalize; tes menghitung semua request. Diperbaiki: total 3, dan 2 di antaranya rute `/sessions`. |
+| `server_error_schedules_retry_without_losing_session`                 | `NullReferenceException`                            | `session["cloud_id"]!.GetValue<string?>()` — indexer mengembalikan `null` untuk properti yang tidak ada, `!` tidak menolong. Diperbaiki jadi `?.`. |
+
+**Belum tervalidasi di macOS:** XAML compiler (WinUI) dan `MrtCore` PRI — keduanya
+binary Windows. Artinya kesalahan di `MainWindow.xaml` (nama properti, `x:Name`,
+`Padding` pada `Grid`) baru akan terlihat di runner Windows.
+
+### Status 1.2–1.9
+
+| # | Isi                                            | Kode | Terbukti jalan |
+| - | ---------------------------------------------- | ---- | -------------- |
+| 1.2 | Single-instance (`Local\` mutex + event)      | ada  | belum          |
+| 1.3 | Kiosk fullscreen, border/judul mati           | ada  | belum          |
+| 1.4 | `AppWindow.Closing` + event `ExitGranted`     | ada  | belum          |
+| 1.5 | Guard navigasi/jendela/DevTools WebView2      | ada  | belum          |
+| 1.6 | Guard mock hanya bila `SNAPYOS_ALLOW_MOCK≠1`  | ada  | belum          |
+| 1.7 | Permukaan kiosk pelanggan terpisah dari shell | ada  | belum          |
+| 1.8 | Token sekali baca + peringatan token lemah    | ada  | belum          |
+| 1.9 | `-SkipContracts`, cek `Assets/ui`, SHA-256    | ada  | belum          |
+
+### Perbaikan diagnosa yang ikut masuk (fase 1)
+
+| Gejala lama                                                          | Perbaikan                                                                                                     |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| EXE hidup, port 17777 kosong, tanpa pesan apa pun                    | `StartBridgeAsync` menangkap kegagalan bind dan menampilkan penyebabnya                                        |
+| `_ = _bridge.StartAsync()` fire-and-forget                           | diganti `await` di dalam `Task` yang galatnya dicatat                                                          |
+| Galat start disuntik ke `document.body` lalu dihapus React           | overlay XAML `ErrorOverlay` di atas WebView2                                                                   |
+| Tidak ada log sama sekali                                            | `BoothLog` → `%LOCALAPPDATA%\SNAPYOS\booth.log` (rotasi 2 MB, kegagalan tulis diabaikan)                       |
+| UI dimuat dari `https://snapyos.app` tapi CORS hanya izinkan `:3000` | Shell menambahkan `https://snapyos.app` ke `AllowedOrigins` sebelum bridge dibuat                              |
+
+### Debt yang diketahui (tidak dikerjakan di fase 1)
+
+- `BoothSettingsPanel.tsx` masih menyalin daftar grup/field secara manual. Invarian
+  "satu sumber aturan setelan" (`booth/contracts/*.json`) belum terpenuhi untuk UI.
+  Perbaikan butuh metadata tambahan dari `generate.mjs` (label, tipe input, opsi) —
+  di luar lingkup 1.7 dan berisiko regresi bila dipaksa sekarang.
+
 
 ---
 
