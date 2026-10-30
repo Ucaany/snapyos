@@ -42,7 +42,19 @@ Fase 1 boleh dimulai, tetapi seluruh gate fase 1 (build, test, runtime) wajib di
 
 ## Fase 1 — Shell kiosk + bridge
 
-Belum dijalankan. Butuh Windows x64 + .NET 8 SDK + WebView2 Runtime.
+**Status: belum dijalankan.** Butuh Windows x64 + .NET 8 SDK + WebView2 Runtime.
+
+Yang sudah disiapkan (belum terbukti jalan):
+
+| Item                                | Berkas                                | Status                                               |
+| ----------------------------------- | ------------------------------------- | ---------------------------------------------------- |
+| Build + tes + artefak di CI Windows | `.github/workflows/booth-windows.yml` | ditulis, **belum pernah jalan** (belum di-push)      |
+| Jalankan dari clone                 | `booth/scripts/run-local.ps1`         | ditulis, **belum pernah dijalankan**                 |
+| Build lokal                         | `booth/scripts/build-booth.ps1`       | sudah ada sejak fase 1 awal, belum pernah dieksekusi |
+
+Cara mendapatkan bukti pertama: push branch → buka tab Actions → workflow "Booth Windows"
+→ kalau gagal, salin log langkah yang merah ke sini. Itu menggantikan `dotnet build` lokal
+dan tidak butuh mesin Windows pribadi.
 
 ---
 

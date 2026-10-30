@@ -57,11 +57,35 @@ bertanda tangan.
 
 ## Jalankan
 
+Satu perintah (membangun bila belum ada):
+
+```powershell
+.\booth\scripts\run-local.ps1 -Token "0123456789abcdef" -Mock
+```
+
+Manual:
+
 ```powershell
 $env:PHOTOBOOTH_BRIDGE_TOKEN = "<token minimal 16 karakter>"
 $env:SNAPYOS_ALLOW_MOCK = "1"     # Fase 1: adapter mock sampai perangkat keras (Fase 3)
 & "booth\dist\booth\SnapyOS.Booth.Shell.exe"
 ```
+
+## Tiga cara mendapat aplikasi
+
+| Siapa             | Alur                                              | Butuh                          |
+| ----------------- | ------------------------------------------------- | ------------------------------ |
+| Developer         | `git clone` → `run-local.ps1`                     | Windows + .NET 8 SDK + Node 22 |
+| QA / uji internal | unduh artefak dari GitHub Actions "Booth Windows" | Windows, tanpa SDK             |
+| Operator booth    | pasang MSIX bertanda tangan (fase 5)              | Windows + sertifikat           |
+
+Workflow `.github/workflows/booth-windows.yml` membangun di runner `windows-latest`
+(build solusi, tes xUnit, publish self-contained) dan mengunggah folder
+`dist/booth` sebagai artefak. Jadi repo hasil clone tidak wajib punya SDK untuk
+sekadar mencoba aplikasi: unduh artefak, jalankan EXE.
+
+Installer untuk operator **tidak** diambil dari clone — itu fase 5 (MSIX +
+code signing) dan didaftarkan di `/admin/apps`, bukan di storage SnapyOS.
 
 ## Kontrak setelan
 

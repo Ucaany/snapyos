@@ -249,10 +249,17 @@ bridge loopback hidup dan semua rute di balik token.
 **Prasyarat:** fase 0.
 
 **Ruang lingkup:** `booth/src/SnapyOS.Booth.Shell/*`, `booth/src/SnapyOS.Booth.Bridge/*`,
-`booth/ui/*`, `booth/scripts/build-booth.ps1`.
+`booth/ui/*`, `booth/scripts/{build-booth,run-local}.ps1`,
+`.github/workflows/booth-windows.yml`.
 
 **Langkah**
 
+- [x] 1.0 Build Windows di CI: `.github/workflows/booth-windows.yml` (runner `windows-latest`)
+      menjalankan regenerasi kontrak + cek anti-basi, build UI, `dotnet build`, `dotnet test`,
+      `dotnet publish -r win-x64 --self-contained`, verifikasi EXE + `Assets/ui/index.html`,
+      lalu mengunggah `dist/booth` sebagai artefak. Ditambah `booth/scripts/run-local.ps1`
+      (build-bila-perlu + jalankan). Ini yang membuat "clone → jalankan" masuk akal tanpa
+      memasang SDK di tiap mesin.
 - [ ] 1.1 Build pertama di Windows: `dotnet build` + `dotnet test`; catat versi .NET SDK,
       Windows App SDK, dan WebView2 Runtime di `booth/VERIFICATION.md`.
 - [ ] 1.2 Single-instance: mutex bernama; instance kedua mengaktifkan jendela yang ada lalu keluar.
@@ -284,7 +291,7 @@ jendela fullscreen; Alt+F4 tidak menutup saat terkunci; single-instance bekerja.
 `SetVirtualHostNameToFolderMapping` + `DenyCors` memblokir `fetch` lintas-origin ke
 `127.0.0.1` bila header CORS salah — uji `/v1/status` dari UI, bukan hanya `curl`.
 
-**Deliverable:** Shell kiosk + bridge + UI build + skrip build.
+**Deliverable:** Shell kiosk + bridge + UI build + skrip build + artefak CI Windows.
 
 ---
 

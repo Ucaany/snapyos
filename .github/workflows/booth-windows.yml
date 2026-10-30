@@ -1,0 +1,103 @@
+name: Booth Windows
+
+# Build + test aplikasi booth di runner Windows. Artefak EXE siap jalan
+# diunggah, jadi clone repo tidak perlu .NET SDK untuk mencoba aplikasi.
+#
+# MSIX + code signing ditambahkan pada fase 5 (booth/plan.md).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "booth/**"
+      - ".github/workflows/booth-windows.yml"
+  pull_request:
+    paths:
+      - "booth/**"
+      - ".github/workflows/booth-windows.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: booth-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: booth
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+          cache: true
+          cache-dependency-path: booth/**/*.csproj
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: booth/ui/package-lock.json
+
+      - name: Versi toolchain
+        run: |
+          dotnet --version
+          node --version
+          npm --version
+
+      - name: Regenerasi kontrak setelan
+        working-directory: .
+        run: node booth/contracts/generate.mjs
+
+      - name: Kontrak tidak basi
+        working-directory: .
+        run: git diff --exit-code src/lib/generated/device-settings.gen.ts booth/src/SnapyOS.Booth.Contracts/DeviceSettings.g.cs
+
+      - name: Build UI React
+        working-directory: booth/ui
+        run: |
+          npm ci
+          npm run build
+
+      - name: Build solusi
+        run: dotnet build SnapyOS.Booth.sln -c Debug -p:SkipUiBuild=true
+
+      - name: Tes xUnit
+        run: dotnet test tests/SnapyOS.Booth.Tests/SnapyOS.Booth.Tests.csproj -c Debug --no-build --logger "console;verbosity=normal"
+
+      - name: Publish (self-contained win-x64)
+        run: dotnet publish src/SnapyOS.Booth.Shell/SnapyOS.Booth.Shell.csproj -c Release -r win-x64 --self-contained true -p:SkipUiBuild=true -o dist/booth
+
+      - name: Verifikasi keluaran
+        run: |
+          $exe = "dist/booth/SnapyOS.Booth.Shell.exe"
+          $ui = "dist/booth/Assets/ui/index.html"
+          if (-not (Test-Path $exe)) { throw "EXE tidak ada: $exe" }
+          if (-not (Test-Path $ui)) { throw "UI tidak ikut publish: $ui" }
+          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
+          "EXE SHA-256: $hash" | Tee-Object -FilePath dist/booth/SHA256SUMS.txt
+          "versi: ${{ github.sha }}" | Add-Content dist/booth/SHA256SUMS.txt
+
+      - name: Unggah artefak
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapyos-booth-win-x64-${{ github.sha }}
+          path: booth/dist/booth
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Catat hasil verifikasi
+        if: always()
+        run: |
+          @(
+            "CI run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+            "commit: ${{ github.sha }}",
+            "runner: windows-latest",
+            "status: ${{ job.status }}"
+          ) | Write-Output
