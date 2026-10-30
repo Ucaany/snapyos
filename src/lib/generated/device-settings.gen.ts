@@ -24,6 +24,12 @@ export const DEVICE_SETTING_FIELDS: Record<DeviceSettingGroupName, readonly stri
   appearance_settings: ["bg_color", "text_color", "font_family", "font_scale", "button_radius", "padding", "align", "welcome_layout", "result_layout", "welcome_title", "welcome_tagline", "welcome_button", "payment_title", "payment_hint", "capture_title", "capture_hint", "editor_title", "editor_hint", "result_title", "result_hint", "guide_title", "guide_button", "package_title", "template_title", "show_logo", "show_tagline", "show_mirror_toggle", "allow_zoom_pan", "guide_steps", "pages"],
 };
 
+/** Invarian lintas-field dari schema. Ditegakkan C# dan zod; jangan disalin manual. */
+export type SettingInvariant = { left: string; op: "<" | "<=" | ">" | ">=" | "==" | "!="; right: string };
+export const SETTING_INVARIANTS: Record<string, readonly SettingInvariant[]> = {
+  "sessionSettings": [{ left: "warning_seconds", op: "<", right: "timer_seconds" }],
+};
+
 export interface AppearancePage {
   "bg_color"?: string;
   "text_color"?: string;

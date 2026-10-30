@@ -62,10 +62,53 @@ function deref(node) {
   return { name: null, node };
 }
 
+function groupDefinition(group) {
+  return deref(schema.properties[group]);
+}
+
 function groupProperties(group) {
-  const { node } = deref(schema.properties[group]);
+  const { node } = groupDefinition(group);
   return Object.keys(node.properties ?? {});
 }
+
+// --- invarian lintas-field ---------------------------------------------------
+//
+// Ditulis di schema sebagai teks yang bisa dibaca manusia
+// (`"warning_seconds < timer_seconds"`), diparse di sini supaya bentuk yang tidak
+// dikenal gagal saat generate, bukan saat booth menerima payload. C# tidak
+// memparse teks: `DeviceSettings.g.cs` membawa triple (kiri, operator, kanan).
+
+const INVARIANT_PATTERN = /^([A-Za-z0-9_]+)\s*(<=|>=|==|!=|<|>)\s*([A-Za-z0-9_]+)$/;
+
+function parseInvariant(group, text) {
+  const match = INVARIANT_PATTERN.exec(text);
+  if (!match) {
+    throw new Error(`Invarian ${group} tidak bisa diparse: "${text}" (bentuk: field OP field).`);
+  }
+  const [, left, op, right] = match;
+  const fields = groupProperties(group);
+  for (const field of [left, right]) {
+    if (!fields.includes(field)) {
+      throw new Error(`Invarian ${group} menyebut field yang tidak ada: ${field}.`);
+    }
+  }
+  return { left, op, right };
+}
+
+/** Invarian per definisi `$defs`, karena validator C# bekerja per definisi. */
+function buildInvariants() {
+  const result = {};
+  for (const [defName, def] of Object.entries(DEFS)) {
+    const texts = def["x-snapyos-invariants"] ?? [];
+    if (texts.length === 0) continue;
+    const group = GROUPS.find((candidate) => groupDefinition(candidate).name === defName);
+    if (!group) throw new Error(`Invarian di $defs/${defName} bukan milik grup mana pun.`);
+    result[defName] = texts.map((text) => parseInvariant(group, text));
+  }
+  return result;
+}
+
+const INVARIANTS = buildInvariants();
 
 // --- validasi schema ---------------------------------------------------------
 
@@ -183,6 +226,21 @@ function buildTs() {
   }
   blocks.push("};");
   blocks.push("");
+  blocks.push(
+    "/** Invarian lintas-field dari schema. Ditegakkan C# dan zod; jangan disalin manual. */"
+  );
+  blocks.push(
+    "export type SettingInvariant = { left: string; op: \"<\" | \"<=\" | \">\" | \">=\" | \"==\" | \"!=\"; right: string };"
+  );
+  blocks.push("export const SETTING_INVARIANTS: Record<string, readonly SettingInvariant[]> = {");
+  for (const [defName, invariants] of Object.entries(INVARIANTS)) {
+    const parts = invariants
+      .map((i) => `{ left: ${JSON.stringify(i.left)}, op: ${JSON.stringify(i.op)}, right: ${JSON.stringify(i.right)} }`)
+      .join(", ");
+    blocks.push(`  ${JSON.stringify(defName)}: [${parts}],`);
+  }
+  blocks.push("};");
+  blocks.push("");
   for (const defName of Object.keys(DEFS)) {
     if (DEFS[defName].type === "object") blocks.push(emitTsInterface(defName), "");
   }
@@ -289,7 +347,25 @@ function buildCs() {
     blocks.push(`        [${JSON.stringify(group)}] = ${csArray(groupProperties(group))},`);
   }
   blocks.push("    };");
+  blocks.push("");
+  blocks.push(
+    "    /// <summary>Invarian lintas-field dari schema; kunci = nama definisi $defs.</summary>"
+  );
+  blocks.push(
+    "    public static readonly IReadOnlyDictionary<string, SettingInvariant[]> Invariants = new Dictionary<string, SettingInvariant[]>"
+  );
+  blocks.push("    {");
+  for (const [defName, invariants] of Object.entries(INVARIANTS)) {
+    const parts = invariants
+      .map((i) => `new(${JSON.stringify(i.left)}, ${JSON.stringify(i.op)}, ${JSON.stringify(i.right)})`)
+      .join(", ");
+    blocks.push(`        [${JSON.stringify(defName)}] = new SettingInvariant[] { ${parts} },`);
+  }
+  blocks.push("    };");
   blocks.push("}");
+  blocks.push("");
+  blocks.push("/// <summary>Satu aturan lintas-field, mis. <c>warning_seconds &lt; timer_seconds</c>.</summary>");
+  blocks.push("public sealed record SettingInvariant(string Left, string Op, string Right);");
   blocks.push("");
   for (const defName of Object.keys(DEFS)) {
     if (DEFS[defName].type === "object") blocks.push(emitCsRecord(defName), "");

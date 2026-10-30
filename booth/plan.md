@@ -2,7 +2,7 @@
 
 Status: active
 Last updated: 2026-10-30
-Last verified: 2026-10-30 (audit kode saja — **belum ada build di Windows**)
+Last verified: 2026-10-30 (build Windows di CI run `41035205471`; gate runtime Windows belum dijalankan)
 Source of truth: dokumen ini + `docs/22-booth-dotnet-prompts.md` + `booth/contracts/*.json`
 Bukan: `plan.md` di root repo (itu rencana parity fitur kiosk PWA, topik berbeda).
 
@@ -28,8 +28,7 @@ Prompt siap-salin per fase: `booth/prompts.md`.
 | Fase | Isi                                           | Status jujur                                                  | Bukti                                                                                                                                                                                                                                         |
 | ---- | --------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 0    | Kontrak JSON Schema tunggal + generator       | **selesai** — gate hijau 2026-10-30 (`booth/VERIFICATION.md`) | `booth/contracts/device-settings.schema.json`, `settings-envelope.schema.json`, `generate.mjs`, `booth/src/SnapyOS.Booth.Contracts/DeviceSettings.g.cs`, `src/lib/generated/device-settings.gen.ts`, `tests/device-settings-contract.test.ts` |
-| 1    | Solusi .NET + WinUI 3 + WebView2 + bridge     | **kode ada, build belum dijalankan**                          | `booth/SnapyOS.Booth.Shell/*`, `booth/src/SnapyOS.Booth.Bridge/BridgeServer.cs`                                                                                                                                                               |
-| 2    | Port runtime: store/settings/sync/session/PIN | **kode + 43 tes ada, `dotnet test` belum pernah jalan**       | `Store.cs`, `SettingsService.cs`, `Sessions/SessionsService.cs`, `Sync/SyncWorker.cs`, `Exit/ExitService.cs`, `tests/SnapyOS.Booth.Tests/*`                                                                                                   |
+| 1–2  | Solusi .NET + WinUI 3 + WebView2 + port runtime | **kode ada, build Windows terbukti di CI run `41035205471`; gate runtime Windows belum dijalankan** | `booth/SnapyOS.Booth.Shell/*`, `booth/src/SnapyOS.Booth.Bridge/BridgeServer.cs`, `Store.cs`, `SettingsService.cs`, `Sessions/SessionsService.cs`, `Sync/SyncWorker.cs`, `Exit/ExitService.cs`, `tests/SnapyOS.Booth.Tests/*` |
 | 3    | Kamera & printer native                       | **belum** — hanya mock                                        | `Core/Hardware/Adapters.cs` (86 baris: `MockCamera`, `MockPrinter`)                                                                                                                                                                           |
 | 4    | Lisensi Ed25519 + fingerprint + 1:1           | **belum** — nol kode                                          | `grep -ri "ed25519\|fingerprint\|MACHINE_MISMATCH" booth/src` → kosong                                                                                                                                                                        |
 | 5    | MSIX + auto-update + code signing             | **belum**                                                     | `Shell.csproj` masih `WindowsPackageType=None`, `EnableMsixTooling=false`; tak ada `.appinstaller`, tak ada `signtool`                                                                                                                        |
@@ -90,7 +89,7 @@ Shell/UI:
 | --- | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
 | G1  | ~~`booth/` seluruhnya untracked di git~~ — **selesai** (commit `0d291e6`)                                                       | 0                      |
 | G2  | ~~Tidak ada tes paritas TS↔C#~~ — **selesai** (5 tes paritas + determinisme + anti-basi)                                        | 0                      |
-| G3  | `dotnet build` / `dotnet test` belum pernah dijalankan di Windows                                                               | 1, 2                   |
+| G3  | Gate runtime Windows (curl `/health`, `/v1/status`, fullscreen, PIN darurat) belum dijalankan; build + tes xUnit sudah hijau di CI `41035205471` | 1, 2                   |
 | G4  | Shell belum kiosk: tanpa fullscreen, tanpa blokir close/Alt+F4, tanpa single-instance, tanpa tray/autostart                     | 1                      |
 | G5  | UI belum punya permukaan kiosk pelanggan (hanya panel status)                                                                   | 1 (kerangka) / 3 (isi) |
 | G6  | `MainWindow` menolak semua adapter non-mock → fase 3 wajib mencabut guard ini dengan adapter nyata                              | 3                      |
@@ -241,7 +240,7 @@ generated file basi; tidak ada daftar field yang disalin manual di luar schema.
 
 ---
 
-### FASE 1 — Kerangka Shell + Bridge (status: kode ada, build belum)
+### FASE 1: Kerangka Shell + Bridge (status: kode ada, build Windows terbukti di CI `41035205471`, gate runtime Windows belum)
 
 **Tujuan:** EXE Windows menampilkan jendela kiosk fullscreen berisi UI React lokal, dengan
 bridge loopback hidup dan semua rute di balik token.
@@ -295,7 +294,7 @@ jendela fullscreen; Alt+F4 tidak menutup saat terkunci; single-instance bekerja.
 
 ---
 
-### FASE 2 — Port runtime penuh (status: kode + 43 tes ada, belum dijalankan)
+### FASE 2: Port runtime penuh (status: kode ada, build Windows terbukti di CI `41035205471`, gate runtime Windows belum)
 
 **Tujuan:** perilaku `runtime/*.ts` setara di C#: store, settings, session, sync, exit PIN, config.
 

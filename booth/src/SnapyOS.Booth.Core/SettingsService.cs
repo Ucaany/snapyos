@@ -218,18 +218,17 @@ public sealed class SettingsService
     private JsonObject Present()
     {
         var active = ActiveSettings();
+        var groups = new JsonObject();
+        foreach (var group in SettingsContractSchema.Groups)
+        {
+            groups[group] = StripSecrets(active[group] as JsonObject ?? new JsonObject());
+        }
         var body = new JsonObject
         {
             ["ok"] = true,
             ["photobox_slug"] = _store.GetMeta("photobox_slug"),
             ["business_slug"] = _store.GetMeta("business_slug"),
-            ["settings"] = new JsonObject
-            {
-                ["camera_settings"] = StripSecrets(active["camera_settings"] as JsonObject ?? new JsonObject()),
-                ["print_settings"] = StripSecrets(active["print_settings"] as JsonObject ?? new JsonObject()),
-                ["session_settings"] = StripSecrets(active["session_settings"] as JsonObject ?? new JsonObject()),
-                ["appearance_settings"] = StripSecrets(active["appearance_settings"] as JsonObject ?? new JsonObject()),
-            },
+            ["settings"] = groups,
         };
         return body;
     }

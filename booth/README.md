@@ -138,8 +138,7 @@ Dicatat supaya tidak dianggap drift tak sengaja.
 | Fase | Isi                                                       | Status                                                                     |
 | ---- | --------------------------------------------------------- | -------------------------------------------------------------------------- |
 | 0    | Kontrak JSON Schema + generator                           | **selesai** — gate hijau 2026-10-30 (`VERIFICATION.md`)                    |
-| 1    | Solusi .NET + WinUI 3 + WebView2 host UI lokal            | **kode 1.2–1.9 ditulis** — build Windows & uji runtime **belum** terbukti  |
-| 2    | Port runtime: store, settings, sync, session, PIN darurat | **kode + 43 tes ada** — `dotnet test` belum pernah jalan                   |
+| 1–2  | Solusi .NET + WinUI 3 + WebView2, port runtime            | **kode ada, build Windows terbukti di CI run `41035205471`; gate runtime Windows belum dijalankan** |
 | 3    | Kamera & printer native + uji hardware                    | belum (hanya mock)                                                         |
 | 4    | Lisensi Ed25519 + fingerprint + UI aktivasi               | belum                                                                      |
 | 5    | MSIX + auto-update + code signing                         | belum                                                                      |

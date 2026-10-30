@@ -13,6 +13,7 @@ import {
   DEVICE_SETTING_FIELDS,
   DEVICE_SETTING_GROUPS,
   LOCAL_ONLY_DEVICE_GROUPS,
+  SETTING_INVARIANTS,
 } from "./generated/device-settings.gen.ts";
 
 /** UUID PostgreSQL canonical: shape hex, tanpa pembatasan version/variant RFC. */
@@ -397,19 +398,47 @@ export const printSettingsSchema = z.object({
   printer_name: z.string().trim().max(128).optional(),
 });
 
-export const sessionSettingsSchema = z
-  .object({
+/**
+ * Terapkan invarian lintas-field yang dideklarasikan di schema
+ * (`x-snapyos-invariants` → `SETTING_INVARIANTS`). Aturannya tidak ditulis di
+ * sini: C# memakai daftar yang sama lewat `DeviceSettings.g.cs`.
+ */
+function withInvariants<T extends z.ZodTypeAny>(definition: string, schema: T): T {
+  return schema.superRefine((value, ctx) => {
+    for (const rule of SETTING_INVARIANTS[definition] ?? []) {
+      const record = value as Record<string, unknown>;
+      const left = record[rule.left];
+      const right = record[rule.right];
+      if (typeof left !== "number" || typeof right !== "number") {
+        continue;
+      }
+      const holds = {
+        "<": left < right,
+        "<=": left <= right,
+        ">": left > right,
+        ">=": left >= right,
+        "==": left === right,
+        "!=": left !== right,
+      }[rule.op];
+      if (!holds) {
+        ctx.addIssue({
+          code: "custom",
+          path: [rule.left],
+          message: `${rule.left} harus ${rule.op} ${rule.right}`,
+        });
+      }
+    }
+  }) as unknown as T;
+}
+
+export const sessionSettingsSchema = withInvariants(
+  "sessionSettings",
+  z.object({
     timer_seconds: z.number().int().min(60).max(3600).optional(),
     warning_seconds: z.number().int().min(10).max(600).optional(),
     max_retakes: z.number().int().min(0).max(50).nullable().optional(),
   })
-  .refine(
-    (value) =>
-      value.timer_seconds === undefined ||
-      value.warning_seconds === undefined ||
-      value.warning_seconds < value.timer_seconds,
-    { message: "Peringatan harus lebih singkat dari durasi sesi", path: ["warning_seconds"] }
-  );
+);
 
 /**
  * Kustomisasi tampilan booth — milik DEVICE, bukan cloud.

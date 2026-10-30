@@ -28,7 +28,7 @@ Referensi gate: `booth/plan.md` §3.
 | Build              | `npm run build`                                                                                                                                                            | **PASS** — setelah `rm -rf .next` (kegagalan pertama `ENOTEMPTY .next/node_modules`, artefak build lama)                        |
 | UI booth build     | `cd booth/ui && npm run build`                                                                                                                                             | **PASS** — 33 modul, keluar ke `booth/src/SnapyOS.Booth.Shell/Assets/ui/` (gitignored)                                          |
 | UI booth typecheck | `cd booth/ui && npm run typecheck`                                                                                                                                         | **PASS** — tanpa keluaran galat                                                                                                 |
-| CI                 | `.github/workflows/ci.yml`                                                                                                                                                 | **ditambahkan** — langkah `booth:contracts` + `git diff --exit-code` + `npm test`; belum pernah jalan di GitHub (belum di-push) |
+| CI                 | `.github/workflows/ci.yml`                                                                                                                                                 | **ditambahkan**: langkah `booth:contracts` + `git diff --exit-code` + tes kontrak + `lint` + `typecheck` + `npm test`; hasil run GitHub belum dicatat di sini |
 
 **Berkas kunci:** `booth/contracts/*.json`, `booth/contracts/generate.mjs` (kini menerima
 `--out-dir` untuk tes), `tests/device-settings-contract.test.ts`, `.gitattributes`.
@@ -37,6 +37,44 @@ Referensi gate: `booth/plan.md` §3.
 
 **Kesimpulan:** gate fase 0 **hijau** untuk semua lapisan yang bisa diuji tanpa Windows.
 Fase 1 boleh dimulai, tetapi seluruh gate fase 1 (build, test, runtime) wajib di Windows x64.
+
+### Fase 0 revisi: 2026-10-30, macOS (darwin 27.2.0, arm64), Node v24.19.0, .NET 8.0.427 (`~/.dotnet`)
+
+Lingkup: D11 (status dokumen saling bertentangan) dan D5 (invarian schema tidak ditegakkan).
+
+| Gate                | Perintah                                                                              | Hasil                                                                                                  |
+| ------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Regenerasi kontrak  | `npm run booth:contracts`                                                             | **PASS**: menulis ulang kedua berkas ter-generate                                                      |
+| Anti-basi           | `git diff --exit-code src/lib/generated/device-settings.gen.ts booth/src/.../DeviceSettings.g.cs` | **PASS**: `exit=0` setelah berkas ter-generate di-stage                                               |
+| Tes kontrak         | `node --experimental-strip-types --test tests/device-settings-contract.test.ts`       | **PASS**: 20/20 (sebelumnya 16; +invarian schema, +paritas zod, +invarian C#, +subset form UI)          |
+| UI booth typecheck  | `cd booth/ui && npm run typecheck`                                                    | **PASS**: `exit=0`                                                                                     |
+| UI booth build      | `cd booth/ui && npm run build`                                                        | **PASS**: 34 modul, `index-DjzUcFgp.js` 241.29 kB (gzip 75.06 kB)                                      |
+| Lint                | `npm run lint`                                                                        | **PASS**: 0 error, 11 warning `@next/next/no-img-element` (sudah ada sebelumnya)                       |
+| Typecheck cloud     | `npm run typecheck`                                                                   | **PASS**: `exit=0`                                                                                     |
+| Tes cloud           | `npm test`                                                                            | **PASS**: 1209/1209 (sebelumnya 1205)                                                                  |
+| Tes .NET            | `~/.dotnet/dotnet test tests/SnapyOS.Booth.Tests/SnapyOS.Booth.Tests.csproj -c Debug` | **PASS**: 46/46 (sebelumnya 43)                                                                        |
+| CI                  | `.github/workflows/ci.yml`                                                            | **ditambah** langkah tes kontrak; job ini belum jalan di GitHub untuk commit ini                         |
+
+**Perubahan yang diuji:**
+
+- `x-snapyos-invariants` sekarang diparse `generate.mjs` → `SETTING_INVARIANTS` (TS) dan
+  `DeviceSettingsContract.Invariants` (C#). Field yang tidak ada di grup, atau teks yang
+  bukan bentuk `field OP field`, membuat generator gagal, bukan booth.
+- `SettingsSchemaValidator` menegakkan invarian per `$ref`; `PUT /v1/settings` dengan
+  `{timer_seconds:60,warning_seconds:120}` dijawab `400 INVALID_SETTINGS`.
+- zod: `sessionSettingsSchema` memakai helper `withInvariants` yang membaca
+  `SETTING_INVARIANTS`, bukan literal aturan. Pesan galat: `warning_seconds harus < timer_seconds`.
+- `SettingsService.Present()` merakit grup dari `SettingsContractSchema.Groups`, bukan
+  empat literal. Sisa literal grup di C# hanya `DefaultsFromConfig` (nilai awal) dan
+  `PrintDefaults` (subset field cetak).
+- Tes baru: `write_rejects_warning_longer_than_timer_with_400`,
+  `write_accepts_warning_shorter_than_timer`, `invariant_comes_from_schema_contract`,
+  `invarian schema sampai ke keluaran ter-generate`, `payload warning ≥ timer ditolak zod`,
+  `invarian C# ≡ invarian schema`, `form setelan UI booth ⊆ grup & field schema`.
+
+**Catatan jujur:** `booth/ui/src/panels/BoothSettingsPanel.tsx` masih memilih field sendiri
+untuk dirender (label, urutan, tipe input). Yang kini ditegakkan tes adalah **subset**:
+tidak ada grup/field asing atau milik cloud. Metadata form (label, opsi) belum di-generate.
 
 ---
 
@@ -208,8 +246,8 @@ binary Windows. Artinya kesalahan di `MainWindow.xaml` (nama properti, `x:Name`,
 
 ## Fase 2 — Port runtime
 
-Belum dijalankan. 43 tes xUnit sudah ada di `booth/tests/SnapyOS.Booth.Tests/`,
-tetapi `dotnet test` belum pernah dieksekusi di mesin mana pun.
+**Kode ada, build Windows terbukti di CI run `41035205471` (43/43 tes xUnit hijau);
+gate runtime Windows belum dijalankan.**
 
 ---
 

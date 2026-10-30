@@ -30,7 +30,16 @@ public static class DeviceSettingsContract
         ["session_settings"] = new string[] { "timer_seconds", "warning_seconds", "max_retakes" },
         ["appearance_settings"] = new string[] { "bg_color", "text_color", "font_family", "font_scale", "button_radius", "padding", "align", "welcome_layout", "result_layout", "welcome_title", "welcome_tagline", "welcome_button", "payment_title", "payment_hint", "capture_title", "capture_hint", "editor_title", "editor_hint", "result_title", "result_hint", "guide_title", "guide_button", "package_title", "template_title", "show_logo", "show_tagline", "show_mirror_toggle", "allow_zoom_pan", "guide_steps", "pages" },
     };
+
+    /// <summary>Invarian lintas-field dari schema; kunci = nama definisi $defs.</summary>
+    public static readonly IReadOnlyDictionary<string, SettingInvariant[]> Invariants = new Dictionary<string, SettingInvariant[]>
+    {
+        ["sessionSettings"] = new SettingInvariant[] { new("warning_seconds", "<", "timer_seconds") },
+    };
 }
+
+/// <summary>Satu aturan lintas-field, mis. <c>warning_seconds &lt; timer_seconds</c>.</summary>
+public sealed record SettingInvariant(string Left, string Op, string Right);
 
 public sealed record AppearancePage
 {

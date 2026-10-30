@@ -27,9 +27,11 @@ import {
   DEVICE_SETTING_GROUPS,
   LOCAL_ONLY_DEVICE_GROUPS,
   deviceSettingFields,
+  sessionSettingsSchema,
   zodDeviceSettingFields,
 } from "../src/lib/validators.ts";
 import {
+  SETTING_INVARIANTS,
   SETTINGS_SCHEMA_VERSION,
   type DeviceSettingGroupName,
 } from "../src/lib/generated/device-settings.gen.ts";
@@ -135,6 +137,60 @@ test("grup local-only konsisten dengan helper", () => {
   // memastikan tipe tetap terpakai
   const sample: DeviceSettingGroupName = "appearance_settings";
   assert.equal(sample, "appearance_settings");
+});
+
+// --- invarian lintas-field --------------------------------------------------
+
+test("invarian schema sampai ke keluaran ter-generate", () => {
+  const declared = (schema.$defs.sessionSettings as unknown as { "x-snapyos-invariants": string[] })[
+    "x-snapyos-invariants"
+  ];
+  assert.deepEqual(declared, ["warning_seconds < timer_seconds"]);
+  assert.deepEqual(SETTING_INVARIANTS.sessionSettings, [
+    { left: "warning_seconds", op: "<", right: "timer_seconds" },
+  ]);
+});
+
+test("payload warning ≥ timer ditolak zod (paritas dengan C#)", () => {
+  // C#: SettingsServiceTests.write_rejects_warning_longer_than_timer_with_400
+  // memakai payload yang sama dan mengharapkan 400 INVALID_SETTINGS.
+  const payload = { timer_seconds: 60, warning_seconds: 120 };
+  assert.equal(sessionSettingsSchema.safeParse(payload).success, false);
+  assert.equal(
+    sessionSettingsSchema.safeParse({ timer_seconds: 120, warning_seconds: 60 }).success,
+    true
+  );
+});
+
+test("form setelan UI booth ⊆ grup & field schema", () => {
+  // `booth/ui/src/panels/BoothSettingsPanel.tsx` memilih field yang ditampilkan
+  // (subset, bukan salinan), tetapi field yang tidak ada di schema atau milik
+  // cloud tidak boleh lolos ke form: runtime akan menjawab 400/403.
+  const panel = readFileSync(
+    new URL("../booth/ui/src/panels/BoothSettingsPanel.tsx", import.meta.url),
+    "utf8"
+  );
+  const matches = [...panel.matchAll(/\bkey:\s*"([a-z_]+)",\s*\n\s*title:/g)];
+  assert.ok(matches.length > 0, "daftar grup UI tidak terbaca");
+  matches.forEach((match, index) => {
+    const group = match[1]!;
+    assert.ok(
+      (schema["x-snapyos-groups"] as string[]).includes(group),
+      `grup UI ${group} tidak ada di schema`
+    );
+    const start = match.index ?? 0;
+    const end = matches[index + 1]?.index ?? panel.length;
+    const fields = [...panel.slice(start, end).matchAll(/\{\s*key:\s*"([A-Za-z0-9_]+)"/g)].map(
+      (m) => m[1]!
+    );
+    assert.ok(fields.length > 0, `grup UI ${group} tanpa field`);
+    const known = schemaGroupFields(group);
+    const owned = schema["x-snapyos-cloud-owned-fields"][group] ?? [];
+    for (const field of fields) {
+      assert.ok(known.includes(field), `field UI ${group}.${field} tidak ada di schema`);
+      assert.ok(!owned.includes(field), `field UI ${group}.${field} milik cloud`);
+    }
+  });
 });
 
 // --- determinisme & paritas TS ↔ C# -----------------------------------------
@@ -256,6 +312,24 @@ test("field cloud-owned C# ≡ schema", () => {
       `cloud-owned ${group} berbeda di C#`
     );
   }
+});
+
+test("invarian C# ≡ invarian schema", () => {
+  const start = csSource.indexOf("Invariants = new Dictionary");
+  assert.ok(start >= 0, "Invariants C# tidak ditemukan");
+  const close = csSource.indexOf("\n    };", start);
+  const block = csSource.slice(start, close);
+  const parsed: Record<string, { left: string; op: string; right: string }[]> = {};
+  for (const entry of block.matchAll(
+    /\["([^"]+)"\]\s*=\s*new SettingInvariant\[\]\s*\{([^}]*)\}/g
+  )) {
+    const key = entry[1];
+    if (!key) continue;
+    parsed[key] = [...(entry[2] ?? "").matchAll(/new\("([^"]*)",\s*"([^"]*)",\s*"([^"]*)"\)/g)].map(
+      (m) => ({ left: m[1] ?? "", op: m[2] ?? "", right: m[3] ?? "" })
+    );
+  }
+  assert.deepEqual(parsed, JSON.parse(JSON.stringify(SETTING_INVARIANTS)));
 });
 
 test("record C# memuat seluruh field grup", () => {

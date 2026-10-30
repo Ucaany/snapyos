@@ -56,6 +56,43 @@ public sealed class SettingsServiceTests : IDisposable
     }
 
     [Fact]
+    public void write_rejects_warning_longer_than_timer_with_400()
+    {
+        var (store, service, _) = Setup();
+        using (store)
+        {
+            var error = Assert.Throws<BridgeException>(() => service.Write(TestFactory.Json(
+                """{"session_settings":{"timer_seconds":60,"warning_seconds":120}}""")));
+            Assert.Equal(400, error.StatusCode);
+            Assert.Equal(SettingErrorCodes.InvalidSettings, error.Code);
+        }
+    }
+
+    [Fact]
+    public void write_accepts_warning_shorter_than_timer()
+    {
+        var (store, service, _) = Setup();
+        using (store)
+        {
+            var response = service.Write(TestFactory.Json(
+                """{"session_settings":{"timer_seconds":120,"warning_seconds":60}}"""));
+            Assert.Equal(200, response.Status);
+        }
+    }
+
+    /// <summary>
+    /// Invarian dibaca dari schema, bukan dari daftar manual: aturan yang sama
+    /// harus muncul di TS (SETTING_INVARIANTS) dan di kontrak C#.
+    /// </summary>
+    [Fact]
+    public void invariant_comes_from_schema_contract()
+    {
+        var invariants = SnapyOS.Booth.Contracts.DeviceSettingsContract.Invariants["sessionSettings"];
+        var rule = Assert.Single(invariants);
+        Assert.Equal(("warning_seconds", "<", "timer_seconds"), (rule.Left, rule.Op, rule.Right));
+    }
+
+    [Fact]
     public void write_rejects_unknown_group_with_403()
     {
         var (store, service, _) = Setup();

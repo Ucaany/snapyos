@@ -37,6 +37,7 @@ public static class SettingsSchemaValidator
             if (resolved is not null)
             {
                 ValidateNode(instance, resolved, root, path, issues);
+                ValidateInvariants(instance, reference.GetValue<string>(), path, issues);
             }
             return;
         }
@@ -107,6 +108,63 @@ public static class SettingsSchemaValidator
             ValidateObject(obj, schema, root, path, issues);
         }
     }
+
+    /// <summary>
+    /// Invarian lintas-field (<c>x-snapyos-invariants</c>). JSON Schema draft 2020-12
+    /// tidak punya kata kunci untuk membandingkan dua properti, jadi aturannya
+    /// diparse generator menjadi triple (kiri, operator, kanan) dan dievaluasi di sini.
+    /// Hanya berlaku bila KEDUA field ada: validasi nilai tunggal tetap urusan schema.
+    /// </summary>
+    private static void ValidateInvariants(
+        JsonNode? instance,
+        string reference,
+        string path,
+        List<Issue> issues)
+    {
+        const string prefix = "#/$defs/";
+        if (instance is not JsonObject obj || !reference.StartsWith(prefix, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        foreach (var invariant in SettingsContractSchema.InvariantsFor(reference[prefix.Length..]))
+        {
+            if (!obj.TryGetPropertyValue(invariant.Left, out var left)
+                || !obj.TryGetPropertyValue(invariant.Right, out var right)
+                || !TryReadNumber(left, out var leftValue)
+                || !TryReadNumber(right, out var rightValue))
+            {
+                continue;
+            }
+            if (!Holds(leftValue, invariant.Op, rightValue))
+            {
+                issues.Add(new Issue(
+                    Join(path, invariant.Left),
+                    $"harus {invariant.Op} {invariant.Right} (sekarang {leftValue} vs {rightValue})"));
+            }
+        }
+    }
+
+    private static bool TryReadNumber(JsonNode? node, out double value)
+    {
+        if (node is JsonValue scalar && scalar.TryGetValue(out value))
+        {
+            return true;
+        }
+        value = 0;
+        return false;
+    }
+
+    private static bool Holds(double left, string op, double right) => op switch
+    {
+        "<" => left < right,
+        "<=" => left <= right,
+        ">" => left > right,
+        ">=" => left >= right,
+        "==" => left == right,
+        "!=" => left != right,
+        _ => throw new InvalidOperationException($"Operator invarian tidak dikenal: {op}"),
+    };
 
     private static void ValidateScalar(JsonValue value, JsonNode schema, string path, List<Issue> issues)
     {

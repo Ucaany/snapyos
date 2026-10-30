@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text.Json.Nodes;
+using SnapyOS.Booth.Contracts;
 
 namespace SnapyOS.Booth.Core.Contracts;
 
@@ -52,6 +53,16 @@ public static class SettingsContractSchema
             : [];
     }
 
+    /// <summary>
+    /// Invarian lintas-field untuk satu definisi <c>$defs</c>. Aturannya ditulis di
+    /// <c>x-snapyos-invariants</c>, diparse generator, dan sampai ke sini lewat
+    /// <c>DeviceSettingsContract.Invariants</c>, bukan disalin manual.
+    /// </summary>
+    public static SettingInvariant[] InvariantsFor(string definitionName) =>
+        DeviceSettingsContract.Invariants.TryGetValue(definitionName, out var invariants)
+            ? invariants
+            : [];
+
     /// <summary>Field yang boleh ditulis device: field grup minus field cloud-owned.</summary>
     public static string[] DeviceWritableFields(string group)
     {
@@ -61,14 +72,21 @@ public static class SettingsContractSchema
 
     private static JsonNode DefinitionOf(string group)
     {
-        var refName = group switch
+        if (Schema["properties"]?[group]?["$ref"] is not JsonValue reference)
         {
-            "camera_settings" => "cameraSettings",
-            "print_settings" => "printSettings",
-            "session_settings" => "sessionSettings",
-            "appearance_settings" => "appearanceSettings",
-            _ => throw new ArgumentOutOfRangeException(nameof(group), group, "Grup setelan tidak dikenal."),
-        };
-        return Schema["$defs"]![refName]!;
+            throw new ArgumentOutOfRangeException(nameof(group), group, "Grup setelan tidak dikenal.");
+        }
+        return Schema["$defs"]![DefinitionName(reference.GetValue<string>())]!;
+    }
+
+    /// <summary>Nama definisi <c>$defs</c> dari sebuah <c>$ref</c> lokal.</summary>
+    private static string DefinitionName(string reference)
+    {
+        const string prefix = "#/$defs/";
+        if (!reference.StartsWith(prefix, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException($"$ref tidak lokal: {reference}");
+        }
+        return reference[prefix.Length..];
     }
 }
