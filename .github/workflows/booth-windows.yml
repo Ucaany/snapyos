@@ -113,7 +113,7 @@ jobs:
           $zip = "dist/snapyos-booth-$tag-win-x64.zip"
           Compress-Archive -Path dist/booth/* -DestinationPath $zip -CompressionLevel Optimal
           $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
-          "$hash  snapyos-booth-$tag-win-x64.zip" | Set-Content "dist/$zip.sha256" -Encoding ascii
+          "$hash  snapyos-booth-$tag-win-x64.zip" | Set-Content "$zip.sha256" -Encoding ascii
           "ZIP: $zip"
           "SHA-256: $hash"
 
@@ -155,6 +155,7 @@ jobs:
             ```powershell
             Get-FileHash .\snapyos-booth-${{ github.ref_name }}-win-x64.zip -Algorithm SHA256
             ```
+          prerelease: true
           fail_on_unmatched_files: true
 
       - name: Catat hasil verifikasi
