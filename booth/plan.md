@@ -25,15 +25,15 @@ Prompt siap-salin per fase: `booth/prompts.md`.
 
 ### 1.1 Ringkasan fase
 
-| Fase | Isi                                           | Status jujur                                            | Bukti                                                                                                                                                                                                                                         |
-| ---- | --------------------------------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0    | Kontrak JSON Schema tunggal + generator       | **kode selesai**, gate CI belum                         | `booth/contracts/device-settings.schema.json`, `settings-envelope.schema.json`, `generate.mjs`, `booth/src/SnapyOS.Booth.Contracts/DeviceSettings.g.cs`, `src/lib/generated/device-settings.gen.ts`, `tests/device-settings-contract.test.ts` |
-| 1    | Solusi .NET + WinUI 3 + WebView2 + bridge     | **kode ada, build belum dijalankan**                    | `booth/SnapyOS.Booth.Shell/*`, `booth/src/SnapyOS.Booth.Bridge/BridgeServer.cs`                                                                                                                                                               |
-| 2    | Port runtime: store/settings/sync/session/PIN | **kode + 43 tes ada, `dotnet test` belum pernah jalan** | `Store.cs`, `SettingsService.cs`, `Sessions/SessionsService.cs`, `Sync/SyncWorker.cs`, `Exit/ExitService.cs`, `tests/SnapyOS.Booth.Tests/*`                                                                                                   |
-| 3    | Kamera & printer native                       | **belum** — hanya mock                                  | `Core/Hardware/Adapters.cs` (86 baris: `MockCamera`, `MockPrinter`)                                                                                                                                                                           |
-| 4    | Lisensi Ed25519 + fingerprint + 1:1           | **belum** — nol kode                                    | `grep -ri "ed25519\|fingerprint\|MACHINE_MISMATCH" booth/src` → kosong                                                                                                                                                                        |
-| 5    | MSIX + auto-update + code signing             | **belum**                                               | `Shell.csproj` masih `WindowsPackageType=None`, `EnableMsixTooling=false`; tak ada `.appinstaller`, tak ada `signtool`                                                                                                                        |
-| 6    | Hapus Tauri/Node + docs                       | **belum**                                               | `src-tauri/`, `runtime/`, `scripts/build-kiosk-runtime.mjs`, `docs/20` masih panduan Tauri                                                                                                                                                    |
+| Fase | Isi                                           | Status jujur                                                  | Bukti                                                                                                                                                                                                                                         |
+| ---- | --------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | Kontrak JSON Schema tunggal + generator       | **selesai** — gate hijau 2026-10-30 (`booth/VERIFICATION.md`) | `booth/contracts/device-settings.schema.json`, `settings-envelope.schema.json`, `generate.mjs`, `booth/src/SnapyOS.Booth.Contracts/DeviceSettings.g.cs`, `src/lib/generated/device-settings.gen.ts`, `tests/device-settings-contract.test.ts` |
+| 1    | Solusi .NET + WinUI 3 + WebView2 + bridge     | **kode ada, build belum dijalankan**                          | `booth/SnapyOS.Booth.Shell/*`, `booth/src/SnapyOS.Booth.Bridge/BridgeServer.cs`                                                                                                                                                               |
+| 2    | Port runtime: store/settings/sync/session/PIN | **kode + 43 tes ada, `dotnet test` belum pernah jalan**       | `Store.cs`, `SettingsService.cs`, `Sessions/SessionsService.cs`, `Sync/SyncWorker.cs`, `Exit/ExitService.cs`, `tests/SnapyOS.Booth.Tests/*`                                                                                                   |
+| 3    | Kamera & printer native                       | **belum** — hanya mock                                        | `Core/Hardware/Adapters.cs` (86 baris: `MockCamera`, `MockPrinter`)                                                                                                                                                                           |
+| 4    | Lisensi Ed25519 + fingerprint + 1:1           | **belum** — nol kode                                          | `grep -ri "ed25519\|fingerprint\|MACHINE_MISMATCH" booth/src` → kosong                                                                                                                                                                        |
+| 5    | MSIX + auto-update + code signing             | **belum**                                                     | `Shell.csproj` masih `WindowsPackageType=None`, `EnableMsixTooling=false`; tak ada `.appinstaller`, tak ada `signtool`                                                                                                                        |
+| 6    | Hapus Tauri/Node + docs                       | **belum**                                                     | `src-tauri/`, `runtime/`, `scripts/build-kiosk-runtime.mjs`, `docs/20` masih panduan Tauri                                                                                                                                                    |
 
 ### 1.2 Yang sudah berjalan di kode (fase 0–2)
 
@@ -88,8 +88,8 @@ Shell/UI:
 
 | #   | Celah                                                                                                                           | Fase                   |
 | --- | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
-| G1  | `booth/` seluruhnya **untracked** di git                                                                                        | 0                      |
-| G2  | Tidak ada tes paritas TS↔C# (hash/field list) — tes kontrak hanya TS↔zod↔runtime                                                | 0                      |
+| G1  | ~~`booth/` seluruhnya untracked di git~~ — **selesai** (commit `0d291e6`)                                                       | 0                      |
+| G2  | ~~Tidak ada tes paritas TS↔C#~~ — **selesai** (5 tes paritas + determinisme + anti-basi)                                        | 0                      |
 | G3  | `dotnet build` / `dotnet test` belum pernah dijalankan di Windows                                                               | 1, 2                   |
 | G4  | Shell belum kiosk: tanpa fullscreen, tanpa blokir close/Alt+F4, tanpa single-instance, tanpa tray/autostart                     | 1                      |
 | G5  | UI belum punya permukaan kiosk pelanggan (hanya panel status)                                                                   | 1 (kerangka) / 3 (isi) |
@@ -100,7 +100,7 @@ Shell/UI:
 | G10 | Tak ada lisensi tersigning, tak ada verifikasi boot, tak ada grace offline                                                      | 4                      |
 | G11 | Tak ada MSIX/signing/auto-update; `Package.appxmanifest` ada tapi belum dipakai build                                           | 5                      |
 | G12 | `CameraKinds.All` masih memuat `gphoto2                                                                                         | libcamera              | v4l2 | pyav` (non-Windows) | 3   |
-| G13 | `booth/README.md` menulis fase 2 "belum" (salah)                                                                                | 0                      |
+| G13 | ~~`booth/README.md` menulis fase 2 "belum"~~ — **selesai** (status dikoreksi)                                                   | 0                      |
 | G14 | `docs/20-booth-build-windows.md` masih panduan Tauri                                                                            | 6                      |
 | G15 | Tauri/Node sidecar masih ada dan masih direferensikan README root                                                               | 6                      |
 
@@ -205,7 +205,7 @@ kecuali hanya menyiapkan scaffolding MSIX tanpa menandai selesai.
 
 ## 5. Rencana per fase
 
-### FASE 0 — Kontrak tunggal (status: kode selesai, gate belum)
+### FASE 0 — Kontrak tunggal (status: SELESAI — gate hijau 2026-10-30)
 
 **Tujuan:** cloud (TS) dan booth (C#) membaca satu kontrak; tidak ada aturan ganda.
 
@@ -217,16 +217,16 @@ kecuali hanya menyiapkan scaffolding MSIX tanpa menandai selesai.
 
 **Langkah**
 
-- [ ] 0.1 Commit seluruh `booth/`, `src/lib/generated/`, `tests/device-settings-contract.test.ts`,
+- [x] 0.1 Commit seluruh `booth/`, `src/lib/generated/`, `tests/device-settings-contract.test.ts`,
       perubahan `src/lib/validators.ts`, `package.json`, `eslint.config.mjs`, `tsconfig.json`,
       `.prettierignore`, `docs/22-booth-dotnet-prompts.md`. Satu commit: `feat(booth): kerangka aplikasi booth .NET + kontrak setelan`.
-- [ ] 0.2 Tambah tes determinisme: generate ke direktori temp dua kali → byte-identik, dan
+- [x] 0.2 Tambah tes determinisme: generate ke direktori temp dua kali → byte-identik, dan
       hasilnya sama dengan berkas yang di-commit.
-- [ ] 0.3 Tambah tes paritas **TS↔C#**: parse nama grup/field dari `DeviceSettings.g.cs`,
+- [x] 0.3 Tambah tes paritas **TS↔C#**: parse nama grup/field dari `DeviceSettings.g.cs`,
       bandingkan dengan `device-settings.schema.json`. Tanpa ini, model C# bisa menyimpang diam-diam.
-- [ ] 0.4 Tambah job CI: `npm run booth:contracts && git diff --exit-code` +
+- [x] 0.4 Tambah job CI: `npm run booth:contracts && git diff --exit-code` +
       `node --test tests/device-settings-contract.test.ts` pada `ubuntu-latest`.
-- [ ] 0.5 Perbaiki `booth/README.md`: fase 2 = "kode selesai, verifikasi Windows tertunda";
+- [x] 0.5 Perbaiki `booth/README.md`: fase 2 = "kode selesai, verifikasi Windows tertunda";
       tambahkan tautan ke `booth/plan.md` dan `booth/prompts.md`.
 
 **Acceptance:** generator deterministik; tes kontrak + paritas hijau; CI gagal bila
