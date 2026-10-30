@@ -21,19 +21,24 @@
   </PropertyGroup>
 
   <!--
-    `dotnet build` mengarahkan MSBuildExtensionsPath ke folder SDK .NET, yang
-    TIDAK memuat task MSIX (`Microsoft.Build.Packaging.Pri.Tasks.dll`). Task itu
-    hanya dikirim bersama Visual Studio. WindowsAppSDK memakainya untuk MRT/PRI,
-    jadi tanpa override build gagal MSB4062 di runner Windows yang hanya punya
-    .NET SDK. Di mesin ber-Visual Studio nilainya sudah benar dan blok ini
-    dilewati (Condition di MrtCore.PriGen.targets hanya mengisi bila kosong).
+    MRT/PRI dimatikan untuk build CLI.
+
+    WindowsAppSDK memakai task `Microsoft.Build.Packaging.Pri.Tasks` yang HANYA
+    dikirim bersama Visual Studio (workload UWP). Runner `windows-latest` maupun
+    mesin operator dengan .NET SDK saja tidak punya assembly itu, sehingga build
+    gagal MSB4062 di MrtCore.PriGen.targets.
+
+    Aman untuk aplikasi ini: tidak ada `.resw` maupun aset `ms-appx` — UI dilayani
+    dari folder lewat SetVirtualHostNameToFolderMapping, dan XAML ter-compile jadi
+    XBF di dalam assembly. Resource framework WinUI tetap tersalin karena
+    Microsoft.WindowsAppSDK.SelfContained.targets menyalin setiap `*.pri` dari
+    MSIX runtime (hanya `resources.pri` gabungan yang memang dibuang di sana).
+
+    Fase 5 (MSIX di mesin ber-Visual Studio) bisa mengembalikannya dengan
+    `-p:EnableCoreMrtTooling=true`.
   -->
   <PropertyGroup>
-    <AppxMSBuildToolsPath Condition="'$(AppxMSBuildToolsPath)' == '' and Exists('$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v$(VisualStudioVersion)\AppxPackage\Microsoft.Build.Packaging.Pri.Tasks.dll')">$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v$(VisualStudioVersion)\AppxPackage\</AppxMSBuildToolsPath>
-    <AppxMSBuildToolsPath Condition="'$(AppxMSBuildToolsPath)' == '' and Exists('$(ProgramFiles)\Microsoft Visual Studio\2022\Enterprise\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\Microsoft.Build.Packaging.Pri.Tasks.dll')">$(ProgramFiles)\Microsoft Visual Studio\2022\Enterprise\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\</AppxMSBuildToolsPath>
-    <AppxMSBuildToolsPath Condition="'$(AppxMSBuildToolsPath)' == '' and Exists('$(ProgramFiles)\Microsoft Visual Studio\2022\Professional\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\Microsoft.Build.Packaging.Pri.Tasks.dll')">$(ProgramFiles)\Microsoft Visual Studio\2022\Professional\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\</AppxMSBuildToolsPath>
-    <AppxMSBuildToolsPath Condition="'$(AppxMSBuildToolsPath)' == '' and Exists('$(ProgramFiles)\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\Microsoft.Build.Packaging.Pri.Tasks.dll')">$(ProgramFiles)\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\</AppxMSBuildToolsPath>
-    <AppxMSBuildToolsPath Condition="'$(AppxMSBuildToolsPath)' == '' and Exists('$(ProgramFilesX86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\Microsoft.Build.Packaging.Pri.Tasks.dll')">$(ProgramFilesX86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\</AppxMSBuildToolsPath>
+    <EnableCoreMrtTooling>false</EnableCoreMrtTooling>
   </PropertyGroup>
 
   <ItemGroup>
