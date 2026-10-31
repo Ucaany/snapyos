@@ -301,6 +301,8 @@ ikut ke ZIP rilis, bukan hanya working tree.
 | Tes xUnit                                               | `dotnet test booth/tests/SnapyOS.Booth.Tests -c Debug` | **PASS**: 60/60 (sebelumnya 55; +5 tes guard adapter)                                  |
 | Kompilasi C# Shell (harness stub XAML)                  | `/tmp/snapy-shellcheck`                            | **PASS**: build succeeded, 0 error                                                          |
 | YAML workflow                                           | `python3 -c "yaml.safe_load(...)"`                 | **PASS**                                                                                    |
+| Build solusi + tes + publish (Windows)                  | CI run `41098735125` (commit `6f22f4a`)            | **PASS**: semua langkah success, `Total tests: 60 / Passed: 60`, `dist/booth` 599 berkas, EXE SHA-256 `86214cc03d77c8f7e05ee84a8ccbb5666edf9c3037a3bcc4a528058ec82bda33` |
+| Launcher terbit tidak memuat blok `if (...)`            | langkah CI "Verifikasi keluaran"                   | **PASS**: cek baru jalan dan tidak melempar                                                       |
 
 **Yang diubah:**
 
