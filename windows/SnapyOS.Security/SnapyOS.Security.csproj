@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <AssemblyName>SnapyOS.Security</AssemblyName>
+    <RootNamespace>SnapyOS.Security</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" />
+    <ProjectReference Include="../SnapyOS.LocalStore/SnapyOS.LocalStore.csproj" />
+  </ItemGroup>
+</Project>
