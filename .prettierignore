@@ -1,14 +1,3 @@
-# Ter-generate oleh booth/contracts/generate.mjs — jangan diformat manual.
-src/lib/generated/
-booth/src/SnapyOS.Booth.Contracts/DeviceSettings.g.cs
-
-# Kontrak dibaca generator apa adanya (urutan kunci bermakna).
-booth/contracts/*.json
-
-# Aplikasi booth: C# (.cs) tidak didukung Prettier; UI punya toolchain sendiri.
-booth/src/
-booth/ui/
-booth/scripts/
 
 # Keluaran alat
 .next/

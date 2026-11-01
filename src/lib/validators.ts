@@ -14,7 +14,7 @@ import {
   DEVICE_SETTING_GROUPS,
   LOCAL_ONLY_DEVICE_GROUPS,
   SETTING_INVARIANTS,
-} from "./generated/device-settings.gen.ts";
+} from "./device-settings-contract.ts";
 
 /** UUID PostgreSQL canonical: shape hex, tanpa pembatasan version/variant RFC. */
 const uuid = z.string().guid();
@@ -517,10 +517,8 @@ export const appearanceSettingsSchema = z.object({
 // ---------------------------------------------------------------------------
 
 /**
- * Daftar grup & kepemilikan berasal dari satu sumber: kontrak JSON Schema di
- * `booth/contracts/device-settings.schema.json`, di-generate ke
- * `./generated/device-settings.gen.ts` dan dipakai bersama cloud (TS) dan
- * aplikasi booth (C#). Jangan menyalin aturannya di sini.
+ * Daftar grup dan kepemilikan berasal dari satu kontrak yang dipakai cloud dan
+ * runtime lokal. Jangan menyalin aturannya di sini.
  *
  * `appearance_settings` sengaja TIDAK ikut cloud-sync: kustomisasi tampilan
  * berlaku untuk satu booth dan tidak boleh menular ke booth lain lewat baris
@@ -1130,23 +1128,10 @@ export const deviceExitSchema = z.object({
     .optional(),
 });
 
-/**
- * Versi aplikasi booth (Phase 12). Dashboard owner membandingkannya dengan
- * rilis terbaru; tanpa ini owner tidak tahu booth mana yang ketinggalan.
- * Opsional: booth lama tidak mengirimnya dan tetap boleh melapor.
- */
-const appVersionSchema = z
-  .string()
-  .trim()
-  .max(20, "Versi maksimal 20 karakter")
-  .regex(/^\d+\.\d+\.\d+$/, "Versi harus format 1.2.3")
-  .optional();
-
 /** Laporan status device (setup wizard) — docs/05 §5.0.1. */
 export const deviceReportSchema = z.object({
   device_token: z.string().trim().min(32).max(128),
   preferred_device_id: z.string().trim().max(200).nullable().optional(),
-  app_version: appVersionSchema,
   camera: z
     .object({
       resolution: z.string().trim().max(40).optional(),
@@ -1176,8 +1161,6 @@ export const deviceReportSchema = z.object({
  */
 export const deviceSettingsPatchSchema = z.object({
   device_token: z.string().trim().min(32).max(128),
-  /** Versi aplikasi booth; ikut dikirim worker bersama setelan. */
-  app_version: appVersionSchema,
   settings: deviceSettingsSchema,
 });
 
@@ -1381,95 +1364,6 @@ export const adminAddOnUpdateSchema = adminAddOnCreateSchema
   .omit({ code: true })
   .partial()
   .refine((v) => Object.keys(v).length > 0, { message: "Minimal satu field diubah" });
-
-// ---------------------------------------------------------------------------
-// Katalog aplikasi booth (0081) — TAUTAN saja, tidak ada upload.
-// ---------------------------------------------------------------------------
-
-/**
- * URL unduhan harus https:// dengan hostname publik (punya label + titik).
- * Menolak javascript:/data:/file:/http:, hostname kosong, dan `localhost`/
- * IP polos. Tidak ada allowlist host: admin boleh memakai host mana pun
- * (Google Drive, CDN, situs sendiri). Tidak ada HEAD/GET verifikasi — memanggil
- * URL sembarang dari server adalah SSRF.
- */
-export function isHttpsDownloadUrl(raw: string): boolean {
-  try {
-    const url = new URL(raw);
-    if (url.protocol !== "https:") return false;
-    // Label pertama wajib terisi → menolak ".com", "localhost", dan IP polos.
-    return /^[^\s.]+(?:\.[^\s.]+)+$/.test(url.hostname);
-  } catch {
-    return false;
-  }
-}
-
-const appReleaseUrl = z
-  .string()
-  .trim()
-  .min(1, "URL unduhan wajib diisi")
-  .max(2000, "URL terlalu panjang")
-  .refine(isHttpsDownloadUrl, "URL harus https:// dengan hostname publik");
-
-/** Disimpan apa adanya (trim saja) — normalisasi bisa mematahkan link Drive. */
-export const appReleaseSchema = z.object({
-  version: z
-    .string()
-    .trim()
-    .regex(/^\d+\.\d+\.\d+$/, "Versi harus format 1.2.3 (tanpa awalan v)"),
-  download_url: appReleaseUrl,
-  file_name: z.string().trim().min(1, "Nama file wajib diisi").max(200),
-  file_size_bytes: z
-    .number({ error: "Ukuran harus angka bulat byte" })
-    .int("Ukuran harus angka bulat byte")
-    .positive("Ukuran harus lebih dari 0")
-    .max(20_000_000_000, "Ukuran terlalu besar")
-    .nullable()
-    .optional(),
-  // Hex tidak peka huruf besar/kecil; DB menyimpan huruf kecil (check constraint).
-  sha256: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .regex(/^[0-9a-f]{64}$/, "SHA-256 harus 64 karakter hex")
-    .nullable()
-    .optional(),
-  release_notes: z
-    .string()
-    .trim()
-    .max(4000, "Catatan rilis maksimal 4000 karakter")
-    .nullable()
-    .optional(),
-  is_active: z.boolean().optional(),
-});
-
-export type AppReleaseInput = z.infer<typeof appReleaseSchema>;
-
-export const appReleaseUpdateSchema = appReleaseSchema
-  .partial()
-  .refine((v) => Object.keys(v).length > 0, { message: "Minimal satu field diubah" });
-
-export type AppReleaseUpdateInput = z.infer<typeof appReleaseUpdateSchema>;
-
-/**
- * Terjemahkan error tulis app_releases jadi bentuk yang bisa dipakai form.
- * `version` adalah satu-satunya unique constraint di tabel, jadi 23505 selalu
- * berarti versi duplikat → error field, bukan 500.
- */
-export function appReleaseWriteError(
-  error: { code?: string } | null | undefined,
-  fallback: string
-): {
-  code: "VALIDATION_ERROR" | "INTERNAL";
-  message: string;
-  fieldErrors?: Record<string, string[]>;
-} {
-  if (error?.code === "23505") {
-    const message = "Versi ini sudah terdaftar. Hapus atau ubah rilis lama lebih dulu.";
-    return { code: "VALIDATION_ERROR", message, fieldErrors: { version: [message] } };
-  }
-  return { code: "INTERNAL", message: fallback };
-}
 
 export const adminUserUpdateSchema = z
   .object({

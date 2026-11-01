@@ -49,15 +49,6 @@ const eslintConfig = defineConfig([
     ".audit-run/**",
     ".e2e-tmp/**",
     "test-results/**",
-    // Tauri kiosk (Phase 9): crate Rust + hasil build. `target/` dan
-    // `runtime-dist/` dibuat mesin, bukan source — jangan dilintasi ESLint.
-    "src-tauri/**",
-    // Aplikasi booth .NET/.NET: proyek terpisah (C# + UI Vite dengan toolchain
-    // sendiri). Root ESLint tidak mengauditnya.
-    "booth/ui/**",
-    "booth/src/**",
-    "booth/**/bin/**",
-    "booth/**/obj/**",
     // macOS AppleDouble metadata:
     "**/._*",
   ]),

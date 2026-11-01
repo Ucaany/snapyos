@@ -13,7 +13,6 @@
     "start": "node --env-file-if-exists=.env.local .next/standalone/server.js",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "booth:contracts": "node booth/contracts/generate.mjs",
     "verify": "npm run lint && npm run typecheck && npm test && npm run build",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -60,7 +59,6 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@tauri-apps/cli": "^2.12.4",
     "@types/jpeg-js": "^0.3.0",
     "@types/node": "^20",
     "@types/pdfkit": "^0.17.6",

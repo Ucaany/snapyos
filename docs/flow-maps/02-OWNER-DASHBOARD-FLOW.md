@@ -432,9 +432,7 @@ Delete photobox → deletePhotobox(businessId, photoboxId)
 
 ---
 
-## 7.1 Setelan mesin: milik aplikasi booth
 
-**Tidak ada halaman dashboard.** Kamera, printer, dan durasi sesi diatur dari aplikasi booth
 (runtime lokal), bukan dari browser owner. Tidak ada tombol uji kamera jarak jauh: hardware
 hanya bisa diuji di lokasi, dan halaman yang mencoba melakukannya sudah dihapus.
 
@@ -474,49 +472,6 @@ datang sendiri lewat heartbeat device.
 
 **Acceptance**: owner mengatur identitas dan kebijakan bisnis booth; setelan mesin datang dari
 laporan booth; field mesin yang dikirim dari dashboard ditolak.
-
----
-
-## 7.2 Unduh aplikasi booth (`/dashboard/apps`)
-
-**Page**: `/dashboard/apps` → `src/app/(dashboard)/dashboard/apps/page.tsx`
-
-**Data Flow**:
-
-```
-SSR page → listOwnerReleases()      (app_releases where is_active = true, created_at desc)
-        → listPhotoboxes()          (device_status.app_version per booth)
-   ↓ latest = releases[0]
-   ↓ needsAppUpdate(reported, latest.version) → badge "Perlu update"
-   ↓ render AppDownloadCard + riwayat + tabel versi booth
-```
-
-**Kartu rilis terbaru** (`AppDownloadCard`, client hanya untuk tombol salin):
-
-- Versi, tanggal, ukuran byte (bila admin mengisi), nama file, catatan rilis
-- **Buka tautan unduhan** → `<a target="_blank" rel="noopener noreferrer">` ke host eksternal
-- Host tujuan tertulis (`drive.google.com`), supaya jelas tautan meninggalkan SNAPY OS
-- SHA-256 dalam blok `font-mono` + tombol **Salin hash**, hanya bila admin mengisinya
-
-**Tabel versi per booth**: `name` + `device_status.app_version`; belum pernah melapor →
-"Belum pernah dilaporkan"; versi < rilis terbaru → badge **Perlu update** (`bg-accent`,
-`text-[10px]`).
-
-**Tidak ada** tombol "kirim update ke booth": belum ada kanal perintah cloud → runtime.
-Unduhan dan pemasangan manual di komputer booth.
-
-**States**: belum ada rilis aktif (kartu kosong + penjelasan), belum ada booth (tabel kosong),
-clipboard diblokir ("salin manual"), migration 0081 belum diterapkan (daftar kosong, bukan 500).
-
-**File Locations**:
-
-- Server: `src/server/app-releases.ts` (`listOwnerReleases`, `getLatestRelease`)
-- Lib: `src/lib/app-release.ts` (`compareAppVersions`, `needsAppUpdate`, `hostOf`, format)
-- Components: `src/components/dashboard/AppDownloadCard.tsx`
-- Nav: `src/components/dashboard/nav.ts` (grup Operasional, setelah Unduh PWA)
-
-**Acceptance**: owner menemukan installer versi terbaru, tahu host tujuannya, dan melihat booth
-mana yang tertinggal versi. Tidak ada file installer yang melewati storage SNAPY OS.
 
 ---
 
@@ -1447,7 +1402,6 @@ Delete credential → deletePaymentCredential(businessId, credentialId)
 
 **Utama**: Dashboard (overview) · Analytics (revenue charts) · Metrics (business metrics)
 
-**Operasional**: Photobox (+ device management) · Branding & Kiosk · Outlets · Templates (+ builder) · Packages · Vouchers · Aplikasi Booth (unduh installer, `/dashboard/apps`)
 
 **Keuangan**: Transactions · Finance (expenses, profit) · Payment Gateway · Reports (export)
 
@@ -1460,7 +1414,6 @@ Delete credential → deletePaymentCredential(businessId, credentialId)
 - POS (hanya render jika `hasPosEntitlement()` — lihat `05-POS-TERMINAL-FLOW.md`)
 - Unduh PWA (hanya render jika `hasFeature('pwa_kiosk')`)
 
-**Aplikasi Booth** selalu tampil: isinya tautan installer di host eksternal, bukan fitur berbayar.
 
 **Active State**: `src/lib/nav-active.ts` shared helper.
 

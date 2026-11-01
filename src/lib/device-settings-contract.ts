@@ -1,7 +1,3 @@
-// AUTO-GENERATED — jangan diubah manual.
-// Sumber: booth/contracts/device-settings.schema.json
-// Regenerate: node booth/contracts/generate.mjs
-
 export const SETTINGS_SCHEMA_VERSION = 1;
 
 export const DEVICE_SETTING_GROUPS = ["camera_settings", "print_settings", "session_settings", "appearance_settings"] as const;

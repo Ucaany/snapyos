@@ -34,7 +34,6 @@ import {
   printDefaults,
 } from "./settings/index.ts";
 import { startSyncWorker } from "./sync/worker.ts";
-import { VERSION } from "./version.ts";
 
 /**
  * Store dibuka sebelum listen: tanpa store, sesi lokal dan PIN darurat tidak
@@ -168,7 +167,6 @@ async function main(): Promise<void> {
           200,
           {
             ok: true,
-            version: VERSION,
             camera: cameraStatus,
             // Aditif: kiosk lama mengabaikan kunci ini.
             camera_stream: streamStatus,
@@ -273,7 +271,7 @@ async function main(): Promise<void> {
 
   server.listen(config.port, config.host, () => {
     console.log(
-      `[snapyos-runtime] v${VERSION} http://${config.host}:${config.port} ` +
+      `[snapyos-runtime] http://${config.host}:${config.port} ` +
         `(kamera=${config.camera}, printer=${config.printer}${config.mock ? ", MOCK" : ""})`
     );
   });

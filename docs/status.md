@@ -24,12 +24,8 @@ Source of truth: `src/`, `runtime/`, `db/schema.sql`, `README.md`
 | Template builder                        | Active                                                  | `src/components/dashboard/TemplateBuilder.tsx`                     |
 | Storage quota                           | Active when plan feature is enabled                     | `src/server/storage-usage.ts` (jumlah kedua provider)              |
 | Dual storage (R2 write + Supabase read) | Active — Fase 3                                         | `src/server/storage` (`getWriteStorage`, `resolveStorage`)         |
-| Aplikasi booth (EXE Windows)            | Partial — kode ada, `.exe`/`.msi` NOT TESTED            | `src-tauri/` (Tauri v2, jendela kiosk + sidecar runtime)           |
 | Kiosk offline runtime (lokal)           | Active — sesi lokal + sync ke cloud                     | `runtime/` (`node:sqlite`, `/v1/*` loopback, token bridge)         |
-| Setelan booth di aplikasi booth         | Active — panel PIN-gated, 4 grup                        | `src/components/kiosk/BoothSettingsPanel.tsx`, `PUT /v1/settings`  |
-| Kustomisasi tampilan per booth (mesin)  | Active — `appearance_settings` lokal, menang atas cloud | `src/lib/appearance-merge.ts`, `runtime/settings`                  |
-| Katalog aplikasi (admin)                | Active — tautan saja, tanpa upload                      | `src/app/(admin)/admin/apps/`, `app_releases` (0081)               |
-| Unduh aplikasi booth (owner)            | Active — tautan + status versi per booth                | `src/app/(dashboard)/dashboard/apps/`, `device_status.app_version` |
+| Setelan device dan kustomisasi booth | Active — panel lokal, `appearance_settings` menang atas cloud | `src/components/kiosk/BoothSettingsPanel.tsx`, `src/lib/appearance-merge.ts` |
 
 ## Partial or constrained
 
@@ -157,7 +153,6 @@ transaksi terpisah). Verifikasi dilakukan dua lapis, bukan asumsi:
 | `0078`  | **DITERAPKAN** | ketiga index ada (`idx78`=3), terverifikasi via katalog Postgres                                               |
 | `0079`  | **DITERAPKAN** | keempat FK `customers` `confdeltype='r'` (RESTRICT) di `sessions`/`transactions`/`pos_orders`/`voucher_usages` |
 | `0080`  | **DITERAPKAN** | hint `transactions_payment_id_fkey` → `PGRST200` (FK sudah dihapus)                                            |
-| `0081`  | **DITERAPKAN** | tabel `app_releases` dapat dibaca                                                                              |
 
 **Uji fungsional `0076`** (di dalam transaksi yang di-`rollback`, tidak ada data
 berubah): decrement normal 10→7 `ok=true`; permintaan melebihi stok `ok=false`

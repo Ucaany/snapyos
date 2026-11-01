@@ -12,7 +12,6 @@ import {
   resolutionLabel,
   resolutionWarning,
 } from "@/lib/camera-errors";
-import { isKioskExe } from "@/lib/kiosk-shell";
 import { getDeviceProfile } from "@/lib/device-profile";
 import {
   cameraBridgeUrl,
@@ -162,7 +161,7 @@ export function SetupWizard({
     } catch (e) {
       const name = e instanceof DOMException ? e.name : null;
       const kind = cameraErrorKind(name);
-      setCameraError(cameraErrorCopy(name, { exe: isKioskExe() }));
+      setCameraError(cameraErrorCopy(name));
       // Laporkan kegagalan kamera ke server — diagnostik booth (docs/16 §K2).
       await report({ camera: { error: kind ?? "UNKNOWN" } });
     }

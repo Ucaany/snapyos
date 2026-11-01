@@ -1,6 +1,5 @@
 # 7. Database Schema
 
-> **Sinkron dengan `db/schema.sql` aktual per audit 2026-10-24** (55 tabel + 32 fungsi; migration terbaru `0081_app_releases.sql`). **Semua migrasi `0072`–`0081` sudah diterapkan ke cloud dan diverifikasi 2026-10-27** lewat probe PostgREST (`scripts/probe-migration-status.mjs`) plus katalog Postgres (`supabase db query --linked`) untuk index, aksi FK, dan signature fungsi. Hanya `0071` yang sengaja belum dijalankan. Tabel/kolom di bawah = realita schema; deviasi dari draft awal ditandai. Paritas schema ↔ migrasi dijaga `tests/schema-migration-parity.test.ts`.
 >
 > **RLS (C1, migrasi 0064):** setiap tabel `public.*` punya `alter table ... enable row level security` + policy `svc_all` (`for all to service_role using (true) with check (true)`); `anon`/`authenticated` di-revoke, `service_role` di-grant. Tidak ada policy `to public/anon/authenticated`.
 >
@@ -235,7 +234,6 @@ Tidak dipakai (JWT strategy + `auth_sessions` di atas); `users` tetap source of 
 | camera_settings         | jsonb                      | nullable (`{ countdown_seconds, mirror_preview, fullscreen, facingMode, capture_width, capture_height, jpeg_quality }`)                          |
 | print_settings          | jsonb                      | nullable (`{ enabled, paper_size, layout, orientation, auto_print, copies }`)                                                                    |
 | session_settings        | jsonb                      | nullable (v2: `{ timer_seconds: 300, warning_seconds: 60, max_retakes: null }`)                                                                  |
-| device_status           | jsonb                      | nullable (last heartbeat, camera resolution, printer status, `app_version` — versi booth dilaporkan lewat `devices/report` & `devices/settings`) |
 | exit_pin_hash           | text                       | nullable — PIN keluar kiosk, verifikasi server-side (hash)                                                                                       |
 | exit_pin_failed_count   | integer not null default 0 | migrasi 0034 — throttle brute-force PIN exit kiosk (counter percobaan gagal beruntun)                                                            |
 | exit_pin_locked_until   | timestamptz nullable       | migrasi 0034 — 5 gagal beruntun → lock 5 menit (server-side, tidak dapat di-bypass client)                                                       |
@@ -266,7 +264,6 @@ Owner mengatur booth mana yang bisa diakses staff; PK `(user_id, photobox_id)`.
 | device_token_hash       | text                 | hash dari token yang disimpan device                                                   |
 | status                  | text                 | `active`/`revoked`                                                                     |
 | last_seen_at            | timestamptz          |                                                                                        |
-| app_version             | text                 | nullable — versi aplikasi Electron (0027)                                              |
 | os_info                 | jsonb                | nullable — `{ platform, arch, version }` (0027)                                        |
 | display_orientation     | text                 | `portrait`/`landscape` (0027)                                                          |
 | display_style           | text                 | `classic`/`compact`/`receipt` (0027)                                                   |
@@ -758,7 +755,6 @@ Tabel `reports` dihapus karena 0 caller di kode aplikasi. Fitur export report (C
 | meta        | jsonb                |                                                 |
 | created_at  | timestamptz          |                                                 |
 
-### app_releases (0081 — katalog aplikasi, TAUTAN saja)
 
 | kolom                   | tipe            | ket                                                                    |
 | ----------------------- | --------------- | ---------------------------------------------------------------------- |

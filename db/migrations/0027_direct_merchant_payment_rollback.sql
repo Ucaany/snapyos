@@ -1,5 +1,5 @@
 -- ============================================================================
--- 0027 ROLLBACK: Revert Direct Merchant Payment + Electron Kiosk Device Config
+-- 0027 ROLLBACK: Revert Direct Merchant Payment + Device Config
 -- ============================================================================
 
 -- Device logs
@@ -24,7 +24,6 @@ alter table devices drop column if exists camera_config;
 alter table devices drop column if exists display_style;
 alter table devices drop column if exists display_orientation;
 alter table devices drop column if exists os_info;
-alter table devices drop column if exists app_version;
 
 -- Payment credentials
 drop trigger if exists trg_payment_credentials_updated_at on payment_credentials;

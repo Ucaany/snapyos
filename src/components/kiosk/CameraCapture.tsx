@@ -3,7 +3,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Camera, FlipHorizontal2, RotateCcw } from "lucide-react";
 import { cameraErrorCopy } from "@/lib/camera-errors";
-import { isKioskExe } from "@/lib/kiosk-shell";
 import { captureFrame, normalizeRotation, normalizeZoom } from "@/lib/camera-capture";
 import {
   captureFromBridge,
@@ -232,7 +231,7 @@ function CameraCaptureInner({
             // jatuh ke penanganan error umum di bawah
           }
         }
-        const copy = cameraErrorCopy(name, { exe: isKioskExe() });
+        const copy = cameraErrorCopy(name);
         setError({ message: copy.message, action: copy.action });
       }
     },

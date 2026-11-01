@@ -15,14 +15,6 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Kontrak booth ter-generate (anti-basi)
-        run: |
-          npm run booth:contracts
-          git diff --exit-code \
-            src/lib/generated/device-settings.gen.ts \
-            booth/src/SnapyOS.Booth.Contracts/DeviceSettings.g.cs
-      - name: Tes kontrak booth (paritas TS↔C#, invarian schema)
-        run: node --experimental-strip-types --test tests/device-settings-contract.test.ts
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test

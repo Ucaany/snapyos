@@ -394,7 +394,7 @@ DoD: lint/typecheck/test/build hijau per area; tidak ada regresi visual di area 
 1. **Cloud ≠ booth.** `vercel.json` ada (region `sin1`, `maxDuration` 30–60 s) **dan** `next.config.ts`
    memakai `output: "standalone"` untuk VPS. Artinya: pekerjaan berat dan semua yang butuh
    *system binary* atau perangkat fisik (kamera, printer, GPIO) **tidak boleh** direncanakan di
-   fungsi cloud — harus di **booth runtime** (`runtime/`, Node + SQLite + Tauri), yang memang
+   fungsi cloud — harus di **runtime lokal** (`runtime/`, Node + SQLite), yang memang
    sudah ada dan sudah memanggil binary sistem (`runtime/print/index.ts` → `runCommand(cupsBin, …)`).
 2. **Pillow / OpenCV / pilgram2 / GD / marvinj tidak bisa dipasang di app Next.js.** Tidak ada
    jalur resmi Python di proses Node. Yang benar: **substitusi ke padanan Node-native**
@@ -414,7 +414,7 @@ DoD: lint/typecheck/test/build hijau per area; tidak ada regresi visual di area 
 | webcamv4l / webcampyav | `runtime/camera/webcamv4l.ts` memanggil `ffmpeg -f v4l2` satu frame | ✅ | booth |
 | wigglecam / camera virtual | `wigglecam.ts` (rangkaian frame → wiggle) + `virtual.ts` (fixture) | ✅ | booth |
 | MP4 + GIF from video frames | klien `MediaRecorder` (dengan deteksi dukungan) → transcode **ffmpeg** di booth; GIF via `gifenc` | ✅ **diputuskan** | booth |
-| Print shell command + print DB + limit + QR-on-print | tabel `print_jobs` + `qrcode` (sudah ada) + `pdfkit` (sudah ada) + adapter `cups`/`windows`/`mock` yang sudah ada | ✅ | cloud + booth |
+| Print shell command + print DB + limit + QR-on-print | tabel `print_jobs` + `qrcode` (sudah ada) + `pdfkit` (sudah ada) + adapter `cups`/`mock` yang sudah ada | ✅ | cloud + runtime lokal |
 | Plugin `commander` (command bebas) | **allowlist aksi** (`print`, `lights_on`, `lights_off`, `copy_to_usb`) — tanpa string shell dari klien | ✅ versi aman | booth |
 | Realtime (socket.io / SSE) | **SSE** (`/api/v1/business/booths/stream`) — tanpa dependency baru | ✅ | cloud |
 | Plugin framework (`pluggy`) | **ditolak** — cukup extension point sempit | ❌ | — |

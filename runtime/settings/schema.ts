@@ -1,10 +1,9 @@
 /**
  * Kontrak setelan device.
  *
- * Satu sumber kebenaran: schema + tabel kepemilikan di `src/lib/validators.ts`,
- * dipakai bersama cloud (`PATCH /api/v1/public/devices/settings`) dan runtime
- * (`PUT /v1/settings`). Berkas ini hanya menamai ulang untuk sisi runtime —
- * menyalin aturannya berarti runtime dan cloud bisa berbeda pendapat.
+ * Satu sumber kebenaran: kontrak device + tabel kepemilikan di
+ * `src/lib/validators.ts`, dipakai bersama cloud dan runtime. Berkas ini hanya
+ * menamai ulang untuk sisi runtime.
  */
 
 import {
@@ -17,7 +16,7 @@ import {
 } from "../../src/lib/validators.ts";
 
 /** Versi berkas export. Naikkan hanya bila bentuknya berubah. */
-export { SETTINGS_SCHEMA_VERSION } from "../../src/lib/generated/device-settings.gen.ts";
+export { SETTINGS_SCHEMA_VERSION } from "../../src/lib/device-settings-contract.ts";
 
 export const DEVICE_GROUPS = DEVICE_SETTING_GROUPS;
 export type DeviceGroup = DeviceSettingGroup;

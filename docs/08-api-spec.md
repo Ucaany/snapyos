@@ -233,8 +233,6 @@ Ini menutup gap: §8.3–§8.16 hanya mencantumkan route + param ringkas; detail
 Endpoint berikut ada di kode namun belum tercantum di section di atas:
 
 - `POST /api/v1/public/devices/exit` — verifikasi PIN keluar kiosk (server-side, `photoboxes.exit_pin_hash`).
-- `POST /api/v1/public/devices/report` — heartbeat/status report device kiosk. Menerima `app_version` opsional (maks 20 karakter, `x.y.z`) dan menyimpannya ke `photoboxes.device_status.app_version`.
-- `PATCH /api/v1/public/devices/settings` — booth menulis balik setelan miliknya (kamera, printer, timer). Auth `device_token` di body. Field cloud (`print_settings.copies`, `print_settings.layout`, `payment_mode`, harga) dijawab `403 FIELD_NOT_DEVICE_OWNED`; cloud menggabungkan per-key. Body juga menerima `app_version` opsional yang disimpan ke `device_status.app_version` (dibaca `/dashboard/apps`). Lihat `docs/photobooth-bridge.md`.
 - `GET/POST /api/v1/admin/add-ons` + `PATCH /api/v1/admin/add-ons/:id` — CRUD katalog add-on platform (termasuk POS).
 - `GET /api/health` — readiness check (audit 2026-10-16, lihat §8.21).
 - `GET /api/v1/emoji` — katalog emoji/stiker global untuk kiosk & template builder (menggantikan stickers REST per-business).

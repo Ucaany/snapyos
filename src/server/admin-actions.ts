@@ -24,14 +24,12 @@ import {
   attachSubscriptionAddOn,
   cancelSubscriptionAddOn,
   createAddOn,
-  createAppRelease,
   createGlobalTemplate,
   createPlan,
   createBroadcast,
   createPromo,
   createTemplateCategory,
   createUser,
-  deleteAppRelease,
   deleteAuditLogs,
   deleteBusiness,
   deleteGlobalTemplate,
@@ -41,11 +39,9 @@ import {
   markRefunded,
   resendBroadcast,
   sendBroadcast,
-  setAppReleaseActive,
   setGatewayEnabled,
   setGlobalTemplateActive,
   updateAddOn,
-  updateAppRelease,
   updateBusiness,
   updateGlobalTemplate,
   updateGlobalTemplateLayout,
@@ -659,79 +655,6 @@ export async function resendBroadcastAction(
   try {
     await resendBroadcast(str(formData, "campaignId"));
     refresh("/admin/broadcasts", "/admin");
-    return {};
-  } catch (error) {
-    return toFormState(error);
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Katalog aplikasi booth (tautan saja) — migration 0081.
-// ---------------------------------------------------------------------------
-
-/** Payload form rilis: field opsional kosong → null (bukan 0 / string kosong). */
-function appReleasePayload(formData: FormData) {
-  const size = intOrNull(formData, "file_size_bytes");
-  return {
-    version: str(formData, "version"),
-    download_url: str(formData, "download_url"),
-    file_name: str(formData, "file_name"),
-    // NaN (bukan angka) dibiarkan lewat supaya Zod yang menolak dengan pesan field.
-    file_size_bytes: size === null || size === undefined ? null : size,
-    sha256: str(formData, "sha256") || null,
-    release_notes: str(formData, "release_notes") || null,
-  };
-}
-
-export async function createAppReleaseAction(
-  _prev: FormState,
-  formData: FormData
-): Promise<FormState> {
-  try {
-    await createAppRelease(appReleasePayload(formData));
-    refresh("/admin/apps", "/admin");
-    return {};
-  } catch (error) {
-    return toFormState(error);
-  }
-}
-
-export async function updateAppReleaseAction(
-  _prev: FormState,
-  formData: FormData
-): Promise<FormState> {
-  try {
-    await updateAppRelease(str(formData, "releaseId"), {
-      ...appReleasePayload(formData),
-      is_active: bool(formData, "is_active"),
-    });
-    refresh("/admin/apps", "/admin");
-    return {};
-  } catch (error) {
-    return toFormState(error);
-  }
-}
-
-export async function toggleAppReleaseAction(
-  _prev: FormState,
-  formData: FormData
-): Promise<FormState> {
-  try {
-    await setAppReleaseActive(str(formData, "releaseId"), str(formData, "active") === "true");
-    refresh("/admin/apps", "/admin");
-    return {};
-  } catch (error) {
-    return toFormState(error);
-  }
-}
-
-export async function deleteAppReleaseAction(
-  _prev: FormState,
-  formData: FormData
-): Promise<FormState> {
-  try {
-    await deleteAppRelease(str(formData, "releaseId"));
-    refresh("/admin/apps", "/admin");
     return {};
   } catch (error) {
     return toFormState(error);

@@ -53,12 +53,11 @@
 **Owner Platform** (login, per business — 20 item nav tetap + 2 kondisional, `src/components/dashboard/nav.ts`):
 
 - **Utama**: Dashboard, Analitik, Metrik
-- **Operasional**: Photobox, Branding & Kiosk, Outlet, Template, Paket, Voucher, POS\*, Unduh PWA\*, Aplikasi Booth (`/dashboard/apps`)
 - **Keuangan**: Transaksi, Keuangan, Payment Gateway, Laporan
 - **Pelanggan & Tim**: Pelanggan, Tim
 - **Langganan & Akun**: Langganan, Pengaturan, Tiket Bantuan, Dokumentasi
 
-`*` = kondisional entitlement/fitur (`pos`, `pwa_kiosk`). "Aplikasi Booth" selalu tampil: isinya tautan installer, bukan fitur berbayar.
+`*` = kondisional entitlement/fitur (`pos`, `pwa_kiosk`).
 
 **Admin Platform** (role admin — 17 item nav, `src/components/admin/nav.ts`):
 
