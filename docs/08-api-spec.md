@@ -67,7 +67,7 @@ Error:
 - `GET /api/v1/me/businesses` — daftar business user (owner-only session).
 - `POST /api/v1/businesses` — create business (onboarding). Daftar business hanya melalui endpoint canonical `GET /api/v1/me/businesses`.
 
-> **REMOVED (Fase 5):** `GET/PATCH /api/v1/business/:businessId`, `GET/PATCH /api/v1/business/:businessId/settings`, `GET/PATCH /api/v1/business/:businessId/settings/branding`, `POST /api/v1/business/:businessId/settings/branding/logo`. Semua CRUD business/settings/branding sekarang via server actions (`src/server/business-actions.ts`, `src/server/branding-actions.ts`). Dashboard `/dashboard/settings` + `KioskBrandingEditor` memanggilnya langsung dengan `useActionState`.
+> **REMOVED (Fase 5):** `GET/PATCH /api/v1/business/:businessId`, `GET/PATCH /api/v1/business/:businessId/settings`, `GET/PATCH /api/v1/business/:businessId/settings/branding`, `POST /api/v1/business/:businessId/settings/branding/logo`. Branding lama tetap dibaca oleh public config dan runtime untuk kompatibilitas, tetapi dashboard owner tidak lagi menyediakan mutasi editor. Pairing, status, revoke, versi, installer download, dan diagnostik tersimpan dikelola dari `/dashboard/devices` memakai route device yang ada.
 
 ## 8.5 Dashboard & Analytics
 
@@ -84,11 +84,24 @@ Error:
 
 ## 8.7 Payment Credentials (Owner only — Phase 2)
 
+Template builder & marketplace didokumentasikan di §8.7a.
+
 > **REST REMOVED (Fase 5); UI RESTORED via server actions (2026-09-18):** `/api/v1/business/:businessId/payment-credentials/**` tidak kembali sebagai REST. UI `/dashboard/settings/payment` aktif kembali dengan model **direct merchant sebagai jalan utama** (credential Pakasir/Midtrans/Tripay owner; aggregator Pakasir platform dihapus dari alur kiosk; tanpa credential aktif kiosk = voucher + tunai). Wiring: `src/server/payment-credential-actions.ts` (server actions) → `src/server/payment-credentials.ts` → `src/server/payment/providers/*`; webhook `/api/webhooks/payment/{midtrans,tripay,pakasir}` aktif. Kontrak legacy di bawah tidak lagi ada sebagai REST.
 
 ## 8.7a Packages / Templates / Stickers
 
-> **REMOVED (Fase 5):** `GET/POST/PATCH/DELETE /packages(/:id)`, `GET/POST/PATCH/DELETE /templates(/:id)`, `POST /templates/upload`. Server actions: `src/server/catalog-actions.ts` (packages), `src/server/templates.ts` (CRUD + upload; wrapper action di `src/server/hardware-actions.ts` / grid). Aturan assign template↔package: semua template aktif boleh dipakai paket mana pun; slot berlebih diisi bergiliran. Public template endpoint (`/api/v1/public/:businessSlug/templates?package=`) tidak berubah — masih dipakai kiosk.
+> **REMOVED (Fase 5):** `GET/POST/PATCH/DELETE /packages(/:id)`, `GET/POST/PATCH/DELETE /templates(/:id)`, `POST /templates/upload`. Server actions: `src/server/catalog-actions.ts` (packages), `src/server/templates.ts` (`saveTemplateLayout` + CRUD/upload). Tidak ada endpoint owner untuk layout/compose.
+>
+> **Template — perilaku aktual:**
+>
+> - Layout divalidasi server-side (`layoutSchema`): id unik, `z` unik+kontigu `0..n-1`, preset cocok dimensi, bounds rotation-aware, `radius ≤ min(w,h)/2`, `circle` wajib persegi (±0.01), max 8 slot. Invalid → 4xx `VALIDATION_ERROR` dengan field errors.
+> - Template global (`business_id NULL`) tidak dapat ditulis dari sisi owner; builder global hanya admin.
+> - **Assignability** (`assertTemplatesAssignable`): template milik business sendiri, ATAU global yang `is_active` dan (gratis ATAU sudah dibeli). Global nonaktif/belum dibeli ditolak saat create **dan** update package.
+> - Package tanpa assignment menampilkan semua template aktif (`selectVisibleTemplates` fallback).
+> - Marketplace: `purchaseTemplate` membuat invoice pending dengan intent `{ type: "template_purchase", items: [...] }` (amount = `templates.price`, integer IDR). Saat paid, `applyInvoiceIntent` menulis `business_template_purchases` idempoten. Template premium nonaktif tidak bisa dibeli.
+> - **Public template** (`GET /api/v1/public/:businessSlug/templates?package=`): payload `id, name, category, file_url, thumbnail_url, layout, slot_count, version, package_ids`; `version` = epoch ms `updated_at`; `?package` opsional. Thumbnail = frame WebP hasil upload (bukan composite slot).
+> - **Tidak ada server-side compose.** Render final dilakukan klien (`composeFrame`) lalu diunggah sebagai JPEG; print/result memakai JPEG itu.
+> - Cache publik: tag `public-config` per business + `public-config:global`, invalidasi pada mutasi template/global, TTL 30 detik.
 
 ## 8.8 Vouchers
 
@@ -133,7 +146,8 @@ Error:
 
 - `GET /api/v1/public/:businessSlug?photobox=<photoboxSlug>` — konfigurasi publik untuk booth: business, branding/welcome, checkout settings, photobox, dan packages. Parameter `photobox` wajib.
 - `GET /api/v1/public/:businessSlug/packages?photobox=<photoboxSlug>` — daftar package aktif untuk booth; parameter `photobox` wajib.
-- `GET /api/v1/public/:businessSlug/templates?package=`
+- `GET /api/v1/public/:businessSlug/templates?package=` — daftar template aktif. `?package` opsional (kiosk baru memanggil tanpa parameter lalu memfilter di klien). Field respons (aditif): `id, name, category, file_url, thumbnail_url, layout, slot_count, version, package_ids`. `version` = epoch ms `templates.updated_at` (0 bila tak terbaca); `package_ids` = assignment `package_templates`. Header `Cache-Control: private, max-age=0, must-revalidate`; rate limit 120/menit/IP.
+- `GET /api/v1/public/frame?url=<signed>&cache=<templateId:version>&w=<width>` — proxy biner frame/thumbnail. `cache` hanya penanda key Cache Storage untuk service worker (server **tidak** membacanya); `w` memilih versi resize 480px. Rate limit 180/menit/IP; `Cache-Control` `private, max-age=3600/600, stale-while-revalidate=86400` (dengan/tanpa `w`). Validasi allowlist origin, sniff MIME, batas 8 MB tetap.
 - `GET /api/v1/public/:businessSlug/stickers` — **[BELUM DIIMPLEMENTASI]** (stiker = emoji API global `GET /api/v1/emoji`, lihat §8.20)
 - `POST /api/v1/public/devices/activate` — aktivasi device `{ code }` → `{ device_token }`
 - `POST /api/v1/public/devices/verify` — `{ device_token }` → status device (boot/reload)

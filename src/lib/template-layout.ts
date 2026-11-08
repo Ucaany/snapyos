@@ -17,6 +17,9 @@ export type CanvasPreset = keyof typeof CANVAS_PRESETS | "custom";
 export const CANVAS_MAX = 3000;
 export const MAX_SLOTS = 8;
 
+/** Toleransi float untuk perbandingan geometri (preset/circle/AABB). */
+const EPS = 0.01;
+
 /**
  * Warna dasar di bawah foto. Wajib ada karena chroma key menghapus piksel
  * (alpha 0) sementara output final disimpan sebagai JPEG — tanpa isian dasar,
@@ -27,7 +30,33 @@ export const DEFAULT_CANVAS_BACKGROUND = "#ffffff";
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 
 export const SLOT_SHAPES = ["rect", "rounded", "circle", "ellipse"] as const;
-export const SLOT_FITS = ["cover", "contain"] as const;
+export const SLOT_FITS = ["cover", "contain", "fill"] as const;
+export const PROPERTY_FONT_WEIGHTS = [400, 500, 600, 700, 800, 900] as const;
+export const PROPERTY_ALIGNMENTS = ["left", "center", "right"] as const;
+export const PROPERTY_OVERFLOW = ["visible", "hidden", "clip"] as const;
+
+export const editorPropertySchema = z.object({
+  text: z.string().max(2000).optional(),
+  fontFamily: z.enum(["display", "sans", "mono"]).optional(),
+  fontSize: z.number().min(8).max(240).optional(),
+  fontWeight: z.number().int().refine((value) => PROPERTY_FONT_WEIGHTS.includes(value as never)).optional(),
+  lineHeight: z.number().min(0.8).max(3).optional(),
+  letterSpacing: z.number().min(-0.2).max(2).optional(),
+  color: z.string().regex(HEX_COLOR).optional(),
+  background: z.string().regex(HEX_COLOR).optional(),
+  opacity: z.number().min(0).max(1).optional(),
+  crop: z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1), width: z.number().min(0).max(1), height: z.number().min(0).max(1) }).optional(),
+  fit: z.enum(["cover", "contain", "fill"]).optional(),
+  poster: z.string().trim().max(500).nullable().optional(),
+  autoplay: z.boolean().optional(),
+  loop: z.boolean().optional(),
+  muted: z.boolean().optional(),
+  alignment: z.enum(PROPERTY_ALIGNMENTS).optional(),
+  maxWidth: z.number().min(1).max(CANVAS_MAX).optional(),
+  overflow: z.enum(PROPERTY_OVERFLOW).optional(),
+});
+
+export type EditorProperties = z.infer<typeof editorPropertySchema>;
 
 const slotSchema = z.object({
   id: z.string().trim().min(1).max(40),
@@ -40,11 +69,17 @@ const slotSchema = z.object({
   radius: z.number().min(0).optional(),
   fit: z.enum(SLOT_FITS).optional(),
   z: z.number().int().min(0).max(99),
+  /**
+   * properties tidak dirender oleh composeFrame; disimpan untuk kompatibilitas
+   * data lama (editor lama/dashboard) dan tidak boleh mempengaruhi render.
+   */
+  properties: editorPropertySchema.optional(),
 });
 
 /**
  * Layout jsonb contract (trust boundary — docs/15 §15.2):
- * slot harus berada sepenuhnya di dalam canvas, ukuran > 0, max 8 slot.
+ * slot harus berada sepenuhnya di dalam canvas, ukuran > 0, max 8 slot,
+ * id unik, z unik & rapat 0..n-1, preset cocok dengan dimensi canvas.
  */
 export const layoutSchema = z
   .object({
@@ -59,8 +94,29 @@ export const layoutSchema = z
     slots: z.array(slotSchema).max(MAX_SLOTS),
   })
   .superRefine((layout, ctx) => {
-    const { width: W, height: H } = layout.canvas;
+    const { width: W, height: H, preset } = layout.canvas;
+
+    // Preset harus cocok dengan dimensi canvas (selain "custom").
+    if (preset !== "custom") {
+      const dims = (CANVAS_PRESETS as Record<string, { width: number; height: number } | undefined>)[preset];
+      if (!dims || dims.width !== W || dims.height !== H) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["canvas", "preset"],
+          message: "preset tidak cocok dengan dimensi canvas",
+        });
+      }
+    }
+
+    const idSeen = new Set<string>();
     layout.slots.forEach((slot, i) => {
+      // Invariant 1: id slot unik.
+      if (idSeen.has(slot.id)) {
+        ctx.addIssue({ code: "custom", path: ["slots", i, "id"], message: "id slot duplikat" });
+      } else {
+        idSeen.add(slot.id);
+      }
+
       if (slot.width <= 0) {
         ctx.addIssue({
           code: "custom",
@@ -89,25 +145,119 @@ export const layoutSchema = z
           message: "y slot tidak boleh < 0",
         });
       }
-      if (slot.x + slot.width > W) {
+
+      // Invariant 4: radius tidak boleh melebihi setengah sisi terpendek.
+      if (slot.radius !== undefined && slot.radius > Math.min(slot.width, slot.height) / 2 + EPS) {
         ctx.addIssue({
           code: "custom",
-          path: ["slots", i, "x"],
-          message: "slot melebihi lebar canvas",
+          path: ["slots", i, "radius"],
+          message: "radius melebihi setengah sisi terpendek",
         });
       }
-      if (slot.y + slot.height > H) {
+
+      // Invariant 5: circle wajib persegi (ellipse bebas rasio).
+      if (slot.shape === "circle" && Math.abs(slot.width - slot.height) > EPS) {
         ctx.addIssue({
           code: "custom",
-          path: ["slots", i, "y"],
-          message: "slot melebihi tinggi canvas",
+          path: ["slots", i, "height"],
+          message: "shape circle wajib persegi (width = height)",
+        });
+      }
+
+      // Invariant 7: crop harus berada di dalam [0,1].
+      const crop = slot.properties?.crop;
+      if (crop) {
+        if (crop.width <= 0) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["slots", i, "properties", "crop", "width"],
+            message: "width crop harus > 0",
+          });
+        }
+        if (crop.height <= 0) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["slots", i, "properties", "crop", "height"],
+            message: "height crop harus > 0",
+          });
+        }
+        if (crop.x + crop.width > 1 + EPS) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["slots", i, "properties", "crop", "width"],
+            message: "crop melebihi batas kanan (x + width > 1)",
+          });
+        }
+        if (crop.y + crop.height > 1 + EPS) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["slots", i, "properties", "crop", "height"],
+            message: "crop melebihi batas bawah (y + height > 1)",
+          });
+        }
+      }
+
+      // Invariant 6: bounds rotation-aware (AABB hasil rotasi harus di dalam canvas).
+      const box = slotAabb(slot);
+      if (box.left < -EPS || box.top < -EPS || box.right > W + EPS || box.bottom > H + EPS) {
+        const rotated = Math.abs(slot.rotation % 360) > EPS;
+        ctx.addIssue({
+          code: "custom",
+          path: ["slots", i, rotated ? "rotation" : "x"],
+          message: rotated
+            ? "slot keluar batas canvas setelah rotasi"
+            : "slot melebihi lebar/tinggi canvas",
         });
       }
     });
+
+    // Invariant 2: z unik dan rapat 0..n-1.
+    const zCounts = new Map<number, number>();
+    for (const slot of layout.slots) {
+      zCounts.set(slot.z, (zCounts.get(slot.z) ?? 0) + 1);
+    }
+    layout.slots.forEach((slot, i) => {
+      if ((zCounts.get(slot.z) ?? 0) > 1) {
+        ctx.addIssue({ code: "custom", path: ["slots", i, "z"], message: "z slot duplikat" });
+      }
+    });
+    const n = layout.slots.length;
+    const missingZ: number[] = [];
+    for (let value = 0; value < n; value += 1) {
+      if (!zCounts.has(value)) missingZ.push(value);
+    }
+    if (missingZ.length > 0) {
+      const offender = layout.slots.findIndex((slot) => slot.z < 0 || slot.z >= n);
+      ctx.addIssue({
+        code: "custom",
+        path: ["slots", offender === -1 ? 0 : offender, "z"],
+        message: "z slot harus 0..n-1 tanpa celah",
+      });
+    }
   });
 
 export type TemplateLayout = z.infer<typeof layoutSchema>;
 export type LayoutSlot = TemplateLayout["slots"][number];
+
+/**
+ * AABB (axis-aligned bounding box) slot setelah rotasi. Pivot = pusat slot —
+ * sama dengan cara composeFrame merotasi (rotate di sekitar center).
+ */
+export function slotAabb(slot: LayoutSlot): {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+} {
+  const cx = slot.x + slot.width / 2;
+  const cy = slot.y + slot.height / 2;
+  const rad = (slot.rotation * Math.PI) / 180;
+  const cos = Math.abs(Math.cos(rad));
+  const sin = Math.abs(Math.sin(rad));
+  const halfW = (slot.width / 2) * cos + (slot.height / 2) * sin;
+  const halfH = (slot.width / 2) * sin + (slot.height / 2) * cos;
+  return { left: cx - halfW, top: cy - halfH, right: cx + halfW, bottom: cy + halfH };
+}
 
 /** Layout kosong/null = template legacy (overlay full-canvas, docs/15 §15.2). */
 export function slotCount(layout: unknown): number {
@@ -134,8 +284,9 @@ export function coverFit(
   slotH: number,
   imgW: number,
   imgH: number,
-  fit: "cover" | "contain" = "cover"
+  fit: "cover" | "contain" | "fill" = "cover"
 ): { drawW: number; drawH: number; dx: number; dy: number } {
+  if (fit === "fill") return { drawW: slotW, drawH: slotH, dx: 0, dy: 0 };
   const scale =
     fit === "cover" ? Math.max(slotW / imgW, slotH / imgH) : Math.min(slotW / imgW, slotH / imgH);
   const drawW = imgW * scale;

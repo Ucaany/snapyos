@@ -5,7 +5,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { LABEL_CLASS as labelClass } from "@/lib/form-ui";
+import { LABEL_CLASS as labelClass, fieldError } from "@/lib/form-ui";
 import { TEMPLATE_CATEGORIES } from "@/lib/validators";
 import type { TemplateRow } from "@/server/templates";
 import type { FormState } from "@/server/auth-actions";
@@ -29,6 +29,13 @@ export function TemplateEditForm({ template, onDone }: Props) {
   const [name, setName] = useState(template.name);
   const [category, setCategory] = useState(template.category);
   const [isActive, setIsActive] = useState(template.is_active);
+
+  const nameError = fieldError(state, "name");
+  const categoryError = fieldError(state, "category");
+  const activeError = fieldError(state, "is_active");
+  const nameErrorId = `tpl-edit-name-error-${template.id}`;
+  const categoryErrorId = `tpl-edit-cat-error-${template.id}`;
+  const activeErrorId = `tpl-edit-active-error-${template.id}`;
 
   useEffect(() => {
     if (pending) {
@@ -54,7 +61,18 @@ export function TemplateEditForm({ template, onDone }: Props) {
           value={name}
           onChange={(e) => setName(e.target.value)}
           disabled={pending}
+          aria-invalid={Boolean(nameError)}
+          aria-describedby={nameError ? nameErrorId : undefined}
         />
+        {nameError && (
+          <p
+            id={nameErrorId}
+            role="alert"
+            className="font-mono text-xs uppercase tracking-[0.05em] text-destructive"
+          >
+            {nameError}
+          </p>
+        )}
       </div>
       <div className="flex flex-col gap-2">
         <label htmlFor={`tpl-edit-cat-${template.id}`} className={labelClass}>
@@ -66,6 +84,8 @@ export function TemplateEditForm({ template, onDone }: Props) {
           value={category}
           onChange={(e) => setCategory(e.target.value)}
           disabled={pending}
+          aria-invalid={Boolean(categoryError)}
+          aria-describedby={categoryError ? categoryErrorId : undefined}
         >
           {TEMPLATE_CATEGORIES.map((c) => (
             <option key={c} value={c}>
@@ -73,18 +93,40 @@ export function TemplateEditForm({ template, onDone }: Props) {
             </option>
           ))}
         </Select>
+        {categoryError && (
+          <p
+            id={categoryErrorId}
+            role="alert"
+            className="font-mono text-xs uppercase tracking-[0.05em] text-destructive"
+          >
+            {categoryError}
+          </p>
+        )}
       </div>
-      <label className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.05em]">
-        <input
-          type="checkbox"
-          name="is_active"
-          checked={isActive}
-          onChange={(e) => setIsActive(e.target.checked)}
-          disabled={pending}
-          className="size-4 accent-[#111111]"
-        />
-        Aktif
-      </label>
+      <div className="flex flex-col gap-1">
+        <label className="flex min-h-11 items-center gap-2 font-mono text-xs uppercase tracking-[0.05em]">
+          <input
+            type="checkbox"
+            name="is_active"
+            checked={isActive}
+            onChange={(e) => setIsActive(e.target.checked)}
+            disabled={pending}
+            className="size-4 accent-[#111111] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+            aria-invalid={Boolean(activeError)}
+            aria-describedby={activeError ? activeErrorId : undefined}
+          />
+          Aktif
+        </label>
+        {activeError && (
+          <p
+            id={activeErrorId}
+            role="alert"
+            className="font-mono text-xs uppercase tracking-[0.05em] text-destructive"
+          >
+            {activeError}
+          </p>
+        )}
+      </div>
       {state.error && (
         <p role="alert" className="font-mono text-xs text-destructive">
           {state.error}

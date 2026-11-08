@@ -55,23 +55,43 @@ export function PremiumTemplatesGrid({ templates }: Props) {
     );
   }
 
-  const buyButton = (tpl: PremiumTemplateRow) =>
-    tpl.purchased ? (
-      <span className="flex items-center gap-1.5 font-mono text-xs font-bold uppercase text-muted-foreground">
-        <Check className="size-4" aria-hidden /> Dimiliki
-      </span>
-    ) : (
+  const buyButton = (tpl: PremiumTemplateRow) => {
+    if (tpl.purchased) {
+      return (
+        <span className="flex items-center gap-1.5 font-mono text-xs font-bold uppercase text-muted-foreground">
+          <Check className="size-4" aria-hidden /> Dimiliki
+        </span>
+      );
+    }
+    if (!tpl.is_active) {
+      return (
+        <Button
+          type="button"
+          size="sm"
+          disabled
+          aria-disabled="true"
+          title="Nonaktif"
+          aria-label={`Template ${tpl.name} sedang nonaktif`}
+        >
+          <ShoppingCart aria-hidden />
+          Nonaktif
+        </Button>
+      );
+    }
+    return (
       <Button
         type="button"
         size="sm"
         onClick={() => buy(tpl.id)}
-        disabled={pending && buyingId === tpl.id}
+        disabled={pending}
+        aria-disabled={pending}
         aria-label={`Beli template ${tpl.name}`}
       >
         <ShoppingCart aria-hidden />
         {pending && buyingId === tpl.id ? "Memproses..." : "Beli"}
       </Button>
     );
+  };
 
   const list = (
     <ul
@@ -102,6 +122,11 @@ export function PremiumTemplatesGrid({ templates }: Props) {
             <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
               {tpl.category_name ?? "Tanpa kategori"} · {formatIDR(tpl.price)}
             </p>
+            {!tpl.is_active ? (
+              <p className="mt-1 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+                <Lock className="size-3" aria-hidden /> Sedang nonaktif
+              </p>
+            ) : null}
           </div>
           {buyButton(tpl)}
         </li>

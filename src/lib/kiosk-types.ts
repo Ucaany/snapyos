@@ -290,6 +290,10 @@ export type PublicTemplate = {
   thumbnail_url?: string | null;
   layout: TemplateLayout | null;
   slot_count: number;
+  /** Epoch ms dari `templates.updated_at` — bagian key cache aset (0 = tak diketahui). */
+  version: number;
+  /** Paket yang meng-assign template ini (kosong = belum di-assign). */
+  package_ids: string[];
 };
 
 export type PhotoboxConfig = {

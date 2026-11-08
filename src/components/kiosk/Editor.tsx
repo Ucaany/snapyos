@@ -14,7 +14,12 @@ import {
   type KioskVisualStyle,
   type PhotoEdit,
 } from "@/lib/kiosk-types";
-import { DEFAULT_CANVAS_BACKGROUND, type TemplateLayout } from "@/lib/template-layout";
+import {
+  canvasBackground,
+  DEFAULT_CANVAS_BACKGROUND,
+  slotsByZ,
+  type TemplateLayout,
+} from "@/lib/template-layout";
 import { fillSlots } from "@/lib/template-fit";
 import { composeFrame } from "@/lib/compose-frame";
 import {
@@ -24,6 +29,7 @@ import {
   drawOverlayLayer,
   drawPhoto,
   renderFramedPhotoBlob,
+  type ChromaStatus,
 } from "@/components/kiosk/photo-render";
 import { StickerPicker } from "@/components/kiosk/StickerPicker";
 import { KioskVideoBackground } from "@/components/kiosk/KioskVideoBackground";
@@ -46,7 +52,7 @@ const POSITIONS = [
 type Props = {
   photos: CapturePhoto[];
   finishing: boolean;
-  onFinish: (finalPhotos: FinalPhoto[]) => void;
+  onFinish: (finalPhotos: FinalPhoto[], gifPhotos?: Blob[]) => void;
   /** Layout slot template terpilih — null = tanpa frame/tanpa slot (docs/15 §5.9). */
   layout?: TemplateLayout | null;
   frameUrl?: string | null;
@@ -70,13 +76,33 @@ function nextId(): string {
   return `ov-${Date.now()}-${idSeq}`;
 }
 
-/** Signature nilai edit yang memengaruhi render (bukan identitas objek). */
+/** Signature nilai edit yang memengaruhi render (bukan identitas objek).
+ *  JSON (bukan separator manual): teks overlay boleh mengandung `:`/`|`. */
 function editSignature(e: PhotoEdit): string {
   const a = e.adjust;
-  const ov = e.overlays
-    .map((o) => `${o.id}:${o.kind}:${o.content}:${o.color}:${o.size}:${o.x}:${o.y}:${o.rotation}`)
-    .join("|");
-  return `${a.filter};${a.rotation};${a.zoom};${a.panX};${a.panY};${a.brightness};${a.contrast};${a.saturation};${a.blur};${a.grain};${a.vignette};${ov}`;
+  return JSON.stringify({
+    filter: a.filter,
+    rotation: a.rotation,
+    zoom: a.zoom,
+    panX: a.panX,
+    panY: a.panY,
+    brightness: a.brightness,
+    contrast: a.contrast,
+    saturation: a.saturation,
+    blur: a.blur,
+    grain: a.grain,
+    vignette: a.vignette,
+    overlays: e.overlays.map((o) => ({
+      id: o.id,
+      kind: o.kind,
+      content: o.content,
+      color: o.color,
+      size: o.size,
+      x: o.x,
+      y: o.y,
+      rotation: o.rotation,
+    })),
+  });
 }
 
 /** Photo Editor — docs/05 §5.9–5.11 (filter, zoom/pan, adjust, teks & stiker dasar). */
@@ -97,12 +123,24 @@ function EditorInner({
   const [edits, setEdits] = useState<PhotoEdit[]>(() => photos.map(() => defaultEdit()));
   const [active, setActive] = useState(0);
   // Chroma key: hanya ditawarkan bila booth dikonfigurasi dengan layar hijau.
-  const [chromaOn, setChromaOn] = useState(false);
+  // Default mengikuti flag booth; operator boleh mematikan manual (touched).
+  const [chromaOn, setChromaOn] = useState(chromaKeyEnabled);
+  const chromaTouched = useRef(false);
+  // Status hasil chroma (applied/tainted) — UI tidak boleh mengklaim latar
+  // terhapus sebelum render benar-benar melakukannya.
+  const [chromaStatus, setChromaStatus] = useState<ChromaStatus | null>(null);
+  const chromaStatusRef = useRef<ChromaStatus | null>(null);
   // Filter GLOBAL — satu pilihan berlaku untuk seluruh foto (docs/05 §5.9).
   const [filterId, setFilterId] = useState("original");
   const [text, setText] = useState("");
   const [selectedOverlay, setSelectedOverlay] = useState<string | null>(null);
   const [finishError, setFinishError] = useState<string | null>(null);
+
+  // Sinkronkan default chroma bila config booth berubah, kecuali operator
+  // sudah menekan toggle (keputusan manual tidak boleh ditimpa polling config).
+  useEffect(() => {
+    if (!chromaTouched.current) setChromaOn(chromaKeyEnabled);
+  }, [chromaKeyEnabled]);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // Object URL ref-counted (StrictMode-safe) — createObjectURL manual di bawah
@@ -124,7 +162,9 @@ function EditorInner({
   const panRaf = useRef<number | null>(null);
   // Cache canvas offscreen per-slot: recomposite HANYA slot yang editnya
   // berubah (drag slot aktif tak me-render ulang slot lain tiap frame).
-  const slotCacheRef = useRef<{ sig: string; canvas: HTMLCanvasElement }[]>([]);
+  const slotCacheRef = useRef<{ sig: string; canvas: HTMLCanvasElement; status: ChromaStatus }[]>(
+    []
+  );
 
   // `active` menunjuk SLOT; edit dimiliki FOTO. Pada frame 6 slot + 3 foto,
   // slot 4..6 memakai ulang foto 1..3, jadi keduanya harus dipetakan.
@@ -132,6 +172,14 @@ function EditorInner({
     ? (fillSlots(layout.slots.length, photos.length)[active] ?? 0)
     : active;
   const edit = edits[activePhoto] ?? defaultEdit();
+  // Overlay SEMUA foto dipetakan ke slot: satu composite memuat teks/stiker
+  // tiap foto, bukan hanya foto yang sedang aktif.
+  const usedPhotoIndices = Array.from(
+    new Set(fillSlots(layout?.slots.length ?? 0, photos.length))
+  );
+  const slotOverlays = usedPhotoIndices.flatMap(
+    (photoIndex) => edits[photoIndex]?.overlays ?? []
+  );
 
   /** Filter GLOBAL diterapkan ke semua foto — satu pilihan menimpa `adjust.filter`. */
   function filteredEdit(e: PhotoEdit): PhotoEdit {
@@ -213,19 +261,34 @@ function EditorInner({
    */
   function renderPhotoOffscreens(maxW: number): (HTMLCanvasElement | null)[] {
     const cache = slotCacheRef.current;
-    return photos.map((_, i) => {
+    let appliedCount = 0;
+    let tainted = false;
+    let count = 0;
+    const offscreens = photos.map((_, i) => {
       const img = imgsRef.current[i];
       if (!img) return null;
+      count += 1;
       const base = slotBaseEdit(filteredEdit(edits[i] ?? defaultEdit()));
       // Signature: recomposite hanya bila edit/img/lebar berubah.
-      const sig = `${imgVersion}:${maxW}:${editSignature(base)}:${chromaOn ? "chroma" : "plain"}`;
+      const sig = JSON.stringify({ imgVersion, maxW, edit: editSignature(base), chroma: chromaOn });
       const cached = cache[i];
-      if (cached && cached.sig === sig) return cached.canvas;
+      if (cached && cached.sig === sig) {
+        if (cached.status.applied) appliedCount += 1;
+        tainted ||= cached.status.tainted;
+        return cached.canvas;
+      }
       const off = document.createElement("canvas");
-      drawPhoto(off, img, base, maxW, chromaOn);
-      cache[i] = { sig, canvas: off };
+      const status = drawPhoto(off, img, base, maxW, chromaOn);
+      if (status.applied) appliedCount += 1;
+      tainted ||= status.tainted;
+      cache[i] = { sig, canvas: off, status };
       return off;
     });
+    // Pesimistis: "applied" hanya bila SEMUA foto berhasil (bukan OR).
+    chromaStatusRef.current = chromaOn
+      ? { applied: appliedCount === count && count > 0, tainted }
+      : null;
+    return offscreens;
   }
 
   /** Transform zoom/pan milik satu foto (dipakai tiap slot yang menampilkannya). */
@@ -259,11 +322,20 @@ function EditorInner({
         sources,
         fillSlots(sources.length, photos.length).map((photoIndex) => transformsFor(photoIndex)),
         720,
-        { overlays: edit.overlays }
+        { overlays: slotOverlays }
       );
-      // highlight slot aktif (petunjuk zoom/pan berlaku per slot)
+      // Status chroma dari render offscreen (pesimistis: semua foto harus hijau).
+      // Set hanya bila
+      // nilainya berubah — mencegah loop render/state.
+      setChromaStatus((prev) => {
+        const next = chromaOn ? chromaStatusRef.current : null;
+        if (prev?.applied === next?.applied && prev?.tainted === next?.tainted) return prev;
+        return next;
+      });
+      // highlight slot aktif (petunjuk zoom/pan berlaku per slot). Urutan sama
+      // dengan render (slotsByZ) agar indeks slot aktif tidak meleset.
       const ctx = canvas.getContext("2d");
-      const slots = [...layout.slots].sort((a, b) => a.z - b.z);
+      const slots = slotsByZ(layout);
       const slot = slots[active];
       if (ctx && slot) {
         const s = canvas.width / layout.canvas.width;
@@ -281,11 +353,26 @@ function EditorInner({
     }
     const img = imgsRef.current[activePhoto];
     if (img) {
-      drawPhoto(canvas, img, filteredEdit(edit), 640, chromaOn, DEFAULT_CANVAS_BACKGROUND);
+      const status = drawPhoto(
+        canvas,
+        img,
+        filteredEdit(edit),
+        640,
+        chromaOn,
+        DEFAULT_CANVAS_BACKGROUND
+      );
       // Template legacy (tanpa slot) = frame full-canvas DI ATAS foto, overlay
       // di atas frame — preview harus sama dengan hasil final (docs/05 §5.9).
       drawFrameOverlay(canvas, frameRef.current);
       drawOverlayLayer(canvas, edit.overlays);
+      setChromaStatus((prev) => {
+        const next = chromaOn ? status : null;
+        if (prev?.applied === next?.applied && prev?.tainted === next?.tainted) return prev;
+        return next;
+      });
+    } else if (chromaStatus !== null) {
+      // Foto belum termuat: jangan pertahankan status foto sebelumnya.
+      setChromaStatus(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imgVersion, frameVersion, edit, edits, active, layout, filterId, chromaOn]);
@@ -466,9 +553,32 @@ function EditorInner({
           sources,
           fillSlots(sources.length, photos.length).map((photoIndex) => transformsFor(photoIndex)),
           Number.POSITIVE_INFINITY,
-          { overlays: edit.overlays }
+          { overlays: slotOverlays }
         );
-        onFinish([{ blob: await canvasToBlob(canvas) }]);
+        // GIF slideshow: composite hanya SATU frame. Bila chroma aktif, GIF
+        // butuh tiap foto full-res dengan latar sudah dihapus (bukan capture
+        // mentah berlatar hijau). Chroma off → undefined (KioskApp pakai raw).
+        const gifPhotos = chromaOn
+          ? (
+              await Promise.all(
+                photos.map(async (_, i) => {
+                  const img = imgsRef.current[i];
+                  if (!img) return null;
+                  const gifCanvas = document.createElement("canvas");
+                  drawPhoto(
+                    gifCanvas,
+                    img,
+                    filteredEdit(edits[i] ?? defaultEdit()),
+                    Number.POSITIVE_INFINITY,
+                    true,
+                    canvasBackground(layout)
+                  );
+                  return canvasToBlob(gifCanvas);
+                })
+              )
+            ).filter((blob): blob is Blob => blob !== null)
+          : undefined;
+        onFinish([{ blob: await canvasToBlob(canvas) }], gifPhotos);
         return;
       }
       // Template legacy (tanpa slot): tiap foto dirender penuh, lalu frame PNG
@@ -600,14 +710,33 @@ function EditorInner({
               <p className={sectionLabel}>Latar layar hijau</p>
               <button
                 type="button"
-                onClick={() => setChromaOn((value) => !value)}
+                onClick={() => {
+                  chromaTouched.current = true;
+                  setChromaOn((value) => !value);
+                }}
                 aria-pressed={chromaOn}
                 className={`min-h-11 border-2 border-ink px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.08em] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${
                   chromaOn ? "bg-accent-3" : "bg-surface"
                 }`}
               >
-                {chromaOn ? "Latar dihapus" : "Hapus latar hijau"}
+                {chromaOn
+                  ? chromaStatus?.applied
+                    ? "Latar dihapus"
+                    : chromaStatus
+                      ? "Latar tidak dihapus"
+                      : "Memproses…"
+                  : "Hapus latar hijau"}
               </button>
+              {chromaOn && chromaStatus && !chromaStatus.applied && (
+                <p
+                  role="alert"
+                  className="border-2 border-destructive bg-destructive/10 px-2 py-1.5 text-[11px] leading-relaxed text-ink"
+                >
+                  {chromaStatus.tainted
+                    ? "Foto tidak bisa diproses (canvas dibatasi CORS). Latar tidak dihapus."
+                    : "Latar tidak terdeteksi hijau (sebagian atau semua foto tidak diubah)."}
+                </p>
+              )}
               <p className="text-[11px] leading-relaxed text-muted-foreground">
                 Warna latar diambil dari sudut foto. Nyalakan bila booth memakai layar hijau.
               </p>

@@ -18,6 +18,9 @@ import {
   buildSettingsPayload,
 } from "@/lib/form-state";
 import type { AdminSettingsUpdateInput } from "@/lib/validators";
+import { isAllowedFrameTarget } from "@/lib/frame-proxy";
+import { removeResolved } from "@/server/storage";
+import { invalidateAllPublicConfig } from "@/server/public-config";
 import type { FormState } from "@/server/auth-actions";
 import {
   activateManually,
@@ -47,8 +50,6 @@ import {
   updateGlobalTemplate,
   updateGlobalTemplateLayout,
   uploadGlobalTemplateFile,
-  uploadGlobalTemplateThumbnail,
-  replaceGlobalTemplateFrame,
   updatePlan,
   updatePlatformSettings,
   updatePromo,
@@ -358,6 +359,7 @@ export async function toggleTemplateAction(
 ): Promise<FormState> {
   try {
     await setGlobalTemplateActive(str(formData, "templateId"), bool(formData, "active"));
+    invalidateAllPublicConfig();
     refresh("/admin/templates");
     return {};
   } catch (error) {
@@ -371,73 +373,87 @@ export async function deleteGlobalTemplateAction(
 ): Promise<FormState> {
   try {
     await deleteGlobalTemplate(str(formData, "templateId"));
+    invalidateAllPublicConfig();
     refresh("/admin/templates");
     return {};
   } catch (error) {
     return toFormState(error);
   }
 }
+
+/** Target storage sah: key mentah (tanpa skema) atau URL yang lolos allowlist
+ *  proxy frame (Supabase/R2). Domain eksternal ditolak sebelum DB disentuh. */
+function isAllowedTemplateTarget(value: string): boolean {
+  const raw = value.trim();
+  if (!raw) return false;
+  if (/^https?:\/\//i.test(raw)) {
+    try {
+      return isAllowedFrameTarget(new URL(raw), process.env);
+    } catch {
+      return false;
+    }
+  }
+  // Skema lain (javascript:, data:, …) atau path absolut/protocol-relative bukan key.
+  if (/^[a-z][a-z0-9+.-]*:/i.test(raw)) return false;
+  if (raw.startsWith("/")) return false;
+  return true;
+}
+
+const FRAME_TARGET_ERROR = "URL harus storage SnapyOS (Supabase/R2), bukan domain eksternal";
 
 export async function createGlobalTemplateAction(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  try {
-    const file = formData.get("file");
-    let fileUrl = str(formData, "file_url");
-    if (file instanceof File && file.size > 0) {
+  const file = formData.get("file");
+  let fileUrl = str(formData, "file_url");
+  if (fileUrl && !isAllowedTemplateTarget(fileUrl)) {
+    return { fieldErrors: { file_url: [FRAME_TARGET_ERROR] } };
+  }
+
+  let uploadedKey: string | null = null;
+  if (file instanceof File && file.size > 0) {
+    try {
       const { key } = await uploadGlobalTemplateFile(file);
+      uploadedKey = key;
       fileUrl = key;
+    } catch (error) {
+      return toFormState(error);
     }
-    if (!fileUrl) {
-      return { fieldErrors: { file_url: ["URL frame atau file wajib diisi"] } };
-    }
+  }
+  if (!fileUrl) {
+    return { fieldErrors: { file_url: ["URL frame atau file wajib diisi"] } };
+  }
+  if (!isAllowedTemplateTarget(fileUrl)) {
+    if (uploadedKey) await removeResolved("business-assets", [uploadedKey]);
+    return { fieldErrors: { file_url: [FRAME_TARGET_ERROR] } };
+  }
+
+  const thumbnailInput = str(formData, "thumbnail_url");
+  if (thumbnailInput && !isAllowedTemplateTarget(thumbnailInput)) {
+    if (uploadedKey) await removeResolved("business-assets", [uploadedKey]);
+    return { fieldErrors: { thumbnail_url: [FRAME_TARGET_ERROR] } };
+  }
+  const thumbnailUrl = thumbnailInput || fileUrl;
+
+  try {
     await createGlobalTemplate({
       name: str(formData, "name"),
       category_id: str(formData, "category_id"),
       file_url: fileUrl,
-      thumbnail_url: fileUrl,
+      thumbnail_url: thumbnailUrl,
       is_active: formData.has("is_active") ? formData.getAll("is_active").includes("true") : true,
       price: str(formData, "price") ? num(formData, "price") : null,
       is_premium: formData.getAll("is_premium").includes("true"),
     });
-    refresh("/admin/templates");
-    return {};
   } catch (error) {
+    // File diunggah request ini tetapi insert gagal → jangan tinggalkan orphan.
+    if (uploadedKey) await removeResolved("business-assets", [uploadedKey]);
     return toFormState(error);
   }
-}
-
-export async function saveGlobalTemplateBuilderAction(
-  _prev: FormState,
-  formData: FormData
-): Promise<FormState> {
-  const id = str(formData, "id");
-  const layoutRaw = str(formData, "layout");
-  let layout: unknown;
-  try {
-    layout = layoutRaw ? JSON.parse(layoutRaw) : {};
-  } catch {
-    return { fieldErrors: { layout: ["Data layout tidak valid"] } };
-  }
-  const thumbnail = formData.get("thumbnail");
-  const chromaFile = formData.get("chroma_file");
-  try {
-    await updateGlobalTemplateLayout(id, {
-      layout,
-      is_active: bool(formData, "is_active"),
-    });
-    if (thumbnail instanceof File && thumbnail.size > 0) {
-      await uploadGlobalTemplateThumbnail(id, thumbnail);
-    }
-    if (chromaFile instanceof File && chromaFile.size > 0) {
-      await replaceGlobalTemplateFrame(id, chromaFile);
-    }
-  } catch (error) {
-    return toFormState(error);
-  }
-  refresh("/admin/templates", `/admin/templates/builder/${id}`);
-  return { error: undefined };
+  invalidateAllPublicConfig();
+  refresh("/admin/templates");
+  return {};
 }
 
 export async function updateGlobalTemplateAction(
@@ -451,11 +467,32 @@ export async function updateGlobalTemplateAction(
       is_premium: formData.getAll("is_premium").includes("true"),
       is_active: formData.getAll("is_active").includes("true"),
     });
+    invalidateAllPublicConfig();
     refresh("/admin/templates");
     return {};
   } catch (error) {
     return toFormState(error);
   }
+}
+
+/**
+ * Simpan layout builder global (draft/publish). Template global dipakai semua
+ * tenant → invalidate cache publik seluruh business.
+ */
+export async function saveGlobalTemplateLayoutAction(
+  templateId: string,
+  layout: unknown,
+  publish: boolean
+): Promise<{ error?: string; fieldErrors?: Record<string, string[]> }> {
+  try {
+    await updateGlobalTemplateLayout(templateId, { layout, is_active: publish });
+  } catch (error) {
+    return toFormState(error) as { error?: string; fieldErrors?: Record<string, string[]> };
+  }
+  invalidateAllPublicConfig();
+  revalidatePath("/admin/templates");
+  refresh("/admin/templates");
+  return { error: undefined };
 }
 
 // ---------------------------------------------------------------------------

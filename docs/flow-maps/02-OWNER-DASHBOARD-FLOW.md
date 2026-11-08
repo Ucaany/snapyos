@@ -611,7 +611,7 @@ Delete template → deleteTemplate(businessId, templateId)
 - Page: `src/app/(dashboard)/dashboard/templates/page.tsx`
 - Builder: `src/app/(dashboard)/dashboard/templates/builder/[id]/page.tsx`
 - Server: `src/server/templates.ts`
-- Components: `src/components/templates/TemplateGrid.tsx`, `src/components/templates/TemplateBuilder.tsx`
+- Components: `src/components/dashboard/TemplatesGrid.tsx`, `src/components/dashboard/TemplateBuilderCanvas.tsx`
 
 **Acceptance**: (AC 8) owner upload template; template bisa dipilih customer; builder slot berfungsi (§9.1).
 
@@ -688,14 +688,9 @@ Delete template → deleteTemplate(businessId, templateId)
 
 - Slot tidak bisa digeser/resize keluar batas canvas (clamp saat drag)
 - Minimal 1 slot untuk publish (template tanpa slot = legacy overlay; konfirmasi eksplisit jika publish tanpa slot)
-- Thumbnail digenerate otomatis dari preview builder (canvas → image)
+- Thumbnail WebP dibuat dari frame yang diunggah (fallback: frame)
 
-**Render Engine** (satu engine untuk semua tempat):
-
-- Builder preview
-- Editor kiosk
-- Print renderer
-- Result online
+**Render Engine**: builder preview dan editor kiosk sama-sama memakai `composeFrame`; JPEG final dirender di editor kiosk, lalu print dan result online memakai JPEG itu (tanpa render ulang di server).
 
 **Urutan Render** (`composeFrame(ctx, layout, frameImg, photos, transforms)`):
 
@@ -714,7 +709,7 @@ Delete template → deleteTemplate(businessId, templateId)
 
 - Page: `src/app/(dashboard)/dashboard/templates/builder/[id]/page.tsx`
 - Server: `src/server/templates.ts` (updateTemplate dengan layout validation)
-- Components: `src/components/templates/TemplateBuilder.tsx`, `src/components/templates/SlotShape.tsx`, `src/components/templates/SlotPropertiesPanel.tsx`
+- Components: `src/components/dashboard/TemplateBuilderCanvas.tsx`
 - Engine: `src/lib/compose-frame.ts` (shared untuk builder/kiosk/print)
 
 **Acceptance** (AC dari `15-template-builder.md`):
@@ -722,7 +717,7 @@ Delete template → deleteTemplate(businessId, templateId)
 1. Owner upload PNG + tambah ≥1 slot + publish tanpa training (< 2 menit)
 2. Customer memilih frame → foto hasil capture muncul pas di setiap slot (cover-fit, rasio tidak terdistorsi)
 3. Template dengan slot berbeda dari package tetap dapat di-assign; slot frame menentukan capture dan template legacy memakai photo_count package
-4. Hasil print & result online identik dengan preview builder (satu engine composite)
+4. Hasil print & result online memakai JPEG final yang dirender di editor kiosk (bukan render ulang di server)
 5. Template legacy (layout kosong) tetap berfungsi — backward compatible
 6. Validasi layout di-enforce server-side (request dengan layout invalid ditolak 4xx)
 
@@ -1270,7 +1265,7 @@ Owner upload logo → uploadLogo(businessId, file)
 
 - Page: `src/app/(dashboard)/dashboard/branding/page.tsx`
 - Server: `src/server/branding-actions.ts`, `src/server/branding.ts`
-- Components: `src/components/branding/BrandingForm.tsx`, `src/components/branding/KioskBrandingEditor.tsx`
+- Components: tidak ada lagi; editor branding owner (`KioskBrandingEditor`) dihapus dan `/dashboard/branding/page.tsx` sekarang hanya redirect ke `/dashboard/devices`.
 
 **Acceptance**: (AC 6) branding muncul di customer-facing app; logo upload berfungsi; kiosk override per-page berfungsi.
 

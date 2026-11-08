@@ -2,11 +2,13 @@
 
 import { useActionState, useState } from "react";
 import Image from "next/image";
-import { ImageIcon, LayoutTemplate, Pencil, Upload } from "lucide-react";
+import Link from "next/link";
+import { ImageIcon, Pencil, SlidersHorizontal, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { EmptyState } from "@/components/ui/empty-state";
-import { IconButton, IconLink } from "@/components/ui/icon-button";
+import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
 import { RecordCollection, RecordEditButton } from "@/components/ui/record-collection";
 import { Select } from "@/components/ui/select";
@@ -21,6 +23,9 @@ import { deleteTemplateAction, uploadTemplateAction } from "@/server/catalog-act
 
 const initial: FormState = {};
 
+const PLATFORM_BADGE =
+  "inline-flex items-center border-2 border-ink bg-ink px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-bg";
+
 type Props = {
   templates: TemplateRow[];
   canWrite: boolean;
@@ -33,13 +38,15 @@ export function TemplatesGrid({ templates, canWrite }: Props) {
 
   const actions = (tpl: TemplateRow, fromGrid: boolean) => (
     <>
-      <IconLink
+      <Link
         href={`/dashboard/templates/builder/${tpl.id}`}
-        label={`Atur slot ${tpl.name}`}
-        icon={LayoutTemplate}
-        variant="secondary"
-        compact
-      />
+        aria-label={`Atur slot template ${tpl.name}`}
+        title="Atur slot"
+        className={buttonVariants({ variant: "outline", size: "sm" })}
+      >
+        <SlidersHorizontal aria-hidden />
+        Atur slot
+      </Link>
       {fromGrid ? (
         <IconButton
           label={`Ubah template ${tpl.name}`}
@@ -71,35 +78,45 @@ export function TemplatesGrid({ templates, canWrite }: Props) {
       className="flex flex-col divide-y-2 divide-ink/10 border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]"
       aria-label="Template (tampilan daftar)"
     >
-      {templates.map((tpl) => (
-        <li key={tpl.id} className="flex min-w-0 flex-wrap items-center gap-3 p-3">
-          <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden border-2 border-ink bg-bg">
-            {tpl.preview_url ? (
-              <Image
-                src={tpl.preview_url}
-                alt={`Preview template ${tpl.name}`}
-                width={120}
-                height={90}
-                className="max-h-full max-w-full object-contain p-1"
-                loading="lazy"
-                unoptimized
-              />
+      {templates.map((tpl) => {
+        const previewSrc = tpl.thumbnail_preview_url ?? tpl.preview_url;
+        return (
+          <li key={tpl.id} className="flex min-w-0 flex-wrap items-center gap-3 p-3">
+            <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden border-2 border-ink bg-bg">
+              {previewSrc ? (
+                <Image
+                  src={previewSrc}
+                  alt={`Preview template ${tpl.name}`}
+                  width={120}
+                  height={90}
+                  className="max-h-full max-w-full object-contain p-1"
+                  loading="lazy"
+                  unoptimized
+                />
+              ) : (
+                <ImageIcon className="size-5" aria-hidden />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="min-w-0 break-words font-mono text-sm font-bold uppercase tracking-[0.05em]">
+                {tpl.name}
+              </p>
+              <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
+                {`${tpl.category} · ${tpl.slot_count > 0 ? `${tpl.slot_count} slot` : "frame penuh"}`}
+              </p>
+            </div>
+            <StatusBadge
+              status={tpl.is_active ? "active" : "inactive"}
+              label={tpl.is_global && !tpl.is_active ? "NONAKTIF" : undefined}
+            />
+            {tpl.is_global ? (
+              <span className={PLATFORM_BADGE}>TEMPLATE PLATFORM</span>
             ) : (
-              <ImageIcon className="size-5" aria-hidden />
+              canWrite && <div className="flex shrink-0 gap-1.5">{actions(tpl, false)}</div>
             )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="min-w-0 break-words font-mono text-sm font-bold uppercase tracking-[0.05em]">
-              {tpl.name}
-            </p>
-            <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
-              {`${tpl.category} · ${tpl.slot_count > 0 ? `${tpl.slot_count} slot` : "frame penuh"}`}
-            </p>
-          </div>
-          <StatusBadge status={tpl.is_active ? "active" : "inactive"} />
-          {canWrite && <div className="flex shrink-0 gap-1.5">{actions(tpl, false)}</div>}
-        </li>
-      ))}
+          </li>
+        );
+      })}
     </ul>
   );
 
@@ -108,71 +125,84 @@ export function TemplatesGrid({ templates, canWrite }: Props) {
       className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3"
       aria-label="Daftar template"
     >
-      {templates.map((tpl) => (
-        <li
-          key={tpl.id}
-          className="flex min-w-0 flex-col border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]"
-        >
-          <div className="flex h-44 items-center justify-center overflow-hidden border-b-2 border-ink bg-[repeating-linear-gradient(45deg,#FFFDF5_0_10px,#F4F4F0_10px_20px)]">
-            {tpl.preview_url ? (
-              <Image
-                src={tpl.preview_url}
-                alt={`Preview template ${tpl.name}`}
-                width={480}
-                height={320}
-                className="max-h-full max-w-full object-contain p-3"
-                loading="lazy"
-                unoptimized
-              />
-            ) : (
-              <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                PREVIEW TIDAK TERSEDIA
-              </span>
-            )}
-          </div>
-          <div className="flex flex-1 flex-col gap-3 p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="min-w-0 break-words font-mono text-sm font-bold uppercase tracking-[0.05em]">
-                  {tpl.name}
-                </p>
-                <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
-                  {`${tpl.category} · ${tpl.created_at.slice(0, 10)} · ${
-                    tpl.file_url.endsWith(".png") ? "PNG" : "FRAME"
-                  }`}
-                </p>
-              </div>
-              <StatusBadge status={tpl.is_active ? "active" : "inactive"} />
+      {templates.map((tpl) => {
+        const previewSrc = tpl.thumbnail_preview_url ?? tpl.preview_url;
+        return (
+          <li
+            key={tpl.id}
+            className="flex min-w-0 flex-col border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]"
+          >
+            <div className="flex h-44 items-center justify-center overflow-hidden border-b-2 border-ink bg-[repeating-linear-gradient(45deg,#FFFDF5_0_10px,#F4F4F0_10px_20px)]">
+              {previewSrc ? (
+                <Image
+                  src={previewSrc}
+                  alt={`Preview template ${tpl.name}`}
+                  width={480}
+                  height={320}
+                  className="max-h-full max-w-full object-contain p-3"
+                  loading="lazy"
+                  unoptimized
+                />
+              ) : (
+                <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                  PREVIEW TIDAK TERSEDIA
+                </span>
+              )}
             </div>
-
-            <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-              {tpl.slot_count > 0 ? `${tpl.slot_count} slot foto` : "Tanpa slot (frame penuh)"}
-            </p>
-            {tpl.is_active && tpl.assigned === false && (
-              <p className="border-2 border-destructive bg-destructive/10 px-2 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.08em]">
-                Belum di-assign ke paket mana pun, jadi tidak muncul di kiosk
-              </p>
-            )}
-            {tpl.is_active && (
-              <p className="border-2 border-ink/20 bg-muted px-2 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                {tpl.slot_count > 0
-                  ? `Tampil di semua paket. ${tpl.slot_count} slot; foto diisi bergiliran bila paket punya foto lebih sedikit.`
-                  : "Tampil di semua paket sebagai frame penuh."}
-              </p>
-            )}
-
-            {editingId === tpl.id && canWrite ? (
-              <TemplateEditForm template={tpl} onDone={() => setEditingId(null)} />
-            ) : (
-              canWrite && (
-                <div className="mt-auto flex items-center justify-between gap-2 border-t-2 border-ink/10 pt-3">
-                  <div className="flex flex-wrap gap-1.5">{actions(tpl, true)}</div>
+            <div className="flex flex-1 flex-col gap-3 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="min-w-0 break-words font-mono text-sm font-bold uppercase tracking-[0.05em]">
+                    {tpl.name}
+                  </p>
+                  <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
+                    {`${tpl.category} · ${tpl.created_at.slice(0, 10)} · ${
+                      tpl.file_url.endsWith(".png") ? "PNG" : "FRAME"
+                    }`}
+                  </p>
                 </div>
-              )
-            )}
-          </div>
-        </li>
-      ))}
+                <StatusBadge
+                  status={tpl.is_active ? "active" : "inactive"}
+                  label={tpl.is_global && !tpl.is_active ? "NONAKTIF" : undefined}
+                />
+              </div>
+
+              {tpl.is_global && <span className={PLATFORM_BADGE}>TEMPLATE PLATFORM</span>}
+
+              <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+                {tpl.slot_count > 0 ? `${tpl.slot_count} slot foto` : "Tanpa slot (frame penuh)"}
+              </p>
+              {tpl.is_active && tpl.assigned === false && (
+                <p className="border-2 border-destructive bg-destructive/10 px-2 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.08em]">
+                  Belum di-assign ke paket mana pun — tampil sebagai fallback untuk paket yang belum
+                  punya assignment.
+                </p>
+              )}
+              {tpl.is_active && (
+                <p className="border-2 border-ink/20 bg-muted px-2 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+                  {tpl.slot_count > 0
+                    ? `Tampil di semua paket. ${tpl.slot_count} slot; foto diisi bergiliran bila paket punya foto lebih sedikit.`
+                    : "Tampil di semua paket sebagai frame penuh."}
+                </p>
+              )}
+
+              {tpl.is_global ? (
+                <p className="mt-auto border-t-2 border-ink/10 pt-3 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+                  Template platform — read-only. Kelola dari panel admin platform.
+                </p>
+              ) : editingId === tpl.id && canWrite ? (
+                <TemplateEditForm template={tpl} onDone={() => setEditingId(null)} />
+              ) : (
+                canWrite && !tpl.is_global && (
+                  <div className="mt-auto flex items-center justify-between gap-2 border-t-2 border-ink/10 pt-3">
+                    <div className="flex flex-wrap gap-1.5">{actions(tpl, true)}</div>
+                  </div>
+                )
+              )}
+            </div>
+          </li>
+        );
+      })}
     </ul>
   );
 
@@ -239,6 +269,34 @@ export function TemplatesGrid({ templates, canWrite }: Props) {
               )}
             </div>
           </div>
+
+          <fieldset className="flex flex-col gap-2 border-t-2 border-ink/10 pt-4">
+            <legend className={labelClass}>Status setelah upload</legend>
+            <div className="flex flex-wrap gap-4">
+              <label className="flex min-h-11 cursor-pointer items-center gap-2 font-mono text-xs uppercase tracking-[0.08em]">
+                <input
+                  type="radio"
+                  name="publish"
+                  value="false"
+                  defaultChecked
+                  disabled={uploading}
+                  className="size-4 accent-ink"
+                />
+                Draft (nonaktif)
+              </label>
+              <label className="flex min-h-11 cursor-pointer items-center gap-2 font-mono text-xs uppercase tracking-[0.08em]">
+                <input
+                  type="radio"
+                  name="publish"
+                  value="true"
+                  disabled={uploading}
+                  className="size-4 accent-ink"
+                />
+                Publish (aktif)
+              </label>
+            </div>
+          </fieldset>
+
           {uploadState.error && (
             <p
               role="alert"

@@ -68,8 +68,6 @@ export {
   type AdminTemplateBuilderRow,
   getGlobalTemplate,
   updateGlobalTemplateLayout,
-  uploadGlobalTemplateThumbnail,
-  replaceGlobalTemplateFrame,
   deleteGlobalTemplate,
   listTemplatePurchases,
   type AdminTemplatePurchaseRow,

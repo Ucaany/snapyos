@@ -336,7 +336,7 @@ Owner mengatur booth mana yang bisa diakses staff; PK `(user_id, photobox_id)`.
 | category                | text                                              | **DEPRECATED (migration 0039)** — display fallback bebas, tidak lagi CHECK enum. Konsumer baru pakai `category_id`.                                                                                                                 |
 | category_id             | uuid → template_categories(id) ON DELETE RESTRICT | **BARU (migration 0039)** — FK canonical ke kategori. Backfill dari `category` text saat migrasi.                                                                                                                                   |
 | file_url                | text                                              | storage key (PNG frame, alpha = lubang slot)                                                                                                                                                                                        |
-| thumbnail_url           | text                                              | auto-generate dari preview builder                                                                                                                                                                                                  |
+| thumbnail_url           | text                                              | thumbnail WebP dari frame yang diunggah (fallback: frame)                                                                                                                                                                            |
 | layout                  | jsonb                                             | NOT NULL default `'{}'` — canvas size + array slot foto; kosong = template legacy full-canvas. Contract & validasi: `15-template-builder.md` §15.2 (slot max 8, dalam batas canvas; assign lintas paket tidak dibatasi jumlah slot) |
 | video_url               | text                                              | nullable — video frame (0020)                                                                                                                                                                                                       |
 | is_active               | boolean                                           |                                                                                                                                                                                                                                     |
@@ -756,22 +756,27 @@ Tabel `reports` dihapus karena 0 caller di kode aplikasi. Fitur export report (C
 | created_at  | timestamptz          |                                                 |
 
 
-| kolom                   | tipe            | ket                                                                    |
-| ----------------------- | --------------- | ---------------------------------------------------------------------- |
-| id                      | uuid PK         |                                                                        |
-| version                 | text            | UNIQUE, format `1.2.3` (divalidasi Zod, bukan CHECK)                   |
-| download_url            | text            | CHECK `^https://`; disimpan apa adanya (tanpa normalisasi)             |
-| file_name               | text            | nama yang disarankan saat menyimpan                                    |
-| file_size_bytes         | bigint          | nullable, `> 0`; **diisi manual**, tidak diverifikasi sistem           |
-| sha256                  | text            | nullable, CHECK `^[0-9a-f]{64}$`; **diisi manual**, tidak diverifikasi |
-| release_notes           | text            | nullable                                                               |
-| is_active               | boolean         | default true                                                           |
-| created_by              | uuid → users.id | on delete set null                                                     |
-| created_at / updated_at | timestamptz     |                                                                        |
+### installer_catalog (0081 — katalog installer Windows)
 
-File installer **tidak** disimpan di storage SNAPY OS — hanya tautan ke host
-eksternal (Google Drive). Tidak ada bucket, objek, atau kolom storage key.
-Server tidak melakukan HEAD/GET ke `download_url` (SSRF).
+| kolom | tipe | ket |
+| --- | --- | --- |
+| id | uuid PK | |
+| version | text | versi rilis, uniqueness bersama channel + architecture |
+| channel | text | `stable` / `beta` / `internal` |
+| min_windows_version | text | `10` / `11` |
+| architecture | text | `x64` / `x86` / `arm64` / `universal` |
+| file_name / content_type | text | metadata artifact |
+| object_key | text UNIQUE | key private `business-assets`, bukan URL publik |
+| file_size_bytes | bigint | dihitung server, > 0 |
+| sha256 | text | dihitung server, 64 hex lowercase |
+| changelog / compatibility_notes | text | catatan rilis dan kompatibilitas |
+| is_active / is_deprecated | boolean | publik hanya bila aktif, tidak deprecated, dan published_at terisi |
+| published_at | timestamptz | null = draft |
+| created_by / timestamps | uuid / timestamptz | |
+
+Artifact installer diunggah admin ke private storage. URL unduhan dibuat sebagai signed URL
+berumur pendek, sehingga tidak ada URL eksternal atau fetch server-side. Instalasi tetap manual,
+tanpa auto-update.
 
 ### support_tickets (0050)
 

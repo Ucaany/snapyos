@@ -1,6 +1,7 @@
 /**
- * Composite engine — docs/15 §15.4. SATU engine untuk semua tempat render:
- * preview builder, editor kiosk, print renderer. Tidak ada logika render duplikat.
+ * Composite engine — docs/15 §15.4. Dipakai bersama builder preview dan editor
+ * kiosk. JPEG final dirender di editor kiosk; print dan result online memakai
+ * JPEG itu, tanpa render ulang di server.
  *
  * Urutan render: isian dasar kanvas → slot (z naik, foto cover-fit + transform
  * customer) → frame PNG full-canvas di atas → overlay teks/stiker paling atas.

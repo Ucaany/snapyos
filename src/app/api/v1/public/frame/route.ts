@@ -22,7 +22,7 @@ function frameEnv(): FrameProxyEnv {
 
 export async function GET(request: Request) {
   const ip = getClientIp(request.headers);
-  const rl = await rateLimit(`frame:${ip}`, 60, 60_000);
+  const rl = await rateLimit(`frame:${ip}`, 180, 60_000);
   if (!rl.ok) {
     return new NextResponse("Too many requests", {
       status: 429,
@@ -83,7 +83,7 @@ export async function GET(request: Request) {
         .toBuffer();
       return new NextResponse(new Uint8Array(resized), {
         headers: {
-          "Cache-Control": "private, max-age=3600",
+          "Cache-Control": "private, max-age=3600, stale-while-revalidate=86400",
           "Content-Type": "image/webp",
           "X-Content-Type-Options": "nosniff",
           "Cross-Origin-Resource-Policy": "same-origin",
@@ -96,7 +96,7 @@ export async function GET(request: Request) {
 
   return new NextResponse(bytes, {
     headers: {
-      "Cache-Control": "private, max-age=300",
+      "Cache-Control": "private, max-age=600, stale-while-revalidate=86400",
       "Content-Type": sniffed,
       "X-Content-Type-Options": "nosniff",
       "Cross-Origin-Resource-Policy": "same-origin",

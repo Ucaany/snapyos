@@ -120,6 +120,7 @@
 - `src/lib/validators.ts` (~1.094 baris) — semua skema Zod: auth, bisnis, branding, kamera, cetak, sesi, outlet, photobox, package, template, voucher, expense, tx manual, staff, POS, kiosk (`KIOSK_PAGE_IDS` allowlist).
 - `src/lib/uuid-param.ts` — `parseUuidParam` (non-UUID → 404 sebelum query).
 - `src/lib/r2/` — `areas.ts` (2 bucket: business-assets, generated-photos), `r2Key()` guard path-traversal, `provider.ts`, `resolver.ts` (resolve provider pemilik objek via `head()` + cache).
+- **Template cache kiosk (2026-11-08):** `GET /templates` 120/menit/IP, `GET /frame` 180/menit/IP (warm mengunduh ±40–80 aset sekali boot). Cache penulis = klien (`localStorage` snapshot/index + Cache Storage `snapyos-template-assets-v1`); SW hanya membaca.
 
 ### 1.7 Desain (Neo-Brutalism — satu-satunya bahasa visual)
 
@@ -232,11 +233,11 @@
 ### A11. Templates Global & Kategori
 
 - **Page**: `/admin/templates` (`ADMIN - TEMPLATES & CATEGORIES`) + `/admin/templates/builder/[id]`.
-- **Actions**: `createCategoryAction`, `deleteCategoryAction`, `createGlobalTemplateAction`, `updateGlobalTemplateAction`, `toggleTemplateAction`, `saveGlobalTemplateBuilderAction`.
-- **Data**: `listTemplateCategories`, `createTemplateCategory`, `deleteTemplateCategory`, `listGlobalTemplates`, `createGlobalTemplate`, `updateGlobalTemplate`, `setGlobalTemplateActive`, `getGlobalTemplate`, `updateGlobalTemplateLayout`, `uploadGlobalTemplateThumbnail`, `replaceGlobalTemplateFrame`, `deleteGlobalTemplate`, `listTemplatePurchases`.
+- **Actions**: `createCategoryAction`, `deleteCategoryAction`, `createGlobalTemplateAction`, `updateGlobalTemplateAction`, `toggleTemplateAction`, `saveGlobalTemplateLayoutAction`.
+- **Data**: `listTemplateCategories`, `createTemplateCategory`, `deleteTemplateCategory`, `listGlobalTemplates`, `createGlobalTemplate`, `updateGlobalTemplate`, `setGlobalTemplateActive`, `getGlobalTemplate`, `updateGlobalTemplateLayout`, `deleteGlobalTemplate`, `listTemplatePurchases`.
 - **API**: `GET/POST /api/v1/admin/templates`, `PATCH/DELETE /api/v1/admin/templates/[id]`, `GET/POST /api/v1/admin/template-categories`, `DELETE /api/v1/admin/template-categories/[id]`.
 - **Field**: kategori (nama, harga), template (nama, `category_id`, file frame / `file_url`, thumbnail, price, `is_premium`, is_active).
-- **Builder**: `TemplateBuilder` dengan `saveAction=saveGlobalTemplateBuilderAction` — slot drag/resize/rotate di atas frame PNG (`layout` jsonb).
+- **Builder**: `TemplateBuilderCanvas` (`src/components/dashboard/TemplateBuilderCanvas.tsx`) dengan `saveAction=saveGlobalTemplateLayoutAction` — slot drag/resize/rotate + input numerik di atas frame PNG (`layout` jsonb, divalidasi `layoutSchema`). Tidak ada thumbnail otomatis dari preview; thumbnail dari frame WebP upload. Tidak ada server-side compose.
 - **DB**: `templates (business_id NULL = global), template_categories, business_template_purchases`.
 - **Dampak**: template global + `is_premium` → marketplace owner (`listPremiumTemplates`); pembelian → invoice `intent.type='template_purchase'`.
 

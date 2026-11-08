@@ -33,8 +33,8 @@ import {
  * Template global = templates dengan business_id NULL (docs/07 §7.3).
  *
  * K4 (audit 2026-09-16): tambahkan form upload template global (URL file frame
- * + kategori FK). Owner tetap upload lewat dashboardnya sendiri (upload PNG
- * chroma-key via builder); admin memasang template referensi platform.
+ * + kategori FK). Owner tetap upload frame lewat dashboard Templates miliknya; admin
+ * memasang template referensi platform.
  */
 export default async function AdminTemplatesPage() {
   const [categories, templates, purchases] = await Promise.all([
@@ -206,7 +206,14 @@ export default async function AdminTemplatesPage() {
                   id="tpl-thumb"
                   name="thumbnail_url"
                   placeholder="https://cdn.snapyos.biz.id/templates/thumb.jpg"
+                  aria-describedby="tpl-thumb-help"
                 />
+                <p
+                  id="tpl-thumb-help"
+                  className="font-mono text-[10px] uppercase leading-snug tracking-[0.08em] text-muted-foreground"
+                >
+                  Wajib URL/key storage SnapyOS (Supabase/R2) — bukan domain eksternal.
+                </p>
               </div>
               <div className="flex flex-col gap-1">
                 <label
@@ -280,8 +287,8 @@ export default async function AdminTemplatesPage() {
                     <StatusBadge status={t.is_active ? "active" : "inactive"} />
                     <Link
                       href={`/admin/templates/builder/${t.id}`}
-                      aria-label={`Edit slot ${t.name}`}
-                      title="Edit slot"
+                      aria-label={`Atur slot template ${t.name}`}
+                      title="Atur slot"
                       className={buttonVariants({ variant: "outline", size: "icon" })}
                     >
                       <Pencil className="size-4" aria-hidden="true" />

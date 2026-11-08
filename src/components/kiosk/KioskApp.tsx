@@ -35,7 +35,7 @@ import {
   purgeLegacyDeviceTokenStore,
   purgeOrphaned,
 } from "@/components/kiosk/offline-queue";
-import { prefetchTemplatesForPackages } from "@/components/kiosk/template-cache";
+import { purgeOtherBusinesses, warmTemplateCache } from "@/components/kiosk/template-cache";
 import { ActivationScreen } from "@/components/kiosk/ActivationScreen";
 import { SetupWizard } from "@/components/kiosk/SetupWizard";
 import { WelcomeScreen } from "@/components/kiosk/WelcomeScreen";
@@ -45,6 +45,8 @@ import { CheckoutScreen } from "@/components/kiosk/CheckoutScreen";
 import { TemplatePicker } from "@/components/kiosk/TemplatePicker";
 import { SessionTimer } from "@/components/kiosk/SessionTimer";
 import { ResultScreen } from "@/components/kiosk/ResultScreen";
+import { KioskScreenRenderer } from "@/components/kiosk/KioskScreenRenderer";
+import type { KioskScreenId } from "@/lib/kiosk-screen-registry";
 import dynamic from "next/dynamic";
 
 // Bundle split: layar berat (canvas capture/editor, print pipeline) dimuat saat
@@ -151,13 +153,6 @@ export function KioskApp({
     [idle, liveConfig.photobox, photobox, deviceSettings]
   );
 
-  // Prefetch frame semua package saat idle — layar pilih frame pasca-bayar
-  // instan (tanpa loading skeleton, gambar sudah warm di HTTP cache).
-  const packageIds = useMemo(() => liveConfig.packages.map((p) => p.id), [liveConfig.packages]);
-  useEffect(() => {
-    if (!idle || packageIds.length === 0) return;
-    prefetchTemplatesForPackages(businessSlug, packageIds);
-  }, [idle, packageIds, businessSlug]);
   const [selectedPackage, setSelectedPackage] = useState<PublicPackage | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<PublicTemplate | null>(null);
   const [session, setSession] = useState<SessionInfo | null>(null);
@@ -420,6 +415,22 @@ export function KioskApp({
     };
   }, [syncQueue]);
 
+  // Purge DULU (slug lain), lalu warm slug aktif. Keduanya best-effort: gagal
+  // cache tidak boleh menghentikan alur sesi.
+  useEffect(() => {
+    void purgeOtherBusinesses(businessSlug);
+  }, [businessSlug]);
+
+  // Warm saat booth menganggur + online saja: saat sesi berjalan bandwidth
+  // dipakai untuk foto/print, bukan unduhan template.
+  const mediaBusy = step === "capture" || step === "editor" || step === "printing";
+  useEffect(() => {
+    if (mediaBusy || !online) return;
+    const ac = new AbortController();
+    void warmTemplateCache(businessSlug, { signal: ac.signal });
+    return () => ac.abort();
+  }, [mediaBusy, online, businessSlug]);
+
   function handleActivated(token: string) {
     localStorage.setItem(TOKEN_KEY, token);
     setDeviceToken(token);
@@ -542,7 +553,7 @@ export function KioskApp({
     setRetakeCount(retakes);
   }, []);
   const finalizeAndFinish = useCallback(
-    async (final: FinalPhoto[]) => {
+    async (final: FinalPhoto[], gifPhotos?: Blob[]) => {
       if (!deviceToken || !session) return;
       setBusy(true);
       setNotice(null);
@@ -553,9 +564,12 @@ export function KioskApp({
       // GIF slideshow: frame ber-slot menghasilkan SATU composite, jadi
       // slideshow memakai capture mentah (pose bergantian). Template legacy
       // memakai foto berframe — sesuai docs/05 §5.13.
-      const gifSource = selectedTemplate?.layout
-        ? photos.map((p) => p.blob)
-        : final.map((p) => p.blob);
+      // Sumber GIF: blob chroma full-res dari editor menang bila ada; selain
+      // itu perilaku lama (capture mentah untuk layout slot, foto final untuk
+      // template legacy).
+      const gifSource =
+        gifPhotos ??
+        (selectedTemplate?.layout ? photos.map((p) => p.blob) : final.map((p) => p.blob));
 
       // Sesi `local_*` hanya dikenal runtime lokal. Cloud tidak punya barisnya,
       // jadi finalize HARUS ke runtime walau internet sudah hidup lagi — sync
@@ -675,8 +689,8 @@ export function KioskApp({
   );
 
   const handleEditorFinish = useCallback(
-    (final: FinalPhoto[]) => {
-      void finalizeAndFinish(final);
+    (final: FinalPhoto[], gifPhotos?: Blob[]) => {
+      void finalizeAndFinish(final, gifPhotos);
     },
     [finalizeAndFinish]
   );
@@ -768,6 +782,13 @@ export function KioskApp({
     secondary: effectiveBranding.secondary_color,
   };
   const pageStyle = (page: KioskPageId) => kioskVisualStyle(kioskBranding, page, brandColors);
+  const screenConfig = (screen: KioskScreenId) => ({
+    screen,
+    kiosk: kioskBranding,
+    brand: brandColors,
+    camera: currentPhotobox.camera_settings,
+    orientation: currentPhotobox.camera_settings.screen_orientation,
+  });
   // Panduan cara pakai (branding.kiosk.guide_steps) — kosong = dilewati.
   const guideSteps = kioskBranding?.guide_steps ?? [];
   const hasGuide = guideSteps.length > 0;
@@ -781,10 +802,8 @@ export function KioskApp({
       data-kiosk-shell="true"
       className="flex h-[100dvh] flex-col overflow-hidden bg-bg text-ink"
       style={{
-        paddingTop: "env(safe-area-inset-top)",
-        paddingBottom: "env(safe-area-inset-bottom)",
-        paddingLeft: "env(safe-area-inset-left)",
-        paddingRight: "env(safe-area-inset-right)",
+        // Safe-area is applied once by KioskScreenRenderer per customer screen.
+        // The shell only owns the viewport and operator overlays.
       }}
     >
       {notice && (
@@ -846,133 +865,151 @@ export function KioskApp({
         />
       )}
       {step === "welcome" && (
-        <WelcomeScreen
-          business={liveConfig.business}
-          branding={effectiveBranding}
-          onStart={() => setStep(hasGuide ? "guide" : "package")}
-        />
+        <KioskScreenRenderer {...screenConfig("welcome")}>
+          <WelcomeScreen
+            business={liveConfig.business}
+            branding={effectiveBranding}
+            onStart={() => setStep(hasGuide ? "guide" : "package")}
+          />
+        </KioskScreenRenderer>
       )}
       {step === "guide" && hasGuide && (
-        <GuideScreen
-          steps={guideSteps}
-          kioskStyle={pageStyle("guide")}
-          titleText={kioskBranding?.guide_title}
-          buttonLabel={kioskBranding?.guide_button}
-          videoUrl={kioskBranding?.pages?.guide?.video_url ?? null}
-          onStart={() => setStep("package")}
-          onBack={() => setStep("welcome")}
-        />
+        <KioskScreenRenderer {...screenConfig("guide")}>
+          <GuideScreen
+            steps={guideSteps}
+            kioskStyle={pageStyle("guide")}
+            titleText={kioskBranding?.guide_title}
+            buttonLabel={kioskBranding?.guide_button}
+            videoUrl={kioskBranding?.pages?.guide?.video_url ?? null}
+            onStart={() => setStep("package")}
+            onBack={() => setStep("welcome")}
+          />
+        </KioskScreenRenderer>
       )}
       {step === "package" && (
-        <PackagePicker
-          packages={liveConfig.packages}
-          kioskStyle={pageStyle("package")}
-          titleText={kioskBranding?.package_title}
-          primaryColor={effectiveBranding.primary_color}
-          secondaryColor={effectiveBranding.secondary_color}
-          videoUrl={kioskBranding?.pages?.package?.video_url ?? null}
-          busy={busy}
-          onBack={() => setStep(hasGuide ? "guide" : "welcome")}
-          onSelect={(pkg) => void handlePackage(pkg)}
-        />
+        <KioskScreenRenderer {...screenConfig("package")}>
+          <PackagePicker
+            packages={liveConfig.packages}
+            kioskStyle={pageStyle("package")}
+            titleText={kioskBranding?.package_title}
+            primaryColor={effectiveBranding.primary_color}
+            secondaryColor={effectiveBranding.secondary_color}
+            videoUrl={kioskBranding?.pages?.package?.video_url ?? null}
+            busy={busy}
+            onBack={() => setStep(hasGuide ? "guide" : "welcome")}
+            onSelect={(pkg) => void handlePackage(pkg)}
+          />
+        </KioskScreenRenderer>
       )}
       {step === "checkout" && selectedPackage && deviceToken && (
-        <CheckoutScreen
-          businessSlug={businessSlug}
-          pkg={selectedPackage}
-          deviceToken={deviceToken}
-          offlineEnabled={offlineEnabled}
-          paymentTitle={kioskBranding?.payment_title}
-          paymentHint={kioskBranding?.payment_hint}
-          kioskStyle={pageStyle("payment")}
-          videoUrl={kioskBranding?.pages?.payment?.video_url ?? null}
-          onOffline={() => void startDirectSession(selectedPackage)}
-          onPaid={(checkoutId) => handleCheckoutPaid(checkoutId)}
-          onBack={() => setStep("package")}
-        />
+        <KioskScreenRenderer {...screenConfig("payment")}>
+          <CheckoutScreen
+            businessSlug={businessSlug}
+            pkg={selectedPackage}
+            deviceToken={deviceToken}
+            offlineEnabled={offlineEnabled}
+            paymentTitle={kioskBranding?.payment_title}
+            paymentHint={kioskBranding?.payment_hint}
+            kioskStyle={pageStyle("payment")}
+            videoUrl={kioskBranding?.pages?.payment?.video_url ?? null}
+            onOffline={() => void startDirectSession(selectedPackage)}
+            onPaid={(checkoutId) => handleCheckoutPaid(checkoutId)}
+            onBack={() => setStep("package")}
+          />
+        </KioskScreenRenderer>
       )}
       {step === "template" && selectedPackage && (
-        <TemplatePicker
-          packageId={selectedPackage.id}
-          packagePhotoCount={selectedPackage.photo_count}
-          packagePrintCount={selectedPackage.print_count}
-          businessSlug={businessSlug}
-          kioskStyle={pageStyle("template")}
-          titleText={kioskBranding?.template_title}
-          videoUrl={kioskBranding?.pages?.template?.video_url ?? null}
-          onSelect={handleTemplate}
-        />
+        <KioskScreenRenderer {...screenConfig("template")}>
+          <TemplatePicker
+            packageId={selectedPackage.id}
+            packagePhotoCount={selectedPackage.photo_count}
+            packagePrintCount={selectedPackage.print_count}
+            businessSlug={businessSlug}
+            kioskStyle={pageStyle("template")}
+            titleText={kioskBranding?.template_title}
+            videoUrl={kioskBranding?.pages?.template?.video_url ?? null}
+            onSelect={handleTemplate}
+          />
+        </KioskScreenRenderer>
       )}
       {step === "capture" && selectedPackage && (
-        <CameraCapture
-          cameraSettings={currentPhotobox.camera_settings}
-          photoCount={captureCount}
-          maxRetakes={sessionSettings?.max_retakes ?? null}
-          titleText={kioskBranding?.capture_title}
-          hintText={kioskBranding?.capture_hint}
-          kioskStyle={pageStyle("capture")}
-          showMirrorToggle={kioskBranding?.show_mirror_toggle !== false}
-          videoUrl={kioskBranding?.pages?.capture?.video_url ?? null}
-          layout={selectedTemplate?.layout ?? null}
-          frameUrl={selectedTemplate?.file_url ?? null}
-          captureMode={selectedPackage.capture_mode}
-          onProgress={onProgressCapture}
-          onComplete={handleCaptured}
-        />
+        <KioskScreenRenderer {...screenConfig("capture")}>
+          <CameraCapture
+            cameraSettings={currentPhotobox.camera_settings}
+            photoCount={captureCount}
+            maxRetakes={sessionSettings?.max_retakes ?? null}
+            titleText={kioskBranding?.capture_title}
+            hintText={kioskBranding?.capture_hint}
+            kioskStyle={pageStyle("capture")}
+            showMirrorToggle={kioskBranding?.show_mirror_toggle !== false}
+            videoUrl={kioskBranding?.pages?.capture?.video_url ?? null}
+            layout={selectedTemplate?.layout ?? null}
+            frameUrl={selectedTemplate?.file_url ?? null}
+            captureMode={selectedPackage.capture_mode}
+            onProgress={onProgressCapture}
+            onComplete={handleCaptured}
+          />
+        </KioskScreenRenderer>
       )}
       {step === "editor" && (
-        <Editor
-          photos={photos}
-          finishing={busy}
-          onFinish={handleEditorFinish}
-          layout={selectedTemplate?.layout ?? null}
-          frameUrl={selectedTemplate?.file_url ?? null}
-          titleText={kioskBranding?.editor_title}
-          hintText={kioskBranding?.editor_hint}
-          kioskStyle={pageStyle("edit")}
-          videoUrl={kioskBranding?.pages?.edit?.video_url ?? null}
-          allowZoomPan={kioskBranding?.allow_zoom_pan !== false}
-          finishRequested={finishRequested}
-          chromaKeyEnabled={currentPhotobox.camera_settings.chroma_key_enabled === true}
-        />
+        <KioskScreenRenderer {...screenConfig("editor")}>
+          <Editor
+            photos={photos}
+            finishing={busy}
+            onFinish={handleEditorFinish}
+            layout={selectedTemplate?.layout ?? null}
+            frameUrl={selectedTemplate?.file_url ?? null}
+            titleText={kioskBranding?.editor_title}
+            hintText={kioskBranding?.editor_hint}
+            kioskStyle={pageStyle("edit")}
+            videoUrl={kioskBranding?.pages?.edit?.video_url ?? null}
+            allowZoomPan={kioskBranding?.allow_zoom_pan !== false}
+            finishRequested={finishRequested}
+            chromaKeyEnabled={currentPhotobox.camera_settings.chroma_key_enabled === true}
+          />
+        </KioskScreenRenderer>
       )}
       {step === "printing" && plan && (
-        <PrintFlow
-          photos={finalPhotos}
-          plan={plan}
-          printSettings={currentPhotobox.print_settings}
-          jobId={session?.session_id ?? result?.result_token ?? undefined}
-          reprint={reprintRequested}
-          onDone={(success) => {
-            setPrinted(success);
-            setStep("result");
-          }}
-        />
+        <KioskScreenRenderer {...screenConfig("printing")}>
+          <PrintFlow
+            photos={finalPhotos}
+            plan={plan}
+            printSettings={currentPhotobox.print_settings}
+            jobId={session?.session_id ?? result?.result_token ?? undefined}
+            reprint={reprintRequested}
+            onDone={(success) => {
+              setPrinted(success);
+              setStep("result");
+            }}
+          />
+        </KioskScreenRenderer>
       )}
       {step === "result" && result && (
-        <ResultScreen
-          resultToken={result.result_token}
-          gifUrl={result.gif_url ?? null}
-          finalPhotos={finalPhotos}
-          businessName={liveConfig.business.name}
-          resultTitle={kioskBranding?.result_title}
-          resultHint={kioskBranding?.result_hint}
-          resultLayout={kioskBranding?.result_layout}
-          kioskStyle={pageStyle("result")}
-          videoUrl={kioskBranding?.pages?.result?.video_url ?? null}
-          printed={printed}
-          canPrint={
-            currentPhotobox.print_settings.enabled !== false &&
-            (selectedPackage?.print_count ?? 0) > 0
-          }
-          pendingSync={result.pendingSync === true}
-          syncFailed={result.syncFailed === true}
-          onPrint={() => {
-            setReprintRequested(true);
-            setStep("printing");
-          }}
-          onReset={handleReset}
-        />
+        <KioskScreenRenderer {...screenConfig("result")}>
+          <ResultScreen
+            resultToken={result.result_token}
+            gifUrl={result.gif_url ?? null}
+            finalPhotos={finalPhotos}
+            businessName={liveConfig.business.name}
+            resultTitle={kioskBranding?.result_title}
+            resultHint={kioskBranding?.result_hint}
+            resultLayout={kioskBranding?.result_layout}
+            kioskStyle={pageStyle("result")}
+            videoUrl={kioskBranding?.pages?.result?.video_url ?? null}
+            printed={printed}
+            canPrint={
+              currentPhotobox.print_settings.enabled !== false &&
+              (selectedPackage?.print_count ?? 0) > 0
+            }
+            pendingSync={result.pendingSync === true}
+            syncFailed={result.syncFailed === true}
+            onPrint={() => {
+              setReprintRequested(true);
+              setStep("printing");
+            }}
+            onReset={handleReset}
+          />
+        </KioskScreenRenderer>
       )}
 
       {/* Tombol petugas diskret: iPad/iOS tidak punya overlay re-engage

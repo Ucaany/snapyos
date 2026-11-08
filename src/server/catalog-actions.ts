@@ -5,6 +5,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { bool, num, str, toFormState, uuidList } from "@/lib/form-state";
 import { requireActiveBusiness } from "@/server/action-utils";
 import { requireEffectiveSubscription } from "@/server/require-subscription";
@@ -12,12 +13,10 @@ import type { FormState } from "@/server/auth-actions";
 import { createPackage, deletePackage, updatePackage } from "@/server/packages";
 import {
   deleteTemplate,
+  saveTemplateLayout,
   updateTemplate,
   uploadTemplate,
-  uploadTemplateThumbnail,
-  replaceTemplateFrame,
 } from "@/server/templates";
-import type { TemplateUpdateInput } from "@/lib/validators";
 import { createVoucher, deleteVoucher, updateVoucher } from "@/server/vouchers";
 import { TEMPLATE_CATEGORIES } from "@/lib/validators";
 
@@ -108,15 +107,21 @@ export async function uploadTemplateAction(
     return { fieldErrors: { category: ["Kategori tidak valid"] } };
   }
 
+  const publish = bool(formData, "publish");
+  let createdId: string | null = null;
   try {
-    await uploadTemplate(ctx.user.id, ctx.businessId, file, {
+    const created = await uploadTemplate(ctx.user.id, ctx.businessId, file, {
       name,
       category: category as (typeof TEMPLATE_CATEGORIES)[number],
+      is_active: publish,
     });
+    createdId = created.id as string;
   } catch (error) {
     return toFormState(error);
   }
   revalidatePath("/dashboard/templates");
+  // redirect di luar try/catch — NEXT_REDIRECT tidak boleh tertelan catch.
+  if (createdId) redirect(`/dashboard/templates/builder/${createdId}`);
   return { error: undefined };
 }
 
@@ -129,13 +134,18 @@ export async function updateTemplateAction(
   await requireEffectiveSubscription(ctx.businessId, "write");
   const id = str(formData, "id");
   if (!id) return { error: "Template tidak valid" };
+  const categoryRaw = str(formData, "category");
+  if (
+    categoryRaw &&
+    !TEMPLATE_CATEGORIES.includes(categoryRaw as (typeof TEMPLATE_CATEGORIES)[number])
+  ) {
+    return { fieldErrors: { category: ["Kategori tidak valid"] } };
+  }
   try {
     await updateTemplate(ctx.user.id, ctx.businessId, id, {
       name: str(formData, "name") || undefined,
-      category: TEMPLATE_CATEGORIES.includes(
-        str(formData, "category") as (typeof TEMPLATE_CATEGORIES)[number]
-      )
-        ? (str(formData, "category") as (typeof TEMPLATE_CATEGORIES)[number])
+      category: categoryRaw
+        ? (categoryRaw as (typeof TEMPLATE_CATEGORIES)[number])
         : undefined,
       is_active: bool(formData, "is_active"),
     });
@@ -164,48 +174,27 @@ export async function deleteTemplateAction(formData: FormData): Promise<FormStat
 // --- TEMPLATE BUILDER (docs/15 §15.3) ---
 
 /**
- * Simpan layout builder: draft (is_active=false) atau publish (true).
- * Layout divalidasi zod di updateTemplate (server = source of truth).
- * `thumbnail` = PNG opsional hasil TemplatePreview (auto thumbnail).
+ * Simpan layout builder: draft (publish=false) atau publish (true).
+ * Layout divalidasi zod di saveTemplateLayout (server = source of truth).
  */
-export async function saveTemplateBuilderAction(
-  _prev: FormState,
-  formData: FormData
-): Promise<FormState> {
+export async function saveTemplateLayoutAction(
+  templateId: string,
+  layout: unknown,
+  publish: boolean
+): Promise<{ error?: string; fieldErrors?: Record<string, string[]> }> {
   const ctx = await requireActiveBusiness();
   if (!ctx) return { error: "Sesi berakhir. Silakan login ulang." };
   await requireEffectiveSubscription(ctx.businessId, "write");
-  const id = str(formData, "id");
-  if (!id) return { error: "Template tidak valid" };
-
-  const layoutRaw = str(formData, "layout");
-  let layout: TemplateUpdateInput["layout"];
-  try {
-    layout = layoutRaw ? (JSON.parse(layoutRaw) as TemplateUpdateInput["layout"]) : null;
-  } catch {
-    return { fieldErrors: { layout: ["Data layout tidak valid"] } };
+  if (typeof templateId !== "string" || !templateId.trim()) {
+    return { fieldErrors: { templateId: ["Template tidak valid"] } };
   }
-
-  const isActive = bool(formData, "is_active");
-  const thumbnail = formData.get("thumbnail");
-  const chromaFile = formData.get("chroma_file");
-
   try {
-    await updateTemplate(ctx.user.id, ctx.businessId, id, {
-      layout,
-      is_active: isActive,
-    });
-    if (thumbnail instanceof File && thumbnail.size > 0) {
-      await uploadTemplateThumbnail(ctx.user.id, ctx.businessId, id, thumbnail);
-    }
-    if (chromaFile instanceof File && chromaFile.size > 0) {
-      await replaceTemplateFrame(ctx.user.id, ctx.businessId, id, chromaFile);
-    }
+    await saveTemplateLayout(ctx.user.id, ctx.businessId, templateId, layout, publish);
   } catch (error) {
-    return toFormState(error);
+    return toFormState(error) as { error?: string; fieldErrors?: Record<string, string[]> };
   }
   revalidatePath("/dashboard/templates");
-  revalidatePath(`/dashboard/templates/builder/${id}`);
+  revalidatePath("/dashboard/packages");
   return { error: undefined };
 }
 

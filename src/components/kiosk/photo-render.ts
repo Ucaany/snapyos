@@ -25,32 +25,50 @@ function normRot(deg: number): number {
  * lalu diterapkan ke salinan offscreen — gambar asli tidak dimutasi agar
  * preview dan hasil akhir konsisten.
  */
+export type ChromaStatus = { applied: boolean; tainted: boolean };
+
+type ChromaResult = ChromaStatus & { source: CanvasImageSource };
+
+/**
+ * Salinan gambar dengan latar kunci dibuat transparan. Warna kunci diambil
+ * dari piksel sudut foto (layar hijau bisa berbeda karena pencahayaan booth),
+ * lalu diterapkan ke salinan offscreen — gambar asli tidak dimutasi agar
+ * preview dan hasil akhir konsisten.
+ *
+ * `maxW` terbatas → diproses di resolusi preview; `Infinity` → resolusi penuh.
+ */
 function chromaPreparedImage(
   img: HTMLImageElement,
-  options: boolean | ChromaKeyOptions
-): CanvasImageSource {
+  options: boolean | ChromaKeyOptions,
+  maxW = Number.POSITIVE_INFINITY
+): ChromaResult {
   const w = img.naturalWidth || 1;
   const h = img.naturalHeight || 1;
+  const scale = Number.isFinite(maxW) ? Math.min(1, maxW / w) : 1;
+  const cw = Math.max(1, Math.round(w * scale));
+  const ch = Math.max(1, Math.round(h * scale));
   const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
+  canvas.width = cw;
+  canvas.height = ch;
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
-  if (!ctx) return img;
-  ctx.drawImage(img, 0, 0, w, h);
+  if (!ctx) return { source: img, applied: false, tainted: false };
+  ctx.drawImage(img, 0, 0, cw, ch);
   let data: ImageData;
   try {
-    data = ctx.getImageData(0, 0, w, h);
+    data = ctx.getImageData(0, 0, cw, ch);
   } catch {
     // Canvas tainted (cross-origin tanpa CORS) — jangan gagalkan render.
-    return img;
+    return { source: img, applied: false, tainted: true };
   }
   const config: ChromaKeyOptions =
     options === true
-      ? { ...DEFAULT_CHROMA_KEY, key: sampleCornerColor(data.data, w, h) }
+      ? { ...DEFAULT_CHROMA_KEY, key: sampleCornerColor(data.data, cw, ch) }
       : { ...DEFAULT_CHROMA_KEY, ...options };
-  if (applyChromaKey(data.data, config) === 0) return img;
+  if (applyChromaKey(data.data, config, { width: cw, height: ch }) === 0) {
+    return { source: img, applied: false, tainted: false };
+  }
   ctx.putImageData(data, 0, 0);
-  return canvas;
+  return { source: canvas, applied: true, tainted: false };
 }
 
 /** Overlay teks/stiker di atas canvas yang sudah final (frame included). */
@@ -78,8 +96,15 @@ export function drawPhoto(
    *  jalur slot mengandalkan `composeFrame` mengisi latar, jadi mengisi di sini
    *  akan menutup lubang chroma. */
   background?: string
-): void {
-  const source = chroma ? chromaPreparedImage(img, chroma) : img;
+): ChromaStatus {
+  const prepared = chroma
+    ? chromaPreparedImage(img, chroma, maxW)
+    : null;
+  const status: ChromaStatus = {
+    applied: prepared?.applied ?? false,
+    tainted: prepared?.tainted ?? false,
+  };
+  const source = prepared?.source ?? img;
   const rot = normRot(edit.adjust.rotation);
   const swap = rot === 90 || rot === 270;
   const srcW = img.naturalWidth || 1;
@@ -93,7 +118,7 @@ export function drawPhoto(
   canvas.width = cw;
   canvas.height = ch;
   const ctx = canvas.getContext("2d");
-  if (!ctx) return;
+  if (!ctx) return status;
 
   // Chroma key membuat piksel berlubang; jalur legacy (foto full-canvas tanpa
   // composeFrame) perlu isian dasar agar hasil JPEG tidak menghitam.
@@ -163,6 +188,7 @@ export function drawPhoto(
     ctx.fillRect(0, 0, cw, ch);
     ctx.restore();
   }
+  return status;
 }
 
 /**

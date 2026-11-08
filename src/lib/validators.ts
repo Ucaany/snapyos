@@ -1448,10 +1448,7 @@ export const adminGlobalTemplateCreateSchema = z.object({
   is_active: z.boolean().optional().default(true),
   price: z.number().int().min(0, "Harga minimal 0").nullable().optional(),
   is_premium: z.boolean().optional().default(false),
-  layout: z
-    .union([layoutSchema, z.record(z.string(), z.unknown())])
-    .nullable()
-    .optional(),
+  layout: layoutSchema.nullable().optional(),
 });
 
 export const adminTemplateCategoryCreateSchema = z.object({

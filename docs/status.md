@@ -2,8 +2,8 @@
 
 Status: active
 Audience: owner, staff, admin, developer, operator
-Last updated: 2026-10-26
-Last verified: 2026-10-26
+Last updated: 2026-11-08
+Last verified: 2026-11-08
 Source of truth: `src/`, `runtime/`, `db/schema.sql`, `README.md`
 
 ## Active
@@ -21,11 +21,13 @@ Source of truth: `src/`, `runtime/`, `db/schema.sql`, `README.md`
 | Voucher payment                         | Active                                                  | public checkout actions and voucher server logic                   |
 | Offline cash kiosk                      | Active when owner enables it                            | `business_settings.checkout.offline_enabled`                       |
 | POS add-on                              | Active, offline-only                                    | `src/server/pos-actions.ts`, `photoboxes.pos_enabled`              |
-| Template builder                        | Active                                                  | `src/components/dashboard/TemplateBuilder.tsx`                     |
+| Template builder                        | Active — draft/publish eksplisit; global read-only      | `src/components/dashboard/TemplateBuilderCanvas.tsx`               |
+| Marketplace template premium            | Active — invoice intent `template_purchase`, ownership per business | `src/server/template-purchase.ts`, `business_template_purchases`   |
 | Storage quota                           | Active when plan feature is enabled                     | `src/server/storage-usage.ts` (jumlah kedua provider)              |
 | Dual storage (R2 write + Supabase read) | Active — Fase 3                                         | `src/server/storage` (`getWriteStorage`, `resolveStorage`)         |
 | Kiosk offline runtime (lokal)           | Active — sesi lokal + sync ke cloud                     | `runtime/` (`node:sqlite`, `/v1/*` loopback, token bridge)         |
 | Setelan device dan kustomisasi booth | Active — panel lokal, `appearance_settings` menang atas cloud | `src/components/kiosk/BoothSettingsPanel.tsx`, `src/lib/appearance-merge.ts` |
+| Kiosk template cache (PWA/Android) | Active (2026-11-08) — snapshot localStorage + biner Cache Storage, warm idle | `src/lib/template-cache.ts`, `src/components/kiosk/template-cache.ts`, `public/sw.js` |
 
 ## Partial or constrained
 
@@ -112,7 +114,7 @@ Deferred (known-issue, TIDAK diimplementasikan):
 - L1 rate-limit in-memory (single-instance). Backend shared dihapus 2026-10-17 atas permintaan operator; lihat `docs/09` §9.5.
 - M4 nomor migrasi duplikat/gap (`0024`, `0051`).
 - M7 unbounded select (vouchers, photoboxes, staff, support-tickets, subscription devices).
-- H7 god-components (`KioskBrandingEditor` ~1419, `TemplateBuilder` ~955, `KioskApp` ~722).
+- H7 god-components (`TemplateBuilderCanvas` ~994, `KioskApp` ~722); `KioskBrandingEditor` sudah dihapus.
 - P3 replay-window penuh (dedup event_id berbasis waktu) di luar window set-based.
 - **0071 belum di-apply** ke Supabase (keputusan pemilik: tulis + validasi statis saja).
 - Rehearsal migrasi destruktif (`scripts/verify-migration-rollbacks.mjs`) belum dijalankan:

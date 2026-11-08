@@ -16,9 +16,9 @@ import {
   type TemplateCreateInput,
   type TemplateUpdateInput,
 } from "@/lib/validators";
-import { slotCount, type TemplateLayout } from "@/lib/template-layout";
+import { layoutSchema, slotCount, type TemplateLayout } from "@/lib/template-layout";
 import { planLimitError } from "@/lib/plan-limits";
-import { staleTemplateKeys, staleThumbnailKeys } from "@/lib/template-cleanup";
+import { staleTemplateKeys } from "@/lib/template-cleanup";
 import { generateFrameThumbnail } from "@/server/frame-thumbnail";
 import { SIGNED_URL_TTL_SECONDS as SIGNED_URL_TTL } from "@/lib/constants";
 import {
@@ -28,11 +28,15 @@ import {
 } from "@/server/storage-usage";
 import { getStorage, resolveStorage, signedUrlMap, removeResolved } from "@/server/storage";
 import { requirePlanLimits } from "@/server/plan-limits";
+import { invalidatePublicConfig } from "@/server/public-config";
+import { insertAudit } from "@/server/audit";
 
 const BUCKET = "business-assets";
 const TEMPLATE_MAX_BYTES = 5 * 1024 * 1024; // 5 MB (docs/04 §4.10)
 
-const COLUMNS = "id, name, category, file_url, thumbnail_url, layout, is_active, created_at";
+const COLUMNS =
+  "id, business_id, name, category, file_url, thumbnail_url, layout, is_active, created_at";
+const GLOBAL_COLUMNS = `${COLUMNS}, is_premium, price`;
 
 export type TemplateRow = {
   id: string;
@@ -50,6 +54,10 @@ export type TemplateRow = {
   assigned?: boolean;
   /** Paket yang memakai template ini (informasi assignment di dashboard). */
   assigned_packages?: { id: string; name: string; photo_count: number }[];
+  /** true = template global platform (business_id NULL) — read-only untuk owner. */
+  is_global: boolean;
+  /** Signed URL thumbnail (fallback: null). Grid memakai ini dulu. */
+  thumbnail_preview_url: string | null;
 };
 
 async function requireMembership(userId: string, businessId: string, permission: Permission) {
@@ -86,6 +94,7 @@ export function validateFrameFile(
 
 type TemplateDbRow = {
   id: string;
+  business_id: string | null;
   name: string;
   category: string;
   file_url: string;
@@ -93,11 +102,28 @@ type TemplateDbRow = {
   layout: unknown;
   is_active: boolean;
   created_at: string;
+  is_premium?: boolean | null;
+  price?: number | null;
 };
 
+/** URL absolut (CDN) diteruskan apa adanya; key storage di-sign. */
+const isHttpUrl = (value: string) => /^https?:\/\//i.test(value);
+
 async function toTemplateRow(row: TemplateDbRow): Promise<TemplateRow> {
-  const provider = await resolveStorage(BUCKET, row.file_url);
-  const { data: signed } = await provider.createSignedUrl(BUCKET, row.file_url, SIGNED_URL_TTL);
+  let previewUrl: string | null = null;
+  if (isHttpUrl(row.file_url)) {
+    previewUrl = row.file_url;
+  } else {
+    const provider = await resolveStorage(BUCKET, row.file_url);
+    const { data } = await provider.createSignedUrl(BUCKET, row.file_url, SIGNED_URL_TTL);
+    previewUrl = data?.signedUrl ?? null;
+  }
+  const thumbnailUrl = row.thumbnail_url
+    ? isHttpUrl(row.thumbnail_url)
+      ? row.thumbnail_url
+      : (await signedUrlMap(BUCKET, [row.thumbnail_url], SIGNED_URL_TTL)).get(row.thumbnail_url) ??
+        null
+    : null;
   return {
     id: row.id,
     name: row.name,
@@ -105,9 +131,11 @@ async function toTemplateRow(row: TemplateDbRow): Promise<TemplateRow> {
     file_url: row.file_url,
     is_active: row.is_active,
     created_at: row.created_at,
-    preview_url: signed?.signedUrl ?? null,
+    preview_url: previewUrl,
     layout: (row.layout ?? {}) as TemplateRow["layout"],
     slot_count: slotCount(row.layout),
+    is_global: row.business_id === null,
+    thumbnail_preview_url: thumbnailUrl,
   };
 }
 
@@ -130,27 +158,54 @@ export async function listTemplates(
 
   const rows = (data ?? []) as TemplateDbRow[];
 
-  // Template global premium yang sudah dibeli business ini ikut tampil di
-  // daftar (docs/15 §15.9b) — "jika dibeli otomatis muncul & bisa dipakai".
+  // Template global yang bisa dipakai business ini ikut tampil (docs/15 §15.9b):
+  // 1) global gratis & aktif, 2) global yang sudah dibeli (apa pun statusnya —
+  // owner harus melihat yang sudah dibayar; UI menyembunyikan edit dan server
+  // menolak assignment saat nonaktif).
   const { data: owned } = await supabase
     .from("business_template_purchases")
     .select("template_id")
     .eq("business_id", businessId);
   const ownedIds = ((owned ?? []) as { template_id: string }[]).map((o) => o.template_id);
+
+  const globalRows: TemplateDbRow[] = [];
+  const { data: freeGlobals } = await supabase
+    .from("templates")
+    .select(GLOBAL_COLUMNS)
+    .is("business_id", null)
+    .eq("is_active", true);
+  for (const row of (freeGlobals ?? []) as TemplateDbRow[]) {
+    const free = row.is_premium === false || row.price === null || row.price === undefined || row.price === 0;
+    if (free) globalRows.push(row);
+  }
   if (ownedIds.length > 0) {
-    const { data: global } = await supabase
+    let purchasedReq = supabase
       .from("templates")
-      .select(COLUMNS)
+      .select(GLOBAL_COLUMNS)
       .is("business_id", null)
       .in("id", ownedIds);
-    rows.push(...((global ?? []) as TemplateDbRow[]));
+    // Staff (includeInactive=false) tidak boleh melihat template nonaktif,
+    // bahkan yang sudah dibeli. Owner dengan includeInactive melihat semuanya.
+    if (!options.includeInactive) purchasedReq = purchasedReq.eq("is_active", true);
+    const { data: purchased } = await purchasedReq;
+    globalRows.push(...((purchased ?? []) as TemplateDbRow[]));
   }
 
-  // Batch signed URLs — single storage call for all keys.
+  const seen = new Set(rows.map((r) => r.id));
+  const globalIds = new Set<string>();
+  for (const row of globalRows) {
+    globalIds.add(row.id);
+    if (seen.has(row.id)) continue;
+    seen.add(row.id);
+    rows.push(row);
+  }
+
+  // Batch signed URLs — frame + thumbnail, satu panggilan storage.
   const keys = Array.from(
     new Set(
       rows.flatMap((r) => {
         const ks = [r.file_url];
+        if (r.thumbnail_url) ks.push(r.thumbnail_url);
         return ks;
       })
     )
@@ -201,31 +256,58 @@ export async function listTemplates(
     file_url: row.file_url,
     is_active: row.is_active,
     created_at: row.created_at,
-    preview_url: urlByKey.get(row.file_url) ?? null,
+    preview_url: urlByKey.get(row.file_url) ?? (isHttpUrl(row.file_url) ? row.file_url : null),
     layout: (row.layout ?? {}) as TemplateRow["layout"],
     slot_count: slotCount(row.layout),
     assigned: linkedIds.has(row.id),
     assigned_packages: packagesByTemplate.get(row.id) ?? [],
+    is_global: globalIds.has(row.id),
+    thumbnail_preview_url: row.thumbnail_url
+      ? urlByKey.get(row.thumbnail_url) ?? (isHttpUrl(row.thumbnail_url) ? row.thumbnail_url : null)
+      : null,
   }));
 }
 
-/** Satu template untuk builder — docs/15 §15.3. */
-export async function getTemplate(
+/** Satu template untuk builder — docs/15 §15.3. Owner sendiri atau global
+ *  yang boleh dipakai (dibeli, atau aktif & gratis). */
+export async function getTemplateForBuilder(
   userId: string,
   businessId: string,
   templateId: string
-): Promise<TemplateRow> {
+): Promise<{ template: TemplateRow; is_global: boolean }> {
   await requireMembership(userId, businessId, "template:read");
   const supabase = createServerClient();
-  const { data, error } = await supabase
+  const { data: owned, error: ownedError } = await supabase
     .from("templates")
     .select(COLUMNS)
     .eq("id", templateId)
     .eq("business_id", businessId)
     .maybeSingle();
-  if (error) throw new ApiError("INTERNAL", "Gagal memuat template");
-  if (!data) throw new ApiError("NOT_FOUND", "Template tidak ditemukan");
-  return toTemplateRow(data as TemplateDbRow);
+  if (ownedError) throw new ApiError("INTERNAL", "Gagal memuat template");
+  if (owned) return { template: await toTemplateRow(owned as TemplateDbRow), is_global: false };
+
+  const { data: globalRow, error: globalError } = await supabase
+    .from("templates")
+    .select(GLOBAL_COLUMNS)
+    .eq("id", templateId)
+    .is("business_id", null)
+    .maybeSingle();
+  if (globalError) throw new ApiError("INTERNAL", "Gagal memuat template");
+  if (!globalRow) throw new ApiError("NOT_FOUND", "Template tidak ditemukan");
+  const row = globalRow as TemplateDbRow;
+
+  const { data: purchase } = await supabase
+    .from("business_template_purchases")
+    .select("template_id")
+    .eq("business_id", businessId)
+    .eq("template_id", templateId)
+    .maybeSingle();
+  const purchased = Boolean(purchase);
+  const free = row.is_premium === false || row.price === null || row.price === undefined || row.price === 0;
+  if (!purchased && !(row.is_active && free)) {
+    throw new ApiError("NOT_FOUND", "Template tidak ditemukan");
+  }
+  return { template: await toTemplateRow(row), is_global: true };
 }
 
 export async function uploadTemplate(
@@ -237,7 +319,7 @@ export async function uploadTemplate(
     size?: number | null;
     arrayBuffer(): Promise<ArrayBuffer>;
   },
-  meta: { name: string; category: TemplateCreateInput["category"] }
+  meta: { name: string; category: TemplateCreateInput["category"]; is_active?: boolean }
 ) {
   await requireMembership(userId, businessId, "template:write");
   const body = Buffer.from(await file.arrayBuffer());
@@ -288,11 +370,12 @@ export async function uploadTemplate(
       category: parsed.category,
       file_url: key,
       thumbnail_url: thumbKey ?? key,
-      is_active: true,
+      is_active: meta.is_active ?? true,
     })
     .select(COLUMNS)
     .single();
   if (error) throw new ApiError("INTERNAL", "Gagal menyimpan template");
+  invalidatePublicConfig(businessId);
   return data;
 }
 
@@ -342,136 +425,8 @@ export async function updateTemplate(
     .maybeSingle();
   if (error) throw new ApiError("INTERNAL", "Gagal memperbarui template");
   if (!data) throw new ApiError("NOT_FOUND", "Template tidak ditemukan");
+  invalidatePublicConfig(businessId);
   return data;
-}
-
-/** Thumbnail otomatis dari preview builder (docs/15 §15.3). */
-export async function uploadTemplateThumbnail(
-  userId: string,
-  businessId: string,
-  templateId: string,
-  file: {
-    name?: string | null;
-    type?: string | null;
-    size?: number | null;
-    arrayBuffer(): Promise<ArrayBuffer>;
-  }
-) {
-  await requireMembership(userId, businessId, "template:write");
-  const body = Buffer.from(await file.arrayBuffer());
-  const check = validateFrameFile(file, body);
-  if (!check.ok) {
-    throw new ApiError("VALIDATION_ERROR", check.error, { thumbnail: [check.error] });
-  }
-  // Thumbnail dari builder bisa berupa PNG preview penuh; turunkan ke WebP
-  // kecil agar grid kiosk tetap ringan. Gagal decode = pakai byte asli.
-  const resized = await generateFrameThumbnail(body);
-  const stored = resized ? resized.bytes : body;
-  const ext = resized ? resized.extension : check.ext;
-  const contentType = resized ? resized.contentType : (file.type ?? "application/octet-stream");
-  const key = `${businessId}/templates/${Date.now()}-thumb-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  const supabase = createServerClient();
-  // Thumbnail lama → dibersihkan setelah update sukses (anti orphan).
-  // PENTING: ambil `file_url` juga — pada template hasil upload, thumbnail_url
-  // default = file_url (frame). Tanpa pengecualian ini, mengganti thumbnail
-  // lewat builder akan MENGHAPUS frame (file_url) → frame 404 & hilang.
-  const { data: existing } = await supabase
-    .from("templates")
-    .select("file_url, thumbnail_url")
-    .eq("id", templateId)
-    .eq("business_id", businessId)
-    .maybeSingle();
-  const row = existing as { file_url?: string | null; thumbnail_url?: string | null } | null;
-  const oldThumb = row?.thumbnail_url ?? null;
-  const currentFrame = row?.file_url ?? null;
-
-  const { error: uploadError } = await getStorage().upload(BUCKET, key, stored, {
-    contentType,
-    upsert: false,
-  });
-  if (uploadError) throw new ApiError("INTERNAL", "Gagal mengunggah thumbnail");
-  await accountStorageAdd(businessId, BUCKET, key, stored.length);
-
-  const { error } = await supabase
-    .from("templates")
-    .update({ thumbnail_url: key })
-    .eq("id", templateId)
-    .eq("business_id", businessId);
-  if (error) throw new ApiError("INTERNAL", "Gagal menyimpan thumbnail");
-
-  // Hapus thumbnail lama HANYA bila tidak lagi direferensikan (bukan key
-  // thumbnail baru, dan bukan frame yang masih dipakai).
-  const stale = staleThumbnailKeys({
-    oldThumbnail: oldThumb,
-    newThumbnail: key,
-    currentFrame,
-  });
-  if (stale.length > 0) {
-    await removeResolved(BUCKET, stale);
-    await accountStorageSub(businessId, stale);
-  }
-}
-
-/** Replace frame after client-side chroma-key processing. PNG preserves transparency. */
-export async function replaceTemplateFrame(
-  userId: string,
-  businessId: string,
-  templateId: string,
-  file: {
-    name?: string | null;
-    type?: string | null;
-    size?: number | null;
-    arrayBuffer(): Promise<ArrayBuffer>;
-  }
-) {
-  await requireMembership(userId, businessId, "template:write");
-  const body = Buffer.from(await file.arrayBuffer());
-  const check = validateFrameFile(file, body);
-  if (!check.ok || file.type !== "image/png") {
-    throw new ApiError("VALIDATION_ERROR", "Hasil chroma key harus PNG", {
-      chroma_file: ["Hasil chroma key harus PNG"],
-    });
-  }
-  await assertStorageAvailable(businessId, body.length);
-  const supabase = createServerClient();
-  const { data: row } = await supabase
-    .from("templates")
-    .select("file_url, thumbnail_url")
-    .eq("id", templateId)
-    .eq("business_id", businessId)
-    .maybeSingle();
-  if (!row) throw new ApiError("NOT_FOUND", "Template tidak ditemukan");
-  const baseName = `${businessId}/templates/${Date.now()}-chroma-${Math.random().toString(36).slice(2, 8)}`;
-  const key = `${baseName}.png`;
-  const { error: uploadError } = await getStorage().upload(BUCKET, key, body, {
-    contentType: "image/png",
-    upsert: false,
-  });
-  if (uploadError) throw new ApiError("INTERNAL", "Gagal mengunggah hasil chroma key");
-  await accountStorageAdd(businessId, BUCKET, key, body.length);
-  // Thumbnail WebP dari frame baru (transparansi dipertahankan).
-  const thumbKey = await uploadGeneratedThumbnail(businessId, baseName, body);
-  const { error } = await supabase
-    .from("templates")
-    .update({ file_url: key, thumbnail_url: thumbKey ?? key })
-    .eq("id", templateId)
-    .eq("business_id", businessId);
-  if (error) {
-    await removeResolved(BUCKET, thumbKey ? [key, thumbKey] : [key]);
-    await accountStorageSub(businessId, thumbKey ? [key, thumbKey] : [key]);
-    throw new ApiError("INTERNAL", "Gagal menyimpan frame chroma key");
-  }
-  // Bersihkan frame lama + thumbnail lama (keduanya kini unreferenced).
-  const oldRows = row as { file_url: string; thumbnail_url?: string | null };
-  const stale = staleTemplateKeys({
-    oldFile: oldRows.file_url,
-    oldThumbnail: oldRows.thumbnail_url,
-    newKey: key,
-  }).filter((staleKey) => staleKey !== thumbKey);
-  if (stale.length > 0) {
-    await removeResolved(BUCKET, stale);
-    await accountStorageSub(businessId, stale);
-  }
 }
 
 export async function deleteTemplate(userId: string, businessId: string, templateId: string) {
@@ -491,6 +446,7 @@ export async function deleteTemplate(userId: string, businessId: string, templat
     .eq("id", templateId)
     .eq("business_id", businessId);
   if (error) throw new ApiError("INTERNAL", "Gagal menghapus template");
+  invalidatePublicConfig(businessId);
 
   // Semua blob template: frame + thumbnail (thumbnail sering = frame,
   // dedup agar tak double-delete/double-sub).
@@ -501,4 +457,44 @@ export async function deleteTemplate(userId: string, businessId: string, templat
   });
   await removeResolved(BUCKET, filesToRemove);
   await accountStorageSub(businessId, filesToRemove);
+}
+
+/** Simpan layout builder owner (draft/publish). Hanya template milik business —
+ *  template global read-only dari sisi owner (docs/15 §15.3). */
+export async function saveTemplateLayout(
+  userId: string,
+  businessId: string,
+  templateId: string,
+  layout: unknown,
+  isActive: boolean
+): Promise<{ id: string }> {
+  await requireMembership(userId, businessId, "template:write");
+  const parsed = layoutSchema.safeParse(layout);
+  if (!parsed.success) {
+    const fieldErrors: Record<string, string[]> = {};
+    for (const issue of parsed.error.issues) {
+      const key = issue.path.join(".") || "layout";
+      (fieldErrors[key] ??= []).push(issue.message);
+    }
+    throw new ApiError("VALIDATION_ERROR", "Layout tidak valid", fieldErrors);
+  }
+  const supabase = createServerClient();
+  const { data, error } = await supabase
+    .from("templates")
+    .update({ layout: parsed.data, is_active: isActive })
+    .eq("id", templateId)
+    .eq("business_id", businessId)
+    .select("id")
+    .maybeSingle();
+  if (error) throw new ApiError("INTERNAL", "Gagal menyimpan layout template");
+  if (!data) throw new ApiError("NOT_FOUND", "Template tidak ditemukan");
+  await insertAudit({
+    actorId: userId,
+    businessId,
+    action: "template.layout.save",
+    target: templateId,
+    meta: { slots: parsed.data.slots.length, is_active: isActive },
+  });
+  invalidatePublicConfig(businessId);
+  return { id: templateId };
 }

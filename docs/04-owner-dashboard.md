@@ -383,47 +383,53 @@ PREMIUM Rp35.000  — 5 photos, 2 prints, digital copy, premium templates
 
 ## 4.10 Template Management
 
-**Purpose:** Mengelola template/frame milik brand sendiri.
+**Purpose:** Mengelola template/frame milik brand sendiri, plus memakai template platform (global) secara read-only.
 
 **Default categories:** Minimal, Cute, Retro, Y2K, Wedding, Birthday, Graduation, Event, Custom.
 
-**Owner dapat:** upload, create, edit, delete, kategorisasi, preview, active/inactive, assign ke package, **mendesain slot foto via Template Builder** (`15-template-builder.md`).
+**Owner dapat:** upload, create, edit, delete, kategorisasi, preview, active/inactive, assign ke package, **mendesain slot foto via Template Builder** (`15-template-builder.md`), dan membeli template premium (§15.9b).
 
-**UI/Components:** grid preview, `Dialog` upload/create, `Select` kategori, `Switch` active, `Tabs` assign package, `TemplateBuilder` + `SlotShape` + `SlotPropertiesPanel` + `TemplatePreview` (builder slot — `15-template-builder.md`).
+**UI/Components:** grid preview (menampilkan frame/thumbnail — **bukan** composite slot), `Dialog` upload/create dengan pilihan eksplisit **Draft (default) / Publish**, `Select` kategori, `Switch` active, `Tabs` assign package, `TemplateBuilderCanvas` (`src/components/dashboard/TemplateBuilderCanvas.tsx`) untuk builder owner.
 
-**Data:** `templates` (file di storage + metadata + `layout` slot), `package_templates`.
+**Data:** `templates` (file di storage + metadata + `layout` slot), `package_templates`, `business_template_purchases`.
 
-**API:**
+**API:** owner CRUD/upload/builder memakai **server actions** (`src/server/templates.ts`, `src/server/catalog-actions.ts`), bukan REST. REST owner dihapus Fase 5. Endpoint publik template tetap `GET /api/v1/public/:businessSlug/templates` (§8.7a `08-api-spec.md`).
 
-- `GET/POST/PATCH/DELETE /api/v1/business/:businessId/templates`
-- `POST /api/v1/business/:businessId/templates/upload` (multipart)
+**Validation:** tipe file gambar (PNG/JPG/WebP — SVG dihapus dari allowlist, audit keamanan 2026-10-09), max size, nama wajib, `layout` valid (`layoutSchema` §15.2 — id unik, z kontigu, preset cocok dimensi, bounds rotation-aware, radius ≤ min(w,h)/2, circle persegi, max 8 slot). Assign ke paket tidak dibatasi jumlah slot.
 
-**Validation:** tipe file gambar (PNG/JPG/WebP — SVG dihapus dari allowlist, audit keamanan 2026-10-09), max size, dimensi (opsional), nama wajib, `layout` valid (schema `15-template-builder.md` §15.2 — slot dalam batas canvas, max 8 slot). Assign ke paket tidak lagi dibatasi jumlah slot.
+**Builder (terimplementasi):**
 
-**Security:** upload divalidasi; preview pakai signed URL jika private.
+- Route `/dashboard/templates/builder/[id]`; admin `/admin/templates/builder/[id]` memakai komponen yang sama.
+- Kontrol: tambah/hapus slot (maks 8), drag pindah, resize handle, input numerik x/y/w/h + rotation, shape rect/rounded/circle/ellipse, fit cover/contain/fill, radius, z naik/turun (renumber 0..n-1), preset kanvas (4x6-portrait, 4x6-landscape, 2x6-strip, square, custom maks 3000), background hex.
+- Keyboard arrow nudge 1px / Shift 10px; semua mutasi juga tersedia lewat tombol/input.
+- Simpan eksplisit: "Simpan draft" (`is_active=false`) atau "Publish" (`is_active=true`); tidak pernah auto-publish.
+- **Thumbnail berasal dari frame WebP yang diunggah**, bukan digenerate dari preview builder.
+- Builder tidak menyediakan kontrol chroma key; chroma hanya di editor kiosk.
+- Preview builder memakai `composeFrame` yang sama dengan kiosk (client-authoritative); server tidak punya engine composite.
 
-**Acceptance:** (AC 8) owner upload template; template bisa dipilih customer.
+**Read-only global:** baris milik business (`is_global=false`) bisa diedit. Template platform (`TEMPLATE PLATFORM`) tampil read-only tanpa edit/delete/simpan; global gratis aktif + yang sudah dibeli dapat di-assign; global yang dibeli membuka builder read-only ("Template platform — read-only").
+
+**Security:** upload divalidasi; preview pakai signed URL jika private. Template global tidak bisa ditulis dari sisi owner. Mutasi template meng-invalidate public config kiosk (tag per-business + global, TTL 30 detik).
+
+**Acceptance:** (AC 8) owner upload template; template bisa dipilih customer; builder slot berfungsi (§15.9).
 
 ### 4.10.1 Custom Template — Slot Builder (lihat `15-template-builder.md`)
 
 UMKM **bisa** membuat/mengkustomisasi template **lengkap dengan slot foto**:
 
-**MVP (bisa dilakukan sekarang):**
+**MVP (terimplementasi):**
 
 - Upload frame/overlay template sendiri (PNG transparan yang mereka desain di Canva/Figma/Photoshop).
-- **Template Builder** (`/dashboard/templates/builder/[id]`): tambahkan **slot foto** (kotak/rounded/circle/ellipse) via drag-and-drop di atas frame — atur posisi, ukuran, rotasi, fit. Hasil foto customer otomatis ter-composite pas ke slot (detail penuh: `15-template-builder.md`).
-- Kategorisasi, preview, aktif/nonaktif, assign ke package. Semua master template boleh di-assign ke paket mana pun.
+- **Template Builder** (`/dashboard/templates/builder/[id]`): tambah **slot foto** (rect/rounded/circle/ellipse) via drag atau input numerik di atas frame — atur posisi, ukuran, rotasi, fit, z. Hasil foto customer ter-composite pas ke slot (detail penuh: `15-template-builder.md`).
+- Simpan sebagai draft atau publish; kategorisasi, preview, aktif/nonaktif, assign ke package. Template assignable = milik sendiri atau global aktif yang gratis/sudah dibeli.
 - Template dipasangkan dengan **sticker & text tool** milik SnapyOS di editor customer.
 - Library template default per kategori (seed platform).
 
 **Phase 2 (ekstensi builder):**
 
 - Shape custom/path mask, layer frame z-configurable, reusable block/undo-redo, export/publish template.
-- Template marketplace TIDAK termasuk (per non-goals).
 
-> Jadi: MVP = "upload frame sendiri + definisikan slot foto + kelola + assign". Customer mendapat hasil foto yang pas ke frame buatan owner tanpa tools eksternal (selain desain PNG-nya).
-
----
+> Marketplace template premium **bukan** Phase 2 lagi: pembelian template global sudah terimplementasi (`15-template-builder.md` §15.9b). Template milik owner tetap dikelola seperti biasa.
 
 ## 4.11 Voucher Management
 

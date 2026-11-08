@@ -22,6 +22,7 @@
     "test:e2e:bluetooth": "node tests/e2e/run.mjs bluetooth",
     "test:e2e:bluetooth:real": "node tests/e2e/kiosk-print-bluetooth-real.spec.mjs",
     "test:e2e:print": "node tests/e2e/run.mjs standalone",
+    "test:e2e:builder": "node tests/e2e/run.mjs builder",
     "bridge:local": "node scripts/photobooth-bridge.mjs",
     "bridge:gphoto2": "node scripts/photobooth-bridge.mjs",
     "clean": "find . -name '._*' -not -path './node_modules/*' -delete",

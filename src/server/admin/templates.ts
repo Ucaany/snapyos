@@ -16,6 +16,7 @@ import { SIGNED_URL_TTL_SECONDS } from "@/lib/constants";
 import { getStorage, resolveStorage, removeResolved } from "@/server/storage";
 import { staleTemplateKeys, storageKeysOnly } from "@/lib/template-cleanup";
 import { layoutSchema } from "@/lib/template-layout";
+import { invalidateAllPublicConfig } from "@/server/public-config";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -191,11 +192,15 @@ export async function createGlobalTemplate(input: {
     price: parsed.price ?? null,
     is_premium: parsed.is_premium ?? false,
   });
+  // Defense-in-depth: action memanggil ini juga, tetapi data layer tidak boleh
+  // bergantung pada pemanggil (idempotent, aman dipanggil ganda).
+  invalidateAllPublicConfig();
   return data;
 }
 
 /** Upload file frame global langsung dari browser admin (docs/10 §10.2).
- *  Mirip uploadTemplate owner: file PNG/JPG/WebP/SVG → storage bucket. */
+ *  Mirip uploadTemplate owner: PNG/JPG/WebP (tanpa SVG — allowlist upload) →
+ *  storage bucket. Thumbnail/transparansi diproses builder, bukan chroma di sini. */
 export async function uploadGlobalTemplateFile(file: {
   name?: string | null;
   type?: string | null;
@@ -247,6 +252,7 @@ export async function updateGlobalTemplate(
   if (error) throw new ApiError("INTERNAL", "Gagal memperbarui template");
   if (!data) throw new ApiError("NOT_FOUND", "Template global tidak ditemukan");
   await audit(admin.id, "admin.template.update", templateId, { ...patch });
+  invalidateAllPublicConfig();
   return data;
 }
 
@@ -263,6 +269,7 @@ export async function setGlobalTemplateActive(templateId: string, isActive: bool
   if (error) throw new ApiError("INTERNAL", "Gagal memperbarui template");
   if (!data) throw new ApiError("NOT_FOUND", "Template global tidak ditemukan");
   await audit(admin.id, "admin.template.update", templateId, { is_active: isActive });
+  invalidateAllPublicConfig();
   return data;
 }
 
@@ -352,102 +359,8 @@ export async function updateGlobalTemplateLayout(
   if (error) throw new ApiError("INTERNAL", "Gagal menyimpan layout template");
   if (!data) throw new ApiError("NOT_FOUND", "Template global tidak ditemukan");
   await audit(admin.id, "admin.template.update_layout", templateId, {});
+  invalidateAllPublicConfig();
   return data;
-}
-
-/** Thumbnail builder admin (preview PNG) — mirror owner uploadTemplateThumbnail. */
-export async function uploadGlobalTemplateThumbnail(
-  templateId: string,
-  file: {
-    name?: string | null;
-    type?: string | null;
-    size?: number | null;
-    arrayBuffer(): Promise<ArrayBuffer>;
-  }
-) {
-  await requireAdmin();
-  const body = Buffer.from(await file.arrayBuffer());
-  const check = validateFrameFile(file, body);
-  if (!check.ok) throw new ApiError("VALIDATION_ERROR", check.error, { thumbnail: [check.error] });
-  const ext = LOGO_ALLOWED_TYPES[(file.type ?? "").toLowerCase()];
-  const key = `global/templates/${Date.now()}-thumb-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  const supabase = createServerClient();
-  // Thumbnail lama → dibersihkan setelah update sukses (anti orphan).
-  const { data: existing } = await supabase
-    .from("templates")
-    .select("thumbnail_url")
-    .eq("id", templateId)
-    .is("business_id", null)
-    .maybeSingle();
-  const oldThumb = (existing as { thumbnail_url?: string | null } | null)?.thumbnail_url ?? null;
-
-  const { error } = await getStorage().upload("business-assets", key, body, {
-    contentType: file.type ?? "application/octet-stream",
-    upsert: false,
-  });
-  if (error) throw new ApiError("INTERNAL", "Gagal mengunggah thumbnail");
-  const { error: updErr } = await supabase
-    .from("templates")
-    .update({ thumbnail_url: key })
-    .eq("id", templateId)
-    .is("business_id", null);
-  if (updErr) throw new ApiError("INTERNAL", "Gagal menyimpan thumbnail");
-
-  if (oldThumb && oldThumb !== key) {
-    await removeResolved("business-assets", [oldThumb]);
-  }
-}
-
-/** Replace frame global (chroma-key PNG) — mirror owner replaceTemplateFrame. */
-export async function replaceGlobalTemplateFrame(
-  templateId: string,
-  file: {
-    name?: string | null;
-    type?: string | null;
-    size?: number | null;
-    arrayBuffer(): Promise<ArrayBuffer>;
-  }
-) {
-  await requireAdmin();
-  const body = Buffer.from(await file.arrayBuffer());
-  const check = validateFrameFile(file, body);
-  if (!check.ok || file.type !== "image/png") {
-    throw new ApiError("VALIDATION_ERROR", "Hasil chroma key harus PNG", {
-      chroma_file: ["Hasil chroma key harus PNG"],
-    });
-  }
-  const supabase = createServerClient();
-  const { data: row } = await supabase
-    .from("templates")
-    .select("file_url, thumbnail_url")
-    .eq("id", templateId)
-    .is("business_id", null)
-    .maybeSingle();
-  if (!row) throw new ApiError("NOT_FOUND", "Template global tidak ditemukan");
-  const key = `global/templates/${Date.now()}-chroma-${Math.random().toString(36).slice(2, 8)}.png`;
-  const { error } = await getStorage().upload("business-assets", key, body, {
-    contentType: "image/png",
-    upsert: false,
-  });
-  if (error) throw new ApiError("INTERNAL", "Gagal mengunggah hasil chroma key");
-  const { error: updErr } = await supabase
-    .from("templates")
-    .update({ file_url: key, thumbnail_url: key })
-    .eq("id", templateId)
-    .is("business_id", null);
-  if (updErr) {
-    await removeResolved("business-assets", [key]);
-    throw new ApiError("INTERNAL", "Gagal menyimpan frame chroma key");
-  }
-  // Bersihkan frame lama + thumbnail lama (keduanya kini unreferenced).
-  const oldRows = row as { file_url: string; thumbnail_url?: string | null };
-  const stale = staleTemplateKeys({
-    oldFile: oldRows.file_url,
-    oldThumbnail: oldRows.thumbnail_url,
-    newKey: key,
-  });
-  const storageStale = storageKeysOnly(stale);
-  if (storageStale.length > 0) await removeResolved("business-assets", storageStale);
 }
 
 /**
@@ -487,6 +400,7 @@ export async function deleteGlobalTemplate(templateId: string) {
   await audit(admin.id, "admin.template.delete", templateId, {
     name: (row as { name: string }).name,
   });
+  invalidateAllPublicConfig();
   return { id: templateId };
 }
 
