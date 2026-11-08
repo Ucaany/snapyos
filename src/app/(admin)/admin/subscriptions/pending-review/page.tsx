@@ -50,6 +50,8 @@ const REASON_LABEL: Record<string, string> = {
     "Invoice berisi add-on tapi subscription_id null - mustahil di-attach otomatis",
   INTENT_EXCEPTION:
     "Exception saat aktivasi (klaim sudah dilepas, retry aman) - cek meta.message di audit log",
+  LATE_PAYMENT_VOID_INVOICE:
+    "Pembayaran masuk untuk invoice yang sudah dibatalkan (void) - perlu review/refund manual",
 };
 
 function reasonHelp(reason: string): string {

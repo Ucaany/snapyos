@@ -34,7 +34,7 @@ import { PERIOD_DAYS } from "../src/lib/subscription-math.ts";
 type AnyRow = Record<string, unknown>;
 
 type Op = {
-  kind: "select" | "update" | "upsert";
+  kind: "select" | "update" | "insert" | "upsert";
   filters: [string, unknown][];
   ins: [string, unknown[]][];
   orCond: string | null;
@@ -125,19 +125,33 @@ class FakeDb {
   }
 
   private execFailures(op: Op) {
-    if (op.kind === "upsert") {
+    if (op.kind === "select") {
+      const invoiceId = op.filters.find(([c]) => c === "invoice_id")?.[1];
+      const reason = op.filters.find(([c]) => c === "reason")?.[1];
+      const status = op.filters.find(([c]) => c === "status")?.[1];
+      const found = this.failures.find(
+        (f) =>
+          (invoiceId === undefined || f.invoice_id === invoiceId) &&
+          (reason === undefined || f.reason === reason) &&
+          (status === undefined || f.status === status)
+      );
+      return { data: found ? { id: found.id } : null, error: null };
+    }
+    if (op.kind === "insert") {
       const row = op.row as AnyRow;
       const dup = this.failures.find(
         (f) => f.invoice_id === row.invoice_id && f.reason === row.reason && f.status === "pending"
       );
-      if (dup) return { data: null, error: null };
+      if (dup) return { data: null, error: { message: "duplicate", code: "23505" } as IntentDbError };
       this.failures.push({ ...row, id: `failure-${this.failures.length + 1}` });
       return { data: null, error: null };
     }
     if (op.kind === "update") {
+      const id = op.filters.find(([c]) => c === "id")?.[1];
       const invoiceId = op.filters.find(([c]) => c === "invoice_id")?.[1];
       for (const f of this.failures) {
-        if (invoiceId !== undefined && f.invoice_id !== invoiceId) continue;
+        if (id !== undefined && f.id !== id) continue;
+        if (id === undefined && invoiceId !== undefined && f.invoice_id !== invoiceId) continue;
         Object.assign(f, op.patch ?? {});
       }
       return { data: null, error: null };
@@ -170,6 +184,11 @@ class FakeQuery {
   update(patch: AnyRow) {
     this.op.kind = "update";
     this.op.patch = patch;
+    return this;
+  }
+  insert(row: AnyRow) {
+    this.op.kind = "insert";
+    this.op.row = row;
     return this;
   }
   upsert(row: AnyRow, opts?: AnyRow) {

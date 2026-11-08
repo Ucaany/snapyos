@@ -6,7 +6,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { nextPeriod, PERIOD_DAYS, effectiveSessions } from "../src/lib/subscription-math.ts";
+import {
+  nextPeriod,
+  PERIOD_DAYS,
+  effectiveSessions,
+  sessionAddOnQuantities,
+  addOnQuantityAllowed,
+} from "../src/lib/subscription-math.ts";
 
 // Inline intentToItems (mirrors server/subscription.ts) — avoids server-only import.
 type Item = {
@@ -157,4 +163,26 @@ test("isActualPlanChange: different plan → true", () => {
 
 test("effectiveSessions: pending-cancel add-ons still counted", () => {
   assert.equal(effectiveSessions(1, [2, 1, 1]), 5);
+});
+
+// --- Fix 6: seat quota hanya add-on extra_session (P0 #8) ---
+
+test("sessionAddOnQuantities: hanya extra_session yang dihitung (bukan POS/storage)", () => {
+  const qty = sessionAddOnQuantities([
+    { code: "extra_session", quantity: 2 },
+    { code: "pos", quantity: 1 },
+    { code: "extra_storage", quantity: 3 },
+  ]);
+  assert.deepEqual(qty, [2]);
+  assert.equal(effectiveSessions(1, qty), 3);
+});
+
+// --- Fix 7: add-on unit feature tidak boleh qty > 1 (P0 #11) ---
+
+test("addOnQuantityAllowed: feature hanya qty 1; session/storage bebas", () => {
+  assert.equal(addOnQuantityAllowed("feature", 2), false);
+  assert.equal(addOnQuantityAllowed("feature", 1), true);
+  assert.equal(addOnQuantityAllowed("session", 5), true);
+  assert.equal(addOnQuantityAllowed("storage", 10), true);
+  assert.equal(addOnQuantityAllowed(null, 3), true);
 });

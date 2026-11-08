@@ -4,7 +4,13 @@ import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
 import { can } from "@/lib/rbac";
 import { getMembership } from "@/lib/tenant";
-import { invoiceNumber, planChangeAllowed, effectiveSessions } from "@/lib/subscription-math";
+import {
+  invoiceNumber,
+  planChangeAllowed,
+  effectiveSessions,
+  sessionAddOnQuantities,
+  addOnQuantityAllowed,
+} from "@/lib/subscription-math";
 import { countOnline } from "@/lib/device-online";
 import { insertAudit } from "@/server/audit";
 import { getEffectiveSubscriptionRow } from "@/server/require-subscription";
@@ -37,6 +43,7 @@ export type PlanCard = {
 import {
   applyInvoiceIntentWithDeps,
   intentToItems,
+  recordLatePaymentVoidInvoice,
   INTENT_FAILURE_REASON,
   buildReleasedIntent,
   buildFailureSnapshot,
@@ -47,7 +54,13 @@ import {
   type IntentDb,
 } from "@/lib/subscription-intent-apply";
 
-export { intentToItems, INTENT_FAILURE_REASON, buildReleasedIntent, buildFailureSnapshot };
+export {
+  intentToItems,
+  recordLatePaymentVoidInvoice,
+  INTENT_FAILURE_REASON,
+  buildReleasedIntent,
+  buildFailureSnapshot,
+};
 export type { InvoiceIntentItem, IntentShape, IntentFailureReason, ApplyIntentDeps, IntentDb };
 
 /** Nama tampilan invoice (tabel invoice, receipt, halaman bayar). */
@@ -136,7 +149,9 @@ async function insertInvoice(input: {
       .from("invoices")
       .select("id", { count: "exact", head: true })
       .eq("business_id", input.businessId);
-    const candidate = invoiceNumber((count ?? 0) + 1, now);
+    // Retry kolisi: naikkan kandidat seq (count + attempt + 1) agar tidak
+    // menghitung ulang nomor yang sama berulang.
+    const candidate = invoiceNumber((count ?? 0) + attempt + 1, now);
     const { data: inv, error: invError } = await supabase
       .from("invoices")
       .insert({
@@ -182,7 +197,10 @@ export async function getSubscriptionOverview(
           "id, status, cancel_at_period_end, trial_ends_at, current_period_end, plans ( id, code, name, price_monthly, max_outlets, max_photoboxes, max_concurrent_sessions, max_staff, features )"
         )
         .eq("business_id", businessId)
-        .in("status", ["trial", "active", "past_due", "expired"])
+        // Overview juga menampilkan subscription `cancelled` agar owner bisa
+        // melihat plan/status/invoice-nya (docs/02 §2.4). Ini HANYA lookup
+        // tampilan — eligibility checkout/recovery tidak berubah.
+        .in("status", ["trial", "active", "past_due", "expired", "cancelled"])
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle(),
@@ -309,11 +327,11 @@ export async function getSubscriptionOverview(
   });
 
   const plan = toPlan(subRow?.plans ?? null);
+  // Hanya add-on `extra_session` yang menambah seat (docs/02 §2.9); POS/storage
+  // TIDAK boleh menggelembungkan kuota sesi tampilan. activeAddOns tetap utuh
+  // untuk display.
   const maxConcurrentSessions = plan
-    ? effectiveSessions(
-        plan.maxConcurrentSessions,
-        activeAddOns.map((a) => a.quantity)
-      )
+    ? effectiveSessions(plan.maxConcurrentSessions, sessionAddOnQuantities(activeAddOns))
     : 0;
 
   return {
@@ -422,6 +440,10 @@ export async function createSubscriptionInvoice(
   // — invoice recovery SELALU memuat plan_change (periode baru dari now(),
   // bukan extend periode lama). past_due dalam grace tetap jalur normal.
   const isRecovery = currentRow.status === "expired";
+  // Renewal manual plan-sama: status past_due (dalam/perlu grace) atau expired
+  // boleh checkout ulang plan yang sama — invoice SELALU memuat plan_change
+  // dengan periode baru (recovery semantics, docs/02 §2.4/§2.6 manual renewal).
+  const isRenewal = currentRow.status === "past_due" || currentRow.status === "expired";
   const currentPlan =
     currentRow.plans && !Array.isArray(currentRow.plans) ? currentRow.plans : null;
 
@@ -435,11 +457,15 @@ export async function createSubscriptionInvoice(
     max_outlets: number;
     max_photoboxes: number;
     max_staff: number;
+    max_packages: number;
+    max_templates: number;
   };
   if (input.planCode) {
     const { data: plan } = await supabase
       .from("plans")
-      .select("id, code, name, price_monthly, is_active, max_outlets, max_photoboxes, max_staff")
+      .select(
+        "id, code, name, price_monthly, is_active, max_outlets, max_photoboxes, max_staff, max_packages, max_templates"
+      )
       .eq("code", input.planCode)
       .maybeSingle();
     planRow = (plan ?? null) as typeof planRow;
@@ -448,6 +474,7 @@ export async function createSubscriptionInvoice(
     // adalah jalur self-service yang sah (docs/02 §2.4).
     if (
       !isRecovery &&
+      !isRenewal &&
       !planChangeAllowed(currentPlan?.code ?? null, planRow.code, planRow.is_active)
     ) {
       // Add-on-only checkout boleh "memilih" plan yang sama.
@@ -456,7 +483,7 @@ export async function createSubscriptionInvoice(
       }
     }
 
-    const [outletsRes, boxesRes, staffRes] = await Promise.all([
+    const [outletsRes, boxesRes, staffRes, packagesRes, templatesRes] = await Promise.all([
       supabase
         .from("outlets")
         .select("id", { count: "exact", head: true })
@@ -465,8 +492,19 @@ export async function createSubscriptionInvoice(
         .from("photoboxes")
         .select("id", { count: "exact", head: true })
         .eq("business_id", businessId),
+      // Staff limit TIDAK menghitung owner (owner bukan seat staf) — kalau
+      // owner ikut dihitung, downgrade plan 0-staf (starter) mustahil.
       supabase
         .from("business_members")
+        .select("id", { count: "exact", head: true })
+        .eq("business_id", businessId)
+        .neq("role", "owner"),
+      supabase
+        .from("packages")
+        .select("id", { count: "exact", head: true })
+        .eq("business_id", businessId),
+      supabase
+        .from("templates")
         .select("id", { count: "exact", head: true })
         .eq("business_id", businessId),
     ]);
@@ -474,12 +512,18 @@ export async function createSubscriptionInvoice(
       outlets: outletsRes.count ?? 0,
       photoboxes: boxesRes.count ?? 0,
       staff: staffRes.count ?? 0,
+      packages: packagesRes.count ?? 0,
+      templates: templatesRes.count ?? 0,
     };
     const over = [
       usage.outlets > planRow.max_outlets && `outlet ${usage.outlets}/${planRow.max_outlets}`,
       usage.photoboxes > planRow.max_photoboxes &&
         `photobox ${usage.photoboxes}/${planRow.max_photoboxes}`,
       usage.staff > planRow.max_staff && `staff ${usage.staff}/${planRow.max_staff}`,
+      usage.packages > planRow.max_packages &&
+        `package ${usage.packages}/${planRow.max_packages}`,
+      usage.templates > planRow.max_templates &&
+        `template ${usage.templates}/${planRow.max_templates}`,
     ].filter((v): v is string => Boolean(v));
     if (over.length > 0) {
       throw new ApiError(
@@ -498,6 +542,8 @@ export async function createSubscriptionInvoice(
       max_outlets: 0,
       max_photoboxes: 0,
       max_staff: 0,
+      max_packages: 0,
+      max_templates: 0,
     };
   }
 
@@ -528,6 +574,16 @@ export async function createSubscriptionInvoice(
       storage_mb: number | null;
     }[]) {
       if (!raw.is_active) continue;
+      const qty = qtyById.get(raw.id) ?? 0;
+      // Add-on ber-unit `feature` (mis. POS) = entitlement biner; qty > 1
+      // menagih berkali-kali tanpa menambah hak → tolak (anti overcharge).
+      // Unit session/storage tetap boleh > 1.
+      if (!addOnQuantityAllowed(raw.unit, qty)) {
+        throw new ApiError(
+          "VALIDATION_ERROR",
+          `Add-on ${raw.code} tidak dapat dibeli lebih dari 1`
+        );
+      }
       addOnItems.push({
         addOnId: raw.id,
         code: raw.code,
@@ -537,7 +593,7 @@ export async function createSubscriptionInvoice(
           storageMb: raw.storage_mb,
         }),
         price: raw.price_monthly,
-        qty: qtyById.get(raw.id) ?? 0,
+        qty,
       });
     }
     if (addOnItems.length !== qtyById.size) {
@@ -550,7 +606,9 @@ export async function createSubscriptionInvoice(
   // Exception: recovery (expired) SELALU menyertakan plan_change — renew
   // plan lama/baru = aktivasi ulang, periode baru dari now() (docs/02 §2.4).
   const isActualPlanChange =
-    isRecovery || (Boolean(input.planCode) && input.planCode !== currentPlan?.code);
+    isRecovery ||
+    isRenewal ||
+    (Boolean(input.planCode) && input.planCode !== currentPlan?.code);
   const items: InvoiceIntentItem[] = [
     ...(isActualPlanChange
       ? [
@@ -561,6 +619,9 @@ export async function createSubscriptionInvoice(
             name: planRow.name,
             amount: planRow.price_monthly,
             qty: 1,
+            // Renewal/pemulihan (past_due/expired) → periode BARU dari now()
+            // saat apply, bukan extend periode lama (docs/02 §2.4).
+            ...(isRenewal ? { new_period: true } : {}),
           },
         ]
       : []),
@@ -579,24 +640,21 @@ export async function createSubscriptionInvoice(
   const gross = items.reduce((sum, i) => sum + i.amount * i.qty, 0);
 
   // Void SEMUA invoice pending dulu — hanya 1 tagihan aktif; kalau ternyata
-  // sudah dibayar (race), webhook tetap recovery void → paid. Sebelum void,
-  // baca kode promo invoice yang akan di-void lalu lepas kuotanya (anti leak
-  // kuota: owner buat invoice ber-promo → ditinggalkan → promo tetap terpakai).
+  // sudah dibayar (race), webhook tetap recovery void → paid. Pakai
+  // `update({status:"void"}).select("intent")` (satu roundtrip) agar promo pada
+  // invoice yang di-void saat race (baru dibuat request lain) ikut terlepas —
+  // bukan pre-read lalu update (celah kuota bocor).
   // ponytail: void+release+insert belum atomik (supabase-js tanpa transaction);
   // race checkout konkuren masih bisa menciptakan 2 invoice pending. Upgrade
   // ke RPC bila jadi masalah — partial unique index 1-pending-per-business
   // terlalu ketat karena template purchase juga bikin invoice pending.
-  const { data: pendingInvoices } = await supabase
-    .from("invoices")
-    .select("intent")
-    .eq("business_id", businessId)
-    .eq("status", "pending");
-  await supabase
+  const { data: voidedInvoices } = await supabase
     .from("invoices")
     .update({ status: "void" })
     .eq("business_id", businessId)
-    .eq("status", "pending");
-  for (const inv of (pendingInvoices ?? []) as { intent: unknown }[]) {
+    .eq("status", "pending")
+    .select("intent");
+  for (const inv of (voidedInvoices ?? []) as { intent: unknown }[]) {
     const promoCode = (inv.intent as { promo?: { code?: string } } | null)?.promo?.code;
     if (promoCode) {
       try {
@@ -607,18 +665,33 @@ export async function createSubscriptionInvoice(
     }
   }
 
+  // Konsumsi promo SEBELUM invoice terbit; bila insert gagal, lepas kembali
+  // kuota agar tidak bocor (consume → insert harus selalu berpasangan).
   let promo: { code: string; discount: number } | null = null;
   if (input.promoCode?.trim()) {
     promo = await consumeSubscriptionPromo(input.promoCode, gross);
   }
   const amount = Math.max(0, gross - (promo?.discount ?? 0));
 
-  const { invoiceId, number } = await insertInvoice({
-    businessId,
-    subscriptionId: currentRow.id,
-    amount,
-    intent: { items, ...(promo ? { promo } : {}) },
-  });
+  let invoiceId: string;
+  let number: string;
+  try {
+    ({ invoiceId, number } = await insertInvoice({
+      businessId,
+      subscriptionId: currentRow.id,
+      amount,
+      intent: { items, ...(promo ? { promo } : {}) },
+    }));
+  } catch (error) {
+    if (promo) {
+      try {
+        await releaseSubscriptionPromo(promo.code);
+      } catch {
+        // best-effort: gagal lepas kuota tidak menutupi error insert asli.
+      }
+    }
+    throw error;
+  }
 
   await insertAudit({
     actorId: userId,

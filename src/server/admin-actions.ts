@@ -26,6 +26,7 @@ import {
   createAddOn,
   createGlobalTemplate,
   createPlan,
+  listPlans,
   createBroadcast,
   createPromo,
   createTemplateCategory,
@@ -148,6 +149,12 @@ export async function createPlanAction(_prev: FormState, formData: FormData): Pr
       max_photoboxes: num(formData, "max_photoboxes"),
       max_concurrent_sessions: num(formData, "max_concurrent_sessions"),
       max_staff: num(formData, "max_staff"),
+      max_packages: str(formData, "max_packages")
+        ? Math.max(0, num(formData, "max_packages"))
+        : undefined,
+      max_templates: str(formData, "max_templates")
+        ? Math.max(0, num(formData, "max_templates"))
+        : undefined,
       storage_limit_mb: num(formData, "storage_limit_mb"),
       platform_fee_percent: numDecimal(formData, "platform_fee_percent"),
       platform_fee_flat: num(formData, "platform_fee_flat"),
@@ -164,16 +171,22 @@ export async function createPlanAction(_prev: FormState, formData: FormData): Pr
 export async function updatePlanAction(_prev: FormState, formData: FormData): Promise<FormState> {
   try {
     // Feature flags: hidden "false" + checkbox "true" per `feature_<key>`
-    // (unchecked tetap terkirim → clear-to-empty jalan) — H2/M4 audit (docs/02 §2.6, docs/10 §10.2).
-    const features: Record<string, boolean> = {};
+    // (unchecked tetap terkirim). MERGE ke features plan lama supaya key di luar
+    // form (plan lain / key masa depan) tidak ikut terhapus — M4 audit (docs/02 §2.6, docs/10 §10.2).
+    const submitted: Record<string, boolean> = {};
     for (const key of formData.keys()) {
       if (key.startsWith("feature_")) {
-        features[key.slice(8)] = formData.getAll(key).includes("true");
+        submitted[key.slice(8)] = formData.getAll(key).includes("true");
       }
     }
-    const flagKeys = Object.keys(features);
-    const allOff = flagKeys.length > 0 && flagKeys.every((k) => !features[k]);
-    await updatePlan(str(formData, "planId"), {
+    const planId = str(formData, "planId");
+    const flagKeys = Object.keys(submitted);
+    let features: Record<string, boolean> | undefined;
+    if (flagKeys.length > 0) {
+      const existing = (await listPlans()).find((p) => p.id === planId)?.features ?? {};
+      features = { ...existing, ...submitted };
+    }
+    await updatePlan(planId, {
       name: str(formData, "name") || undefined,
       price_monthly: str(formData, "price_monthly") ? num(formData, "price_monthly") : undefined,
       price_yearly: str(formData, "price_yearly") ? num(formData, "price_yearly") : null,
@@ -189,6 +202,12 @@ export async function updatePlanAction(_prev: FormState, formData: FormData): Pr
         ? num(formData, "max_concurrent_sessions")
         : undefined,
       max_staff: str(formData, "max_staff") ? num(formData, "max_staff") : undefined,
+      max_packages: str(formData, "max_packages")
+        ? Math.max(0, num(formData, "max_packages"))
+        : undefined,
+      max_templates: str(formData, "max_templates")
+        ? Math.max(0, num(formData, "max_templates"))
+        : undefined,
       storage_limit_mb: str(formData, "storage_limit_mb")
         ? num(formData, "storage_limit_mb")
         : undefined,
@@ -200,7 +219,7 @@ export async function updatePlanAction(_prev: FormState, formData: FormData): Pr
         : undefined,
       // Checkbox + hidden "false" (unchecked tetap terkirim) — H2 audit.
       is_active: formData.getAll("is_active").includes("true"),
-      ...(flagKeys.length > 0 ? { features: allOff ? {} : features } : {}),
+      ...(features ? { features } : {}),
     });
     refresh("/admin/plans", "/admin");
     return {};
