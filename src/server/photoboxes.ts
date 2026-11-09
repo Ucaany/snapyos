@@ -20,10 +20,54 @@ import {
   photoboxCreateSchema,
   photoboxUpdateSchema,
   brandingSchema,
+  brandingContrastIssues,
   type PhotoboxCreateInput,
   type PhotoboxUpdateInput,
   type BrandingInput,
 } from "@/lib/validators";
+import {
+  brandingColorsChanged,
+  foreignBrandAssetKeys,
+  mergeBranding,
+  resolveBoothOverride,
+} from "@/lib/branding-merge";
+import { removeResolvedOutcome } from "@/server/storage";
+import { accountStorageSub } from "@/server/storage-usage";
+
+const BRAND_ASSETS_BUCKET = "business-assets" as const;
+
+/** Semua key aset branding yang dirujuk sebuah override booth. */
+function boothBrandingKeys(branding: unknown): string[] {
+  if (!branding || typeof branding !== "object") return [];
+  const row = branding as {
+    logo_key?: unknown;
+    kiosk?: { video_key?: unknown; pages?: Record<string, { video_key?: unknown }> };
+  };
+  const keys: string[] = [];
+  if (typeof row.logo_key === "string" && row.logo_key) keys.push(row.logo_key);
+  if (typeof row.kiosk?.video_key === "string" && row.kiosk.video_key) {
+    keys.push(row.kiosk.video_key);
+  }
+  for (const page of Object.values(row.kiosk?.pages ?? {})) {
+    if (typeof page?.video_key === "string" && page.video_key) keys.push(page.video_key);
+  }
+  return keys;
+}
+
+/**
+ * Hapus blob logo/video booth yang sudah tidak dirujuk (reset ke inherit atau
+ * booth dihapus) + kurangi hitungan storage. Fail-open: kegagalan cleanup tidak
+ * membatalkan operasi utama.
+ */
+async function purgeBrandBlobs(businessId: string, keys: string[]) {
+  if (keys.length === 0) return;
+  try {
+    const { ok } = await removeResolvedOutcome(BRAND_ASSETS_BUCKET, keys);
+    if (ok.length > 0) await accountStorageSub(businessId, ok);
+  } catch {
+    /* cleanup gagal — blob basi dipungut job lifecycle */
+  }
+}
 
 export type PhotoboxRow = {
   id: string;
@@ -39,7 +83,6 @@ export type PhotoboxRow = {
   has_exit_pin: boolean;
   /** True bila hash bukan argon2 (sha256 legacy) — owner harus set ulang PIN. */
   has_legacy_exit_pin: boolean;
-  chroma_key_enabled: boolean;
   camera_settings: CameraSettings;
   print_settings: PrintSettings;
   session_settings: SessionSettings;
@@ -127,9 +170,6 @@ export async function listPhotoboxes(userId: string, businessId: string): Promis
     device_status: row.device_status,
     has_exit_pin: Boolean(row.exit_pin_hash),
     has_legacy_exit_pin: Boolean(row.exit_pin_hash) && !row.exit_pin_hash!.startsWith("$argon2"),
-    chroma_key_enabled: Boolean(
-      (row as { camera_settings?: CameraSettings | null }).camera_settings?.chroma_key_enabled
-    ),
     camera_settings: (row.camera_settings as CameraSettings | null) ?? {},
     print_settings: (row.print_settings as PrintSettings | null) ?? {},
     session_settings: (row.session_settings as SessionSettings | null) ?? {},
@@ -148,7 +188,6 @@ export async function createPhotobox(
   await requireMembership(userId, businessId, "photobox:write");
 
   const {
-    chroma_key_enabled: chromaKeyEnabled,
     camera_settings: cameraSettings,
     exit_pin: exitPin,
     ...photoboxColumns
@@ -174,10 +213,7 @@ export async function createPhotobox(
   }
 
   const exitPinHash = exitPin !== undefined ? await hashDevicePin(exitPin) : null;
-  const mergedCameraSettings = {
-    ...(cameraSettings ?? {}),
-    chroma_key_enabled: chromaKeyEnabled ?? cameraSettings?.chroma_key_enabled ?? false,
-  };
+  const mergedCameraSettings = { ...(cameraSettings ?? {}) };
 
   // Kuota + insert atomik (0069) — cegah race count-then-insert.
   const { data, error } = await supabase.rpc("create_photobox_with_quota", {
@@ -223,7 +259,6 @@ export async function updatePhotobox(
   // exit_pin bukan kolom — dipetakan ke exit_pin_hash (argon2id, docs/05 §5.0).
   const {
     exit_pin: exitPin,
-    chroma_key_enabled: chromaKeyEnabled,
     camera_settings: cameraSettings,
     print_settings: printSettings,
     session_settings: sessionSettings,
@@ -252,7 +287,6 @@ export async function updatePhotobox(
   }
 
   if (
-    chromaKeyEnabled !== undefined ||
     cameraSettings !== undefined ||
     printSettings !== undefined ||
     sessionSettings !== undefined
@@ -267,11 +301,10 @@ export async function updatePhotobox(
     // Merge per-key, bukan replace. Owner boleh menulis `copies`/`layout`
     // (milik cloud); laporan device tidak — penyaringan itu ada di
     // `mergeDeviceSettings` yang dipakai PATCH devices/settings.
-    if (chromaKeyEnabled !== undefined || cameraSettings !== undefined) {
+    if (cameraSettings !== undefined) {
       (columns as Record<string, unknown>).camera_settings = {
         ...((current.camera_settings as CameraSettings | null) ?? {}),
-        ...(cameraSettings ?? {}),
-        ...(chromaKeyEnabled !== undefined ? { chroma_key_enabled: chromaKeyEnabled } : {}),
+        ...cameraSettings,
       };
     }
     if (printSettings !== undefined) {
@@ -319,6 +352,14 @@ export async function deletePhotobox(userId: string, businessId: string, photobo
   await requireMembership(userId, businessId, "photobox:write");
 
   const supabase = createServerClient();
+  // Baca override dulu: setelah baris dihapus, key aset tidak bisa diturunkan.
+  const { data: existing } = await supabase
+    .from("photoboxes")
+    .select("branding")
+    .eq("id", photoboxId)
+    .eq("business_id", businessId)
+    .maybeSingle();
+
   const { data, error } = await supabase
     .from("photoboxes")
     .delete()
@@ -329,23 +370,37 @@ export async function deletePhotobox(userId: string, businessId: string, photobo
   if (error) throw new ApiError("INTERNAL", "Gagal menghapus photobox");
   if (!data) throw new ApiError("NOT_FOUND", "Photobox tidak ditemukan");
   invalidatePublicConfig(businessId);
+  await purgeBrandBlobs(businessId, boothBrandingKeys(existing?.branding));
 }
 
 // --- PER-BOOTH BRANDING OVERRIDE (0045) ---
 
 /**
- * Simpan branding override per-booth. Deep-merge dengan override lama agar
- * update parsial tidak menghapus field lain; input `null`/`{}` = reset ke
- * inherit (set kolom branding = null).
+ * Simpan branding override per-booth.
+ *
+ * `mode = "merge"` (default, kompatibel) menempelkan input di atas override
+ * lama; `mode = "replace"` (dipakai Design Builder) memakai objek apa adanya —
+ * field yang tidak dikirim berarti inherit global. `null`/`{}` = reset
+ * (kolom branding = null).
+ *
+ * Kontras divalidasi pada branding EFEKTIF (global + override), bukan hanya
+ * nilai override: override yang menurunkan kontras terhadap global tetap ditolak.
  */
 export async function updatePhotoboxBranding(
   userId: string,
   businessId: string,
   photoboxId: string,
-  input: BrandingInput | null
+  input: BrandingInput | null,
+  mode: "merge" | "replace" = "merge"
 ): Promise<BrandingConfig | null> {
   await requireMembership(userId, businessId, "photobox:write");
   const parsed = input ? brandingSchema.parse(input) : null;
+  if (parsed && foreignBrandAssetKeys(businessId, parsed).length > 0) {
+    throw new ApiError("VALIDATION_ERROR", "Aset branding tidak valid.", {
+      logo: ["Aset harus diunggah lewat halaman ini"],
+      kiosk: ["Aset harus diunggah lewat halaman ini"],
+    });
+  }
 
   const supabase = createServerClient();
   const { data: current, error: readErr } = await supabase
@@ -357,31 +412,45 @@ export async function updatePhotoboxBranding(
   if (readErr) throw new ApiError("INTERNAL", "Gagal memuat branding booth");
   if (!current) throw new ApiError("NOT_FOUND", "Photobox tidak ditemukan");
 
-  // Reset ke inherit → kolom null. Sebaliknya deep-merge ke override lama
-  // (termasuk per-layar, agar update parsial tidak menghapus field halaman sama).
-  const hasOverride = parsed && Object.keys(parsed).length > 0;
   const existing = current.branding ? brandingSchema.safeParse(current.branding) : null;
   const existingBranding = existing?.success ? existing.data : null;
-  const existingPages = (existingBranding?.kiosk?.pages ?? {}) as Record<
-    string,
-    Record<string, unknown>
-  >;
-  const parsedPages = (parsed?.kiosk?.pages ?? {}) as Record<string, Record<string, unknown>>;
-  const mergedPages: Record<string, Record<string, unknown>> = { ...existingPages };
-  for (const key of Object.keys(parsedPages)) {
-    mergedPages[key] = { ...(existingPages[key] ?? {}), ...(parsedPages[key] ?? {}) };
+  const merged = resolveBoothOverride(existingBranding, parsed, mode);
+
+  if (merged) {
+    const { data: settings } = await supabase
+      .from("business_settings")
+      .select("branding")
+      .eq("business_id", businessId)
+      .maybeSingle();
+    const globalBranding = brandingSchema.catch({}).parse(settings?.branding ?? {});
+    const effective = mergeBranding(globalBranding, merged);
+    // Hanya validasi bila warna berubah: unggah logo/video tidak boleh ditolak
+    // oleh kontras lama yang sudah tersimpan.
+    const previous = mergeBranding(globalBranding, existingBranding);
+    const issues = brandingColorsChanged(previous, effective)
+      ? brandingContrastIssues(
+          effective as {
+            kiosk?: {
+              bg_color?: string;
+              text_color?: string;
+              pages?: Record<string, { bg_color?: string; text_color?: string } | undefined>;
+            };
+          }
+        )
+      : [];
+    if (issues.length > 0) {
+      const details: Record<string, string[]> = {};
+      for (const issue of issues) {
+        (details[issue.path.join(".")] ??= []).push(issue.message);
+        (details[issue.path[0] ?? "kiosk"] ??= []).push(issue.message);
+      }
+      throw new ApiError(
+        "VALIDATION_ERROR",
+        "Kontras warna belum memenuhi standar WCAG AA.",
+        details
+      );
+    }
   }
-  const merged = hasOverride
-    ? brandingSchema.parse({
-        ...(existingBranding ?? {}),
-        ...parsed,
-        kiosk: {
-          ...(existingBranding?.kiosk ?? {}),
-          ...(parsed?.kiosk ?? {}),
-          pages: mergedPages,
-        },
-      })
-    : null;
 
   const { data, error } = await supabase
     .from("photoboxes")
@@ -393,5 +462,13 @@ export async function updatePhotoboxBranding(
   if (error) throw new ApiError("INTERNAL", "Gagal menyimpan branding booth");
   if (!data) throw new ApiError("NOT_FOUND", "Photobox tidak ditemukan");
   invalidatePublicConfig(businessId);
+  // Override yang di-reset/field yang dihapus tidak lagi merujuk blob lamanya —
+  // bersihkan setelah tulis sukses, bukan sebelum (data lama masih dipakai
+  // kiosk kalau penulisan gagal).
+  const nextKeys = boothBrandingKeys(merged);
+  await purgeBrandBlobs(
+    businessId,
+    boothBrandingKeys(existingBranding).filter((key) => !nextKeys.includes(key))
+  );
   return (data.branding as BrandingConfig | null) ?? null;
 }

@@ -106,11 +106,6 @@ export function StaffBoothsBoard({
                     Belum ada perangkat terdeteksi
                   </span>
                 )}
-                {booth.chroma_key_enabled ? (
-                  <span className="border-2 border-ink bg-accent px-1.5 py-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.06em]">
-                    CHROMA KEY
-                  </span>
-                ) : null}
               </div>
               {!booth.has_exit_pin ? (
                 <p className="mt-2 border-2 border-destructive bg-destructive/10 px-2 py-1.5 font-mono text-[11px] font-bold uppercase leading-snug tracking-[0.06em]">
@@ -264,67 +259,83 @@ export function StaffTemplatesBoard({ templates }: { templates: TemplateRow[] })
 
   return (
     <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" aria-label="Daftar template">
-      {templates.map((template) => (
-        <li
-          key={template.id}
-          className={cn("flex flex-col", STAFF_CARD_SURFACE)}
-        >
-          <div
-            className={cn(
-              "relative flex aspect-[4/3] items-center justify-center overflow-hidden border-b-2 border-ink",
-              template.preview_url
-                ? "bg-muted"
-                : "bg-[repeating-linear-gradient(45deg,#FFFDF5_0_10px,#F4F4F0_10px_20px)]"
-            )}
+      {templates.map((template) => {
+        const previewSrc = template.thumbnail_preview_url ?? template.preview_url;
+        return (
+          <li
+            key={template.id}
+            className={cn("flex flex-col", STAFF_CARD_SURFACE)}
           >
-            {template.preview_url ? (
-              <Image
-                src={template.preview_url}
-                alt={`Preview template ${template.name}`}
-                width={480}
-                height={360}
-                className="max-h-full max-w-full object-contain p-3"
-                loading="lazy"
-                unoptimized
-              />
-            ) : (
-              <span className="px-3 text-center font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
-                PREVIEW TIDAK TERSEDIA
+            <div
+              className={cn(
+                "relative flex aspect-[4/3] items-center justify-center overflow-hidden border-b-2 border-ink",
+                previewSrc
+                  ? "bg-muted"
+                  : "bg-[repeating-linear-gradient(45deg,#FFFDF5_0_10px,#F4F4F0_10px_20px)]"
+              )}
+            >
+              {previewSrc ? (
+                <Image
+                  src={previewSrc}
+                  alt={`Preview template ${template.name}`}
+                  width={480}
+                  height={360}
+                  className="max-h-full max-w-full object-contain p-3"
+                  loading="lazy"
+                  unoptimized
+                />
+              ) : (
+                <span className="px-3 text-center font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+                  PREVIEW TIDAK TERSEDIA
+                </span>
+              )}
+              <span className="absolute left-2 top-2 border-2 border-ink bg-bg px-1.5 py-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.08em]">
+                {template.category}
               </span>
-            )}
-            <span className="absolute left-2 top-2 border-2 border-ink bg-bg px-1.5 py-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.08em]">
-              {template.category}
-            </span>
-          </div>
-          <div className="flex flex-1 flex-col gap-3 p-4">
-            <div className="flex items-start justify-between gap-2">
-              <h3 className="min-w-0 font-display text-base uppercase leading-tight tracking-tight">
-                {template.name}
-              </h3>
-              <StatusBadge status={template.is_active ? "active" : "inactive"} label={template.is_active ? "Aktif" : "Nonaktif"} />
             </div>
-            <dl className="grid grid-cols-2 gap-2">
-              <StaffMeta label="SLOT">
-                {template.slot_count > 0 ? `${template.slot_count} foto` : "Frame penuh"}
-              </StaffMeta>
-              <StaffMeta label="FORMAT">
-                {template.file_url.endsWith(".png") ? "PNG" : "FRAME"}
-              </StaffMeta>
-            </dl>
-            {template.is_active && template.assigned === false ? (
-              <p className="border-2 border-destructive bg-destructive/10 px-2 py-1.5 font-mono text-[11px] font-bold uppercase leading-snug tracking-[0.06em]">
-                Belum di-assign ke paket, jadi tidak muncul di kiosk.
-              </p>
-            ) : (
-              <p className="border-2 border-ink/20 bg-muted px-2 py-1.5 font-mono text-[11px] uppercase leading-snug tracking-[0.06em] text-muted-foreground">
-                {template.assigned_packages && template.assigned_packages.length > 0
-                  ? `Dipakai: ${template.assigned_packages.map((p) => p.name).join(", ")}`
-                  : "Tampil di semua paket booth Anda."}
-              </p>
-            )}
-          </div>
-        </li>
-      ))}
+            <div className="flex flex-1 flex-col gap-3 p-4">
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="min-w-0 font-display text-base uppercase leading-tight tracking-tight">
+                  {template.name}
+                </h3>
+                <StatusBadge status={template.is_active ? "active" : "inactive"} label={template.is_active ? "Aktif" : "Nonaktif"} />
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {template.is_global ? (
+                  <span className="border-2 border-ink bg-ink px-1.5 py-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.08em] text-bg">
+                    TEMPLATE PLATFORM
+                  </span>
+                ) : null}
+                {template.is_global && !template.is_active ? (
+                  <span className="border-2 border-ink bg-muted px-1.5 py-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.08em]">
+                    NONAKTIF
+                  </span>
+                ) : null}
+              </div>
+              <dl className="grid grid-cols-2 gap-2">
+                <StaffMeta label="SLOT">
+                  {template.slot_count > 0 ? `${template.slot_count} foto` : "Frame penuh"}
+                </StaffMeta>
+                <StaffMeta label="FORMAT">
+                  {template.file_url.endsWith(".png") ? "PNG" : "FRAME"}
+                </StaffMeta>
+              </dl>
+              {template.is_active && template.assigned === false ? (
+                <p className="border-2 border-destructive bg-destructive/10 px-2 py-1.5 font-mono text-[11px] font-bold uppercase leading-snug tracking-[0.06em]">
+                  Belum di-assign ke paket mana pun — tampil sebagai fallback untuk paket yang belum
+                  punya assignment.
+                </p>
+              ) : (
+                <p className="border-2 border-ink/20 bg-muted px-2 py-1.5 font-mono text-[11px] uppercase leading-snug tracking-[0.06em] text-muted-foreground">
+                  {template.assigned_packages && template.assigned_packages.length > 0
+                    ? `Dipakai: ${template.assigned_packages.map((p) => p.name).join(", ")}`
+                    : "Tampil di semua paket booth Anda."}
+                </p>
+              )}
+            </div>
+          </li>
+        );
+      })}
     </ul>
   );
 }

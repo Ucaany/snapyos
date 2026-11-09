@@ -8,6 +8,7 @@ import {
   printCopies,
   printPageSize,
   printSheets,
+  resolvePrintFit,
   shouldAutoPrint,
 } from "@/lib/print-layout";
 import {
@@ -16,13 +17,17 @@ import {
   getAutoPrintStore,
   shouldClaimAutoPrint,
 } from "@/lib/print/auto-print";
-import { submitCupsPrint } from "@/lib/print/cups";
+import { retryCupsJob, submitCupsPrint } from "@/lib/print/cups";
 
 type Props = {
   photos: { blob: Blob }[];
   plan: PrintPlan;
   printSettings?: PrintSettingsInput | null;
   jobId?: string;
+  /** true = lembar berframe/composite (fit auto → contain). */
+  framed?: boolean;
+  /** Rasio kanvas untuk orientation=auto. */
+  canvasAspect?: number | null;
   reprint?: boolean;
   onDone: (success: boolean) => void;
 };
@@ -34,6 +39,8 @@ export function CupsPrintScreen({
   plan,
   printSettings,
   jobId,
+  framed = false,
+  canvasAspect = null,
   reprint = false,
   onDone,
 }: Props) {
@@ -44,9 +51,13 @@ export function CupsPrintScreen({
   const claimedRef = useRef(false);
   const manualRetryRef = useRef(false);
   const printingRef = useRef(false);
+  // Job antrean runtime — retry memakai endpoint, bukan kirim ulang buta.
+  const serverJobRef = useRef<string | null>(null);
   const auto = shouldAutoPrint(printSettings);
   const copies = printCopies(printSettings);
-  const page = printPageSize(printSettings);
+  const page = printPageSize(printSettings, canvasAspect);
+  const strip = plan.kind === "strip";
+  const fit = resolvePrintFit(printSettings?.fit, { framed, strip });
   const sheetIndexes = useMemo(() => printSheets(plan, photos.length, copies), [copies, photos.length, plan]);
   const totalSheets = sheetIndexes.length;
 
@@ -67,17 +78,43 @@ export function CupsPrintScreen({
     setError(null);
     try {
       if (sheetIndexes.length === 0) throw new Error("Tidak ada foto untuk dicetak.");
+
+      // Retry eksplisit setelah job tercatat: pakai endpoint antrean.
+      if (manualRetryRef.current && serverJobRef.current) {
+        manualRetryRef.current = false;
+        const retried = await retryCupsJob(printSettings, serverJobRef.current);
+        if (retried.status === "failed") {
+          printingRef.current = false;
+          setError(retried.error || "CUPS gagal mencetak ulang.");
+          setState("error");
+          return;
+        }
+        finish(true);
+        return;
+      }
+
       const sheets = sheetIndexes.map((indexes) =>
         indexes.map((index) => photos[index]?.blob).filter((blob): blob is Blob => Boolean(blob))
       );
-      await submitCupsPrint(printSettings, sheets);
+      const result = await submitCupsPrint(printSettings, sheets, {
+        sessionId: jobId,
+        framed,
+        canvasAspect,
+      });
+      serverJobRef.current = result.job_id;
+      if (result.status === "failed") {
+        printingRef.current = false;
+        setError(result.error || "CUPS gagal mencetak.");
+        setState("error");
+        return;
+      }
       finish(true);
     } catch (cause) {
       printingRef.current = false;
       setError(cause instanceof Error ? cause.message : "CUPS gagal mencetak.");
       setState("error");
     }
-  }, [finish, photos, printSettings, sheetIndexes]);
+  }, [canvasAspect, finish, framed, jobId, photos, printSettings, sheetIndexes]);
 
   useEffect(() => {
     if (plan.kind === "digital") {
@@ -91,7 +128,6 @@ export function CupsPrintScreen({
       setState("ready");
       if (!auto) return;
       const bypassClaim = reprint || manualRetryRef.current;
-      manualRetryRef.current = false;
       if (!claimedRef.current) {
         if (jobId && shouldClaimAutoPrint({ auto, reprint: bypassClaim, jobId })) {
           if (!claimAutoPrintAttempt(autoPrintStorageKey("kiosk", jobId), getAutoPrintStore())) {
@@ -154,7 +190,10 @@ export function CupsPrintScreen({
               Perintah cetak terkirim
             </p>
             <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-              {`${totalSheets} LEMBAR · ${page.widthMm} × ${page.heightMm} MM`}
+              {`${totalSheets} LEMBAR · ${page.widthMm} × ${page.heightMm} MM · ${fit.toUpperCase()}`}
+            </p>
+            <p className="max-w-[44ch] text-[10px] uppercase leading-relaxed tracking-[0.1em] text-muted-foreground">
+              Spooler menerima job. Kertas keluar dikonfirmasi petugas.
             </p>
           </>
         ) : state === "ready" ? (
@@ -164,7 +203,7 @@ export function CupsPrintScreen({
               Siap dicetak
             </p>
             <p className="max-w-[48ch] text-sm leading-relaxed text-muted-foreground">
-              {`${totalSheets} lembar · CUPS lokal · ${page.widthMm} × ${page.heightMm} mm · margin ${page.marginMm} mm`}
+              {`${totalSheets} lembar · CUPS lokal · ${page.widthMm} × ${page.heightMm} mm · ${fit} · margin ${page.marginMm} mm`}
             </p>
             <div className="flex flex-wrap justify-center gap-2.5">
               {!auto && <Button size="lg" onClick={() => void print()}><Printer className="size-5" aria-hidden /> Cetak</Button>}

@@ -1,57 +1,59 @@
-import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 
-import { TemplateBuilder } from "@/components/dashboard/TemplateBuilder";
+import { TemplateBuilderCanvas } from "@/components/dashboard/TemplateBuilderCanvas";
 import { PageHeader } from "@/components/ui/page-header";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { ApiError } from "@/lib/api-errors";
+import { slotCount, type TemplateLayout } from "@/lib/template-layout";
 import { getGlobalTemplate } from "@/server/admin";
-import { getAdminUser } from "@/server/admin";
-import { saveGlobalTemplateBuilderAction } from "@/server/admin-actions";
-import type { TemplateRow } from "@/server/templates";
+import { detectGlobalTemplateChromaSlotsAction, saveGlobalTemplateLayoutAction } from "@/server/admin-actions";
 
-export const metadata: Metadata = {
-  title: "Template Builder - SnapyOS",
-};
-
-/** /admin/templates/builder/:id - slot builder global (mirror owner, docs/10 §10.2). */
+/** /admin/templates/builder/[id] — builder slot template global (docs/10 §10.2). */
 export default async function AdminTemplateBuilderPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const admin = await getAdminUser();
-  if (!admin) redirect("/login");
-
   const { id } = await params;
-  let row;
+
+  let template: Awaited<ReturnType<typeof getGlobalTemplate>>;
   try {
-    row = await getGlobalTemplate(id);
-  } catch {
-    notFound();
+    template = await getGlobalTemplate(id);
+  } catch (error) {
+    if (error instanceof ApiError && error.code === "NOT_FOUND") notFound();
+    throw error;
   }
 
-  const template: TemplateRow = {
-    id: row.id,
-    name: row.name,
-    category: row.category,
-    file_url: row.file_url,
-    is_active: row.is_active,
-    created_at: "",
-    preview_url: row.preview_url,
-    layout: row.layout as TemplateRow["layout"],
-    slot_count: 0,
-  };
+  const initialLayout = slotCount(template.layout) > 0 ? (template.layout as TemplateLayout) : null;
 
   return (
     <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       <PageHeader
-        eyebrow={`TEMPLATE BUILDER - ADMIN`}
-        title="Slot Frame Global"
-        description="Tambah/atur slot foto pada frame global. Layout berlaku untuk seluruh tenant yang membeli template ini."
+        eyebrow="ADMIN - TEMPLATE BUILDER"
+        title={template.name}
+        description="Atur slot frame platform yang dipakai semua tenant. Tambah hingga 8 slot, geser lewat drag atau tombol panah, lalu simpan draft atau publish."
+        meta={`${template.category.toUpperCase()} · ${template.is_active ? "AKTIF" : "NONAKTIF"}`}
+        right={
+          <Link
+            href="/admin/templates"
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            <ArrowLeft aria-hidden="true" />
+            Kembali ke Templates
+          </Link>
+        }
       />
-      <TemplateBuilder
-        template={template}
-        saveAction={saveGlobalTemplateBuilderAction}
-        backHref="/admin/templates"
+
+      <TemplateBuilderCanvas
+        templateName={template.name}
+        initialLayout={initialLayout}
+        initialActive={template.is_active}
+        frameUrl={template.preview_url}
+        readOnly={false}
+        onSave={saveGlobalTemplateLayoutAction.bind(null, id)}
+        onDetectChroma={detectGlobalTemplateChromaSlotsAction.bind(null, id)}
       />
     </div>
   );

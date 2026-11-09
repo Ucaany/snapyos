@@ -16,7 +16,7 @@ PRD dan dokumentasi teknis ada di [`docs/`](./docs/README.md). Panduan developme
 - **Auth:** Auth.js v5 (NextAuth) — credential email/password, argon2id, JWT + DB revocation (`auth_sessions`)
 - **Payment:** Pakasir (pakasir.com — QRIS aggregator)
 - **Visual:** Full Neo-Brutalism (single aesthetic lock — satu dashboard brutalist)
-- **Aplikasi booth:** kiosk PWA (tablet/phone) atau EXE Windows (Tauri v2 + sidecar runtime lokal `runtime/`); setelan kamera/printer/timer/PIN tinggal di booth, bukan di cloud
+- **Kiosk:** PWA browser untuk tablet/phone; kamera, printer, dan sesi memakai bridge lokal opsional
 
 ## Struktur Kunci
 
@@ -27,8 +27,7 @@ src/
   components/ui/ # shadcn/ui — dikustomisasi Neo-Brutalism
   lib/           # auth, supabase, utils
   styles/        # tokens.css — single source of truth design token
-runtime/         # runtime booth lokal (node:sqlite + HTTP /v1/* di loopback, token bridge)
-src-tauri/       # aplikasi booth Windows (Tauri v2, jendela kiosk + sidecar runtime)
+runtime/         # bridge lokal (node:sqlite + HTTP /v1/* di loopback, token bridge)
 db/schema.sql    # DDL lengkap + index + seed (docs/07)
 db/migrations/   # migrasi inkremental untuk DB yang sudah jalan
 ```
@@ -62,7 +61,7 @@ node scripts/backfill-storage-usage.mjs
 
 Status migrasi cloud **diterapkan dan diverifikasi 2026-10-27**. Jalankan `node scripts/probe-migration-status.mjs` (exit 0 = cocok); skrip itu memakai probe PostgREST plus katalog Postgres via `supabase db query --linked` untuk index, aksi `ON DELETE`, dan signature fungsi. Hasil akhir: **13 applied, 0 not applied, 0 unverifiable, 0 error**.
 
-- **Sudah diterapkan (terukur):** `0061`, `0062`, `0063`, `0068`, `0069`, `0070`, **`0072`**, **`0073`**, **`0074`**, **`0075`**, **`0076`**, **`0077`**, **`0078`**, **`0079`**, **`0080`**, **`0081`**. `0069` menghadirkan RPC kuota atomik (`create_outlet_with_quota`, `create_photobox_with_quota`, `add_business_member_with_quota`) yang dipanggil `src/server/outlets.ts`, `photoboxes.ts`, dan `staff.ts`.
+- **Sudah diterapkan (terukur):** `0061`, `0062`, `0063`, `0068`, `0069`, `0070`, **`0072`**, **`0073`**, **`0074`**, **`0075`**, **`0076`**, **`0077`**, **`0078`**, **`0079`**, **`0080`**. `0069` menghadirkan RPC kuota atomik (`create_outlet_with_quota`, `create_photobox_with_quota`, `add_business_member_with_quota`) yang dipanggil `src/server/outlets.ts`, `photoboxes.ts`, dan `staff.ts`.
 - **`0072`/`0075`/`0076` diterapkan 2026-10-27** lewat `db/migrations/APPLY_0072_0075_0076_combined.sql` (idempotent, tiga blok transaksi terpisah). Verifikasi: label add-on menjadi `Tambah Storage 1.024 MB`; FK `photoboxes_default_template_id_fkey` ada dengan `on delete set null`; RPC `pos_decrement_stock_batch` ada, `service_role`-only, `search_path` ter-pin, dan diuji fungsional (decrement normal, shortfall tidak mengubah stok, stok `null` selalu `ok`, qty 0 diabaikan, isolasi tenant menolak bisnis lain).
 - **Belum diterapkan (sengaja):** `0071_rpc_search_path_hardening.sql`. Ini keputusan pemilik, lihat `docs/status.md`. Catatan: `0073`, `0074`, dan `0076` sudah memakai `set search_path = public, pg_temp` di definisinya, jadi RPC tersebut sudah ter-pin tanpa `0071`.
 - **`0075`/`0078`/`0079` diverifikasi lewat katalog Postgres** (PostgREST tidak mengekspos index maupun aksi FK): 3 index `0075` + 3 index `0078` ada; keempat FK `customers` di `sessions`/`transactions`/`pos_orders`/`voucher_usages` memakai `confdeltype = 'r'` (RESTRICT) sesuai `0079`.
@@ -109,8 +108,8 @@ node scripts/probe-migration-status.mjs    # PASS 13/13 applied, exit 0
 > 2026-10-27** (dibuktikan dengan `git stash` pada perubahan yang sama):
 >
 > - `kiosk-print-serial.spec.mjs` — test menunggu heading "Test printer" di
->   `/dashboard/photoboxes/[id]/camera`, rute yang **dihapus sengaja** di Phase 8
->   (commit `51edd43`, "setelan mesin pindah ke aplikasi booth"). Test-nya
+>   `/dashboard/photoboxes/[id]/camera`, rute yang **dihapus sengaja** di Phase 8.
+>   Test-nya
 >   kedaluwarsa, bukan regresi.
 > - `kiosk-full-frame-flow.spec.mjs` — timeout menunggu heading "Pilih frame".
 >   Gagal juga tanpa perubahan ini.

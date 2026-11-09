@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { fillSlots, hasRepeatedSlots, resolveCaptureCount } from "../src/lib/template-fit.ts";
+import { fillSlots, resolveCaptureCount } from "../src/lib/template-fit.ts";
 
 test("resolveCaptureCount: slot frame mengalahkan jumlah foto package", () => {
   assert.equal(resolveCaptureCount(3, 6), 6);
@@ -15,18 +15,15 @@ test("resolveCaptureCount: slot frame mengalahkan jumlah foto package", () => {
 
 test("slot sama dengan foto: satu-satu, tanpa pengulangan", () => {
   assert.deepEqual(fillSlots(3, 3), [0, 1, 2]);
-  assert.equal(hasRepeatedSlots(3, 3), false);
 });
 
 test("slot lebih banyak dari foto: foto diulang bergiliran", () => {
   assert.deepEqual(fillSlots(6, 3), [0, 1, 2, 0, 1, 2]);
   assert.deepEqual(fillSlots(7, 3), [0, 1, 2, 0, 1, 2, 0]);
-  assert.equal(hasRepeatedSlots(6, 3), true);
 });
 
 test("slot lebih sedikit dari foto: foto pertama dipakai", () => {
   assert.deepEqual(fillSlots(2, 5), [0, 1]);
-  assert.equal(hasRepeatedSlots(2, 5), false);
 });
 
 test("matriks 1..8 slot x 1..8 foto: panjang benar dan indeks selalu valid", () => {

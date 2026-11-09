@@ -237,9 +237,8 @@ export default async function AdminSubscriptionsPage({
                   <AdminActionForm
                     action={attachAddOnAction}
                     hidden={{ subscription_id: s.id }}
-                    submitLabel="Tambah add-on"
+                    submitLabel="Set jumlah"
                     icon="plus"
-                    iconOnly
                     className="flex flex-wrap items-end gap-2"
                   >
                     <BrutalistSelect
@@ -259,7 +258,7 @@ export default async function AdminSubscriptionsPage({
                         htmlFor={`qty-${s.id}`}
                         className="font-mono text-[11px] uppercase tracking-[0.12em]"
                       >
-                        Qty
+                        Jumlah
                       </label>
                       <Input
                         id={`qty-${s.id}`}
@@ -270,6 +269,10 @@ export default async function AdminSubscriptionsPage({
                         className="w-20 text-xs"
                       />
                     </div>
+                    <p className="w-full max-w-[42ch] font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
+                      Angka ini mengatur jumlah unit add-on (bukan menambah). Isi angka lebih
+                      rendah dari jumlah aktif untuk mengurangi.
+                    </p>
                   </AdminActionForm>
                 ) : null}
               </div>

@@ -21,6 +21,9 @@ export async function launchKiosk({
   // E2E_HEADED=1 → jendela Chrome terlihat, supaya operator bisa melihat
   // langkah yang dijalankan (dan memilih printer di dialog asli).
   const headless = process.env.E2E_HEADED === "1" ? false : !headed;
+  // E2E_FAKE_VIDEO=/path/file.y4m → kamera palsu memutar frame deterministik
+  // (dipakai uji manual kamera hijau). Tanpa env, perilaku lama (fake device polos).
+  const fakeVideo = process.env.E2E_FAKE_VIDEO;
   const context = await chromium.launchPersistentContext(profileDir, {
     headless,
     slowMo,
@@ -29,6 +32,7 @@ export async function launchKiosk({
     args: [
       "--use-fake-ui-for-media-stream",
       "--use-fake-device-for-media-stream",
+      ...(fakeVideo ? [`--use-file-for-fake-video-capture=${fakeVideo}`] : []),
       "--autoplay-policy=no-user-gesture-required",
       "--no-first-run",
       "--no-default-browser-check",

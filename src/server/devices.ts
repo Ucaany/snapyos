@@ -25,6 +25,7 @@ import {
   mergeDeviceSettings,
   type DeviceActivateInput,
   type DeviceExitInput,
+  type DeviceHeartbeatInput,
   type DeviceReportInput,
   type DeviceSettingsPatchInput,
   type DeviceVerifyInput,
@@ -37,6 +38,10 @@ type DeviceRow = {
   name: string | null;
   status: string;
   last_seen_at: string | null;
+  last_heartbeat_at: string | null;
+  diagnostics: Record<string, unknown> | null;
+  camera_config: Record<string, unknown> | null;
+  printer_config: Record<string, unknown> | null;
   created_at: string;
 };
 
@@ -190,7 +195,7 @@ export async function listDevices(userId: string, businessId: string): Promise<D
 
   const { data, error } = await supabase
     .from("devices")
-    .select("id, photobox_id, name, status, last_seen_at, created_at, photoboxes ( name )")
+    .select("id, photobox_id, name, status, last_seen_at, last_heartbeat_at, diagnostics, camera_config, printer_config, created_at, photoboxes ( name )")
     .eq("business_id", businessId)
     .eq("status", "active")
     .order("created_at", { ascending: false });
@@ -205,6 +210,10 @@ export async function listDevices(userId: string, businessId: string): Promise<D
       name: row.name,
       status: row.status,
       last_seen_at: row.last_seen_at,
+      last_heartbeat_at: row.last_heartbeat_at,
+      diagnostics: row.diagnostics,
+      camera_config: row.camera_config,
+      printer_config: row.printer_config,
       created_at: row.created_at,
     };
   });
@@ -493,13 +502,6 @@ export async function updateDeviceSettings(input: DeviceSettingsPatchInput) {
   }
   // Versi booth ikut jalur tulis-balik setelan (Phase 12): runtime mengirimnya
   // setiap kali push, jadi dashboard owner tidak bergantung pada setup wizard.
-  if (input.app_version) {
-    patch.device_status = {
-      ...((photobox.device_status as Record<string, unknown> | null) ?? {}),
-      app_version: input.app_version,
-    };
-  }
-
   const { data, error } = await supabase
     .from("photoboxes")
     .update(patch)
@@ -532,6 +534,39 @@ export async function updateDeviceSettings(input: DeviceSettingsPatchInput) {
 }
 
 /** Laporan status device dari setup wizard (docs/05 §5.0.1). */
+export async function heartbeatDevice(input: DeviceHeartbeatInput) {
+  const { deviceId, photobox } = await resolveActiveDevice(input.device_token);
+  const supabase = createServerClient();
+  const { data: existing } = await supabase.from("devices").select("diagnostics, kiosk_locked").eq("id", deviceId).maybeSingle();
+  const current = (existing ?? {}) as { diagnostics?: Record<string, unknown>; kiosk_locked?: boolean };
+  const printerMirror = {
+    adapter: input.printer.adapter,
+    ok: input.printer.ok ?? false,
+    ...(input.printer.mode ? { mode: input.printer.mode } : {}),
+    ...(input.printer.job !== undefined ? { job: input.printer.job } : {}),
+    reported_at: new Date().toISOString(),
+  };
+  const runtime = {
+    runtime_version: input.runtime_version,
+    db_version: input.db_version,
+    camera: { adapter: input.camera.adapter, connected: input.camera.connected ?? false },
+    printer: printerMirror,
+    queue: input.queue,
+    lockdown: input.lockdown,
+    reported_at: new Date().toISOString(),
+  };
+  const { error } = await supabase.from("devices").update({ diagnostics: { ...(current.diagnostics ?? {}), runtime } }).eq("id", deviceId);
+  if (error) throw new ApiError("INTERNAL", "Gagal menyimpan heartbeat device");
+  // Mirror ke device_status.printer agar dashboard membaca status antrean
+  // cetak terbaru (mode + job), bukan hanya hasil setup wizard.
+  const deviceStatus = {
+    ...((photobox.device_status as Record<string, unknown>) ?? {}),
+    printer: { ...((photobox.device_status as { printer?: object } | null)?.printer ?? {}), ...printerMirror },
+  };
+  await supabase.from("photoboxes").update({ device_status: deviceStatus }).eq("id", photobox.id);
+  return { ok: true, kiosk_locked: Boolean(current.kiosk_locked) };
+}
+
 export async function reportDevice(input: DeviceReportInput) {
   const { photobox, deviceId } = await resolveActiveDevice(input.device_token);
   const supabase = createServerClient();
@@ -550,11 +585,6 @@ export async function reportDevice(input: DeviceReportInput) {
     deviceStatus.camera = { ...((deviceStatus.camera as object) ?? {}), ...input.camera };
   if (input.printer)
     deviceStatus.printer = { ...((deviceStatus.printer as object) ?? {}), ...input.printer };
-  // Versi aplikasi booth (Phase 12): dashboard owner memakainya untuk badge
-  // PERLU UPDATE. Field opsional — booth lama yang tidak mengirimnya tidak
-  // boleh menghapus nilai yang sudah tercatat.
-  if (input.app_version) deviceStatus.app_version = input.app_version;
-
   const { error } = await supabase
     .from("photoboxes")
     .update({ camera_settings: cameraSettings, device_status: deviceStatus })

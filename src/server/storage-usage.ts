@@ -209,8 +209,14 @@ export async function getStorageLimit(businessId: string): Promise<StorageLimit>
     plans: PlanRef | PlanRef[] | null;
   } | null;
 
+  // Fail-closed: kuota (plan + add-on) hanya dihitung bila subscription masih
+  // efektif secara WAKTU. past_due lewat grace / expired → 0.
+  const subscriptionEffective = Boolean(
+    row && isSubscriptionEffective(row.status, row.trial_ends_at, row.current_period_end)
+  );
+
   let planMb = 0;
-  if (row && isSubscriptionEffective(row.status, row.trial_ends_at, row.current_period_end)) {
+  if (subscriptionEffective && row) {
     const plan = row.plans && !Array.isArray(row.plans) ? row.plans : null;
     // `storage` (fitur plan, docs/02 §2.7) hanya meng-gate kuota BASE plan.
     // Add-on `extra_storage` tetap dihitung di bawah — pembelian add-on tidak
@@ -221,7 +227,7 @@ export async function getStorageLimit(businessId: string): Promise<StorageLimit>
   }
 
   let addOnMb = 0;
-  if (row?.id) {
+  if (subscriptionEffective && row?.id) {
     const { data: addOns } = await supabase
       .from("subscription_add_ons")
       .select("quantity, add_ons!inner(storage_mb)")
@@ -357,14 +363,19 @@ export async function getStorageUsageBatch(
   for (const id of ids) {
     const usedBytes = usedByBusiness.get(id) ?? 0;
     const sub = latestSub.get(id);
+    // Fail-closed: plan DAN add-on hanya dihitung bila subscription efektif
+    // secara waktu; expired/past-grace → 0 untuk keduanya.
+    const subscriptionEffective = Boolean(
+      sub && isSubscriptionEffective(sub.status, sub.trial_ends_at, sub.current_period_end)
+    );
     let planMb = 0;
-    if (sub && isSubscriptionEffective(sub.status, sub.trial_ends_at, sub.current_period_end)) {
+    if (subscriptionEffective && sub) {
       const plan = sub.plans && !Array.isArray(sub.plans) ? sub.plans : null;
       if (isFeatureEnabled(plan?.features ?? null, "storage")) {
         if (plan && typeof plan.storage_limit_mb === "number") planMb = plan.storage_limit_mb;
       }
     }
-    const addOnMb = sub ? (addOnMbBySub.get(sub.id) ?? 0) : 0;
+    const addOnMb = subscriptionEffective && sub ? (addOnMbBySub.get(sub.id) ?? 0) : 0;
     const limitBytes = mbToBytes(planMb + addOnMb);
     const hasLimit = limitBytes > 0;
     out.set(id, {

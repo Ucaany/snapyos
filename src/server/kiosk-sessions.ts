@@ -37,6 +37,7 @@ import {
 import { getStorage, signedUrlMap, removeResolvedOutcome } from "@/server/storage";
 
 const GENERATED_BUCKET = "generated-photos" as const;
+const BRAND_ASSETS_BUCKET = "business-assets" as const;
 const DEFAULT_RETENTION_DAYS = 3;
 
 /** Jalankan task dengan konkurensi terbatas, urutan hasil dijaga. */
@@ -827,7 +828,10 @@ async function discardUploadedObjects(businessId: string, keys: string[]): Promi
   if (ok.length > 0) await accountStorageSub(businessId, ok);
 }
 
-async function buildResult(businessId: string, session: Pick<SessionRow, "id" | "result_gif_key">) {
+async function buildResult(
+  businessId: string,
+  session: Pick<SessionRow, "id" | "result_gif_key"> & { finalized_at?: string | null }
+) {
   const supabase = createServerClient();
   const { data: checkout } = await supabase
     .from("checkout_sessions")
@@ -854,12 +858,21 @@ async function buildResult(businessId: string, session: Pick<SessionRow, "id" | 
     order_index: p.order_index,
   }));
 
+  const { data: settings } = await supabase
+    .from("business_settings")
+    .select("retention_days")
+    .eq("business_id", businessId)
+    .maybeSingle();
+  const retentionDays = settings?.retention_days ?? DEFAULT_RETENTION_DAYS;
+  const finalizedAt = session.finalized_at ? Date.parse(session.finalized_at) : Date.now();
+
   return {
     session_id: session.id,
     status: "completed",
     result_token: checkout?.result_token ?? null,
     gif_url: gifUrl,
     photos: photoItems,
+    expires_at: new Date(finalizedAt + retentionDays * 24 * 60 * 60 * 1000).toISOString(),
   };
 }
 
@@ -909,6 +922,19 @@ async function loadResult(resultToken: string) {
     .eq("id", row.business_id)
     .maybeSingle();
 
+  // Logo bisnis untuk header /r/[token] — branding tinggal di business_settings
+  // (bukan `businesses`), selalu signed karena bucket private.
+  const { data: settingsRow } = await supabase
+    .from("business_settings")
+    .select("branding")
+    .eq("business_id", row.business_id)
+    .maybeSingle();
+  const brandingRow = (settingsRow?.branding ?? null) as { logo_key?: string | null } | null;
+  const logoKey = brandingRow?.logo_key ?? null;
+  const logoUrl = logoKey
+    ? ((await signedUrlMap(BRAND_ASSETS_BUCKET, [logoKey], SIGNED_URL_TTL)).get(logoKey) ?? null)
+    : null;
+
   const { data: photos } = await supabase
     .from("photos")
     .select("id, file_key, order_index")
@@ -934,11 +960,14 @@ async function loadResult(resultToken: string) {
   }));
 
   return {
-    business: { name: business?.name ?? null },
+    business: { name: business?.name ?? null, logo_url: logoUrl },
     status: session.status,
     gif_url: gifUrl,
     gif_download_url: gifDownloadUrl,
     photos: photoItems,
+    retention_days: retentionDays,
+    /** Link kedaluwarsa = finalized_at + retention_days. */
+    expires_at: new Date(finalizedAt + retentionDays * 24 * 60 * 60 * 1000).toISOString(),
   };
 }
 

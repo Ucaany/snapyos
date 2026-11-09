@@ -1,66 +1,81 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { Palette } from "lucide-react";
 
-import { KioskBrandingEditor } from "@/components/dashboard/KioskBrandingEditor";
+import { DesignBuilder } from "@/components/dashboard/DesignBuilder";
 import { PageHeader } from "@/components/ui/page-header";
+import { brandingSchema } from "@/lib/validators";
 import { can } from "@/lib/rbac";
 import { getActiveBusiness, requireUser } from "@/lib/tenant";
-import { getBranding } from "@/server/branding";
+import { getBranding, signBrandingAssets } from "@/server/branding";
 import { listPhotoboxes } from "@/server/photoboxes";
 
-export const metadata: Metadata = {
-  title: "Branding & Kiosk | SnapyOS",
-};
+export const metadata: Metadata = { title: "Design Builder | SnapyOS" };
 
-/** /dashboard/branding — single source of truth kustomisasi kiosk (Branding & Kiosk). */
-export default async function BrandingKioskPage() {
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export default async function DesignBuilderPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ booth?: string }>;
+}) {
   const user = await requireUser();
   if (!user) redirect("/login");
 
   const active = await getActiveBusiness(user.id);
   if (!active) redirect("/dashboard");
 
-  const canWrite = can(active.role, "business:update");
+  const businessId = active.business.id;
+  const [photoboxes, globalBranding] = await Promise.all([
+    listPhotoboxes(user.id, businessId),
+    getBranding(user.id, businessId),
+  ]);
 
-  let branding: Awaited<ReturnType<typeof getBranding>> | null = null;
-  try {
-    branding = await getBranding(user.id, active.business.id);
-  } catch {
-    branding = null;
+  const query = await searchParams;
+  const requested = query.booth && UUID.test(query.booth) ? query.booth : null;
+  const initialBoothId =
+    (requested && photoboxes.some((booth) => booth.id === requested) ? requested : null) ??
+    photoboxes[0]?.id ??
+    null;
+
+  const overrides = photoboxes.map((booth) => ({
+    id: booth.id,
+    name: booth.name,
+    slug: booth.slug,
+    override: booth.branding ? brandingSchema.catch({}).parse(booth.branding) : null,
+  }));
+
+  // Satu peta signed URL untuk semua key (global + seluruh override booth).
+  const maps = await Promise.all([
+    signBrandingAssets(globalBranding),
+    ...overrides.map((booth) => signBrandingAssets(booth.override)),
+  ]);
+  const signedUrls: Record<string, string> = {};
+  for (const map of maps) {
+    for (const [key, url] of map) signedUrls[key] = url;
   }
-
-  const photoboxes = await listPhotoboxes(user.id, active.business.id);
 
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
       <PageHeader
-        eyebrow="BRANDING: KUSTOMISASI KIOSK"
-        title="Branding & Kiosk"
-        description="Satu halaman untuk seluruh tampilan kiosk customer: warna, tipografi, teks tiap layar, tombol, dan video background attract screen. Konfigurasi global berlaku untuk semua booth; tiap booth bisa override sebagian/seluruh tampilannya sendiri."
-      />
-
-      <KioskBrandingEditor
-        businessName={active.business.name}
-        branding={
-          branding
-            ? {
-                welcome_title: branding.welcome_title,
-                welcome_tagline: branding.welcome_tagline,
-                welcome_button: branding.welcome_button,
-                primary_color: branding.primary_color,
-                secondary_color: branding.secondary_color,
-                logo_url: branding.logo_url,
-                kiosk: { ...branding.kiosk, video_url: branding.kiosk_video_url },
-              }
-            : null
+        eyebrow="DESIGN BUILDER · PHOTOBOX"
+        title="Design Builder"
+        icon={Palette}
+        description="Pilih booth, ubah merek, sambutan, dan tampilan layar kiosk, lalu lihat pratinjau langsung. Booth tanpa kustomisasi mewarisi branding global."
+        meta={
+          <>
+            {photoboxes.length} booth · {can(active.role, "business:update") ? "global" : "global read-only"}
+          </>
         }
-        photoboxes={photoboxes.map((p) => ({
-          id: p.id,
-          name: p.name,
-          slug: p.slug,
-          branding: p.branding,
-        }))}
-        canWrite={canWrite}
+      />
+      <DesignBuilder
+        businessName={active.business.name}
+        globalBranding={globalBranding}
+        booths={overrides}
+        initialBoothId={initialBoothId}
+        signedUrls={signedUrls}
+        canBooth={can(active.role, "photobox:write")}
+        canGlobal={can(active.role, "business:update")}
       />
     </div>
   );

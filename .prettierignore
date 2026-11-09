@@ -1,0 +1,6 @@
+
+# Keluaran alat
+.next/
+.audit-out/
+.audit-run/
+.e2e-tmp/

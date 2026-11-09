@@ -31,11 +31,3 @@ export function resolveCaptureCount(packagePhotoCount: number, templateSlotCount
   const photos = Number.isFinite(packagePhotoCount) ? Math.floor(packagePhotoCount) : 1;
   return Math.max(1, photos);
 }
-
-/**
- * Apakah komposisi memakai foto berulang? Dipakai UI untuk memberi tahu
- * customer/owner secara jujur bahwa sebagian foto muncul lebih dari sekali.
- */
-export function hasRepeatedSlots(slotCount: number, photoCount: number): boolean {
-  return slotCount > photoCount && photoCount > 0;
-}

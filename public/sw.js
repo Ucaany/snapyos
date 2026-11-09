@@ -16,9 +16,11 @@
  * cepat, tetap jalan offline) lalu memperbarui di latar, sehingga perubahan
  * aset terpakai pada muat berikutnya.
  */
-const CACHE = "snapyos-kiosk-v6";
+const CACHE = "snapyos-kiosk-v7";
 /** Cache navigasi dipisah dari cache aset: umur dan aturan pakainya beda. */
-const NAV_CACHE = "snapyos-kiosk-nav-v6";
+const NAV_CACHE = "snapyos-kiosk-nav-v7";
+/** Biner template (thumbnail/frame) — DITULIS KLIEN, SW hanya membaca. */
+const FRAME_CACHE = "snapyos-template-assets-v1";
 const KIOSK_PATH_PREFIX = "/p/";
 const CACHEABLE_DEST = new Set(["image", "font", "style", "script"]);
 
@@ -32,7 +34,9 @@ self.addEventListener("activate", (event) => {
       .keys()
       .then((keys) =>
         Promise.all(
-          keys.filter((k) => k !== CACHE && k !== NAV_CACHE).map((k) => caches.delete(k))
+          keys
+            .filter((k) => k !== CACHE && k !== NAV_CACHE && k !== FRAME_CACHE)
+            .map((k) => caches.delete(k))
         )
       )
       .then(() => self.clients.claim())
@@ -47,8 +51,8 @@ function isCacheableStatic(request, url) {
   if (request.mode === "navigate") return false;
   if (!CACHEABLE_DEST.has(request.destination)) return false;
   if (url.pathname.startsWith("/api/")) return false;
-  // Proxy frame: respons bisa berubah per `?w=` dan per signed URL; jangan
-  // disimpan di cache statis (thumbnail bisa basi setelah owner ganti frame).
+  // Proxy frame ditangani cabang cache-first sendiri di atas (FRAME_CACHE),
+  // bukan cache statis.
   if (url.pathname === "/api/v1/public/frame") return false;
   // URL bertanda tangan (foto/GIF R2/S3) — jangan cache, bisa kedaluwarsa.
   if (url.searchParams.has("X-Amz-Signature") || url.searchParams.has("signature")) return false;
@@ -123,6 +127,34 @@ self.addEventListener("fetch", (event) => {
 
   // API, Supabase, dan semua non-GET: biarkan jaringan murni.
   if (request.method !== "GET") return;
+
+  // Biner template: cache-first dari FRAME_CACHE (ditulis klien). Key HARUS
+  // identik dengan frameCacheUrl() di src/lib/template-cache.ts:
+  //   `${origin}/__frame/${encodeURIComponent(cache)}@${w}`
+  // `cache` = `${templateId}:${version}` divalidasi ketat; nilai palsu hanya
+  // menghasilkan miss, fetch tetap lewat `url` yang divalidasi server.
+  if (url.pathname === "/api/v1/public/frame") {
+    const cacheKey = url.searchParams.get("cache");
+    const valid =
+      typeof cacheKey === "string" &&
+      cacheKey.length <= 64 &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:\d{1,16}$/.test(cacheKey);
+    if (valid) {
+      const w = url.searchParams.get("w") ?? "full";
+      const key = `${self.location.origin}/__frame/${encodeURIComponent(cacheKey)}@${w}`;
+      event.respondWith(
+        caches
+          .open(FRAME_CACHE)
+          .then(async (cache) => {
+            const hit = await cache.match(key);
+            return hit ?? fetch(request);
+          })
+          .catch(() => fetch(request))
+      );
+      return;
+    }
+  }
+
   if (url.pathname.startsWith("/api/")) return;
   if (url.hostname.includes("supabase")) return;
 

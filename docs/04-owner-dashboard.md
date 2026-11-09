@@ -319,36 +319,39 @@ KLIK FOTO
 
 ---
 
-## 4.8 Photobox Builder (Branding)
+## 4.8 Photobox Builder (Design Builder)
 
-**Purpose:** Membangun pengalaman photobox milik brand sendiri.
+**Purpose:** Membangun pengalaman photobox milik brand sendiri, global maupun per booth.
+
+**Route:** `/dashboard/branding` (`Design Builder`). `/dashboard/devices` tetap untuk pairing/diagnostik perangkat.
+
+**Cakupan:**
+
+- **Booth ini** (default): pilih photobox dari selector; field kosong mewarisi global. Simpan membuat override di `photoboxes.branding`; **Reset ke global** menghapus override (kolom `branding = null`).
+- **Global**: default seluruh booth di `business_settings.branding`.
+- Override booth di-deep-merge dengan global oleh satu helper `src/lib/branding-merge.ts` (`kiosk` dan `kiosk.pages` per layar), dipakai server kiosk, preview, dan validasi kontras.
 
 **Konfigurasi:**
 
-- Branding: business name, logo, primary color, secondary color, background, typography.
+- Branding: logo (PNG/JPG/WebP), primary color, secondary color.
 - Welcome screen: judul, tagline, tombol start.
-- Kiosk (customer app, 5 layar — welcome, payment, foto, edit, result): teks per layar, warna latar/teks, skala font, radius tombol, padding, perataan konten full-element (kiri/tengah/kanan — global `kiosk.align`, timpa per layar), layout struktural (welcome split/center, posisi QR result), visibilitas logo/tagline, video background loop ≤5s.
-- Override per-layar (`branding.kiosk.pages`): timpa nilai global kiosk per layar (warna, perataan, font scale, radius, padding) — fallback ke nilai global bila kosong. Legacy `payment_align` tetap dihormati bila `align` belum diset.
+- Kiosk (layar welcome/guide/package/payment/template/capture/edit/result): teks per layar, warna latar/teks, skala font, radius tombol, padding, perataan konten, visibilitas logo/tagline/mirror/zoom, video background loop ≤5s.
+- Per layar (`branding.kiosk.pages`): warna, skala, radius, padding, perataan, video (global).
+- **Pratinjau in-page** memakai komponen kiosk asli (`WelcomeScreen`, `KioskScreenRenderer`) dengan selector layar + orientasi; bukan iframe.
 
-Contoh welcome:
+**UI/Components:** `DesignBuilder` (`src/components/dashboard/DesignBuilder.tsx`) dengan `Tabs` neo (`src/components/ui/neo/`), color picker, slider, upload, dan panel pratinjau sticky.
 
-```
-KLIK FOTO
-"Capture your moment."
-[ START ]
-```
+**Data:** `business_settings.branding` (global) + `photoboxes.branding` (override booth, `null` = inherit).
 
-**UI/Components:** `Form` + `Tabs` (branding, welcome), color picker, logo upload, live `Preview` panel.
+**Actions:** `saveBrandingAction`, `uploadBrandAssetAction`, `resetBoothBrandingAction` (`src/server/design-builder-actions.ts`). Guard: `business:update` (global) / `photobox:write` (booth) + `requireEffectiveSubscription(businessId, "write")`.
 
-**Data:** `business_settings` (jsonb) — brand colors, logo, welcome text.
+**Upload per booth:** key `${businessId}/photoboxes/${photoboxId}/branding/...`; logo/video lama dihapus setelah update sukses (fail-open).
 
-**API:** `GET/PATCH /api/v1/business/:businessId/settings/branding`
+**Validation:** warna valid hex; kontras WCAG AA 4.5:1 divalidasi pada branding **efektif** (global + override) di jalur tulis; logo/video divalidasi tipe + ukuran.
 
-**Validation:** warna valid hex; logo ukuran & tipe divalidasi (PNG/JPG/WebP — SVG dihapus dari allowlist, audit keamanan 2026-10-09, max size).
+**Security:** upload logo divalidasi (magic byte + size), disimpan di storage bucket private; tenant scope dijaga `.eq("business_id", …)`.
 
-**Security:** upload logo divalidasi (file type + size), disimpan di storage bucket private.
-
-**Acceptance:** branding muncul di customer-facing app (AC 6).
+**Acceptance:** branding efektif muncul di customer-facing app (AC 6); booth tanpa override identik dengan global.
 
 ---
 
@@ -383,47 +386,53 @@ PREMIUM Rp35.000  — 5 photos, 2 prints, digital copy, premium templates
 
 ## 4.10 Template Management
 
-**Purpose:** Mengelola template/frame milik brand sendiri.
+**Purpose:** Mengelola template/frame milik brand sendiri, plus memakai template platform (global) secara read-only.
 
 **Default categories:** Minimal, Cute, Retro, Y2K, Wedding, Birthday, Graduation, Event, Custom.
 
-**Owner dapat:** upload, create, edit, delete, kategorisasi, preview, active/inactive, assign ke package, **mendesain slot foto via Template Builder** (`15-template-builder.md`).
+**Owner dapat:** upload, create, edit, delete, kategorisasi, preview, active/inactive, assign ke package, **mendesain slot foto via Template Builder** (`15-template-builder.md`), dan membeli template premium (§15.9b).
 
-**UI/Components:** grid preview, `Dialog` upload/create, `Select` kategori, `Switch` active, `Tabs` assign package, `TemplateBuilder` + `SlotShape` + `SlotPropertiesPanel` + `TemplatePreview` (builder slot — `15-template-builder.md`).
+**UI/Components:** grid preview (menampilkan frame/thumbnail — **bukan** composite slot), `Dialog` upload/create dengan pilihan eksplisit **Draft (default) / Publish**, `Select` kategori, `Switch` active, `Tabs` assign package, `TemplateBuilderCanvas` (`src/components/dashboard/TemplateBuilderCanvas.tsx`) untuk builder owner.
 
-**Data:** `templates` (file di storage + metadata + `layout` slot), `package_templates`.
+**Data:** `templates` (file di storage + metadata + `layout` slot), `package_templates`, `business_template_purchases`.
 
-**API:**
+**API:** owner CRUD/upload/builder memakai **server actions** (`src/server/templates.ts`, `src/server/catalog-actions.ts`), bukan REST. REST owner dihapus Fase 5. Endpoint publik template tetap `GET /api/v1/public/:businessSlug/templates` (§8.7a `08-api-spec.md`).
 
-- `GET/POST/PATCH/DELETE /api/v1/business/:businessId/templates`
-- `POST /api/v1/business/:businessId/templates/upload` (multipart)
+**Validation:** tipe file gambar (PNG/JPG/WebP — SVG dihapus dari allowlist, audit keamanan 2026-10-09), max size, nama wajib, `layout` valid (`layoutSchema` §15.2 — id unik, z kontigu, preset cocok dimensi, bounds rotation-aware, radius ≤ min(w,h)/2, circle persegi, max 8 slot). Assign ke paket tidak dibatasi jumlah slot.
 
-**Validation:** tipe file gambar (PNG/JPG/WebP — SVG dihapus dari allowlist, audit keamanan 2026-10-09), max size, dimensi (opsional), nama wajib, `layout` valid (schema `15-template-builder.md` §15.2 — slot dalam batas canvas, max 8 slot). Assign ke paket tidak lagi dibatasi jumlah slot.
+**Builder (terimplementasi):**
 
-**Security:** upload divalidasi; preview pakai signed URL jika private.
+- Route `/dashboard/templates/builder/[id]`; admin `/admin/templates/builder/[id]` memakai komponen yang sama.
+- Kontrol: tambah/hapus slot (maks 8), drag pindah, resize handle, input numerik x/y/w/h + rotation, shape rect/rounded/circle/ellipse (plus `mask` hasil deteksi), fit cover/contain/fill, radius, z naik/turun (renumber 0..n-1), preset kanvas (4x6-portrait, 4x6-landscape, 2x6-strip, square, custom maks 3000), background hex.
+- Keyboard arrow nudge 1px / Shift 10px; semua mutasi juga tersedia lewat tombol/input.
+- Simpan eksplisit: "Simpan draft" (`is_active=false`) atau "Publish" (`is_active=true`); tidak pernah auto-publish.
+- **Thumbnail berasal dari frame WebP yang diunggah**, bukan digenerate dari preview builder.
+- Chroma ada di builder, bukan editor kiosk: tombol "Deteksi area hijau" mengubah area hijau frame menjadi slot `mask` dan menulis PNG baru tanpa hijau (file asli disimpan). Deteksi menambah slot, tidak menimpa slot manual, dan tidak publish otomatis.
+- Preview builder memakai `composeFrame` yang sama dengan kiosk (client-authoritative); server tidak punya engine composite.
 
-**Acceptance:** (AC 8) owner upload template; template bisa dipilih customer.
+**Read-only global:** baris milik business (`is_global=false`) bisa diedit. Template platform (`TEMPLATE PLATFORM`) tampil read-only tanpa edit/delete/simpan; global gratis aktif + yang sudah dibeli dapat di-assign; global yang dibeli membuka builder read-only ("Template platform — read-only").
+
+**Security:** upload divalidasi; preview pakai signed URL jika private. Template global tidak bisa ditulis dari sisi owner. Mutasi template meng-invalidate public config kiosk (tag per-business + global, TTL 30 detik).
+
+**Acceptance:** (AC 8) owner upload template; template bisa dipilih customer; builder slot berfungsi (§15.9).
 
 ### 4.10.1 Custom Template — Slot Builder (lihat `15-template-builder.md`)
 
 UMKM **bisa** membuat/mengkustomisasi template **lengkap dengan slot foto**:
 
-**MVP (bisa dilakukan sekarang):**
+**MVP (terimplementasi):**
 
 - Upload frame/overlay template sendiri (PNG transparan yang mereka desain di Canva/Figma/Photoshop).
-- **Template Builder** (`/dashboard/templates/builder/[id]`): tambahkan **slot foto** (kotak/rounded/circle/ellipse) via drag-and-drop di atas frame — atur posisi, ukuran, rotasi, fit. Hasil foto customer otomatis ter-composite pas ke slot (detail penuh: `15-template-builder.md`).
-- Kategorisasi, preview, aktif/nonaktif, assign ke package. Semua master template boleh di-assign ke paket mana pun.
+- **Template Builder** (`/dashboard/templates/builder/[id]`): tambah **slot foto** (rect/rounded/circle/ellipse) via drag atau input numerik di atas frame — atur posisi, ukuran, rotasi, fit, z. Hasil foto customer ter-composite pas ke slot (detail penuh: `15-template-builder.md`).
+- Simpan sebagai draft atau publish; kategorisasi, preview, aktif/nonaktif, assign ke package. Template assignable = milik sendiri atau global aktif yang gratis/sudah dibeli.
 - Template dipasangkan dengan **sticker & text tool** milik SnapyOS di editor customer.
 - Library template default per kategori (seed platform).
 
 **Phase 2 (ekstensi builder):**
 
 - Shape custom/path mask, layer frame z-configurable, reusable block/undo-redo, export/publish template.
-- Template marketplace TIDAK termasuk (per non-goals).
 
-> Jadi: MVP = "upload frame sendiri + definisikan slot foto + kelola + assign". Customer mendapat hasil foto yang pas ke frame buatan owner tanpa tools eksternal (selain desain PNG-nya).
-
----
+> Marketplace template premium **bukan** Phase 2 lagi: pembelian template global sudah terimplementasi (`15-template-builder.md` §15.9b). Template milik owner tetap dikelola seperti biasa.
 
 ## 4.11 Voucher Management
 
@@ -645,50 +654,3 @@ perkembangannya langsung dari dashboard.
 
 **Acceptance:** owner bisa submit masalah, melihat status (terbuka/butuh tindakan/selesai),
 dan membalas; admin platform menindaklanjuti via `/admin/support` (docs/10 §10.6).
-
-## 4.21 Aplikasi Booth (Unduh Installer)
-
-**Purpose:** Owner memasang aplikasi booth (EXE Windows) di komputer booth tanpa
-meminta file ke admin lewat chat.
-
-**Akses:** sidebar owner — grup **Operasional**, item **Aplikasi Booth**
-(`/dashboard/apps`, ikon `Download`). Guard `photobox:read`. Selalu tampil:
-isinya tautan installer, bukan fitur berbayar.
-
-**Alur:**
-
-1. Owner membuka **Aplikasi Booth** → melihat kartu rilis aktif terbaru: versi,
-   tanggal, ukuran (bila admin mengisinya), catatan rilis.
-2. Owner menekan **Buka tautan unduhan** → tab baru ke host eksternal
-   (`drive.google.com` dan sejenisnya). Host tujuan tertulis di kartu supaya
-   jelas tautan meninggalkan SNAPY OS.
-3. Bila admin mengisi SHA-256, hash tampil dalam blok `font-mono` dengan tombol
-   **Salin hash**; owner membandingkannya dengan `Get-FileHash` di booth.
-4. **Riwayat rilis** menampilkan semua rilis aktif, terbaru dulu.
-5. **Versi terpasang per booth** membaca `device_status.app_version`. Booth di
-   bawah versi terbaru diberi badge **Perlu update**; booth tanpa laporan
-   ditampilkan "Belum pernah dilaporkan".
-
-**Komponen:** `AppDownloadCard` (client, hanya untuk tombol salin), tabel versi
-booth (server).
-
-**Data:** `listOwnerReleases`, `getLatestRelease` (`src/server/app-releases.ts`,
-filter `is_active = true`), `listPhotoboxes`, `compareAppVersions` /
-`needsAppUpdate` (`src/lib/app-release.ts`).
-
-**States:** belum ada rilis aktif → kartu kosong dengan penjelasan; belum ada
-booth → tabel kosong; browser memblokir clipboard → pesan "salin manual".
-
-**Batas:**
-
-- Tautan wajib `https://` di sisi admin; server **tidak** melakukan HEAD/GET
-  (SSRF). Tautan mati atau izin Drive berubah hanya ketahuan saat diklik.
-- Ukuran dan SHA-256 diisi manual, tidak diverifikasi sistem.
-- **Tidak ada tombol "kirim update ke booth"**: belum ada kanal perintah
-  cloud → runtime. Pembaruan dipasang manual di komputer booth.
-- Atribut `download` tidak dipakai: browser mengabaikannya untuk URL lintas
-  origin, jadi unduhan terjadi di host asal.
-
-**Acceptance:** owner bisa menemukan installer versi terbaru, tahu host
-tujuannya, dan melihat booth mana yang tertinggal versi. Tidak ada file
-installer yang melewati storage SNAPY OS.

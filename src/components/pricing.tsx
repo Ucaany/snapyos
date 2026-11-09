@@ -5,7 +5,7 @@ import { motion, type Variants } from "motion/react";
 
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { FancyButton } from "@/components/ui/pricing-9-utils/fancy-button";
+import { fancyButtonVariants } from "@/components/ui/pricing-9-utils/fancy-button";
 import { SectionHeader } from "@/components/section-header";
 import { ArrowUpRightIcon, CheckIcon, PlusIcon } from "lucide-react";
 import type { PublicPlan, PublicAddOn } from "@/server/catalog";
@@ -34,6 +34,26 @@ const animVariant: Variants = {
 };
 
 const formatRupiah = (n: number) => `Rp ${n.toLocaleString("id-ID")}`;
+
+const FEATURE_LABELS: Record<string, string> = {
+  voucher: "Voucher",
+  finance: "Keuangan / settlement",
+  reports: "Laporan",
+  staff: "Manajemen staff",
+  direct_payment: "Payment gateway merchant langsung",
+  storage: "Penyimpanan",
+  cash_payment: "Bayar di kasir",
+  pwa_kiosk: "PWA kiosk",
+  custom_domain: "Domain kustom",
+  white_label: "White label",
+  event_mode: "Mode event",
+  booking: "Booking",
+  qr_delivery: "Kirim via QR",
+};
+
+function featureLabel(key: string): string {
+  return FEATURE_LABELS[key] ?? key.replace(/_/g, " ");
+}
 
 export function Pricing({ plans, addOns }: { plans: PublicPlan[]; addOns: PublicAddOn[] }) {
   const [selectedPlanCode, setSelectedPlanCode] = useState(plans[0]?.code ?? "");
@@ -217,12 +237,34 @@ export function Pricing({ plans, addOns }: { plans: PublicPlan[]; addOns: Public
               </p>
             </div>
 
-            <a href={subscribeHref}>
-              <FancyButton size="lg" className="w-full">
+            <a href={subscribeHref} className={fancyButtonVariants({ size: "lg", className: "w-full" })}>
+              <span className="flex items-center justify-center gap-2">
                 Lanjut konsultasi
-                <ArrowUpRightIcon />
-              </FancyButton>
+                <ArrowUpRightIcon className="size-4" aria-hidden />
+              </span>
             </a>
+
+            {(() => {
+              const enabled = Object.entries(selectedPlan?.features ?? {}).filter(
+                ([, on]) => on
+              );
+              if (enabled.length === 0) return null;
+              return (
+                <div className="flex flex-col gap-2">
+                  <p className="text-xs font-medium text-foreground">
+                    Fitur {selectedPlan?.name ?? "paket"}
+                  </p>
+                  <ul className="flex flex-col gap-1.5">
+                    {enabled.slice(0, 6).map(([key]) => (
+                      <li key={key} className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <CheckIcon className="size-3.5 text-foreground" aria-hidden />
+                        {featureLabel(key)}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })()}
 
             <div className="flex flex-col gap-3">
               <p className="text-xs font-medium text-foreground">Selalu termasuk</p>

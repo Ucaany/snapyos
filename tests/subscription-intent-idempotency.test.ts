@@ -30,6 +30,7 @@ type Op = {
   patch: AnyRow | null;
   row: AnyRow | null;
   upsertOpts: AnyRow | null;
+  selectCols: string[] | null;
 };
 
 class FakeDb {
@@ -89,7 +90,17 @@ class FakeDb {
     const sub = id ? this.subscriptions.get(String(id)) : null;
     const statusIn = op.ins.find(([c]) => c === "status");
     const ok = sub && (!statusIn || (statusIn[1] as string[]).includes(sub.status));
-    if (op.kind === "select") return { data: sub && ok ? { ...sub } : null, error: null };
+    if (op.kind === "select") {
+      if (!sub || !ok) return { data: null, error: null };
+      // PostgREST hanya mengembalikan kolom yang diminta — tiru itu agar bug
+      // "baca kolom yang tidak di-select" (mis. status) tidak lolos tes.
+      const full = sub as unknown as AnyRow;
+      if (!op.selectCols) return { data: { ...full }, error: null };
+      return {
+        data: Object.fromEntries(op.selectCols.map((c) => [c, full[c]])),
+        error: null,
+      };
+    }
     if (op.kind === "update") {
       if (!sub || !ok) return { data: null, error: null };
       Object.assign(sub, op.patch ?? {});
@@ -109,8 +120,16 @@ class FakeDb {
   }
 
   execFailures(op: Op) {
-    if (op.kind === "upsert") {
-      this.failures.push(op.row!);
+    if (op.kind === "select") {
+      const invoiceId = op.filters.find(([c]) => c === "invoice_id")?.[1];
+      const found = this.failures.find(
+        (f) => f.invoice_id === invoiceId && f.status === "pending"
+      );
+      return { data: found ? { id: found.id } : null, error: null };
+    }
+    if (op.kind === "insert") {
+      const row = op.row as AnyRow;
+      this.failures.push({ ...row, id: `failure-${this.failures.length + 1}` });
       return { data: null, error: null };
     }
     if (op.kind === "update") return { data: null, error: null };
@@ -153,6 +172,7 @@ class FakeQuery {
     patch: null,
     row: null,
     upsertOpts: null,
+    selectCols: null,
   };
   private db: FakeDb;
   private table: string;
@@ -160,7 +180,12 @@ class FakeQuery {
     this.db = db;
     this.table = table;
   }
-  select() {
+  select(...cols: string[]) {
+    const list = cols
+      .flatMap((c) => c.split(","))
+      .map((c) => c.trim())
+      .filter(Boolean);
+    this.op.selectCols = list.length > 0 ? list : null;
     return this;
   }
   update(patch: AnyRow) {
@@ -289,4 +314,81 @@ test("plan beda (isActualPlanChange): periode baru penuh dari now", async () => 
   const sub = db.subscriptions.get("sub-1")!;
   assert.equal(sub.plan_id, "plan-growth");
   assert.ok(new Date(sub.current_period_end!).getTime() > before);
+});
+
+// ---------------------------------------------------------------------------
+// P0 #7 — renewal past_due plan sama dengan new_period: periode BARU dari now()
+// ---------------------------------------------------------------------------
+
+test("plan sama + new_period (renewal past_due): periode baru dari now, bukan extend", async () => {
+  const db = new FakeDb();
+  const futureEnd = new Date(Date.now() + 5 * 86_400_000).toISOString();
+  db.invoices.set("inv-1", {
+    id: "inv-1",
+    number: "INV-RENEW-1",
+    business_id: "biz-1",
+    subscription_id: "sub-1",
+    amount: 249000,
+    status: "paid",
+    intent: {
+      items: [
+        {
+          type: "plan_change",
+          plan_id: "plan-growth",
+          code: "growth",
+          name: "GROWTH",
+          amount: 249000,
+          qty: 1,
+          new_period: true,
+        },
+      ],
+    },
+  });
+  db.subscriptions.set("sub-1", {
+    id: "sub-1",
+    plan_id: "plan-growth",
+    status: "past_due",
+    current_period_end: futureEnd,
+  });
+
+  const before = Date.now();
+  await applyInvoiceIntentWithDeps(makeDeps(db), "biz-1", "inv-1");
+
+  const sub = db.subscriptions.get("sub-1")!;
+  assert.equal(sub.status, "active");
+  const start = new Date(sub.current_period_start!).getTime();
+  assert.ok(start >= before && start <= Date.now() + 1000, "periode baru mulai dari now()");
+  assert.notEqual(sub.current_period_start, futureEnd, "bukan extend period_end lama");
+});
+
+// ---------------------------------------------------------------------------
+// Regresi missing-column: SELECT subscriptions wajib menyertakan `status`.
+// Bila `status` tidak di-select, `alreadyApplied` selalu false → retry
+// meng-extend periode dua kali.
+// ---------------------------------------------------------------------------
+
+test("retry setelah plan ter-apply: status ikut di-select sehingga periode tidak di-extend dua kali", async () => {
+  const db = new FakeDb();
+  seed(db, "plan-starter", new Date(Date.now() + 10 * 86_400_000).toISOString());
+
+  // Percobaan pertama: plan berubah → periode baru dari now.
+  await applyInvoiceIntentWithDeps(makeDeps(db), "biz-1", "inv-1");
+  const afterFirst = db.subscriptions.get("sub-1")!;
+  assert.equal(afterFirst.plan_id, "plan-growth");
+  const firstEnd = afterFirst.current_period_end;
+
+  // Simulasi partial failure: klaim `applied` dilepas (add-on gagal setelah
+  // plan sukses) → webhook retry. Plan TIDAK ada di applied_items.
+  db.invoices.get("inv-1")!.intent = {
+    ...db.invoices.get("inv-1")!.intent,
+    applied: false,
+    applied_items: [],
+  };
+  await applyInvoiceIntentWithDeps(makeDeps(db), "biz-1", "inv-1");
+  const afterRetry = db.subscriptions.get("sub-1")!;
+  assert.equal(
+    afterRetry.current_period_end,
+    firstEnd,
+    "retry tidak boleh meng-extend periode yang sudah di-apply"
+  );
 });

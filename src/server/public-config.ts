@@ -8,13 +8,15 @@ import { unstable_cache, updateTag } from "next/cache";
 import { createHash } from "node:crypto";
 import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
-import {
-  brandingSchema,
-  isBrandingStorageKey,
-  type BrandingInput,
-} from "@/lib/validators";
+import { brandingSchema, isBrandingStorageKey } from "@/lib/validators";
+import { mergeBranding } from "@/lib/branding-merge";
 import { slotCount, type TemplateLayout } from "@/lib/template-layout";
 import { selectVisibleTemplates } from "@/lib/template-visibility";
+import {
+  PUBLIC_CONFIG_GLOBAL_TAG,
+  publicConfigCacheTags,
+  templateCacheKey,
+} from "@/lib/template-cache";
 import type {
   BrandingConfig,
   KioskPageConfig,
@@ -27,13 +29,22 @@ import { signedUrlMap } from "@/server/storage";
 
 const BRAND_ASSETS_BUCKET = "business-assets" as const;
 
-/** Tag data-cache public config (dipakai mutasi branding untuk updateTag). */
-export const publicConfigCacheTag = (businessId: string) => `business:${businessId}:public-config`;
+/** Tag data-cache public config (dipakai mutasi branding untuk updateTag).
+ *  Diturunkan dari helper murni `publicConfigCacheTags` — hindari drift literal. */
+export const publicConfigCacheTag = (businessId: string) => publicConfigCacheTags(businessId)[0]!;
+
+/** Tag global: mutasi template platform-global mengubah kiosk SEMUA tenant. */
+export const publicConfigGlobalTag = PUBLIC_CONFIG_GLOBAL_TAG;
 
 /** Buang entri cache kiosk setelah mutasi yang mengubah isi public config
  *  (branding, photobox, package, template). Tanpa ini kiosk menunggu TTL 30s. */
 export function invalidatePublicConfig(businessId: string) {
   updateTag(publicConfigCacheTag(businessId));
+}
+
+/** Buang cache public config seluruh business (template global berubah). */
+export function invalidateAllPublicConfig() {
+  updateTag(publicConfigGlobalTag);
 }
 
 /** Cache 30 detik — poll kiosk 3s terlayani dari cache kecuali ada mutasi
@@ -94,7 +105,7 @@ export async function getPublicConfig(
   const config = await unstable_cache(
     () => buildPublicConfig(business, photoboxSlug),
     ["public-config", business.id, photoboxSlug],
-    { tags: [publicConfigCacheTag(business.id)], revalidate: PUBLIC_CONFIG_TTL_SECONDS }
+    { tags: publicConfigCacheTags(business.id), revalidate: PUBLIC_CONFIG_TTL_SECONDS }
   )();
   return { ...config, etag: etagOf(config) };
 }
@@ -142,17 +153,7 @@ async function buildPublicConfig(
   const booth = boothOverride?.success ? boothOverride.data : null;
 
   // Deep-merge override di atas global (field override menang; pages per-layar).
-  const gKiosk = globalBranding.kiosk ?? {};
-  const oKiosk = booth?.kiosk ?? {};
-  const merged: BrandingInput = {
-    ...globalBranding,
-    ...(booth ?? {}),
-    kiosk: {
-      ...gKiosk,
-      ...oKiosk,
-      pages: { ...(gKiosk.pages ?? {}), ...(oKiosk.pages ?? {}) },
-    },
-  };
+  const merged = mergeBranding(globalBranding, booth);
 
   // Signed URL untuk logo + video global + video per-layar (batch, anti N+1).
   const pageVideoKeys = Object.values(merged.kiosk?.pages ?? {})
@@ -324,9 +325,16 @@ export async function listPublicPackages(
  * mengosongkannya. Semua slot template valid untuk package; template legacy
  * tanpa slot memakai `package.photo_count` sebagai fallback capture.
  */
-function frameProxyUrl(url: string): string {
+/**
+ * `cache` = basis key aset stabil (`templateId:version`). Server hanya
+ * meneruskannya; SW memakai nilai itu untuk lookup Cache Storage (lihat
+ * `src/lib/template-cache.ts` + `public/sw.js`).
+ */
+function frameProxyUrl(url: string, cacheKey: string, width?: number): string {
   if (!/^https?:\/\//i.test(url)) return url;
-  return `/api/v1/public/frame?url=${encodeURIComponent(url)}`;
+  const params = new URLSearchParams({ url, cache: cacheKey });
+  if (width) params.set("w", String(width));
+  return `/api/v1/public/frame?${params.toString()}`;
 }
 
 export async function listPublicTemplates(
@@ -336,20 +344,27 @@ export async function listPublicTemplates(
   const supabase = createServerClient();
   const query = supabase
     .from("templates")
-    .select("id, name, category, file_url, thumbnail_url, layout, is_premium, price")
+    .select(
+      "id, business_id, name, category, file_url, thumbnail_url, layout, is_active, is_premium, price, updated_at"
+    )
     .eq("is_active", true)
-    .or(`business_id.eq.${businessId},business_id.is.null`);
+    .or(`business_id.eq.${businessId},business_id.is.null`)
+    .order("created_at")
+    .order("id");
 
   const { data: templates } = await query;
   const rows = (templates ?? []) as {
     id: string;
+    business_id: string | null;
     name: string;
     category: string;
     file_url: string;
     thumbnail_url: string | null;
     layout: unknown;
+    is_active: boolean;
     is_premium: boolean;
     price: number | null;
+    updated_at: string | null;
   }[];
 
   // Template global premium hanya tampil bila sudah dibeli business ini.
@@ -360,22 +375,43 @@ export async function listPublicTemplates(
   const ownedIds = new Set(((owned ?? []) as { template_id: string }[]).map((o) => o.template_id));
 
   const visible = rows.filter((t) => {
-    // Milik business sendiri → selalu tampil.
-    if (t.is_premium === false && t.price === null) {
-      // Template biasa (milik business atau global gratis) → tampil.
-      return true;
-    }
-    // Template global premium (is_premium=true) → wajib dibeli.
-    return ownedIds.has(t.id);
+    // (a) Milik business sendiri → selalu tampil.
+    if (t.business_id === businessId) return true;
+    // (b) & (c) hanya template global; business lain tidak pernah tampil.
+    if (t.business_id !== null) return false;
+    const free = !t.is_premium || t.price == null || t.price === 0;
+    // (b) global gratis wajib aktif; (c) global yang sudah dibeli tetap tampil.
+    return (t.is_active && free) || ownedIds.has(t.id);
   });
+
+  // Satu query assignment untuk semua template tampil — dipakai klien untuk
+  // memfilter per paket tanpa request per paket. Lewati query saat kosong:
+  // `.in('col', [])` tidak perlu dan hanya menambah round-trip.
+  const linkRows: { template_id: string; package_id: string }[] = [];
+  if (visible.length > 0) {
+    const { data: links } = await supabase
+      .from("package_templates")
+      .select("template_id, package_id")
+      .in(
+        "template_id",
+        visible.map((t) => t.id)
+      );
+    linkRows.push(...((links ?? []) as { template_id: string; package_id: string }[]));
+  }
+  const packageIdsByTemplate = new Map<string, string[]>();
+  for (const link of linkRows) {
+    const list = packageIdsByTemplate.get(link.template_id) ?? [];
+    list.push(link.package_id);
+    packageIdsByTemplate.set(link.template_id, list);
+  }
 
   let allowed: Set<string> | null = null;
   if (packageId) {
-    const { data: links } = await supabase
-      .from("package_templates")
-      .select("template_id")
-      .eq("package_id", packageId);
-    allowed = new Set((links ?? []).map((l) => l.template_id));
+    allowed = new Set(
+      [...packageIdsByTemplate.entries()]
+        .filter(([, ids]) => ids.includes(packageId))
+        .map(([templateId]) => templateId)
+    );
   }
 
   // Semua frame aktif tampil untuk paket mana pun. Runtime menentukan jumlah
@@ -399,6 +435,10 @@ export async function listPublicTemplates(
   return filtered.flatMap((t) => {
     const fileUrl = /^https?:\/\//i.test(t.file_url) ? t.file_url : urlByKey.get(t.file_url);
     if (!fileUrl) return [];
+    // `version` = waktu ubah template → key cache aset berubah saat file diganti.
+    const parsed = t.updated_at ? Date.parse(t.updated_at) : Number.NaN;
+    const version = Number.isFinite(parsed) ? parsed : 0;
+    const cacheKey = templateCacheKey(t.id, version);
     const thumb = t.thumbnail_url ? urlByKey.get(t.thumbnail_url) : undefined;
     // Data lama menyimpan thumbnail = frame (tidak ada thumbnail terpisah).
     // Jangan kirim PNG penuh ke grid: minta versi 480px dari proxy frame.
@@ -408,12 +448,14 @@ export async function listPublicTemplates(
         id: t.id,
         name: t.name,
         category: t.category,
-        file_url: frameProxyUrl(fileUrl),
+        file_url: frameProxyUrl(fileUrl, cacheKey),
         // Thumbnail selalu URL siap pakai; key mentah tidak pernah dikirim
         // sebagai src (bukan URL, akan 404 di origin kiosk).
-        thumbnail_url: frameProxyUrl(thumbUrl),
+        thumbnail_url: frameProxyUrl(thumbUrl, cacheKey, 480),
         layout: (slotCount(t.layout) > 0 ? t.layout : null) as TemplateLayout | null,
         slot_count: slotCount(t.layout),
+        version,
+        package_ids: packageIdsByTemplate.get(t.id) ?? [],
       },
     ];
   });

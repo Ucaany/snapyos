@@ -1,9 +1,7 @@
 "use client";
 
 /**
- * Error boundary - /dashboard/branding (kiosk customization).
- * Konfigurasi setengah termuat bisa membuat kiosk tampil salah, jadi
- * pesannya menahan owner dari menyimpan perubahan.
+ * Error boundary /dashboard/branding (Design Builder).
  */
 
 import { FeatureError } from "@/components/dashboard/FeatureError";

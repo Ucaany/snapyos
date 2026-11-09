@@ -322,17 +322,17 @@ Test: `npm run test` → **251/251 pass** (29 file; update 2026-09-14, termasuk 
 
 ### PHASE 12 — Template & Frame Builder (slot foto owner-designed)
 
-> **Status (update 2026-08-30):** `[SELESAI]`. Implementasi aktual: builder di `/dashboard/templates/builder/[id]` (route `src/app/(dashboard)/dashboard/templates/builder/[id]/`), engine composite tunggal `src/lib/compose-frame.ts` (dipakai preview builder + editor kiosk + print), migration `0010-template-layout.sql` (`templates.layout jsonb NOT NULL DEFAULT '{}'` + `0020-template-video.sql` `templates.video_url`), validasi layout server-side (max 8 slot, dalam canvas, slot frame menentukan capture), template legacy (layout kosong) backward compatible. Spec penuh `15-template-builder.md`.
+> **Status (update 2026-08-30):** `[SELESAI]`. Implementasi aktual: builder di `/dashboard/templates/builder/[id]` (route `src/app/(dashboard)/dashboard/templates/builder/[id]/`), `src/lib/compose-frame.ts` (dipakai bersama builder preview + editor kiosk; render final JPEG di sisi klien), migration `0010-template-layout.sql` (`templates.layout jsonb NOT NULL DEFAULT '{}'` + `0020-template-video.sql` `templates.video_url`), validasi layout server-side (max 8 slot, dalam canvas, slot frame menentukan capture), template legacy (layout kosong) backward compatible. Spec penuh `15-template-builder.md`.
 
 - **Objective:** Owner upload frame PNG transparan + definisikan slot foto (kotak/shape) via builder; hasil foto customer otomatis ter-composite pas ke slot.
-- **Features:** Template Builder drag-and-drop (`/dashboard/templates/builder/[id]`), shape `rect`/`rounded`/`circle`/`ellipse` + rotate + fit cover/contain, preview dengan foto sample, engine composite tunggal `composeFrame` (builder-preview + editor kiosk + print), kiosk slot-fit (zoom/pan clamp per slot), assignment lintas jumlah slot, dan backward compatible template legacy (layout kosong).
+- **Features:** Template Builder drag-and-drop (`/dashboard/templates/builder/[id]`), shape `rect`/`rounded`/`circle`/`ellipse` + rotate + fit cover/contain, preview dengan foto sample, `composeFrame` (builder-preview + editor kiosk; JPEG final dirender di editor kiosk), kiosk slot-fit (zoom/pan clamp per slot), assignment lintas jumlah slot, dan backward compatible template legacy (layout kosong).
 - **Database:** `ALTER TABLE templates ADD COLUMN layout jsonb NOT NULL DEFAULT '{}'` + validasi schema server-side (max 8 slot, dalam batas canvas).
 - **API:** `POST/PATCH templates` menerima `layout`; `GET /public/:slug/templates?package=` menerapkan assignment paket tanpa membatasi jumlah slot, lalu mengembalikan layout + signed URL.
 - **UI:** `TemplateBuilder`, `SlotShape`, `SlotPropertiesPanel`, `TemplatePreview`; update `TemplatePicker` (thumbnail preview slot terisi) & `EditorCanvas` (slot-fit).
-- **Components dependencies:** `EditorCanvas`, `PrintLayoutRenderer` refactor ke `composeFrame`.
+- **Components dependencies:** `EditorCanvas` (slot-fit) dan builder preview memakai `composeFrame`; print/result memakai JPEG hasil render kiosk.
 - **Acceptance:** (AC 63–68) lihat §12.6.
 - **Testing:** unit — validasi layout, matematika cover-fit, composite deterministik; e2e — owner buat template ber-slot → customer sesi → foto pas slot.
-- **DoD:** satu engine composite dipakai semua renderer; template lama tetap jalan.
+- **DoD:** `composeFrame` dipakai bersama builder preview dan editor kiosk, render final JPEG di sisi klien, print/result memakai JPEG itu; template lama tetap jalan.
 
 ---
 
@@ -409,7 +409,7 @@ Test: `npm run test` → **251/251 pass** (29 file; update 2026-09-14, termasuk 
 63. Owner dapat menambahkan slot foto (kotak/shape) pada frame yang di-upload via Template Builder, lalu publish.
 64. Customer memilih frame → hasil foto ter-composite pas ke setiap slot (cover-fit, rasio tidak terdistorsi).
 65. Template dengan slot berbeda dari package tetap dapat di-assign; slot frame menentukan capture dan template legacy memakai photo_count package.
-66. Hasil print & result online identik dengan preview builder (satu engine composite).
+66. Hasil print & result online memakai JPEG final yang dirender di editor kiosk (bukan render ulang di server).
 67. Template lama (layout kosong) tetap berfungsi (backward compatible).
 68. `layout` divalidasi server-side — request invalid ditolak 4xx.
 

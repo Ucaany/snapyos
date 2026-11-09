@@ -16,6 +16,10 @@ type Props = {
   jobId?: string;
   /** true = customer menekan "Cetak ulang"; jangan pakai guard auto-print. */
   reprint?: boolean;
+  /** Lembar berframe/composite (fit auto → contain). */
+  framed?: boolean;
+  /** Rasio kanvas untuk orientation=auto. */
+  canvasAspect?: number | null;
   /** success=true → permintaan cetak terkirim (browser tidak memberi status fisik). */
   onDone: (success: boolean) => void;
 };
@@ -29,7 +33,16 @@ type Props = {
  *   (Safari/iPad), jatuh ke dialog OS dengan pemberitahuan; layar cetak tidak
  *   boleh berhenti total hanya karena mode tidak didukung.
  */
-export function PrintFlow({ photos, plan, printSettings, jobId, reprint = false, onDone }: Props) {
+export function PrintFlow({
+  photos,
+  plan,
+  printSettings,
+  jobId,
+  reprint = false,
+  framed = false,
+  canvasAspect = null,
+  onDone,
+}: Props) {
   const mode = resolvePrintMode(printSettings);
   // Printer thermal bisa BLE (Web Bluetooth) atau Classic SPP (Web Serial).
   // Deteksi setelah hidrasi; sebelum itu anggap tersedia agar markup SSR dan
@@ -47,6 +60,8 @@ export function PrintFlow({ photos, plan, printSettings, jobId, reprint = false,
         printSettings={printSettings}
         jobId={jobId}
         reprint={reprint}
+        framed={framed}
+        canvasAspect={canvasAspect}
         onDone={onDone}
       />
     );
@@ -74,6 +89,8 @@ export function PrintFlow({ photos, plan, printSettings, jobId, reprint = false,
       printSettings={printSettings}
       jobId={jobId}
       reprint={reprint}
+      framed={framed}
+      canvasAspect={canvasAspect}
       onDone={onDone}
     />
   );

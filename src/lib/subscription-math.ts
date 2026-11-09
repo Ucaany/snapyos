@@ -51,6 +51,26 @@ export function effectiveSessions(planMax: number, addOnQuantities: number[]): n
 }
 
 /**
+ * Quantity add-on yang menambah SEAT (device online). Hanya add-on aktif
+ * ber-kode `extra_session` yang berkontribusi (docs/02 §2.9); add-on lain
+ * (POS, storage) TIDAK boleh menggelembungkan kuota sesi tampilan.
+ */
+export function sessionAddOnQuantities(
+  addOns: { code: string; quantity: number }[]
+): number[] {
+  return addOns.filter((a) => a.code === "extra_session").map((a) => a.quantity);
+}
+
+/**
+ * Add-on ber-unit `feature` (mis. POS) adalah entitlement biner — quantity > 1
+ * tidak punya arti dan berujung overcharge. Unit `session`/`storage` boleh > 1.
+ */
+export function addOnQuantityAllowed(unit: string | null | undefined, qty: number): boolean {
+  if (unit === "feature") return qty === 1;
+  return true;
+}
+
+/**
  * Grace period past_due sebelum akses dicabut (docs/02 §2.4).
  * Configurable via platform_settings; default 7 hari.
  */

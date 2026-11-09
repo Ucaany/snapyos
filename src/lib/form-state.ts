@@ -107,9 +107,6 @@ export function buildSettingsPayload(formData: FormData): Record<string, unknown
   if (formData.has("maintenance_message")) {
     out.maintenance_message = str(formData, "maintenance_message") || undefined;
   }
-  if (formData.has("chroma_key_default_enabled")) {
-    out.chroma_key_default_enabled = formData.getAll("chroma_key_default_enabled").includes("true");
-  }
   for (const key of [
     "gateway_pakasir_enabled",
     "gateway_midtrans_enabled",

@@ -20,6 +20,7 @@ import {
   storageKeysOnly,
 } from "@/lib/template-cleanup";
 import { layoutSchema } from "@/lib/template-layout";
+import { invalidateAllPublicConfig } from "@/server/public-config";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -195,11 +196,15 @@ export async function createGlobalTemplate(input: {
     price: parsed.price ?? null,
     is_premium: parsed.is_premium ?? false,
   });
+  // Defense-in-depth: action memanggil ini juga, tetapi data layer tidak boleh
+  // bergantung pada pemanggil (idempotent, aman dipanggil ganda).
+  invalidateAllPublicConfig();
   return data;
 }
 
 /** Upload file frame global langsung dari browser admin (docs/10 §10.2).
- *  Mirip uploadTemplate owner: file PNG/JPG/WebP/SVG → storage bucket. */
+ *  Mirip uploadTemplate owner: PNG/JPG/WebP (tanpa SVG — allowlist upload) →
+ *  storage bucket. Thumbnail/transparansi diproses builder (deteksi area hijau). */
 export async function uploadGlobalTemplateFile(file: {
   name?: string | null;
   type?: string | null;
@@ -251,6 +256,7 @@ export async function updateGlobalTemplate(
   if (error) throw new ApiError("INTERNAL", "Gagal memperbarui template");
   if (!data) throw new ApiError("NOT_FOUND", "Template global tidak ditemukan");
   await audit(admin.id, "admin.template.update", templateId, { ...patch });
+  invalidateAllPublicConfig();
   return data;
 }
 
@@ -267,6 +273,7 @@ export async function setGlobalTemplateActive(templateId: string, isActive: bool
   if (error) throw new ApiError("INTERNAL", "Gagal memperbarui template");
   if (!data) throw new ApiError("NOT_FOUND", "Template global tidak ditemukan");
   await audit(admin.id, "admin.template.update", templateId, { is_active: isActive });
+  invalidateAllPublicConfig();
   return data;
 }
 
@@ -320,7 +327,7 @@ export async function getGlobalTemplate(templateId: string): Promise<AdminTempla
   };
 }
 
-/** Simpan layout slot (builder admin) + thumbnail + frame chroma — mirror owner. */
+/** Simpan layout slot (builder admin) — mirror owner. */
 export async function updateGlobalTemplateLayout(
   templateId: string,
   input: { layout: unknown; is_active: boolean }
@@ -356,6 +363,7 @@ export async function updateGlobalTemplateLayout(
   if (error) throw new ApiError("INTERNAL", "Gagal menyimpan layout template");
   if (!data) throw new ApiError("NOT_FOUND", "Template global tidak ditemukan");
   await audit(admin.id, "admin.template.update_layout", templateId, {});
+  invalidateAllPublicConfig();
   return data;
 }
 
@@ -499,6 +507,7 @@ export async function deleteGlobalTemplate(templateId: string) {
   await audit(admin.id, "admin.template.delete", templateId, {
     name: (row as { name: string }).name,
   });
+  invalidateAllPublicConfig();
   return { id: templateId };
 }
 

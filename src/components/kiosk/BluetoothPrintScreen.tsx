@@ -415,6 +415,10 @@ export function BluetoothPrintScreen({
               ? `Printer terakhir: ${printerName}. Nyalakan printer lalu hubungkan.`
               : "Nyalakan printer thermal, aktifkan Bluetooth, lalu hubungkan."}
           </p>
+          <p className="max-w-[46ch] border-2 border-ink bg-accent-2/15 px-3 py-2 text-[10px] font-bold uppercase leading-relaxed tracking-[0.08em]">
+            Thermal 1-bit (384/576 dot) — bukan cetak foto. Untuk hasil foto gunakan CUPS atau
+            dialog OS.
+          </p>
           <div className="flex flex-wrap justify-center gap-3">
             <Button size="lg" onClick={() => void connectAndPrint()} className="bg-accent">
               <Printer className="size-5" aria-hidden /> Hubungkan printer

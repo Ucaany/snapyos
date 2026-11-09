@@ -294,7 +294,6 @@ const baseDraft = {
     capture_height: 1080,
     mirror_preview: true,
     screen_orientation: "portrait" as const,
-    chroma_key_enabled: true,
   },
   print: {
     enabled: true,

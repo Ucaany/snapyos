@@ -21,7 +21,7 @@ export function KioskVideoBackground({ videoUrl }: Props) {
       playsInline
       preload="auto"
       aria-hidden
-      className="pointer-events-none absolute inset-0 size-full object-cover opacity-50"
+      className="pointer-events-none absolute inset-0 size-full object-cover opacity-50 motion-reduce:hidden"
     />
   );
 }

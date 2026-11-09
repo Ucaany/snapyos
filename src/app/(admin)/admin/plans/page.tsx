@@ -17,11 +17,21 @@ import { listPlans } from "@/server/admin";
  * Harga plan SELALU dari table plans - tidak pernah hardcode (docs/12).
  */
 
-const FEATURE_KEYS = [
+/**
+ * Union key fallback stabil — mencakup 12 key seed plan (db/schema.sql §plans)
+ * + pwa_kiosk. Key di luar daftar ini (ditambah lewat data) tetap dirender
+ * dengan label humanized, jadi tidak ada flag yang hilang dari form (M4).
+ */
+const KNOWN_FEATURE_KEYS = [
   "voucher",
   "finance",
   "reports",
+  "custom_domain",
+  "white_label",
   "staff",
+  "event_mode",
+  "booking",
+  "qr_delivery",
   "direct_payment",
   "storage",
   "cash_payment",
@@ -32,12 +42,30 @@ const FEATURE_LABELS: Record<string, string> = {
   voucher: "Voucher",
   finance: "Finance",
   reports: "Reports",
+  custom_domain: "Custom Domain",
+  white_label: "White Label",
   staff: "Staff",
+  event_mode: "Event Mode",
+  booking: "Booking",
+  qr_delivery: "Kirim via QR",
   direct_payment: "Direct Payment Gateway",
   storage: "Storage",
   cash_payment: "Bayar di Kasir",
   pwa_kiosk: "PWA Kiosk (Android/Tablet/iOS)",
 };
+
+function featureLabel(key: string): string {
+  return FEATURE_LABELS[key] ?? key.replace(/_/g, " ");
+}
+
+/** Union key dari fallback stabil + semua key yang benar-benar ada di plans. */
+function featureKeysFrom(plans: { features: Record<string, boolean> }[]): string[] {
+  const keys = new Set<string>(KNOWN_FEATURE_KEYS);
+  for (const plan of plans) {
+    for (const key of Object.keys(plan.features ?? {})) keys.add(key);
+  }
+  return [...keys];
+}
 
 function Field({
   id,
@@ -75,6 +103,7 @@ function Field({
 
 export default async function AdminPlansPage() {
   const plans = await listPlans();
+  const featureKeys = featureKeysFrom(plans);
 
   return (
     <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
@@ -137,6 +166,20 @@ export default async function AdminPlansPage() {
               defaultValue={1}
             />
             <Field
+              id="new-packages"
+              label="Max Paket Foto"
+              name="max_packages"
+              type="number"
+              defaultValue={50}
+            />
+            <Field
+              id="new-templates"
+              label="Max Template"
+              name="max_templates"
+              type="number"
+              defaultValue={50}
+            />
+            <Field
               id="new-sessions"
               label="Max Sesi Konkuren"
               name="max_concurrent_sessions"
@@ -187,11 +230,11 @@ export default async function AdminPlansPage() {
                 <legend className="mb-2 w-full font-mono text-[11px] uppercase tracking-[0.12em]">
                   Feature flags (default: nonaktif)
                 </legend>
-                {FEATURE_KEYS.map((key) => (
+                {featureKeys.map((key) => (
                   <BrutalistCheckbox
                     key={key}
                     name={`feature_${key}`}
-                    label={FEATURE_LABELS[key] ?? key.replace(/_/g, " ")}
+                    label={featureLabel(key)}
                     defaultChecked={false}
                   />
                 ))}
@@ -243,6 +286,10 @@ export default async function AdminPlansPage() {
                     value: `${p.max_businesses} / ${p.max_outlets} / ${p.max_photoboxes}`,
                   },
                   { label: "Staff", value: String(p.max_staff) },
+                  {
+                    label: "Paket foto / Template",
+                    value: `${p.max_packages} / ${p.max_templates}`,
+                  },
                   { label: "Storage", value: `${p.storage_limit_mb} MB` },
                   { label: "Fee %", value: String(p.platform_fee_percent) },
                   { label: "Fee flat", value: formatIDR(p.platform_fee_flat) },
@@ -298,6 +345,20 @@ export default async function AdminPlansPage() {
                   defaultValue={p.max_photoboxes}
                 />
                 <Field
+                  id={`packages-${p.id}`}
+                  label="Max Paket Foto"
+                  name="max_packages"
+                  type="number"
+                  defaultValue={p.max_packages}
+                />
+                <Field
+                  id={`templates-${p.id}`}
+                  label="Max Template"
+                  name="max_templates"
+                  type="number"
+                  defaultValue={p.max_templates}
+                />
+                <Field
                   id={`sessions-${p.id}`}
                   label="Sesi konkuren"
                   name="max_concurrent_sessions"
@@ -348,11 +409,11 @@ export default async function AdminPlansPage() {
                     <legend className="mb-2 w-full font-mono text-[11px] uppercase tracking-[0.12em]">
                       Feature flags
                     </legend>
-                    {FEATURE_KEYS.map((key) => (
+                    {featureKeys.map((key) => (
                       <BrutalistCheckbox
                         key={key}
                         name={`feature_${key}`}
-                        label={FEATURE_LABELS[key] ?? key.replace(/_/g, " ")}
+                        label={featureLabel(key)}
                         defaultChecked={Boolean(p.features?.[key])}
                       />
                     ))}

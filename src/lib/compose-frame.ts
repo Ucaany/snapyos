@@ -1,6 +1,7 @@
 /**
- * Composite engine — docs/15 §15.4. SATU engine untuk semua tempat render:
- * preview builder, editor kiosk, print renderer. Tidak ada logika render duplikat.
+ * Composite engine — docs/15 §15.4. Dipakai bersama builder preview dan editor
+ * kiosk. JPEG final dirender di editor kiosk; print dan result online memakai
+ * JPEG itu, tanpa render ulang di server.
  *
  * Urutan render: isian dasar kanvas → slot (z naik, foto cover-fit + transform
  * customer) → frame PNG full-canvas di atas → overlay teks/stiker paling atas.
@@ -26,7 +27,7 @@ function sourceSize(src: ComposeSource): { w: number; h: number } {
   return { w: src.naturalWidth || 1, h: src.naturalHeight || 1 };
 }
 
-/** Clip path bentuk slot (rect/rounded/circle/ellipse) dalam koordinat canvas.
+/** Clip path bentuk slot (rect/rounded/circle/ellipse/mask) dalam koordinat canvas.
  *  Diekspor agar builder menggambar outline slot dengan bentuk identik. */
 export function slotClipPath(ctx: CanvasRenderingContext2D, slot: LayoutSlot, scale: number): void {
   const x = slot.x * scale;
@@ -35,7 +36,14 @@ export function slotClipPath(ctx: CanvasRenderingContext2D, slot: LayoutSlot, sc
   const h = slot.height * scale;
   const radius = Math.min(slot.radius ?? 0, Math.min(slot.width, slot.height) / 2) * scale;
   ctx.beginPath();
-  if (slot.shape === "circle" || slot.shape === "ellipse") {
+  if (slot.shape === "mask" && slot.points && slot.points.length >= 3) {
+    const points = slot.points;
+    ctx.moveTo(x + points[0]!.x * scale, y + points[0]!.y * scale);
+    for (let i = 1; i < points.length; i += 1) {
+      ctx.lineTo(x + points[i]!.x * scale, y + points[i]!.y * scale);
+    }
+    ctx.closePath();
+  } else if (slot.shape === "circle" || slot.shape === "ellipse") {
     ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
   } else if (slot.shape === "rounded" && radius > 0) {
     ctx.roundRect(x, y, w, h, radius);
@@ -108,7 +116,7 @@ export function composeFrame(
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  // Isian dasar: lubang alpha frame + piksel chroma-key harus punya warna,
+  // Isian dasar: lubang alpha frame harus punya warna,
   // bukan transparan (output final JPEG → transparan tercetak hitam).
   ctx.fillStyle = canvasBackground(layout);
   ctx.fillRect(0, 0, canvas.width, canvas.height);

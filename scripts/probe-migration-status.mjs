@@ -315,17 +315,6 @@ const record = (migration, check, verdict, note) =>
   }
 }
 
-// ---------------------------------------------------------------- 0081
-{
-  const { status } = await get("app_releases?select=id,version&limit=1");
-  record(
-    "0081",
-    "tabel app_releases",
-    status === 200 ? "APPLIED" : "NOT APPLIED",
-    `HTTP ${status}`
-  );
-}
-
 // ---------------------------------------------------------------- report
 const pad = (s, n) => String(s).padEnd(n);
 console.log(`\nProbe migrasi cloud — ${SB}\n`);

@@ -259,8 +259,6 @@ create table devices (
   device_token_hash text not null,
   status text not null default 'active' check (status in ('active', 'revoked')),
   last_seen_at timestamptz,
-  -- Electron kiosk config (0027)
-  app_version text,
   os_info jsonb,
   display_orientation text default 'portrait'
     check (display_orientation in ('portrait', 'landscape')),
@@ -1108,25 +1106,32 @@ create table audit_logs (
 create index idx_audit_business on audit_logs (business_id, created_at);
 create index idx_audit_actor on audit_logs (actor_id);
 
--- Katalog aplikasi booth (0081) — TAUTAN saja, file tidak masuk storage SNAPY OS.
--- file_size_bytes & sha256 nullable + diisi manual: server tidak memverifikasi
--- tautan eksternal (HEAD/GET ke URL sembarang = SSRF).
-create table app_releases (
+-- Katalog installer Windows (0081) — artifact disimpan di private storage.
+create table installer_catalog (
   id uuid primary key default gen_random_uuid(),
-  version text not null unique,
-  download_url text not null check (download_url ~ '^https://'),
+  version text not null,
+  channel text not null check (channel in ('stable', 'beta', 'internal')),
+  min_windows_version text not null check (min_windows_version in ('10', '11')),
+  architecture text not null check (architecture in ('x64', 'x86', 'arm64', 'universal')),
   file_name text not null,
-  file_size_bytes bigint check (file_size_bytes is null or file_size_bytes > 0),
-  sha256 text check (sha256 is null or sha256 ~ '^[0-9a-f]{64}$'),
-  release_notes text,
+  object_key text not null unique,
+  content_type text not null,
+  file_size_bytes bigint not null check (file_size_bytes > 0),
+  sha256 text not null check (sha256 ~ '^[0-9a-f]{64}$'),
+  changelog text,
+  compatibility_notes text,
   is_active boolean not null default true,
+  is_deprecated boolean not null default false,
+  published_at timestamptz,
   created_by uuid references users (id) on delete set null,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  unique (version, channel, architecture)
 );
-create trigger trg_app_releases_updated_at before update on app_releases
+create index idx_installer_catalog_published
+  on installer_catalog (published_at, channel, is_active, is_deprecated, created_at desc);
+create trigger trg_installer_catalog_updated_at before update on installer_catalog
   for each row execute function set_updated_at();
-create index idx_app_releases_active on app_releases (is_active, created_at desc);
 
 -- ============================================================================
 -- 7.10 Support Tickets (owner bantuan — migration 0050)
@@ -2121,7 +2126,7 @@ alter table if exists payment_credentials enable row level security;
 alter table if exists device_logs enable row level security;
 alter table if exists storage_objects enable row level security;
 alter table if exists storage_usage enable row level security;
-alter table if exists app_releases enable row level security;
+alter table if exists installer_catalog enable row level security;
 
 revoke all on users, auth_sessions, businesses, business_members, business_settings, plans,
   subscriptions, invoices, add_ons, subscription_add_ons, outlets, photoboxes,
@@ -2134,7 +2139,7 @@ revoke all on users, auth_sessions, businesses, business_members, business_setti
   audit_logs, support_tickets, support_ticket_replies, broadcast_campaigns,
   broadcast_recipients, lifecycle_emails, subscription_promos,
   payment_credentials, device_logs, storage_objects, storage_usage,
-  subscription_intent_failures, app_releases
+  installer_catalog, subscription_intent_failures
   from anon, authenticated;
 
 grant all on users, auth_sessions, businesses, business_members, business_settings, plans,
@@ -2148,7 +2153,7 @@ grant all on users, auth_sessions, businesses, business_members, business_settin
   audit_logs, support_tickets, support_ticket_replies, broadcast_campaigns,
   broadcast_recipients, lifecycle_emails, subscription_promos,
   payment_credentials, device_logs, storage_objects, storage_usage,
-  subscription_intent_failures, app_releases
+  installer_catalog, subscription_intent_failures
   to service_role;
 
 drop policy if exists svc_all on auth_sessions;
@@ -2259,8 +2264,8 @@ drop policy if exists svc_all on storage_objects;
 create policy svc_all on storage_objects for all to service_role using (true) with check (true);
 drop policy if exists svc_all on storage_usage;
 create policy svc_all on storage_usage for all to service_role using (true) with check (true);
-drop policy if exists svc_all on app_releases;
-create policy svc_all on app_releases for all to service_role using (true) with check (true);
+drop policy if exists svc_all on installer_catalog;
+create policy svc_all on installer_catalog for all to service_role using (true) with check (true);
 drop policy if exists svc_all on subscription_intent_failures;
 create policy svc_all on subscription_intent_failures for all to service_role using (true) with check (true);
 

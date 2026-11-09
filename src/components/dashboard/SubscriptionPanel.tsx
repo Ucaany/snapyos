@@ -40,14 +40,25 @@ type Props = {
   canWrite: boolean;
 };
 
-const PLAN_FEATURES: { key: string; label: string }[] = [
-  { key: "direct_payment", label: "Payment gateway merchant langsung" },
-  { key: "staff", label: "Manajemen staff" },
-  { key: "finance", label: "Keuangan / settlement" },
-  { key: "storage", label: "Penyimpanan" },
-  { key: "reports", label: "Laporan" },
-  { key: "voucher", label: "Voucher" },
-];
+const FEATURE_LABELS: Record<string, string> = {
+  direct_payment: "Payment gateway merchant langsung",
+  staff: "Manajemen staff",
+  finance: "Keuangan / settlement",
+  storage: "Penyimpanan",
+  reports: "Laporan",
+  voucher: "Voucher",
+  cash_payment: "Bayar di kasir",
+  pwa_kiosk: "PWA kiosk (Android/Tablet/iOS)",
+  custom_domain: "Domain kustom",
+  white_label: "White label",
+  event_mode: "Mode event",
+  booking: "Booking",
+  qr_delivery: "Kirim via QR",
+};
+
+function featureLabel(key: string): string {
+  return FEATURE_LABELS[key] ?? key.replace(/_/g, " ");
+}
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "-";
@@ -94,7 +105,9 @@ function UsageRow({
   max: number;
   hint?: string;
 }) {
-  const pct = usagePercent(used, max);
+  const included = Number.isFinite(max) && max > 0;
+  const pct = included ? usagePercent(used, max) : 0;
+  const meterMax = Math.max(1, max);
   return (
     <div className="flex flex-col gap-1 border-b-2 border-ink/10 py-3 last:border-b-0">
       <div className="flex items-baseline justify-between gap-4">
@@ -102,22 +115,27 @@ function UsageRow({
           {label}
         </span>
         <span className="font-mono text-xs font-bold tabular-nums">
-          {used} / {max}
+          {included ? `${used} / ${max}` : "—"}
         </span>
       </div>
       <div
         className="h-2 w-full rounded-none border-2 border-ink bg-muted"
         role="meter"
         aria-valuemin={0}
-        aria-valuemax={max}
-        aria-valuenow={used}
+        aria-valuemax={meterMax}
+        aria-valuenow={included ? Math.min(used, meterMax) : 0}
         aria-label={`Pemakaian ${label}`}
       >
         <div
-          className={`h-full rounded-none ${pct >= 100 ? "bg-destructive" : "bg-accent"}`}
+          className={`h-full rounded-none ${included && pct >= 100 ? "bg-destructive" : "bg-accent"}`}
           style={{ width: `${pct}%` }}
         />
       </div>
+      {!included && (
+        <p className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
+          Tidak termasuk plan
+        </p>
+      )}
       {hint && (
         <p className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
           {hint}
@@ -162,14 +180,14 @@ function PlanCardBlock({
           <li className="flex items-center gap-2">
             <Check className="size-4" aria-hidden /> 1 outlet, 1 photobox, 1 perangkat online
           </li>
-          {PLAN_FEATURES.map(({ key, label }) => (
+          {Object.entries(plan.features ?? {}).map(([key, enabled]) => (
             <li key={key} className="flex items-center gap-2">
-              {plan.features?.[key] ? (
+              {enabled ? (
                 <Check className="size-4" aria-hidden />
               ) : (
                 <Minus className="size-4" aria-hidden />
               )}
-              {label}
+              {featureLabel(key)}
             </li>
           ))}
         </ul>
@@ -271,9 +289,16 @@ export function SubscriptionPanel({
   const plan = subscription?.plan ?? null;
   const currentPlanCode = plan?.code ?? null;
   const activeAddOns = subscription?.addOns ?? [];
-  const addOnSessions = activeAddOns.reduce((sum, a) => sum + a.quantity, 0);
+  // Hanya add-on extra_session yang menambah seat (docs/02 §2.9); POS/storage
+  // tidak boleh menggelembungkan hint kuota sesi.
+  const addOnSessions = activeAddOns
+    .filter((a) => a.code === "extra_session")
+    .reduce((sum, a) => sum + a.quantity, 0);
   const isCancelled = Boolean(subscription?.cancelAtPeriodEnd);
   const isExpired = subscription?.status === "expired";
+  const isCancelledStatus =
+    subscription?.status === "cancelled" || subscription?.status === "canceled";
+  const canChangePlan = canWrite && !isCancelledStatus;
   const addOnTotal = activeAddOns.reduce((sum, a) => sum + a.priceMonthly * a.quantity, 0);
   const monthlyTotal = (plan?.priceMonthly ?? 0) + addOnTotal;
 
@@ -302,8 +327,32 @@ export function SubscriptionPanel({
           <CardContent className="flex flex-col gap-4">
             <p className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
               Status: {subscriptionStatusLabel(subscription?.status)} ·{" "}
-              {isCancelled ? "berakhir di akhir periode" : "berlanjut otomatis"}
+              {!subscription
+                ? "tidak ada langganan"
+                : isCancelledStatus
+                  ? "dibatalkan — perlu aktivasi admin/support"
+                  : isExpired
+                    ? "kedaluwarsa — tidak diperpanjang otomatis"
+                    : isCancelled
+                      ? "berakhir di akhir periode"
+                      : "berlanjut otomatis"}
             </p>
+
+            {isCancelledStatus && (
+              <div
+                role="status"
+                className="border-2 border-destructive bg-surface p-4 shadow-[4px_4px_0_0_#111111]"
+              >
+                <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-destructive">
+                  Langganan dibatalkan
+                </p>
+                <p className="mt-2 max-w-[70ch] text-xs text-muted-foreground">
+                  Langganan ini berstatus dibatalkan. Mengaktifkan kembali TIDAK bisa dilakukan
+                  sendiri — hubungi admin/support untuk aktivasi manual (docs/02 §2.4). Paket dan
+                  invoice tetap ditampilkan di bawah.
+                </p>
+              </div>
+            )}
 
             {subscription && !isExpired && (
               <dl className="grid grid-cols-1 gap-[2px] border-2 border-ink bg-ink sm:grid-cols-3">
@@ -335,7 +384,7 @@ export function SubscriptionPanel({
             )}
 
             {subscription && canWrite ? (
-              isExpired ? (
+              isCancelledStatus ? null : isExpired ? (
                 <SubscriptionCheckoutTrigger
                   plans={plans}
                   addOns={addOns}
@@ -402,7 +451,7 @@ export function SubscriptionPanel({
                   addOns={addOns}
                   currentPlanCode={currentPlanCode}
                   defaultPlanCode={p.code}
-                  canWrite={canWrite}
+                  canWrite={canChangePlan}
                   recovery={isExpired}
                   className="mt-auto w-full"
                   label={p.priceMonthly > 0 ? "Pilih & atur add-on" : "Turunkan plan"}
@@ -414,6 +463,12 @@ export function SubscriptionPanel({
         {!canWrite && (
           <p className="mt-4 text-xs text-muted-foreground">
             Hanya owner yang dapat mengubah paket.
+          </p>
+        )}
+        {isCancelledStatus && (
+          <p className="mt-4 text-xs text-muted-foreground">
+            Perubahan paket/add-on dinonaktifkan selama langganan berstatus dibatalkan. Hubungi
+            admin/support.
           </p>
         )}
         {canWrite && (
@@ -445,7 +500,7 @@ export function SubscriptionPanel({
                 key={a.id}
                 addOn={a}
                 active={activeAddOns.find((x) => x.addOnId === a.id) ?? null}
-                canWrite={canWrite}
+                canWrite={canChangePlan}
                 trigger={
                   <SubscriptionCheckoutTrigger
                     plans={plans}
@@ -453,7 +508,7 @@ export function SubscriptionPanel({
                     currentPlanCode={currentPlanCode}
                     defaultPlanCode={plan?.code ?? plans[0]?.code ?? ""}
                     defaultAddOnId={a.id}
-                    canWrite={canWrite}
+                    canWrite={canChangePlan}
                     recovery={isExpired}
                     size="sm"
                     label={

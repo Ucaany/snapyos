@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { deviceReportSchema } from "../src/lib/validators.ts";
+import { deviceHeartbeatSchema, deviceReportSchema } from "../src/lib/validators.ts";
 
 const TOKEN = "a".repeat(64);
 
@@ -33,4 +33,19 @@ test("deviceReportSchema: payload printer confirmed + last_test_at valid", () =>
 
 test("deviceReportSchema: token pendek ditolak", () => {
   assert.throws(() => deviceReportSchema.parse({ device_token: "pendek" }));
+});
+
+test("deviceHeartbeatSchema: hanya metadata operasional", () => {
+  const parsed = deviceHeartbeatSchema.parse({
+    device_token: TOKEN,
+    runtime_version: "0.1.0",
+    db_version: 2,
+    camera: { adapter: "mock", connected: true },
+    printer: { adapter: "mock", ok: true },
+    queue: { pending: 1, retrying: 0 },
+    lockdown: { local_pin_configured: true, local_pin_locked: false, cloud_kiosk_locked: null },
+  });
+  assert.equal(parsed.queue.pending, 1);
+  assert.throws(() => deviceHeartbeatSchema.parse({ ...parsed, photos: ["photo.jpg"] }));
+  assert.throws(() => deviceHeartbeatSchema.parse({ ...parsed, payment_secret: "secret" }));
 });

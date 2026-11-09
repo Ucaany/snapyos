@@ -7,6 +7,7 @@ import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
 import { planLimitError } from "@/lib/plan-limits";
+import { invalidTemplateIds, type AssignableTemplateRow } from "@/lib/template-assignment";
 import { can, type Permission } from "@/lib/rbac";
 import { getMembership } from "@/lib/tenant";
 import { invalidatePublicConfig } from "@/server/public-config";
@@ -103,26 +104,59 @@ async function requireMembership(userId: string, businessId: string, permission:
 
 async function assertIdsOwned(
   businessId: string,
-  table: "templates" | "outlets" | "photoboxes",
+  table: "outlets" | "photoboxes",
   ids: string[]
 ) {
   if (ids.length === 0) return;
   const supabase = createServerClient();
-  let req = supabase.from(table).select("id, business_id").eq("business_id", businessId);
-  if (table === "templates") {
-    // Template global platform (business_id null) boleh di-assign.
-    req = supabase
-      .from(table)
-      .select("id, business_id")
-      .or(`business_id.eq.${businessId},business_id.is.null`);
-  }
-  const { data } = await req.in("id", ids);
+  const { data } = await supabase
+    .from(table)
+    .select("id, business_id")
+    .eq("business_id", businessId)
+    .in("id", ids);
   const found = new Set(((data ?? []) as { id: string }[]).map((r) => r.id));
   const missing = ids.filter((id) => !found.has(id));
   if (missing.length > 0) {
     throw new ApiError("VALIDATION_ERROR", `Ada ${table} yang bukan milik business ini`, {
       [`${table}_ids`]: ["Berisi id tidak valid"],
     });
+  }
+}
+
+/**
+ * Template assignable (docs/15 §15.9b): milik sendiri ATAU global yang aktif
+ * dan (gratis atau sudah dibeli). Query hanya mengambil kandidat yang mungkin
+ * valid; keputusan akhir memakai `invalidTemplateIds` (aturan murni bersama).
+ */
+async function assertTemplatesAssignable(businessId: string, ids: string[]) {
+  if (ids.length === 0) return;
+  const supabase = createServerClient();
+  const [{ data: rows }, { data: purchases }] = await Promise.all([
+    supabase
+      .from("templates")
+      .select("id, business_id, is_active, is_premium, price")
+      .or(`business_id.eq.${businessId},business_id.is.null`)
+      .in("id", ids),
+    supabase
+      .from("business_template_purchases")
+      .select("template_id")
+      .eq("business_id", businessId),
+  ]);
+  const purchased = new Set(
+    ((purchases ?? []) as { template_id: string }[]).map((row) => row.template_id)
+  );
+  const invalid = invalidTemplateIds(
+    (rows ?? []) as AssignableTemplateRow[],
+    businessId,
+    purchased,
+    ids
+  );
+  if (invalid.length > 0) {
+    throw new ApiError(
+      "VALIDATION_ERROR",
+      "Ada template yang tidak bisa dipakai (nonaktif/belum dibeli)",
+      { template_ids: ["Berisi template yang tidak tersedia untuk business ini"] }
+    );
   }
 }
 
@@ -212,7 +246,7 @@ export async function createPackage(userId: string, businessId: string, input: P
   }
 
   await Promise.all([
-    assertIdsOwned(businessId, "templates", parsed.template_ids),
+    assertTemplatesAssignable(businessId, parsed.template_ids),
     assertIdsOwned(businessId, "outlets", parsed.outlet_ids),
     assertIdsOwned(businessId, "photoboxes", parsed.photobox_ids),
   ]);
@@ -252,7 +286,10 @@ export async function updatePackage(
 
   const supabase = createServerClient();
 
-  await assertIdsOwned(businessId, "templates", parsed.template_ids ?? []);
+  // undefined = field tidak dikirim → jangan menyentuh assignment template.
+  if (parsed.template_ids !== undefined) {
+    await assertTemplatesAssignable(businessId, parsed.template_ids);
+  }
   await assertIdsOwned(businessId, "outlets", parsed.outlet_ids ?? []);
   await assertIdsOwned(businessId, "photoboxes", parsed.photobox_ids ?? []);
 

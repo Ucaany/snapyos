@@ -1,6 +1,5 @@
 # 7. Database Schema
 
-> **Sinkron dengan `db/schema.sql` aktual per audit 2026-10-24** (55 tabel + 32 fungsi; migration terbaru `0081_app_releases.sql`). **Semua migrasi `0072`–`0081` sudah diterapkan ke cloud dan diverifikasi 2026-10-27** lewat probe PostgREST (`scripts/probe-migration-status.mjs`) plus katalog Postgres (`supabase db query --linked`) untuk index, aksi FK, dan signature fungsi. Hanya `0071` yang sengaja belum dijalankan. Tabel/kolom di bawah = realita schema; deviasi dari draft awal ditandai. Paritas schema ↔ migrasi dijaga `tests/schema-migration-parity.test.ts`.
 >
 > **RLS (C1, migrasi 0064):** setiap tabel `public.*` punya `alter table ... enable row level security` + policy `svc_all` (`for all to service_role using (true) with check (true)`); `anon`/`authenticated` di-revoke, `service_role` di-grant. Tidak ada policy `to public/anon/authenticated`.
 >
@@ -235,7 +234,6 @@ Tidak dipakai (JWT strategy + `auth_sessions` di atas); `users` tetap source of 
 | camera_settings         | jsonb                      | nullable (`{ countdown_seconds, mirror_preview, fullscreen, facingMode, capture_width, capture_height, jpeg_quality }`)                          |
 | print_settings          | jsonb                      | nullable (`{ enabled, paper_size, layout, orientation, auto_print, copies }`)                                                                    |
 | session_settings        | jsonb                      | nullable (v2: `{ timer_seconds: 300, warning_seconds: 60, max_retakes: null }`)                                                                  |
-| device_status           | jsonb                      | nullable (last heartbeat, camera resolution, printer status, `app_version` — versi booth dilaporkan lewat `devices/report` & `devices/settings`) |
 | exit_pin_hash           | text                       | nullable — PIN keluar kiosk, verifikasi server-side (hash)                                                                                       |
 | exit_pin_failed_count   | integer not null default 0 | migrasi 0034 — throttle brute-force PIN exit kiosk (counter percobaan gagal beruntun)                                                            |
 | exit_pin_locked_until   | timestamptz nullable       | migrasi 0034 — 5 gagal beruntun → lock 5 menit (server-side, tidak dapat di-bypass client)                                                       |
@@ -266,7 +264,6 @@ Owner mengatur booth mana yang bisa diakses staff; PK `(user_id, photobox_id)`.
 | device_token_hash       | text                 | hash dari token yang disimpan device                                                   |
 | status                  | text                 | `active`/`revoked`                                                                     |
 | last_seen_at            | timestamptz          |                                                                                        |
-| app_version             | text                 | nullable — versi aplikasi Electron (0027)                                              |
 | os_info                 | jsonb                | nullable — `{ platform, arch, version }` (0027)                                        |
 | display_orientation     | text                 | `portrait`/`landscape` (0027)                                                          |
 | display_style           | text                 | `classic`/`compact`/`receipt` (0027)                                                   |
@@ -339,7 +336,7 @@ Owner mengatur booth mana yang bisa diakses staff; PK `(user_id, photobox_id)`.
 | category                | text                                              | **DEPRECATED (migration 0039)** — display fallback bebas, tidak lagi CHECK enum. Konsumer baru pakai `category_id`.                                                                                                                 |
 | category_id             | uuid → template_categories(id) ON DELETE RESTRICT | **BARU (migration 0039)** — FK canonical ke kategori. Backfill dari `category` text saat migrasi.                                                                                                                                   |
 | file_url                | text                                              | storage key (PNG frame, alpha = lubang slot)                                                                                                                                                                                        |
-| thumbnail_url           | text                                              | auto-generate dari preview builder                                                                                                                                                                                                  |
+| thumbnail_url           | text                                              | thumbnail WebP dari frame yang diunggah (fallback: frame)                                                                                                                                                                            |
 | layout                  | jsonb                                             | NOT NULL default `'{}'` — canvas size + array slot foto; kosong = template legacy full-canvas. Contract & validasi: `15-template-builder.md` §15.2 (slot max 8, dalam batas canvas; assign lintas paket tidak dibatasi jumlah slot) |
 | video_url               | text                                              | nullable — video frame (0020)                                                                                                                                                                                                       |
 | is_active               | boolean                                           |                                                                                                                                                                                                                                     |
@@ -758,24 +755,28 @@ Tabel `reports` dihapus karena 0 caller di kode aplikasi. Fitur export report (C
 | meta        | jsonb                |                                                 |
 | created_at  | timestamptz          |                                                 |
 
-### app_releases (0081 — katalog aplikasi, TAUTAN saja)
 
-| kolom                   | tipe            | ket                                                                    |
-| ----------------------- | --------------- | ---------------------------------------------------------------------- |
-| id                      | uuid PK         |                                                                        |
-| version                 | text            | UNIQUE, format `1.2.3` (divalidasi Zod, bukan CHECK)                   |
-| download_url            | text            | CHECK `^https://`; disimpan apa adanya (tanpa normalisasi)             |
-| file_name               | text            | nama yang disarankan saat menyimpan                                    |
-| file_size_bytes         | bigint          | nullable, `> 0`; **diisi manual**, tidak diverifikasi sistem           |
-| sha256                  | text            | nullable, CHECK `^[0-9a-f]{64}$`; **diisi manual**, tidak diverifikasi |
-| release_notes           | text            | nullable                                                               |
-| is_active               | boolean         | default true                                                           |
-| created_by              | uuid → users.id | on delete set null                                                     |
-| created_at / updated_at | timestamptz     |                                                                        |
+### installer_catalog (0081 — katalog installer Windows)
 
-File installer **tidak** disimpan di storage SNAPY OS — hanya tautan ke host
-eksternal (Google Drive). Tidak ada bucket, objek, atau kolom storage key.
-Server tidak melakukan HEAD/GET ke `download_url` (SSRF).
+| kolom | tipe | ket |
+| --- | --- | --- |
+| id | uuid PK | |
+| version | text | versi rilis, uniqueness bersama channel + architecture |
+| channel | text | `stable` / `beta` / `internal` |
+| min_windows_version | text | `10` / `11` |
+| architecture | text | `x64` / `x86` / `arm64` / `universal` |
+| file_name / content_type | text | metadata artifact |
+| object_key | text UNIQUE | key private `business-assets`, bukan URL publik |
+| file_size_bytes | bigint | dihitung server, > 0 |
+| sha256 | text | dihitung server, 64 hex lowercase |
+| changelog / compatibility_notes | text | catatan rilis dan kompatibilitas |
+| is_active / is_deprecated | boolean | publik hanya bila aktif, tidak deprecated, dan published_at terisi |
+| published_at | timestamptz | null = draft |
+| created_by / timestamps | uuid / timestamptz | |
+
+Artifact installer diunggah admin ke private storage. URL unduhan dibuat sebagai signed URL
+berumur pendek, sehingga tidak ada URL eksternal atau fetch server-side. Instalasi tetap manual,
+tanpa auto-update.
 
 ### support_tickets (0050)
 
@@ -893,3 +894,32 @@ CREATE INDEX idx_sessions_business ON sessions(business_id, status);
 CREATE INDEX idx_vu_voucher ON voucher_usages(voucher_id);
 CREATE INDEX idx_vu_business ON voucher_usages(business_id);
 ```
+
+---
+
+## 7.12 Runtime Lokal (SQLite — bukan Supabase)
+
+Runtime photobooth menyimpan state mesin di `<dataDir>/snapyos.db` (`runtime/db/schema.ts`, `PRAGMA user_version`). **Tidak** pernah dimigrasikan ke cloud.
+
+| Tabel | Isi |
+| --- | --- |
+| `device_settings` | setelan kamera/printer/sesi/tampilan milik satu booth |
+| `sessions` / `captures` / `finalize_queue` / `events` | sesi offline-first + antrean sync |
+| `print_jobs` | antrean cetak lokal (skema v3) |
+
+`print_jobs` — sumber kebenaran antrean cetak (offline-first); cloud hanya menerima mirror status lewat heartbeat ke `photoboxes.device_status.printer.job`:
+
+| Kolom | Tipe | Catatan |
+| --- | --- | --- |
+| `id` | text PK | UUID job |
+| `dedupe_key` | text UNIQUE | default `session_id + sheet_hash` |
+| `session_id` / `mode` / `printer_name` / `media_name` | text | konteks pekerjaan |
+| `paper_size` / `orientation` | text | snapshot setelan saat submit |
+| `copies` / `sheets` / `attempts` | integer | jumlah salinan/lembar/percobaan |
+| `pdf_path` | text | PDF sementara di `<dataDir>/print-jobs/` |
+| `spool_job_id` | text | ID dari spooler (`lp`), null untuk driver tanpa ID |
+| `status` | text | `queued` → `printing` → `submitted` → `done` \| `failed` |
+| `error` | text | stderr `lp` + saran `lpstat -p` / `lpoptions -d` |
+| `created_at` / `updated_at` | text | ISO 8601 |
+
+**Aturan status:** `submitted` = spooler menerima, **bukan** kertas keluar. `done` hanya dari konfirmasi operator (`POST /print/jobs/:id/confirm`). Retry eksplisit (`POST /print/jobs/:id/retry`) memakai ulang PDF tersimpan, bukan kirim ulang buta. Jika migrasi tabel gagal, runtime jatuh ke submit langsung tanpa antrean dan heartbeat mengirim `job: null`.

@@ -24,6 +24,10 @@ export const FILTER_IDS = [
   "retro",
   "vintage",
   "y2k",
+  "fade",
+  "noir",
+  "cyber",
+  "lomo",
 ] as const;
 
 export type FilterId = (typeof FILTER_IDS)[number];
@@ -120,6 +124,27 @@ export function filterPlan(id: FilterId): FilterPlan {
       return {
         modulate: { brightness: 1.05, saturation: 1.6 },
         linear: contrastLinear(1.1),
+      };
+    case "fade":
+      return {
+        modulate: { brightness: 1.08, saturation: 0.9 },
+        linear: contrastLinear(0.85),
+      };
+    case "noir":
+      return {
+        grayscale: true,
+        modulate: { brightness: 0.92 },
+        linear: contrastLinear(1.35),
+      };
+    case "cyber":
+      return {
+        modulate: { hue: 200, saturation: 1.5 },
+        linear: contrastLinear(1.15),
+      };
+    case "lomo":
+      return {
+        modulate: { brightness: 0.95, saturation: 1.35 },
+        linear: contrastLinear(1.2),
       };
     case "original":
     default:

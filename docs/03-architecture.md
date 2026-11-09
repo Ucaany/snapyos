@@ -16,6 +16,16 @@
 | Export        | CSV (bawaan), XLSX (`exceljs`/`xlsx`), PDF (future)                                                                                                |
 | Deploy        | **Vercel**                                                                                                                                         |
 
+### 3.1.1 Penyimpanan Cache Kiosk (PWA, 2026-11-08)
+
+| Penyimpanan | Isi | Penulis |
+| --- | --- | --- |
+| `localStorage` `snapyos.templates.<slug>` | snapshot JSON daftar template (`schema: 1`, `fetchedAt`, `templates[]`) | klien (`src/components/kiosk/template-cache.ts`) |
+| `localStorage` `snapyos.template-index.<slug>` | index aset `{ key, bytes, lastUsed }` — sumber kebenaran daftar key + LRU | klien |
+| Cache Storage `snapyos-template-assets-v1` | biner thumbnail `templateId:version@480` + frame `templateId:version@full` | klien; **SW hanya membaca** (`cache-first` untuk proxy frame dengan `?cache=` valid) |
+
+Rate limit publik: `GET /api/v1/public/:slug/templates` 120/menit/IP, `GET /api/v1/public/frame` 180/menit/IP. Detail perilaku: `docs/05` §5.4.
+
 ## 3.2 System Context (diagram)
 
 ```
@@ -53,12 +63,11 @@
 **Owner Platform** (login, per business — 20 item nav tetap + 2 kondisional, `src/components/dashboard/nav.ts`):
 
 - **Utama**: Dashboard, Analitik, Metrik
-- **Operasional**: Photobox, Branding & Kiosk, Outlet, Template, Paket, Voucher, POS\*, Unduh PWA\*, Aplikasi Booth (`/dashboard/apps`)
 - **Keuangan**: Transaksi, Keuangan, Payment Gateway, Laporan
 - **Pelanggan & Tim**: Pelanggan, Tim
 - **Langganan & Akun**: Langganan, Pengaturan, Tiket Bantuan, Dokumentasi
 
-`*` = kondisional entitlement/fitur (`pos`, `pwa_kiosk`). "Aplikasi Booth" selalu tampil: isinya tautan installer, bukan fitur berbayar.
+`*` = kondisional entitlement/fitur (`pos`, `pwa_kiosk`).
 
 **Admin Platform** (role admin — 17 item nav, `src/components/admin/nav.ts`):
 

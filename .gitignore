@@ -13,6 +13,10 @@ node_modules/
 out/
 build/
 dist-release/
+# Binaries untuk payload installer Windows dibuat ulang, bukan disimpan di Git.
+windows/deploy/payload/
+windows/**/bin/
+windows/**/obj/
 
 # --- Secrets ---
 # Semua file .env diabaikan; hanya template yang boleh masuk Git.
@@ -56,16 +60,8 @@ anti-slop/
 /supabase/
 SnapyOS Saas/
 hardware-agent/target/
-tauri-kiosk/target/
-tauri-kiosk/gen/
-
 # Screenshot e2e — dibuat ulang tiap run; bukti terkurasi disimpan manual.
 /tests/e2e/*.png
 
-# --- Tauri kiosk (Phase 9) ---
-# Sidecar Node + hasil bundel runtime dibuat saat build, bukan disimpan.
-src-tauri/binaries/node-*
-src-tauri/runtime-dist/
-src-tauri/target/
-# Schema ACL yang di-generate tauri-build.
-src-tauri/gen/
+# Manifest hasil paket ditulis ulang oleh Package-SnapyOS-Kiosk.ps1.
+windows/deploy/snapyos-install-manifest.json

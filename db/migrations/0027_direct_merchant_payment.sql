@@ -1,5 +1,5 @@
 -- ============================================================================
--- 0027: Direct Merchant Payment + Electron Kiosk Device Config
+-- 0027: Direct Merchant Payment + Device Config
 -- Prerequisite: schema.sql baseline OR migrations 0002..0026 applied.
 -- ============================================================================
 
@@ -43,9 +43,8 @@ do $$ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
--- Extend devices: Electron kiosk config columns
+-- Extend devices: runtime config columns
 -- ---------------------------------------------------------------------------
-alter table devices add column if not exists app_version text;
 alter table devices add column if not exists os_info jsonb;
 alter table devices add column if not exists display_orientation text
   default 'portrait' check (display_orientation in ('portrait', 'landscape'));

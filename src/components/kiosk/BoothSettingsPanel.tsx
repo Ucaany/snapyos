@@ -64,13 +64,15 @@ const DEFAULT_DRAFT: Draft = {
     capture_height: 1080,
     mirror_preview: true,
     screen_orientation: "landscape",
-    chroma_key_enabled: false,
   },
   print: {
     enabled: true,
     mode: "browser",
     paper_size: "4x6",
     orientation: "portrait",
+    fit: "auto",
+    strip_2up: false,
+    media_name: "",
     auto_print: true,
     margins_mm: 0,
     printer_name: "",
@@ -79,6 +81,7 @@ const DEFAULT_DRAFT: Draft = {
     timer_seconds: 300,
     warning_seconds: 60,
     max_retakes: 2,
+    kiosk_review_grid: true,
   },
   appearance: {
     bg_color: "#f5f1e8",
@@ -119,14 +122,25 @@ function toDraft(settings: DeviceSettings | null): Draft {
       capture_height: num(camera.capture_height, DEFAULT_DRAFT.camera.capture_height),
       mirror_preview: bool(camera.mirror_preview, DEFAULT_DRAFT.camera.mirror_preview),
       screen_orientation: camera.screen_orientation === "portrait" ? "portrait" : "landscape",
-      chroma_key_enabled: bool(camera.chroma_key_enabled, DEFAULT_DRAFT.camera.chroma_key_enabled),
     },
     print: {
       enabled: bool(print.enabled, DEFAULT_DRAFT.print.enabled),
       mode:
         print.mode === "bluetooth" || print.mode === "cups" ? print.mode : DEFAULT_DRAFT.print.mode,
-      paper_size: print.paper_size === "A6" ? "A6" : "4x6",
-      orientation: print.orientation === "landscape" ? "landscape" : "portrait",
+      paper_size:
+        print.paper_size === "A6" ||
+        print.paper_size === "2x6" ||
+        print.paper_size === "5x7" ||
+        print.paper_size === "6x8"
+          ? print.paper_size
+          : "4x6",
+      orientation:
+        print.orientation === "landscape" || print.orientation === "auto"
+          ? print.orientation
+          : "portrait",
+      fit: print.fit === "contain" || print.fit === "cover" ? print.fit : "auto",
+      strip_2up: bool(print.strip_2up, false),
+      media_name: str(print.media_name, ""),
       auto_print: bool(print.auto_print, DEFAULT_DRAFT.print.auto_print),
       margins_mm: num(print.margins_mm, DEFAULT_DRAFT.print.margins_mm),
       printer_name: str(print.printer_name, DEFAULT_DRAFT.print.printer_name),
@@ -138,6 +152,7 @@ function toDraft(settings: DeviceSettings | null): Draft {
         session.max_retakes === null
           ? null
           : num(session.max_retakes, DEFAULT_DRAFT.session.max_retakes ?? 0),
+      kiosk_review_grid: bool(session.kiosk_review_grid, true),
     },
     appearance: {
       bg_color: str(appearance.bg_color, DEFAULT_DRAFT.appearance.bg_color),
@@ -305,15 +320,6 @@ export function BoothSettingsPanel({ initial, bridgeUrl, photoboxName, onSaved, 
               />
               <span className={labelClass}>Pratinjau mirror</span>
             </label>
-            <label className="flex min-h-11 items-center gap-3 border-2 border-ink bg-bg px-3">
-              <input
-                type="checkbox"
-                checked={draft.camera.chroma_key_enabled}
-                onChange={(e) => update("camera", { chroma_key_enabled: e.target.checked })}
-                className="size-5"
-              />
-              <span className={labelClass}>Layar hijau (chroma key)</span>
-            </label>
           </div>
         </section>
 
@@ -350,10 +356,21 @@ export function BoothSettingsPanel({ initial, bridgeUrl, photoboxName, onSaved, 
                 className={inputClass}
                 value={draft.print.paper_size}
                 onChange={(e) =>
-                  update("print", { paper_size: e.target.value === "A6" ? "A6" : "4x6" })
+                  update("print", {
+                    paper_size:
+                      e.target.value === "A6" ||
+                      e.target.value === "2x6" ||
+                      e.target.value === "5x7" ||
+                      e.target.value === "6x8"
+                        ? e.target.value
+                        : "4x6",
+                  })
                 }
               >
                 <option value="4x6">4x6 (10x15 cm)</option>
+                <option value="2x6">2x6 (strip 5x15 cm)</option>
+                <option value="5x7">5x7 (13x18 cm)</option>
+                <option value="6x8">6x8 (15x20 cm)</option>
                 <option value="A6">A6</option>
               </select>
             </label>
@@ -364,12 +381,37 @@ export function BoothSettingsPanel({ initial, bridgeUrl, photoboxName, onSaved, 
                 value={draft.print.orientation}
                 onChange={(e) =>
                   update("print", {
-                    orientation: e.target.value === "landscape" ? "landscape" : "portrait",
+                    orientation:
+                      e.target.value === "landscape"
+                        ? "landscape"
+                        : e.target.value === "auto"
+                          ? "auto"
+                          : "portrait",
                   })
                 }
               >
                 <option value="portrait">Portrait</option>
                 <option value="landscape">Landscape</option>
+                <option value="auto">Auto (ikuti foto)</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className={labelClass}>Penyesuaian gambar</span>
+              <select
+                className={inputClass}
+                value={draft.print.fit}
+                onChange={(e) =>
+                  update("print", {
+                    fit:
+                      e.target.value === "contain" || e.target.value === "cover"
+                        ? e.target.value
+                        : "auto",
+                  })
+                }
+              >
+                <option value="auto">Auto (frame = utuh, foto = penuh)</option>
+                <option value="contain">Utuh (tanpa crop)</option>
+                <option value="cover">Penuh (crop terpusat)</option>
               </select>
             </label>
             <label className="flex flex-col gap-1">
@@ -382,6 +424,26 @@ export function BoothSettingsPanel({ initial, bridgeUrl, photoboxName, onSaved, 
                 value={draft.print.margins_mm}
                 onChange={(e) => update("print", { margins_mm: Number(e.target.value) })}
               />
+            </label>
+            <label className="flex flex-col gap-1 sm:col-span-2">
+              <span className={labelClass}>Nama media CUPS (kosong = Custom.WxHmm)</span>
+              <input
+                type="text"
+                maxLength={120}
+                className={inputClass}
+                placeholder="mis. DNP_DS620_4x6"
+                value={draft.print.media_name}
+                onChange={(e) => update("print", { media_name: e.target.value })}
+              />
+            </label>
+            <label className="flex min-h-11 items-center gap-3 border-2 border-ink bg-bg px-3 sm:col-span-2">
+              <input
+                type="checkbox"
+                checked={draft.print.strip_2up}
+                onChange={(e) => update("print", { strip_2up: e.target.checked })}
+                className="size-5"
+              />
+              <span className={labelClass}>Dua strip per kertas 4x6 (2x6 × 2)</span>
             </label>
             <label className="flex flex-col gap-1 sm:col-span-2">
               <span className={labelClass}>Nama printer (kosong = default OS)</span>
@@ -464,8 +526,18 @@ export function BoothSettingsPanel({ initial, bridgeUrl, photoboxName, onSaved, 
               />
             </label>
           </div>
+          <label className="flex min-h-11 items-center gap-3 border-2 border-ink bg-bg px-3">
+            <input
+              type="checkbox"
+              checked={draft.session.kiosk_review_grid !== false}
+              onChange={(e) => update("session", { kiosk_review_grid: e.target.checked })}
+              className="size-5"
+            />
+            <span className={labelClass}>Layar cek foto (review grid)</span>
+          </label>
           <p className="text-xs leading-relaxed text-muted-foreground">
             Peringatan harus lebih singkat dari durasi sesi — runtime menolak kombinasi sebaliknya.
+            Matikan review grid untuk kembali langsung ke editor setelah capture.
           </p>
         </section>
 

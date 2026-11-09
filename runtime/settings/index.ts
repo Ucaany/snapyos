@@ -1,7 +1,7 @@
 /**
  * Setelan device: baca, tulis, export, import (`/v1/settings*`).
  *
- * Aturan yang mengikat modul ini (plan "Aturan kepemilikan setelan"):
+ * Aturan yang mengikat modul ini:
  * yang berhubungan dengan uang milik cloud, yang berhubungan dengan mesin milik
  * device. `PUT` hanya menerima field device; field cloud dijawab
  * `403 FIELD_NOT_DEVICE_OWNED`, bukan dibuang diam-diam — operator harus tahu
@@ -277,7 +277,7 @@ export function importSettings(ctx: SettingsContext, raw: unknown) {
   if (version > SETTINGS_SCHEMA_VERSION) {
     throw new HttpError(
       `Versi setelan ${version} lebih baru dari yang didukung (${SETTINGS_SCHEMA_VERSION}). ` +
-        "Perbarui aplikasi booth lebih dulu.",
+        "Perbarui runtime lokal lebih dulu.",
       400,
       SCHEMA_VERSION_TOO_NEW
     );

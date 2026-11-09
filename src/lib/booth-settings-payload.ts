@@ -23,15 +23,16 @@ export type BoothCameraDraft = {
   capture_height: number;
   mirror_preview: boolean;
   screen_orientation: "landscape" | "portrait";
-  /** Booth punya layar hijau — editor kiosk menawarkan hapus latar. */
-  chroma_key_enabled: boolean;
 };
 
 export type BoothPrintDraft = {
   enabled: boolean;
   mode: "browser" | "bluetooth" | "cups";
-  paper_size: "4x6" | "A6";
-  orientation: "portrait" | "landscape";
+  paper_size: "4x6" | "2x6" | "5x7" | "6x8" | "A6";
+  orientation: "portrait" | "landscape" | "auto";
+  fit?: "auto" | "contain" | "cover";
+  strip_2up?: boolean;
+  media_name?: string;
   auto_print: boolean;
   margins_mm: number;
   printer_name: string;
@@ -41,6 +42,8 @@ export type BoothSessionDraft = {
   timer_seconds: number;
   warning_seconds: number;
   max_retakes: number | null;
+  /** Layar review grid setelah capture (default ON). */
+  kiosk_review_grid?: boolean;
 };
 
 export type BoothAppearanceDraft = {
@@ -105,21 +108,26 @@ export function boothDraftToSettings(draft: BoothDraft): BoothSettingsPayload {
       capture_height: draft.camera.capture_height,
       mirror_preview: draft.camera.mirror_preview,
       screen_orientation: draft.camera.screen_orientation,
-      chroma_key_enabled: draft.camera.chroma_key_enabled,
     },
     print_settings: {
       enabled: draft.print.enabled,
       mode: draft.print.mode,
       paper_size: draft.print.paper_size,
       orientation: draft.print.orientation,
+      fit: draft.print.fit,
+      strip_2up: draft.print.strip_2up,
       auto_print: draft.print.auto_print,
       margins_mm: draft.print.margins_mm,
+      ...(draft.print.media_name?.trim() ? { media_name: draft.print.media_name.trim() } : {}),
       ...(draft.print.printer_name.trim() ? { printer_name: draft.print.printer_name.trim() } : {}),
     },
     session_settings: {
       timer_seconds: draft.session.timer_seconds,
       warning_seconds: draft.session.warning_seconds,
       max_retakes: draft.session.max_retakes,
+      ...(draft.session.kiosk_review_grid === undefined
+        ? {}
+        : { kiosk_review_grid: draft.session.kiosk_review_grid }),
     },
     appearance_settings: appearance as Record<string, unknown>,
   };

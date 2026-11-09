@@ -28,7 +28,12 @@ import {
   webhookEventId,
 } from "@/server/payment/pakasir-utils";
 import { insertAudit } from "@/server/audit";
-import { applyInvoiceIntent, intentToItems } from "@/server/subscription";
+import {
+  applyInvoiceIntent,
+  intentToItems,
+  recordLatePaymentVoidInvoice,
+  type IntentDb,
+} from "@/server/subscription";
 import { resolveGatewayByCredential } from "@/server/payment/providers/registry";
 import { resolveGatewayFromCredential } from "@/server/payment/providers/gateway-factory";
 import {
@@ -217,38 +222,44 @@ export async function getInvoiceReceipt(userId: string, invoiceId: string) {
   };
 }
 
-/** Invoice pending → paid; late payment invoice void tidak menerapkan intent usang. */
+/** Invoice pending → paid; late payment invoice void TIDAK auto-reactivate. */
 async function markInvoicePaid(payment: InvoicePaymentRow) {
   const supabase = createServerClient();
-  const { data: current } = await supabase
+  const { data: currentData } = await supabase
     .from("invoices")
-    .select("status")
+    .select("status, number, subscription_id, amount, intent")
     .eq("id", payment.invoice_id)
     .maybeSingle();
+  const current = (currentData ?? null) as {
+    status: string;
+    number: string | null;
+    subscription_id: string | null;
+    amount: number | null;
+    intent: Parameters<typeof intentToItems>[0];
+  } | null;
   if (current?.status === "paid") {
     await applyInvoiceIntent(payment.business_id, payment.invoice_id);
     return;
   }
   if (current?.status === "void") {
-    // Uang masuk untuk invoice yang sudah di-void (mis. pembelian template lain
-    // membatalkannya). Dulu ini no-op senyap: dana diterima, tanpa entitlement,
-    // dan tanpa jejak. Catat sebagai kegagalan intent agar bisa direfund.
-    const { data: inv } = await supabase
-      .from("invoices")
-      .select("intent")
-      .eq("id", payment.invoice_id)
-      .maybeSingle();
-    // Duplikat webhook tidak boleh menggagalkan handler: unique index
-    // (invoice_id, reason) menahan baris kedua, errornya diabaikan.
-    const { error: failErr } = await supabase.from("subscription_intent_failures").insert({
-      business_id: payment.business_id,
-      invoice_id: payment.invoice_id,
-      reason: "invoice_void_paid",
-      message: `Pembayaran ${payment.order_id} masuk setelah invoice di-void (amount ${payment.amount})`,
-      intent_snapshot: (inv as { intent?: unknown } | null)?.intent ?? {},
-      amount: payment.amount,
-    });
-    if (failErr) console.error("[invoice] gagal mencatat invoice_void_paid:", failErr.message);
+    // Late payment pada invoice void (P0): uang settled untuk tagihan yang
+    // sudah dibatalkan. Invoice TETAP void (uang wajib direview/direfund
+    // manusia) — catat audit + tiket review agar tidak hilang diam-diam.
+    // Webhook tetap dianggap sukses (baris invoice_payments sudah paid).
+    await recordLatePaymentVoidInvoice(
+      {
+        db: createServerClient() as unknown as IntentDb,
+        audit: (input) => insertAudit(input),
+      },
+      {
+        businessId: payment.business_id,
+        invoiceId: payment.invoice_id,
+        subscriptionId: current.subscription_id,
+        amount: payment.amount ?? current.amount ?? 0,
+        number: current.number,
+        intent: current.intent,
+      }
+    );
     return;
   }
   if (current?.status !== "pending") return;

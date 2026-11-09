@@ -14,7 +14,7 @@ SESUAI (inti): dashboard admin lengkap (overview, users, businesses, plans, subs
 EKSTRA (audit 2026-09-16, semua sudah terdokumentasi):
 
 - `createUser`/`deleteUser` admin (REST + UI).
-- Platform settings `withdrawal_days` (multi-hari), `withdrawal_sla_hours`, `chroma_key_default_enabled`.
+- Platform settings `withdrawal_days` (multi-hari), `withdrawal_sla_hours`.
 - `maintenance_mode` di-**enforce** di middleware (bukan hanya display).
 - Subscription Promos CRUD (§10.2 baru, tabel `subscription_promos` migration 0014).
 - Template global create/upload (owner + FK `templates.category_id`, migration 0039).
@@ -126,7 +126,6 @@ Contoh key di `platform_settings`:
   "min_withdrawal_amount": 10000,
   "withdrawal_days": [0, 1, 2, 3, 4, 5, 6],
   "withdrawal_sla_hours": 24,
-  "chroma_key_default_enabled": false,
   "gateway_pakasir_enabled": true,
   "gateway_midtrans_enabled": true,
   "gateway_tripay_enabled": true
@@ -164,35 +163,3 @@ Admin meninjau tiket bantuan yang dikirim owner (lihat `04-owner-dashboard.md` �
 **Data:** tabel `support_tickets` + `support_ticket_replies` (migration 0050).
 
 **UI:** `/admin/support` — tabel tiket dengan dropdown status inline per baris.
-
-## 10.7 Katalog Aplikasi (tautan eksternal)
-
-Admin mendaftarkan rilis aplikasi booth (installer Windows) supaya owner bisa
-mengunduhnya dari `/dashboard/apps`.
-
-- **Hanya tautan.** File `.exe`/`.msi` diunggah admin ke Google Drive (atau host
-  lain); tidak ada upload ke storage SNAPY OS, tidak ada bucket baru, tidak ada
-  presigned PUT. Tabel `app_releases` menyimpan URL + metadata.
-- **Halaman:** `/admin/apps` (`ADMIN - KATALOG APLIKASI`). Form: versi (`1.2.3`),
-  URL unduhan, nama file, ukuran byte (opsional), SHA-256 (opsional), catatan rilis.
-  Tabel: versi, nama file, ukuran, tanggal, host tujuan, status.
-- **Aksi:** `createAppReleaseAction`, `updateAppReleaseAction`,
-  `toggleAppReleaseAction`, `deleteAppReleaseAction`. Data:
-  `src/server/admin/apps.ts` (`listAppReleases`, `createAppRelease`,
-  `updateAppRelease`, `setAppReleaseActive`, `deleteAppRelease`).
-- **Tanpa REST route.** Sesuai `docs/api/README.md`, server action adalah jalur
-  utama CRUD dashboard admin dan tidak ada konsumen eksternal untuk katalog ini.
-- **Validasi URL** (`appReleaseSchema`, `src/lib/validators.ts`): `new URL()`,
-  protocol wajib `https:`, hostname wajib punya titik (menolak `localhost`,
-  `.com`, IP polos). `javascript:`, `data:`, `file:`, `http:` ditolak. URL
-  disimpan apa adanya — normalisasi bisa mematahkan tautan Google Drive. Tidak
-  ada allowlist host: admin adalah CEO platform.
-- **Tanpa verifikasi tautan dari server.** HEAD/GET ke URL sembarang adalah SSRF
-  (bisa menembak `169.254.169.254` atau host internal). Tautan mati ketahuan saat
-  owner mengklik, bukan saat disimpan.
-- **Versi duplikat** ditangkap sebagai error field `version` (SQLSTATE `23505` →
-  `VALIDATION_ERROR`), bukan 500.
-- **Batas jujur di UI:** file diunduh dari host di luar SNAPY OS; ukuran dan
-  SHA-256 diisi manual dan tidak diverifikasi sistem; periksa dengan
-  `Get-FileHash` sebelum memasang.
-- **DB:** `app_releases` (migration `0081`).

@@ -417,8 +417,7 @@
   "maintenance_mode": false,
   "min_withdrawal_amount": 10000,
   "withdrawal_days": [0, 1, 2, 3, 4, 5, 6],
-  "withdrawal_sla_hours": 24,
-  "chroma_key_default_enabled": false
+  "withdrawal_sla_hours": 24
 }
 ```
 
@@ -438,42 +437,6 @@
 - Admin guard
 - Audit log setiap perubahan settings
 - Maintenance mode dibaca fresh per request (tanpa cache lintas-request; DB error fail-closed 503)
-
----
-
-## 11.1 Katalog Aplikasi (Tautan)
-
-**Page**: `/admin/apps` → `src/app/(admin)/admin/apps/page.tsx`
-
-**Tujuan**: mendaftarkan rilis installer booth (`.exe`/`.msi`) yang diunggah ke
-Google Drive atau host lain. SNAPY OS **tidak** menyimpan filenya.
-
-**Server Actions**: `createAppReleaseAction`, `updateAppReleaseAction`,
-`toggleAppReleaseAction`, `deleteAppReleaseAction` (`src/server/admin-actions.ts`)
-→ `createAppRelease`, `updateAppRelease`, `setAppReleaseActive`,
-`deleteAppRelease` (`src/server/admin/apps.ts`).
-
-**Data Flow**:
-
-```
-AdminActionForm → action → appReleaseSchema.parse()
-   ↓ URL harus https:// + hostname publik (javascript:/data:/file:/http: ditolak)
-   ↓ insert/update app_releases (versi unik; 23505 → error field `version`)
-   ↓ listAppReleases() → daftar rilis (aktif & nonaktif)
-   ↓ rilis is_active tampil di /dashboard/apps owner
-```
-
-**Field**: `version` (`1.2.3`), `download_url`, `file_name`,
-`file_size_bytes` (opsional), `sha256` (opsional, 64 hex), `release_notes`,
-`is_active`.
-
-**Batas**: server tidak melakukan HEAD/GET ke `download_url` (SSRF), jadi tautan
-mati hanya ketahuan saat owner mengklik. `sha256` dan ukuran diisi manual dan
-tidak diverifikasi sistem. Tidak ada upload/bucket baru; kuota storage tidak
-tersentuh.
-
-**Acceptance**: admin mendaftarkan rilis, menonaktifkannya, dan menghapus baris
-tanpa menyentuh objek storage mana pun. Lihat `docs/19-desktop-app-release.md`.
 
 ---
 

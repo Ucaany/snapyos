@@ -432,9 +432,7 @@ Delete photobox → deletePhotobox(businessId, photoboxId)
 
 ---
 
-## 7.1 Setelan mesin: milik aplikasi booth
 
-**Tidak ada halaman dashboard.** Kamera, printer, dan durasi sesi diatur dari aplikasi booth
 (runtime lokal), bukan dari browser owner. Tidak ada tombol uji kamera jarak jauh: hardware
 hanya bisa diuji di lokasi, dan halaman yang mencoba melakukannya sudah dihapus.
 
@@ -474,49 +472,6 @@ datang sendiri lewat heartbeat device.
 
 **Acceptance**: owner mengatur identitas dan kebijakan bisnis booth; setelan mesin datang dari
 laporan booth; field mesin yang dikirim dari dashboard ditolak.
-
----
-
-## 7.2 Unduh aplikasi booth (`/dashboard/apps`)
-
-**Page**: `/dashboard/apps` → `src/app/(dashboard)/dashboard/apps/page.tsx`
-
-**Data Flow**:
-
-```
-SSR page → listOwnerReleases()      (app_releases where is_active = true, created_at desc)
-        → listPhotoboxes()          (device_status.app_version per booth)
-   ↓ latest = releases[0]
-   ↓ needsAppUpdate(reported, latest.version) → badge "Perlu update"
-   ↓ render AppDownloadCard + riwayat + tabel versi booth
-```
-
-**Kartu rilis terbaru** (`AppDownloadCard`, client hanya untuk tombol salin):
-
-- Versi, tanggal, ukuran byte (bila admin mengisi), nama file, catatan rilis
-- **Buka tautan unduhan** → `<a target="_blank" rel="noopener noreferrer">` ke host eksternal
-- Host tujuan tertulis (`drive.google.com`), supaya jelas tautan meninggalkan SNAPY OS
-- SHA-256 dalam blok `font-mono` + tombol **Salin hash**, hanya bila admin mengisinya
-
-**Tabel versi per booth**: `name` + `device_status.app_version`; belum pernah melapor →
-"Belum pernah dilaporkan"; versi < rilis terbaru → badge **Perlu update** (`bg-accent`,
-`text-[10px]`).
-
-**Tidak ada** tombol "kirim update ke booth": belum ada kanal perintah cloud → runtime.
-Unduhan dan pemasangan manual di komputer booth.
-
-**States**: belum ada rilis aktif (kartu kosong + penjelasan), belum ada booth (tabel kosong),
-clipboard diblokir ("salin manual"), migration 0081 belum diterapkan (daftar kosong, bukan 500).
-
-**File Locations**:
-
-- Server: `src/server/app-releases.ts` (`listOwnerReleases`, `getLatestRelease`)
-- Lib: `src/lib/app-release.ts` (`compareAppVersions`, `needsAppUpdate`, `hostOf`, format)
-- Components: `src/components/dashboard/AppDownloadCard.tsx`
-- Nav: `src/components/dashboard/nav.ts` (grup Operasional, setelah Unduh PWA)
-
-**Acceptance**: owner menemukan installer versi terbaru, tahu host tujuannya, dan melihat booth
-mana yang tertinggal versi. Tidak ada file installer yang melewati storage SNAPY OS.
 
 ---
 
@@ -656,7 +611,7 @@ Delete template → deleteTemplate(businessId, templateId)
 - Page: `src/app/(dashboard)/dashboard/templates/page.tsx`
 - Builder: `src/app/(dashboard)/dashboard/templates/builder/[id]/page.tsx`
 - Server: `src/server/templates.ts`
-- Components: `src/components/templates/TemplateGrid.tsx`, `src/components/templates/TemplateBuilder.tsx`
+- Components: `src/components/dashboard/TemplatesGrid.tsx`, `src/components/dashboard/TemplateBuilderCanvas.tsx`
 
 **Acceptance**: (AC 8) owner upload template; template bisa dipilih customer; builder slot berfungsi (§9.1).
 
@@ -733,14 +688,9 @@ Delete template → deleteTemplate(businessId, templateId)
 
 - Slot tidak bisa digeser/resize keluar batas canvas (clamp saat drag)
 - Minimal 1 slot untuk publish (template tanpa slot = legacy overlay; konfirmasi eksplisit jika publish tanpa slot)
-- Thumbnail digenerate otomatis dari preview builder (canvas → image)
+- Thumbnail WebP dibuat dari frame yang diunggah (fallback: frame)
 
-**Render Engine** (satu engine untuk semua tempat):
-
-- Builder preview
-- Editor kiosk
-- Print renderer
-- Result online
+**Render Engine**: builder preview dan editor kiosk sama-sama memakai `composeFrame`; JPEG final dirender di editor kiosk, lalu print dan result online memakai JPEG itu (tanpa render ulang di server).
 
 **Urutan Render** (`composeFrame(ctx, layout, frameImg, photos, transforms)`):
 
@@ -759,7 +709,7 @@ Delete template → deleteTemplate(businessId, templateId)
 
 - Page: `src/app/(dashboard)/dashboard/templates/builder/[id]/page.tsx`
 - Server: `src/server/templates.ts` (updateTemplate dengan layout validation)
-- Components: `src/components/templates/TemplateBuilder.tsx`, `src/components/templates/SlotShape.tsx`, `src/components/templates/SlotPropertiesPanel.tsx`
+- Components: `src/components/dashboard/TemplateBuilderCanvas.tsx`
 - Engine: `src/lib/compose-frame.ts` (shared untuk builder/kiosk/print)
 
 **Acceptance** (AC dari `15-template-builder.md`):
@@ -767,7 +717,7 @@ Delete template → deleteTemplate(businessId, templateId)
 1. Owner upload PNG + tambah ≥1 slot + publish tanpa training (< 2 menit)
 2. Customer memilih frame → foto hasil capture muncul pas di setiap slot (cover-fit, rasio tidak terdistorsi)
 3. Template dengan slot berbeda dari package tetap dapat di-assign; slot frame menentukan capture dan template legacy memakai photo_count package
-4. Hasil print & result online identik dengan preview builder (satu engine composite)
+4. Hasil print & result online memakai JPEG final yang dirender di editor kiosk (bukan render ulang di server)
 5. Template legacy (layout kosong) tetap berfungsi — backward compatible
 6. Validasi layout di-enforce server-side (request dengan layout invalid ditolak 4xx)
 
@@ -1246,9 +1196,10 @@ Edit checkout settings → updateBusinessSettings(businessId, { checkout: { qris
 
 **Page**: `/dashboard/branding` (atau `/dashboard/settings` tab Branding)
 
-**Server Actions**: `src/server/branding-actions.ts`
+**Server Actions**: `src/server/design-builder-actions.ts`
 
-- `updateBranding`, `uploadLogo`
+- `saveBrandingAction` (global/booth), `uploadBrandAssetAction`, `resetBoothBrandingAction`
+- Data layer: `src/server/branding.ts` (`updateBranding`, `uploadLogo`, `uploadPhotoboxLogo`, `uploadPhotoboxKioskVideo`) + `src/server/photoboxes.ts` (`updatePhotoboxBranding` mode `merge`/`replace`).
 
 **Fields** (`business_settings.branding` jsonb):
 
@@ -1287,25 +1238,26 @@ Edit checkout settings → updateBusinessSettings(businessId, { checkout: { qris
 **Data Flow (Update Branding)**:
 
 ```
-Owner ubah branding → updateBranding(businessId, brandingData)
-   ↓ validate: colors valid hex, font_scale > 0, button_radius >= 0, padding >= 0
-   ↓ update business_settings.branding
-   ↓ revalidate
+Owner ubah branding → saveBrandingAction({ scope, photoboxId?, branding })
+   ↓ scope=global: updateBranding → business_settings.branding
+   ↓ scope=booth: updatePhotoboxBranding(mode replace) → photoboxes.branding
+   ↓ validate: hex, range, kontras efektif (global + override) WCAG AA
+   ↓ invalidatePublicConfig + revalidate /dashboard/branding
 ```
 
 **Data Flow (Upload Logo)**:
 
 ```
 Owner upload logo → uploadLogo(businessId, file)
-   ↓ validate: file type PNG/JPG/SVG/WebP, max size (2MB)
-   ↓ upload ke storage → logo_url
-   ↓ update business_settings.branding.logo_url
+   ↓ validate: file type PNG/JPG/WebP (SVG ditolak), max size (2MB)
+   ↓ upload ke storage (business-assets, private) → logo_key
+   ↓ update branding (global) atau override booth
    ↓ revalidate
 ```
 
 **Components**: `Form` + `Tabs` (branding, welcome), color picker, logo upload, live `Preview` panel.
 
-**Validation**: warna valid hex; logo ukuran & tipe; font_scale 0.5–2.0; button_radius 0–16; padding 0–64.
+**Validation**: warna valid hex; logo ukuran & tipe (PNG/JPG/WebP); font_scale 0.8–1.4; button_radius 0–24; padding 0–96; kontras teks/latar ≥ 4.5:1 pada branding efektif.
 
 **Security**: upload logo divalidasi (file type, size, malicious payload), disimpan di storage bucket private.
 
@@ -1315,7 +1267,7 @@ Owner upload logo → uploadLogo(businessId, file)
 
 - Page: `src/app/(dashboard)/dashboard/branding/page.tsx`
 - Server: `src/server/branding-actions.ts`, `src/server/branding.ts`
-- Components: `src/components/branding/BrandingForm.tsx`, `src/components/branding/KioskBrandingEditor.tsx`
+- Components: `/dashboard/branding` = Design Builder per booth (`DesignBuilder` + `DesignBuilderPreview`, aksi `design-builder-actions.ts`); `/dashboard/devices` = pairing/diagnostik perangkat.
 
 **Acceptance**: (AC 6) branding muncul di customer-facing app; logo upload berfungsi; kiosk override per-page berfungsi.
 
@@ -1447,7 +1399,6 @@ Delete credential → deletePaymentCredential(businessId, credentialId)
 
 **Utama**: Dashboard (overview) · Analytics (revenue charts) · Metrics (business metrics)
 
-**Operasional**: Photobox (+ device management) · Branding & Kiosk · Outlets · Templates (+ builder) · Packages · Vouchers · Aplikasi Booth (unduh installer, `/dashboard/apps`)
 
 **Keuangan**: Transactions · Finance (expenses, profit) · Payment Gateway · Reports (export)
 
@@ -1460,7 +1411,6 @@ Delete credential → deletePaymentCredential(businessId, credentialId)
 - POS (hanya render jika `hasPosEntitlement()` — lihat `05-POS-TERMINAL-FLOW.md`)
 - Unduh PWA (hanya render jika `hasFeature('pwa_kiosk')`)
 
-**Aplikasi Booth** selalu tampil: isinya tautan installer di host eksternal, bukan fitur berbayar.
 
 **Active State**: `src/lib/nav-active.ts` shared helper.
 

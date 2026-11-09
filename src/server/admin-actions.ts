@@ -18,20 +18,23 @@ import {
   buildSettingsPayload,
 } from "@/lib/form-state";
 import type { AdminSettingsUpdateInput } from "@/lib/validators";
+import { isAllowedFrameTarget } from "@/lib/frame-proxy";
+import { removeResolved } from "@/server/storage";
+import { extractGlobalFrameChromaSlots } from "@/server/template-chroma";
+import { invalidateAllPublicConfig } from "@/server/public-config";
 import type { FormState } from "@/server/auth-actions";
 import {
   activateManually,
   attachSubscriptionAddOn,
   cancelSubscriptionAddOn,
   createAddOn,
-  createAppRelease,
   createGlobalTemplate,
   createPlan,
+  listPlans,
   createBroadcast,
   createPromo,
   createTemplateCategory,
   createUser,
-  deleteAppRelease,
   deleteAuditLogs,
   deleteBusiness,
   deleteGlobalTemplate,
@@ -41,17 +44,13 @@ import {
   markRefunded,
   resendBroadcast,
   sendBroadcast,
-  setAppReleaseActive,
   setGatewayEnabled,
   setGlobalTemplateActive,
   updateAddOn,
-  updateAppRelease,
   updateBusiness,
   updateGlobalTemplate,
   updateGlobalTemplateLayout,
   uploadGlobalTemplateFile,
-  uploadGlobalTemplateThumbnail,
-  replaceGlobalTemplateFrame,
   updatePlan,
   updatePlatformSettings,
   updatePromo,
@@ -152,6 +151,12 @@ export async function createPlanAction(_prev: FormState, formData: FormData): Pr
       max_photoboxes: num(formData, "max_photoboxes"),
       max_concurrent_sessions: num(formData, "max_concurrent_sessions"),
       max_staff: num(formData, "max_staff"),
+      max_packages: str(formData, "max_packages")
+        ? Math.max(0, num(formData, "max_packages"))
+        : undefined,
+      max_templates: str(formData, "max_templates")
+        ? Math.max(0, num(formData, "max_templates"))
+        : undefined,
       storage_limit_mb: num(formData, "storage_limit_mb"),
       platform_fee_percent: numDecimal(formData, "platform_fee_percent"),
       platform_fee_flat: num(formData, "platform_fee_flat"),
@@ -168,16 +173,22 @@ export async function createPlanAction(_prev: FormState, formData: FormData): Pr
 export async function updatePlanAction(_prev: FormState, formData: FormData): Promise<FormState> {
   try {
     // Feature flags: hidden "false" + checkbox "true" per `feature_<key>`
-    // (unchecked tetap terkirim → clear-to-empty jalan) — H2/M4 audit (docs/02 §2.6, docs/10 §10.2).
-    const features: Record<string, boolean> = {};
+    // (unchecked tetap terkirim). MERGE ke features plan lama supaya key di luar
+    // form (plan lain / key masa depan) tidak ikut terhapus — M4 audit (docs/02 §2.6, docs/10 §10.2).
+    const submitted: Record<string, boolean> = {};
     for (const key of formData.keys()) {
       if (key.startsWith("feature_")) {
-        features[key.slice(8)] = formData.getAll(key).includes("true");
+        submitted[key.slice(8)] = formData.getAll(key).includes("true");
       }
     }
-    const flagKeys = Object.keys(features);
-    const allOff = flagKeys.length > 0 && flagKeys.every((k) => !features[k]);
-    await updatePlan(str(formData, "planId"), {
+    const planId = str(formData, "planId");
+    const flagKeys = Object.keys(submitted);
+    let features: Record<string, boolean> | undefined;
+    if (flagKeys.length > 0) {
+      const existing = (await listPlans()).find((p) => p.id === planId)?.features ?? {};
+      features = { ...existing, ...submitted };
+    }
+    await updatePlan(planId, {
       name: str(formData, "name") || undefined,
       price_monthly: str(formData, "price_monthly") ? num(formData, "price_monthly") : undefined,
       price_yearly: str(formData, "price_yearly") ? num(formData, "price_yearly") : null,
@@ -193,6 +204,12 @@ export async function updatePlanAction(_prev: FormState, formData: FormData): Pr
         ? num(formData, "max_concurrent_sessions")
         : undefined,
       max_staff: str(formData, "max_staff") ? num(formData, "max_staff") : undefined,
+      max_packages: str(formData, "max_packages")
+        ? Math.max(0, num(formData, "max_packages"))
+        : undefined,
+      max_templates: str(formData, "max_templates")
+        ? Math.max(0, num(formData, "max_templates"))
+        : undefined,
       storage_limit_mb: str(formData, "storage_limit_mb")
         ? num(formData, "storage_limit_mb")
         : undefined,
@@ -204,7 +221,7 @@ export async function updatePlanAction(_prev: FormState, formData: FormData): Pr
         : undefined,
       // Checkbox + hidden "false" (unchecked tetap terkirim) — H2 audit.
       is_active: formData.getAll("is_active").includes("true"),
-      ...(flagKeys.length > 0 ? { features: allOff ? {} : features } : {}),
+      ...(features ? { features } : {}),
     });
     refresh("/admin/plans", "/admin");
     return {};
@@ -343,6 +360,7 @@ export async function toggleTemplateAction(
 ): Promise<FormState> {
   try {
     await setGlobalTemplateActive(str(formData, "templateId"), bool(formData, "active"));
+    invalidateAllPublicConfig();
     refresh("/admin/templates");
     return {};
   } catch (error) {
@@ -356,73 +374,87 @@ export async function deleteGlobalTemplateAction(
 ): Promise<FormState> {
   try {
     await deleteGlobalTemplate(str(formData, "templateId"));
+    invalidateAllPublicConfig();
     refresh("/admin/templates");
     return {};
   } catch (error) {
     return toFormState(error);
   }
 }
+
+/** Target storage sah: key mentah (tanpa skema) atau URL yang lolos allowlist
+ *  proxy frame (Supabase/R2). Domain eksternal ditolak sebelum DB disentuh. */
+function isAllowedTemplateTarget(value: string): boolean {
+  const raw = value.trim();
+  if (!raw) return false;
+  if (/^https?:\/\//i.test(raw)) {
+    try {
+      return isAllowedFrameTarget(new URL(raw), process.env);
+    } catch {
+      return false;
+    }
+  }
+  // Skema lain (javascript:, data:, …) atau path absolut/protocol-relative bukan key.
+  if (/^[a-z][a-z0-9+.-]*:/i.test(raw)) return false;
+  if (raw.startsWith("/")) return false;
+  return true;
+}
+
+const FRAME_TARGET_ERROR = "URL harus storage SnapyOS (Supabase/R2), bukan domain eksternal";
 
 export async function createGlobalTemplateAction(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  try {
-    const file = formData.get("file");
-    let fileUrl = str(formData, "file_url");
-    if (file instanceof File && file.size > 0) {
+  const file = formData.get("file");
+  let fileUrl = str(formData, "file_url");
+  if (fileUrl && !isAllowedTemplateTarget(fileUrl)) {
+    return { fieldErrors: { file_url: [FRAME_TARGET_ERROR] } };
+  }
+
+  let uploadedKey: string | null = null;
+  if (file instanceof File && file.size > 0) {
+    try {
       const { key } = await uploadGlobalTemplateFile(file);
+      uploadedKey = key;
       fileUrl = key;
+    } catch (error) {
+      return toFormState(error);
     }
-    if (!fileUrl) {
-      return { fieldErrors: { file_url: ["URL frame atau file wajib diisi"] } };
-    }
+  }
+  if (!fileUrl) {
+    return { fieldErrors: { file_url: ["URL frame atau file wajib diisi"] } };
+  }
+  if (!isAllowedTemplateTarget(fileUrl)) {
+    if (uploadedKey) await removeResolved("business-assets", [uploadedKey]);
+    return { fieldErrors: { file_url: [FRAME_TARGET_ERROR] } };
+  }
+
+  const thumbnailInput = str(formData, "thumbnail_url");
+  if (thumbnailInput && !isAllowedTemplateTarget(thumbnailInput)) {
+    if (uploadedKey) await removeResolved("business-assets", [uploadedKey]);
+    return { fieldErrors: { thumbnail_url: [FRAME_TARGET_ERROR] } };
+  }
+  const thumbnailUrl = thumbnailInput || fileUrl;
+
+  try {
     await createGlobalTemplate({
       name: str(formData, "name"),
       category_id: str(formData, "category_id"),
       file_url: fileUrl,
-      thumbnail_url: fileUrl,
+      thumbnail_url: thumbnailUrl,
       is_active: formData.has("is_active") ? formData.getAll("is_active").includes("true") : true,
       price: str(formData, "price") ? num(formData, "price") : null,
       is_premium: formData.getAll("is_premium").includes("true"),
     });
-    refresh("/admin/templates");
-    return {};
   } catch (error) {
+    // File diunggah request ini tetapi insert gagal → jangan tinggalkan orphan.
+    if (uploadedKey) await removeResolved("business-assets", [uploadedKey]);
     return toFormState(error);
   }
-}
-
-export async function saveGlobalTemplateBuilderAction(
-  _prev: FormState,
-  formData: FormData
-): Promise<FormState> {
-  const id = str(formData, "id");
-  const layoutRaw = str(formData, "layout");
-  let layout: unknown;
-  try {
-    layout = layoutRaw ? JSON.parse(layoutRaw) : {};
-  } catch {
-    return { fieldErrors: { layout: ["Data layout tidak valid"] } };
-  }
-  const thumbnail = formData.get("thumbnail");
-  const chromaFile = formData.get("chroma_file");
-  try {
-    await updateGlobalTemplateLayout(id, {
-      layout,
-      is_active: bool(formData, "is_active"),
-    });
-    if (thumbnail instanceof File && thumbnail.size > 0) {
-      await uploadGlobalTemplateThumbnail(id, thumbnail);
-    }
-    if (chromaFile instanceof File && chromaFile.size > 0) {
-      await replaceGlobalTemplateFrame(id, chromaFile);
-    }
-  } catch (error) {
-    return toFormState(error);
-  }
-  refresh("/admin/templates", `/admin/templates/builder/${id}`);
-  return { error: undefined };
+  invalidateAllPublicConfig();
+  refresh("/admin/templates");
+  return {};
 }
 
 export async function updateGlobalTemplateAction(
@@ -436,10 +468,51 @@ export async function updateGlobalTemplateAction(
       is_premium: formData.getAll("is_premium").includes("true"),
       is_active: formData.getAll("is_active").includes("true"),
     });
+    invalidateAllPublicConfig();
     refresh("/admin/templates");
     return {};
   } catch (error) {
     return toFormState(error);
+  }
+}
+
+/**
+ * Simpan layout builder global (draft/publish). Template global dipakai semua
+ * tenant → invalidate cache publik seluruh business.
+ */
+export async function saveGlobalTemplateLayoutAction(
+  templateId: string,
+  layout: unknown,
+  publish: boolean
+): Promise<{ error?: string; fieldErrors?: Record<string, string[]> }> {
+  try {
+    await updateGlobalTemplateLayout(templateId, { layout, is_active: publish });
+  } catch (error) {
+    return toFormState(error) as { error?: string; fieldErrors?: Record<string, string[]> };
+  }
+  invalidateAllPublicConfig();
+  revalidatePath("/admin/templates");
+  refresh("/admin/templates");
+  return { error: undefined };
+}
+
+/**
+ * Deteksi area hijau template global → slot mask. Tidak menyentuh is_active.
+ */
+export async function detectGlobalTemplateChromaSlotsAction(templateId: string): Promise<{
+  layout?: unknown;
+  frameUrl?: string | null;
+  skipped?: number;
+  error?: string;
+}> {
+  try {
+    const result = await extractGlobalFrameChromaSlots(templateId);
+    invalidateAllPublicConfig();
+    revalidatePath("/admin/templates");
+    revalidatePath(`/admin/templates/builder/${templateId}`);
+    return { layout: result.layout, frameUrl: result.frameUrl, skipped: result.skipped };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Deteksi gagal" };
   }
 }
 
@@ -659,79 +732,6 @@ export async function resendBroadcastAction(
   try {
     await resendBroadcast(str(formData, "campaignId"));
     refresh("/admin/broadcasts", "/admin");
-    return {};
-  } catch (error) {
-    return toFormState(error);
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Katalog aplikasi booth (tautan saja) — migration 0081.
-// ---------------------------------------------------------------------------
-
-/** Payload form rilis: field opsional kosong → null (bukan 0 / string kosong). */
-function appReleasePayload(formData: FormData) {
-  const size = intOrNull(formData, "file_size_bytes");
-  return {
-    version: str(formData, "version"),
-    download_url: str(formData, "download_url"),
-    file_name: str(formData, "file_name"),
-    // NaN (bukan angka) dibiarkan lewat supaya Zod yang menolak dengan pesan field.
-    file_size_bytes: size === null || size === undefined ? null : size,
-    sha256: str(formData, "sha256") || null,
-    release_notes: str(formData, "release_notes") || null,
-  };
-}
-
-export async function createAppReleaseAction(
-  _prev: FormState,
-  formData: FormData
-): Promise<FormState> {
-  try {
-    await createAppRelease(appReleasePayload(formData));
-    refresh("/admin/apps", "/admin");
-    return {};
-  } catch (error) {
-    return toFormState(error);
-  }
-}
-
-export async function updateAppReleaseAction(
-  _prev: FormState,
-  formData: FormData
-): Promise<FormState> {
-  try {
-    await updateAppRelease(str(formData, "releaseId"), {
-      ...appReleasePayload(formData),
-      is_active: bool(formData, "is_active"),
-    });
-    refresh("/admin/apps", "/admin");
-    return {};
-  } catch (error) {
-    return toFormState(error);
-  }
-}
-
-export async function toggleAppReleaseAction(
-  _prev: FormState,
-  formData: FormData
-): Promise<FormState> {
-  try {
-    await setAppReleaseActive(str(formData, "releaseId"), str(formData, "active") === "true");
-    refresh("/admin/apps", "/admin");
-    return {};
-  } catch (error) {
-    return toFormState(error);
-  }
-}
-
-export async function deleteAppReleaseAction(
-  _prev: FormState,
-  formData: FormData
-): Promise<FormState> {
-  try {
-    await deleteAppRelease(str(formData, "releaseId"));
-    refresh("/admin/apps", "/admin");
     return {};
   } catch (error) {
     return toFormState(error);

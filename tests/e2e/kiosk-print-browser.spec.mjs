@@ -27,15 +27,16 @@ const html = `<!doctype html>
 <html lang="id"><head><meta charset="utf-8"><title>print test</title>
 <style>
   @page { size: 101.6mm 152.4mm; margin: 8mm; }
-  :root { --print-margin: 8mm; }
+  :root { --print-margin: 8mm; --print-fit: cover; }
   body { margin: 0; background: #fffdf5; }
   .print-sheet { width: 100%; display: flex; flex-direction: column; align-items: center; }
   .print-sheet + .print-sheet { page-break-before: always; break-before: page; }
   .print-photo { width: 100%; height: auto; max-width: 100%;
-    max-height: calc(100vh - (2 * var(--print-margin, 8mm))); object-fit: contain; }
+    max-height: calc(100vh - (2 * var(--print-margin, 8mm)));
+    object-fit: var(--print-fit, contain); }
 </style></head>
 <body>
-  <div class="print-sheet"><img class="print-photo" src="${photo("LEMBAR 1")}" /></div>
+  <div class="print-sheet" data-fit="cover"><img class="print-photo" src="${photo("LEMBAR 1")}" /></div>
   <div class="print-sheet"><img class="print-photo" src="${photo("LEMBAR 2")}" /></div>
 </body></html>`;
 
@@ -75,6 +76,13 @@ try {
     pageSize === "flex",
     pageSize
   );
+
+  // fit: cover = isi penuh kotak (bukan letterbox), dibaca dari --print-fit.
+  const objectFit = await page.evaluate(() => {
+    const img = document.querySelector("img.print-photo");
+    return img ? getComputedStyle(img).objectFit : "missing";
+  });
+  report.record("fit cover diteruskan ke object-fit", objectFit === "cover", objectFit);
 
   const pdf = await page.pdf({ printBackground: true, preferCSSPageSize: true });
   const pages = (

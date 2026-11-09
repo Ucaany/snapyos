@@ -37,14 +37,6 @@ export {
 export { type AdminPlanRow, listPlans, createPlan, updatePlan } from "./plans";
 export { type AdminAddOnRow, listAddOns, createAddOn, updateAddOn } from "./addons";
 export {
-  type AdminAppReleaseRow,
-  listAppReleases,
-  createAppRelease,
-  updateAppRelease,
-  setAppReleaseActive,
-  deleteAppRelease,
-} from "./apps";
-export {
   type AdminSubscriptionRow,
   listSubscriptions,
   getSubscription,
@@ -76,13 +68,15 @@ export {
   type AdminTemplateBuilderRow,
   getGlobalTemplate,
   updateGlobalTemplateLayout,
-  uploadGlobalTemplateThumbnail,
-  replaceGlobalTemplateFrame,
   deleteGlobalTemplate,
   listTemplatePurchases,
   type AdminTemplatePurchaseRow,
 } from "./templates";
 export { adminPosRevenueSummary } from "./pos";
+export {
+  type InstallerRow,
+  listInstallers,
+} from "./installers";
 export { type AdminPromoRow, listPromos, createPromo, updatePromo } from "./promos";
 export { type AdminAuditRow, listAuditLogs, deleteAuditLogs } from "./audit";
 export {

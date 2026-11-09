@@ -11,6 +11,14 @@ import {
   isLoopbackBridgeUrl,
   LOOPBACK_BRIDGE_URL_MESSAGE,
 } from "./bridge-url.ts";
+import {
+  CLOUD_OWNED_SETTING_FIELDS,
+  CLOUD_SYNCED_DEVICE_GROUPS,
+  DEVICE_SETTING_FIELDS,
+  DEVICE_SETTING_GROUPS,
+  LOCAL_ONLY_DEVICE_GROUPS,
+  SETTING_INVARIANTS,
+} from "./device-settings-contract.ts";
 
 /** UUID PostgreSQL canonical: shape hex, tanpa pembatasan version/variant RFC. */
 const uuid = z.string().guid();
@@ -384,7 +392,6 @@ export const cameraSettingsSchema = z.object({
     .optional(),
   countdown_seconds: z.number().int().min(1).max(10).optional(),
   mirror_preview: z.boolean().optional(),
-  chroma_key_enabled: z.boolean().optional(),
   fullscreen: z.boolean().optional(),
   facingMode: z.enum(["user", "environment"]).nullable().optional(),
   preferred_device_id: z.string().trim().max(200).nullable().optional(),
@@ -398,12 +405,18 @@ export const cameraSettingsSchema = z.object({
 
 export const printSettingsSchema = z.object({
   enabled: z.boolean().optional(),
-  paper_size: z.enum(["4x6", "A6"]).optional(),
+  paper_size: z.enum(["4x6", "2x6", "5x7", "6x8", "A6"]).optional(),
   layout: z.enum(["single", "strip"]).optional(),
-  orientation: z.enum(["portrait", "landscape"]).optional(),
+  orientation: z.enum(["portrait", "landscape", "auto"]).optional(),
   auto_print: z.boolean().optional(),
   copies: z.number().int().min(1).max(20).optional(),
   margins_mm: z.number().int().min(0).max(20).optional(),
+  /** auto|contain|cover — geometri lembar (docs/05 §5.15). */
+  fit: z.enum(["auto", "contain", "cover"]).optional(),
+  /** Dua salinan strip per kertas 4x6 landscape. */
+  strip_2up: z.boolean().optional(),
+  /** Override nama media CUPS; kosong = Custom.WxHmm. */
+  media_name: z.string().trim().max(120).optional(),
   /** Jalur cetak: dialog OS (browser) atau thermal ESC/POS lewat Web Bluetooth. */
   mode: z.enum(["browser", "bluetooth", "cups"]).optional(),
   /** Lebar kertas thermal 58/80 mm. */
@@ -419,19 +432,48 @@ export const printSettingsSchema = z.object({
   printer_name: z.string().trim().max(128).optional(),
 });
 
-export const sessionSettingsSchema = z
-  .object({
+/**
+ * Terapkan invarian lintas-field yang dideklarasikan di schema
+ * (`x-snapyos-invariants` → `SETTING_INVARIANTS`). Aturannya tidak ditulis di
+ * sini: C# memakai daftar yang sama lewat `DeviceSettings.g.cs`.
+ */
+function withInvariants<T extends z.ZodTypeAny>(definition: string, schema: T): T {
+  return schema.superRefine((value, ctx) => {
+    for (const rule of SETTING_INVARIANTS[definition] ?? []) {
+      const record = value as Record<string, unknown>;
+      const left = record[rule.left];
+      const right = record[rule.right];
+      if (typeof left !== "number" || typeof right !== "number") {
+        continue;
+      }
+      const holds = {
+        "<": left < right,
+        "<=": left <= right,
+        ">": left > right,
+        ">=": left >= right,
+        "==": left === right,
+        "!=": left !== right,
+      }[rule.op];
+      if (!holds) {
+        ctx.addIssue({
+          code: "custom",
+          path: [rule.left],
+          message: `${rule.left} harus ${rule.op} ${rule.right}`,
+        });
+      }
+    }
+  }) as unknown as T;
+}
+
+export const sessionSettingsSchema = withInvariants(
+  "sessionSettings",
+  z.object({
     timer_seconds: z.number().int().min(60).max(3600).optional(),
     warning_seconds: z.number().int().min(10).max(600).optional(),
     max_retakes: z.number().int().min(0).max(50).nullable().optional(),
+    kiosk_review_grid: z.boolean().optional(),
   })
-  .refine(
-    (value) =>
-      value.timer_seconds === undefined ||
-      value.warning_seconds === undefined ||
-      value.warning_seconds < value.timer_seconds,
-    { message: "Peringatan harus lebih singkat dari durasi sesi", path: ["warning_seconds"] }
-  );
+);
 
 /**
  * Kustomisasi tampilan booth — milik DEVICE, bukan cloud.
@@ -509,43 +551,28 @@ export const appearanceSettingsSchema = z.object({
 // pernah berbeda pendapat. Field cloud DITOLAK (403), bukan dibuang diam-diam.
 // ---------------------------------------------------------------------------
 
-export const DEVICE_SETTING_GROUPS = [
-  "camera_settings",
-  "print_settings",
-  "session_settings",
-  "appearance_settings",
-] as const;
-export type DeviceSettingGroup = (typeof DEVICE_SETTING_GROUPS)[number];
-
 /**
- * Grup yang ikut disinkronkan ke cloud (`PATCH .../devices/settings`).
+ * Daftar grup dan kepemilikan berasal dari satu kontrak yang dipakai cloud dan
+ * runtime lokal. Jangan menyalin aturannya di sini.
  *
- * `appearance_settings` sengaja TIDAK di sini: kustomisasi tampilan berlaku
- * untuk satu booth dan tidak boleh menular ke booth lain lewat baris
+ * `appearance_settings` sengaja TIDAK ikut cloud-sync: kustomisasi tampilan
+ * berlaku untuk satu booth dan tidak boleh menular ke booth lain lewat baris
  * `photoboxes`. Cloud menolak grup ini dengan `LOCAL_ONLY_SETTING`, bukan
  * membuangnya diam-diam.
  */
-export const CLOUD_SYNCED_DEVICE_GROUPS = [
-  "camera_settings",
-  "print_settings",
-  "session_settings",
-] as const;
+export type DeviceSettingGroup = (typeof DEVICE_SETTING_GROUPS)[number];
 
-/** Grup yang hanya hidup di mesin booth. */
-export const LOCAL_ONLY_DEVICE_GROUPS = ["appearance_settings"] as const;
+export {
+  CLOUD_OWNED_SETTING_FIELDS,
+  CLOUD_SYNCED_DEVICE_GROUPS,
+  DEVICE_SETTING_FIELDS,
+  DEVICE_SETTING_GROUPS,
+  LOCAL_ONLY_DEVICE_GROUPS,
+};
 
 export function isLocalOnlySettingGroup(key: string): boolean {
   return (LOCAL_ONLY_DEVICE_GROUPS as readonly string[]).includes(key);
 }
-
-/** Field milik cloud yang berada di dalam grup milik device. */
-export const CLOUD_OWNED_SETTING_FIELDS: Record<DeviceSettingGroup, readonly string[]> = {
-  camera_settings: [],
-  // copies = biaya bahan, layout = bentuk output pelanggan.
-  print_settings: ["copies", "layout"],
-  session_settings: [],
-  appearance_settings: [],
-};
 
 /** Setelan yang boleh ditulis device. `strict()`: kunci asing ditolak. */
 export const deviceSettingsSchema = z
@@ -572,9 +599,17 @@ export function isDeviceSettingGroup(key: string): key is DeviceSettingGroup {
 
 /** Nama field yang boleh ditulis device pada satu grup. */
 export function deviceSettingFields(group: DeviceSettingGroup): string[] {
-  return Object.keys(DEVICE_SETTING_SHAPES[group]).filter(
+  return [...DEVICE_SETTING_FIELDS[group]].filter(
     (key) => !CLOUD_OWNED_SETTING_FIELDS[group].includes(key)
   );
+}
+
+/**
+ * Nama field di zod schema untuk satu grup — dipakai tes paritas agar daftar di
+ * JSON Schema dan validator zod tidak pernah berbeda pendapat.
+ */
+export function zodDeviceSettingFields(group: DeviceSettingGroup): string[] {
+  return Object.keys(DEVICE_SETTING_SHAPES[group]);
 }
 
 /**
@@ -676,7 +711,6 @@ export const photoboxCreateSchema = z.object({
   camera: z.string().trim().max(120).optional(),
   printer: z.string().trim().max(120).optional(),
   display: z.string().trim().max(120).optional(),
-  chroma_key_enabled: z.boolean().optional(),
   camera_settings: cameraSettingsSchema.optional(),
   print_settings: printSettingsSchema.optional(),
   session_settings: sessionSettingsSchema.optional(),
@@ -705,7 +739,6 @@ export const photoboxUpdateSchema = z.object({
   camera: z.string().trim().max(120).nullable().optional(),
   printer: z.string().trim().max(120).nullable().optional(),
   display: z.string().trim().max(120).nullable().optional(),
-  chroma_key_enabled: z.boolean().optional(),
   camera_settings: cameraSettingsSchema.optional(),
   print_settings: printSettingsSchema.optional(),
   session_settings: sessionSettingsSchema.optional(),
@@ -1128,23 +1161,50 @@ export const deviceExitSchema = z.object({
     .optional(),
 });
 
+/** Heartbeat operasional cloud, metadata minimum tanpa media/log/secret. */
+const heartbeatHardwareSchema = z.object({
+  adapter: z.string().trim().min(1).max(40),
+  connected: z.boolean().optional(),
+  ok: z.boolean().optional(),
+}).strict();
+
 /**
- * Versi aplikasi booth (Phase 12). Dashboard owner membandingkannya dengan
- * rilis terbaru; tanpa ini owner tidak tahu booth mana yang ketinggalan.
- * Opsional: booth lama tidak mengirimnya dan tetap boleh melapor.
+ * Status antrean cetak runtime (aditif + opsional). Runtime lama tidak
+ * mengirimnya, jadi bentuk lama tetap lolos `.strict()` di atas.
  */
-const appVersionSchema = z
-  .string()
-  .trim()
-  .max(20, "Versi maksimal 20 karakter")
-  .regex(/^\d+\.\d+\.\d+$/, "Versi harus format 1.2.3")
-  .optional();
+const heartbeatPrinterJobSchema = z.object({
+  status: z.string().trim().max(40).optional(),
+  last_error: z.string().trim().max(300).nullable().optional(),
+  queue_pending: z.number().int().min(0).max(1_000_000).optional(),
+  queue_retrying: z.number().int().min(0).max(1_000_000).optional(),
+  last_job_at: z.string().trim().max(40).nullable().optional(),
+}).strict();
+
+const heartbeatPrinterSchema = heartbeatHardwareSchema.extend({
+  mode: z.enum(["browser", "bluetooth", "cups"]).optional(),
+  job: heartbeatPrinterJobSchema.nullable().optional(),
+});
+
+export const deviceHeartbeatSchema = z.object({
+  device_token: z.string().trim().min(32).max(128),
+  runtime_version: z.string().trim().regex(/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/).max(64),
+  db_version: z.number().int().min(1).max(100),
+  camera: heartbeatHardwareSchema,
+  printer: heartbeatPrinterSchema,
+  queue: z.object({ pending: z.number().int().min(0).max(1_000_000), retrying: z.number().int().min(0).max(1_000_000) }).strict(),
+  lockdown: z.object({
+    local_pin_configured: z.boolean(),
+    local_pin_locked: z.boolean(),
+    cloud_kiosk_locked: z.boolean().nullable(),
+  }).strict(),
+}).strict();
+
+export type DeviceHeartbeatInput = z.infer<typeof deviceHeartbeatSchema>;
 
 /** Laporan status device (setup wizard) — docs/05 §5.0.1. */
 export const deviceReportSchema = z.object({
   device_token: z.string().trim().min(32).max(128),
   preferred_device_id: z.string().trim().max(200).nullable().optional(),
-  app_version: appVersionSchema,
   camera: z
     .object({
       resolution: z.string().trim().max(40).optional(),
@@ -1156,10 +1216,12 @@ export const deviceReportSchema = z.object({
     .object({
       confirmed: z.boolean().optional(),
       last_test_at: z.string().trim().max(40).optional(),
-      /** Jalur cetak yang diuji: dialog OS atau thermal Bluetooth. */
-      mode: z.enum(["browser", "bluetooth"]).optional(),
+      /** Jalur cetak yang diuji: dialog OS, thermal Bluetooth, atau CUPS. */
+      mode: z.enum(["browser", "bluetooth", "cups"]).optional(),
       /** Nama printer yang diuji (informasi petugas). */
       device_name: z.string().trim().max(60).optional(),
+      /** Status antrean cetak runtime (aditif + opsional). */
+      job: heartbeatPrinterJobSchema.nullable().optional(),
     })
     .optional(),
 });
@@ -1174,8 +1236,6 @@ export const deviceReportSchema = z.object({
  */
 export const deviceSettingsPatchSchema = z.object({
   device_token: z.string().trim().min(32).max(128),
-  /** Versi aplikasi booth; ikut dikirim worker bersama setelan. */
-  app_version: appVersionSchema,
   settings: deviceSettingsSchema,
 });
 
@@ -1276,6 +1336,43 @@ export type DeviceVerifyInput = z.infer<typeof deviceVerifySchema>;
 export type DeviceExitInput = z.infer<typeof deviceExitSchema>;
 export type DeviceReportInput = z.infer<typeof deviceReportSchema>;
 export type SessionCreateInput = z.infer<typeof sessionCreateSchema>;
+
+// Windows installer catalog. Binary metadata is recomputed server-side.
+export const installerChannelSchema = z.enum(["stable", "beta", "internal"]);
+export const installerArchitectureSchema = z.enum(["x64", "x86", "arm64", "universal"]);
+export const installerWindowsSchema = z.enum(["10", "11"]);
+const installerVersionSchema = z
+  .string()
+  .trim()
+  .regex(/^\d+\.\d+\.\d+$/, "Versi harus format 1.2.3");
+const installerText = (max: number) => z.string().trim().max(max).nullable().optional();
+
+export const installerMetadataSchema = z.object({
+  version: installerVersionSchema,
+  channel: installerChannelSchema,
+  min_windows_version: installerWindowsSchema,
+  architecture: installerArchitectureSchema,
+  changelog: installerText(8000),
+  compatibility_notes: installerText(4000),
+});
+
+export const installerUpdateSchema = installerMetadataSchema
+  .partial()
+  .extend({
+    is_active: z.boolean().optional(),
+    is_deprecated: z.boolean().optional(),
+    published: z.boolean().optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, "Minimal satu field diubah");
+
+export const installerQuerySchema = z.object({
+  windows: installerWindowsSchema,
+  architecture: installerArchitectureSchema,
+});
+
+export type InstallerMetadataInput = z.infer<typeof installerMetadataSchema>;
+export type InstallerUpdateInput = z.infer<typeof installerUpdateSchema>;
+export type InstallerQueryInput = z.infer<typeof installerQuerySchema>;
 export type SessionFinalizeInput = z.infer<typeof sessionFinalizeSchema>;
 export type SessionAbortInput = z.infer<typeof sessionAbortSchema>;
 export type CheckoutCreateInput = z.infer<typeof checkoutCreateSchema>;
@@ -1340,8 +1437,8 @@ export const adminPlanCreateSchema = z.object({
   max_photoboxes: z.number().int().min(1).max(1000).optional(),
   max_concurrent_sessions: z.number().int().min(1).max(1000).optional(),
   max_staff: z.number().int().min(0).max(1000).optional(),
-  max_packages: z.number().int().min(1).max(10000).optional(),
-  max_templates: z.number().int().min(1).max(10000).optional(),
+  max_packages: z.number().int().min(0).max(10000).optional(),
+  max_templates: z.number().int().min(0).max(10000).optional(),
   storage_limit_mb: z.number().int().min(0).max(1_000_000).optional(),
   platform_fee_percent: z.number().min(0).max(100).optional(),
   platform_fee_flat: priceIdr.optional(),
@@ -1379,95 +1476,6 @@ export const adminAddOnUpdateSchema = adminAddOnCreateSchema
   .omit({ code: true })
   .partial()
   .refine((v) => Object.keys(v).length > 0, { message: "Minimal satu field diubah" });
-
-// ---------------------------------------------------------------------------
-// Katalog aplikasi booth (0081) — TAUTAN saja, tidak ada upload.
-// ---------------------------------------------------------------------------
-
-/**
- * URL unduhan harus https:// dengan hostname publik (punya label + titik).
- * Menolak javascript:/data:/file:/http:, hostname kosong, dan `localhost`/
- * IP polos. Tidak ada allowlist host: admin boleh memakai host mana pun
- * (Google Drive, CDN, situs sendiri). Tidak ada HEAD/GET verifikasi — memanggil
- * URL sembarang dari server adalah SSRF.
- */
-export function isHttpsDownloadUrl(raw: string): boolean {
-  try {
-    const url = new URL(raw);
-    if (url.protocol !== "https:") return false;
-    // Label pertama wajib terisi → menolak ".com", "localhost", dan IP polos.
-    return /^[^\s.]+(?:\.[^\s.]+)+$/.test(url.hostname);
-  } catch {
-    return false;
-  }
-}
-
-const appReleaseUrl = z
-  .string()
-  .trim()
-  .min(1, "URL unduhan wajib diisi")
-  .max(2000, "URL terlalu panjang")
-  .refine(isHttpsDownloadUrl, "URL harus https:// dengan hostname publik");
-
-/** Disimpan apa adanya (trim saja) — normalisasi bisa mematahkan link Drive. */
-export const appReleaseSchema = z.object({
-  version: z
-    .string()
-    .trim()
-    .regex(/^\d+\.\d+\.\d+$/, "Versi harus format 1.2.3 (tanpa awalan v)"),
-  download_url: appReleaseUrl,
-  file_name: z.string().trim().min(1, "Nama file wajib diisi").max(200),
-  file_size_bytes: z
-    .number({ error: "Ukuran harus angka bulat byte" })
-    .int("Ukuran harus angka bulat byte")
-    .positive("Ukuran harus lebih dari 0")
-    .max(20_000_000_000, "Ukuran terlalu besar")
-    .nullable()
-    .optional(),
-  // Hex tidak peka huruf besar/kecil; DB menyimpan huruf kecil (check constraint).
-  sha256: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .regex(/^[0-9a-f]{64}$/, "SHA-256 harus 64 karakter hex")
-    .nullable()
-    .optional(),
-  release_notes: z
-    .string()
-    .trim()
-    .max(4000, "Catatan rilis maksimal 4000 karakter")
-    .nullable()
-    .optional(),
-  is_active: z.boolean().optional(),
-});
-
-export type AppReleaseInput = z.infer<typeof appReleaseSchema>;
-
-export const appReleaseUpdateSchema = appReleaseSchema
-  .partial()
-  .refine((v) => Object.keys(v).length > 0, { message: "Minimal satu field diubah" });
-
-export type AppReleaseUpdateInput = z.infer<typeof appReleaseUpdateSchema>;
-
-/**
- * Terjemahkan error tulis app_releases jadi bentuk yang bisa dipakai form.
- * `version` adalah satu-satunya unique constraint di tabel, jadi 23505 selalu
- * berarti versi duplikat → error field, bukan 500.
- */
-export function appReleaseWriteError(
-  error: { code?: string } | null | undefined,
-  fallback: string
-): {
-  code: "VALIDATION_ERROR" | "INTERNAL";
-  message: string;
-  fieldErrors?: Record<string, string[]>;
-} {
-  if (error?.code === "23505") {
-    const message = "Versi ini sudah terdaftar. Hapus atau ubah rilis lama lebih dulu.";
-    return { code: "VALIDATION_ERROR", message, fieldErrors: { version: [message] } };
-  }
-  return { code: "INTERNAL", message: fallback };
-}
 
 export const adminUserUpdateSchema = z
   .object({
@@ -1537,7 +1545,6 @@ export const adminSettingsUpdateSchema = z
     trial_days: z.number().int().min(0).max(365).optional(),
     maintenance_mode: z.boolean().optional(),
     maintenance_message: z.string().trim().max(300, "Pesan maksimal 300 karakter").optional(),
-    chroma_key_default_enabled: z.boolean().optional(),
     gateway_pakasir_enabled: z.boolean().optional(),
     gateway_midtrans_enabled: z.boolean().optional(),
     gateway_tripay_enabled: z.boolean().optional(),
@@ -1552,10 +1559,7 @@ export const adminGlobalTemplateCreateSchema = z.object({
   is_active: z.boolean().optional().default(true),
   price: z.number().int().min(0, "Harga minimal 0").nullable().optional(),
   is_premium: z.boolean().optional().default(false),
-  layout: z
-    .union([layoutSchema, z.record(z.string(), z.unknown())])
-    .nullable()
-    .optional(),
+  layout: layoutSchema.nullable().optional(),
 });
 
 export const adminTemplateCategoryCreateSchema = z.object({

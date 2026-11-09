@@ -35,7 +35,7 @@ export default async function TemplatesPage() {
       <PageHeader
         eyebrow={`TEMPLATE: ${active.role.toUpperCase()}`}
         title="Template & Frame"
-        description="Upload frame sendiri (PNG/JPG/WebP transparan dari Canva/Figma), kategorisasi, lalu assign ke package. Buka &ldquo;Atur slot&rdquo; untuk menambah slot foto atau hapus background hijau dengan chroma key."
+        description="Upload frame sendiri (PNG/JPG/WebP transparan dari Canva/Figma), lalu buka &ldquo;Atur slot&rdquo; untuk menambah slot foto, dan assign ke package. Area hijau pada frame bisa diubah jadi slot lewat tombol Deteksi area hijau di builder."
       />
 
       <section aria-labelledby="premium-templates" className="flex flex-col gap-4">
@@ -55,6 +55,9 @@ export default async function TemplatesPage() {
           <div className="border-2 border-ink bg-surface p-4 shadow-[4px_4px_0_0_#111111]">
             <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
               {`Sudah dimiliki: ${purchased.length}`}
+            </p>
+            <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+              Template platform terbuka read-only di builder — slot dikelola admin platform.
             </p>
             <ul
               className="mt-3 flex flex-col divide-y-2 divide-ink/10"

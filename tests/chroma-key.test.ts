@@ -1,77 +1,29 @@
 /**
- * Chroma key — penghapusan latar hijau (pure, tanpa DOM).
+ * Predikat hijau layar kroma (pure, tanpa DOM). Dipakai bersama deteksi slot
+ * (`frame-chroma.ts`) dan pembersihan file frame (`template-chroma.ts`).
  */
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import {
-  applyChromaKey,
-  colorDistance,
-  sampleCornerColor,
-  DEFAULT_CHROMA_KEY,
-} from "../src/lib/chroma-key.ts";
+import { isGreenBackground } from "../src/lib/chroma-key.ts";
 
-function rgbaOf(pixels: [number, number, number][]): Uint8ClampedArray {
-  const out = new Uint8ClampedArray(pixels.length * 4);
-  pixels.forEach(([r, g, b], i) => {
-    out[i * 4] = r;
-    out[i * 4 + 1] = g;
-    out[i * 4 + 2] = b;
-    out[i * 4 + 3] = 255;
-  });
-  return out;
-}
-
-test("colorDistance menghitung jarak Euclidean", () => {
-  assert.equal(colorDistance([0, 0, 0], [0, 0, 0]), 0);
-  assert.equal(colorDistance([0, 0, 0], [3, 4, 0]), 5);
+test("isGreenBackground: dominasi hijau dan nuansa hijau diterima", () => {
+  assert.equal(isGreenBackground([0, 177, 64]), true);
+  assert.equal(isGreenBackground([80, 200, 120]), true);
+  assert.equal(isGreenBackground([0, 255, 0]), true);
+  assert.equal(isGreenBackground([10, 120, 20]), true);
 });
 
-test("sampleCornerColor merata-ratakan empat sudut", () => {
-  // 2x2: dua piksel hijau, dua piksel biru.
-  const rgba = rgbaOf([
-    [0, 255, 0],
-    [0, 255, 0],
-    [0, 0, 255],
-    [0, 0, 255],
-  ]);
-  assert.deepEqual(sampleCornerColor(rgba, 2, 2), [0, 128, 128]);
+test("isGreenBackground: biru, abu, merah, dan hitam ditolak", () => {
+  assert.equal(isGreenBackground([0, 0, 255]), false);
+  assert.equal(isGreenBackground([128, 128, 128]), false);
+  assert.equal(isGreenBackground([220, 40, 40]), false);
+  assert.equal(isGreenBackground([0, 0, 0]), false);
+  assert.equal(isGreenBackground([255, 255, 255]), false);
 });
 
-test("applyChromaKey menghapus warna kunci penuh", () => {
-  const rgba = rgbaOf([
-    [0, 177, 64],
-    [200, 120, 80],
-  ]);
-  const changed = applyChromaKey(rgba);
-  assert.equal(changed, 1);
-  assert.equal(rgba[3], 0, "piksel hijau jadi transparan");
-  assert.equal(rgba[7], 255, "piksel lain tetap utuh");
-});
-
-test("applyChromaKey: warna dekat kunci (bayangan) ikut dihapus bertahap", () => {
-  const rgba = rgbaOf([
-    [10, 165, 70], // dekat
-    [120, 177, 64], // jauh
-  ]);
-  applyChromaKey(rgba, { ...DEFAULT_CHROMA_KEY, tolerance: 100, softness: 0.5 });
-  assert.ok(rgba[3]! < 255, "piksel dekat kunci punya alpha lebih rendah");
-  assert.equal(rgba[7], 255, "piksel jauh tidak disentuh");
-});
-
-test("applyChromaKey: foto tanpa warna kunci tidak berubah", () => {
-  const rgba = rgbaOf([
-    [200, 120, 80],
-    [30, 30, 30],
-  ]);
-  assert.equal(applyChromaKey(rgba), 0);
-  assert.equal(rgba[3], 255);
-  assert.equal(rgba[7], 255);
-});
-
-test("applyChromaKey menerima warna kunci kustom", () => {
-  const rgba = rgbaOf([[0, 0, 255]]);
-  assert.equal(applyChromaKey(rgba, { key: [0, 0, 255], tolerance: 10 }), 1);
-  assert.equal(rgba[3], 0);
+test("isGreenBackground: hijau gelap di bawah ambang value ditolak", () => {
+  // Hue hijau tapi terlalu gelap (value 0.15 batas) dan tidak dominan cukup.
+  assert.equal(isGreenBackground([10, 20, 10]), false);
 });

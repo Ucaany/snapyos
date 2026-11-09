@@ -9,6 +9,7 @@ import {
   printContentHeightMm,
   printPageSize,
   printSheets,
+  resolvePrintFit,
   shouldAutoPrint,
 } from "@/lib/print-layout";
 import { useObjectUrls } from "@/components/kiosk/use-object-url";
@@ -24,6 +25,10 @@ type Props = {
   plan: PrintPlan;
   /** Setting cetak owner — ukuran/margin/orientasi/salinan/auto-print. */
   printSettings?: PrintSettingsInput | null;
+  /** true = lembar berframe/composite (fit auto → contain, jangan crop bingkai). */
+  framed?: boolean;
+  /** Rasio kanvas (lebar/tinggi) untuk orientation=auto. */
+  canvasAspect?: number | null;
   /** ID sesi untuk dedupe auto-print lintas remount & refresh. */
   jobId?: string;
   /** true = cetak ulang eksplisit; lewati claim auto-print. */
@@ -61,6 +66,8 @@ function PrintLayoutRendererInner({
   photos,
   plan,
   printSettings,
+  framed = false,
+  canvasAspect = null,
   jobId,
   reprint = false,
   onDone,
@@ -84,7 +91,9 @@ function PrintLayoutRendererInner({
 
   const auto = shouldAutoPrint(printSettings);
   const copies = printCopies(printSettings);
-  const page = printPageSize(printSettings);
+  const page = printPageSize(printSettings, canvasAspect);
+  const strip = plan.kind === "strip";
+  const fit = resolvePrintFit(printSettings?.fit, { framed, strip });
   // Satu blob URL per foto final (blob:), di-revoke saat daftar berubah/unmount.
   // Menghindari base64 data URL di DOM print.
   const objectUrls = useObjectUrls(photos.map((p) => p.blob));
@@ -122,7 +131,7 @@ function PrintLayoutRendererInner({
     style.id = "snapyos-print-css";
     style.textContent =
       `@page { size: ${page.widthMm}mm ${page.heightMm}mm; margin: ${page.marginMm}mm; }` +
-      ` :root { --print-margin: ${marginMm}mm; --print-content-height: ${printContentHeightMm(page)}mm; }`;
+      ` :root { --print-margin: ${marginMm}mm; --print-content-height: ${printContentHeightMm(page)}mm; --print-fit: ${fit}; --print-rotate: 0deg; }`;
     document.head.appendChild(style);
 
     function cleanup() {
@@ -253,6 +262,7 @@ function PrintLayoutRendererInner({
     page.heightMm,
     page.marginMm,
     marginMm,
+    fit,
     urlsReady,
     jobId,
     reprint,
@@ -325,8 +335,26 @@ function PrintLayoutRendererInner({
             <p className="font-display text-xl uppercase leading-none tracking-[-0.02em] md:text-2xl">
               Siap dicetak
             </p>
+            {!auto && sheetPhotos[0] && (
+              <div
+                className="flex max-h-[34vh] flex-col items-center gap-0.5 border-2 border-ink bg-bg p-1"
+                style={{ aspectRatio: `${page.widthMm} / ${page.heightMm}` }}
+                aria-label="Pratinjau lembar cetak"
+              >
+                {sheetPhotos[0].map((p, i) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    key={i}
+                    src={urlByBlob.get(p.blob)}
+                    alt=""
+                    className="min-h-0 w-full flex-1"
+                    style={{ objectFit: fit }}
+                  />
+                ))}
+              </div>
+            )}
             <p className="max-w-[44ch] text-[10px] uppercase leading-relaxed tracking-[0.14em] text-muted-foreground">
-              {`${totalSheets} LEMBAR · DI TABLET PILIH PRINTER FOTO DI DIALOG SISTEM`}
+              {`${totalSheets} LEMBAR · ${page.widthMm} × ${page.heightMm} MM · ${fit.toUpperCase()} · DI TABLET PILIH PRINTER FOTO DI DIALOG SISTEM`}
             </p>
             <div className="flex flex-wrap justify-center gap-2.5">
               <Button size="lg" className="bg-accent" onClick={handleManualPrint}>
@@ -362,7 +390,13 @@ function PrintLayoutRendererInner({
             }}
             className="print-sheet"
             data-sheet-kind={plan.kind}
-            style={{ "--print-photo-count": sheet.length } as CSSProperties}
+            data-photo-count={sheet.length}
+            style={
+              {
+                "--print-photo-count": sheet.length,
+                "--print-fit": fit,
+              } as CSSProperties
+            }
           >
             {sheet.map((p, j) => (
               // eslint-disable-next-line @next/next/no-img-element

@@ -8,6 +8,7 @@ import {
   type KioskBrandingConfig,
 } from "../src/lib/kiosk-types.ts";
 import { brandingContrastIssues } from "../src/lib/validators.ts";
+import { defaultBrandColors } from "../src/lib/brand-defaults.ts";
 import { cardSurface, contrastRatio, readableText } from "../src/lib/color.ts";
 
 test("kioskVisualStyle: tanpa page, global defaults", () => {
@@ -63,7 +64,8 @@ test("kioskVisualStyle: page override menimpa global", () => {
   };
   const s = kioskVisualStyle(k, "capture");
   assert.equal(s.bg, "#FF0000");
-  assert.equal(s.text, "#00FF00");
+  // #00FF00 di atas #FF0000 = kontras ~1.4:1 → jatuh ke default SnapyOS.
+  assert.equal(s.text, defaultBrandColors.ink);
   assert.equal(s.fontScale, 1.4);
   // Radius per-layar juga dijaga pada maks 4px.
   assert.equal(s.radius, 4);
@@ -87,7 +89,8 @@ test("kioskVisualStyle: page override parsial (sebagian fallback global)", () =>
   };
   const s = kioskVisualStyle(k, "result");
   assert.equal(s.bg, "#0000FF");
-  assert.equal(s.text, "#222222");
+  // #222222 di atas #0000FF = kontras ~2:1 → fallback default.
+  assert.equal(s.text, defaultBrandColors.ink);
   assert.equal(s.fontScale, 1.1);
   assert.equal(s.radius, 0);
   assert.equal(s.padding, 24);
@@ -142,10 +145,14 @@ test("kioskVisualStyle: font_family mono TIDAK diturunkan ke sans", () => {
   assert.equal(dflt.fontFamily, KIOSK_FONT_FAMILIES.display);
 });
 
-test("kioskVisualStyle: accent/primary meneruskan warna brand", () => {
-  const s = kioskVisualStyle(undefined, undefined, { primary: "#ff00ff", secondary: "#00ff00" });
-  assert.equal(s.accent, "#ff00ff");
-  assert.equal(s.primary, "#00ff00");
+test("kioskVisualStyle: accent/primary meneruskan warna brand yang kontras", () => {
+  // Brand ink gelap di atas bg terang lolos AA → diteruskan apa adanya.
+  const s = kioskVisualStyle(undefined, undefined, { primary: "#111111", secondary: "#222222" });
+  assert.equal(s.accent, "#111111");
+  assert.equal(s.primary, "#222222");
+  // Brand low-contrast (#ff00ff di atas #fffdf5) jatuh ke default accent.
+  const low = kioskVisualStyle(undefined, undefined, { primary: "#ff00ff" });
+  assert.equal(low.accent, defaultBrandColors.accent);
   // fallback default saat brand tidak diberikan
   const d = kioskVisualStyle(undefined);
   assert.ok(d.accent.length > 0);

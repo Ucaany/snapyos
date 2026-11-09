@@ -30,6 +30,12 @@ export type InvoiceIntentItem = {
   name?: string;
   amount: number;
   qty: number;
+  /**
+   * Renewal/pemulihan plan (docs/02 §2.4): periode BARU dari now(),
+   * bukan extend dari current_period_end lama. Dipakai jalur renewal
+   * self-service (past_due/expired) yang tetap memuat plan_change.
+   */
+  new_period?: boolean;
 };
 
 export type IntentShape = {
@@ -41,6 +47,12 @@ export type IntentShape = {
   code?: string;
   name?: string;
   applied?: boolean;
+  /**
+   * Progres add-on idempotent: indeks item (dalam `items`) yang sudah
+   * berhasil diterapkan. Ditulis setelah tiap item sukses agar retry pasca
+   * partial failure tidak menggandakan add-on.
+   */
+  applied_items?: number[];
 } | null;
 
 /**
@@ -52,6 +64,7 @@ export const INTENT_FAILURE_REASON = {
   UPDATE_NO_ROW: "UPDATE_NO_ROW",
   MISSING_SUBSCRIPTION_ID: "MISSING_SUBSCRIPTION_ID",
   INTENT_EXCEPTION: "INTENT_EXCEPTION",
+  LATE_PAYMENT_VOID_INVOICE: "LATE_PAYMENT_VOID_INVOICE",
 } as const;
 export type IntentFailureReason =
   (typeof INTENT_FAILURE_REASON)[keyof typeof INTENT_FAILURE_REASON];
@@ -99,7 +112,7 @@ function normalizeLegacyAddOnName(name: string | undefined): string | undefined 
 // ---------------------------------------------------------------------------
 
 /** Error shape minimal yang dipakai dari response Supabase. */
-export type IntentDbError = { message: string } | null;
+export type IntentDbError = { message: string; code?: string } | null;
 
 export type IntentDbResult = { data: unknown; error: IntentDbError };
 
@@ -213,6 +226,103 @@ async function releaseIntentClaim(
   }
 }
 
+/**
+ * Tulis (atau perbarui) SATU tiket pending untuk (invoice_id, reason).
+ *
+ * Partial unique index `(invoice_id, reason) WHERE status='pending'` meng-
+ * gabungkan retry berulang reason sama jadi satu tiket; retry reason berbeda
+ * membuat tiket terpisah. Upsert dengan `onConflict: "invoice_id,reason"`
+ * TIDAK BISA dipakai di sini — PostgREST gagal meng-infer target partial
+ * unique index (butuh predicate `WHERE status='pending'`). Karena itu:
+ *   1. select tiket pending yang cocok → UPDATE bila ada,
+ *   2. kalau tidak ada → INSERT,
+ *   3. bila INSERT kena unique violation 23505 (race dua request) → select
+ *      ulang + UPDATE sekali.
+ * Kegagalan tulis TIDAK pernah ditelan diam-diam: di-log (audit sudah
+ * ditulis pemanggil sebelum ini).
+ */
+async function upsertPendingFailure(
+  db: IntentDb,
+  row: {
+    business_id: string;
+    invoice_id: string;
+    subscription_id: string | null;
+    reason: string;
+    message: string | null;
+    intent_snapshot: Record<string, unknown>;
+    amount: number;
+  }
+): Promise<void> {
+  const patch = {
+    business_id: row.business_id,
+    subscription_id: row.subscription_id,
+    message: row.message,
+    intent_snapshot: row.intent_snapshot,
+    amount: row.amount,
+  };
+  const { data: existing } = await db
+    .from("subscription_intent_failures")
+    .select("id")
+    .eq("invoice_id", row.invoice_id)
+    .eq("reason", row.reason)
+    .eq("status", "pending")
+    .maybeSingle();
+  const existingRow = (existing ?? null) as { id?: string } | null;
+  if (existingRow?.id) {
+    const { error } = await db
+      .from("subscription_intent_failures")
+      .update(patch)
+      .eq("id", existingRow.id);
+    if (error) {
+      console.error(
+        "[subscription.applyInvoiceIntent] failure ticket update failed invoice=%s reason=%s: %s",
+        row.invoice_id,
+        row.reason,
+        error.message
+      );
+    }
+    return;
+  }
+
+  const { error } = await db.from("subscription_intent_failures").insert({
+    ...row,
+    status: "pending",
+  });
+  if (!error) return;
+  if (error.code === "23505") {
+    // Race: baris pending muncul di sela select→insert. Retry update sekali.
+    const { data: raced } = await db
+      .from("subscription_intent_failures")
+      .select("id")
+      .eq("invoice_id", row.invoice_id)
+      .eq("reason", row.reason)
+      .eq("status", "pending")
+      .maybeSingle();
+    const racedRow = (raced ?? null) as { id?: string } | null;
+    if (racedRow?.id) {
+      const { error: retryError } = await db
+        .from("subscription_intent_failures")
+        .update(patch)
+        .eq("id", racedRow.id);
+      if (retryError) {
+        console.error(
+          "[subscription.applyInvoiceIntent] failure ticket retry-update failed invoice=%s reason=%s: %s",
+          row.invoice_id,
+          row.reason,
+          retryError.message
+        );
+      }
+      return;
+    }
+  }
+  console.error(
+    "[subscription.applyInvoiceIntent] failure ticket insert failed invoice=%s reason=%s: %s",
+    row.invoice_id,
+    row.reason,
+    error.message
+  );
+}
+
 async function recordActivationFailure(
   deps: ApplyIntentDeps,
   args: {
@@ -251,29 +361,17 @@ async function recordActivationFailure(
     );
   }
 
-  // Upsert — partial unique index (invoice_id, reason) WHERE status='pending'
-  // menggabungkan retry berulang dengan reason sama jadi satu baris antrean.
-  const { error } = await db.from("subscription_intent_failures").upsert(
-    {
-      business_id: businessId,
-      invoice_id: invoice.id,
-      subscription_id: invoice.subscription_id,
-      reason,
-      message: message ?? null,
-      intent_snapshot: snapshot,
-      amount: invoice.amount,
-      status: "pending",
-    },
-    { onConflict: "invoice_id,reason", ignoreDuplicates: true }
-  );
-  if (error) {
-    console.error(
-      "[subscription.applyInvoiceIntent] failure record insert failed invoice=%s reason=%s: %s",
-      invoice.id,
-      reason,
-      error.message
-    );
-  }
+  // Partial unique index (invoice_id, reason) WHERE status='pending' meng-
+  // gabungkan retry berulang reason sama jadi satu baris antrean.
+  await upsertPendingFailure(db, {
+    business_id: businessId,
+    invoice_id: invoice.id,
+    subscription_id: invoice.subscription_id,
+    reason,
+    message: message ?? null,
+    intent_snapshot: snapshot,
+    amount: invoice.amount,
+  });
 }
 
 /**
@@ -301,6 +399,57 @@ async function autoDismissResolvedFailures(db: IntentDb, invoiceId: string): Pro
       err instanceof Error ? err.message : String(err)
     );
   }
+}
+
+/**
+ * Late payment pada invoice `void` (docs/02 §2.4b): uang settled untuk invoice
+ * yang sudah dibatalkan (void) — TIDAK boleh auto-reactivate. Invoice tetap
+ * `void` (uang wajib direview/direfund manusia). Catat jejak audit + tiket
+ * manual agar tidak hilang diam-diam. Return void; pemanggil (webhook) tetap
+ * membalas ok.
+ */
+export async function recordLatePaymentVoidInvoice(
+  deps: ApplyIntentDeps,
+  args: {
+    businessId: string;
+    invoiceId: string;
+    subscriptionId: string | null;
+    amount: number;
+    number?: string | null;
+    intent: IntentShape;
+  }
+): Promise<void> {
+  const { db, audit } = deps;
+  const snapshot = buildFailureSnapshot(args.intent);
+  try {
+    await audit({
+      actorId: null,
+      businessId: args.businessId,
+      action: "subscription.late_payment_void_invoice",
+      target: args.invoiceId,
+      meta: {
+        invoice: args.number ?? null,
+        reason: INTENT_FAILURE_REASON.LATE_PAYMENT_VOID_INVOICE,
+        amount: args.amount,
+        subscription_id: args.subscriptionId,
+      },
+    });
+  } catch (err) {
+    console.error(
+      "[subscription.applyInvoiceIntent] late-payment audit failed invoice=%s: %s",
+      args.invoiceId,
+      err instanceof Error ? err.message : String(err)
+    );
+  }
+  await upsertPendingFailure(db, {
+    business_id: args.businessId,
+    invoice_id: args.invoiceId,
+    subscription_id: args.subscriptionId,
+    reason: INTENT_FAILURE_REASON.LATE_PAYMENT_VOID_INVOICE,
+    message: "Pembayaran diterima untuk invoice yang sudah dibatalkan (void) — perlu review/refund manual.",
+    intent_snapshot: snapshot,
+    amount: args.amount,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -357,16 +506,71 @@ export async function applyInvoiceIntentWithDeps(
     .maybeSingle();
   if (!claimed) return; // sudah diterapkan (atau sedang diterapkan pemanggil lain).
 
+  // Progres add-on idempotent (retry pasca partial failure): indeks item yang
+  // sudah sukses disimpan di intent.applied_items dan dilewati saat retry.
+  const appliedItems = new Set<number>(
+    Array.isArray(invoice.intent.applied_items)
+      ? invoice.intent.applied_items.filter((n) => Number.isInteger(n))
+      : []
+  );
+  const claimedIntent: IntentShape = { ...invoice.intent, applied: true };
+  // Simpan referensi ke invoice agar release-claim (buildReleasedIntent) saat
+  // failure TETAP membawa applied_items terbaru (bukan snapshot lama).
+  invoice.intent = claimedIntent;
+
+  const persistProgress = async (): Promise<void> => {
+    claimedIntent.applied_items = [...appliedItems].sort((a, b) => a - b);
+    const { error } = await db
+      .from("invoices")
+      .update({ intent: claimedIntent })
+      .eq("id", invoiceId)
+      .eq("intent->>applied", "true");
+    if (error) {
+      console.error(
+        "[subscription.applyInvoiceIntent] progress write failed invoice=%s: %s",
+        invoiceId,
+        error.message
+      );
+    }
+  };
+
   try {
-    const planItem = [...items].reverse().find((i) => i.type === "plan_change" && i.plan_id);
-    if (planItem) {
-      const { data: currentSub } = await db
+    const planItem = [...items]
+      .reverse()
+      .find((i) => i.type === "plan_change" && i.plan_id);
+    const addOnItems = items
+      .map((item, index) => ({ item, index }))
+      .filter((e) => e.item.type === "add_on" && e.item.add_on_id);
+
+    // Add-on tanpa subscription_id → tiket terpisah (bukan SUBSCRIPTION_NOT_ACTIVE).
+    if (addOnItems.length > 0 && !invoice.subscription_id) {
+      await recordActivationFailure(deps, {
+        businessId,
+        invoice,
+        reason: INTENT_FAILURE_REASON.MISSING_SUBSCRIPTION_ID,
+        message: `Invoice ${invoice.number} berisi ${addOnItems.length} add-on tapi subscription_id null`,
+      });
+      return;
+    }
+
+    // Gate status subscription untuk SETIAP invoice yang butuh subscription
+    // (plan_change ATAU add_on). Sebelumnya gate ini hanya di dalam blok
+    // planItem → invoice add-on-only lolos tanpa validasi status.
+    const needsSubscription = Boolean(planItem) || addOnItems.length > 0;
+    let currentSubRow: {
+      id: string;
+      plan_id: string | null;
+      status: string;
+      current_period_end: string | null;
+    } | null = null;
+    if (needsSubscription) {
+      const { data: subSel } = await db
         .from("subscriptions")
-        .select("id, plan_id, current_period_end")
+        .select("id, plan_id, status, current_period_end")
         .eq("id", invoice.subscription_id ?? "")
         .in("status", ["trial", "active", "past_due", "expired"])
         .maybeSingle();
-      const currentSubRow = (currentSub ?? null) as {
+      currentSubRow = (subSel ?? null) as {
         id: string;
         plan_id: string | null;
         status: string;
@@ -375,23 +579,26 @@ export async function applyInvoiceIntentWithDeps(
       if (!currentSubRow) {
         // Kasus klasik docs/02 §2.4b: owner cancel → cron flip ke
         // cancelled → webhook paid tiba terlambat. Uang di invoice,
-        // plan tak bisa aktif tanpa keputusan manusia (refund/aktivasi).
+        // plan/add-on tak bisa aktif tanpa keputusan manusia (refund/aktivasi).
         // `expired` DIKECUALIKAN — recovery self-service (docs/02 §2.4).
         await recordActivationFailure(deps, {
           businessId,
           invoice,
           reason: INTENT_FAILURE_REASON.SUBSCRIPTION_NOT_ACTIVE,
-          message: `Subscription ${invoice.subscription_id ?? "(none)"} bukan trial/active/past_due/expired saat aktivasi plan ${planItem.code ?? planItem.plan_id}`,
+          message: `Subscription ${invoice.subscription_id ?? "(none)"} bukan trial/active/past_due/expired saat aktivasi${planItem ? ` plan ${planItem.code ?? planItem.plan_id}` : " add-on"}`,
         });
         return;
       }
+    }
 
+    if (planItem && currentSubRow) {
+      const currentSub = currentSubRow;
       const isActualPlanChange = currentSubRow.plan_id !== planItem.plan_id;
       // Idempotensi: bila plan sudah sama, status masih 'active' DAN periode
       // masih aktif ke depan, plan ini sudah di-apply pada percobaan sebelumnya
       // (retry pasca partial failure) → SKIP update agar periode tidak
-      // di-extend dua kali. Khusus 'active': past_due/expired dengan plan sama
-      // adalah renewal sah yang TETAP extend (jangan di-skip).
+      // di-extend dua kali. past_due/expired dengan plan sama adalah renewal
+      // sah yang TETAP extend (atau periode baru bila `new_period`).
       const periodEndMs = currentSubRow.current_period_end
         ? new Date(currentSubRow.current_period_end).getTime()
         : NaN;
@@ -408,11 +615,17 @@ export async function applyInvoiceIntentWithDeps(
         // → periode baru penuh dari now().
         period = nextPeriod(new Date());
       } else if (!alreadyApplied) {
-        const periodEnd = Number.isFinite(periodEndMs) ? new Date(periodEndMs) : null;
-        const base = periodEnd && periodEnd.getTime() > nowMs ? periodEnd : new Date(nowMs);
-        // Sub expired → periodEnd lampau → base = now: periode baru dari
-        // now(), BUKAN extend dari periode yang sudah mati (docs/02 §2.4).
-        period = nextPeriod(base);
+        if (planItem.new_period) {
+          // Renewal self-service (past_due/expired): periode BARU dari now(),
+          // bukan extend dari periode lama (docs/02 §2.4 recovery semantics).
+          period = nextPeriod(new Date());
+        } else {
+          const periodEnd = Number.isFinite(periodEndMs) ? new Date(periodEndMs) : null;
+          const base = periodEnd && periodEnd.getTime() > nowMs ? periodEnd : new Date(nowMs);
+          // Sub expired → periodEnd lampau → base = now: periode baru dari
+          // now(), BUKAN extend dari periode yang sudah mati (docs/02 §2.4).
+          period = nextPeriod(base);
+        }
       }
 
       if (period) {
@@ -425,7 +638,7 @@ export async function applyInvoiceIntentWithDeps(
             current_period_start: period.start.toISOString(),
             current_period_end: period.end.toISOString(),
           })
-          .eq("id", currentSubRow.id)
+          .eq("id", currentSub.id)
           .in("status", ["trial", "active", "past_due", "expired"])
           .select("id")
           .maybeSingle();
@@ -437,7 +650,7 @@ export async function applyInvoiceIntentWithDeps(
             businessId,
             invoice,
             reason: INTENT_FAILURE_REASON.UPDATE_NO_ROW,
-            message: `subscriptions UPDATE returned 0 rows for id=${currentSubRow.id} (status changed between SELECT and UPDATE)`,
+            message: `subscriptions UPDATE returned 0 rows for id=${currentSub.id} (status changed between SELECT and UPDATE)`,
           });
           return;
         }
@@ -467,20 +680,12 @@ export async function applyInvoiceIntentWithDeps(
       }
     }
 
-    const addOnItems = items.filter((i) => i.type === "add_on" && i.add_on_id);
-    if (addOnItems.length > 0 && !invoice.subscription_id) {
-      await recordActivationFailure(deps, {
-        businessId,
-        invoice,
-        reason: INTENT_FAILURE_REASON.MISSING_SUBSCRIPTION_ID,
-        message: `Invoice ${invoice.number} berisi ${addOnItems.length} add-on tapi subscription_id null`,
-      });
-      return;
-    }
-
     if (invoice.subscription_id) {
-      for (const item of addOnItems) {
+      for (const { item, index } of addOnItems) {
         if (!item.add_on_id) continue;
+        // Sudah diterapkan pada percobaan sebelumnya → jangan gandakan.
+        // (Juga mencegah increment ganda saat add-on row sudah ada.)
+        if (appliedItems.has(index)) continue;
         const qty = item.qty || 1;
         const { data: existing } = await db
           .from("subscription_add_ons")
@@ -494,9 +699,15 @@ export async function applyInvoiceIntentWithDeps(
         } | null;
 
         if (existingRow) {
+          // Re-buy/reactivation add-on WAJIB membatalkan jadwal cancel dan
+          // mengaktifkan kembali baris yang mungkin sudah non-aktif.
           const { error } = await db
             .from("subscription_add_ons")
-            .update({ quantity: existingRow.quantity + qty, status: "active" })
+            .update({
+              quantity: existingRow.quantity + qty,
+              status: "active",
+              cancel_at_period_end: false,
+            })
             .eq("id", existingRow.id);
           if (error) throw new ApiError("INTERNAL", "Gagal mengaktifkan add-on");
         } else {
@@ -505,9 +716,12 @@ export async function applyInvoiceIntentWithDeps(
             add_on_id: item.add_on_id,
             quantity: qty,
             status: "active",
+            cancel_at_period_end: false,
           });
           if (error) throw new ApiError("INTERNAL", "Gagal mengaktifkan add-on");
         }
+        appliedItems.add(index);
+        await persistProgress();
         await audit({
           actorId: null,
           businessId,

@@ -24,7 +24,7 @@ declare
     'support_tickets','support_ticket_replies','broadcast_campaigns',
     'broadcast_recipients','lifecycle_emails','subscription_promos',
     'payment_credentials','device_logs','subscription_intent_failures',
-    'storage_objects','storage_usage','app_releases'
+    'storage_objects','storage_usage'
   ];
 begin
   foreach t in array tbls loop
@@ -49,7 +49,7 @@ declare
     'voucher_usages','events','event_templates','platform_settings','audit_logs',
     'support_tickets','support_ticket_replies','broadcast_campaigns',
     'broadcast_recipients','lifecycle_emails','subscription_promos',
-    'payment_credentials','device_logs','storage_objects','storage_usage','app_releases'
+    'payment_credentials','device_logs','storage_objects','storage_usage'
   ];
 begin
   foreach t in array tbls loop

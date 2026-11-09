@@ -7,6 +7,12 @@ import { kioskThemeVars, type KioskVisualStyle, type PublicTemplate } from "@/li
 import { KioskVideoBackground } from "@/components/kiosk/KioskVideoBackground";
 import { preloadFrameAssets } from "@/components/kiosk/frame-preload";
 import {
+  SNAPSHOT_FRESH_MS,
+  readTemplateSnapshot,
+  writeTemplateSnapshot,
+} from "@/components/kiosk/template-cache";
+import { filterTemplatesForPackage, type Snapshot } from "@/lib/template-cache";
+import {
   KioskAction,
   KioskChip,
   KioskEyebrow,
@@ -49,40 +55,70 @@ export function TemplatePicker({
     ? { backgroundColor: ks.accent, color: ks.accentText, borderRadius: ks.radius }
     : undefined;
   const gutter = kioskGutter(ks?.padding);
-  const [templates, setTemplates] = useState<PublicTemplate[]>([]);
+  // Snapshot dibaca SINKRON saat mount: render pertama tidak menunggu jaringan
+  // dan tidak pernah menampilkan skeleton bila cache perangkat sudah terisi.
+  const [snapshot, setSnapshot] = useState<Snapshot | null>(() =>
+    readTemplateSnapshot(businessSlug)
+  );
+  const [templates, setTemplates] = useState<PublicTemplate[]>(() =>
+    snapshot ? filterTemplatesForPackage(snapshot.templates, packageId) : []
+  );
   const [selected, setSelected] = useState<PublicTemplate | null | undefined>(undefined);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(templates.length === 0);
   const [error, setError] = useState(false);
+  const [fromCache, setFromCache] = useState(false);
 
   // AbortController dimiliki effect — unmount / ganti paket membatalkan request
   // in-flight, bukan hanya timer (cegah set state setelah unmount / race paket).
   const abortRef = useRef<AbortController | null>(null);
 
-  const loadTemplates = useCallback(() => {
-    if (abortRef.current) abortRef.current.abort();
-    const ac = new AbortController();
-    abortRef.current = ac;
-    setLoading(true);
-    setError(false);
-    apiGet<PublicTemplate[]>(
-      `/api/v1/public/${businessSlug}/templates?package=${encodeURIComponent(packageId)}`,
-      ac.signal
-    )
-      .then((data) => {
-        if (ac.signal.aborted) return;
-        setTemplates(data);
-      })
-      .catch(() => {
-        if (ac.signal.aborted) return;
-        setError(true);
-      })
-      .finally(() => {
-        if (!ac.signal.aborted) setLoading(false);
-      });
-  }, [packageId, businessSlug]);
+  const loadTemplates = useCallback(
+    (force = false) => {
+      const snap = snapshot;
+      const fresh = snap !== null && Date.now() - snap.fetchedAt < SNAPSHOT_FRESH_MS;
+      if (!force && fresh) {
+        // Snapshot masih segar: tidak ada request daftar tambahan.
+        setLoading(false);
+        setError(false);
+        setTemplates(filterTemplatesForPackage(snap.templates, packageId));
+        return;
+      }
+
+      if (abortRef.current) abortRef.current.abort();
+      const ac = new AbortController();
+      abortRef.current = ac;
+      setLoading(true);
+      setError(false);
+      apiGet<PublicTemplate[]>(`/api/v1/public/${businessSlug}/templates`, ac.signal)
+        .then((data) => {
+          if (ac.signal.aborted) return;
+          // Simpan daftar LENGKAP; filter paket hanya untuk tampilan.
+          writeTemplateSnapshot(businessSlug, data);
+          setSnapshot({ schema: 1, fetchedAt: Date.now(), templates: data });
+          setTemplates(filterTemplatesForPackage(data, packageId));
+          setFromCache(false);
+        })
+        .catch(() => {
+          if (ac.signal.aborted) return;
+          const cached = snapshot;
+          if (cached) {
+            // Offline/limit: tampilkan cache, bukan kartu error.
+            setTemplates(filterTemplatesForPackage(cached.templates, packageId));
+            setFromCache(true);
+            setError(false);
+          } else {
+            setError(true);
+          }
+        })
+        .finally(() => {
+          if (!ac.signal.aborted) setLoading(false);
+        });
+    },
+    [packageId, businessSlug, snapshot]
+  );
 
   useEffect(() => {
-    const timer = setTimeout(loadTemplates, 0);
+    const timer = setTimeout(() => loadTemplates(false), 0);
     return () => {
       clearTimeout(timer);
       abortRef.current?.abort();
@@ -129,6 +165,9 @@ export function TemplatePicker({
             {loading ? "Memuat..." : `${templates.length} frame`}
           </KioskChip>
           <KioskChip style={{ borderRadius: ks?.radius ?? 0 }}>Slot mengikuti frame</KioskChip>
+          {fromCache && (
+            <KioskChip style={{ borderRadius: ks?.radius ?? 0 }}>{"Dari cache"}</KioskChip>
+          )}
         </div>
       </aside>
 
@@ -179,7 +218,12 @@ export function TemplatePicker({
                 <p className="text-sm leading-relaxed text-muted-foreground">
                   Periksa koneksi booth, lalu coba lagi.
                 </p>
-                <KioskAction tone="primary" size="md" onClick={loadTemplates} style={accentStyle}>
+                <KioskAction
+                  tone="primary"
+                  size="md"
+                  onClick={() => loadTemplates(true)}
+                  style={accentStyle}
+                >
                   Coba lagi
                 </KioskAction>
               </div>
@@ -195,7 +239,7 @@ export function TemplatePicker({
                 </p>
               </div>
             ) : (
-              templates.map((t) => {
+              templates.map((t, index) => {
                 // Kartu mengikuti rasio kanvas frame. Grid 3/4 memotong strip
                 // 2x6 (1:3) dengan `object-cover`, jadi customer hanya melihat
                 // sepertiga frame dan tidak bisa menilai bentuk aslinya.
@@ -225,7 +269,9 @@ export function TemplatePicker({
                       // penuh di-preload terpisah setelah grid tampil.
                       src={t.thumbnail_url || t.file_url}
                       alt={t.name}
-                      loading="lazy"
+                      // Baris pertama di atas lipatan: eager agar grid tidak
+                      // berkedip; sisanya lazy (biasanya sudah ada di SW cache).
+                      loading={index < 6 ? "eager" : "lazy"}
                       decoding="async"
                       className="h-full w-full object-contain"
                     />

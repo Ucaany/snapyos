@@ -5,7 +5,7 @@
 
 import type { TemplateLayout } from "@/lib/template-layout";
 import { defaultBrandColors } from "./brand-defaults.ts";
-import { cardSurface, mutedSurface, mutedText, readableText } from "./color.ts";
+import { cardSurface, mutedSurface, mutedText, readableText, safeBrandColor } from "./color.ts";
 
 /**
  * Tipe kiosk payment method canonical (dipakai client + server).
@@ -168,11 +168,14 @@ export function kioskVisualStyle(
   page?: KioskPageId,
   brand?: { primary?: string | null; secondary?: string | null }
 ): KioskVisualStyle {
-  const accent = brand?.primary || defaultBrandColors.accent;
-  const ink = brand?.secondary || defaultBrandColors.ink;
+  const bg = k?.bg_color || defaultBrandColors.bg;
+  // Warna owner yang kontrasnya < 4.5:1 jatuh ke default SnapyOS — teks yang
+  // tak terbaca bukan "kustomisasi", itu layar rusak.
+  const accent = safeBrandColor(brand?.primary, bg, defaultBrandColors.accent);
+  const ink = safeBrandColor(brand?.secondary, bg, defaultBrandColors.ink);
   const global = withSurface({
-    bg: k?.bg_color || defaultBrandColors.bg,
-    text: k?.text_color || defaultBrandColors.ink,
+    bg,
+    text: safeBrandColor(k?.text_color, bg, defaultBrandColors.ink),
     fontFamily: KIOSK_FONT_FAMILIES[k?.font_family ?? "display"],
     fontScale: k?.font_scale ?? 1,
     radius: clampKioskRadius(k?.button_radius),
@@ -186,9 +189,10 @@ export function kioskVisualStyle(
   if (!page) return global;
   const p = k?.pages?.[page];
   if (!p) return global;
+  const pageBg = p.bg_color ?? global.bg;
   return withSurface({
-    bg: p.bg_color ?? global.bg,
-    text: p.text_color ?? global.text,
+    bg: pageBg,
+    text: safeBrandColor(p.text_color ?? global.text, pageBg, defaultBrandColors.ink),
     fontFamily: global.fontFamily,
     fontScale: p.font_scale ?? global.fontScale,
     radius: clampKioskRadius(p.button_radius ?? global.radius),
@@ -229,7 +233,6 @@ export type CameraSettings = {
   bridge_url?: string;
   countdown_seconds?: number;
   mirror_preview?: boolean;
-  chroma_key_enabled?: boolean;
   fullscreen?: boolean;
   facingMode?: string | null;
   preferred_device_id?: string | null;
@@ -246,12 +249,18 @@ export type CameraSettings = {
 
 export type PrintSettings = {
   enabled?: boolean;
-  paper_size?: "4x6" | "A6";
+  paper_size?: "4x6" | "2x6" | "5x7" | "6x8" | "A6";
   layout?: "single" | "strip";
-  orientation?: "portrait" | "landscape";
+  orientation?: "portrait" | "landscape" | "auto";
   auto_print?: boolean;
   copies?: number;
   margins_mm?: number;
+  /** auto|contain|cover — auto menurunkan contain untuk frame/strip, cover untuk foto tunggal. */
+  fit?: "auto" | "contain" | "cover";
+  /** Dua salinan strip per kertas 4x6 landscape. */
+  strip_2up?: boolean;
+  /** Override nama media CUPS; kosong = Custom.WxHmm. */
+  media_name?: string;
   /** "browser" (dialog OS), "cups" (bridge lokal), atau bluetooth thermal. */
   mode?: "browser" | "bluetooth" | "cups";
   /** Lebar kertas thermal 58/80 mm. */
@@ -268,6 +277,8 @@ export type SessionSettings = {
   timer_seconds?: number;
   warning_seconds?: number;
   max_retakes?: number | null;
+  /** Layar review grid setelah capture (default ON; bisa dimatikan per booth). */
+  kiosk_review_grid?: boolean;
 };
 
 export type PublicPackage = {
@@ -290,6 +301,10 @@ export type PublicTemplate = {
   thumbnail_url?: string | null;
   layout: TemplateLayout | null;
   slot_count: number;
+  /** Epoch ms dari `templates.updated_at` — bagian key cache aset (0 = tak diketahui). */
+  version: number;
+  /** Paket yang meng-assign template ini (kosong = belum di-assign). */
+  package_ids: string[];
 };
 
 export type PhotoboxConfig = {
@@ -366,4 +381,13 @@ export const FILTER_PRESETS: { id: string; label: string; css: string }[] = [
   { id: "retro", label: "Retro", css: "sepia(0.4) contrast(1.1) saturate(1.15)" },
   { id: "vintage", label: "Vintage", css: "sepia(0.5) brightness(0.95) contrast(0.95)" },
   { id: "y2k", label: "Y2K", css: "saturate(1.6) contrast(1.1) brightness(1.05)" },
+  { id: "fade", label: "Fade", css: "contrast(0.85) brightness(1.08) saturate(0.9)" },
+  { id: "noir", label: "Noir", css: "grayscale(1) contrast(1.35) brightness(0.92)" },
+  { id: "cyber", label: "Cyber", css: "hue-rotate(200deg) saturate(1.5) contrast(1.15)" },
+  { id: "lomo", label: "Lomo", css: "saturate(1.35) contrast(1.2) brightness(0.95)" },
 ];
+
+/** CSS filter untuk satu preset; id tak dikenal = none. */
+export function filterCss(filterId: string | null | undefined): string {
+  return FILTER_PRESETS.find((f) => f.id === filterId)?.css ?? "none";
+}

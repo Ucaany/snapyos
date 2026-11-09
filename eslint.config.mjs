@@ -41,14 +41,14 @@ const eslintConfig = defineConfig([
     // ribuan error dari kode yang bukan milik app — pola `**/worktrees/**`
     // menutup semua tooling yang membuat worktree.
     "**/worktrees/**",
+    // Agent skill packages (Cloudflare security-audit dkk) — vendor scripts
+    // CommonJS di `.agents/skills/**`, bukan source app:
+    ".agents/**",
     // Local audit / Playwright E2E harness (bukan source app):
     ".audit/**",
     ".audit-run/**",
     ".e2e-tmp/**",
     "test-results/**",
-    // Tauri kiosk (Phase 9): crate Rust + hasil build. `target/` dan
-    // `runtime-dist/` dibuat mesin, bukan source — jangan dilintasi ESLint.
-    "src-tauri/**",
     // macOS AppleDouble metadata:
     "**/._*",
   ]),

@@ -100,6 +100,10 @@ class FakeDb {
   // (mensimulasikan kegagalan DB → INTENT_EXCEPTION).
   failInsertOn: string | null = null;
 
+  // Hook untuk memaksa insert add-on tertentu gagal (partial failure: A sukses,
+  // B gagal) — uji idempotensi applied_items.
+  failAddOnInsertFor: string | null = null;
+
   private idSeq = 0;
   nextId(prefix: string): string {
     this.idSeq += 1;
@@ -224,10 +228,13 @@ class FakeDb {
       return { data: null, error: null };
     }
     if (op.kind === "insert") {
-      if (this.failInsertOn === "subscription_add_ons") {
+      const row = op.row as AddOnRow;
+      if (
+        this.failInsertOn === "subscription_add_ons" ||
+        (this.failAddOnInsertFor && row.add_on_id === this.failAddOnInsertFor)
+      ) {
         return { data: null, error: { message: "db error" } as IntentDbError };
       }
-      const row = op.row as AddOnRow;
       const inserted = { ...row, id: row.id ?? this.nextId("addon") };
       this.addOns.push(inserted);
       return { data: inserted, error: null };
@@ -235,17 +242,34 @@ class FakeDb {
     throw new Error(`FakeDb add_ons: op ${op.kind} tak didukung`);
   }
 
+  private findPendingFailure(op: Op): AnyRow | null {
+    const invoiceId = op.filters.find(([c]) => c === "invoice_id")?.[1];
+    const reason = op.filters.find(([c]) => c === "reason")?.[1];
+    const status = op.filters.find(([c]) => c === "status")?.[1];
+    const found = this.failures.find(
+      (f) =>
+        (invoiceId === undefined || f.invoice_id === invoiceId) &&
+        (reason === undefined || f.reason === reason) &&
+        (status === undefined || f.status === status)
+    );
+    return found ?? null;
+  }
+
   private execFailures(op: Op) {
-    if (op.kind === "upsert") {
+    if (op.kind === "select") {
+      const found = this.findPendingFailure(op);
+      return { data: found ? { id: found.id } : null, error: null };
+    }
+    if (op.kind === "insert") {
+      if (this.failInsertOn === "subscription_intent_failures") {
+        return { data: null, error: { message: "db error", code: "XX000" } as IntentDbError };
+      }
       const row = op.row as AnyRow;
-      const ignoreDup = op.upsertOpts?.ignoreDuplicates === true;
-      if (ignoreDup) {
-        // Partial unique index (invoice_id, reason) WHERE status='pending'.
-        const dup = this.failures.find(
-          (f) =>
-            f.invoice_id === row.invoice_id && f.reason === row.reason && f.status === "pending"
-        );
-        if (dup) return { data: null, error: null };
+      const dup = this.failures.find(
+        (f) => f.invoice_id === row.invoice_id && f.reason === row.reason && f.status === "pending"
+      );
+      if (dup) {
+        return { data: null, error: { message: "duplicate", code: "23505" } as IntentDbError };
       }
       this.failures.push({
         ...row,
@@ -255,11 +279,15 @@ class FakeDb {
       return { data: null, error: null };
     }
     if (op.kind === "update") {
+      const id = op.filters.find(([c]) => c === "id")?.[1];
       const invoiceId = op.filters.find(([c]) => c === "invoice_id")?.[1];
       const status = op.filters.find(([c]) => c === "status")?.[1];
       for (const f of this.failures) {
-        if (invoiceId !== undefined && f.invoice_id !== invoiceId) continue;
-        if (status !== undefined && f.status !== status) continue;
+        if (id !== undefined && f.id !== id) continue;
+        if (id === undefined) {
+          if (invoiceId !== undefined && f.invoice_id !== invoiceId) continue;
+          if (status !== undefined && f.status !== status) continue;
+        }
         Object.assign(f, op.patch ?? {});
       }
       return { data: null, error: null };
@@ -734,4 +762,206 @@ test("template_purchase paid: menulis kepemilikan (idempotent via onConflict)", 
   // Idempotent: panggil ulang tidak menggandakan kepemilikan.
   await applyInvoiceIntentWithDeps(makeDeps(db), "biz-1", "inv-tpl");
   assert.equal(db.purchases.length, 1);
+});
+
+// ---------------------------------------------------------------------------
+// 8. P0 #5 — add-on-only invoice WAJIB lewat gate status subscription
+// ---------------------------------------------------------------------------
+
+test("invoice add-on-only + subscription cancelled: SUBSCRIPTION_NOT_ACTIVE (gate tidak dilewati)", async () => {
+  const db = new FakeDb();
+  seedPaidPlanInvoice(db);
+  db.invoices.get("inv-1")!.intent = {
+    items: [
+      { type: "add_on", add_on_id: "a1", code: "extra_session", name: "+1", amount: 49000, qty: 1 },
+    ],
+  };
+  db.subscriptions.set("sub-1", {
+    id: "sub-1",
+    plan_id: "plan-starter",
+    status: "cancelled",
+    current_period_end: "2026-09-01T00:00:00.000Z",
+  });
+
+  await applyInvoiceIntentWithDeps(makeDeps(db), "biz-1", "inv-1");
+
+  assert.equal(db.failures.length, 1);
+  assert.equal(db.failures[0]!.reason, INTENT_FAILURE_REASON.SUBSCRIPTION_NOT_ACTIVE);
+  assert.equal(db.addOns.length, 0, "add-on tidak boleh aktif saat subscription mati");
+  assert.notEqual(db.invoices.get("inv-1")!.intent?.applied, true);
+});
+
+// ---------------------------------------------------------------------------
+// 9. P0 #6 — re-buy add-on membersihkan cancel_at_period_end
+// ---------------------------------------------------------------------------
+
+test("re-buy add-on yang dijadwalkan batal: status active + cancel_at_period_end false", async () => {
+  const db = new FakeDb();
+  seedPaidPlanInvoice(db);
+  db.invoices.get("inv-1")!.intent = {
+    items: [
+      { type: "add_on", add_on_id: "a1", code: "extra_session", name: "+1", amount: 49000, qty: 1 },
+    ],
+  };
+  db.subscriptions.set("sub-1", {
+    id: "sub-1",
+    plan_id: "plan-starter",
+    status: "active",
+    current_period_end: "2026-10-01T00:00:00.000Z",
+  });
+  db.addOns.push({
+    id: "addon-x",
+    subscription_id: "sub-1",
+    add_on_id: "a1",
+    quantity: 1,
+    status: "active",
+  });
+  // Simulasi cancel terjadwal dari add-on sebelumnya.
+  (db.addOns[0] as AnyRow).cancel_at_period_end = true;
+
+  await applyInvoiceIntentWithDeps(makeDeps(db), "biz-1", "inv-1");
+
+  const row = db.addOns[0] as AnyRow;
+  assert.equal(row.quantity, 2, "re-buy menambah quantity");
+  assert.equal(row.status, "active");
+  assert.equal(row.cancel_at_period_end, false, "cancel_at_period_end harus dibersihkan");
+});
+
+// ---------------------------------------------------------------------------
+// 10. P0 #4 — partial failure: A sukses, B gagal; retry hanya B, A tidak ganda
+// ---------------------------------------------------------------------------
+
+test("partial failure add-on A/B: retry hanya menerapkan B, A tidak digandakan", async () => {
+  const db = new FakeDb();
+  seedPaidPlanInvoice(db);
+  db.invoices.get("inv-1")!.intent = {
+    items: [
+      { type: "add_on", add_on_id: "a1", code: "extra_session", name: "A", amount: 49000, qty: 1 },
+      { type: "add_on", add_on_id: "a2", code: "extra_session", name: "B", amount: 49000, qty: 1 },
+    ],
+  };
+  db.subscriptions.set("sub-1", {
+    id: "sub-1",
+    plan_id: "plan-starter",
+    status: "active",
+    current_period_end: "2026-10-01T00:00:00.000Z",
+  });
+  db.failAddOnInsertFor = "a2"; // B gagal, A sukses
+
+  await assert.rejects(
+    () => applyInvoiceIntentWithDeps(makeDeps(db), "biz-1", "inv-1"),
+    /Gagal mengaktifkan add-on/
+  );
+
+  assert.equal(db.addOns.length, 1, "hanya A yang aktif setelah partial failure");
+  assert.equal((db.addOns[0] as AnyRow).add_on_id, "a1");
+  assert.equal((db.addOns[0] as AnyRow).quantity, 1);
+  // Progres tersimpan di intent (indeks 0 sudah diterapkan) + klaim dilepas.
+  assert.deepEqual(db.invoices.get("inv-1")!.intent?.applied_items, [0]);
+  assert.notEqual(db.invoices.get("inv-1")!.intent?.applied, true);
+
+  // Retry: B sekarang sukses.
+  db.failAddOnInsertFor = null;
+  await applyInvoiceIntentWithDeps(makeDeps(db), "biz-1", "inv-1");
+
+  const a1 = db.addOns.find((a) => a.add_on_id === "a1") as AnyRow;
+  const a2 = db.addOns.find((a) => a.add_on_id === "a2") as AnyRow;
+  assert.equal(db.addOns.length, 2);
+  assert.equal(a1.quantity, 1, "A TIDAK boleh digandakan saat retry");
+  assert.equal(a2.quantity, 1);
+  assert.equal(db.invoices.get("inv-1")!.intent?.applied, true);
+  assert.deepEqual(db.invoices.get("inv-1")!.intent?.applied_items, [0, 1]);
+});
+
+test("sukses penuh add-on: applied=true dan retry tidak menaikkan quantity lagi", async () => {
+  const db = new FakeDb();
+  seedPaidPlanInvoice(db);
+  db.invoices.get("inv-1")!.intent = {
+    items: [
+      { type: "add_on", add_on_id: "a1", code: "extra_session", name: "A", amount: 49000, qty: 1 },
+    ],
+  };
+  db.subscriptions.set("sub-1", {
+    id: "sub-1",
+    plan_id: "plan-starter",
+    status: "active",
+    current_period_end: "2026-10-01T00:00:00.000Z",
+  });
+
+  await applyInvoiceIntentWithDeps(makeDeps(db), "biz-1", "inv-1");
+  await applyInvoiceIntentWithDeps(makeDeps(db), "biz-1", "inv-1");
+
+  assert.equal(db.addOns.length, 1);
+  assert.equal((db.addOns[0] as AnyRow).quantity, 1, "retry tidak menaikkan quantity");
+  assert.equal(db.invoices.get("inv-1")!.intent?.applied, true);
+});
+
+// ---------------------------------------------------------------------------
+// 11. Reason berbeda → tiket terpisah; tiket pending lama tidak tertimpa
+// ---------------------------------------------------------------------------
+
+test("reason berbeda pada invoice sama: tiket terpisah (bukan merge)", async () => {
+  const db = new FakeDb();
+  seedPaidPlanInvoice(db);
+  db.invoices.get("inv-1")!.intent = {
+    items: [
+      { type: "plan_change", plan_id: "plan-growth", code: "growth", name: "G", amount: 249000, qty: 1 },
+    ],
+  };
+  db.subscriptions.set("sub-1", {
+    id: "sub-1",
+    plan_id: "plan-starter",
+    status: "cancelled",
+    current_period_end: null,
+  });
+  db.failures.push({
+    id: "failure-other",
+    invoice_id: "inv-1",
+    business_id: "biz-1",
+    reason: "SOME_OTHER_REASON",
+    status: "pending",
+  });
+
+  await applyInvoiceIntentWithDeps(makeDeps(db), "biz-1", "inv-1");
+
+  assert.equal(db.failures.length, 2, "reason berbeda → baris terpisah");
+  const reasons = db.failures.map((f) => f.reason).sort();
+  assert.deepEqual(reasons, ["SOME_OTHER_REASON", INTENT_FAILURE_REASON.SUBSCRIPTION_NOT_ACTIVE]);
+});
+
+// ---------------------------------------------------------------------------
+// 12. P2 #14 — tiket gagal ditulis TIDAK ditelan diam-diam (console.error)
+// ---------------------------------------------------------------------------
+
+test("tiket review gagal ditulis: audit tetap ada + console.error mencatat invoice+reason", async () => {
+  const db = new FakeDb();
+  seedPaidPlanInvoice(db);
+  db.subscriptions.set("sub-1", {
+    id: "sub-1",
+    plan_id: "plan-starter",
+    status: "cancelled",
+    current_period_end: null,
+  });
+  db.failInsertOn = "subscription_intent_failures";
+
+  const logged: string[] = [];
+  const orig = console.error;
+  console.error = (...args: unknown[]) => {
+    logged.push(args.map((a) => String(a)).join(" "));
+  };
+  try {
+    await applyInvoiceIntentWithDeps(makeDeps(db), "biz-1", "inv-1");
+  } finally {
+    console.error = orig;
+  }
+
+  assert.equal(db.failures.length, 0, "tiket gagal ditulis");
+  assert.ok(
+    db.auditCalls.some((a) => a.action === "subscription.intent_activation_failed"),
+    "audit tetap ditulis walau tiket gagal"
+  );
+  assert.ok(
+    logged.some((l) => l.includes("inv-1") && l.includes(INTENT_FAILURE_REASON.SUBSCRIPTION_NOT_ACTIVE)),
+    "console.error harus mencatat invoice id + reason"
+  );
 });

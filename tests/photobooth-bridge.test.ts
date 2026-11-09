@@ -147,7 +147,6 @@ printf '%s\\n' 'request id is TEST_PHOTO-1 (1 file(s))'`
     assert.equal(statusBody.camera.mock, false);
     assert.equal(statusBody.printer.adapter, "cups");
     assert.equal(statusBody.printer.ok, true);
-    assert.equal(typeof statusBody.version, "string");
     // Store lokal dibuka saat start; versi skema nyata, bukan 0.
     assert.ok(Number(statusBody.db_version) >= 1);
     assert.equal(statusBody.business_slug, null);

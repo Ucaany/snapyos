@@ -18,13 +18,14 @@ const source = readFileSync(fileURLToPath(new URL("../public/sw.js", import.meta
 /** Badan handler `fetch` — satu-satunya tempat cabang navigate diputuskan. */
 const fetchHandler = source.slice(source.indexOf('addEventListener("fetch"'));
 
-test("versi cache naik ke v6", () => {
-  assert.match(source, /snapyos-kiosk-v6/);
+test("versi cache naik ke v7", () => {
+  assert.match(source, /snapyos-kiosk-v7/);
+  assert.doesNotMatch(source, /snapyos-kiosk-v6/);
   assert.doesNotMatch(source, /snapyos-kiosk-v5/);
 });
 
 test("cache navigasi dipisah dari cache aset", () => {
-  assert.match(source, /NAV_CACHE\s*=\s*"snapyos-kiosk-nav-v6"/);
+  assert.match(source, /NAV_CACHE\s*=\s*"snapyos-kiosk-nav-v7"/);
   assert.notEqual(
     /CACHE\s*=\s*"([^"]+)"/.exec(source)?.[1],
     /NAV_CACHE\s*=\s*"([^"]+)"/.exec(source)?.[1]
@@ -56,4 +57,23 @@ test("<script src> dan <link rel=stylesheet> HTML tersimpan ikut di-cache", () =
   assert.match(helper, /<script\\b\[\^>\]\*\\bsrc=/);
   assert.match(helper, /stylesheet/i);
   assert.match(helper, /caches\.open\(CACHE\)/);
+});
+
+test("cache aset template dipertahankan saat activate", () => {
+  assert.match(source, /FRAME_CACHE\s*=\s*"snapyos-template-assets-v1"/);
+  assert.match(source, /k !== CACHE && k !== NAV_CACHE && k !== FRAME_CACHE/);
+});
+
+test("proxy frame: cache-first dari FRAME_CACHE, tanpa cache.put", () => {
+  const branch = fetchHandler.slice(0, fetchHandler.indexOf('url.pathname.startsWith("/api/")'));
+  assert.match(branch, /pathname === "\/api\/v1\/public\/frame"/);
+  assert.match(branch, /cacheKey\.length <= 64/);
+  assert.match(branch, /cache\.match\(key\)/);
+  assert.match(branch, /hit \?\? fetch\(request\)/);
+  assert.doesNotMatch(branch, /cache\.put/);
+  // Key harus identik dengan frameCacheUrl(): basis ter-encode + suffix di luar.
+  assert.match(
+    branch,
+    /\$\{self\.location\.origin\}\/__frame\/\$\{encodeURIComponent\(cacheKey\)\}@\$\{w\}/
+  );
 });

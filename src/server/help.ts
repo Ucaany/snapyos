@@ -83,7 +83,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       {
         heading: "3. Foto dan bawa pulang hasil",
         paragraphs: [
-          "Pilih frame dari grid preview. Thumbnail menampilkan frame dengan foto contoh terisi penuh, sesuai hasil akhir Anda. Hanya frame yang slotnya sama dengan jumlah foto paket yang ditampilkan.",
+          "Pilih frame dari grid preview. Thumbnail menampilkan gambar frame yang diunggah apa adanya, bukan contoh foto yang terpasang di slot. Semua template yang tersedia untuk paket ditampilkan; frame yang memiliki slot menentukan jumlah foto yang diambil.",
           "Ikuti hitungan mundur 3, 2, 1 di layar. Posisikan wajah di dalam preview dan tunggu efek flash putih sebagai tanda foto diambil. Timer sesi default 5 menit, retake bebas selama timer berjalan.",
         ],
         steps: [
@@ -196,13 +196,13 @@ export const HELP_ARTICLES: HelpArticle[] = [
         heading: "3. Paket dan template",
         paragraphs: [
           "Package menentukan harga, jumlah foto (photo count), dan jumlah cetak (print count). Assign package ke outlet dan photobox yang berlaku: customer hanya melihat paket yang eligible di booth tempat ia berdiri.",
-          "Template adalah frame PNG yang menampung foto. Frame ber-slot menentukan jumlah capture: frame 6 slot mengambil 6 foto, bukan mengikuti photo count paket. Template legacy tanpa slot memakai photo count paket. Preview builder memakai engine composeFrame yang sama dengan kiosk, print, dan result online sehingga hasil identik.",
+          "Template adalah frame PNG yang menampung foto. Frame ber-slot menentukan jumlah capture: frame 6 slot mengambil 6 foto, bukan mengikuti photo count paket. Template legacy tanpa slot memakai photo count paket. Builder preview dan editor kiosk sama-sama memakai composeFrame; JPEG final dirender di editor kiosk lalu dipakai apa adanya oleh print dan result online (tanpa render ulang di server).",
         ],
         steps: [
           "Buka Packages, tekan Buat Package. Isi nama, harga integer Rupiah di atas nol, photo count minimal 1, print count minimal 0.",
           "Assign package ke outlet dan photobox yang berlaku.",
           "Buka Templates, upload PNG frame transparan maksimal 5 MB, pilih kategori.",
-          "Buka builder, tambah slot, atur warna dasar kanvas bila booth memakai layar hijau, Preview, lalu Publish.",
+          "Buka builder, tambah slot manual atau tekan Deteksi area hijau bila frame memakai latar hijau sebagai slot, atur warna dasar kanvas, Preview, lalu Publish.",
           "Uji dari kiosk: pilih paket, bayar, pastikan frame muncul.",
         ],
       },
@@ -316,7 +316,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       {
         heading: "Layar 3: pilih frame dan sesi foto",
         paragraphs: [
-          "Grid preview menampilkan thumbnail frame dengan slot terisi foto contoh. Template aktif dapat dipakai lintas paket; frame ber-slot menentukan jumlah capture dan template legacy memakai photo_count package.",
+          "Grid preview menampilkan thumbnail frame yang diunggah apa adanya, bukan composite slot. Template aktif dapat dipakai lintas paket; frame ber-slot menentukan jumlah capture dan template legacy memakai photo_count package.",
           "Jumlah foto mengikuti template terpilih. Photos order index mengikuti urutan slot z. Retake unlimited selama timer sesi berjalan, max retakes opsional via session settings.",
         ],
         steps: [
@@ -566,7 +566,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         heading: "Ringkasan",
         paragraphs: [
           "Template adalah frame yang menampung foto customer. Dua tipe: template legacy (layout kosong, overlay full canvas, backward compatible) dan template slot (layout canvas plus slots array, foto masuk pas per slot).",
-          "Customer melihat template aktif yang tersedia untuk paketnya. Frame ber-slot menentukan jumlah capture; template legacy tanpa slot memakai photo_count package. Satu engine composeFrame dipakai di builder preview, editor kiosk, print renderer, dan result online.",
+          "Customer melihat template aktif yang tersedia untuk paketnya. Frame ber-slot menentukan jumlah capture; template legacy tanpa slot memakai photo_count package. composeFrame dipakai bersama oleh builder preview dan editor kiosk; JPEG final dirender di editor kiosk, lalu print dan result online memakai JPEG itu.",
         ],
       },
       {
@@ -578,36 +578,36 @@ export const HELP_ARTICLES: HelpArticle[] = [
           "Buka Templates, tekan Upload.",
           "Isi nama dan kategori: Minimal, Cute, Retro, Y2K, Wedding, Birthday, Graduation, Event, Custom.",
           "Upload file maksimal 5 MB (PNG, JPG, WebP).",
-          "Aktifkan toggle is active bila siap tampil.",
+          "Pilih status upload: Draft (nonaktif) atau Publish (aktif).",
         ],
         table: {
           head: ["Aturan", "Nilai", "Keterangan"],
           rows: [
             ["Tipe file", "PNG, JPG, WebP", "PNG transparan disarankan untuk frame"],
             ["Ukuran maks", "5 MB", "Kompres sebelum upload"],
-            ["Thumbnail", "Otomatis", "Dari preview builder"],
+            ["Slot builder", "Maksimal 8", "0 slot = frame penuh legacy"],
           ],
         },
       },
       {
         heading: "Atur slot di builder",
         paragraphs: [
-          "Builder canvas: tambah slot (drag kotak), atur shape, posisi, ukuran, rotasi, fit, lalu Preview dengan foto contoh. Slot tidak bisa digeser atau resize keluar batas canvas (clamp saat drag).",
+          "Builder canvas: tambah slot manual (drag kotak) atau deteksi area hijau frame menjadi slot mask, atur shape, posisi, ukuran, rotasi, fit, lalu periksa preview foto contoh otomatis. Slot tidak bisa digeser atau resize keluar batas canvas (clamp saat drag).",
           "Urutan render: clear canvas ke resolusi canvas, untuk tiap slot urut z naik clip ke shape lalu drawImage foto dengan fit cover atau contain plus transform zoom atau pan customer, lalu drawImage frame PNG penuh, lalu sticker dan text di atas.",
         ],
         steps: [
           "Pilih preset: 4x6 portrait 1200x1800, 4x6 landscape 1800x1200, 2x6 strip 600x1800, square 1500x1500, custom maks 3000x3000.",
           "Tekan Tambah Slot, drag kotak di canvas.",
           "Atur shape (rect, rounded, circle, ellipse), x, y, width, height, rotation -180 sampai 180, radius, fit, z.",
-          "Tekan Preview, pastikan foto contoh pas tanpa distorsi.",
-          "Simpan Draft (nonaktif) atau Publish (aktif). Minimal 1 slot, maksimal 8 slot.",
+          "Periksa preview kanvas, pastikan foto contoh pas tanpa distorsi.",
+          "Simpan Draft (nonaktif) atau Publish (aktif). Maksimal 8 slot; 0 slot berarti frame penuh legacy.",
         ],
-        note: "Validasi server: width dan height di atas nol, x dan y di atas nol, x plus width dan y plus height di dalam canvas, shape enum valid.",
+        note: "Validasi server: id slot unik; z unik dan berurutan 0..n-1; preset cocok dengan dimensi canvas; posisi dan ukuran slot (rotation-aware) di dalam batas canvas; radius maksimal setengah sisi terpendek; circle wajib berbentuk persegi; nilai crop 0..1.",
       },
       {
         heading: "Assign ke package",
         paragraphs: [
-          "Edit package lalu multi select template. Semua template aktif boleh dipakai paket mana pun; jumlah slot tidak lagi membatasi assign. Simpan menghapus relasi lama lalu insert bulk yang baru.",
+          "Edit package lalu multi select template. Template milik sendiri yang aktif selalu bisa di-assign; template global platform hanya bisa di-assign jika aktif dan (gratis atau sudah dibeli). Jumlah slot tidak lagi membatasi assign. Simpan menghapus relasi lama lalu insert bulk yang baru.",
         ],
         steps: [
           "Edit package, pilih template yang berlaku.",
