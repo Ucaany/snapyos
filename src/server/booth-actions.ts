@@ -7,7 +7,6 @@
 
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
-import { ApiError } from "@/lib/api-errors";
 import { str, toFormState } from "@/lib/form-state";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { getClientIp } from "@/lib/request-ip";
@@ -18,7 +17,6 @@ import {
   createPhotobox,
   deletePhotobox,
   updatePhotobox,
-  updatePhotoboxBranding,
 } from "@/server/photoboxes";
 import { forbiddenPhotoboxFields } from "@/lib/photobox-form-fields";
 import type { FormState } from "@/server/auth-actions";
@@ -200,37 +198,4 @@ export async function deletePhotoboxAction(formData: FormData): Promise<FormStat
   }
   revalidatePath("/dashboard/photoboxes");
   return { error: undefined };
-}
-
-// --- PER-BOOTH BRANDING OVERRIDE (0045) ---
-
-/**
- * Simpan branding override per-booth. `branding: null`/kosong = reset ke inherit
- * global. Field dikirim sebagai objek `kiosk` (sama dengan brandingSchema);
- * merge server-side agar override parsial tidak menghapus field lain.
- */
-export async function savePhotoboxBrandingAction(input: {
-  photoboxId: string;
-  branding: Record<string, unknown> | null;
-}): Promise<{ ok: boolean; error?: string }> {
-  const ctx = await requireActiveBusiness();
-  if (!ctx) return { ok: false, error: "Sesi berakhir. Silakan login ulang." };
-  await requireEffectiveSubscription(ctx.businessId, "write");
-  if (!input.photoboxId) return { ok: false, error: "Photobox tidak valid" };
-
-  try {
-    await updatePhotoboxBranding(
-      ctx.user.id,
-      ctx.businessId,
-      input.photoboxId,
-      input.branding as Parameters<typeof updatePhotoboxBranding>[3]
-    );
-  } catch (error) {
-    const message = error instanceof ApiError ? error.message : "Gagal menyimpan branding booth.";
-    return { ok: false, error: message };
-  }
-
-  revalidatePath("/dashboard/branding");
-  revalidatePath("/dashboard/photoboxes");
-  return { ok: true };
 }

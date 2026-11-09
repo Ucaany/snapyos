@@ -45,6 +45,7 @@ import { CheckoutScreen } from "@/components/kiosk/CheckoutScreen";
 import { TemplatePicker } from "@/components/kiosk/TemplatePicker";
 import { SessionTimer } from "@/components/kiosk/SessionTimer";
 import { ResultScreen } from "@/components/kiosk/ResultScreen";
+import { ReviewScreen } from "@/components/kiosk/ReviewScreen";
 import { KioskScreenRenderer } from "@/components/kiosk/KioskScreenRenderer";
 import type { KioskScreenId } from "@/lib/kiosk-screen-registry";
 import dynamic from "next/dynamic";
@@ -77,6 +78,7 @@ type Step =
   | "checkout"
   | "template"
   | "capture"
+  | "review"
   | "editor"
   | "printing"
   | "result";
@@ -97,7 +99,7 @@ type VerifyData = {
   /** Checkout paid yang sesinya belum dibuat (exit/reload pasca-bayar) — klaim, jangan bayar ulang. */
   claimable_checkout_id?: string | null;
 };
-type FinalizeResult = { result_token: string | null; gif_url: string | null };
+type FinalizeResult = { result_token: string | null; gif_url: string | null; expires_at?: string | null };
 /** pendingSync = menunggu sinkron antrian offline; syncFailed = terminal (grace habis). */
 type ResultState = FinalizeResult & { pendingSync?: boolean; syncFailed?: boolean };
 
@@ -158,6 +160,8 @@ export function KioskApp({
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [photos, setPhotos] = useState<CapturePhoto[]>([]);
   const [retakeCount, setRetakeCount] = useState(0);
+  // Filter live dipilih di kamera dan menjadi nilai awal editor (per foto).
+  const [filterId, setFilterId] = useState("original");
   const [finalPhotos, setFinalPhotos] = useState<FinalPhoto[]>([]);
   const [result, setResult] = useState<ResultState | null>(null);
   const [printed, setPrinted] = useState(false);
@@ -540,7 +544,17 @@ export function KioskApp({
     setStep("capture");
   }, []);
 
-  const handleCaptured = useCallback((captured: CapturePhoto[], retakes: number) => {
+  const handleCaptured = useCallback(
+    (captured: CapturePhoto[], retakes: number) => {
+      setPhotos(captured);
+      setRetakeCount(retakes);
+      // Feature flag per booth (default ON) — bisa dimatikan untuk rollback.
+      setStep(currentPhotobox.session_settings.kiosk_review_grid === false ? "editor" : "review");
+    },
+    [currentPhotobox.session_settings.kiosk_review_grid]
+  );
+
+  const handleReviewContinue = useCallback((captured: CapturePhoto[], retakes: number) => {
     setPhotos(captured);
     setRetakeCount(retakes);
     setStep("editor");
@@ -553,7 +567,7 @@ export function KioskApp({
     setRetakeCount(retakes);
   }, []);
   const finalizeAndFinish = useCallback(
-    async (final: FinalPhoto[], gifPhotos?: Blob[]) => {
+    async (final: FinalPhoto[]) => {
       if (!deviceToken || !session) return;
       setBusy(true);
       setNotice(null);
@@ -564,12 +578,8 @@ export function KioskApp({
       // GIF slideshow: frame ber-slot menghasilkan SATU composite, jadi
       // slideshow memakai capture mentah (pose bergantian). Template legacy
       // memakai foto berframe — sesuai docs/05 §5.13.
-      // Sumber GIF: blob chroma full-res dari editor menang bila ada; selain
-      // itu perilaku lama (capture mentah untuk layout slot, foto final untuk
-      // template legacy).
       const gifSource =
-        gifPhotos ??
-        (selectedTemplate?.layout ? photos.map((p) => p.blob) : final.map((p) => p.blob));
+        selectedTemplate?.layout ? photos.map((p) => p.blob) : final.map((p) => p.blob);
 
       // Sesi `local_*` hanya dikenal runtime lokal. Cloud tidak punya barisnya,
       // jadi finalize HARUS ke runtime walau internet sudah hidup lagi — sync
@@ -689,8 +699,8 @@ export function KioskApp({
   );
 
   const handleEditorFinish = useCallback(
-    (final: FinalPhoto[], gifPhotos?: Blob[]) => {
-      void finalizeAndFinish(final, gifPhotos);
+    (final: FinalPhoto[]) => {
+      void finalizeAndFinish(final);
     },
     [finalizeAndFinish]
   );
@@ -844,7 +854,7 @@ export function KioskApp({
       {/* Timer ikut alur layout (bukan overlay fixed): sebelumnya badge fixed
           menutupi eyebrow/judul layar di kanan-atas. Strip ini menyusutkan
           tinggi layar sedikit, tetapi tidak pernah menutupi teks. */}
-      {session && ["template", "capture", "editor"].includes(step) && (
+      {session && ["template", "capture", "review", "editor"].includes(step) && (
         <div className="relative z-40 flex shrink-0 justify-end px-3 pt-2">
           <SessionTimer
             expiresAt={session.expires_at}
@@ -948,8 +958,25 @@ export function KioskApp({
             layout={selectedTemplate?.layout ?? null}
             frameUrl={selectedTemplate?.file_url ?? null}
             captureMode={selectedPackage.capture_mode}
+            filterId={filterId}
+            onFilterChange={setFilterId}
             onProgress={onProgressCapture}
             onComplete={handleCaptured}
+          />
+        </KioskScreenRenderer>
+      )}
+      {step === "review" && photos.length > 0 && (
+        <KioskScreenRenderer {...screenConfig("review")}>
+          <ReviewScreen
+            photos={photos}
+            photoCount={captureCount}
+            maxRetakes={sessionSettings?.max_retakes ?? null}
+            retakeCount={retakeCount}
+            cameraSettings={currentPhotobox.camera_settings}
+            kioskStyle={pageStyle("capture")}
+            titleText={kioskBranding?.capture_title}
+            filterId={filterId}
+            onContinue={handleReviewContinue}
           />
         </KioskScreenRenderer>
       )}
@@ -958,6 +985,7 @@ export function KioskApp({
           <Editor
             photos={photos}
             finishing={busy}
+            initialFilterId={filterId}
             onFinish={handleEditorFinish}
             layout={selectedTemplate?.layout ?? null}
             frameUrl={selectedTemplate?.file_url ?? null}
@@ -967,7 +995,6 @@ export function KioskApp({
             videoUrl={kioskBranding?.pages?.edit?.video_url ?? null}
             allowZoomPan={kioskBranding?.allow_zoom_pan !== false}
             finishRequested={finishRequested}
-            chromaKeyEnabled={currentPhotobox.camera_settings.chroma_key_enabled === true}
           />
         </KioskScreenRenderer>
       )}
@@ -979,6 +1006,12 @@ export function KioskApp({
             printSettings={currentPhotobox.print_settings}
             jobId={session?.session_id ?? result?.result_token ?? undefined}
             reprint={reprintRequested}
+            framed={Boolean(selectedTemplate)}
+            canvasAspect={
+              selectedTemplate?.layout
+                ? selectedTemplate.layout.canvas.width / selectedTemplate.layout.canvas.height
+                : null
+            }
             onDone={(success) => {
               setPrinted(success);
               setStep("result");
@@ -1005,6 +1038,7 @@ export function KioskApp({
             }
             pendingSync={result.pendingSync === true}
             syncFailed={result.syncFailed === true}
+            expiresAt={result.expires_at ?? null}
             onPrint={() => {
               setReprintRequested(true);
               setStep("printing");

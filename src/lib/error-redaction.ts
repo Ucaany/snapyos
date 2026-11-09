@@ -14,7 +14,7 @@
  */
 
 const SECRET_KEY_RE =
-  /(?:secret|private[_-]?key|server[_-]?key|api[_-]?key|authorization|password|token|signature|qr[_-]?string)/i;
+  /(?:secret|private[_-]?key|server[_-]?key|api[_-]?key|authorization|password|token|signature|qr[_-]?string|pin|payment|card|cvv)/i;
 
 const EMAIL_RE = /\b[A-Za-z0-9._%+-]+@([A-Za-z0-9.-]+\.[A-Za-z]{2,})\b/g;
 

@@ -83,7 +83,6 @@ export type PhotoboxRow = {
   has_exit_pin: boolean;
   /** True bila hash bukan argon2 (sha256 legacy) — owner harus set ulang PIN. */
   has_legacy_exit_pin: boolean;
-  chroma_key_enabled: boolean;
   camera_settings: CameraSettings;
   print_settings: PrintSettings;
   session_settings: SessionSettings;
@@ -171,9 +170,6 @@ export async function listPhotoboxes(userId: string, businessId: string): Promis
     device_status: row.device_status,
     has_exit_pin: Boolean(row.exit_pin_hash),
     has_legacy_exit_pin: Boolean(row.exit_pin_hash) && !row.exit_pin_hash!.startsWith("$argon2"),
-    chroma_key_enabled: Boolean(
-      (row as { camera_settings?: CameraSettings | null }).camera_settings?.chroma_key_enabled
-    ),
     camera_settings: (row.camera_settings as CameraSettings | null) ?? {},
     print_settings: (row.print_settings as PrintSettings | null) ?? {},
     session_settings: (row.session_settings as SessionSettings | null) ?? {},
@@ -192,7 +188,6 @@ export async function createPhotobox(
   await requireMembership(userId, businessId, "photobox:write");
 
   const {
-    chroma_key_enabled: chromaKeyEnabled,
     camera_settings: cameraSettings,
     exit_pin: exitPin,
     ...photoboxColumns
@@ -218,10 +213,7 @@ export async function createPhotobox(
   }
 
   const exitPinHash = exitPin !== undefined ? await hashDevicePin(exitPin) : null;
-  const mergedCameraSettings = {
-    ...(cameraSettings ?? {}),
-    chroma_key_enabled: chromaKeyEnabled ?? cameraSettings?.chroma_key_enabled ?? false,
-  };
+  const mergedCameraSettings = { ...(cameraSettings ?? {}) };
 
   // Kuota + insert atomik (0069) — cegah race count-then-insert.
   const { data, error } = await supabase.rpc("create_photobox_with_quota", {
@@ -267,7 +259,6 @@ export async function updatePhotobox(
   // exit_pin bukan kolom — dipetakan ke exit_pin_hash (argon2id, docs/05 §5.0).
   const {
     exit_pin: exitPin,
-    chroma_key_enabled: chromaKeyEnabled,
     camera_settings: cameraSettings,
     print_settings: printSettings,
     session_settings: sessionSettings,
@@ -296,7 +287,6 @@ export async function updatePhotobox(
   }
 
   if (
-    chromaKeyEnabled !== undefined ||
     cameraSettings !== undefined ||
     printSettings !== undefined ||
     sessionSettings !== undefined
@@ -311,11 +301,10 @@ export async function updatePhotobox(
     // Merge per-key, bukan replace. Owner boleh menulis `copies`/`layout`
     // (milik cloud); laporan device tidak — penyaringan itu ada di
     // `mergeDeviceSettings` yang dipakai PATCH devices/settings.
-    if (chromaKeyEnabled !== undefined || cameraSettings !== undefined) {
+    if (cameraSettings !== undefined) {
       (columns as Record<string, unknown>).camera_settings = {
         ...((current.camera_settings as CameraSettings | null) ?? {}),
-        ...(cameraSettings ?? {}),
-        ...(chromaKeyEnabled !== undefined ? { chroma_key_enabled: chromaKeyEnabled } : {}),
+        ...cameraSettings,
       };
     }
     if (printSettings !== undefined) {

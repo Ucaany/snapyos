@@ -13,6 +13,10 @@ node_modules/
 out/
 build/
 dist-release/
+# Binaries untuk payload installer Windows dibuat ulang, bukan disimpan di Git.
+windows/deploy/payload/
+windows/**/bin/
+windows/**/obj/
 
 # --- Secrets ---
 # Semua file .env diabaikan; hanya template yang boleh masuk Git.
@@ -58,3 +62,6 @@ SnapyOS Saas/
 hardware-agent/target/
 # Screenshot e2e — dibuat ulang tiap run; bukti terkurasi disimpan manual.
 /tests/e2e/*.png
+
+# Manifest hasil paket ditulis ulang oleh Package-SnapyOS-Kiosk.ps1.
+windows/deploy/snapyos-install-manifest.json

@@ -71,8 +71,31 @@ ALTER TABLE templates ADD COLUMN layout jsonb NOT NULL DEFAULT '{}';
       "radius": 24,
       "fit": "cover",
       "z": 0
+    },
+    {
+      "id": "mask-1",
+      "shape": "mask",
+      "x": 680,
+      "y": 200,
+      "width": 420,
+      "height": 700,
+      "rotation": 0,
+      "fit": "cover",
+      "points": [
+        { "x": 0, "y": 0 },
+        { "x": 420, "y": 60 },
+        { "x": 380, "y": 700 },
+        { "x": 30, "y": 650 }
+      ],
+      "z": 1
     }
-  ]
+  ],
+  "chroma": {
+    "source_key": "biz-1/templates/1791-frame.png",
+    "source_url": null,
+    "detected_at": "2026-11-09T00:00:00.000Z",
+    "skipped": 0
+  }
 }
 ```
 
@@ -81,8 +104,10 @@ ALTER TABLE templates ADD COLUMN layout jsonb NOT NULL DEFAULT '{}';
 | `version`                  | versi contract, mulai `1`                                                                                                                                                                                                     |
 | `canvas.width/height`      | resolusi design dalam px (bukan persen — deterministik & mudah divalidasi)                                                                                                                                                    |
 | `canvas.preset`            | `4x6-portrait` (1200×1800) · `4x6-landscape` (1800×1200) · `2x6-strip` (600×1800) · `square` (1500×1500) · `custom` (max 3000×3000)                                                                                           |
-| `canvas.background`        | hex `#rrggbb`, default `#ffffff`. Warna dasar di bawah foto — satu-satunya latar yang terlihat lewat lubang alpha frame dan lewat piksel yang dihapus chroma key. Tanpa ini area tersebut tercetak hitam (output final JPEG). |
-| `slots[].shape`            | `rect` \| `rounded` \| `circle` \| `ellipse`                                                                                                                                                                                  |
+| `canvas.background`        | hex `#rrggbb`, default `#ffffff`. Warna dasar di bawah foto — satu-satunya latar yang terlihat lewat lubang alpha frame (termasuk area hijau yang dihapus deteksi). Tanpa ini area tersebut tercetak hitam (output final JPEG). |
+| `slots[].shape`            | `rect` \| `rounded` \| `circle` \| `ellipse` \| `mask`                                                                                                                                                                      |
+| `slots[].points`           | wajib untuk `mask`: 3..512 titik `{x,y}` lokal slot (`0..width` × `0..height`), ring tertutup implisit. Bentuk lain menolak `points`.                                                                                        |
+| `layout.chroma`            | opsional. Metadata deteksi area hijau: `source_key`/`source_url` (frame ASLI, dipakai agar deteksi ulang idempoten), `detected_at`, `skipped` (komponen hijau dibuang).                                                       |
 | `slots[].x/y/width/height` | px design, posisi kiri-atas sebelum rotasi                                                                                                                                                                                    |
 | `slots[].rotation`         | derajat, pivot = center slot, rentang −180..180                                                                                                                                                                               |
 | `slots[].radius`           | corner radius px, hanya untuk `rounded`                                                                                                                                                                                       |
@@ -95,6 +120,8 @@ ALTER TABLE templates ADD COLUMN layout jsonb NOT NULL DEFAULT '{}';
 
 - `id` slot unik; `z` unik dan kontigu `0..n-1` (tanpa lubang).
 - `shape` enum valid; `circle` wajib bujur sangkar (selisih `width`/`height` ≤ 0.01), `ellipse` rasio bebas.
+- `mask` wajib `points` 3..512, semua titik di dalam `[0,width]×[0,height]` (EPS 0.01), minimal satu titik berbeda; bentuk non-mask menolak `points`.
+- `layout.chroma` opsional dan divalidasi ringan (string/timestamp) — layout lama tanpa field ini tetap lolos.
 - Preset kanvas cocok dengan dimensi (`4x6-portrait` 1200×1800, `4x6-landscape` 1800×1200, `2x6-strip` 600×1800, `square` 1500×1500); `custom` maks 3000×3000.
 - Bounds memperhitungkan rotasi (AABB hasil rotasi di sekitar center tetap di dalam kanvas).
 - `radius ≤ min(width, height) / 2`; crop bounds foto valid.
@@ -107,7 +134,7 @@ ALTER TABLE templates ADD COLUMN layout jsonb NOT NULL DEFAULT '{}';
 ### Deliberate simplifications (ponytail)
 
 - Frame selalu di atas foto. Layer frame di bawah / z-configurable → tambah `frame_z` saat dibutuhkan.
-- Shape custom/path mask (SVG path) → `shape: "path"` saat dibutuhkan.
+- `shape: "mask"` adalah poligon hasil deteksi hijau, bukan SVG path bebas; path kurva presisi → tambah `shape: "path"` saat dibutuhkan.
 - Tidak ada `template_versions` / undo history — draft vs publish cukup (`is_active`).
 - Chroma key memakai **warna dasar kanvas**, bukan aset latar terpisah. Latar bergambar di balik customer → tambah `canvas.background_image` saat dibutuhkan.
 - `sessions` belum menyimpan `template_id`; lihat risiko residual §15.10.
@@ -121,9 +148,10 @@ ALTER TABLE templates ADD COLUMN layout jsonb NOT NULL DEFAULT '{}';
 **Flow:**
 
 ```
-[ BUAT BARU ] → pilih preset canvas (atau custom) → upload PNG frame
+[ BUAT BARU ] → pilih preset canvas (atau custom) → upload PNG frame (area hijau = slot)
    ↓
 Builder canvas:
+   [ DETEKSI AREA HIJAU ] → server hapus hijau, tulis PNG baru, tambah slot mask
    [ + TAMBAH SLOT ] (maks 8) → tambah slot di canvas
    pilih slot → panel properti: shape, x/y/w/h, rotation, radius, fit, z
    drag untuk pindah · resize handle · input numerik x/y/w/h/rotation
@@ -136,7 +164,8 @@ Builder canvas:
 
 - Tambah slot (maks 8), hapus slot.
 - Drag pindah, resize handle, input numerik `x/y/width/height`, `rotation`.
-- `shape`: `rect` | `rounded` | `circle` | `ellipse`; `fit`: `cover` | `contain` | `fill`; `radius` (rounded); z naik/turun (di-renumber kontigu `0..n-1`).
+- `shape`: `rect` | `rounded` | `circle` | `ellipse`; `fit`: `cover` | `contain` | `fill`; `radius` (rounded); z naik/turun (di-renumber kontigu `0..n-1`). `mask` **tidak** bisa dipilih manual — hanya lahir dari deteksi; mengubah slot mask ke bentuk lain menghapus `points`-nya.
+- Deteksi area hijau: tombol "Deteksi area hijau". Server mendeteksi komponen hijau, menulis PNG baru (hijau → alpha 0, file asli disimpan sebagai `layout.chroma.source_key`), dan **menambahkan** slot mask dengan z lanjut. Slot manual dipertahankan; slot `mask` hasil deteksi sebelumnya diganti (deteksi ulang idempoten). Total dibatasi 8 dan sisanya dilaporkan sebagai `skipped`. Deteksi tidak mengubah `is_active` — publish tetap aksi terpisah. Untuk mask: width/height/radius dikunci baca-saja, x/y/rotation/fit tetap bisa diubah.
 - Preset kanvas: `4x6-portrait` | `4x6-landscape` | `2x6-strip` | `square` | `custom` (maks 3000).
 - Background kanvas: input hex.
 - Keyboard: arrow nudge 1px, Shift+arrow 10px. Setiap mutasi juga bisa dilakukan lewat kontrol UI.
@@ -146,7 +175,7 @@ Builder canvas:
 
 - Simpan eksplisit: "Simpan draft" (`is_active=false`) atau "Publish" (`is_active=true`). Tidak pernah auto-publish.
 - Form upload punya pilihan eksplisit Draft (default) / Publish dan setelah sukses redirect ke builder.
-- **Thumbnail tidak digenerate dari preview builder.** Thumbnail berasal dari frame WebP yang diunggah; tidak ada thumbnail otomatis dari canvas.
+- **Thumbnail tidak digenerate dari preview builder.** Thumbnail berasal dari frame WebP yang diunggah; deteksi area hijau membuat thumbnail baru dari PNG bersih. Tidak ada thumbnail otomatis dari canvas.
 
 **Batasan builder:**
 
@@ -163,13 +192,13 @@ Builder canvas:
 Urutan render (satu frame/output):
 
 1. Set resolusi `canvas.width × canvas.height`, clear, lalu isi `canvas.background` (default putih).
-2. Untuk setiap slot urut `z` naik: clip ke shape path (rect / `roundRect` / ellipse; rotation via `ctx.rotate` di center slot) → `drawImage` foto terkait dengan `fit` cover/contain + transform zoom/pan customer (clamp minimal cover-fit).
+2. Untuk setiap slot urut `z` naik: clip ke shape path (rect / `roundRect` / ellipse / poligon `mask`; rotation via `ctx.rotate` di center slot) → `drawImage` foto terkait dengan `fit` cover/contain + transform zoom/pan customer (clamp minimal cover-fit).
 3. `drawImage` frame PNG di-rect penuh canvas (0,0,canvas.w,canvas.h).
 4. Sticker & text (sistem eksisting §5.10–5.11) digambar **setelah** frame — bukan di dalam foto yang ter-clip slot, supaya tidak terpotong clip/tertutup frame.
 
-**Chroma key (kiosk only):** toggle muncul hanya bila `camera_settings.chroma_key_enabled`. Gate mengambil sample sudut; key hanya dijalankan bila latar terdeteksi hijau (dominance atau hue 90–160 + saturation). Bila tidak hijau, piksel dibiarkan apa adanya dan UI memperingatkan "Latar tidak terdeteksi hijau". Band lunak menekan green spill (`g ≤ max(r,b)`). Preview keying berjalan pada lebar preview; final pada resolusi penuh; file asli tidak diubah. Piksel yang dihapus menampilkan `canvas.background` (output JPEG, jadi latar wajib berwarna). Builder **tidak** menyediakan kontrol chroma.
+**Chroma = slot dari frame, bukan keying foto.** Editor kiosk **tidak** punya kontrol chroma. Area hijau pada PNG frame diubah owner menjadi slot mask lewat tombol deteksi di builder: server memakai predikat `isGreenBackground` yang sama untuk (a) menghitung poligon slot dan (b) membuat alpha 0 pada piksel hijau di file frame baru, sehingga lubang file selalu identik dengan bentuk slot. Piksel transparan menampilkan `canvas.background` (output final JPEG, jadi latar wajib berwarna). Frame JPG/WebP tanpa alpha tetap diterima; hasil deteksi selalu ditulis PNG. Deteksi ulang selalu memakai file asli (`layout.chroma.source_key`), jadi idempoten.
 
-**GIF slideshow:** bila toggle chroma aktif pada template ber-slot, GIF memakai **blob hasil chroma** (bukan capture mentah). Tanpa toggle: template ber-slot memakai capture mentah (pose bergantian), template legacy memakai foto final berframe. Server menerima `gif_photos` opsional; tanpa field itu GIF jatuh ke foto final.
+**GIF slideshow:** template ber-slot memakai capture mentah (pose bergantian), template legacy memakai foto final berframe. Server menerima `gif_photos` opsional; tanpa field itu GIF jatuh ke foto final.
 
 Output = full resolusi design canvas. Render final dijalankan di browser (editor kiosk) dan diunggah sebagai JPEG; server tidak mengomposit ulang. GIF & result online tidak berubah (tetap dari foto final hasil composite klien).
 
@@ -262,3 +291,5 @@ Template **global** platform dapat dijual sebagai template premium per business.
 - **`template_id` tidak dipersist di `sessions`.** Kiosk mengirimnya saat finalize, jadi server memakai nilai dari client untuk menentukan ekspektasi jumlah capture. Composite dirender di client dan hanya diunggah sebagai JPEG, sehingga server memang tidak bisa memverifikasi isi visual — `template_id` hanya memengaruhi pemeriksaan jumlah, bukan harga atau settlement. Memperbaikinya butuh migrasi kolom `sessions.template_id`; belum dilakukan.
 - **`gif_photos` opsional.** Tanpa field itu, jumlah capture untuk frame ber-slot tidak bisa diperiksa (composite tunggal sah). Klien lama tetap bisa finalize.
 - **PNG tanpa alpha channel** belum dideteksi saat upload frame; template tanpa lubang alpha akan menutupi seluruh foto.
+- **Deteksi hijau bergantung kualitas desain.** Gradien, bayangan, atau hijau pudar di bawah ambang predikat tidak terdeteksi; noise dibuang oleh filter luas minimum (0.1% kanvas, sisi ≥ 8 px). Frame dengan hijau menyatu ke tepi kanvas ditutup di tepi dan titik di-clamp.
+- **Fringe di tepi slot.** Alpha frame dibuat biner (piksel hijau → alpha 0) agar lubang identik dengan poligon slot; piksel anti-alias di tepi hijau yang tidak lolos predikat bisa tersisa sebagai garis tipis. Kandidat: erode poligon atau band alpha lembut saat terlihat pada cetak.

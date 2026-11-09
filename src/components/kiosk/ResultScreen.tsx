@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
-import { Check, Download, Printer, RefreshCcw, TriangleAlert } from "lucide-react";
+import { Check, Copy, Download, MessageCircle, Printer, RefreshCcw, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { defaultBrandColors } from "@/lib/brand-defaults";
 import { kioskThemeVars, type KioskVisualStyle } from "@/lib/kiosk-types";
@@ -23,6 +23,8 @@ type Props = {
   pendingSync?: boolean;
   /** Terminal: grace window server terlewat — hasil online tidak tersedia. */
   syncFailed?: boolean;
+  /** Tanggal link hasil kedaluwarsa (finalized_at + retention). */
+  expiresAt?: string | null;
   /** Teks kustom owner (Branding & Kiosk) — kosong = default. */
   resultTitle?: string;
   resultHint?: string;
@@ -46,6 +48,7 @@ export function ResultScreen({
   canPrint,
   pendingSync = false,
   syncFailed = false,
+  expiresAt = null,
   resultTitle,
   resultHint,
   resultLayout = "qr-right",
@@ -64,6 +67,7 @@ export function ResultScreen({
   // Dibaca saat interaksi unduh (bukan saat render/effect) — userAgent tidak
   // tersedia saat SSR dan tidak perlu memicu render tambahan.
   const [iosDevice, setIosDevice] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const downloadTimer = useRef<number | null>(null);
   const qrDark = kioskStyle?.text ?? defaultBrandColors.ink;
@@ -100,6 +104,46 @@ export function ResultScreen({
   const photoUrls = useObjectUrls(finalPhotos.map((p) => p.blob));
   const previewPhoto = photoUrls[0] ?? null;
   const hasGif = Boolean(gifUrl) && !gifError;
+  const canShare = qrUsable && Boolean(resultToken);
+  const zipHref =
+    qrUsable && resultToken
+      ? `/api/v1/public/results/${encodeURIComponent(resultToken)}/zip`
+      : null;
+  const expiryLabel = (() => {
+    if (!expiresAt) return null;
+    const date = new Date(expiresAt);
+    return Number.isNaN(date.getTime())
+      ? null
+      : date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+  })();
+
+  /** URL absolut dibaca saat interaksi — bukan saat render (SSR/hydration). */
+  function resultShareUrl(): string | null {
+    if (!canShare || !resultToken) return null;
+    return `${window.location.origin}/r/${resultToken}`;
+  }
+
+  async function copyLink() {
+    const shareUrl = resultShareUrl();
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  function shareToWhatsApp() {
+    const shareUrl = resultShareUrl();
+    if (!shareUrl) return;
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(`Foto kamu siap: ${shareUrl}`)}`,
+      "_blank",
+      "noopener,noreferrer"
+    );
+  }
 
   useEffect(() => {
     return () => {
@@ -199,6 +243,47 @@ export function ResultScreen({
           )}
         </div>
       )}
+      {expiryLabel && (
+        <p className="text-[10px] uppercase leading-snug tracking-[0.1em] text-muted-foreground">
+          {`Link berlaku sampai ${expiryLabel}`}
+        </p>
+      )}
+      {(canShare || zipHref) && (
+        <div className="flex flex-wrap gap-2">
+          {canShare && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void copyLink()}
+              className="min-h-11 flex-1"
+              style={ks ? { borderRadius: radius } : undefined}
+            >
+              {copied ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />}
+              {copied ? "Tersalin" : "Salin link"}
+            </Button>
+          )}
+          {canShare && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={shareToWhatsApp}
+              className="min-h-11 flex-1"
+              style={ks ? { borderRadius: radius } : undefined}
+            >
+              <MessageCircle className="size-4" aria-hidden /> WhatsApp
+            </Button>
+          )}
+          {zipHref && (
+            <a
+              href={zipHref}
+              className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 border-2 border-ink bg-surface px-3 py-2 text-[11px] font-bold uppercase tracking-[0.06em] text-ink hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+              style={ks ? { borderRadius: radius } : undefined}
+            >
+              <Download className="size-4" aria-hidden /> ZIP
+            </a>
+          )}
+        </div>
+      )}
       <Button
         size="lg"
         onClick={onReset}
@@ -244,12 +329,17 @@ export function ResultScreen({
       >
         <KioskEyebrow>{businessName}</KioskEyebrow>
         {previewPhoto ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={previewPhoto}
-            alt="Hasil foto berframe"
-            className="max-h-[46vh] max-w-full border-2 border-ink object-contain shadow-hard lg:max-h-[62vh]"
-          />
+          <div className="grid max-h-[46vh] w-full max-w-[560px] grid-cols-2 gap-2 lg:max-h-[62vh]">
+            {photoUrls.filter((u): u is string => Boolean(u)).map((url, i) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={url}
+                src={url}
+                alt={`Hasil foto ${i + 1}`}
+                className="h-full w-full border-2 border-ink object-contain shadow-hard"
+              />
+            ))}
+          </div>
         ) : (
           <div
             role="status"

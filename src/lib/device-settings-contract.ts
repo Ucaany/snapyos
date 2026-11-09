@@ -14,8 +14,8 @@ export const CLOUD_OWNED_SETTING_FIELDS: Record<DeviceSettingGroupName, readonly
 };
 
 export const DEVICE_SETTING_FIELDS: Record<DeviceSettingGroupName, readonly string[]> = {
-  camera_settings: ["provider", "bridge_url", "countdown_seconds", "mirror_preview", "chroma_key_enabled", "fullscreen", "facingMode", "preferred_device_id", "capture_width", "capture_height", "jpeg_quality", "rotation_degrees", "zoom", "screen_orientation"],
-  print_settings: ["enabled", "paper_size", "layout", "orientation", "auto_print", "copies", "margins_mm", "mode", "bluetooth_paper_width_mm", "bluetooth_device_name", "bridge_url", "printer_name"],
+  camera_settings: ["provider", "bridge_url", "countdown_seconds", "mirror_preview", "fullscreen", "facingMode", "preferred_device_id", "capture_width", "capture_height", "jpeg_quality", "rotation_degrees", "zoom", "screen_orientation"],
+  print_settings: ["enabled", "paper_size", "layout", "orientation", "auto_print", "copies", "margins_mm", "fit", "strip_2up", "media_name", "mode", "bluetooth_paper_width_mm", "bluetooth_device_name", "bridge_url", "printer_name"],
   session_settings: ["timer_seconds", "warning_seconds", "max_retakes"],
   appearance_settings: ["bg_color", "text_color", "font_family", "font_scale", "button_radius", "padding", "align", "welcome_layout", "result_layout", "welcome_title", "welcome_tagline", "welcome_button", "payment_title", "payment_hint", "capture_title", "capture_hint", "editor_title", "editor_hint", "result_title", "result_hint", "guide_title", "guide_button", "package_title", "template_title", "show_logo", "show_tagline", "show_mirror_toggle", "allow_zoom_pan", "guide_steps", "pages"],
 };
@@ -51,7 +51,6 @@ export interface CameraSettings {
   "bridge_url"?: string;
   "countdown_seconds"?: number;
   "mirror_preview"?: boolean;
-  "chroma_key_enabled"?: boolean;
   "fullscreen"?: boolean;
   "facingMode"?: "user" | "environment" | null;
   "preferred_device_id"?: string | null;
@@ -65,12 +64,15 @@ export interface CameraSettings {
 
 export interface PrintSettings {
   "enabled"?: boolean;
-  "paper_size"?: "4x6" | "A6";
+  "paper_size"?: "4x6" | "2x6" | "5x7" | "6x8" | "A6";
   "layout"?: "single" | "strip";
-  "orientation"?: "portrait" | "landscape";
+  "orientation"?: "portrait" | "landscape" | "auto";
   "auto_print"?: boolean;
   "copies"?: number;
   "margins_mm"?: number;
+  "fit"?: "auto" | "contain" | "cover";
+  "strip_2up"?: boolean;
+  "media_name"?: string;
   "mode"?: "browser" | "bluetooth" | "cups";
   "bluetooth_paper_width_mm"?: number;
   "bluetooth_device_name"?: string;
@@ -82,6 +84,7 @@ export interface SessionSettings {
   "timer_seconds"?: number;
   "warning_seconds"?: number;
   "max_retakes"?: number | null;
+  "kiosk_review_grid"?: boolean;
 }
 
 export interface AppearanceSettings {

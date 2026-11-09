@@ -106,11 +106,6 @@ export function StaffBoothsBoard({
                     Belum ada perangkat terdeteksi
                   </span>
                 )}
-                {booth.chroma_key_enabled ? (
-                  <span className="border-2 border-ink bg-accent px-1.5 py-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.06em]">
-                    CHROMA KEY
-                  </span>
-                ) : null}
               </div>
               {!booth.has_exit_pin ? (
                 <p className="mt-2 border-2 border-destructive bg-destructive/10 px-2 py-1.5 font-mono text-[11px] font-bold uppercase leading-snug tracking-[0.06em]">

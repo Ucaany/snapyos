@@ -200,7 +200,7 @@ export async function createGlobalTemplate(input: {
 
 /** Upload file frame global langsung dari browser admin (docs/10 §10.2).
  *  Mirip uploadTemplate owner: PNG/JPG/WebP (tanpa SVG — allowlist upload) →
- *  storage bucket. Thumbnail/transparansi diproses builder, bukan chroma di sini. */
+ *  storage bucket. Thumbnail/transparansi diproses builder (deteksi area hijau). */
 export async function uploadGlobalTemplateFile(file: {
   name?: string | null;
   type?: string | null;
@@ -323,7 +323,7 @@ export async function getGlobalTemplate(templateId: string): Promise<AdminTempla
   };
 }
 
-/** Simpan layout slot (builder admin) + thumbnail + frame chroma — mirror owner. */
+/** Simpan layout slot (builder admin) — mirror owner. */
 export async function updateGlobalTemplateLayout(
   templateId: string,
   input: { layout: unknown; is_active: boolean }

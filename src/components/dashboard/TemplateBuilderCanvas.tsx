@@ -31,6 +31,13 @@ export type TemplateLayoutSaveResult = {
   fieldErrors?: Record<string, string[]>;
 };
 
+export type ChromaDetectAction = () => Promise<{
+  layout?: unknown;
+  frameUrl?: string | null;
+  skipped?: number;
+  error?: string;
+}>;
+
 type Props = {
   templateName: string;
   initialLayout: TemplateLayout | null;
@@ -40,6 +47,8 @@ type Props = {
   /** true = platform template bought by owner: no save controls. */
   readOnly?: boolean;
   onSave?: (layout: TemplateLayout, publish: boolean) => Promise<TemplateLayoutSaveResult>;
+  /** Deteksi area hijau → slot mask. Dimatikan untuk read-only. */
+  onDetectChroma?: ChromaDetectAction;
 };
 
 const PREVIEW_MAX_W = 900;
@@ -100,6 +109,9 @@ function validateLayout(layout: TemplateLayout): string[] {
     if (slot.shape === "circle" && Math.abs(slot.width - slot.height) > 0.01) {
       errors.push(`Slot #${n}: shape circle harus persegi (width = height).`);
     }
+    if (slot.shape === "mask" && (slot.points?.length ?? 0) < 3) {
+      errors.push(`Slot #${n}: shape mask wajib poligon minimal 3 titik.`);
+    }
     const maxRadius = Math.min(slot.width, slot.height) / 2;
     if ((slot.radius ?? 0) > maxRadius) {
       errors.push(`Slot #${n}: radius melebihi ${Math.round(maxRadius)}px.`);
@@ -126,6 +138,35 @@ function renumberZ(slots: LayoutSlot[]): LayoutSlot[] {
     .map((slot, index) => ({ ...slot, z: index }));
 }
 
+/** Titik (koordinat canvas) → koordinat lokal slot setelah rotasi inverse. */
+function toSlotLocal(slot: LayoutSlot, px: number, py: number): { x: number; y: number } {
+  const cx = slot.x + slot.width / 2;
+  const cy = slot.y + slot.height / 2;
+  const rad = (-slot.rotation * Math.PI) / 180;
+  const dx = px - cx;
+  const dy = py - cy;
+  return {
+    x: dx * Math.cos(rad) - dy * Math.sin(rad) + slot.width / 2,
+    y: dx * Math.sin(rad) + dy * Math.cos(rad) + slot.height / 2,
+  };
+}
+
+/** Ray casting point-in-polygon. */
+function pointInPolygon(points: readonly { x: number; y: number }[], px: number, py: number): boolean {
+  let inside = false;
+  for (let i = 0, j = points.length - 1; i < points.length; j = i, i += 1) {
+    const a = points[i]!;
+    const b = points[j]!;
+    if (
+      a.y > py !== b.y > py &&
+      px < ((b.x - a.x) * (py - a.y)) / (b.y - a.y || Number.EPSILON) + a.x
+    ) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
 type DragState =
   | { mode: "move"; id: string; startX: number; startY: number; origX: number; origY: number }
   | {
@@ -146,6 +187,7 @@ export function TemplateBuilderCanvas({
   frameUrl,
   readOnly = false,
   onSave,
+  onDetectChroma,
 }: Props) {
   const router = useRouter();
   const uid = useId();
@@ -154,6 +196,14 @@ export function TemplateBuilderCanvas({
   const dragRef = useRef<DragState | null>(null);
   const frameRef = useRef<HTMLImageElement | null>(null);
   const [frameVersion, setFrameVersion] = useState(0);
+  // Frame hasil deteksi menggantikan prop agar preview langsung memakai PNG bersih.
+  const [localFrameUrl, setLocalFrameUrl] = useState<string | null>(null);
+  const activeFrameUrl = localFrameUrl ?? frameUrl ?? null;
+  const [detecting, setDetecting] = useState(false);
+  const [confirmDetect, setConfirmDetect] = useState(false);
+  const [detectMessage, setDetectMessage] = useState<
+    { kind: "ok" | "error"; text: string } | null
+  >(null);
 
   const [layout, setLayout] = useState<TemplateLayout>(() => {
     if (initialLayout) {
@@ -177,7 +227,7 @@ export function TemplateBuilderCanvas({
 
   useEffect(() => {
     frameRef.current = null;
-    if (!frameUrl) return;
+    if (!activeFrameUrl) return;
     let cancelled = false;
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -199,15 +249,15 @@ export function TemplateBuilderCanvas({
         frameRef.current = null;
         setFrameVersion((v) => v + 1);
       };
-      retry.src = frameUrl;
+      retry.src = activeFrameUrl;
     };
-    img.src = frameUrl;
+    img.src = activeFrameUrl;
     return () => {
       cancelled = true;
       img.onload = null;
       img.onerror = null;
     };
-  }, [frameUrl]);
+  }, [activeFrameUrl]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -248,7 +298,8 @@ export function TemplateBuilderCanvas({
       { x: active.x + active.width, y: active.y + active.height },
     ];
     const size = Math.max(8, canvas.width * 0.016);
-    for (const handle of handles) {
+    // Slot mask tidak bisa di-resize: bbox-nya diturunkan dari poligon.
+    for (const handle of active.shape === "mask" ? [] : handles) {
       const hx = handle.x * scale - size / 2;
       const hy = handle.y * scale - size / 2;
       ctx.fillStyle = defaultBrandColors.bg;
@@ -257,7 +308,7 @@ export function TemplateBuilderCanvas({
       ctx.strokeRect(hx, hy, size, size);
     }
     ctx.restore();
-  }, [layout, selectedId, frameVersion, frameUrl]);
+  }, [layout, selectedId, frameVersion, activeFrameUrl]);
 
   function toLayoutPoint(
     canvas: HTMLCanvasElement,
@@ -348,13 +399,14 @@ export function TemplateBuilderCanvas({
   }
 
   function setShape(shape: LayoutSlot["shape"]) {
-    if (!selected) return;
+    if (!selected || shape === "mask") return;
     if (shape === "circle") {
       const side = Math.min(selected.width, selected.height);
-      patchSlot(selected.id, { shape, width: side, height: side });
+      patchSlot(selected.id, { shape, width: side, height: side, points: undefined });
       return;
     }
-    patchSlot(selected.id, { shape });
+    // Slot mask yang diubah bentuknya kehilangan poligon.
+    patchSlot(selected.id, { shape, points: undefined });
   }
 
   function setWidth(value: number) {
@@ -391,7 +443,7 @@ export function TemplateBuilderCanvas({
     const drawScale = canvas.width / layout.canvas.width;
     const handleRadius = 18 / Math.max(drawScale, 0.0001);
 
-    if (selected) {
+    if (selected && selected.shape !== "mask") {
       const cornerX = selected.x + selected.width;
       const cornerY = selected.y + selected.height;
       if (Math.hypot(point.x - cornerX, point.y - cornerY) <= handleRadius) {
@@ -412,15 +464,20 @@ export function TemplateBuilderCanvas({
       }
     }
 
-    const hit = [...layout.slots]
-      .sort((a, b) => b.z - a.z)
-      .find(
-        (slot) =>
-          point.x >= slot.x &&
-          point.x <= slot.x + slot.width &&
-          point.y >= slot.y &&
-          point.y <= slot.y + slot.height
-      );
+    const byZDesc = [...layout.slots].sort((a, b) => b.z - a.z);
+    const inBbox = (slot: LayoutSlot) =>
+      point.x >= slot.x &&
+      point.x <= slot.x + slot.width &&
+      point.y >= slot.y &&
+      point.y <= slot.y + slot.height;
+    // Mask diuji point-in-polygon dulu; bbox jadi fallback agar mudah dipilih.
+    const hit =
+      byZDesc.find((slot) => {
+        if (!inBbox(slot)) return false;
+        if (slot.shape !== "mask" || !slot.points) return true;
+        const local = toSlotLocal(slot, point.x, point.y);
+        return pointInPolygon(slot.points, local.x, local.y);
+      }) ?? byZDesc.find(inBbox);
     if (!hit) {
       setSelectedId(null);
       return;
@@ -534,6 +591,45 @@ export function TemplateBuilderCanvas({
 
   const canEdit = !readOnly;
   const sortedSlots = [...layout.slots].sort((a, b) => a.z - b.z);
+
+  async function runDetect() {
+    if (!onDetectChroma || readOnly || detecting) return;
+    // Dua tahap bila sudah ada slot: deteksi menambah slot baru.
+    if (layout.slots.length > 0 && !confirmDetect) {
+      setConfirmDetect(true);
+      setDetectMessage(null);
+      return;
+    }
+    setConfirmDetect(false);
+    setDetecting(true);
+    setDetectMessage(null);
+    const result = await onDetectChroma();
+    setDetecting(false);
+    if (result.error || !result.layout) {
+      setDetectMessage({ kind: "error", text: result.error ?? "Deteksi gagal." });
+      return;
+    }
+    const parsed = layoutSchema.safeParse(result.layout);
+    if (!parsed.success) {
+      setDetectMessage({ kind: "error", text: "Layout hasil deteksi tidak valid." });
+      return;
+    }
+    setLayout(parsed.data);
+    if (result.frameUrl) {
+      frameRef.current = null;
+      setLocalFrameUrl(result.frameUrl);
+      setFrameVersion((v) => v + 1);
+    }
+    const skipped = result.skipped ?? 0;
+    const created = parsed.data.slots.length - layout.slots.length;
+    setDetectMessage({
+      kind: "ok",
+      text:
+        skipped > 0
+          ? `${created} slot dibuat · ${skipped} area dilewati (batas ${MAX_SLOTS} slot)`
+          : `${created} slot mask dibuat`,
+    });
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -664,7 +760,7 @@ export function TemplateBuilderCanvas({
               <fieldset className="flex flex-col gap-2">
                 <legend className={labelClass}>Bentuk</legend>
                 <div className="flex flex-wrap gap-2">
-                  {SLOT_SHAPES.map((shape) => (
+                  {SLOT_SHAPES.filter((shape) => shape !== "mask").map((shape) => (
                     <Button
                       key={shape}
                       type="button"
@@ -678,6 +774,11 @@ export function TemplateBuilderCanvas({
                     </Button>
                   ))}
                 </div>
+                {selected.shape === "mask" && (
+                  <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+                    Slot mask hanya lahir dari deteksi area hijau.
+                  </p>
+                )}
               </fieldset>
 
               <fieldset className="flex flex-col gap-2">
@@ -745,6 +846,7 @@ export function TemplateBuilderCanvas({
                     type="number"
                     step={1}
                     value={selected.width}
+                    disabled={selected.shape === "mask"}
                     onChange={(event) => setWidth(Number(event.target.value) || 0)}
                   />
                 </div>
@@ -757,6 +859,7 @@ export function TemplateBuilderCanvas({
                     type="number"
                     step={1}
                     value={selected.height}
+                    disabled={selected.shape === "mask"}
                     onChange={(event) => setHeight(Number(event.target.value) || 0)}
                   />
                 </div>
@@ -771,6 +874,7 @@ export function TemplateBuilderCanvas({
                     min={0}
                     max={Math.floor(Math.min(selected.width, selected.height) / 2)}
                     value={selected.radius ?? 0}
+                    disabled={selected.shape === "mask"}
                     onChange={(event) =>
                       patchSlot(selected.id, {
                         radius: Number.isFinite(Number(event.target.value))
@@ -824,6 +928,53 @@ export function TemplateBuilderCanvas({
                   ))}
                 </div>
               </fieldset>
+
+              <div className="flex flex-col gap-2 border-2 border-ink/20 bg-muted p-3">
+                <p className={labelClass}>Deteksi area hijau</p>
+                <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.06em] text-muted-foreground">
+                  Hijau dihapus dari frame dan diganti slot foto. File asli disimpan untuk deteksi
+                  ulang.
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    aria-label="Deteksi area hijau frame"
+                    onClick={() => void runDetect()}
+                    disabled={!onDetectChroma || detecting}
+                  >
+                    {detecting
+                      ? "Mendeteksi…"
+                      : confirmDetect
+                        ? "Yakin? Klik lagi"
+                        : "Deteksi area hijau"}
+                  </Button>
+                  {confirmDetect && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      aria-label="Batalkan deteksi"
+                      onClick={() => setConfirmDetect(false)}
+                    >
+                      Batal
+                    </Button>
+                  )}
+                </div>
+                {detectMessage && (
+                  <p
+                    role={detectMessage.kind === "error" ? "alert" : "status"}
+                    className={
+                      detectMessage.kind === "error"
+                        ? "font-mono text-[10px] uppercase tracking-[0.06em] text-destructive"
+                        : "font-mono text-[10px] uppercase tracking-[0.06em] text-ink"
+                    }
+                  >
+                    {detectMessage.text}
+                  </p>
+                )}
+              </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">

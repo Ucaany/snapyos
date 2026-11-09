@@ -9,7 +9,7 @@ import { ApiError } from "@/lib/api-errors";
 import { can } from "@/lib/rbac";
 import { getActiveBusiness, requireUser } from "@/lib/tenant";
 import type { TemplateLayout } from "@/lib/template-layout";
-import { saveTemplateLayoutAction } from "@/server/catalog-actions";
+import { detectTemplateChromaSlotsAction, saveTemplateLayoutAction } from "@/server/catalog-actions";
 import { getTemplateForBuilder } from "@/server/templates";
 
 /** /dashboard/templates/builder/[id] — builder slot frame milik owner (docs/15 §15.3). */
@@ -61,6 +61,11 @@ export default async function TemplateBuilderPage({ params }: { params: Promise<
         readOnly={is_global || !canWrite}
         onSave={
           is_global || !canWrite ? undefined : saveTemplateLayoutAction.bind(null, template.id)
+        }
+        onDetectChroma={
+          is_global || !canWrite
+            ? undefined
+            : detectTemplateChromaSlotsAction.bind(null, template.id)
         }
       />
     </div>

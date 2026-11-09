@@ -135,13 +135,6 @@ export default async function AdminSettingsPage() {
               defaultChecked={Boolean(s.maintenance_mode)}
               wrapperClassName="col-span-1 md:col-span-3"
             />
-            <BrutalistCheckbox
-              name="chroma_key_default_enabled"
-              label="Chroma key default"
-              description="Terapkan ke camera_settings semua photobox saat disimpan."
-              defaultChecked={Boolean(s.chroma_key_default_enabled)}
-              wrapperClassName="col-span-1 md:col-span-3"
-            />
           </AdminActionForm>
         </CardContent>
       </Card>

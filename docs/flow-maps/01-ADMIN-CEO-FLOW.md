@@ -417,8 +417,7 @@
   "maintenance_mode": false,
   "min_withdrawal_amount": 10000,
   "withdrawal_days": [0, 1, 2, 3, 4, 5, 6],
-  "withdrawal_sla_hours": 24,
-  "chroma_key_default_enabled": false
+  "withdrawal_sla_hours": 24
 }
 ```
 

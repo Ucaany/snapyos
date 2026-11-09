@@ -9,6 +9,7 @@ import {
   coverFit,
   emptyLayout,
   layoutSchema,
+  maskSlotFromPolygon,
   slotCount,
   slotPlacement,
   slotsByZ,
@@ -250,6 +251,26 @@ test("clampSlot: ukuran minimal 1 & tidak melebihi canvas", () => {
   assert.equal(c.height, 1);
 });
 
+test("clampSlot: titik mask ikut di-clamp ke bbox baru", () => {
+  const masked = slot({
+    shape: "mask",
+    width: 1000,
+    height: 700,
+    points: [
+      { x: 0, y: 0 },
+      { x: 1000, y: 0 },
+      { x: 500, y: 700 },
+    ],
+  });
+  const c = clampSlot(masked, { width: 600, height: 500 });
+  assert.equal(c.width, 600);
+  assert.equal(c.height, 500);
+  for (const pt of c.points ?? []) {
+    assert.ok(pt.x >= 0 && pt.x <= c.width, `x ${pt.x}`);
+    assert.ok(pt.y >= 0 && pt.y <= c.height, `y ${pt.y}`);
+  }
+});
+
 // --- emptyLayout ---
 
 test("emptyLayout: preset menghasilkan canvas sesuai docs/15 §15.2", () => {
@@ -430,4 +451,93 @@ test("layoutSchema: crop keluar batas [0,1] ditolak", () => {
     slot({ properties: { crop: { x: 0.1, y: 0.1, width: 0.5, height: 0.5 } } }),
   ]);
   assert.equal(layoutSchema.safeParse(inside).success, true);
+});
+
+// --- shape mask: poligon lokal slot (docs/15 §15.2) ---
+
+const triangle = [
+  { x: 0, y: 0 },
+  { x: 1000, y: 0 },
+  { x: 500, y: 700 },
+];
+
+test("layoutSchema: mask dengan poligon valid lolos", () => {
+  assert.equal(
+    layoutSchema.safeParse(layoutWithCanvas([slot({ shape: "mask", points: triangle })])).success,
+    true
+  );
+});
+
+test("layoutSchema: mask tanpa points atau < 3 titik ditolak", () => {
+  const missing = layoutSchema.safeParse(layoutWithCanvas([slot({ shape: "mask" })]));
+  assert.equal(missing.success, false);
+  assert.ok(missing.error.issues.some((i) => i.message === "shape mask wajib poligon minimal 3 titik"));
+
+  const two = layoutSchema.safeParse(
+    layoutWithCanvas([slot({ shape: "mask", points: triangle.slice(0, 2) })])
+  );
+  assert.equal(two.success, false);
+});
+
+test("layoutSchema: titik mask keluar bbox slot ditolak", () => {
+  const parsed = layoutSchema.safeParse(
+    layoutWithCanvas([
+      slot({ shape: "mask", points: [...triangle.slice(0, 2), { x: 1001, y: 700 }] }),
+    ])
+  );
+  assert.equal(parsed.success, false);
+  assert.ok(parsed.error.issues.some((i) => i.message === "titik mask harus di dalam bbox slot"));
+});
+
+test("layoutSchema: titik mask negatif ditolak", () => {
+  const parsed = layoutSchema.safeParse(
+    layoutWithCanvas([slot({ shape: "mask", points: [{ x: -0.5, y: 0 }, ...triangle.slice(1)] })])
+  );
+  assert.equal(parsed.success, false);
+});
+
+test("layoutSchema: points pada shape non-mask ditolak", () => {
+  assert.equal(
+    layoutSchema.safeParse(layoutWithCanvas([slot({ shape: "rect", points: triangle })])).success,
+    false
+  );
+});
+
+test("layoutSchema: layout lama tanpa chroma tetap lolos, chroma valid diterima", () => {
+  assert.equal(layoutSchema.safeParse(layout([slot()])).success, true);
+
+  const withChroma = {
+    ...layout([slot()]),
+    chroma: {
+      source_key: "frames/original.png",
+      source_url: null,
+      detected_at: "2026-11-09T00:00:00.000Z",
+      skipped: 2,
+    },
+  };
+  assert.equal(layoutSchema.safeParse(withChroma).success, true);
+});
+
+test("maskSlotFromPolygon: bbox jadi x/y/width/height dan titik ternormalisasi lokal", () => {
+  const s = maskSlotFromPolygon(
+    [
+      { x: 100, y: 50 },
+      { x: 400, y: 50 },
+      { x: 250, y: 350 },
+    ],
+    0,
+    "mask_1"
+  );
+  assert.equal(s.shape, "mask");
+  assert.equal(s.x, 100);
+  assert.equal(s.y, 50);
+  assert.equal(s.width, 300);
+  assert.equal(s.height, 300);
+  assert.equal(s.z, 0);
+  assert.deepEqual(s.points, [
+    { x: 0, y: 0 },
+    { x: 300, y: 0 },
+    { x: 150, y: 300 },
+  ]);
+  assert.equal(layoutSchema.safeParse(layoutWithCanvas([s])).success, true);
 });

@@ -36,7 +36,6 @@ export const DASHBOARD_FORBIDDEN_PHOTOBOX_FIELDS = [
   "warning_seconds",
   "max_retakes",
   "unlimited_retakes",
-  "chroma_key_enabled",
   "print_enabled",
   "auto_print",
   "print_mode",

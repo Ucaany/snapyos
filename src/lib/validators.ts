@@ -368,7 +368,6 @@ export const cameraSettingsSchema = z.object({
   bridge_url: z.string().trim().url().max(300).optional(),
   countdown_seconds: z.number().int().min(1).max(10).optional(),
   mirror_preview: z.boolean().optional(),
-  chroma_key_enabled: z.boolean().optional(),
   fullscreen: z.boolean().optional(),
   facingMode: z.enum(["user", "environment"]).nullable().optional(),
   preferred_device_id: z.string().trim().max(200).nullable().optional(),
@@ -382,12 +381,18 @@ export const cameraSettingsSchema = z.object({
 
 export const printSettingsSchema = z.object({
   enabled: z.boolean().optional(),
-  paper_size: z.enum(["4x6", "A6"]).optional(),
+  paper_size: z.enum(["4x6", "2x6", "5x7", "6x8", "A6"]).optional(),
   layout: z.enum(["single", "strip"]).optional(),
-  orientation: z.enum(["portrait", "landscape"]).optional(),
+  orientation: z.enum(["portrait", "landscape", "auto"]).optional(),
   auto_print: z.boolean().optional(),
   copies: z.number().int().min(1).max(20).optional(),
   margins_mm: z.number().int().min(0).max(20).optional(),
+  /** auto|contain|cover — geometri lembar (docs/05 §5.15). */
+  fit: z.enum(["auto", "contain", "cover"]).optional(),
+  /** Dua salinan strip per kertas 4x6 landscape. */
+  strip_2up: z.boolean().optional(),
+  /** Override nama media CUPS; kosong = Custom.WxHmm. */
+  media_name: z.string().trim().max(120).optional(),
   /** Jalur cetak: dialog OS (browser) atau thermal ESC/POS lewat Web Bluetooth. */
   mode: z.enum(["browser", "bluetooth", "cups"]).optional(),
   /** Lebar kertas thermal 58/80 mm. */
@@ -437,6 +442,7 @@ export const sessionSettingsSchema = withInvariants(
     timer_seconds: z.number().int().min(60).max(3600).optional(),
     warning_seconds: z.number().int().min(10).max(600).optional(),
     max_retakes: z.number().int().min(0).max(50).nullable().optional(),
+    kiosk_review_grid: z.boolean().optional(),
   })
 );
 
@@ -676,7 +682,6 @@ export const photoboxCreateSchema = z.object({
   camera: z.string().trim().max(120).optional(),
   printer: z.string().trim().max(120).optional(),
   display: z.string().trim().max(120).optional(),
-  chroma_key_enabled: z.boolean().optional(),
   camera_settings: cameraSettingsSchema.optional(),
   print_settings: printSettingsSchema.optional(),
   session_settings: sessionSettingsSchema.optional(),
@@ -705,7 +710,6 @@ export const photoboxUpdateSchema = z.object({
   camera: z.string().trim().max(120).nullable().optional(),
   printer: z.string().trim().max(120).nullable().optional(),
   display: z.string().trim().max(120).nullable().optional(),
-  chroma_key_enabled: z.boolean().optional(),
   camera_settings: cameraSettingsSchema.optional(),
   print_settings: printSettingsSchema.optional(),
   session_settings: sessionSettingsSchema.optional(),
@@ -1128,6 +1132,46 @@ export const deviceExitSchema = z.object({
     .optional(),
 });
 
+/** Heartbeat operasional cloud, metadata minimum tanpa media/log/secret. */
+const heartbeatHardwareSchema = z.object({
+  adapter: z.string().trim().min(1).max(40),
+  connected: z.boolean().optional(),
+  ok: z.boolean().optional(),
+}).strict();
+
+/**
+ * Status antrean cetak runtime (aditif + opsional). Runtime lama tidak
+ * mengirimnya, jadi bentuk lama tetap lolos `.strict()` di atas.
+ */
+const heartbeatPrinterJobSchema = z.object({
+  status: z.string().trim().max(40).optional(),
+  last_error: z.string().trim().max(300).nullable().optional(),
+  queue_pending: z.number().int().min(0).max(1_000_000).optional(),
+  queue_retrying: z.number().int().min(0).max(1_000_000).optional(),
+  last_job_at: z.string().trim().max(40).nullable().optional(),
+}).strict();
+
+const heartbeatPrinterSchema = heartbeatHardwareSchema.extend({
+  mode: z.enum(["browser", "bluetooth", "cups"]).optional(),
+  job: heartbeatPrinterJobSchema.nullable().optional(),
+});
+
+export const deviceHeartbeatSchema = z.object({
+  device_token: z.string().trim().min(32).max(128),
+  runtime_version: z.string().trim().regex(/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/).max(64),
+  db_version: z.number().int().min(1).max(100),
+  camera: heartbeatHardwareSchema,
+  printer: heartbeatPrinterSchema,
+  queue: z.object({ pending: z.number().int().min(0).max(1_000_000), retrying: z.number().int().min(0).max(1_000_000) }).strict(),
+  lockdown: z.object({
+    local_pin_configured: z.boolean(),
+    local_pin_locked: z.boolean(),
+    cloud_kiosk_locked: z.boolean().nullable(),
+  }).strict(),
+}).strict();
+
+export type DeviceHeartbeatInput = z.infer<typeof deviceHeartbeatSchema>;
+
 /** Laporan status device (setup wizard) — docs/05 §5.0.1. */
 export const deviceReportSchema = z.object({
   device_token: z.string().trim().min(32).max(128),
@@ -1143,10 +1187,12 @@ export const deviceReportSchema = z.object({
     .object({
       confirmed: z.boolean().optional(),
       last_test_at: z.string().trim().max(40).optional(),
-      /** Jalur cetak yang diuji: dialog OS atau thermal Bluetooth. */
-      mode: z.enum(["browser", "bluetooth"]).optional(),
+      /** Jalur cetak yang diuji: dialog OS, thermal Bluetooth, atau CUPS. */
+      mode: z.enum(["browser", "bluetooth", "cups"]).optional(),
       /** Nama printer yang diuji (informasi petugas). */
       device_name: z.string().trim().max(60).optional(),
+      /** Status antrean cetak runtime (aditif + opsional). */
+      job: heartbeatPrinterJobSchema.nullable().optional(),
     })
     .optional(),
 });
@@ -1261,6 +1307,43 @@ export type DeviceVerifyInput = z.infer<typeof deviceVerifySchema>;
 export type DeviceExitInput = z.infer<typeof deviceExitSchema>;
 export type DeviceReportInput = z.infer<typeof deviceReportSchema>;
 export type SessionCreateInput = z.infer<typeof sessionCreateSchema>;
+
+// Windows installer catalog. Binary metadata is recomputed server-side.
+export const installerChannelSchema = z.enum(["stable", "beta", "internal"]);
+export const installerArchitectureSchema = z.enum(["x64", "x86", "arm64", "universal"]);
+export const installerWindowsSchema = z.enum(["10", "11"]);
+const installerVersionSchema = z
+  .string()
+  .trim()
+  .regex(/^\d+\.\d+\.\d+$/, "Versi harus format 1.2.3");
+const installerText = (max: number) => z.string().trim().max(max).nullable().optional();
+
+export const installerMetadataSchema = z.object({
+  version: installerVersionSchema,
+  channel: installerChannelSchema,
+  min_windows_version: installerWindowsSchema,
+  architecture: installerArchitectureSchema,
+  changelog: installerText(8000),
+  compatibility_notes: installerText(4000),
+});
+
+export const installerUpdateSchema = installerMetadataSchema
+  .partial()
+  .extend({
+    is_active: z.boolean().optional(),
+    is_deprecated: z.boolean().optional(),
+    published: z.boolean().optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, "Minimal satu field diubah");
+
+export const installerQuerySchema = z.object({
+  windows: installerWindowsSchema,
+  architecture: installerArchitectureSchema,
+});
+
+export type InstallerMetadataInput = z.infer<typeof installerMetadataSchema>;
+export type InstallerUpdateInput = z.infer<typeof installerUpdateSchema>;
+export type InstallerQueryInput = z.infer<typeof installerQuerySchema>;
 export type SessionFinalizeInput = z.infer<typeof sessionFinalizeSchema>;
 export type SessionAbortInput = z.infer<typeof sessionAbortSchema>;
 export type CheckoutCreateInput = z.infer<typeof checkoutCreateSchema>;
@@ -1433,7 +1516,6 @@ export const adminSettingsUpdateSchema = z
     trial_days: z.number().int().min(0).max(365).optional(),
     maintenance_mode: z.boolean().optional(),
     maintenance_message: z.string().trim().max(300, "Pesan maksimal 300 karakter").optional(),
-    chroma_key_default_enabled: z.boolean().optional(),
     gateway_pakasir_enabled: z.boolean().optional(),
     gateway_midtrans_enabled: z.boolean().optional(),
     gateway_tripay_enabled: z.boolean().optional(),

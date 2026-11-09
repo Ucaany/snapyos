@@ -21,15 +21,15 @@ export const MAX_SLOTS = 8;
 const EPS = 0.01;
 
 /**
- * Warna dasar di bawah foto. Wajib ada karena chroma key menghapus piksel
- * (alpha 0) sementara output final disimpan sebagai JPEG — tanpa isian dasar,
- * lubang transparan itu tercetak hitam.
+ * Warna dasar di bawah foto. Wajib ada karena frame bisa punya piksel alpha 0
+ * (lubang slot / deteksi hijau) sementara output final disimpan sebagai JPEG —
+ * tanpa isian dasar, lubang transparan itu tercetak hitam.
  */
 export const DEFAULT_CANVAS_BACKGROUND = "#ffffff";
 
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 
-export const SLOT_SHAPES = ["rect", "rounded", "circle", "ellipse"] as const;
+export const SLOT_SHAPES = ["rect", "rounded", "circle", "ellipse", "mask"] as const;
 export const SLOT_FITS = ["cover", "contain", "fill"] as const;
 export const PROPERTY_FONT_WEIGHTS = [400, 500, 600, 700, 800, 900] as const;
 export const PROPERTY_ALIGNMENTS = ["left", "center", "right"] as const;
@@ -58,6 +58,17 @@ export const editorPropertySchema = z.object({
 
 export type EditorProperties = z.infer<typeof editorPropertySchema>;
 
+const pointSchema = z.object({ x: z.number(), y: z.number() });
+export type SlotPoint = z.infer<typeof pointSchema>;
+
+/** Metadata deteksi area hijau pada frame (docs/15 §15.2). */
+const chromaMetaSchema = z.object({
+  source_key: z.string().trim().max(500).nullable().optional(),
+  source_url: z.string().trim().max(2000).nullable().optional(),
+  detected_at: z.string().trim().max(40),
+  skipped: z.number().int().min(0).max(MAX_SLOTS * 100),
+});
+
 const slotSchema = z.object({
   id: z.string().trim().min(1).max(40),
   shape: z.enum(SLOT_SHAPES),
@@ -68,6 +79,8 @@ const slotSchema = z.object({
   rotation: z.number().min(-180).max(180),
   radius: z.number().min(0).optional(),
   fit: z.enum(SLOT_FITS).optional(),
+  /** Poligon lokal slot (0..width × 0..height), wajib untuk shape "mask". */
+  points: z.array(pointSchema).optional(),
   z: z.number().int().min(0).max(99),
   /**
    * properties tidak dirender oleh composeFrame; disimpan untuk kompatibilitas
@@ -92,6 +105,8 @@ export const layoutSchema = z
       background: z.string().regex(HEX_COLOR, "background harus hex #rrggbb").optional(),
     }),
     slots: z.array(slotSchema).max(MAX_SLOTS),
+    /** Metadata deteksi area hijau; opsional agar layout lama tetap lolos. */
+    chroma: chromaMetaSchema.optional(),
   })
   .superRefine((layout, ctx) => {
     const { width: W, height: H, preset } = layout.canvas;
@@ -197,6 +212,60 @@ export const layoutSchema = z
         }
       }
 
+      // Invariant 8: shape mask wajib poligon lokal slot; shape lain menolak points.
+      if (slot.shape === "mask") {
+        const points = slot.points;
+        if (!points || points.length < 3) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["slots", i, "points"],
+            message: "shape mask wajib poligon minimal 3 titik",
+          });
+        } else if (points.length > 512) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["slots", i, "points"],
+            message: "poligon mask maksimal 512 titik",
+          });
+        } else {
+          let distinct = false;
+          let outOfBounds: number | undefined;
+          for (let p = 0; p < points.length; p += 1) {
+            const pt = points[p]!;
+            if (pt.x !== points[0]!.x || pt.y !== points[0]!.y) distinct = true;
+            if (
+              pt.x < -EPS ||
+              pt.y < -EPS ||
+              pt.x > slot.width + EPS ||
+              pt.y > slot.height + EPS
+            ) {
+              outOfBounds = p;
+              break;
+            }
+          }
+          if (outOfBounds !== undefined) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["slots", i, "points", outOfBounds],
+              message: "titik mask harus di dalam bbox slot",
+            });
+          }
+          if (!distinct) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["slots", i, "points"],
+              message: "titik mask tidak boleh semuanya sama",
+            });
+          }
+        }
+      } else if (slot.points !== undefined) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["slots", i, "points"],
+          message: "points hanya boleh untuk shape mask",
+        });
+      }
+
       // Invariant 6: bounds rotation-aware (AABB hasil rotasi harus di dalam canvas).
       const box = slotAabb(slot);
       if (box.left < -EPS || box.top < -EPS || box.right > W + EPS || box.bottom > H + EPS) {
@@ -257,6 +326,45 @@ export function slotAabb(slot: LayoutSlot): {
   const halfW = (slot.width / 2) * cos + (slot.height / 2) * sin;
   const halfH = (slot.width / 2) * sin + (slot.height / 2) * cos;
   return { left: cx - halfW, top: cy - halfH, right: cx + halfW, bottom: cy + halfH };
+}
+
+/**
+ * Buat slot mask dari poligon berkoordinat canvas. bbox poligon menjadi
+ * x/y/width/height; titik dinormalisasi ke koordinat lokal slot.
+ * Murni — dipakai server deteksi dan test.
+ */
+export function maskSlotFromPolygon(
+  points: readonly SlotPoint[],
+  z: number,
+  id: string
+): LayoutSlot {
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  for (const pt of points) {
+    if (pt.x < minX) minX = pt.x;
+    if (pt.y < minY) minY = pt.y;
+    if (pt.x > maxX) maxX = pt.x;
+    if (pt.y > maxY) maxY = pt.y;
+  }
+  const width = Math.max(1, maxX - minX);
+  const height = Math.max(1, maxY - minY);
+  return {
+    id,
+    shape: "mask",
+    x: minX,
+    y: minY,
+    width,
+    height,
+    rotation: 0,
+    fit: "cover",
+    z,
+    points: points.map((pt) => ({
+      x: Math.min(width, Math.max(0, pt.x - minX)),
+      y: Math.min(height, Math.max(0, pt.y - minY)),
+    })),
+  };
 }
 
 /** Layout kosong/null = template legacy (overlay full-canvas, docs/15 §15.2). */
@@ -338,13 +446,22 @@ export function slotPlacement(
 export function clampSlot(slot: LayoutSlot, canvas: { width: number; height: number }): LayoutSlot {
   const width = Math.min(Math.max(1, slot.width), canvas.width);
   const height = Math.min(Math.max(1, slot.height), canvas.height);
-  return {
+  const clamped: LayoutSlot = {
     ...slot,
     width,
     height,
     x: Math.min(Math.max(0, slot.x), canvas.width - width),
     y: Math.min(Math.max(0, slot.y), canvas.height - height),
   };
+  // Poligon mask lokal ke bbox: ikut di-clamp agar layout tetap valid saat
+  // bbox menyusut (mis. preset kanvas diganti).
+  if (clamped.points) {
+    clamped.points = clamped.points.map((pt) => ({
+      x: Math.min(width, Math.max(0, pt.x)),
+      y: Math.min(height, Math.max(0, pt.y)),
+    }));
+  }
+  return clamped;
 }
 
 /** Layout awal builder untuk sebuah preset canvas. */

@@ -106,3 +106,18 @@ export function mutedText(bg: string, text: string): string {
 export function mutedSurface(bg: string, text: string): string {
   return mixHex(bg, text, 0.12);
 }
+
+/**
+ * Warna brand owner yang aman dipakai sebagai teks/latar: bila rasio kontras
+ * terhadap pasangannya < 4.5:1, pakai default SnapyOS. Dipakai kiosk agar
+ * kombinasi warna owner yang buruk tidak membuat layar tak terbaca.
+ */
+export function safeBrandColor(
+  value: string | null | undefined,
+  against: string | null | undefined,
+  fallback: string
+): string {
+  if (!value || !against) return value || fallback;
+  if (!parseHex(value) || !parseHex(against)) return value || fallback;
+  return contrastRatio(value, against) >= AA ? value : fallback;
+}

@@ -98,11 +98,6 @@ export function PhotoboxesTable({
                         Belum ada perangkat terdeteksi
                       </span>
                     )}
-                    {box.chroma_key_enabled && (
-                      <span className="border-2 border-ink bg-accent px-1.5 py-0.5 text-[10px] font-bold uppercase">
-                        CHROMA KEY
-                      </span>
-                    )}
                   </span>
                 </td>
                 {canWrite && (
@@ -171,9 +166,7 @@ export function PhotoboxesTable({
                   [box.camera, box.printer, box.display].filter(Boolean).join(" · ") ||
                   "Belum terdeteksi",
               },
-              ...(box.chroma_key_enabled
-                ? [{ label: "Chroma key", value: "Aktif" }]
-                : [{ label: "PIN keluar", value: box.has_exit_pin ? "Aktif" : "Belum diatur" }]),
+              { label: "PIN keluar", value: box.has_exit_pin ? "Aktif" : "Belum diatur" },
             ]}
             actions={
               canWrite ? (

@@ -1,11 +1,5 @@
 import { FILTER_PRESETS, type KioskOverlay, type PhotoEdit } from "@/lib/kiosk-types";
 import { drawOverlays } from "@/lib/compose-frame";
-import {
-  applyChromaKey,
-  DEFAULT_CHROMA_KEY,
-  sampleCornerColor,
-  type ChromaKeyOptions,
-} from "@/lib/chroma-key";
 function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -17,58 +11,6 @@ function loadImage(url: string): Promise<HTMLImageElement> {
 
 function normRot(deg: number): number {
   return ((Math.round(deg) % 360) + 360) % 360;
-}
-
-/**
- * Salinan gambar dengan latar kunci dibuat transparan. Warna kunci diambil
- * dari piksel sudut foto (layar hijau bisa berbeda karena pencahayaan booth),
- * lalu diterapkan ke salinan offscreen — gambar asli tidak dimutasi agar
- * preview dan hasil akhir konsisten.
- */
-export type ChromaStatus = { applied: boolean; tainted: boolean };
-
-type ChromaResult = ChromaStatus & { source: CanvasImageSource };
-
-/**
- * Salinan gambar dengan latar kunci dibuat transparan. Warna kunci diambil
- * dari piksel sudut foto (layar hijau bisa berbeda karena pencahayaan booth),
- * lalu diterapkan ke salinan offscreen — gambar asli tidak dimutasi agar
- * preview dan hasil akhir konsisten.
- *
- * `maxW` terbatas → diproses di resolusi preview; `Infinity` → resolusi penuh.
- */
-function chromaPreparedImage(
-  img: HTMLImageElement,
-  options: boolean | ChromaKeyOptions,
-  maxW = Number.POSITIVE_INFINITY
-): ChromaResult {
-  const w = img.naturalWidth || 1;
-  const h = img.naturalHeight || 1;
-  const scale = Number.isFinite(maxW) ? Math.min(1, maxW / w) : 1;
-  const cw = Math.max(1, Math.round(w * scale));
-  const ch = Math.max(1, Math.round(h * scale));
-  const canvas = document.createElement("canvas");
-  canvas.width = cw;
-  canvas.height = ch;
-  const ctx = canvas.getContext("2d", { willReadFrequently: true });
-  if (!ctx) return { source: img, applied: false, tainted: false };
-  ctx.drawImage(img, 0, 0, cw, ch);
-  let data: ImageData;
-  try {
-    data = ctx.getImageData(0, 0, cw, ch);
-  } catch {
-    // Canvas tainted (cross-origin tanpa CORS) — jangan gagalkan render.
-    return { source: img, applied: false, tainted: true };
-  }
-  const config: ChromaKeyOptions =
-    options === true
-      ? { ...DEFAULT_CHROMA_KEY, key: sampleCornerColor(data.data, cw, ch) }
-      : { ...DEFAULT_CHROMA_KEY, ...options };
-  if (applyChromaKey(data.data, config, { width: cw, height: ch }) === 0) {
-    return { source: img, applied: false, tainted: false };
-  }
-  ctx.putImageData(data, 0, 0);
-  return { source: canvas, applied: true, tainted: false };
 }
 
 /** Overlay teks/stiker di atas canvas yang sudah final (frame included). */
@@ -89,22 +31,8 @@ export function drawPhoto(
   canvas: HTMLCanvasElement,
   img: HTMLImageElement,
   edit: PhotoEdit,
-  maxW = 640,
-  /** Aktif → warna latar (diambil dari sudut foto) dibuat transparan. */
-  chroma: boolean | ChromaKeyOptions = false,
-  /** Warna dasar di bawah piksel transparan. Kosong = biarkan transparan —
-   *  jalur slot mengandalkan `composeFrame` mengisi latar, jadi mengisi di sini
-   *  akan menutup lubang chroma. */
-  background?: string
-): ChromaStatus {
-  const prepared = chroma
-    ? chromaPreparedImage(img, chroma, maxW)
-    : null;
-  const status: ChromaStatus = {
-    applied: prepared?.applied ?? false,
-    tainted: prepared?.tainted ?? false,
-  };
-  const source = prepared?.source ?? img;
+  maxW = 640
+): void {
   const rot = normRot(edit.adjust.rotation);
   const swap = rot === 90 || rot === 270;
   const srcW = img.naturalWidth || 1;
@@ -118,14 +46,7 @@ export function drawPhoto(
   canvas.width = cw;
   canvas.height = ch;
   const ctx = canvas.getContext("2d");
-  if (!ctx) return status;
-
-  // Chroma key membuat piksel berlubang; jalur legacy (foto full-canvas tanpa
-  // composeFrame) perlu isian dasar agar hasil JPEG tidak menghitam.
-  if (chroma && background) {
-    ctx.fillStyle = background;
-    ctx.fillRect(0, 0, cw, ch);
-  }
+  if (!ctx) return;
 
   const base = FILTER_PRESETS.find((f) => f.id === edit.adjust.filter)?.css ?? "none";
   const a = edit.adjust;
@@ -145,7 +66,7 @@ export function drawPhoto(
   ctx.scale(edit.adjust.zoom, edit.adjust.zoom);
   ctx.scale(scale, scale);
   ctx.translate(-srcW / 2 + edit.adjust.panX, -srcH / 2 + edit.adjust.panY);
-  ctx.drawImage(source, 0, 0, srcW, srcH);
+  ctx.drawImage(img, 0, 0, srcW, srcH);
   ctx.restore();
 
   ctx.filter = "none";
@@ -188,7 +109,6 @@ export function drawPhoto(
     ctx.fillRect(0, 0, cw, ch);
     ctx.restore();
   }
-  return status;
 }
 
 /**
@@ -208,15 +128,13 @@ export function drawFrameOverlay(canvas: HTMLCanvasElement, frame: HTMLImageElem
 export async function renderFramedPhotoBlob(
   blob: Blob,
   edit: PhotoEdit,
-  frame: HTMLImageElement | null,
-  chroma: boolean | ChromaKeyOptions = false,
-  background = "#ffffff"
+  frame: HTMLImageElement | null
 ): Promise<Blob> {
   const url = URL.createObjectURL(blob);
   try {
     const img = await loadImage(url);
     const canvas = document.createElement("canvas");
-    drawPhoto(canvas, img, edit, Number.POSITIVE_INFINITY, chroma, background);
+    drawPhoto(canvas, img, edit, Number.POSITIVE_INFINITY);
     drawFrameOverlay(canvas, frame);
     drawOverlayLayer(canvas, edit.overlays);
     return await canvasToBlob(canvas);

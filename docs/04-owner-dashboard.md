@@ -403,11 +403,11 @@ PREMIUM Rp35.000  — 5 photos, 2 prints, digital copy, premium templates
 **Builder (terimplementasi):**
 
 - Route `/dashboard/templates/builder/[id]`; admin `/admin/templates/builder/[id]` memakai komponen yang sama.
-- Kontrol: tambah/hapus slot (maks 8), drag pindah, resize handle, input numerik x/y/w/h + rotation, shape rect/rounded/circle/ellipse, fit cover/contain/fill, radius, z naik/turun (renumber 0..n-1), preset kanvas (4x6-portrait, 4x6-landscape, 2x6-strip, square, custom maks 3000), background hex.
+- Kontrol: tambah/hapus slot (maks 8), drag pindah, resize handle, input numerik x/y/w/h + rotation, shape rect/rounded/circle/ellipse (plus `mask` hasil deteksi), fit cover/contain/fill, radius, z naik/turun (renumber 0..n-1), preset kanvas (4x6-portrait, 4x6-landscape, 2x6-strip, square, custom maks 3000), background hex.
 - Keyboard arrow nudge 1px / Shift 10px; semua mutasi juga tersedia lewat tombol/input.
 - Simpan eksplisit: "Simpan draft" (`is_active=false`) atau "Publish" (`is_active=true`); tidak pernah auto-publish.
 - **Thumbnail berasal dari frame WebP yang diunggah**, bukan digenerate dari preview builder.
-- Builder tidak menyediakan kontrol chroma key; chroma hanya di editor kiosk.
+- Chroma ada di builder, bukan editor kiosk: tombol "Deteksi area hijau" mengubah area hijau frame menjadi slot `mask` dan menulis PNG baru tanpa hijau (file asli disimpan). Deteksi menambah slot, tidak menimpa slot manual, dan tidak publish otomatis.
 - Preview builder memakai `composeFrame` yang sama dengan kiosk (client-authoritative); server tidak punya engine composite.
 
 **Read-only global:** baris milik business (`is_global=false`) bisa diedit. Template platform (`TEMPLATE PLATFORM`) tampil read-only tanpa edit/delete/simpan; global gratis aktif + yang sudah dibeli dapat di-assign; global yang dibeli membuka builder read-only ("Template platform — read-only").

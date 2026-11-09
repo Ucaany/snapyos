@@ -20,6 +20,7 @@ import {
 import type { AdminSettingsUpdateInput } from "@/lib/validators";
 import { isAllowedFrameTarget } from "@/lib/frame-proxy";
 import { removeResolved } from "@/server/storage";
+import { extractGlobalFrameChromaSlots } from "@/server/template-chroma";
 import { invalidateAllPublicConfig } from "@/server/public-config";
 import type { FormState } from "@/server/auth-actions";
 import {
@@ -493,6 +494,26 @@ export async function saveGlobalTemplateLayoutAction(
   revalidatePath("/admin/templates");
   refresh("/admin/templates");
   return { error: undefined };
+}
+
+/**
+ * Deteksi area hijau template global → slot mask. Tidak menyentuh is_active.
+ */
+export async function detectGlobalTemplateChromaSlotsAction(templateId: string): Promise<{
+  layout?: unknown;
+  frameUrl?: string | null;
+  skipped?: number;
+  error?: string;
+}> {
+  try {
+    const result = await extractGlobalFrameChromaSlots(templateId);
+    invalidateAllPublicConfig();
+    revalidatePath("/admin/templates");
+    revalidatePath(`/admin/templates/builder/${templateId}`);
+    return { layout: result.layout, frameUrl: result.frameUrl, skipped: result.skipped };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Deteksi gagal" };
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -152,7 +152,9 @@ Prinsip pay-first:
 
 **State:** loading brand config → skeleton; error → fallback generic.
 
-### Kustomisasi penuh (Branding & Kiosk)
+### Kontrak branding kompatibilitas
+
+Konfigurasi kiosk (`branding.kiosk`) tetap dibaca runtime, tetapi tidak lagi menjadi write surface dashboard. Import/migrasi WPF belum selesai, jadi field lama tidak dihapus.
 
 Konfigurasi kiosk (`branding.kiosk`) mencakup:
 
@@ -161,7 +163,7 @@ Konfigurasi kiosk (`branding.kiosk`) mencakup:
 - **Video promo** (`video_key` global + `pages.*.video_key` per-layar): looping muted; layar kamera awal bisa menampilkan video attract di latar panel preview.
 - **Kontrol interaksi**: `show_mirror_toggle` (tampilkan tombol mirror di layar kamera) dan `allow_zoom_pan` (izinkan customer zoom/pan foto di editor).
 - **Override per-booth**: dua lapis, dan urutannya menentukan pemenang.
-  1. **Website** (`/dashboard/branding`) menyimpan snapshot override di `photoboxes.branding` — dipakai saat booth belum dikustomisasi di mesin.
+  1. **Data cloud lama** (`photoboxes.branding`) tetap dibaca sebagai fallback saat booth belum dikustomisasi di mesin. Dashboard baru tidak menulis snapshot ini.
   2. **Aplikasi booth** (panel **Setelan booth** → grup `appearance_settings`) menyimpan kustomisasi di store lokal mesin. Nilai ini menang atas branding cloud, dan **tidak** dikirim ke cloud supaya tidak menimpa booth lain.
 
   Kiosk me-merge keduanya lewat `src/lib/appearance-merge.ts`: identitas brand (logo, `primary_color`, `secondary_color`, `video_url`) selalu dari cloud; warna/teks/tata letak boleh ditimpa booth. Runtime mati → branding cloud dipakai apa adanya.
@@ -192,7 +194,16 @@ Konfigurasi kiosk (`branding.kiosk`) mencakup:
 
 **Data:** `templates` (+ `layout` slot) via `package_templates` join.
 
-**API:** `GET /api/v1/public/:businessSlug/templates?package=`
+**API:** `GET /api/v1/public/:businessSlug/templates` (kiosk memanggil tanpa `?package` lalu memfilter di klien; `?package` tetap didukung).
+
+**Cache & offline (2026-11-08, PWA Android/web):**
+
+- Boot booth (idle + online) mengunduh **semua thumbnail** + **frame penuh** ke Cache Storage (`snapyos-template-assets-v1`), budget 250 MB atau 25% kuota; `saveData` → thumbnail saja.
+- Daftar template disimpan sebagai snapshot `localStorage` (`snapyos.templates.<businessSlug>`); layar ini **render dari snapshot** — tanpa skeleton saat cache sudah terisi.
+- Revalidasi daftar di-throttle 5 menit (bukan per request); fetch gagal + snapshot ada → grid tetap tampil dengan chip **"Dari cache"**, bukan kartu error.
+- Key aset stabil `templateId:version` (`version` = `templates.updated_at`), bukan signed URL; ganti frame di dashboard → key baru, key lama dipangkas.
+- Offline setelah satu kunjungan online sukses: HTML dari service worker, daftar dari snapshot, gambar dari Cache Storage.
+- Batas: install baru yang belum pernah online tetap tidak bisa boot (bukan regresi).
 
 ---
 
@@ -337,7 +348,7 @@ Jumlah foto mengikuti **template terpilih** — jumlah slot pada `templates.layo
 - Transform: crop, rotate, **zoom & pan/posisi** — menyesuaikan foto **di dalam slot** template terpilih (bukan full canvas); zoom minimal = cover-fit, clamp per slot (`15-template-builder.md` §15.4). Template legacy (tanpa slot) = perilaku lama full-canvas.
 - Adjust: brightness, contrast, saturation, blur, grain, vignette
 - **Filters:** Original, Film, Warm, Cool, Black & White, Retro, Vintage, Y2K
-- **Latar layar hijau (opsional per booth):** `camera_settings.chroma_key_enabled`. Saat aktif, editor menampilkan tombol "Hapus latar hijau"; warna kunci diambil dari sudut foto. Piksel yang dihapus menampilkan `templates.layout.canvas.background` (default putih) — bukan transparan, karena output final disimpan sebagai JPEG.
+- **Area hijau frame = slot foto.** Tidak ada kontrol chroma di editor kiosk. Owner mengubah area hijau pada frame menjadi slot lewat tombol deteksi di builder (`docs/15-template-builder.md` §15.3); slot itu terisi foto otomatis seperti slot lain, dan piksel transparan menampilkan `templates.layout.canvas.background` (JPEG final, bukan transparan).
 - **Layer teks/stiker:** digambar di atas frame, bukan di dalam foto, agar tidak terpotong clip slot.
 
 **Components:** `EditorCanvas` (canvas-based, memakai `composeFrame`), `FilterRow`, `AdjustSlider`, `CropTool`, `RotateButton`, `ZoomSlider`, `PanTool`.
@@ -398,10 +409,13 @@ PACKAGE → VOUCHER (opsional) → FINAL PRICE → CHECKOUT → QRIS → VERIFY 
 ```
 YOUR PHOTO IS READY!
 [ PHOTO PREVIEW ]
+[ GRID semua foto hasil (bukan hanya foto pertama) + GIF jika ada ]
 [ PRINTING... / PRINT DONE ✓ ]     (auto-print ter-trigger, lihat §5.15)
 SCAN TO GET YOUR PHOTOS:
 [ QR CODE → halaman result online ]
-[ CREATE ANOTHER ] → reset ke Welcome (sesi one-shot)
+[ CETAK / CETAK ULANG ] [ UNDUH ZIP ] [ SALIN LINK ] [ WHATSAPP ] [ SELESAI ]
+[ Berlaku sampai <tanggal> ]
+( CREATE ANOTHER = tombol SELESAI → reset ke Welcome; sesi one-shot )
 ```
 
 ### Online Result Page (`result_token`)
@@ -411,18 +425,22 @@ SCAN TO GET YOUR PHOTOS:
 **UI (layout):**
 
 ```
-[ Header: nama business (BACKLOG: logo owner) ]
+[ Header sticky: logo bisnis (signed URL) + nama business ]
 YOUR PHOTOS ARE READY!
 [ PREVIEW GIF animasi slideshow — autoplay loop ]
 [ GRID thumbnail foto berframe (1..N) ]
-[ UNDUH GIF ]   [ unduh per foto ]   (BACKLOG: [ UNDUH SEMUA (ZIP) ])
+[ UNDUH GIF ]  [ unduh per foto ]  [ UNDUH SEMUA (ZIP) ]
+[ SALIN LINK ]  [ KIRIM VIA WHATSAPP ]  [ Berlaku sampai <tanggal> ]
 ( Slot future: [ KIRIM KE EMAIL ] — OUT OF SCOPE sekarang )
 ```
 
 Menyediakan:
 
 - **Unduh GIF animasi slideshow** — foto bergantian otomatis; digenerate **server-side saat finalize**; storage key di `sessions.result_gif_key`. Template legacy memakai foto berframe; frame ber-slot memakai capture mentah (composite tunggal tidak bisa jadi slideshow). Preview GIF autoplay loop di atas halaman.
-- **Unduh foto berframe** (statis, per foto — hasil edit + frame pilihan customer), tampil sebagai grid thumbnail, bisa diunduh per foto. **BACKLOG: unduh semua (ZIP)** — belum diimplementasi (lihat blok Status Implementasi).
+- **Unduh foto berframe** (statis, per foto — hasil edit + frame pilihan customer), tampil sebagai grid thumbnail, bisa diunduh per foto.
+- **Unduh semua (ZIP)** — `GET /api/v1/public/results/:resultToken/zip`: ZIP store-only tanpa dependensi baru, batas 50 berkas / 100 MB, rate limit 10/menit/IP, validasi retention + tenant lewat `getResult`. Isi: GIF slideshow + semua foto berframe.
+- **Salin link & kirim via WhatsApp** — tombol di kiosk `/r` dan `ResultScreen`; teks menyebut tanggal berlaku (`finalized_at + retention_days`, dikirim sebagai `expires_at` dari `getResult`/finalize).
+- **Link kedaluwarsa** — `/r/[token]/not-found.tsx` menampilkan "Link kedaluwarsa / tidak ditemukan. Hubungi petugas booth." tanpa membocorkan token.
 - Tombol unduh bekerja lintas origin: URL unduh membawa `Content-Disposition: attachment` (`gif_download_url`, `photos[].download_url` dari `getResult`) — atribut `download` pada `<a>` cross-origin diabaikan browser.
 - (Slot future: kirim ke email — **OUT OF SCOPE sekarang, jangan diproses**.)
 
@@ -492,7 +510,10 @@ Status printer: tercatat di photoboxes.device_status (owner lihat di dashboard)
   "enabled": true,
   "paper_size": "4x6",
   "layout": "single",
-  "orientation": "portrait",
+  "orientation": "auto",
+  "fit": "auto",
+  "strip_2up": false,
+  "media_name": "",
   "auto_print": true,
   "copies": 1,
   "margins_mm": 0,
@@ -501,6 +522,14 @@ Status printer: tercatat di photoboxes.device_status (owner lihat di dashboard)
   "printer_name": ""
 }
 ```
+
+| Field | Nilai | Arti |
+| --- | --- | --- |
+| `paper_size` | `4x6` \| `2x6` \| `5x7` \| `6x8` \| `A6` | Preset kertas fisik (mm: 101.6×152.4, 50.8×152.4, 127×177.8, 152.4×203.2, 105×148) |
+| `orientation` | `portrait` \| `landscape` \| `auto` | `auto` = landscape bila rasio kanvas > 1, selain itu portrait |
+| `fit` | `auto` \| `contain` \| `cover` | `auto`: frame/strip → `contain` (bingkai tak terpotong), foto tunggal → `cover` |
+| `strip_2up` | boolean | Dua salinan strip pada satu kertas 4x6 landscape (hanya layout strip, kanvas ±1:3) |
+| `media_name` | string | Override nama media CUPS; kosong = `Custom.WxHmm` |
 
 ### 5.15.3 Print Layout Mapping
 
@@ -518,9 +547,11 @@ Layout ditentukan `print_settings.layout` + `package.print_count`.
 Browser **tidak bisa** enumerate printer (standar web). Jadi "deteksi" dilakukan:
 
 1. **Print Test di Setup Wizard (§5.0.1)** & dashboard owner → mode CUPS mengirim PDF langsung ke bridge lokal, mode browser membuka `window.print()`, mode thermal mengirim ESC/POS → owner konfirmasi fisik ("Test print berhasil?" Ya/Tidak).
-2. **Printer default OS** harus di-set di kiosk, atau isi `printer_name` CUPS. Bridge CUPS memakai `lp`/`lpstat` dan opsi media custom sesuai ukuran kertas, orientasi, margin, serta `fit-to-page`.
-   Ukuran `4x6` = `101.6 × 152.4 mm`, `A6` = `105 × 148 mm`; driver harus menerima media custom atau profile kertas yang ekuivalen. Print Test menggambar kotak batas pada margin aktif, sehingga ukuran, orientasi, dan area aman bisa diverifikasi secara fisik.
-3. Status disimpan ke `photoboxes.device_status.printer = { status, last_test_at, confirmed }`.
+2. **Printer default OS** harus di-set di kiosk, atau isi `printer_name` CUPS. Bridge CUPS memakai `lp`/`lpstat` dan opsi media sesuai `media_name` (fallback `Custom.WxHmm`), plus `fit-to-page`.
+   Ukuran preset: `4x6` = `101.6 × 152.4 mm`, `2x6` = `50.8 × 152.4 mm`, `5x7` = `127 × 177.8 mm`, `6x8` = `152.4 × 203.2 mm`, `A6` = `105 × 148 mm`; driver harus menerima media custom atau profile kertas yang ekuivalen. Print Test menggambar kotak batas pada margin aktif, sehingga ukuran, orientasi, dan area aman bisa diverifikasi secara fisik.
+3. Status disimpan ke `photoboxes.device_status.printer = { status, last_test_at, confirmed, mode, job }`. `job` = `{ status, last_error, queue_pending, queue_retrying, last_job_at }` dari heartbeat runtime; semua field opsional agar runtime lama tetap lolos validasi.
+4. **Antrean cetak runtime lokal**: SQLite `print_jobs` adalah sumber kebenaran (offline-first). Status `queued → printing → submitted → done|failed`; `submitted` berarti spooler menerima, **bukan** kertas keluar. `done` hanya dari konfirmasi operator (`POST /print/jobs/:id/confirm`). Dedupe `session_id + sheet_hash` mencegah auto-print ganda; retry memakai `POST /print/jobs/:id/retry`.
+5. **Health check sebelum submit** (`lpstat -p`, default destination) dan error `lp` menyertakan stderr + saran `lpstat -p` / `lpoptions -d`.
 
 ### 5.15.5 Error Handling (print)
 

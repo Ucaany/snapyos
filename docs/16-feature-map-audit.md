@@ -254,7 +254,7 @@
 - **Page**: `/admin/settings` (`ADMIN - PLATFORM SETTINGS`).
 - **Actions**: `updateSettingsAction`. **Data**: `getPlatformSettings`, `updatePlatformSettings` (`src/server/admin/settings.ts`).
 - **API**: `GET/PATCH /api/v1/admin/settings`.
-- **Field**: `platform_fee_percent`, `platform_fee_flat`, `default_retention_days`, `trial_days`, `maintenance_message`, `maintenance_mode`, `chroma_key_default_enabled`, `gateway_<provider>_enabled`.
+- **Field**: `platform_fee_percent`, `platform_fee_flat`, `default_retention_days`, `trial_days`, `maintenance_message`, `maintenance_mode`, `gateway_<provider>_enabled`.
 - **DB**: `platform_settings, business_settings, photoboxes`.
 - **Dampak**: `maintenance_mode` → `src/proxy.ts` (503 non-admin, admin lolos); fee default hanya tampilan (fee efektif per-plan); retention default → kiosk.
 
@@ -285,4 +285,4 @@
 - **Server**: `src/server/design-builder-actions.ts` (`saveBrandingAction`, `uploadBrandAssetAction`, `resetBoothBrandingAction`); `src/server/branding.ts` (`uploadPhotoboxLogo`, `uploadPhotoboxKioskVideo`, `signBrandingAssets`); `src/server/photoboxes.ts` (`updatePhotoboxBranding` mode `merge`/`replace`).
 - **Merge**: `src/lib/branding-merge.ts` (`mergeBranding`, `brandingHasOverride`, `resolveBoothOverride`) dipakai `buildPublicConfig` + builder + kontras efektif.
 - **UI primitives**: `src/components/ui/neo/{tabs,slider,alert}.tsx` (adaptasi neobrutalism.dev ke token SnapyOS; tanpa dependency baru).
-- **Tes**: `tests/design-builder.test.ts` (merge/pages/replace/contrast + regresi logo `business_settings` dan purge blob booth).
+- **Tes**: `tests/design-builder.test.ts` (merge/pages/replace/contrast), `tests/dashboard-device-management.test.ts` (nav + route + aksi).

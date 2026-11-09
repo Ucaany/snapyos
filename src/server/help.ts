@@ -202,7 +202,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
           "Buka Packages, tekan Buat Package. Isi nama, harga integer Rupiah di atas nol, photo count minimal 1, print count minimal 0.",
           "Assign package ke outlet dan photobox yang berlaku.",
           "Buka Templates, upload PNG frame transparan maksimal 5 MB, pilih kategori.",
-          "Buka builder, tambah slot, atur warna dasar kanvas bila booth memakai layar hijau, Preview, lalu Publish.",
+          "Buka builder, tambah slot manual atau tekan Deteksi area hijau bila frame memakai latar hijau sebagai slot, atur warna dasar kanvas, Preview, lalu Publish.",
           "Uji dari kiosk: pilih paket, bayar, pastikan frame muncul.",
         ],
       },
@@ -592,7 +592,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       {
         heading: "Atur slot di builder",
         paragraphs: [
-          "Builder canvas: tambah slot (drag kotak), atur shape, posisi, ukuran, rotasi, fit, lalu periksa preview foto contoh otomatis. Slot tidak bisa digeser atau resize keluar batas canvas (clamp saat drag).",
+          "Builder canvas: tambah slot manual (drag kotak) atau deteksi area hijau frame menjadi slot mask, atur shape, posisi, ukuran, rotasi, fit, lalu periksa preview foto contoh otomatis. Slot tidak bisa digeser atau resize keluar batas canvas (clamp saat drag).",
           "Urutan render: clear canvas ke resolusi canvas, untuk tiap slot urut z naik clip ke shape lalu drawImage foto dengan fit cover atau contain plus transform zoom atau pan customer, lalu drawImage frame PNG penuh, lalu sticker dan text di atas.",
         ],
         steps: [

@@ -29,6 +29,12 @@ Server actions adalah jalur utama untuk owner dashboard CRUD. REST hanya dipakai
 | POST   | `/api/v1/public/:businessSlug/sessions/:id/finalize`            | Device token     | Generate result dan print           |
 | GET    | `/api/v1/public/results/:resultToken`                           | Public token     | Ambil hasil online                  |
 
+### Cache template kiosk (2026-11-08)
+
+- `GET /templates` — `Cache-Control: private, max-age=0, must-revalidate`; rate limit 120/menit/IP.
+- `GET /frame` — `Cache-Control: private, max-age=3600, stale-while-revalidate=86400` (dengan `w`) atau `max-age=600` (tanpa `w`); rate limit 180/menit/IP.
+- Parameter `cache=<templateId:version>` hanya untuk lookup Cache Storage di service worker; tidak mengubah isi respons.
+
 ## Request and response rules
 
 Semua nominal adalah integer IDR. Success memakai `{ "data": ... }`. Error memakai `{ "error": { "code": "...", "message": "...", "details": {} } }`. Input divalidasi server-side. Client tidak boleh mengirim `business_id` atau `photobox_id` untuk menggantikan scope yang ditentukan dari device token.

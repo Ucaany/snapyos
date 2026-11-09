@@ -14,7 +14,7 @@ SESUAI (inti): dashboard admin lengkap (overview, users, businesses, plans, subs
 EKSTRA (audit 2026-09-16, semua sudah terdokumentasi):
 
 - `createUser`/`deleteUser` admin (REST + UI).
-- Platform settings `withdrawal_days` (multi-hari), `withdrawal_sla_hours`, `chroma_key_default_enabled`.
+- Platform settings `withdrawal_days` (multi-hari), `withdrawal_sla_hours`.
 - `maintenance_mode` di-**enforce** di middleware (bukan hanya display).
 - Subscription Promos CRUD (§10.2 baru, tabel `subscription_promos` migration 0014).
 - Template global create/upload (owner + FK `templates.category_id`, migration 0039).
@@ -126,7 +126,6 @@ Contoh key di `platform_settings`:
   "min_withdrawal_amount": 10000,
   "withdrawal_days": [0, 1, 2, 3, 4, 5, 6],
   "withdrawal_sla_hours": 24,
-  "chroma_key_default_enabled": false,
   "gateway_pakasir_enabled": true,
   "gateway_midtrans_enabled": true,
   "gateway_tripay_enabled": true

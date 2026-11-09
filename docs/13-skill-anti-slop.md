@@ -130,3 +130,6 @@ Pilih **satu** archetype dan komit. Untuk SnapyOS default: **Swiss Industrial Pr
 - [ ] Owner payment: secret credential redacted, `total_amount` provider terlihat, QR polling berhenti pada final/unmount
 - [ ] Owner add-on: hanya entitlement dikelola owner; katalog global tetap admin-only
 - [ ] Dependency audit hijau: `npm audit` tanpa advisory **critical** (transitive dev-time boleh tercatat sebagai residual, bukan blocking)
+- [ ] Cetak: preset kertas/orientasi/fit dipakai bersama PDF runtime dan CSS (satu sumber), `cover` tidak pernah memotong frame ber-slot, `submitted` tidak diklaim sebagai kertas keluar
+- [ ] Hasil: ZIP menyebut batas berkas/ukuran, link kedaluwarsa tidak membocorkan token, tombol salin/WhatsApp ada di kiosk dan `/r`
+- [ ] Kiosk flow: review grid (flag `session_settings.kiosk_review_grid`, default ON), filter live di preview, filter per foto (bukan global), mirror hanya preview

@@ -21,8 +21,6 @@ function globalFormData(overrides: Record<string, string | boolean> = {}) {
   fd.set("maintenance_message", "Halo");
   fd.set("maintenance_mode", "false");
   fd.set("maintenance_mode", "true");
-  fd.set("chroma_key_default_enabled", "false");
-  fd.set("chroma_key_default_enabled", "true");
   for (const [k, v] of Object.entries(overrides)) fd.set(k, String(v));
   return fd;
 }
@@ -46,12 +44,10 @@ test("buildSettingsPayload: form global TIDAK menyertakan gateway (anti-clobber)
   assert.equal("gateway_tripay_enabled" in payload, false);
   assert.equal(payload.trial_days, 14);
   assert.equal(payload.maintenance_mode, true);
-  assert.equal(payload.chroma_key_default_enabled, true);
 });
 
 test("buildSettingsPayload: form gateway TIDAK menyertakan field global (anti-clobber)", () => {
   const payload = buildSettingsPayload(gatewayFormData(true, true, false));
-  assert.equal("chroma_key_default_enabled" in payload, false);
   assert.equal("maintenance_mode" in payload, false);
   assert.equal("maintenance_message" in payload, false);
   assert.equal("trial_days" in payload, false);

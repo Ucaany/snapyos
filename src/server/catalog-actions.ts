@@ -18,6 +18,7 @@ import {
   uploadTemplate,
 } from "@/server/templates";
 import { createVoucher, deleteVoucher, updateVoucher } from "@/server/vouchers";
+import { extractFrameChromaSlots } from "@/server/template-chroma";
 import { TEMPLATE_CATEGORIES } from "@/lib/validators";
 
 // --- PACKAGES (docs/04 §4.9) ---
@@ -198,8 +199,34 @@ export async function saveTemplateLayoutAction(
   return { error: undefined };
 }
 
-// --- VOUCHERS (docs/04 §4.11) ---
+/**
+ * Deteksi area hijau frame → slot mask (docs/15 §15.3). Tidak publish:
+ * `is_active` tidak disentuh, builder tetap harus simpan/publish eksplisit.
+ */
+export async function detectTemplateChromaSlotsAction(templateId: string): Promise<{
+  layout?: unknown;
+  frameUrl?: string | null;
+  skipped?: number;
+  error?: string;
+}> {
+  const ctx = await requireActiveBusiness();
+  if (!ctx) return { error: "Sesi berakhir. Silakan login ulang." };
+  await requireEffectiveSubscription(ctx.businessId, "write");
+  if (typeof templateId !== "string" || !templateId.trim()) {
+    return { error: "Template tidak valid" };
+  }
+  let result: Awaited<ReturnType<typeof extractFrameChromaSlots>>;
+  try {
+    result = await extractFrameChromaSlots(ctx.user.id, ctx.businessId, templateId);
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Deteksi gagal" };
+  }
+  revalidatePath("/dashboard/templates");
+  revalidatePath(`/dashboard/templates/builder/${templateId}`);
+  return { layout: result.layout, frameUrl: result.frameUrl, skipped: result.skipped };
+}
 
+// --- VOUCHERS (docs/04 §4.11) ---
 function voucherInput(formData: FormData) {
   const toIso = (key: string) => {
     const v = str(formData, key);

@@ -894,3 +894,32 @@ CREATE INDEX idx_sessions_business ON sessions(business_id, status);
 CREATE INDEX idx_vu_voucher ON voucher_usages(voucher_id);
 CREATE INDEX idx_vu_business ON voucher_usages(business_id);
 ```
+
+---
+
+## 7.12 Runtime Lokal (SQLite — bukan Supabase)
+
+Runtime photobooth menyimpan state mesin di `<dataDir>/snapyos.db` (`runtime/db/schema.ts`, `PRAGMA user_version`). **Tidak** pernah dimigrasikan ke cloud.
+
+| Tabel | Isi |
+| --- | --- |
+| `device_settings` | setelan kamera/printer/sesi/tampilan milik satu booth |
+| `sessions` / `captures` / `finalize_queue` / `events` | sesi offline-first + antrean sync |
+| `print_jobs` | antrean cetak lokal (skema v3) |
+
+`print_jobs` — sumber kebenaran antrean cetak (offline-first); cloud hanya menerima mirror status lewat heartbeat ke `photoboxes.device_status.printer.job`:
+
+| Kolom | Tipe | Catatan |
+| --- | --- | --- |
+| `id` | text PK | UUID job |
+| `dedupe_key` | text UNIQUE | default `session_id + sheet_hash` |
+| `session_id` / `mode` / `printer_name` / `media_name` | text | konteks pekerjaan |
+| `paper_size` / `orientation` | text | snapshot setelan saat submit |
+| `copies` / `sheets` / `attempts` | integer | jumlah salinan/lembar/percobaan |
+| `pdf_path` | text | PDF sementara di `<dataDir>/print-jobs/` |
+| `spool_job_id` | text | ID dari spooler (`lp`), null untuk driver tanpa ID |
+| `status` | text | `queued` → `printing` → `submitted` → `done` \| `failed` |
+| `error` | text | stderr `lp` + saran `lpstat -p` / `lpoptions -d` |
+| `created_at` / `updated_at` | text | ISO 8601 |
+
+**Aturan status:** `submitted` = spooler menerima, **bukan** kertas keluar. `done` hanya dari konfirmasi operator (`POST /print/jobs/:id/confirm`). Retry eksplisit (`POST /print/jobs/:id/retry`) memakai ulang PDF tersimpan, bukan kirim ulang buta. Jika migrasi tabel gagal, runtime jatuh ke submit langsung tanpa antrean dan heartbeat mengirim `job: null`.

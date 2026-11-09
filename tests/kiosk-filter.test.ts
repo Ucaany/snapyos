@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { FILTER_PRESETS, type EditorAdjust, type PhotoEdit } from "../src/lib/kiosk-types.ts";
+import { FILTER_PRESETS, filterCss, type EditorAdjust, type PhotoEdit } from "../src/lib/kiosk-types.ts";
 
 test("FILTER_PRESETS: id unik + css non-kosong + Original = none", () => {
   const ids = FILTER_PRESETS.map((f) => f.id);
@@ -14,7 +14,26 @@ test("FILTER_PRESETS: id unik + css non-kosong + Original = none", () => {
 
 test("FILTER_PRESETS: id canonical tetap (dipakai render + persist)", () => {
   const ids = FILTER_PRESETS.map((f) => f.id);
-  assert.deepEqual(ids, ["original", "film", "warm", "cool", "bw", "retro", "vintage", "y2k"]);
+  assert.deepEqual(ids, [
+    "original",
+    "film",
+    "warm",
+    "cool",
+    "bw",
+    "retro",
+    "vintage",
+    "y2k",
+    "fade",
+    "noir",
+    "cyber",
+    "lomo",
+  ]);
+});
+
+test("filterCss: preset dikenal mengembalikan css, unknown = none", () => {
+  assert.equal(filterCss("bw"), "grayscale(1) contrast(1.1)");
+  assert.equal(filterCss("tidak-ada"), "none");
+  assert.equal(filterCss(null), "none");
 });
 
 test("defaultEdit: filter default original + tanpa adjust slider lama", () => {

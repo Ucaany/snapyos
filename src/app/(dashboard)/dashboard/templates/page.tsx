@@ -35,7 +35,7 @@ export default async function TemplatesPage() {
       <PageHeader
         eyebrow={`TEMPLATE: ${active.role.toUpperCase()}`}
         title="Template & Frame"
-        description="Upload frame sendiri (PNG/JPG/WebP transparan dari Canva/Figma), lalu buka &ldquo;Atur slot&rdquo; untuk menambah slot foto, dan assign ke package. Chroma key ada di editor kiosk saat booth memakai green screen, bukan di builder."
+        description="Upload frame sendiri (PNG/JPG/WebP transparan dari Canva/Figma), lalu buka &ldquo;Atur slot&rdquo; untuk menambah slot foto, dan assign ke package. Area hijau pada frame bisa diubah jadi slot lewat tombol Deteksi area hijau di builder."
       />
 
       <section aria-labelledby="premium-templates" className="flex flex-col gap-4">

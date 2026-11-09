@@ -13,6 +13,8 @@ import {
 } from "@/lib/camera-provider";
 import { getDeviceProfile } from "@/lib/device-profile";
 import {
+  FILTER_PRESETS,
+  filterCss,
   kioskThemeVars,
   type CameraSettings,
   type CapturePhoto,
@@ -42,6 +44,9 @@ type Props = {
   frameUrl?: string | null;
   /** Mode capture package — `burst` melewati layar review antar shot. */
   captureMode?: "single" | "burst" | "photostrip";
+  /** Filter live (CSS) di preview; nilai awal editor. */
+  filterId?: string;
+  onFilterChange?: (filterId: string) => void;
   onProgress?: (photos: CapturePhoto[], retakeCount: number) => void;
   onComplete: (photos: CapturePhoto[], retakeCount: number) => void;
 };
@@ -62,6 +67,8 @@ function CameraCaptureInner({
   layout = null,
   frameUrl = null,
   captureMode = "single",
+  filterId = "original",
+  onFilterChange,
   onProgress,
   onComplete,
 }: Props) {
@@ -350,7 +357,8 @@ function CameraCaptureInner({
           : await captureFrame(
               videoRef.current!,
               cameraSettings.jpeg_quality || 0.92,
-              mirror,
+              // Mirror hanya untuk preview (teks pada frame tidak terbalik).
+              false,
               normalizeRotation(cameraSettings.rotation_degrees),
               normalizeZoom(cameraSettings.zoom)
             );
@@ -430,7 +438,12 @@ function CameraCaptureInner({
         )}
         {stage === "review" && current && currentUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={currentUrl} alt="Hasil foto" className="max-h-full max-w-full object-contain" />
+          <img
+            src={currentUrl}
+            alt="Hasil foto"
+            className="max-h-full max-w-full object-contain"
+            style={{ filter: filterCss(filterId) }}
+          />
         ) : cameraProvider === "bridge" ? (
           bridgePreviewUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -438,6 +451,7 @@ function CameraCaptureInner({
               src={bridgePreviewUrl}
               alt="Preview kamera bridge"
               className="max-h-full max-w-full object-contain"
+              style={{ filter: filterCss(filterId) }}
             />
           ) : (
             <div className="flex max-w-[34ch] flex-col items-center gap-3 px-6 text-center text-bg">
@@ -460,6 +474,7 @@ function CameraCaptureInner({
               // CSS transform tidak memengaruhi drawImage, tapi di sini keduanya
               // harus tampak sama bagi customer.
               style={{
+                filter: filterCss(filterId),
                 transform:
                   [
                     mirror ? "scaleX(-1)" : "",
@@ -630,6 +645,32 @@ function CameraCaptureInner({
                 <FlipHorizontal2 className="size-5" aria-hidden /> Mirror{" "}
                 {mirror ? "aktif" : "nonaktif"}
               </KioskAction>
+            )}
+            {onFilterChange && (
+              <div className="flex w-full flex-col gap-1.5">
+                <p
+                  className="font-mono text-[10px] uppercase tracking-[0.14em]"
+                  style={{ opacity: 0.65, color: kioskStyle ? kioskStyle.text : undefined }}
+                >
+                  Filter live
+                </p>
+                <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
+                  {FILTER_PRESETS.map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => onFilterChange(f.id)}
+                      aria-pressed={filterId === f.id}
+                      className={`min-h-10 shrink-0 border-2 border-ink px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.02em] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${
+                        filterId === f.id ? "bg-accent text-ink" : "bg-surface text-ink"
+                      }`}
+                      style={kioskStyle ? { borderRadius: kioskStyle.radius } : undefined}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         )}

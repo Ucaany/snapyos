@@ -20,7 +20,6 @@ export type PlatformSettings = {
   trial_days?: number;
   maintenance_mode?: boolean;
   maintenance_message?: string;
-  chroma_key_default_enabled?: boolean;
   gateway_pakasir_enabled?: boolean;
   gateway_midtrans_enabled?: boolean;
   gateway_tripay_enabled?: boolean;
@@ -42,7 +41,6 @@ export async function getPlatformSettings(): Promise<PlatformSettings> {
     trial_days: undefined,
     maintenance_mode: undefined,
     maintenance_message: undefined,
-    chroma_key_default_enabled: undefined,
     gateway_pakasir_enabled: undefined,
     gateway_midtrans_enabled: undefined,
     gateway_tripay_enabled: undefined,
@@ -93,24 +91,6 @@ export async function updatePlatformSettings(input: AdminSettingsUpdateInput) {
       .update({ retention_days: parsed.default_retention_days });
     if (error) {
       throw new ApiError("INTERNAL", "Default retention tersimpan tapi gagal diterapkan ke tenant");
-    }
-  }
-  if (parsed.chroma_key_default_enabled !== undefined) {
-    const { data: booths, error: boothError } = await supabase
-      .from("photoboxes")
-      .select("id, camera_settings");
-    if (boothError)
-      throw new ApiError("INTERNAL", "Gagal menerapkan default chroma key ke photobox");
-    for (const booth of booths ?? []) {
-      await supabase
-        .from("photoboxes")
-        .update({
-          camera_settings: {
-            ...((booth.camera_settings as Record<string, unknown> | null) ?? {}),
-            chroma_key_enabled: parsed.chroma_key_default_enabled,
-          },
-        })
-        .eq("id", booth.id);
     }
   }
   await audit(admin.id, "admin.settings.update", "platform_settings", { ...parsed });

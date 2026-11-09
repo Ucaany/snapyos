@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 /**
  * /dashboard/settings — profil bisnis, storage, aturan & kebijakan website:
  * durasi QRIS, retensi hasil foto 1–3 hari. Kustomisasi tampilan kiosk
- * ada di /dashboard/branding (single source of truth).
+ * dikelola dari perangkat pairing dan runtime booth.
  */
 export default async function SettingsPage() {
   const user = await requireUser();
@@ -74,7 +74,7 @@ export default async function SettingsPage() {
       <PageHeader
         eyebrow="PROFIL · PENYIMPANAN · PEMBAYARAN · MASA SIMPAN"
         title="Pengaturan"
-        description="Profil bisnis, kuota penyimpanan, durasi kedaluwarsa QRIS, dan masa simpan hasil foto (1 sampai 3 hari). Kustomisasi tampilan kiosk ada di Branding & Kiosk; chroma key template diatur dari menu Template."
+        description="Profil bisnis, kuota penyimpanan, durasi kedaluwarsa QRIS, dan masa simpan hasil foto (1 sampai 3 hari). Pairing, status, versi, dan diagnostik perangkat ada di Manajemen Perangkat."
       />
 
       <div className="grid max-w-6xl grid-cols-1 gap-8 lg:grid-cols-2">

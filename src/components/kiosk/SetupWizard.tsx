@@ -466,27 +466,33 @@ export function SetupWizard({
                 <Button size="lg" onClick={onDone} className="min-h-14 bg-accent">
                   Selesai. Mulai
                 </Button>
-              ) : (
-                // Jalur keluar untuk booth tanpa printer berfungsi — tanpa ini
-                // wizard tidak pernah selesai dan welcome tidak pernah muncul.
+              ) : printSettings.enabled === false ? (
+                // Jalur keluar hanya untuk booth yang memang tidak mencetak.
+                // Cetak aktif = uji print wajib dikonfirmasi dulu; tanpa itu
+                // booth bisa tampak siap padahal kertas tidak pernah keluar.
                 <div className="flex flex-col gap-3 border-2 border-dashed border-ink/40 p-4">
                   <p className="text-xs leading-relaxed text-muted-foreground">
-                    Printer belum siap? Setup bisa dilewati. Uji cetak tetap bisa diulang kapan pun
-                    dengan memasang ulang perangkat.
+                    Cetak tidak aktif untuk booth ini. Setup bisa diselesaikan tanpa uji cetak.
                   </p>
                   <Button
                     variant="outline"
                     className="w-fit"
                     onClick={() => {
-                      // Tandai printer belum terkonfirmasi di server, lalu selesai.
                       void report({
                         printer: { confirmed: false, last_test_at: new Date().toISOString() },
                       });
                       onDone();
                     }}
                   >
-                    Lewati uji cetak
+                    Selesai tanpa cetak
                   </Button>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2 border-2 border-dashed border-ink/40 p-4">
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    Cetak aktif. Konfirmasi uji cetak berhasil sebelum menyelesaikan setup.
+                    Periksa kertas, tinta/ribbon, dan nama printer di panel setelan booth.
+                  </p>
                 </div>
               )}
             </>

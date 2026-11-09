@@ -1,7 +1,7 @@
 /**
  * Aturan key storage basi untuk template — PURE (tanpa `server-only`) agar
  * dapat diuji via node:test. Dipakai dua jalur:
- * - replace frame (chroma-key): buang frame lama + thumbnail lama.
+ * - deteksi area hijau: buang frame lama + thumbnail lama (file asli disimpan).
  * - hapus template: buang frame + thumbnail.
  *
  * Semua key di-dedup dan key baru (`newKey`, bila ada) dikecualikan supaya

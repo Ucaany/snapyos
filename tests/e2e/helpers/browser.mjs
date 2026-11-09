@@ -22,7 +22,7 @@ export async function launchKiosk({
   // langkah yang dijalankan (dan memilih printer di dialog asli).
   const headless = process.env.E2E_HEADED === "1" ? false : !headed;
   // E2E_FAKE_VIDEO=/path/file.y4m → kamera palsu memutar frame deterministik
-  // (dipakai suite chroma). Tanpa env, perilaku lama (fake device polos).
+  // (dipakai uji manual kamera hijau). Tanpa env, perilaku lama (fake device polos).
   const fakeVideo = process.env.E2E_FAKE_VIDEO;
   const context = await chromium.launchPersistentContext(profileDir, {
     headless,

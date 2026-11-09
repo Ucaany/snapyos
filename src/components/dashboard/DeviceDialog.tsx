@@ -22,6 +22,10 @@ const deviceRowSchema = z.object({
   name: z.string().nullable(),
   status: z.string(),
   last_seen_at: z.string().nullable(),
+  last_heartbeat_at: z.string().nullable(),
+  diagnostics: z.record(z.string(), z.unknown()).nullable(),
+  camera_config: z.record(z.string(), z.unknown()).nullable(),
+  printer_config: z.record(z.string(), z.unknown()).nullable(),
   created_at: z.string(),
 });
 type DeviceRow = z.infer<typeof deviceRowSchema>;
@@ -211,14 +215,27 @@ export function DeviceDialog({
   const cameraStatus = photobox.device_status?.camera as
     { resolution?: string; error?: string | null } | undefined;
   const printerStatus = photobox.device_status?.printer as
-    { confirmed?: boolean; last_test_at?: string } | undefined;
+    | {
+        confirmed?: boolean;
+        last_test_at?: string;
+        mode?: string;
+        job?: {
+          status?: string;
+          last_error?: string | null;
+          queue_pending?: number;
+          queue_retrying?: number;
+          last_job_at?: string | null;
+        } | null;
+      }
+    | undefined;
 
   // Laporan terakhir datang dari heartbeat device (last_seen_at), bukan push
   // dari cloud: belum ada kanal perintah cloud ke runtime.
   const reportedAt = devices.reduce<string | null>((latest, d) => {
-    if (!d.last_seen_at) return latest;
-    if (!latest) return d.last_seen_at;
-    return new Date(d.last_seen_at) > new Date(latest) ? d.last_seen_at : latest;
+    const candidate = d.last_heartbeat_at ?? d.last_seen_at;
+    if (!candidate) return latest;
+    if (!latest) return candidate;
+    return new Date(candidate) > new Date(latest) ? candidate : latest;
   }, null);
 
   return (
@@ -304,6 +321,20 @@ export function DeviceDialog({
             <p className="font-bold uppercase tracking-[0.12em]">Ukuran kertas</p>
             <p className="text-muted-foreground">
               {photobox.print_settings.paper_size ?? "Belum dilaporkan booth"}
+            </p>
+          </div>
+          <div className="flex flex-col gap-1">
+            <p className="font-bold uppercase tracking-[0.12em]">Jalur cetak</p>
+            <p className="text-muted-foreground">
+              {printerStatus?.mode ?? "Belum dilaporkan booth"}
+            </p>
+          </div>
+          <div className="flex flex-col gap-1 md:col-span-2">
+            <p className="font-bold uppercase tracking-[0.12em]">Antrean cetak</p>
+            <p className="text-muted-foreground">
+              {printerStatus?.job
+                ? `${printerStatus.job.status ?? "—"} · menunggu ${printerStatus.job.queue_pending ?? 0} · gagal ${printerStatus.job.queue_retrying ?? 0}${printerStatus.job.last_error ? ` · ${printerStatus.job.last_error}` : ""}`
+                : "Belum ada job cetak"}
             </p>
           </div>
           <div className="flex flex-col gap-1 md:col-span-2">
@@ -404,8 +435,9 @@ export function DeviceDialog({
                       {`${d.name ?? "Kiosk"}${d.photobox_name ? ` - ${d.photobox_name}` : ""}`}
                     </p>
                     <p className="text-muted-foreground">
-                      {`Terakhir aktif: ${d.last_seen_at ? new Date(d.last_seen_at).toLocaleString("id-ID") : "-"}`}
+                      {`Terakhir aktif: ${(d.last_heartbeat_at ?? d.last_seen_at) ? new Date(d.last_heartbeat_at ?? d.last_seen_at ?? "").toLocaleString("id-ID") : "-"}`}
                     </p>
+                    {d.diagnostics && <p className="text-muted-foreground">Diagnostik tersedia</p>}
                   </div>
                   <div className="flex items-center gap-2">
                     <span

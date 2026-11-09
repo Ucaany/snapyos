@@ -4,6 +4,13 @@ import type { PrintSettingsInput } from "@/lib/print-layout";
 
 export type CupsTestInput = { title: string; lines: string[] };
 
+export type CupsPrintResult = {
+  job_id: string | null;
+  status: "queued" | "printing" | "submitted" | "done" | "failed";
+  error?: string;
+  deduplicated?: boolean;
+};
+
 export function cupsBridgeUrl(settings?: PrintSettingsInput | null): string {
   return (settings?.bridge_url?.trim() || "http://127.0.0.1:17777").replace(/\/$/, "");
 }
@@ -24,35 +31,58 @@ function blobBase64(blob: Blob): Promise<string> {
 
 async function postBridge(
   settings: PrintSettingsInput | null | undefined,
-  pathname: "/print" | "/printer/test",
+  pathname: string,
   body: Record<string, unknown>
-): Promise<void> {
+): Promise<Record<string, unknown>> {
   const response = await fetch(`${cupsBridgeUrl(settings)}${pathname}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...bridgeHeaders() },
     cache: "no-store",
     body: JSON.stringify(body),
   });
+  const result = (await response.json().catch(() => null)) as Record<string, unknown> | null;
   if (!response.ok) {
     if (response.status === 401) throw new Error("Token bridge belum diisi atau salah.");
-    const result = await response.json().catch(() => null);
     throw new Error(
-      typeof result?.message === "string" ? result.message : "Bridge CUPS tidak bisa mengirim cetak."
+      typeof result?.message === "string"
+        ? result.message
+        : "Bridge CUPS tidak bisa mengirim cetak."
     );
   }
+  return result ?? {};
 }
 
 export async function submitCupsPrint(
   settings: PrintSettingsInput | null | undefined,
-  sheets: Blob[][]
-): Promise<void> {
-  await postBridge(settings, "/print", {
+  sheets: Blob[][],
+  options: { sessionId?: string; framed?: boolean; canvasAspect?: number | null } = {}
+): Promise<CupsPrintResult> {
+  const result = await postBridge(settings, "/print", {
     paper_size: settings?.paper_size,
     orientation: settings?.orientation,
     margins_mm: settings?.margins_mm,
+    fit: settings?.fit,
+    strip_2up: settings?.strip_2up,
+    media_name: settings?.media_name,
     printer_name: settings?.printer_name,
+    framed: options.framed,
+    canvas_aspect: options.canvasAspect ?? undefined,
+    ...(options.sessionId ? { session_id: options.sessionId } : {}),
     sheets: await Promise.all(sheets.map((sheet) => Promise.all(sheet.map(blobBase64)))),
   });
+  return {
+    job_id: typeof result.job_id === "string" ? result.job_id : null,
+    status:
+      result.status === "queued" ||
+      result.status === "printing" ||
+      result.status === "submitted" ||
+      result.status === "done" ||
+      result.status === "failed"
+        ? result.status
+        : "submitted",
+    error: typeof result.error === "string" ? result.error : undefined,
+    deduplicated: result.deduplicated === true,
+  };
 }
 
 export async function submitCupsTest(
@@ -67,4 +97,33 @@ export async function submitCupsTest(
     title: sample.title,
     lines: sample.lines,
   });
+}
+
+/** Retry lewat antrean runtime (bukan kirim ulang buta). */
+export async function retryCupsJob(
+  settings: PrintSettingsInput | null | undefined,
+  jobId: string
+): Promise<CupsPrintResult> {
+  const result = await postBridge(settings, `/print/jobs/${encodeURIComponent(jobId)}/retry`, {});
+  const job = (result.job ?? {}) as Record<string, unknown>;
+  return {
+    job_id: typeof job.id === "string" ? job.id : jobId,
+    status:
+      job.status === "queued" ||
+      job.status === "printing" ||
+      job.status === "submitted" ||
+      job.status === "done" ||
+      job.status === "failed"
+        ? job.status
+        : "failed",
+    error: typeof job.error === "string" ? job.error : undefined,
+  };
+}
+
+/** Konfirmasi operator: kertas benar-benar keluar. */
+export async function confirmCupsJob(
+  settings: PrintSettingsInput | null | undefined,
+  jobId: string
+): Promise<void> {
+  await postBridge(settings, `/print/jobs/${encodeURIComponent(jobId)}/confirm`, {});
 }

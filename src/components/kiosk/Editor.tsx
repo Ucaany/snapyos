@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { defaultBrandColors, slotColors } from "@/lib/brand-defaults";
 import {
   FILTER_PRESETS,
+  filterCss,
   kioskThemeVars,
   type CapturePhoto,
   type FinalPhoto,
@@ -15,8 +16,6 @@ import {
   type PhotoEdit,
 } from "@/lib/kiosk-types";
 import {
-  canvasBackground,
-  DEFAULT_CANVAS_BACKGROUND,
   slotsByZ,
   type TemplateLayout,
 } from "@/lib/template-layout";
@@ -29,7 +28,6 @@ import {
   drawOverlayLayer,
   drawPhoto,
   renderFramedPhotoBlob,
-  type ChromaStatus,
 } from "@/components/kiosk/photo-render";
 import { StickerPicker } from "@/components/kiosk/StickerPicker";
 import { KioskVideoBackground } from "@/components/kiosk/KioskVideoBackground";
@@ -52,7 +50,9 @@ const POSITIONS = [
 type Props = {
   photos: CapturePhoto[];
   finishing: boolean;
-  onFinish: (finalPhotos: FinalPhoto[], gifPhotos?: Blob[]) => void;
+  onFinish: (finalPhotos: FinalPhoto[]) => void;
+  /** Filter awal (dipilih live di kamera) — berlaku per foto, bisa diubah. */
+  initialFilterId?: string;
   /** Layout slot template terpilih — null = tanpa frame/tanpa slot (docs/15 §5.9). */
   layout?: TemplateLayout | null;
   frameUrl?: string | null;
@@ -66,8 +66,6 @@ type Props = {
   /** Video promo layar edit (pages.edit.video_url). */
   videoUrl?: string | null;
   finishRequested?: boolean;
-  /** Booth punya layar hijau (`camera_settings.chroma_key_enabled`). */
-  chromaKeyEnabled?: boolean;
 };
 
 let idSeq = 0;
@@ -110,6 +108,7 @@ function EditorInner({
   photos,
   finishing,
   onFinish,
+  initialFilterId = "original",
   layout = null,
   frameUrl = null,
   titleText,
@@ -118,29 +117,17 @@ function EditorInner({
   allowZoomPan = true,
   videoUrl = null,
   finishRequested = false,
-  chromaKeyEnabled = false,
 }: Props) {
-  const [edits, setEdits] = useState<PhotoEdit[]>(() => photos.map(() => defaultEdit()));
+  const [edits, setEdits] = useState<PhotoEdit[]>(() =>
+    photos.map(() => {
+      const base = defaultEdit();
+      return { ...base, adjust: { ...base.adjust, filter: initialFilterId } };
+    })
+  );
   const [active, setActive] = useState(0);
-  // Chroma key: hanya ditawarkan bila booth dikonfigurasi dengan layar hijau.
-  // Default mengikuti flag booth; operator boleh mematikan manual (touched).
-  const [chromaOn, setChromaOn] = useState(chromaKeyEnabled);
-  const chromaTouched = useRef(false);
-  // Status hasil chroma (applied/tainted) — UI tidak boleh mengklaim latar
-  // terhapus sebelum render benar-benar melakukannya.
-  const [chromaStatus, setChromaStatus] = useState<ChromaStatus | null>(null);
-  const chromaStatusRef = useRef<ChromaStatus | null>(null);
-  // Filter GLOBAL — satu pilihan berlaku untuk seluruh foto (docs/05 §5.9).
-  const [filterId, setFilterId] = useState("original");
   const [text, setText] = useState("");
   const [selectedOverlay, setSelectedOverlay] = useState<string | null>(null);
   const [finishError, setFinishError] = useState<string | null>(null);
-
-  // Sinkronkan default chroma bila config booth berubah, kecuali operator
-  // sudah menekan toggle (keputusan manual tidak boleh ditimpa polling config).
-  useEffect(() => {
-    if (!chromaTouched.current) setChromaOn(chromaKeyEnabled);
-  }, [chromaKeyEnabled]);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // Object URL ref-counted (StrictMode-safe) — createObjectURL manual di bawah
@@ -162,9 +149,7 @@ function EditorInner({
   const panRaf = useRef<number | null>(null);
   // Cache canvas offscreen per-slot: recomposite HANYA slot yang editnya
   // berubah (drag slot aktif tak me-render ulang slot lain tiap frame).
-  const slotCacheRef = useRef<{ sig: string; canvas: HTMLCanvasElement; status: ChromaStatus }[]>(
-    []
-  );
+  const slotCacheRef = useRef<{ sig: string; canvas: HTMLCanvasElement }[]>([]);
 
   // `active` menunjuk SLOT; edit dimiliki FOTO. Pada frame 6 slot + 3 foto,
   // slot 4..6 memakai ulang foto 1..3, jadi keduanya harus dipetakan.
@@ -180,11 +165,6 @@ function EditorInner({
   const slotOverlays = usedPhotoIndices.flatMap(
     (photoIndex) => edits[photoIndex]?.overlays ?? []
   );
-
-  /** Filter GLOBAL diterapkan ke semua foto — satu pilihan menimpa `adjust.filter`. */
-  function filteredEdit(e: PhotoEdit): PhotoEdit {
-    return { ...e, adjust: { ...e.adjust, filter: filterId } };
-  }
 
   // load semua foto sekali (mode composite butuh semua slot terisi)
   useEffect(() => {
@@ -261,34 +241,19 @@ function EditorInner({
    */
   function renderPhotoOffscreens(maxW: number): (HTMLCanvasElement | null)[] {
     const cache = slotCacheRef.current;
-    let appliedCount = 0;
-    let tainted = false;
-    let count = 0;
-    const offscreens = photos.map((_, i) => {
+    return photos.map((_, i) => {
       const img = imgsRef.current[i];
       if (!img) return null;
-      count += 1;
-      const base = slotBaseEdit(filteredEdit(edits[i] ?? defaultEdit()));
+      const base = slotBaseEdit(edits[i] ?? defaultEdit());
       // Signature: recomposite hanya bila edit/img/lebar berubah.
-      const sig = JSON.stringify({ imgVersion, maxW, edit: editSignature(base), chroma: chromaOn });
+      const sig = JSON.stringify({ imgVersion, maxW, edit: editSignature(base) });
       const cached = cache[i];
-      if (cached && cached.sig === sig) {
-        if (cached.status.applied) appliedCount += 1;
-        tainted ||= cached.status.tainted;
-        return cached.canvas;
-      }
+      if (cached && cached.sig === sig) return cached.canvas;
       const off = document.createElement("canvas");
-      const status = drawPhoto(off, img, base, maxW, chromaOn);
-      if (status.applied) appliedCount += 1;
-      tainted ||= status.tainted;
-      cache[i] = { sig, canvas: off, status };
+      drawPhoto(off, img, base, maxW);
+      cache[i] = { sig, canvas: off };
       return off;
     });
-    // Pesimistis: "applied" hanya bila SEMUA foto berhasil (bukan OR).
-    chromaStatusRef.current = chromaOn
-      ? { applied: appliedCount === count && count > 0, tainted }
-      : null;
-    return offscreens;
   }
 
   /** Transform zoom/pan milik satu foto (dipakai tiap slot yang menampilkannya). */
@@ -324,14 +289,6 @@ function EditorInner({
         720,
         { overlays: slotOverlays }
       );
-      // Status chroma dari render offscreen (pesimistis: semua foto harus hijau).
-      // Set hanya bila
-      // nilainya berubah — mencegah loop render/state.
-      setChromaStatus((prev) => {
-        const next = chromaOn ? chromaStatusRef.current : null;
-        if (prev?.applied === next?.applied && prev?.tainted === next?.tainted) return prev;
-        return next;
-      });
       // highlight slot aktif (petunjuk zoom/pan berlaku per slot). Urutan sama
       // dengan render (slotsByZ) agar indeks slot aktif tidak meleset.
       const ctx = canvas.getContext("2d");
@@ -353,29 +310,14 @@ function EditorInner({
     }
     const img = imgsRef.current[activePhoto];
     if (img) {
-      const status = drawPhoto(
-        canvas,
-        img,
-        filteredEdit(edit),
-        640,
-        chromaOn,
-        DEFAULT_CANVAS_BACKGROUND
-      );
+      drawPhoto(canvas, img, edit, 640);
       // Template legacy (tanpa slot) = frame full-canvas DI ATAS foto, overlay
       // di atas frame — preview harus sama dengan hasil final (docs/05 §5.9).
       drawFrameOverlay(canvas, frameRef.current);
       drawOverlayLayer(canvas, edit.overlays);
-      setChromaStatus((prev) => {
-        const next = chromaOn ? status : null;
-        if (prev?.applied === next?.applied && prev?.tainted === next?.tainted) return prev;
-        return next;
-      });
-    } else if (chromaStatus !== null) {
-      // Foto belum termuat: jangan pertahankan status foto sebelumnya.
-      setChromaStatus(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [imgVersion, frameVersion, edit, edits, active, layout, filterId, chromaOn]);
+  }, [imgVersion, frameVersion, edit, edits, active, layout]);
 
   function patchEdit(patch: (e: PhotoEdit) => PhotoEdit) {
     setEdits((prev) => prev.map((e, i) => (i === activePhoto ? patch(e) : e)));
@@ -383,6 +325,12 @@ function EditorInner({
 
   function patchAdjust<K extends keyof PhotoEdit["adjust"]>(key: K, value: PhotoEdit["adjust"][K]) {
     patchEdit((e) => ({ ...e, adjust: { ...e.adjust, [key]: value } }));
+  }
+
+  /** Terapkan filter foto aktif ke semua foto. */
+  function applyFilterToAll() {
+    const filter = edit.adjust.filter;
+    setEdits((prev) => prev.map((e) => ({ ...e, adjust: { ...e.adjust, filter } })));
   }
 
   function patchOverlay(id: string, patch: Partial<KioskOverlay>) {
@@ -555,30 +503,7 @@ function EditorInner({
           Number.POSITIVE_INFINITY,
           { overlays: slotOverlays }
         );
-        // GIF slideshow: composite hanya SATU frame. Bila chroma aktif, GIF
-        // butuh tiap foto full-res dengan latar sudah dihapus (bukan capture
-        // mentah berlatar hijau). Chroma off → undefined (KioskApp pakai raw).
-        const gifPhotos = chromaOn
-          ? (
-              await Promise.all(
-                photos.map(async (_, i) => {
-                  const img = imgsRef.current[i];
-                  if (!img) return null;
-                  const gifCanvas = document.createElement("canvas");
-                  drawPhoto(
-                    gifCanvas,
-                    img,
-                    filteredEdit(edits[i] ?? defaultEdit()),
-                    Number.POSITIVE_INFINITY,
-                    true,
-                    canvasBackground(layout)
-                  );
-                  return canvasToBlob(gifCanvas);
-                })
-              )
-            ).filter((blob): blob is Blob => blob !== null)
-          : undefined;
-        onFinish([{ blob: await canvasToBlob(canvas) }], gifPhotos);
+        onFinish([{ blob: await canvasToBlob(canvas) }]);
         return;
       }
       // Template legacy (tanpa slot): tiap foto dirender penuh, lalu frame PNG
@@ -588,10 +513,8 @@ function EditorInner({
       for (let i = 0; i < photos.length; i++) {
         const blob = await renderFramedPhotoBlob(
           photos[i]!.blob,
-          filteredEdit(edits[i] ?? defaultEdit()),
-          frameRef.current,
-          chromaOn,
-          DEFAULT_CANVAS_BACKGROUND
+          (edits[i] ?? defaultEdit()),
+          frameRef.current
         );
         results.push({ blob });
       }
@@ -675,13 +598,22 @@ function EditorInner({
                 key={i}
                 type="button"
                 onClick={() => setActive(i)}
-                className={`size-11 border-2 border-ink font-mono text-xs font-bold transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${
+                className={`relative size-11 overflow-hidden border-2 border-ink font-mono text-xs font-bold transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${
                   i === active ? "bg-accent" : "bg-surface"
                 }`}
                 aria-label={`Foto ${i + 1}`}
                 aria-pressed={i === active}
               >
-                {i + 1}
+                {photoUrls[i] ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={photoUrls[i]!}
+                    alt=""
+                    className="absolute inset-0 size-full object-cover"
+                    style={{ filter: filterCss(edits[i]?.adjust.filter) }}
+                  />
+                ) : null}
+                <span className="relative z-10 bg-bg/70 px-1">{i + 1}</span>
               </button>
             ))}
           </div>
@@ -704,59 +636,29 @@ function EditorInner({
         </div>
 
         <div className="flex min-h-0 flex-col gap-3 overflow-y-auto pb-1 pr-1 lg:pb-2">
-          {/* Layar hijau booth: hapus latar agar frame transparan terlihat. */}
-          {chromaKeyEnabled && (
-            <div className={panelClass}>
-              <p className={sectionLabel}>Latar layar hijau</p>
+          {/* Filters per foto: setiap foto punya filter sendiri. */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className={sectionLabel} style={{ color: kioskStyle ? kioskStyle.text : undefined }}>
+                {`Filter foto ${active + 1}`}
+              </p>
               <button
                 type="button"
-                onClick={() => {
-                  chromaTouched.current = true;
-                  setChromaOn((value) => !value);
-                }}
-                aria-pressed={chromaOn}
-                className={`min-h-11 border-2 border-ink px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.08em] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${
-                  chromaOn ? "bg-accent-3" : "bg-surface"
-                }`}
+                onClick={applyFilterToAll}
+                className="min-h-9 border-2 border-ink bg-surface px-2 py-1 text-[10px] font-bold uppercase tracking-[0.04em] text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
               >
-                {chromaOn
-                  ? chromaStatus?.applied
-                    ? "Latar dihapus"
-                    : chromaStatus
-                      ? "Latar tidak dihapus"
-                      : "Memproses…"
-                  : "Hapus latar hijau"}
+                Terapkan ke semua
               </button>
-              {chromaOn && chromaStatus && !chromaStatus.applied && (
-                <p
-                  role="alert"
-                  className="border-2 border-destructive bg-destructive/10 px-2 py-1.5 text-[11px] leading-relaxed text-ink"
-                >
-                  {chromaStatus.tainted
-                    ? "Foto tidak bisa diproses (canvas dibatasi CORS). Latar tidak dihapus."
-                    : "Latar tidak terdeteksi hijau (sebagian atau semua foto tidak diubah)."}
-                </p>
-              )}
-              <p className="text-[11px] leading-relaxed text-muted-foreground">
-                Warna latar diambil dari sudut foto. Nyalakan bila booth memakai layar hijau.
-              </p>
             </div>
-          )}
-
-          {/* Filters: GLOBAL: satu pilihan berlaku untuk semua foto */}
-          <div className="flex flex-col gap-2">
-            <p className={sectionLabel} style={{ color: kioskStyle ? kioskStyle.text : undefined }}>
-              Filter
-            </p>
             <div className="grid grid-cols-4 gap-1.5">
               {FILTER_PRESETS.map((f) => (
                 <button
                   key={f.id}
                   type="button"
-                  onClick={() => setFilterId(f.id)}
-                  aria-pressed={filterId === f.id}
+                  onClick={() => patchAdjust("filter", f.id)}
+                  aria-pressed={edit.adjust.filter === f.id}
                   className={`min-h-11 border-2 border-ink px-1.5 py-2 text-[10px] font-bold uppercase leading-tight tracking-[0.02em] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${
-                    filterId === f.id ? "bg-accent text-ink" : "bg-surface text-ink"
+                    edit.adjust.filter === f.id ? "bg-accent text-ink" : "bg-surface text-ink"
                   }`}
                 >
                   {f.label}
