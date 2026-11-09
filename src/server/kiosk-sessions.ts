@@ -38,6 +38,7 @@ import { getStorage, signedUrlMap, removeResolvedOutcome } from "@/server/storag
 
 const GENERATED_BUCKET = "generated-photos" as const;
 const DEFAULT_RETENTION_DAYS = 3;
+const BRAND_ASSETS_BUCKET = "business-assets" as const;
 
 /** Jalankan task dengan konkurensi terbatas, urutan hasil dijaga. */
 async function mapWithConcurrency<T, R>(
@@ -853,6 +854,19 @@ async function loadResult(resultToken: string) {
     .eq("id", row.business_id)
     .maybeSingle();
 
+  // Logo bisnis untuk header /r/[token] — branding tinggal di business_settings
+  // (bukan `businesses`), selalu signed karena bucket private.
+  const { data: settingsRow } = await supabase
+    .from("business_settings")
+    .select("branding")
+    .eq("business_id", row.business_id)
+    .maybeSingle();
+  const brandingRow = (settingsRow?.branding ?? null) as { logo_key?: string | null } | null;
+  const logoKey = brandingRow?.logo_key ?? null;
+  const logoUrl = logoKey
+    ? ((await signedUrlMap(BRAND_ASSETS_BUCKET, [logoKey], SIGNED_URL_TTL)).get(logoKey) ?? null)
+    : null;
+
   const { data: photos } = await supabase
     .from("photos")
     .select("id, file_key, order_index")
@@ -878,7 +892,7 @@ async function loadResult(resultToken: string) {
   }));
 
   return {
-    business: { name: business?.name ?? null },
+    business: { name: business?.name ?? null, logo_url: logoUrl },
     status: session.status,
     gif_url: gifUrl,
     gif_download_url: gifDownloadUrl,

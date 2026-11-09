@@ -808,7 +808,9 @@ export function KioskApp({
     >
       {notice && (
         <div
-          className="fixed inset-x-0 top-0 z-50 flex items-start justify-between gap-3 border-b-2 border-ink bg-accent px-4 py-3 shadow-hard-sm"
+          // In-flow (bukan fixed): banner fixed menutupi eyebrow/judul layar di
+          // semua viewport. Strip ini menyusutkan tinggi layar, tidak menimpa.
+          className="relative z-50 flex shrink-0 items-start justify-between gap-3 border-b-2 border-ink bg-accent px-4 py-3 shadow-hard-sm"
           style={{ paddingTop: "calc(env(safe-area-inset-top) + 0.75rem)" }}
           role="status"
           aria-live="polite"

@@ -274,3 +274,15 @@
 - **Field**: jenis (announcement/promo/newsletter/event/system), template, audiens (all/users/owners), subject, body.
 - **DB**: `broadcast_campaigns, broadcast_recipients, businesses, business_members, users`.
 - **Integrasi**: Resend (`src/lib/broadcast-email.ts`, `src/lib/resend.ts`). Status: draft/sending/sent/partial/failed; riwayat per penerima.
+
+---
+
+## 16. Design Builder per Booth (2026-11-08)
+
+- **Route**: `/dashboard/branding` (nav `Design Builder`, ikon `Palette`) — dipulihkan sebagai builder; `/dashboard/devices` tetap pairing/diagnostik.
+- **Page**: `src/app/(dashboard)/dashboard/branding/page.tsx` memuat `listPhotoboxes` + `getBranding`, signed URL batch untuk global + seluruh override, lalu merender `DesignBuilder`.
+- **Client**: `src/components/dashboard/DesignBuilder.tsx` — selector booth, toggle `Booth ini`/`Global`, tabs Merek/Sambutan/Tampilan/Per Layar, status inherit, simpan/reset, upload logo/video. `DesignBuilderPreview.tsx` merender `WelcomeScreen`/`KioskScreenRenderer` asli.
+- **Server**: `src/server/design-builder-actions.ts` (`saveBrandingAction`, `uploadBrandAssetAction`, `resetBoothBrandingAction`); `src/server/branding.ts` (`uploadPhotoboxLogo`, `uploadPhotoboxKioskVideo`, `signBrandingAssets`); `src/server/photoboxes.ts` (`updatePhotoboxBranding` mode `merge`/`replace`).
+- **Merge**: `src/lib/branding-merge.ts` (`mergeBranding`, `brandingHasOverride`, `resolveBoothOverride`) dipakai `buildPublicConfig` + builder + kontras efektif.
+- **UI primitives**: `src/components/ui/neo/{tabs,slider,alert}.tsx` (adaptasi neobrutalism.dev ke token SnapyOS; tanpa dependency baru).
+- **Tes**: `tests/design-builder.test.ts` (merge/pages/replace/contrast + regresi logo `business_settings` dan purge blob booth).

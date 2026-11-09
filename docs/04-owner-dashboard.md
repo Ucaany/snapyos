@@ -319,36 +319,39 @@ KLIK FOTO
 
 ---
 
-## 4.8 Photobox Builder (Branding)
+## 4.8 Photobox Builder (Design Builder)
 
-**Purpose:** Membangun pengalaman photobox milik brand sendiri.
+**Purpose:** Membangun pengalaman photobox milik brand sendiri, global maupun per booth.
+
+**Route:** `/dashboard/branding` (`Design Builder`). `/dashboard/devices` tetap untuk pairing/diagnostik perangkat.
+
+**Cakupan:**
+
+- **Booth ini** (default): pilih photobox dari selector; field kosong mewarisi global. Simpan membuat override di `photoboxes.branding`; **Reset ke global** menghapus override (kolom `branding = null`).
+- **Global**: default seluruh booth di `business_settings.branding`.
+- Override booth di-deep-merge dengan global oleh satu helper `src/lib/branding-merge.ts` (`kiosk` dan `kiosk.pages` per layar), dipakai server kiosk, preview, dan validasi kontras.
 
 **Konfigurasi:**
 
-- Branding: business name, logo, primary color, secondary color, background, typography.
+- Branding: logo (PNG/JPG/WebP), primary color, secondary color.
 - Welcome screen: judul, tagline, tombol start.
-- Kiosk (customer app, 5 layar — welcome, payment, foto, edit, result): teks per layar, warna latar/teks, skala font, radius tombol, padding, perataan konten full-element (kiri/tengah/kanan — global `kiosk.align`, timpa per layar), layout struktural (welcome split/center, posisi QR result), visibilitas logo/tagline, video background loop ≤5s.
-- Override per-layar (`branding.kiosk.pages`): timpa nilai global kiosk per layar (warna, perataan, font scale, radius, padding) — fallback ke nilai global bila kosong. Legacy `payment_align` tetap dihormati bila `align` belum diset.
+- Kiosk (layar welcome/guide/package/payment/template/capture/edit/result): teks per layar, warna latar/teks, skala font, radius tombol, padding, perataan konten, visibilitas logo/tagline/mirror/zoom, video background loop ≤5s.
+- Per layar (`branding.kiosk.pages`): warna, skala, radius, padding, perataan, video (global).
+- **Pratinjau in-page** memakai komponen kiosk asli (`WelcomeScreen`, `KioskScreenRenderer`) dengan selector layar + orientasi; bukan iframe.
 
-Contoh welcome:
+**UI/Components:** `DesignBuilder` (`src/components/dashboard/DesignBuilder.tsx`) dengan `Tabs` neo (`src/components/ui/neo/`), color picker, slider, upload, dan panel pratinjau sticky.
 
-```
-KLIK FOTO
-"Capture your moment."
-[ START ]
-```
+**Data:** `business_settings.branding` (global) + `photoboxes.branding` (override booth, `null` = inherit).
 
-**UI/Components:** `Form` + `Tabs` (branding, welcome), color picker, logo upload, live `Preview` panel.
+**Actions:** `saveBrandingAction`, `uploadBrandAssetAction`, `resetBoothBrandingAction` (`src/server/design-builder-actions.ts`). Guard: `business:update` (global) / `photobox:write` (booth) + `requireEffectiveSubscription(businessId, "write")`.
 
-**Data:** `business_settings` (jsonb) — brand colors, logo, welcome text.
+**Upload per booth:** key `${businessId}/photoboxes/${photoboxId}/branding/...`; logo/video lama dihapus setelah update sukses (fail-open).
 
-**API:** `GET/PATCH /api/v1/business/:businessId/settings/branding`
+**Validation:** warna valid hex; kontras WCAG AA 4.5:1 divalidasi pada branding **efektif** (global + override) di jalur tulis; logo/video divalidasi tipe + ukuran.
 
-**Validation:** warna valid hex; logo ukuran & tipe divalidasi (PNG/JPG/WebP — SVG dihapus dari allowlist, audit keamanan 2026-10-09, max size).
+**Security:** upload logo divalidasi (magic byte + size), disimpan di storage bucket private; tenant scope dijaga `.eq("business_id", …)`.
 
-**Security:** upload logo divalidasi (file type + size), disimpan di storage bucket private.
-
-**Acceptance:** branding muncul di customer-facing app (AC 6).
+**Acceptance:** branding efektif muncul di customer-facing app (AC 6); booth tanpa override identik dengan global.
 
 ---
 

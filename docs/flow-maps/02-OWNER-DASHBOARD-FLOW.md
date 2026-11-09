@@ -1196,9 +1196,10 @@ Edit checkout settings → updateBusinessSettings(businessId, { checkout: { qris
 
 **Page**: `/dashboard/branding` (atau `/dashboard/settings` tab Branding)
 
-**Server Actions**: `src/server/branding-actions.ts`
+**Server Actions**: `src/server/design-builder-actions.ts`
 
-- `updateBranding`, `uploadLogo`
+- `saveBrandingAction` (global/booth), `uploadBrandAssetAction`, `resetBoothBrandingAction`
+- Data layer: `src/server/branding.ts` (`updateBranding`, `uploadLogo`, `uploadPhotoboxLogo`, `uploadPhotoboxKioskVideo`) + `src/server/photoboxes.ts` (`updatePhotoboxBranding` mode `merge`/`replace`).
 
 **Fields** (`business_settings.branding` jsonb):
 
@@ -1237,25 +1238,26 @@ Edit checkout settings → updateBusinessSettings(businessId, { checkout: { qris
 **Data Flow (Update Branding)**:
 
 ```
-Owner ubah branding → updateBranding(businessId, brandingData)
-   ↓ validate: colors valid hex, font_scale > 0, button_radius >= 0, padding >= 0
-   ↓ update business_settings.branding
-   ↓ revalidate
+Owner ubah branding → saveBrandingAction({ scope, photoboxId?, branding })
+   ↓ scope=global: updateBranding → business_settings.branding
+   ↓ scope=booth: updatePhotoboxBranding(mode replace) → photoboxes.branding
+   ↓ validate: hex, range, kontras efektif (global + override) WCAG AA
+   ↓ invalidatePublicConfig + revalidate /dashboard/branding
 ```
 
 **Data Flow (Upload Logo)**:
 
 ```
 Owner upload logo → uploadLogo(businessId, file)
-   ↓ validate: file type PNG/JPG/SVG/WebP, max size (2MB)
-   ↓ upload ke storage → logo_url
-   ↓ update business_settings.branding.logo_url
+   ↓ validate: file type PNG/JPG/WebP (SVG ditolak), max size (2MB)
+   ↓ upload ke storage (business-assets, private) → logo_key
+   ↓ update branding (global) atau override booth
    ↓ revalidate
 ```
 
 **Components**: `Form` + `Tabs` (branding, welcome), color picker, logo upload, live `Preview` panel.
 
-**Validation**: warna valid hex; logo ukuran & tipe; font_scale 0.5–2.0; button_radius 0–16; padding 0–64.
+**Validation**: warna valid hex; logo ukuran & tipe (PNG/JPG/WebP); font_scale 0.8–1.4; button_radius 0–24; padding 0–96; kontras teks/latar ≥ 4.5:1 pada branding efektif.
 
 **Security**: upload logo divalidasi (file type, size, malicious payload), disimpan di storage bucket private.
 
@@ -1265,7 +1267,7 @@ Owner upload logo → uploadLogo(businessId, file)
 
 - Page: `src/app/(dashboard)/dashboard/branding/page.tsx`
 - Server: `src/server/branding-actions.ts`, `src/server/branding.ts`
-- Components: tidak ada lagi; editor branding owner (`KioskBrandingEditor`) dihapus dan `/dashboard/branding/page.tsx` sekarang hanya redirect ke `/dashboard/devices`.
+- Components: `/dashboard/branding` = Design Builder per booth (`DesignBuilder` + `DesignBuilderPreview`, aksi `design-builder-actions.ts`); `/dashboard/devices` = pairing/diagnostik perangkat.
 
 **Acceptance**: (AC 6) branding muncul di customer-facing app; logo upload berfungsi; kiosk override per-page berfungsi.
 

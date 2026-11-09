@@ -8,7 +8,8 @@ import { unstable_cache, updateTag } from "next/cache";
 import { createHash } from "node:crypto";
 import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
-import { brandingSchema, type BrandingInput } from "@/lib/validators";
+import { brandingSchema } from "@/lib/validators";
+import { mergeBranding } from "@/lib/branding-merge";
 import { slotCount, type TemplateLayout } from "@/lib/template-layout";
 import { selectVisibleTemplates } from "@/lib/template-visibility";
 import {
@@ -152,17 +153,7 @@ async function buildPublicConfig(
   const booth = boothOverride?.success ? boothOverride.data : null;
 
   // Deep-merge override di atas global (field override menang; pages per-layar).
-  const gKiosk = globalBranding.kiosk ?? {};
-  const oKiosk = booth?.kiosk ?? {};
-  const merged: BrandingInput = {
-    ...globalBranding,
-    ...(booth ?? {}),
-    kiosk: {
-      ...gKiosk,
-      ...oKiosk,
-      pages: { ...(gKiosk.pages ?? {}), ...(oKiosk.pages ?? {}) },
-    },
-  };
+  const merged = mergeBranding(globalBranding, booth);
 
   // Signed URL untuk logo + video global + video per-layar (batch, anti N+1).
   const pageVideoKeys = Object.values(merged.kiosk?.pages ?? {})

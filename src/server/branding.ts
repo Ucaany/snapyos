@@ -22,9 +22,15 @@ import {
   accountStorageAdd,
   accountStorageSub,
 } from "@/server/storage-usage";
-import { getStorage, resolveStorage } from "@/server/storage";
+import { getStorage, resolveStorage, signedUrlMap } from "@/server/storage";
 import { invalidatePublicConfig } from "@/server/public-config";
 import { resetPageOverrides } from "@/lib/branding-pages";
+import {
+  brandingColorsChanged,
+  foreignBrandAssetKeys,
+  unsetBrandingPaths,
+} from "@/lib/branding-merge";
+import { updatePhotoboxBranding } from "@/server/photoboxes";
 
 const BRAND_ASSETS_BUCKET = "business-assets" as const;
 const SIGNED_URL_CACHE_TTL = 55 * 60; // 55 menit: buffer 5 menit sebelum expire
@@ -105,16 +111,32 @@ export async function getBranding(userId: string, businessId: string): Promise<B
   return { ...branding, logo_url: logoUrl, kiosk_video_url: videoUrl };
 }
 
+/** Tolak `logo_key`/`video_key` yang menunjuk objek business lain (IDOR storage). */
+function assertBrandAssetKeysOwned(businessId: string, branding: BrandingInput) {
+  const foreign = foreignBrandAssetKeys(businessId, branding);
+  if (foreign.length > 0) {
+    throw new ApiError("VALIDATION_ERROR", "Aset branding tidak valid.", {
+      logo: ["Aset harus diunggah lewat halaman ini"],
+      kiosk: ["Aset harus diunggah lewat halaman ini"],
+    });
+  }
+}
+
 /** PATCH branding = merge field-level (update parsial tidak boleh wipe field lain). */
 export async function updateBranding(
   userId: string,
   businessId: string,
   input: BrandingInput,
-  /** Layar yang override-nya harus DIHAPUS (bukan digabung). Video tetap. */
-  options: { resetPages?: readonly string[] } = {}
+  options: {
+    /** Layar yang override-nya harus DIHAPUS (bukan digabung). Video tetap. */
+    resetPages?: readonly string[];
+    /** Path bertitik yang harus DIHAPUS dari hasil merge (mis. `kiosk.video_key`). */
+    resetKeys?: readonly string[];
+  } = {}
 ): Promise<BrandingView> {
   const parsed = brandingSchema.parse(input);
   await requireMembership(userId, businessId, true);
+  assertBrandAssetKeysOwned(businessId, parsed);
 
   const supabase = createServerClient();
   const { data: existing } = await supabase
@@ -138,7 +160,7 @@ export async function updateBranding(
   // editor hanya tidak mengirim key, dan deep-merge justru mempertahankan
   // nilai lama — tombol terlihat berhasil tapi kiosk tak berubah.
   const afterReset = resetPageOverrides(mergedPages, options.resetPages ?? []);
-  const merged = brandingSchema.parse({
+  const mergedRaw = brandingSchema.parse({
     ...current,
     ...parsed,
     kiosk: {
@@ -147,18 +169,28 @@ export async function updateBranding(
       pages: afterReset,
     },
   });
+  // Tombol "Hapus"/"Default" global mengirim path eksplisit: merge biasa
+  // mempertahankan key yang tidak dikirim, jadi penghapusan harus eksplisit.
+  const merged =
+    options.resetKeys && options.resetKeys.length > 0
+      ? brandingSchema.parse(unsetBrandingPaths(mergedRaw, options.resetKeys))
+      : mergedRaw;
 
   // Kontras divalidasi pada jalur TULIS saja (bukan read) agar data lama
   // berkontras rendah tetap bisa dimuat; di sini kita tolak dengan pesan field.
-  const contrastIssues = brandingContrastIssues(
-    merged as {
-      kiosk?: {
-        bg_color?: string;
-        text_color?: string;
-        pages?: Record<string, { bg_color?: string; text_color?: string } | undefined>;
-      };
-    }
-  );
+  // Hanya bila warna memang berubah — unggah logo/video tidak boleh ditolak
+  // oleh kontras lama yang sudah tersimpan.
+  const contrastIssues = brandingColorsChanged(current, merged)
+    ? brandingContrastIssues(
+        merged as {
+          kiosk?: {
+            bg_color?: string;
+            text_color?: string;
+            pages?: Record<string, { bg_color?: string; text_color?: string } | undefined>;
+          };
+        }
+      )
+    : [];
   if (contrastIssues.length > 0) {
     const details: Record<string, string[]> = {};
     for (const issue of contrastIssues) {
@@ -192,6 +224,32 @@ export async function updateBranding(
     merged.kiosk?.video_key ? logoSignedUrl(merged.kiosk.video_key) : null,
   ]);
   return { ...merged, logo_url: logoUrl, kiosk_video_url: videoUrl };
+}
+
+/** Hapus blob lama setelah branding tersimpan. Fail-open (job lifecycle memungut sisanya). */
+async function removeOldBlob(businessId: string, oldKey: string | null, newKey: string) {
+  if (!oldKey || oldKey === newKey) return;
+  try {
+    const provider = await resolveStorage(BRAND_ASSETS_BUCKET, oldKey);
+    await provider.remove(BRAND_ASSETS_BUCKET, [oldKey]);
+    await accountStorageSub(businessId, [oldKey]);
+  } catch {
+    /* cleanup gagal — blob basi dipungut job berikutnya */
+  }
+}
+
+/**
+ * Kompensasi bila penulisan branding gagal setelah blob terunggah: hapus blob
+ * baru + kurangi hitungan storage, supaya kuota tidak drift oleh file yatim.
+ */
+async function rollbackUploadedBlob(businessId: string, key: string) {
+  try {
+    const provider = await resolveStorage(BRAND_ASSETS_BUCKET, key);
+    await provider.remove(BRAND_ASSETS_BUCKET, [key]);
+    await accountStorageSub(businessId, [key]);
+  } catch {
+    /* rollback gagal — blob yatim dipungut job lifecycle */
+  }
 }
 
 /**
@@ -233,33 +291,27 @@ export async function uploadLogo(
   if (uploadError) throw new ApiError("INTERNAL", "Gagal mengunggah logo");
   await accountStorageAdd(businessId, BRAND_ASSETS_BUCKET, key, body.length);
 
-  const result = await updateBranding(userId, businessId, { logo_key: key });
-
-  // Bersihkan blob lama setelah update sukses (anti penumpukan storage).
-  // ponytail: kegagalan cleanup tidak memengaruhi operasi utama — blob basi
-  // dibersihkan batch nanti oleh scheduled job (storage lifecycle rule).
-  if (oldKey && oldKey !== key) {
-    try {
-      const provider = await resolveStorage(BRAND_ASSETS_BUCKET, oldKey);
-      await provider.remove(BRAND_ASSETS_BUCKET, [oldKey]);
-      await accountStorageSub(businessId, [oldKey]);
-    } catch {
-      /* cleanup gagal — blob basi akan dipungut job berikutnya */
-    }
+  let result: BrandingView;
+  try {
+    result = await updateBranding(userId, businessId, { logo_key: key });
+  } catch (cause) {
+    await rollbackUploadedBlob(businessId, key);
+    throw cause;
   }
+
+  await removeOldBlob(businessId, oldKey, key);
   return result;
 }
 
 /**
- * Upload satu blob video kiosk ke bucket private → validasi (magic byte) →
- * simpan → bersihkan blob lama. Return key baru. Dipakai uploadKioskVideo
- * (global) dan uploadKioskPageVideo (per-layar) — satu jalur upload.
+ * Unggah satu blob video ke bucket private → validasi (magic byte) → hitung
+ * storage. Return key baru; blob lama TIDAK dihapus di sini — pemanggil
+ * menghapusnya setelah branding tersimpan (kalau penulisan gagal, blob lama
+ * yang masih dirujuk DB tidak boleh hilang).
  */
 async function uploadVideoBlob(
-  userId: string,
   businessId: string,
   keyPrefix: string,
-  oldKey: string | null,
   file: {
     name?: string | null;
     type?: string | null;
@@ -280,19 +332,6 @@ async function uploadVideoBlob(
   });
   if (uploadError) throw new ApiError("INTERNAL", "Gagal mengunggah video");
   await accountStorageAdd(businessId, BRAND_ASSETS_BUCKET, key, body.length);
-
-  // Bersihkan blob lama setelah upload sukses (anti penumpukan storage).
-  // ponytail: kegagalan cleanup tidak memengaruhi operasi utama — blob basi
-  // dibersihkan batch nanti oleh scheduled job (storage lifecycle rule).
-  if (oldKey && oldKey !== key) {
-    try {
-      const provider = await resolveStorage(BRAND_ASSETS_BUCKET, oldKey);
-      await provider.remove(BRAND_ASSETS_BUCKET, [oldKey]);
-      await accountStorageSub(businessId, [oldKey]);
-    } catch {
-      /* cleanup gagal — blob basi akan dipungut job berikutnya */
-    }
-  }
   return key;
 }
 
@@ -322,8 +361,15 @@ export async function uploadKioskVideo(
     .maybeSingle();
   const oldKey = brandingSchema.catch({}).parse(existing?.branding ?? {}).kiosk?.video_key ?? null;
 
-  const key = await uploadVideoBlob(userId, businessId, "kiosk-video", oldKey, file);
-  return updateBranding(userId, businessId, { kiosk: { video_key: key } });
+  const key = await uploadVideoBlob(businessId, "kiosk-video", file);
+  try {
+    const result = await updateBranding(userId, businessId, { kiosk: { video_key: key } });
+    await removeOldBlob(businessId, oldKey, key);
+    return result;
+  } catch (cause) {
+    await rollbackUploadedBlob(businessId, key);
+    throw cause;
+  }
 }
 
 /**
@@ -362,8 +408,185 @@ export async function uploadKioskPageVideo(
     Record<string, { video_key?: string | null } | undefined> | undefined;
   const oldKey = pages?.[pageId.data]?.video_key ?? null;
 
-  const key = await uploadVideoBlob(userId, businessId, `kiosk-page-${pageId.data}`, oldKey, file);
-  return updateBranding(userId, businessId, {
-    kiosk: { pages: { [pageId.data]: { video_key: key } } },
-  } as BrandingInput);
+  const key = await uploadVideoBlob(businessId, `kiosk-page-${pageId.data}`, file);
+  try {
+    const result = await updateBranding(userId, businessId, {
+      kiosk: { pages: { [pageId.data]: { video_key: key } } },
+    } as BrandingInput);
+    await removeOldBlob(businessId, oldKey, key);
+    return result;
+  } catch (cause) {
+    await rollbackUploadedBlob(businessId, key);
+    throw cause;
+  }
+}
+
+// --- ASET BRANDING PER-BOOTH ---
+
+/** Signed URL untuk semua key aset branding (logo, video global, video layar). */
+export async function signBrandingAssets(
+  branding:
+    | {
+        logo_key?: string | null;
+        kiosk?: {
+          video_key?: string | null;
+          pages?: Record<string, { video_key?: string | null } | undefined>;
+        };
+      }
+    | null
+    | undefined
+): Promise<Map<string, string>> {
+  if (!branding) return new Map();
+  const keys: string[] = [];
+  if (branding.logo_key) keys.push(branding.logo_key);
+  if (branding.kiosk?.video_key) keys.push(branding.kiosk.video_key);
+  for (const page of Object.values(branding.kiosk?.pages ?? {})) {
+    if (page?.video_key) keys.push(page.video_key);
+  }
+  return signedUrlMap(BRAND_ASSETS_BUCKET, keys, SIGNED_URL_TTL);
+}
+
+function assertPhotoboxId(photoboxId: string): string {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(photoboxId)) {
+    throw new ApiError("VALIDATION_ERROR", "Photobox tidak valid", { photoboxId: ["Pilih booth"] });
+  }
+  return photoboxId;
+}
+
+async function requireBoothWrite(userId: string, businessId: string) {
+  const membership = await getMembership(userId, businessId);
+  if (!membership) throw new ApiError("NOT_FOUND", "Business tidak ditemukan");
+  if (!can(membership.role, "photobox:write")) {
+    throw new ApiError("FORBIDDEN", "Anda tidak punya izin mengubah branding booth");
+  }
+  return membership;
+}
+
+/** Override mentah booth (sudah diparse) — null = inherit global. */
+async function loadBoothOverride(
+  businessId: string,
+  photoboxId: string
+): Promise<BrandingInput | null> {
+  const supabase = createServerClient();
+  const { data, error } = await supabase
+    .from("photoboxes")
+    .select("branding")
+    .eq("id", photoboxId)
+    .eq("business_id", businessId)
+    .maybeSingle();
+  if (error) throw new ApiError("INTERNAL", "Gagal memuat branding booth");
+  if (!data) throw new ApiError("NOT_FOUND", "Photobox tidak ditemukan");
+  const parsed = brandingSchema.catch({}).parse(data.branding ?? {});
+  return Object.keys(parsed).length > 0 ? parsed : null;
+}
+
+export type PhotoboxBrandAsset = {
+  branding: BrandingInput | null;
+  key: string | null;
+  url: string | null;
+};
+
+/**
+ * Upload logo khusus satu booth. Key disimpan di override booth
+ * (`logo_key`) dengan mode replace agar field override lain tetap; blob lama
+ * dibersihkan fail-open seperti jalur global.
+ */
+export async function uploadPhotoboxLogo(
+  userId: string,
+  businessId: string,
+  photoboxId: string,
+  file: {
+    name?: string | null;
+    type?: string | null;
+    size?: number | null;
+    arrayBuffer(): Promise<ArrayBuffer>;
+  }
+): Promise<PhotoboxBrandAsset> {
+  const id = assertPhotoboxId(photoboxId);
+  await requireBoothWrite(userId, businessId);
+
+  const body = Buffer.from(await file.arrayBuffer());
+  const check = validateLogoFile(file, body);
+  if (!check.ok) throw new ApiError("VALIDATION_ERROR", check.error, { logo: [check.error] });
+  await assertStorageAvailable(businessId, body.length);
+
+  const current = await loadBoothOverride(businessId, id);
+  const oldKey = current?.logo_key ?? null;
+  const key = `${businessId}/photoboxes/${id}/branding/logo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${check.ext}`;
+
+  const { error: uploadError } = await getStorage().upload(BRAND_ASSETS_BUCKET, key, body, {
+    contentType: file.type ?? "application/octet-stream",
+    upsert: false,
+  });
+  if (uploadError) throw new ApiError("INTERNAL", "Gagal mengunggah logo");
+  await accountStorageAdd(businessId, BRAND_ASSETS_BUCKET, key, body.length);
+
+  let branding: BrandingInput | null;
+  try {
+    branding = (await updatePhotoboxBranding(
+      userId,
+      businessId,
+      id,
+      { ...(current ?? {}), logo_key: key },
+      "replace"
+    )) as BrandingInput | null;
+  } catch (cause) {
+    await rollbackUploadedBlob(businessId, key);
+    throw cause;
+  }
+
+  await removeOldBlob(businessId, oldKey, key);
+  return { branding, key, url: await logoSignedUrl(key) };
+}
+
+/** Upload video background kiosk khusus satu booth (`kiosk.video_key`). */
+export async function uploadPhotoboxKioskVideo(
+  userId: string,
+  businessId: string,
+  photoboxId: string,
+  file: {
+    name?: string | null;
+    type?: string | null;
+    size?: number | null;
+    arrayBuffer(): Promise<ArrayBuffer>;
+  }
+): Promise<PhotoboxBrandAsset> {
+  const id = assertPhotoboxId(photoboxId);
+  await requireBoothWrite(userId, businessId);
+
+  const body = Buffer.from(await file.arrayBuffer());
+  const check = validateVideoFile(file, body);
+  if (!check.ok) throw new ApiError("VALIDATION_ERROR", check.error, { video: [check.error] });
+  await assertStorageAvailable(businessId, body.length);
+
+  const current = await loadBoothOverride(businessId, id);
+  const oldKey = current?.kiosk?.video_key ?? null;
+  const key = `${businessId}/photoboxes/${id}/branding/kiosk-video-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${check.ext}`;
+
+  const { error: uploadError } = await getStorage().upload(BRAND_ASSETS_BUCKET, key, body, {
+    contentType: file.type ?? "application/octet-stream",
+    upsert: false,
+  });
+  if (uploadError) throw new ApiError("INTERNAL", "Gagal mengunggah video");
+  await accountStorageAdd(businessId, BRAND_ASSETS_BUCKET, key, body.length);
+
+  let branding: BrandingInput | null;
+  try {
+    branding = (await updatePhotoboxBranding(
+      userId,
+      businessId,
+      id,
+      {
+        ...(current ?? {}),
+        kiosk: { ...(current?.kiosk ?? {}), video_key: key },
+      },
+      "replace"
+    )) as BrandingInput | null;
+  } catch (cause) {
+    await rollbackUploadedBlob(businessId, key);
+    throw cause;
+  }
+
+  await removeOldBlob(businessId, oldKey, key);
+  return { branding, key, url: await logoSignedUrl(key) };
 }
