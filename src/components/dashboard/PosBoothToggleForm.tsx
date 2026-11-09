@@ -53,7 +53,7 @@ function SubmitButton({
   const label = enabled ? "Aktifkan POS" : "Nonaktifkan";
 
   return (
-<Button
+    <Button
       type="submit"
       variant={enabled ? "default" : "outline"}
       size="icon-compact"
@@ -64,7 +64,6 @@ function SubmitButton({
           : `${label} di booth ${boothName}`
       }
       aria-label={`${label} di booth ${boothName}`}
-      className="relative after:absolute after:-inset-1"
     >
       {pending ? (
         <Loader2 className="size-4 animate-spin" aria-hidden />

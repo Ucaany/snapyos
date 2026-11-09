@@ -98,6 +98,7 @@ create table business_settings (
   branding jsonb,
   camera jsonb,
   checkout jsonb,
+  output jsonb,                                -- output digital bisnis (0082): { gif: {...} }
   retention_days integer not null default 3,   -- keputusan #4: retensi max 3 hari (0035)
   updated_at timestamptz not null default now()
 );

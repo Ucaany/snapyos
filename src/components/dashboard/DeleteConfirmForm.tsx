@@ -80,7 +80,6 @@ export function DeleteConfirmForm({
           onClick={() => setOpen(true)}
           title={triggerTitle ?? triggerLabel}
           aria-label={triggerLabel}
-          className="relative after:absolute after:-inset-1.5"
         >
           {triggerIcon ?? <Trash2 className="h-4 w-4" aria-hidden="true" />}
         </Button>

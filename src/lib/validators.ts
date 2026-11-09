@@ -14,6 +14,7 @@ import {
   DEVICE_SETTING_GROUPS,
   LOCAL_ONLY_DEVICE_GROUPS,
   SETTING_INVARIANTS,
+  mergeDeviceGroup,
 } from "./device-settings-contract.ts";
 
 /** UUID PostgreSQL canonical: shape hex, tanpa pembatasan version/variant RFC. */
@@ -351,11 +352,23 @@ export const checkoutSettingsSchema = z.object({
   offline_enabled: z.boolean().optional(),
 });
 
+/** Output digital bisnis: GIF hasil sesi. */
+export const gifOutputSettingsSchema = z.object({
+  enabled: z.boolean().optional(),
+  frame_delay_ms: z.number().int().min(100).max(3000).optional(),
+  max_width: z.number().int().min(240).max(1080).optional(),
+});
+
+export const outputSettingsSchema = z.object({
+  gif: gifOutputSettingsSchema.optional(),
+});
+
 export const businessSettingsUpdateSchema = z.object({
   branding: brandingSchema.optional(),
   /** Retensi hasil foto 1–3 hari (kebijakan privasi ketat). */
   retention_days: z.number().int().min(RETENTION_MIN_DAYS).max(RETENTION_MAX_DAYS).optional(),
   checkout: checkoutSettingsSchema.optional(),
+  output: outputSettingsSchema.optional(),
 });
 
 const photoboxStatus = z.enum(["online", "offline", "maintenance"]);
@@ -377,6 +390,46 @@ export const cameraSettingsSchema = z.object({
   rotation_degrees: z.number().int().min(0).max(270).optional(),
   zoom: z.number().min(1).max(5).optional(),
   screen_orientation: z.enum(["landscape", "portrait"]).optional(),
+});
+
+const printPathMode = z.enum(["browser", "bluetooth", "cups"]);
+const thermalPaperWidth = z.union([z.literal(58), z.literal(80)]);
+
+/**
+ * Printer foto (CUPS / dialog OS / Bluetooth): jalur cetak hasil foto.
+ * `copies` dan `layout` SENGAJA tidak ada di sini — keduanya tetap field datar
+ * milik cloud supaya aturan kepemilikan tidak bercabang dua.
+ */
+export const printPhotoSettingsSchema = z.object({
+  enabled: z.boolean().optional(),
+  mode: printPathMode.optional(),
+  printer_name: z.string().trim().max(128).optional(),
+  paper_size: z.enum(["4x6", "2x6", "5x7", "6x8", "A6"]).optional(),
+  orientation: z.enum(["portrait", "landscape", "auto"]).optional(),
+  fit: z.enum(["auto", "contain", "cover"]).optional(),
+  margins_mm: z.number().int().min(0).max(20).optional(),
+  media_name: z.string().trim().max(120).optional(),
+  strip_2up: z.boolean().optional(),
+  auto_print: z.boolean().optional(),
+  bridge_url: z.string().trim().url().max(300).optional(),
+});
+
+/** Foto 1-bit ke printer thermal (ESC/POS raster). */
+export const printThermalSettingsSchema = z.object({
+  enabled: z.boolean().optional(),
+  paper_width_mm: thermalPaperWidth.optional(),
+  printer_name: z.string().trim().max(128).optional(),
+  bluetooth_device_name: z.string().trim().max(60).optional(),
+  auto_print: z.boolean().optional(),
+});
+
+/** Struk teks POS. */
+export const printReceiptSettingsSchema = z.object({
+  enabled: z.boolean().optional(),
+  mode: printPathMode.optional(),
+  paper_width_mm: thermalPaperWidth.optional(),
+  printer_name: z.string().trim().max(128).optional(),
+  auto_print: z.boolean().optional(),
 });
 
 export const printSettingsSchema = z.object({
@@ -401,6 +454,9 @@ export const printSettingsSchema = z.object({
   bluetooth_device_name: z.string().trim().max(60).optional(),
   bridge_url: z.string().trim().url().max(300).optional(),
   printer_name: z.string().trim().max(128).optional(),
+  photo: printPhotoSettingsSchema.optional(),
+  thermal: printThermalSettingsSchema.optional(),
+  receipt: printReceiptSettingsSchema.optional(),
 });
 
 /**
@@ -628,17 +684,7 @@ export function mergeDeviceSettings<T extends object>(
   for (const group of DEVICE_SETTING_GROUPS) {
     const incoming = device[group];
     if (!incoming) continue;
-    const base = out[group];
-    const merged: Record<string, unknown> =
-      base && typeof base === "object" && !Array.isArray(base)
-        ? { ...(base as Record<string, unknown>) }
-        : {};
-    for (const [key, value] of Object.entries(incoming)) {
-      if (value === undefined) continue;
-      if (CLOUD_OWNED_SETTING_FIELDS[group].includes(key)) continue;
-      merged[key] = value;
-    }
-    out[group] = merged;
+    out[group] = mergeDeviceGroup(group, out[group], incoming);
   }
   return out as T;
 }
@@ -1133,42 +1179,59 @@ export const deviceExitSchema = z.object({
 });
 
 /** Heartbeat operasional cloud, metadata minimum tanpa media/log/secret. */
-const heartbeatHardwareSchema = z.object({
-  adapter: z.string().trim().min(1).max(40),
-  connected: z.boolean().optional(),
-  ok: z.boolean().optional(),
-}).strict();
+const heartbeatHardwareSchema = z
+  .object({
+    adapter: z.string().trim().min(1).max(40),
+    connected: z.boolean().optional(),
+    ok: z.boolean().optional(),
+  })
+  .strict();
 
 /**
  * Status antrean cetak runtime (aditif + opsional). Runtime lama tidak
  * mengirimnya, jadi bentuk lama tetap lolos `.strict()` di atas.
  */
-const heartbeatPrinterJobSchema = z.object({
-  status: z.string().trim().max(40).optional(),
-  last_error: z.string().trim().max(300).nullable().optional(),
-  queue_pending: z.number().int().min(0).max(1_000_000).optional(),
-  queue_retrying: z.number().int().min(0).max(1_000_000).optional(),
-  last_job_at: z.string().trim().max(40).nullable().optional(),
-}).strict();
+const heartbeatPrinterJobSchema = z
+  .object({
+    status: z.string().trim().max(40).optional(),
+    last_error: z.string().trim().max(300).nullable().optional(),
+    queue_pending: z.number().int().min(0).max(1_000_000).optional(),
+    queue_retrying: z.number().int().min(0).max(1_000_000).optional(),
+    last_job_at: z.string().trim().max(40).nullable().optional(),
+  })
+  .strict();
 
 const heartbeatPrinterSchema = heartbeatHardwareSchema.extend({
   mode: z.enum(["browser", "bluetooth", "cups"]).optional(),
   job: heartbeatPrinterJobSchema.nullable().optional(),
 });
 
-export const deviceHeartbeatSchema = z.object({
-  device_token: z.string().trim().min(32).max(128),
-  runtime_version: z.string().trim().regex(/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/).max(64),
-  db_version: z.number().int().min(1).max(100),
-  camera: heartbeatHardwareSchema,
-  printer: heartbeatPrinterSchema,
-  queue: z.object({ pending: z.number().int().min(0).max(1_000_000), retrying: z.number().int().min(0).max(1_000_000) }).strict(),
-  lockdown: z.object({
-    local_pin_configured: z.boolean(),
-    local_pin_locked: z.boolean(),
-    cloud_kiosk_locked: z.boolean().nullable(),
-  }).strict(),
-}).strict();
+export const deviceHeartbeatSchema = z
+  .object({
+    device_token: z.string().trim().min(32).max(128),
+    runtime_version: z
+      .string()
+      .trim()
+      .regex(/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/)
+      .max(64),
+    db_version: z.number().int().min(1).max(100),
+    camera: heartbeatHardwareSchema,
+    printer: heartbeatPrinterSchema,
+    queue: z
+      .object({
+        pending: z.number().int().min(0).max(1_000_000),
+        retrying: z.number().int().min(0).max(1_000_000),
+      })
+      .strict(),
+    lockdown: z
+      .object({
+        local_pin_configured: z.boolean(),
+        local_pin_locked: z.boolean(),
+        cloud_kiosk_locked: z.boolean().nullable(),
+      })
+      .strict(),
+  })
+  .strict();
 
 export type DeviceHeartbeatInput = z.infer<typeof deviceHeartbeatSchema>;
 

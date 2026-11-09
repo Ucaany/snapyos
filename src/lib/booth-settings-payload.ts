@@ -14,6 +14,11 @@
  */
 
 import type { AppearanceSettings } from "./appearance-merge.ts";
+import type {
+  PrintPhotoSettings,
+  PrintReceiptSettings,
+  PrintThermalSettings,
+} from "./device-settings-contract.ts";
 
 export type BoothCameraDraft = {
   /** bridge = kamera fisik lewat runtime lokal (gphoto2 / libcamera / v4l2 / PyAV). */
@@ -23,6 +28,8 @@ export type BoothCameraDraft = {
   capture_height: number;
   mirror_preview: boolean;
   screen_orientation: "landscape" | "portrait";
+  /** Device kamera pilihan operator (`enumerateDevices()` / bridge). */
+  preferred_device_id?: string | null;
 };
 
 export type BoothPrintDraft = {
@@ -36,6 +43,18 @@ export type BoothPrintDraft = {
   auto_print: boolean;
   margins_mm: number;
   printer_name: string;
+  /** Lebar kertas thermal 58/80 mm (default 80 bila kosong). */
+  bluetooth_paper_width_mm?: 58 | 80;
+  /** Nama printer Bluetooth terakhir yang berhasil tersambung. */
+  bluetooth_device_name?: string;
+  /** URL bridge lokal untuk CUPS (kosong = 127.0.0.1:17777). */
+  bridge_url?: string;
+  /** Jalur cetak foto (printer foto). */
+  photo?: PrintPhotoSettings;
+  /** Foto 1-bit ke printer thermal. */
+  thermal?: PrintThermalSettings;
+  /** Struk POS. */
+  receipt?: PrintReceiptSettings;
 };
 
 export type BoothSessionDraft = {
@@ -100,6 +119,8 @@ export function boothDraftToSettings(draft: BoothDraft): BoothSettingsPayload {
   }
   if (guideSteps.length > 0) appearance.guide_steps = guideSteps;
 
+  const preferredDeviceId = draft.camera.preferred_device_id?.trim();
+
   return {
     camera_settings: {
       provider: draft.camera.provider,
@@ -108,6 +129,7 @@ export function boothDraftToSettings(draft: BoothDraft): BoothSettingsPayload {
       capture_height: draft.camera.capture_height,
       mirror_preview: draft.camera.mirror_preview,
       screen_orientation: draft.camera.screen_orientation,
+      ...(preferredDeviceId ? { preferred_device_id: preferredDeviceId } : {}),
     },
     print_settings: {
       enabled: draft.print.enabled,
@@ -120,6 +142,16 @@ export function boothDraftToSettings(draft: BoothDraft): BoothSettingsPayload {
       margins_mm: draft.print.margins_mm,
       ...(draft.print.media_name?.trim() ? { media_name: draft.print.media_name.trim() } : {}),
       ...(draft.print.printer_name.trim() ? { printer_name: draft.print.printer_name.trim() } : {}),
+      ...(draft.print.bluetooth_paper_width_mm
+        ? { bluetooth_paper_width_mm: draft.print.bluetooth_paper_width_mm }
+        : {}),
+      ...(draft.print.bluetooth_device_name?.trim()
+        ? { bluetooth_device_name: draft.print.bluetooth_device_name.trim() }
+        : {}),
+      ...(draft.print.bridge_url?.trim() ? { bridge_url: draft.print.bridge_url.trim() } : {}),
+      ...(draft.print.photo ? { photo: draft.print.photo } : {}),
+      ...(draft.print.thermal ? { thermal: draft.print.thermal } : {}),
+      ...(draft.print.receipt ? { receipt: draft.print.receipt } : {}),
     },
     session_settings: {
       timer_seconds: draft.session.timer_seconds,

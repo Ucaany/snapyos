@@ -5,7 +5,17 @@
  * `payment_mode`), yang berhubungan dengan mesin milik device (kamera, printer,
  * timer). Kiosk memanggil ini dengan hasil `GET /v1/settings`; runtime mati
  * berarti `device` null dan cloud dipakai apa adanya.
+ *
+ * Aturan kepemilikan TIDAK ditulis ulang di sini: `mergeDeviceGroup` di
+ * `device-settings-contract.ts` adalah satu-satunya implementasi, dipakai juga
+ * oleh `mergeDeviceSettings` server (`src/lib/validators.ts`).
  */
+
+import {
+  DEVICE_SETTING_GROUPS,
+  mergeDeviceGroup,
+  type DeviceSettingGroupName,
+} from "./device-settings-contract.ts";
 
 /**
  * Grup setelan yang hidup di mesin booth.
@@ -15,23 +25,10 @@
  * menang atas branding cloud. Grup ini TIDAK ikut naik ke cloud — lihat
  * `LOCAL_ONLY_DEVICE_GROUPS` di `src/lib/validators.ts`.
  */
-export const DEVICE_GROUPS = [
-  "camera_settings",
-  "print_settings",
-  "session_settings",
-  "appearance_settings",
-] as const;
-export type DeviceGroup = (typeof DEVICE_GROUPS)[number];
+export const DEVICE_GROUPS = DEVICE_SETTING_GROUPS;
+export type DeviceGroup = DeviceSettingGroupName;
 
 export type DeviceSettings = Partial<Record<DeviceGroup, Record<string, unknown>>>;
-
-/** Field cloud yang berada di dalam grup milik device: pemilik menang. */
-const CLOUD_OWNED: Record<DeviceGroup, readonly string[]> = {
-  camera_settings: [],
-  print_settings: ["copies", "layout"],
-  session_settings: [],
-  appearance_settings: [],
-};
 
 /**
  * Salin field device di atas cloud. Grup yang tidak dilaporkan device, dan
@@ -46,16 +43,7 @@ export function mergeSettings<T extends object>(
   for (const group of DEVICE_GROUPS) {
     const incoming = device[group];
     if (!incoming) continue;
-    const base = out[group];
-    const merged: Record<string, unknown> =
-      base && typeof base === "object" && !Array.isArray(base)
-        ? { ...(base as Record<string, unknown>) }
-        : {};
-    for (const [key, value] of Object.entries(incoming)) {
-      if (value === undefined || CLOUD_OWNED[group].includes(key)) continue;
-      merged[key] = value;
-    }
-    out[group] = merged;
+    out[group] = mergeDeviceGroup(group, out[group], incoming);
   }
   return out as T;
 }
