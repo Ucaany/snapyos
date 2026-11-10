@@ -142,7 +142,8 @@ class FakeDb {
       const dup = this.failures.find(
         (f) => f.invoice_id === row.invoice_id && f.reason === row.reason && f.status === "pending"
       );
-      if (dup) return { data: null, error: { message: "duplicate", code: "23505" } as IntentDbError };
+      if (dup)
+        return { data: null, error: { message: "duplicate", code: "23505" } as IntentDbError };
       this.failures.push({ ...row, id: `failure-${this.failures.length + 1}` });
       return { data: null, error: null };
     }

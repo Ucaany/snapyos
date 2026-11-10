@@ -12,7 +12,7 @@ import { audit } from "@/server/admin/guard";
  * Admin-only; hasil dicatat di audit_logs.
  */
 export const POST = adminRawRoute(async ({ admin, request }) => {
-  const body = await request.json().catch(() => ({})) as { business_id?: string };
+  const body = (await request.json().catch(() => ({}))) as { business_id?: string };
   const businessId = typeof body.business_id === "string" ? body.business_id.trim() : null;
 
   if (businessId && !/^[0-9a-f-]{36}$/i.test(businessId)) {

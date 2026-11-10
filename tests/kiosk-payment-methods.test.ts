@@ -6,6 +6,7 @@ import {
   ensureFreeSettlementMethod,
   encodeKioskPaymentPayload,
   filterKioskPaymentMethods,
+  normalizePaymentMethod,
   paymentDisplay,
 } from "../src/server/payment/kiosk-payment.ts";
 
@@ -119,7 +120,10 @@ test("per-booth channel filter hides the opposite channel", () => {
 test("checkout bersisa nol tetap menawarkan voucher di booth hanya-gateway", () => {
   const all = buildKioskPaymentMethods([{ provider: "midtrans", enabledMethods: ["qris"] }]);
   const gatewayOnly = filterKioskPaymentMethods(all, "gateway");
-  assert.equal(gatewayOnly.some((m) => m.kind === "voucher"), false);
+  assert.equal(
+    gatewayOnly.some((m) => m.kind === "voucher"),
+    false
+  );
   // finalAmount > 0 → filter booth dihormati
   assert.equal(
     ensureFreeSettlementMethod(gatewayOnly, all, 25000).some((m) => m.kind === "voucher"),
@@ -127,10 +131,36 @@ test("checkout bersisa nol tetap menawarkan voucher di booth hanya-gateway", () 
   );
   // finalAmount 0 → voucher (pelunasan gratis) wajib tersedia
   const free = ensureFreeSettlementMethod(gatewayOnly, all, 0);
-  assert.equal(free.some((m) => m.kind === "voucher"), true);
-  // idempoten: tidak menambah voucher dua kali
   assert.equal(
-    free.filter((m) => m.kind === "voucher").length,
-    1
+    free.some((m) => m.kind === "voucher"),
+    true
+  );
+  // idempoten: tidak menambah voucher dua kali
+  assert.equal(free.filter((m) => m.kind === "voucher").length, 1);
+});
+
+test("normalizePaymentMethod returns canonical spelling per provider", () => {
+  assert.equal(normalizePaymentMethod("midtrans", "QRIS"), "qris");
+  assert.equal(normalizePaymentMethod("midtrans", " bca "), "bca");
+  assert.equal(normalizePaymentMethod("tripay", "bcava"), "BCAVA");
+  assert.equal(normalizePaymentMethod("tripay", " Alfamart "), "ALFAMART");
+  assert.equal(normalizePaymentMethod("pakasir", "Qris"), "qris");
+});
+
+test("normalizePaymentMethod rejects unknown methods instead of falling back to qris", () => {
+  assert.throws(() => normalizePaymentMethod("midtrans", "dana"), /tidak dikenal/);
+  assert.throws(() => normalizePaymentMethod("midtrans", "alfamart"), /tidak dikenal/);
+  assert.throws(() => normalizePaymentMethod("tripay", "bca"), /tidak dikenal/);
+  assert.throws(() => normalizePaymentMethod("tripay", "OVO"), /tidak dikenal/);
+  assert.throws(() => normalizePaymentMethod("pakasir", "gopay"), /tidak dikenal/);
+  assert.throws(() => normalizePaymentMethod("midtrans", ""), /tidak dikenal/);
+  // Rejected messages list the valid choices so owner can fix the credential.
+  assert.throws(() => normalizePaymentMethod("pakasir", "va"), /qris/);
+});
+
+test("buildKioskPaymentMethods rejects credentials carrying unknown methods", () => {
+  assert.throws(
+    () => buildKioskPaymentMethods([{ provider: "midtrans", enabledMethods: ["bogus"] }]),
+    /tidak dikenal/
   );
 });

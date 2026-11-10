@@ -20,7 +20,12 @@ export function SupportTicketDetail({ ticket }: { ticket: SupportTicketDetail })
 
   return (
     <div className="flex flex-col gap-6">
-      <IconLink href="/dashboard/support" label="Kembali ke daftar tiket" icon={ArrowLeft} compact />
+      <IconLink
+        href="/dashboard/support"
+        label="Kembali ke daftar tiket"
+        icon={ArrowLeft}
+        compact
+      />
 
       <div className="border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111] md:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">

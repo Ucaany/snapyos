@@ -2,13 +2,11 @@
 
 import { useActionState, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { ImageIcon, Pencil, SlidersHorizontal, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { buttonVariants } from "@/components/ui/button-variants";
 import { EmptyState } from "@/components/ui/empty-state";
-import { IconButton } from "@/components/ui/icon-button";
+import { IconButton, IconLink } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
 import { RecordCollection, RecordEditButton } from "@/components/ui/record-collection";
 import { Select } from "@/components/ui/select";
@@ -38,15 +36,12 @@ export function TemplatesGrid({ templates, canWrite }: Props) {
 
   const actions = (tpl: TemplateRow, fromGrid: boolean) => (
     <>
-      <Link
+      <IconLink
         href={`/dashboard/templates/builder/${tpl.id}`}
-        aria-label={`Atur slot template ${tpl.name}`}
-        title="Atur slot"
-        className={buttonVariants({ variant: "outline", size: "sm" })}
-      >
-        <SlidersHorizontal aria-hidden />
-        Atur slot
-      </Link>
+        label={`Atur slot template ${tpl.name}`}
+        icon={SlidersHorizontal}
+        compact
+      />
       {fromGrid ? (
         <IconButton
           label={`Ubah template ${tpl.name}`}
@@ -193,7 +188,8 @@ export function TemplatesGrid({ templates, canWrite }: Props) {
               ) : editingId === tpl.id && canWrite ? (
                 <TemplateEditForm template={tpl} onDone={() => setEditingId(null)} />
               ) : (
-                canWrite && !tpl.is_global && (
+                canWrite &&
+                !tpl.is_global && (
                   <div className="mt-auto flex items-center justify-between gap-2 border-t-2 border-ink/10 pt-3">
                     <div className="flex flex-wrap gap-1.5">{actions(tpl, true)}</div>
                   </div>

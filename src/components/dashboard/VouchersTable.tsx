@@ -6,10 +6,7 @@ import { Plus, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { RecordCard } from "@/components/ui/record-card";
-import {
-  RecordCollection,
-  RecordEditButton,
-} from "@/components/ui/record-collection";
+import { RecordCollection, RecordEditButton } from "@/components/ui/record-collection";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { DeleteConfirmForm } from "@/components/dashboard/DeleteConfirmForm";
@@ -93,9 +90,7 @@ export function VouchersTable({ vouchers, analytics, packages, outlets, canWrite
                   <td className="px-4 py-3 font-mono text-sm font-bold uppercase tracking-[0.05em]">
                     {vcr.code}
                   </td>
-                  <td className="px-4 py-3 font-mono text-sm tabular-nums">
-                    {discountLabel(vcr)}
-                  </td>
+                  <td className="px-4 py-3 font-mono text-sm tabular-nums">{discountLabel(vcr)}</td>
                   <td className="hidden px-4 py-3 font-mono text-[11px] text-muted-foreground md:table-cell">
                     {requirementLabel(vcr)}
                   </td>
@@ -131,9 +126,7 @@ export function VouchersTable({ vouchers, analytics, packages, outlets, canWrite
                           disabled={vcr.usage > 0}
                           triggerLabel={`Hapus voucher ${vcr.code}`}
                           triggerTitle={
-                            vcr.usage > 0
-                              ? "Sudah terpakai, nonaktifkan saja"
-                              : "Hapus voucher"
+                            vcr.usage > 0 ? "Sudah terpakai, nonaktifkan saja" : "Hapus voucher"
                           }
                           compact
                         />
@@ -224,11 +217,7 @@ export function VouchersTable({ vouchers, analytics, packages, outlets, canWrite
             <p className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
               {`VOUCHER ${String(vouchers.length).padStart(2, "0")}`}
             </p>
-            <CollapsibleTrigger
-              className="px-3"
-              aria-label="Buka form voucher baru"
-              title="Voucher baru"
-            >
+            <CollapsibleTrigger aria-label="Buka form voucher baru" title="Voucher baru">
               <Plus aria-hidden />
               <span className="sr-only">Voucher baru</span>
             </CollapsibleTrigger>

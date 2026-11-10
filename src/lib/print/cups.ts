@@ -4,6 +4,11 @@ import type { PrintSettingsInput } from "@/lib/print-layout";
 
 export type CupsTestInput = { title: string; lines: string[] };
 
+export type PrinterListItem = { name: string; default: boolean };
+
+export type PrinterListResult =
+  { ok: true; printers: PrinterListItem[] } | { ok: false; reason: string };
+
 export type CupsPrintResult = {
   job_id: string | null;
   status: "queued" | "printing" | "submitted" | "done" | "failed";
@@ -126,4 +131,64 @@ export async function confirmCupsJob(
   jobId: string
 ): Promise<void> {
   await postBridge(settings, `/print/jobs/${encodeURIComponent(jobId)}/confirm`, {});
+}
+
+/**
+ * Deteksi printer lewat bridge. Bridge mati bukan error: pengaturan printer
+ * harus tetap bisa dibuka saat runtime belum berjalan.
+ */
+export async function listCupsPrinters(
+  settings: PrintSettingsInput | null | undefined
+): Promise<PrinterListResult> {
+  let response: Response;
+  try {
+    response = await fetch(`${cupsBridgeUrl(settings)}/printer/list`, {
+      method: "GET",
+      headers: bridgeHeaders(),
+      cache: "no-store",
+      signal: AbortSignal.timeout(8_000),
+    });
+  } catch {
+    return { ok: false, reason: "Bridge printer tidak aktif. Jalankan runtime lokal." };
+  }
+  if (response.status === 401) {
+    return { ok: false, reason: "Token bridge belum diisi atau salah." };
+  }
+  const body = (await response.json().catch(() => null)) as {
+    ok?: unknown;
+    printers?: unknown;
+    reason?: unknown;
+  } | null;
+  if (!response.ok || body?.ok !== true) {
+    return {
+      ok: false,
+      reason: typeof body?.reason === "string" ? body.reason : "Bridge gagal mendeteksi printer.",
+    };
+  }
+  const printers = Array.isArray(body.printers)
+    ? body.printers
+        .filter(
+          (item): item is { name: string; default?: unknown } =>
+            typeof (item as { name?: unknown } | null)?.name === "string"
+        )
+        .map((item) => ({ name: item.name, default: item.default === true }))
+    : [];
+  return { ok: true, printers };
+}
+
+/**
+ * Struk teks ke CUPS. Memakai rute `/printer/test` yang memang mencetak teks
+ * ke printer (bridge belum punya rute struk khusus); `paper_width_mm` membuat
+ * runtime memakai geometri gulungan 58/80mm, bukan preset kertas foto.
+ */
+export async function submitCupsReceipt(
+  settings: PrintSettingsInput | null | undefined,
+  input: { title: string; lines: string[]; paperWidthMm: 58 | 80 }
+): Promise<void> {
+  await postBridge(settings, "/printer/test", {
+    printer_name: settings?.printer_name,
+    paper_width_mm: input.paperWidthMm,
+    title: input.title,
+    lines: input.lines,
+  });
 }

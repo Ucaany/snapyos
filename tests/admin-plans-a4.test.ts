@@ -22,6 +22,22 @@ test("num: IDR integer tetap membuang pemisah ribuan", () => {
   assert.equal(num(fd([["x", " 99 000 "]]), "x"), 99000);
 });
 
+test("num: input bertitik desimal DITOLAK (dulu 35000.9 → 350009)", () => {
+  assert.throws(
+    () => num(fd([["x", "35000.9"]]), "x"),
+    (error: unknown) => {
+      const issues = (error as { issues?: { path: PropertyKey[]; message: string }[] }).issues;
+      assert.equal(issues?.[0]?.path[0], "x");
+      assert.match(issues?.[0]?.message ?? "", /bulat tanpa desimal/);
+      return true;
+    }
+  );
+  assert.throws(() => num(fd([["x", "2.5"]]), "x"));
+  assert.throws(() => num(fd([["x", "1,25"]]), "x"));
+  // Pemisah ribuan yang sah tetap diterima.
+  assert.equal(num(fd([["x", "1.500.000"]]), "x"), 1500000);
+});
+
 test("numDecimal: desimal platform_fee_percent tidak rusak (regresi 1.5→15)", () => {
   assert.equal(numDecimal(fd([["x", "1.5"]]), "x"), 1.5);
   assert.equal(numDecimal(fd([["x", "2.5"]]), "x"), 2.5);

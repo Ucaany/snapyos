@@ -10,8 +10,19 @@ import {
 
 test("registry covers customer screens and excludes technical boot screens", () => {
   assert.deepEqual(KIOSK_SCREEN_IDS, [
-    "welcome", "guide", "package", "payment", "template", "capture", "review",
-    "editor", "printing", "result", "offline", "error", "maintenance",
+    "welcome",
+    "guide",
+    "package",
+    "payment",
+    "template",
+    "capture",
+    "review",
+    "editor",
+    "printing",
+    "result",
+    "offline",
+    "error",
+    "maintenance",
   ]);
   assert.equal(normalizeKioskScreenId("activation"), null);
   assert.equal(normalizeKioskScreenId("setup"), null);

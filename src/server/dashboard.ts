@@ -14,6 +14,7 @@ import {
   avgTransactionInteger,
   defaultRange,
   fillDailySeriesFromDays,
+  growthBp,
   rangeBoundariesTz,
   rangeDays,
   shiftISO,
@@ -23,6 +24,14 @@ import {
   MAX_RANGE_DAYS,
   type DateRangeInput,
 } from "@/lib/dashboard-math";
+import { buildBoothHealth, daysUntil, type BoothHealth } from "@/lib/booth-health";
+import {
+  buildDashboardAlerts,
+  type DashboardAlert,
+  type DashboardAlertInput,
+} from "@/lib/dashboard-alerts";
+import { getStorageUsage } from "@/server/storage-usage";
+import { listAssignedPhotoboxIds } from "@/server/staff";
 
 type ResolvedRange = { from: string; to: string; timeZone: string };
 
@@ -231,4 +240,279 @@ export async function getOperationalMetrics(
     activePhotoboxes: Number(row?.active_photoboxes ?? 0),
     activeOutlets: Number(row?.active_outlets ?? 0),
   };
+}
+
+/** Jendela payment gagal yang dihitung alert. */
+const FAILED_PAYMENT_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Kesehatan booth: heartbeat device terbaru + template default.
+ * Operasional (photobox:read) — dipakai SEMUA role dashboard, bukan finansial.
+ */
+export async function getBoothHealth(
+  userId: string,
+  businessId: string
+): Promise<BoothHealth & { nowMs: number }> {
+  const membership = await getMembership(userId, businessId);
+  if (!membership) throw new ApiError("NOT_FOUND", "Business tidak ditemukan");
+  if (!can(membership.role, "photobox:read")) {
+    throw new ApiError("FORBIDDEN", "Anda tidak punya akses status booth");
+  }
+
+  const supabase = createServerClient();
+  // Akses booth per member (0018): staff hanya melihat booth yang di-assign.
+  const restrictTo =
+    membership.role === "staff"
+      ? ((await listAssignedPhotoboxIds(userId, businessId)) ?? [])
+      : null;
+  if (restrictTo && restrictTo.length === 0) {
+    const nowMs = Date.now();
+    return { ...buildBoothHealth([], nowMs), nowMs };
+  }
+
+  let boxReq = supabase
+    .from("photoboxes")
+    .select("id, name, slug, status, default_template_id, outlet_id, outlets ( name )")
+    .eq("business_id", businessId);
+  if (restrictTo) boxReq = boxReq.in("id", restrictTo);
+  const { data: boxRows, error: boxError } = await boxReq.order("name", { ascending: true });
+  if (boxError) throw new ApiError("INTERNAL", "Gagal memuat status booth");
+
+  const boxes = (
+    (boxRows ?? []) as unknown as {
+      id: string;
+      name: string;
+      slug: string;
+      status: string;
+      default_template_id: string | null;
+      outlets: { name: string } | { name: string }[] | null;
+    }[]
+  ).map((box) => ({
+    id: box.id,
+    name: box.name,
+    slug: box.slug,
+    status: box.status,
+    outletName: Array.isArray(box.outlets)
+      ? (box.outlets[0]?.name ?? null)
+      : (box.outlets?.name ?? null),
+    hasDefaultTemplate: Boolean(box.default_template_id),
+  }));
+
+  const heartbeatByBox = new Map<string, string>();
+  if (boxes.length > 0) {
+    // Heartbeat device = sumber kebenaran "booth hidup" (0027); photoboxes.status
+    // hanya status administratif yang di-set manual.
+    const { data: deviceRows } = await supabase
+      .from("devices")
+      .select("photobox_id, last_seen_at, last_heartbeat_at")
+      .eq("business_id", businessId)
+      .eq("status", "active")
+      .in(
+        "photobox_id",
+        boxes.map((box) => box.id)
+      );
+    for (const row of (deviceRows ?? []) as {
+      photobox_id: string;
+      last_seen_at: string | null;
+      last_heartbeat_at: string | null;
+    }[]) {
+      const latest = row.last_heartbeat_at ?? row.last_seen_at;
+      if (!latest) continue;
+      const previous = heartbeatByBox.get(row.photobox_id);
+      if (!previous || Date.parse(latest) > Date.parse(previous)) {
+        heartbeatByBox.set(row.photobox_id, latest);
+      }
+    }
+  }
+
+  const nowMs = Date.now();
+  return {
+    ...buildBoothHealth(
+      boxes.map((box) => ({
+        ...box,
+        lastHeartbeatAt: heartbeatByBox.get(box.id) ?? null,
+      })),
+      nowMs
+    ),
+    nowMs,
+  };
+}
+
+/** Alert operasional gabungan (booth, payment, storage, langganan, template). */
+export async function getDashboardAlerts(
+  userId: string,
+  businessId: string,
+  dependencies: {
+    boothHealth: BoothHealth;
+    subscription: {
+      status: string;
+      trial_ends_at: string | null;
+      current_period_end: string | null;
+      isEffective: boolean;
+    } | null;
+  }
+): Promise<DashboardAlert[]> {
+  const membership = await getMembership(userId, businessId);
+  if (!membership) throw new ApiError("NOT_FOUND", "Business tidak ditemukan");
+
+  const supabase = createServerClient();
+  let failedPayments = 0;
+  // Payment = data finansial: role tanpa transaction:read tidak melihat alert ini.
+  if (can(membership.role, "transaction:read")) {
+    const { count } = await supabase
+      .from("payments")
+      .select("id", { count: "exact", head: true })
+      .eq("business_id", businessId)
+      .eq("status", "failed")
+      .gte("created_at", new Date(Date.now() - FAILED_PAYMENT_WINDOW_MS).toISOString());
+    failedPayments = count ?? 0;
+  }
+
+  let storage: DashboardAlertInput["storage"] = null;
+  try {
+    const usage = await getStorageUsage(businessId);
+    storage =
+      usage.limitMb > 0
+        ? { percent: usage.percent, usedMb: usage.usedMb, limitMb: usage.limitMb }
+        : null;
+  } catch {
+    /* storage gagal dibaca → jangan gagalkan dashboard */
+  }
+
+  const endsAt =
+    dependencies.subscription?.current_period_end ??
+    dependencies.subscription?.trial_ends_at ??
+    null;
+  const subscriptionDaysLeft = dependencies.subscription?.isEffective
+    ? daysUntil(endsAt, Date.now())
+    : endsAt
+      ? (daysUntil(endsAt, Date.now()) ?? 0)
+      : null;
+
+  return buildDashboardAlerts({
+    staleBooths: dependencies.boothHealth.stale.map((booth) => ({
+      name: booth.name,
+      offlineMinutes: booth.offlineMinutes,
+    })),
+    failedPayments,
+    storage,
+    subscriptionDaysLeft,
+    boothsWithoutDefaultTemplate: dependencies.boothHealth.items.filter(
+      (booth) => booth.status !== "maintenance" && booth.needsDefaultTemplate
+    ).length,
+  });
+}
+
+export type RevenueDelta = {
+  range: { from: string; to: string };
+  /** Net periode sebelumnya (rentang sama panjang tepat sebelum `from`). */
+  previous: number;
+  current: number;
+  /** Pertumbuhan basis point integer (growthBp) — 1% = 100 bp. */
+  deltaBp: number;
+};
+
+/** Delta net vs periode sebelumnya — delta % untuk MetricCard. */
+export async function getRevenueDelta(
+  userId: string,
+  businessId: string,
+  query: DateRangeInput
+): Promise<RevenueDelta> {
+  const { range, role } = await resolveRange(userId, businessId, query);
+  requireTransactionRead(role);
+
+  const days = rangeDays(range.from, range.to);
+  const previousTo = shiftISO(range.from, -1);
+  const previousFrom = shiftISO(previousTo, -(days - 1));
+  const currentBoundaries = rangeBoundariesTz(range.from, range.to, range.timeZone);
+  const previousBoundaries = rangeBoundariesTz(previousFrom, previousTo, range.timeZone);
+
+  const [current, previous] = await Promise.all([
+    fetchTxSummary(
+      businessId,
+      new Date(currentBoundaries.startMs).toISOString(),
+      new Date(currentBoundaries.endMs).toISOString()
+    ),
+    fetchTxSummary(
+      businessId,
+      new Date(previousBoundaries.startMs).toISOString(),
+      new Date(previousBoundaries.endMs).toISOString()
+    ),
+  ]);
+
+  return {
+    range: { from: range.from, to: range.to },
+    current: current.net,
+    previous: previous.net,
+    deltaBp: growthBp(current.net, previous.net),
+  };
+}
+
+export type BreakdownDimension = "outlet" | "package" | "photobox" | "payment_method";
+
+export type BreakdownItem = { key: string; label: string; amount: number; count: number };
+
+export type RevenueBreakdown = {
+  range: { from: string; to: string };
+  total: number;
+  items: BreakdownItem[];
+};
+
+/**
+ * Breakdown revenue per dimensi — RPC `revenue_breakdown` (GROUP BY di DB).
+ * Satu implementasi untuk dashboard & analytics (dulu terduplikasi).
+ */
+export async function getRevenueBreakdown(
+  userId: string,
+  businessId: string,
+  query: DateRangeInput,
+  dimension: BreakdownDimension
+): Promise<RevenueBreakdown> {
+  const { range, role } = await resolveRange(userId, businessId, query);
+  requireTransactionRead(role);
+
+  const { startMs, endMs } = rangeBoundariesTz(range.from, range.to, range.timeZone);
+  const supabase = createServerClient();
+  const { data, error } = await supabase.rpc("revenue_breakdown", {
+    p_business: businessId,
+    p_start: new Date(startMs).toISOString(),
+    p_end: new Date(endMs).toISOString(),
+    p_dim: dimension,
+  });
+  if (error) throw new ApiError("INTERNAL", "Gagal memuat breakdown revenue");
+
+  const items = (
+    (data ?? []) as { dim_key: string; label: string; amount: number; tx_count: number }[]
+  )
+    .map((row) => ({
+      key: row.dim_key,
+      label: row.label,
+      amount: Number(row.amount ?? 0),
+      count: Number(row.tx_count ?? 0),
+    }))
+    .sort((a, b) => b.amount - a.amount);
+
+  return {
+    range: { from: range.from, to: range.to },
+    total: items.reduce((sum, item) => sum + item.amount, 0),
+    items,
+  };
+}
+
+/** Breakdown paket + outlet + metode bayar sekaligus (dashboard). */
+export async function getDashboardBreakdowns(
+  userId: string,
+  businessId: string,
+  query: DateRangeInput
+): Promise<{
+  package: RevenueBreakdown;
+  outlet: RevenueBreakdown;
+  paymentMethod: RevenueBreakdown;
+}> {
+  const [byPackage, byOutlet, byMethod] = await Promise.all([
+    getRevenueBreakdown(userId, businessId, query, "package"),
+    getRevenueBreakdown(userId, businessId, query, "outlet"),
+    getRevenueBreakdown(userId, businessId, query, "payment_method"),
+  ]);
+  return { package: byPackage, outlet: byOutlet, paymentMethod: byMethod };
 }

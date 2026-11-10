@@ -13,13 +13,18 @@ public enum DataOwner { Local, Cloud, Shared }
 public enum SyncDirection { None, ToCloud, FromCloud, Bidirectional }
 public enum PairingStatus { Unpaired, Pending, Paired, Revoked, Failed }
 public enum DeviceStatus { Active, Disabled, Revoked }
-public enum KioskScreenId { Welcome, Guide, Package, Payment, Template, Capture, Edit, Result }
+public enum KioskScreenId { Welcome, Guide, Package, Payment, Template, Capture, Review, Editor, Printing, Result, Offline, Error, Maintenance }
+public enum KioskOrientation { Portrait, Landscape }
+public enum KioskScreenState { Loading, Empty, Ready, Error, Offline, Maintenance, Fallback }
+public enum KioskLayoutKind { Center, Split, Grid, Camera, Review, Editor, Progress, Result, Status }
 public enum ElementKind { Text, Image, Shape, Frame, QrCode }
 public enum CameraProvider { Browser, Bridge, GPhoto2, DigiCamControl, Libcamera, V4L2, PyAv }
 public enum CameraFacingMode { User, Environment }
 public enum PrinterKind { Windows, Cups, Bluetooth, Browser }
 public enum PrinterStatus { Unknown, Ready, Offline, Error, Submitted }
 public enum SessionMode { Online, OfflineCash }
+public enum LocalSessionState { SessionStart, PaidUnlock, Capture, Review, Edit, Finalize, Print, OutputManifest, PendingSync, Synced, TimedOut, Failed, Quarantined }
+public enum LocalSessionTransitionReason { Started, Paid, Captured, Reviewed, Edited, Finalized, PrintSubmitted, ManifestWritten, SyncQueued, SyncAcknowledged, Failure, Quarantined, Timeout, AutoFinalizeTimeout, RestartRecovery }
 public enum PaymentMethod { Qris, Gateway, Cash, Voucher }
 public enum PaymentStatus { Creating, Pending, Paid, Failed, Expired, Cancelled, Refunded }
 public enum LocalMediaState { Pending, Finalized, Synced, Quarantined, Deleted }
@@ -102,8 +107,16 @@ public sealed record CanvasElement : ContractDocument
     [Range(1, 100000)] public int Width { get; init; }
     [Range(1, 100000)] public int Height { get; init; }
     [Range(0, 360)] public int RotationDegrees { get; init; }
+    [Range(-100000, 100000)] public int ZIndex { get; init; }
+    public bool IsVisible { get; init; } = true;
+    public bool IsLocked { get; init; }
     [StringLength(500)] public string? AssetKey { get; init; }
     [StringLength(2000)] public string? Text { get; init; }
+    [StringLength(160)] public string? Purpose { get; init; }
+    [StringLength(128)] public string? GroupId { get; init; }
+    [StringLength(64)] public string? OrientationProfile { get; init; }
+    public IReadOnlyDictionary<string, string> Style { get; init; } = new Dictionary<string, string>();
+    public IReadOnlyDictionary<string, string> Bindings { get; init; } = new Dictionary<string, string>();
 }
 
 [ContractField(DataOwner.Cloud, SyncDirection.FromCloud)]
@@ -113,9 +126,20 @@ public sealed record AssetManifest : ContractDocument
     [Required, StringLength(500)] public required string ObjectKey { get; init; }
     [Required, StringLength(128)] public required string ContentType { get; init; }
     [Range(1, long.MaxValue)] public long SizeBytes { get; init; }
-    [Required, StringLength(128)] public required string Sha256 { get; init; }
+    [Required, RegularExpression("^[0-9a-fA-F]{64}$")] public required string Sha256 { get; init; }
     [ContractField(DataOwner.Cloud, SyncDirection.FromCloud)] public string? SignedUrl { get; init; }
     [SecretExcluded, JsonIgnore] public string? AccessCredential { get; init; }
+}
+
+public enum TemplateCatalogState { Active, Revoked }
+
+[ContractField(DataOwner.Cloud, SyncDirection.FromCloud)]
+public sealed record TemplateCatalogDocument : ContractDocument
+{
+    [Required, StringLength(128)] public required string CatalogVersion { get; init; }
+    [StringLength(128)] public string? PackageId { get; init; }
+    [Required] public IReadOnlyList<TemplateCatalogItem> Templates { get; init; } = [];
+    [Required] public IReadOnlyList<string> RevokedTemplateIds { get; init; } = [];
 }
 
 [ContractField(DataOwner.Local, SyncDirection.ToCloud)]
@@ -157,6 +181,7 @@ public sealed record PrinterProfile : ContractDocument
 public sealed record SessionPolicy : ContractDocument
 {
     [Range(30, 86400)] public int TimerSeconds { get; init; } = 300;
+    public bool AutoFinalizeOnTimeout { get; init; }
     [Range(1, 86400)] public int WarningSeconds { get; init; } = 60;
     [Range(0, 100)] public int? MaxRetakes { get; init; }
     public bool AllowOfflineCash { get; init; }
@@ -225,8 +250,11 @@ public sealed record TemplateCatalogItem : ContractDocument
     [Required, StringLength(80)] public required string Category { get; init; }
     [Range(0, 100)] public int SlotCount { get; init; }
     [Required] public IReadOnlyList<CanvasElement> Elements { get; init; } = [];
+    [JsonPropertyName("layout")] public JsonElement? Layout { get; init; }
     [Required] public IReadOnlyList<AssetManifest> Assets { get; init; } = [];
     [ContractField(DataOwner.Cloud, SyncDirection.FromCloud)] public bool IsActive { get; init; }
+    [ContractField(DataOwner.Cloud, SyncDirection.FromCloud)] public TemplateCatalogState State { get; init; } = TemplateCatalogState.Active;
+    [ContractField(DataOwner.Cloud, SyncDirection.FromCloud)] public IReadOnlyList<string> EligiblePackageIds { get; init; } = [];
 }
 
 [ContractField(DataOwner.Shared, SyncDirection.Bidirectional)]
@@ -240,6 +268,12 @@ public sealed record RetentionPolicy : ContractDocument
 
 public static class ContractValidator
 {
+    public static void ThrowIfInvalid<T>(T model)
+    {
+        var errors = Validate(model);
+        if (errors.Count > 0) throw new ValidationException(string.Join(" ", errors.Select(error => error.ErrorMessage)));
+    }
+
     public static IReadOnlyList<ValidationResult> Validate<T>(T model)
     {
         var results = new List<ValidationResult>();
@@ -262,9 +296,21 @@ public static class ContractValidator
             case RetentionPolicy retention when retention.LocalMediaDays < retention.ResultDays:
                 results.Add(new ValidationResult("LocalMediaDays must cover ResultDays."));
                 break;
+            case AssetManifest asset when !IsSafeAsset(asset):
+                results.Add(new ValidationResult("Asset manifest contains an unsafe key, content type, or checksum."));
+                break;
         }
         return results;
     }
+
+    private static bool IsSafeAsset(AssetManifest asset) =>
+        asset.SizeBytes > 0 &&
+        asset.Sha256 is not null && asset.Sha256.Length == 64 && asset.Sha256.All(Uri.IsHexDigit) &&
+        asset.ContentType is "image/png" or "image/jpeg" or "image/webp" or "video/mp4" or "video/webm" or "font/woff" or "font/woff2" or "font/ttf" or "font/otf" &&
+        asset.ObjectKey is not null &&
+        !asset.ObjectKey.Contains("..", StringComparison.Ordinal) &&
+        !asset.ObjectKey.Contains('\\') &&
+        !asset.ObjectKey.StartsWith('/');
 
     private static bool ContrastRatioPasses(string foreground, string background)
     {

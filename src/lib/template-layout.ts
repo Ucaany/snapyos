@@ -39,13 +39,24 @@ export const editorPropertySchema = z.object({
   text: z.string().max(2000).optional(),
   fontFamily: z.enum(["display", "sans", "mono"]).optional(),
   fontSize: z.number().min(8).max(240).optional(),
-  fontWeight: z.number().int().refine((value) => PROPERTY_FONT_WEIGHTS.includes(value as never)).optional(),
+  fontWeight: z
+    .number()
+    .int()
+    .refine((value) => PROPERTY_FONT_WEIGHTS.includes(value as never))
+    .optional(),
   lineHeight: z.number().min(0.8).max(3).optional(),
   letterSpacing: z.number().min(-0.2).max(2).optional(),
   color: z.string().regex(HEX_COLOR).optional(),
   background: z.string().regex(HEX_COLOR).optional(),
   opacity: z.number().min(0).max(1).optional(),
-  crop: z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1), width: z.number().min(0).max(1), height: z.number().min(0).max(1) }).optional(),
+  crop: z
+    .object({
+      x: z.number().min(0).max(1),
+      y: z.number().min(0).max(1),
+      width: z.number().min(0).max(1),
+      height: z.number().min(0).max(1),
+    })
+    .optional(),
   fit: z.enum(["cover", "contain", "fill"]).optional(),
   poster: z.string().trim().max(500).nullable().optional(),
   autoplay: z.boolean().optional(),
@@ -66,7 +77,11 @@ const chromaMetaSchema = z.object({
   source_key: z.string().trim().max(500).nullable().optional(),
   source_url: z.string().trim().max(2000).nullable().optional(),
   detected_at: z.string().trim().max(40),
-  skipped: z.number().int().min(0).max(MAX_SLOTS * 100),
+  skipped: z
+    .number()
+    .int()
+    .min(0)
+    .max(MAX_SLOTS * 100),
 });
 
 const slotSchema = z.object({
@@ -83,8 +98,9 @@ const slotSchema = z.object({
   points: z.array(pointSchema).optional(),
   z: z.number().int().min(0).max(99),
   /**
-   * properties tidak dirender oleh composeFrame; disimpan untuk kompatibilitas
-   * data lama (editor lama/dashboard) dan tidak boleh mempengaruhi render.
+   * Properti editor slot. `text` dirender oleh composeFrame DI ATAS frame
+   * (layer teks template); field lain disimpan untuk editor foto. Slot tanpa
+   * `properties` merender identik dengan layout lama (byte-for-byte).
    */
   properties: editorPropertySchema.optional(),
 });
@@ -113,7 +129,9 @@ export const layoutSchema = z
 
     // Preset harus cocok dengan dimensi canvas (selain "custom").
     if (preset !== "custom") {
-      const dims = (CANVAS_PRESETS as Record<string, { width: number; height: number } | undefined>)[preset];
+      const dims = (
+        CANVAS_PRESETS as Record<string, { width: number; height: number } | undefined>
+      )[preset];
       if (!dims || dims.width !== W || dims.height !== H) {
         ctx.addIssue({
           code: "custom",
@@ -233,12 +251,7 @@ export const layoutSchema = z
           for (let p = 0; p < points.length; p += 1) {
             const pt = points[p]!;
             if (pt.x !== points[0]!.x || pt.y !== points[0]!.y) distinct = true;
-            if (
-              pt.x < -EPS ||
-              pt.y < -EPS ||
-              pt.x > slot.width + EPS ||
-              pt.y > slot.height + EPS
-            ) {
+            if (pt.x < -EPS || pt.y < -EPS || pt.x > slot.width + EPS || pt.y > slot.height + EPS) {
               outOfBounds = p;
               break;
             }

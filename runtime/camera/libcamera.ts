@@ -16,13 +16,27 @@
 
 import { createLock, runCommand } from "../http.ts";
 import type { CameraRole, RuntimeConfig } from "../config.ts";
-import { isJpeg, type CameraAdapter, type CameraStatus } from "./types.ts";
+import { isJpeg, type CameraAdapter, type CameraInfo, type CameraStatus } from "./types.ts";
 
 /** "No cameras available!" = tidak ada modul; daftar bernomor = ada kamera. */
 export function hasCamera(output: string): boolean {
   if (/no cameras? available/i.test(output)) return false;
   if (/available cameras?/i.test(output)) return true;
   return /^\s*\d+\s*:\s*\S/m.test(output);
+}
+
+/** `--list-cameras`: baris `0 : imx219 [3280x2464 ...] (/base/...)`. */
+export function parseLibcameraCameras(output: string): CameraInfo[] {
+  const cameras: CameraInfo[] = [];
+  for (const raw of output.split(/\r?\n/)) {
+    const match = /^\s*(\d+)\s*:\s*(\S+)(.*)$/.exec(raw);
+    if (!match) continue;
+    const index = match[1]!;
+    const model = match[2]!;
+    const bus = /\(([^)]+)\)/.exec(match[3] ?? "")?.[1];
+    cameras.push({ id: index, label: bus ? `${model} (${bus})` : model });
+  }
+  return cameras;
 }
 
 export function createLibcameraCamera(
@@ -60,6 +74,19 @@ export function createLibcameraCamera(
   return {
     kind: "libcamera",
     mock: false,
+
+    async list(): Promise<CameraInfo[]> {
+      let lastError: unknown = null;
+      for (const bin of bins) {
+        try {
+          const result = await lock(() => runCommand(bin, ["--list-cameras"], 10_000));
+          return parseLibcameraCameras(result.stdout.toString("utf8"));
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      throw lastError instanceof Error ? lastError : new Error("libcamera tidak tersedia.");
+    },
 
     async status(): Promise<CameraStatus> {
       let lastError: string | undefined;

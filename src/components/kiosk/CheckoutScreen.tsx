@@ -299,7 +299,9 @@ export function CheckoutScreen({
         <KioskHeader
           eyebrow="CHECKOUT"
           title={paymentTitle || "Bayar sebelum foto"}
-          description={paymentHint || "Sesi foto terbuka otomatis setelah pembayaran terverifikasi."}
+          description={
+            paymentHint || "Sesi foto terbuka otomatis setelah pembayaran terverifikasi."
+          }
           align={align}
           scale={kioskStyle?.fontScale ?? 1}
           actions={

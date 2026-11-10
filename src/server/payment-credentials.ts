@@ -7,7 +7,7 @@ import {
   assertPaymentCredentialOwner,
   assertPaymentCredentialTenant,
   assertActiveCredentialLimit,
-  canTestPaymentCredential,
+  canTestCredentialInEnvironment,
   redactPaymentCredential,
   type PaymentCredentialPublic,
   type PaymentCredentialStored,
@@ -223,22 +223,25 @@ export async function testCredential(userId: string, businessId: string, credent
     .maybeSingle();
   const stored = row(data);
   assertPaymentCredentialTenant(stored, businessId);
-  if (stored.environment !== "sandbox") {
-    throw new ApiError("VALIDATION_ERROR", "Test koneksi hanya tersedia untuk credential sandbox");
-  }
-  if (!canTestPaymentCredential(stored.provider)) {
+  if (!canTestCredentialInEnvironment(stored.provider, stored.environment)) {
     throw new ApiError(
       "VALIDATION_ERROR",
-      "Tes otomatis belum tersedia untuk provider ini karena transaksi sandbox tidak bisa dibatalkan dengan aman."
+      stored.provider === "midtrans"
+        ? "Tes koneksi Midtrans membuat transaksi uji, jadi hanya tersedia untuk credential sandbox."
+        : "Tes otomatis belum tersedia untuk provider ini."
     );
   }
   const gateway = resolveGatewayFromCredential(gatewayCredential(stored));
-  // Probe non-destruktif untuk Pakasir/Tripay (tanpa cancel adapter): panggil
-  // getStatus dengan reference dummy — verifikasi auth + konektivitas tanpa
-  // membuat transaksi yang yatim. Midtrans memakai create + cancel (di bawah).
+  // Probe non-destruktif untuk Pakasir/Tripay: `probeCredential` memeriksa
+  // status HTTP auth (getStatus menyamarkan 401/403 jadi "pending", sehingga
+  // key salah akan tampak sukses). Tanpa transaksi yatim. Midtrans memakai
+  // create + cancel (di bawah).
   if (stored.provider !== "midtrans") {
     try {
-      await gateway.getStatus("SnapyOS-TESTCONNECT", 1, null);
+      if (!gateway.probeCredential) {
+        throw new Error("Provider tidak menyediakan probe kredensial");
+      }
+      await gateway.probeCredential();
     } catch {
       throw new ApiError(
         "VALIDATION_ERROR",

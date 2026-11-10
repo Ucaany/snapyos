@@ -2,13 +2,7 @@
 
 import { kioskThemeVars, type KioskVisualStyle } from "@/lib/kiosk-types";
 import { KioskVideoBackground } from "@/components/kiosk/KioskVideoBackground";
-import {
-  KioskAction,
-  KioskCard,
-  KioskHeader,
-  kioskFont,
-  kioskGutter,
-} from "@/components/kiosk/ui";
+import { KioskAction, KioskCard, KioskHeader, kioskFont, kioskGutter } from "@/components/kiosk/ui";
 
 type Props = {
   steps: string[];

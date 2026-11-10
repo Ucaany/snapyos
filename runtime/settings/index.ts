@@ -137,7 +137,8 @@ export const STORED_BRIDGE_KINDS = [
 ] as const;
 
 function storedCameraKind(provider: unknown): RuntimeConfig["camera"] | null {
-  return typeof provider === "string" && (STORED_BRIDGE_KINDS as readonly string[]).includes(provider)
+  return typeof provider === "string" &&
+    (STORED_BRIDGE_KINDS as readonly string[]).includes(provider)
     ? (provider as RuntimeConfig["camera"])
     : null;
 }
@@ -157,7 +158,15 @@ export function effectiveConfig(config: RuntimeConfig, settings: SettingsShape):
 export function printDefaults(settings: SettingsShape): Record<string, unknown> {
   const stored = settings.print_settings ?? {};
   const out: Record<string, unknown> = {};
-  for (const key of ["paper_size", "orientation", "margins_mm", "printer_name"] as const) {
+  for (const key of [
+    "paper_size",
+    "orientation",
+    "margins_mm",
+    "fit",
+    "strip_2up",
+    "media_name",
+    "printer_name",
+  ] as const) {
     if (stored[key] !== undefined) out[key] = stored[key];
   }
   return out;

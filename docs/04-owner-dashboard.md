@@ -249,12 +249,12 @@ tahu nilai sebenarnya.
 
 **Yang diatur di aplikasi booth** (panel **Setelan booth**, dibuka dengan PIN petugas):
 
-| Grup                 | Field                                                                                        |
-| -------------------- | -------------------------------------------------------------------------------------------- |
-| `camera_settings`    | `provider`, `countdown_seconds`, `capture_width/height`, `mirror_preview`, `screen_orientation` |
-| `print_settings`     | `enabled`, `mode`, `paper_size`, `orientation`, `auto_print`, `margins_mm`, `printer_name`     |
-| `session_settings`   | `timer_seconds`, `warning_seconds`, `max_retakes`                                              |
-| `appearance_settings`| `bg_color`, `text_color`, `font_scale`, `button_radius`, `padding`, judul/hint layar, `guide_steps`, override per-layar |
+| Grup                  | Field                                                                                                                   |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `camera_settings`     | `provider`, `countdown_seconds`, `capture_width/height`, `mirror_preview`, `screen_orientation`                         |
+| `print_settings`      | `enabled`, `mode`, `paper_size`, `orientation`, `auto_print`, `margins_mm`, `printer_name`                              |
+| `session_settings`    | `timer_seconds`, `warning_seconds`, `max_retakes`                                                                       |
+| `appearance_settings` | `bg_color`, `text_color`, `font_scale`, `button_radius`, `padding`, judul/hint layar, `guide_steps`, override per-layar |
 
 Field mesin yang dikirim lewat form dashboard **ditolak** dengan pesan yang menyebut nama
 field-nya (`src/lib/photobox-form-fields.ts`), bukan dibuang diam-diam.

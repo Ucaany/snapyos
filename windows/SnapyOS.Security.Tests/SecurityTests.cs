@@ -1,5 +1,4 @@
 using SnapyOS.Core;
-using SnapyOS.Core;
 using SnapyOS.LocalStore;
 using SnapyOS.Security;
 using Xunit;
@@ -9,12 +8,12 @@ namespace SnapyOS.Security.Tests;
 public sealed class SecurityTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), $"snapyos-security-{Guid.NewGuid():N}");
-    private readonly LocalStore _store;
+    private readonly SnapyOS.LocalStore.LocalStore _store;
     private readonly PinSecurityService _security;
 
     public SecurityTests()
     {
-        _store = new LocalStore(LocalStoreOptions.ForDirectory(_root));
+        _store = new SnapyOS.LocalStore.LocalStore(LocalStoreOptions.ForDirectory(_root));
         _security = new PinSecurityService(_store, new DpapiSecretStore(Path.Combine(_root, "secrets")), new PinPolicy(3, TimeSpan.FromMinutes(2)));
     }
 

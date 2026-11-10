@@ -60,12 +60,7 @@ export function Sidebar({
       className="hidden border-b-2 border-ink bg-bg md:sticky md:top-16 md:z-[9] md:block md:border-b-0"
     >
       {/* Desktop/tablet: kategori terpisah dengan header mono. */}
-      <div
-        className={cn(
-          "flex flex-col gap-1 overflow-hidden",
-          collapsed ? "px-2 py-4" : "p-4"
-        )}
-      >
+      <div className={cn("flex flex-col gap-1 overflow-hidden", collapsed ? "px-2 py-4" : "p-4")}>
         {groups.map((group, i) => (
           <div key={group.label} className="flex flex-col gap-1">
             <p

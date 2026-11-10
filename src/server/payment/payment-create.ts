@@ -4,6 +4,7 @@ import { ApiError } from "@/lib/api-errors";
 import { paymentWebhookUrl } from "@/lib/payment-credentials";
 import {
   encodeKioskPaymentPayload,
+  normalizePaymentMethod,
   type KioskPaymentPayload,
 } from "@/server/payment/kiosk-payment";
 import { buildOrderId } from "@/lib/qris-helpers";
@@ -156,6 +157,16 @@ export async function createPayment(
       "VALIDATION_ERROR",
       "Credential pembayaran tidak dapat dipakai. Perbarui credential merchant di Settings Payment."
     );
+  // Metode gateway wajib ter-normalisasi dari kiosk; string kosong = bug
+  // pemanggil, bukan alasan menagih lewat kanal default (qris).
+  const normalizedMethod = method.method
+    ? normalizePaymentMethod(gateway.provider, method.method)
+    : null;
+  if (!normalizedMethod)
+    throw new ApiError(
+      "VALIDATION_ERROR",
+      "Metode pembayaran tidak valid untuk credential gateway ini"
+    );
   const resolvedCallbackUrl =
     gateway.provider === "pakasir" ? "" : paymentWebhookUrl(gateway.provider);
   if (gateway.provider !== "pakasir" && !resolvedCallbackUrl)
@@ -195,7 +206,7 @@ export async function createPayment(
       description: `SnapyOS ${checkout.package_id}`,
       callbackUrl,
       returnUrl,
-      paymentMethods: method.method ? [method.method] : undefined,
+      paymentMethods: [normalizedMethod],
     });
     if (
       created.orderId !== orderId ||
@@ -215,7 +226,7 @@ export async function createPayment(
           : "qris";
     const payload: KioskPaymentPayload = {
       display,
-      method: method.method ?? "qris",
+      method: normalizedMethod,
       qrString: created.qrString,
       qrImageUrl: created.qrImageUrl,
       paymentUrl: created.paymentUrl,

@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { RuntimeConfig } from "../config.ts";
 import { createLock, runCommand } from "../http.ts";
-import { isJpeg, type CameraAdapter, type CameraStatus } from "./types.ts";
+import { isJpeg, type CameraAdapter, type CameraInfo, type CameraStatus } from "./types.ts";
 
 function hasDetectedCamera(output: string): boolean {
   return output.split(/\r?\n/).some((line) => {
@@ -20,6 +20,19 @@ function hasDetectedCamera(output: string): boolean {
     if (!value || /^[-\s]+$/.test(value) || /^model\s+port$/i.test(value)) return false;
     return /\b(?:usb|serial):/i.test(value);
   });
+}
+
+/** `--auto-detect`: `Model ... Port` per baris; port jadi `id` stabil. */
+export function parseGphoto2Cameras(output: string): CameraInfo[] {
+  const cameras: CameraInfo[] = [];
+  for (const raw of output.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || /^[-\s]+$/.test(line) || /^model\s+port$/i.test(line)) continue;
+    const match = /^(.*?)\s+((?:usb|serial):\S+)$/i.exec(line);
+    if (!match) continue;
+    cameras.push({ id: match[2]!, label: `${match[1]!.trim()} (${match[2]})` });
+  }
+  return cameras;
 }
 
 async function readJpegFile(file: string): Promise<Buffer | null> {
@@ -41,6 +54,11 @@ export function createGphoto2Camera(config: RuntimeConfig): CameraAdapter {
   return {
     kind: "gphoto2",
     mock: false,
+
+    async list(): Promise<CameraInfo[]> {
+      const result = await lock(() => run(["--auto-detect"], 10_000));
+      return parseGphoto2Cameras(result.stdout.toString("utf8"));
+    },
 
     /**
      * Melempar bila gphoto2 sendiri gagal dijalankan — itu beda dengan "tidak ada

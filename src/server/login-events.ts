@@ -60,9 +60,6 @@ export async function recordLoginEvent(input: LoginEventInput): Promise<void> {
     }
   } catch (err) {
     // Jangan pernah melempar: pemanggilnya jalur login.
-    console.error(
-      "[login-events] error tak terduga:",
-      err instanceof Error ? err.message : err
-    );
+    console.error("[login-events] error tak terduga:", err instanceof Error ? err.message : err);
   }
 }

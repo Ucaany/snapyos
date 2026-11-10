@@ -418,9 +418,7 @@ test("appearance_settings tidak pernah ikut PATCH ke cloud", async () => {
 
     await runSyncOnce(fixture.ctx);
 
-    const patch = calls.find(
-      (c) => c.method === "PATCH" && c.url.endsWith("/devices/settings")
-    );
+    const patch = calls.find((c) => c.method === "PATCH" && c.url.endsWith("/devices/settings"));
     assert.ok(patch, "worker harus melaporkan setelan mesin ke cloud");
 
     const sent = JSON.parse(String(patch.body)) as {

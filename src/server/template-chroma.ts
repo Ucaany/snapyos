@@ -135,8 +135,7 @@ async function runDetection(
   const ownedPrefix = `${ownerId ?? "global"}/`;
   const trustedSource = [chromaMeta?.source_key, chromaMeta?.source_url].find(
     (candidate): candidate is string =>
-      typeof candidate === "string" &&
-      (isHttpUrl(candidate) || candidate.startsWith(ownedPrefix))
+      typeof candidate === "string" && (isHttpUrl(candidate) || candidate.startsWith(ownedPrefix))
   );
   // Idempoten: setelah run pertama, sumber selalu file asli tanpa hijau.
   const source = trustedSource ?? row.file_url;
@@ -320,7 +319,12 @@ async function runDetection(
   }
 
   const urls = await signedUrlMap(BUCKET, [newKey], SIGNED_URL_TTL);
-  return { layout: valid.data, frameUrl: urls.get(newKey) ?? null, skipped, kept: keptSlots.length };
+  return {
+    layout: valid.data,
+    frameUrl: urls.get(newKey) ?? null,
+    skipped,
+    kept: keptSlots.length,
+  };
 }
 
 /** Owner: deteksi area hijau pada template milik business-nya. */

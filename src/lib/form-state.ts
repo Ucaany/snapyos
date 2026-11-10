@@ -38,11 +38,35 @@ export function str(formData: FormData, key: string): string {
 /**
  * Integer dari form (IDR/limit). Membuang pemisah ribuan `1.500.000` → 1500000.
  * JANGAN dipakai untuk field desimal (mis. platform_fee_percent 2.5) — pakai
- * numDecimal(); pemisah titik di sini akan mengubah 2.5 → 25.
+ * numDecimal().
+ *
+ * Titik HANYA diterima sebagai pemisah ribuan (kelompok tepat 3 digit).
+ * `35000.9` dulu diam-diam menjadi 350009 (nilai seratus kali lipat); sekarang
+ * ditolak dengan fieldError `key` supaya owner melihat sebabnya.
  */
 export function num(formData: FormData, key: string): number {
-  const raw = str(formData, key).replace(/[.\s]/g, "");
-  const n = Number.parseInt(raw, 10);
+  const raw = str(formData, key);
+  if (raw === "") return Number.NaN;
+
+  const compact = raw.replace(/\s/g, "");
+  if (/[.,]/.test(compact)) {
+    const thousands = /^-?\d{1,3}(?:\.\d{3})+$/;
+    if (!thousands.test(compact)) {
+      // Dilempar dalam bentuk issue zod-like: `toFormState` mengubahnya jadi
+      // fieldErrors[key] sehingga pesannya tampil di bawah field yang salah.
+      throw {
+        issues: [
+          {
+            path: [key],
+            message: "Harus bilangan bulat tanpa desimal (contoh: 35000, bukan 35000.9).",
+          },
+        ],
+      };
+    }
+    return Number.parseInt(compact.replace(/\./g, ""), 10);
+  }
+
+  const n = Number.parseInt(compact, 10);
   return Number.isFinite(n) ? n : Number.NaN;
 }
 

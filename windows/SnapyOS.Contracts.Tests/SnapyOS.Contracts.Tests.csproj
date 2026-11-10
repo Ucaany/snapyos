@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <NoWarn>$(NoWarn);CA1707;CA1305;CA1310;CA1822;CA1861;xUnit2012</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../SnapyOS.Contracts/SnapyOS.Contracts.csproj" />

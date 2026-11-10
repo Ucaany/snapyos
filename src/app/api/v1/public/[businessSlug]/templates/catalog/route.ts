@@ -32,12 +32,17 @@ function sha256(bytes: Uint8Array): string {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
-async function frameManifest(url: string, requestUrl: string, assetId: string): Promise<CatalogAsset> {
+async function frameManifest(
+  url: string,
+  requestUrl: string,
+  assetId: string
+): Promise<CatalogAsset> {
   const resolved = new URL(url, requestUrl);
   const response = await fetch(resolved, { cache: "no-store", redirect: "error" });
   if (!response.ok) throw new ApiError("INTERNAL", "Asset template tidak tersedia");
   const bytes = new Uint8Array(await response.arrayBuffer());
-  const contentType = (response.headers.get("content-type") ?? "").split(";", 1)[0]?.toLowerCase() ?? "";
+  const contentType =
+    (response.headers.get("content-type") ?? "").split(";", 1)[0]?.toLowerCase() ?? "";
   if (!/^image\/(png|jpeg|webp)$/.test(contentType) || bytes.byteLength === 0) {
     throw new ApiError("INTERNAL", "Asset template tidak valid");
   }
@@ -57,10 +62,13 @@ export async function GET(request: Request, { params }: Params) {
     const ip = getClientIp(request.headers);
     const rl = await rateLimit(`template-catalog:${ip}`, 30, 60_000);
     if (!rl.ok) {
-      return NextResponse.json({ error: "Too many requests" }, {
-        status: 429,
-        headers: { "Retry-After": String(rl.retryAfterSec) },
-      });
+      return NextResponse.json(
+        { error: "Too many requests" },
+        {
+          status: 429,
+          headers: { "Retry-After": String(rl.retryAfterSec) },
+        }
+      );
     }
 
     const { businessSlug } = await params;

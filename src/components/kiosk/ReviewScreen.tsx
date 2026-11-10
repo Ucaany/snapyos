@@ -83,7 +83,8 @@ export function ReviewScreen({
         try {
           const result = await checkCameraBridge(cameraSettings);
           if (cancelled) return;
-          if (!result.ok || !result.camera) throw new Error(result.message || "Kamera bridge tidak siap.");
+          if (!result.ok || !result.camera)
+            throw new Error(result.message || "Kamera bridge tidak siap.");
           setCameraReady(true);
         } catch (cause) {
           if (!cancelled) {
@@ -196,7 +197,11 @@ export function ReviewScreen({
       className="relative flex min-h-0 flex-1 flex-col overflow-y-auto bg-bg"
       style={
         kioskStyle
-          ? { ...kioskThemeVars(kioskStyle), backgroundColor: kioskStyle.bg, color: kioskStyle.text }
+          ? {
+              ...kioskThemeVars(kioskStyle),
+              backgroundColor: kioskStyle.bg,
+              color: kioskStyle.text,
+            }
           : undefined
       }
     >
@@ -205,7 +210,10 @@ export function ReviewScreen({
         style={{ paddingLeft: gutter, paddingRight: gutter }}
       >
         <div className="flex w-full flex-col gap-1">
-          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.24em]" style={{ opacity: 0.6 }}>
+          <p
+            className="font-mono text-[10px] font-bold uppercase tracking-[0.24em]"
+            style={{ opacity: 0.6 }}
+          >
             CEK HASIL
           </p>
           <h1
@@ -217,7 +225,10 @@ export function ReviewScreen({
           >
             {heading}
           </h1>
-          <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em]" style={{ opacity: 0.55 }}>
+          <p
+            className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em]"
+            style={{ opacity: 0.55 }}
+          >
             {`${currentPhotos.length} dari ${photoCount} foto · ${retakes} ulang${
               maxRetakes === null ? "" : ` / maks ${maxRetakes}`
             }`}
@@ -240,21 +251,26 @@ export function ReviewScreen({
                   className="max-h-full max-w-full object-contain"
                   style={{
                     filter: filterCss(filterId),
-                    transform:
-                      cameraSettings.mirror_preview !== false ? "scaleX(-1)" : undefined,
+                    transform: cameraSettings.mirror_preview !== false ? "scaleX(-1)" : undefined,
                   }}
                 />
               )}
               {countdown !== null && (
                 <div className="absolute inset-0 flex items-center justify-center bg-ink/60">
-                  <span className="font-display leading-none text-accent" style={{ fontSize: "clamp(5rem, 20vw, 10rem)" }}>
+                  <span
+                    className="font-display leading-none text-accent"
+                    style={{ fontSize: "clamp(5rem, 20vw, 10rem)" }}
+                  >
                     {countdown}
                   </span>
                 </div>
               )}
             </div>
             {error && (
-              <p role="alert" className="border-2 border-destructive bg-destructive/10 px-3 py-2 text-sm">
+              <p
+                role="alert"
+                className="border-2 border-destructive bg-destructive/10 px-3 py-2 text-sm"
+              >
                 {error}
               </p>
             )}
@@ -266,7 +282,11 @@ export function ReviewScreen({
                 disabled={!cameraReady || countdown !== null}
                 style={
                   kioskStyle
-                    ? { borderRadius: kioskStyle.radius, backgroundColor: kioskStyle.accent, color: kioskStyle.accentText }
+                    ? {
+                        borderRadius: kioskStyle.radius,
+                        backgroundColor: kioskStyle.accent,
+                        color: kioskStyle.accentText,
+                      }
                     : undefined
                 }
               >
@@ -286,7 +306,10 @@ export function ReviewScreen({
           <>
             <div className="grid w-full grid-cols-2 gap-3 md:grid-cols-3">
               {currentPhotos.map((photo, index) => (
-                <figure key={index} className="flex flex-col gap-2 border-2 border-ink bg-surface p-2">
+                <figure
+                  key={index}
+                  className="flex flex-col gap-2 border-2 border-ink bg-surface p-2"
+                >
                   {urls[index] ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -323,7 +346,11 @@ export function ReviewScreen({
               onClick={() => onContinue(currentPhotos, retakes)}
               style={
                 kioskStyle
-                  ? { borderRadius: kioskStyle.radius, backgroundColor: kioskStyle.accent, color: kioskStyle.accentText }
+                  ? {
+                      borderRadius: kioskStyle.radius,
+                      backgroundColor: kioskStyle.accent,
+                      color: kioskStyle.accentText,
+                    }
                   : undefined
               }
             >

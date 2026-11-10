@@ -1,3 +1,4 @@
+using SnapyOS.Core;
 using SnapyOS.LocalStore;
 using Xunit;
 
@@ -53,7 +54,7 @@ public sealed class LocalStoreTests : IDisposable
 
         _store.Dispose();
         using var reopened = new LocalStore(LocalStoreOptions.ForDirectory(_root));
-        Assert.Equal(2, reopened.SchemaVersion);
+        Assert.Equal(LocalStore.CurrentSchemaVersion, reopened.SchemaVersion);
     }
 
     [Fact]
@@ -65,7 +66,7 @@ public sealed class LocalStoreTests : IDisposable
         _store.RegisterMedia("media_1", "local_1", "photo.jpg", "photo", DateTimeOffset.UtcNow.AddDays(-1));
         _store.MarkMediaSynced("media_1");
         Assert.Equal(1, _store.GuardRetention(DateTimeOffset.UtcNow));
-        Assert.True(File.Exists(Path.Combine(_root, "media", "photo.jpg")));
+        Assert.False(File.Exists(Path.Combine(_root, "media", "photo.jpg")));
     }
 
     [Fact]
@@ -96,6 +97,21 @@ public sealed class LocalStoreTests : IDisposable
     {
         _store.InsertSession("local_1", "business", "booth", "package", "session-key", DateTimeOffset.UtcNow);
         Assert.Throws<InvalidOperationException>(() => _store.InsertSession("local_2", "business", "booth", "package", "session-key", DateTimeOffset.UtcNow));
+    }
+
+    [Fact]
+    public void Payment_queue_is_durable_and_idempotent()
+    {
+        var repository = new PaymentQueueRepository(_store);
+        var item = new LocalPaymentQueueItem("payment-key", "business", "checkout", "cash", DateTimeOffset.UtcNow, PaymentClientState.OfflineQueued);
+        repository.Enqueue(item);
+        repository.Enqueue(item);
+        Assert.Single(repository.List());
+        Assert.Equal("cash", repository.List()[0].MethodId);
+
+        _store.Dispose();
+        using var reopened = new LocalStore(LocalStoreOptions.ForDirectory(_root));
+        Assert.Single(new PaymentQueueRepository(reopened).List());
     }
 
     public void Dispose()

@@ -21,6 +21,7 @@ import { SupabaseStorageProvider } from "./supabase-provider";
 import { R2StorageProvider } from "./r2-provider";
 import { resolveWriteProviderName, resolveFallbackProviderName } from "@/lib/r2/provider";
 import { StorageResolver } from "@/lib/r2/resolver";
+import { splitRemoveOutcome } from "@/lib/r2/remove-outcome";
 import type { StorageBucket, StorageProvider } from "./types";
 
 export type { StorageProvider, StorageBucket } from "./types";
@@ -242,11 +243,9 @@ export async function removeResolvedOutcome(
 
   for (const [provider, groupKeys] of groups) {
     const { error } = await provider.remove(bucket, groupKeys);
-    if (error) {
-      for (const key of groupKeys) failures.push({ key, message: error.message });
-    } else {
-      ok.push(...groupKeys);
-    }
+    const outcome = splitRemoveOutcome(groupKeys, error);
+    ok.push(...outcome.ok);
+    failures.push(...outcome.failures);
   }
   return { ok, failures };
 }

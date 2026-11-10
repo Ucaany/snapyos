@@ -43,7 +43,11 @@ export function RevenueChartInner({
   return (
     <ChartContainer config={chartConfig} className="aspect-auto h-[280px] w-full">
       <BarChart accessibilityLayer data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-        <CartesianGrid vertical={false} stroke={chart.gridStroke} strokeOpacity={chart.gridOpacity} />
+        <CartesianGrid
+          vertical={false}
+          stroke={chart.gridStroke}
+          strokeOpacity={chart.gridOpacity}
+        />
         <XAxis
           dataKey="date"
           tickLine={false}

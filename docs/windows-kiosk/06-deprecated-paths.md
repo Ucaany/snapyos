@@ -60,19 +60,21 @@ Bukti:
 
 ## 3. Jalur aktif, jangan deprecated-kan sebelum replacement
 
-| Jalur                                                   | Kenapa masih aktif                                                         |
-| ------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `POST /api/v1/public/devices/activate` dan verify       | Cloud tetap authority pairing dan device status.                           |
-| `resolveActiveDevice`                                   | Memastikan token, business, photobox, status, dan heartbeat.               |
-| `runtime/settings/index.ts`                             | Menjadi referensi ownership dan merge saat port ke .NET.                   |
-| `runtime/session/index.ts`                              | Menjadi referensi local session dan media manifest.                        |
-| `runtime/sync/worker.ts`                                | Menjadi referensi idempotency, retry, dan quarantine.                      |
-| `runtime/print/index.ts` Windows adapter                | Menjadi bukti kebutuhan printer Windows, meski implementasinya nanti .NET. |
-| `src/server/templates.ts` dan `src/lib/template-fit.ts` | Menjadi referensi template legacy dan slot layout.                         |
-| `src/server/payment/qris.ts`                            | Menjadi authority cloud untuk status payment dan recovery.                 |
-| `src/server/cash-payment.ts`                            | Menjadi authority permission operator untuk cash confirmation.             |
-| `runtime/exit/index.ts`                                 | Emergency exit offline diperlukan agar operator tidak terkunci.            |
-| `runtime/camera/digicamcontrol.ts`                      | Windows adapter tetap compatibility sampai test host tersedia.             |
+| Jalur                                                                      | Kenapa masih aktif                                                                                  |
+| -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `POST /api/v1/public/devices/activate` dan verify                          | Cloud tetap authority pairing dan device status.                                                    |
+| `resolveActiveDevice`                                                      | Memastikan token, business, photobox, status, dan heartbeat.                                        |
+| `runtime/settings/index.ts`                                                | Menjadi referensi ownership dan merge saat port ke .NET.                                            |
+| `runtime/session/index.ts`                                                 | Menjadi referensi local session dan media manifest.                                                 |
+| `runtime/sync/worker.ts`                                                   | Menjadi referensi idempotency, retry, dan quarantine.                                               |
+| `runtime/print/index.ts` Windows adapter                                   | Menjadi bukti kebutuhan printer Windows, meski implementasinya nanti .NET.                          |
+| `src/server/templates.ts` dan `src/lib/template-fit.ts`                    | Menjadi referensi template legacy dan slot layout.                                                  |
+| `src/server/payment/qris.ts`                                               | Menjadi authority cloud untuk status payment dan recovery.                                          |
+| `src/server/cash-payment.ts`                                               | Menjadi authority permission operator untuk cash confirmation.                                      |
+| `business_settings.branding`, `photoboxes.branding`, `appearance_settings` | Read/import compatibility sampai WPF migration selesai; dashboard editor tidak menjadi jalur tulis. |
+| `devices.diagnostics`, `device_status`, `app_version`                      | Sumber status/versi yang sudah ada; tidak ada cloud diagnostics/version endpoint baru.              |
+| `runtime/exit/index.ts`                                                    | Emergency exit offline diperlukan agar operator tidak terkunci.                                     |
+| `runtime/camera/digicamcontrol.ts`                                         | Windows adapter tetap compatibility sampai test host tersedia.                                      |
 
 ## 4. Replacement rule
 

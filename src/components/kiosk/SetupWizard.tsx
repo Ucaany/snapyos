@@ -209,7 +209,8 @@ export function SetupWizard({
         },
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Kamera bridge gagal mengambil foto.";
+      const message =
+        error instanceof Error ? error.message : "Kamera bridge gagal mengambil foto.";
       setCameraError({ message, action: "COBA LAGI" });
       await report({ camera: { provider: "bridge", status: "error", capture_test: message } });
     }
@@ -254,13 +255,6 @@ export function SetupWizard({
     setStage("print");
   }
 
-  async function confirmPrint(ok: boolean) {
-    setPrintConfirmed(ok);
-    await report({
-      printer: { confirmed: ok, last_test_at: new Date().toISOString() },
-    });
-  }
-
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center gap-7 overflow-y-auto bg-bg px-5 py-8 md:px-8 md:py-10">
       <header className="flex w-full max-w-[760px] flex-col items-start gap-2 border-b-2 border-ink/15 pb-5">
@@ -282,10 +276,9 @@ export function SetupWizard({
           {cameraProvider === "bridge" ? (
             <div className="flex flex-col gap-4 border-2 border-ink bg-surface p-5 shadow-hard md:p-6">
               <p className="max-w-[56ch] text-sm leading-relaxed text-muted-foreground">
-                Mode bridge memakai kamera fisik melalui runtime lokal. Pastikan adapter yang dipilih
-                terpasang (gphoto2 / libcamera-still / ffmpeg / PyAV),
-                kamera terhubung USB, dan `npm run bridge:local` sedang berjalan di komputer
-                kiosk.
+                Mode bridge memakai kamera fisik melalui runtime lokal. Pastikan adapter yang
+                dipilih terpasang (gphoto2 / libcamera-still / ffmpeg / PyAV), kamera terhubung USB,
+                dan `npm run bridge:local` sedang berjalan di komputer kiosk.
               </p>
               <p className="font-mono text-xs uppercase tracking-[0.08em]">
                 Bridge: {cameraBridgeUrl(cameraSettings)}
@@ -444,23 +437,18 @@ export function SetupWizard({
                 paperWidthMm={printSettings.bluetooth_paper_width_mm === 58 ? 58 : 80}
                 sample={{ title: "UJI CETAK", lines: ["SETUP BOOTH", "SNAP YOS"] }}
                 printSettings={printSettings}
-                canReport={false}
-                onReport={() => undefined}
+                onReport={async (result) => {
+                  setPrintConfirmed(result.confirmed);
+                  await report({
+                    printer: {
+                      confirmed: result.confirmed,
+                      last_test_at: new Date().toISOString(),
+                      mode: result.mode,
+                      device_name: result.device_name,
+                    },
+                  });
+                }}
               />
-
-              <div className="flex flex-col gap-3">
-                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]">
-                  Apakah test print berhasil?
-                </p>
-                <div className="flex flex-wrap gap-2.5">
-                  <Button onClick={() => void confirmPrint(true)} className="bg-accent-3">
-                    Ya, berhasil
-                  </Button>
-                  <Button variant="outline" onClick={() => void confirmPrint(false)}>
-                    Tidak / ulangi
-                  </Button>
-                </div>
-              </div>
 
               {printConfirmed ? (
                 <Button size="lg" onClick={onDone} className="min-h-14 bg-accent">
@@ -490,8 +478,8 @@ export function SetupWizard({
               ) : (
                 <div className="flex flex-col gap-2 border-2 border-dashed border-ink/40 p-4">
                   <p className="text-xs leading-relaxed text-muted-foreground">
-                    Cetak aktif. Konfirmasi uji cetak berhasil sebelum menyelesaikan setup.
-                    Periksa kertas, tinta/ribbon, dan nama printer di panel setelan booth.
+                    Cetak aktif. Konfirmasi uji cetak berhasil sebelum menyelesaikan setup. Periksa
+                    kertas, tinta/ribbon, dan nama printer di panel setelan booth.
                   </p>
                 </div>
               )}

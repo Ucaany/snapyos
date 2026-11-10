@@ -5,7 +5,7 @@
  */
 
 import type { CameraRole } from "../config.ts";
-import type { CameraAdapter, CameraStatus } from "./types.ts";
+import type { CameraAdapter, CameraInfo, CameraStatus } from "./types.ts";
 
 export function createMockCamera(role: CameraRole = "stills"): CameraAdapter {
   let counter = 0;
@@ -28,6 +28,10 @@ export function createMockCamera(role: CameraRole = "stills"): CameraAdapter {
   return {
     kind: "mock",
     mock: true,
+
+    async list(): Promise<CameraInfo[]> {
+      return [];
+    },
 
     async status(): Promise<CameraStatus> {
       return { adapter: "mock", connected: true, mock: true, model: "mock" };

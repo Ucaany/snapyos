@@ -40,9 +40,7 @@ export function CashPayment({
         Menunggu konfirmasi operator. Jangan tutup layar.
       </p>
       {left > 0 && (
-        <p className="font-mono text-xs font-bold uppercase tracking-[0.08em]">
-          Berakhir {time}
-        </p>
+        <p className="font-mono text-xs font-bold uppercase tracking-[0.08em]">Berakhir {time}</p>
       )}
       <KioskAction
         tone="secondary"

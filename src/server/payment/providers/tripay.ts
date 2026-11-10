@@ -130,6 +130,26 @@ export function createTripayGateway(credential: GatewayCredential): PaymentGatew
       } satisfies GatewayCreateResult;
     },
 
+    /**
+     * Probe auth tanpa membuat transaksi. `getStatus` mengembalikan "pending"
+     * untuk body kosong/non-JSON (mis. 401 dari Bearer salah), jadi kredensial
+     * salah tampak "sehat". Di sini status HTTP diperiksa eksplisit.
+     * Tripay membalas 200 + `success:false` untuk reference tak dikenal; itu
+     * berarti auth lolos dan dianggap sukses probe.
+     */
+    async probeCredential() {
+      const res = await fetch(`${base}/transaction/detail?reference=SnapyOS-TESTCONNECT`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        cache: "no-store" as RequestCache,
+      });
+      if (res.status === 401 || res.status === 403) {
+        throw new Error("API key Tripay ditolak provider (401/403)");
+      }
+      const json = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+      if (!json) throw new Error(`Probe kredensial Tripay gagal (HTTP ${res.status})`);
+      // `success:false` karena reference dummy memang tidak ada — auth sudah lolos.
+    },
+
     async getStatus(orderId, amount, providerRef) {
       // Tripay detail butuh `reference` (ref Tripay) atau `merchant_ref` (orderId).
       // Prefer reference (providerRef) bila ada; fallback merchant_ref.

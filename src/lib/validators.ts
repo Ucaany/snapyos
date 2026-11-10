@@ -28,7 +28,10 @@ const uuid = z.string().guid();
 export const PAYMENT_PROVIDER_CODES = ["midtrans", "tripay", "pakasir"] as const;
 export const PAYMENT_ENVIRONMENTS = ["sandbox", "production"] as const;
 
-const paymentMethodCodes = z.array(z.string().trim().min(1).max(40)).max(12);
+const paymentMethodCodes = z
+  .array(z.string().trim().min(1).max(40))
+  .min(1, "Pilih minimal satu metode pembayaran")
+  .max(12);
 const paymentCredentialBaseSchema = z.object({
   provider: z.enum(PAYMENT_PROVIDER_CODES),
   label: z.string().trim().min(1).max(80).nullable().optional(),
@@ -769,13 +772,45 @@ export const photoboxUpdateSchema = z.object({
   payment_mode: photoboxPaymentMode.nullable().optional(),
 });
 
+/** Simpan jalur cetak (foto/thermal/struk) + kamera + template default satu booth. */
+export const photoboxHardwareSchema = z.object({
+  photobox_id: uuid,
+  print_settings: z
+    .object({
+      photo: printPhotoSettingsSchema.optional(),
+      thermal: printThermalSettingsSchema.optional(),
+      receipt: printReceiptSettingsSchema.optional(),
+    })
+    .optional(),
+  camera_settings: cameraSettingsSchema.optional(),
+  /** null = lepas template default (kiosk memakai template paket). */
+  default_template_id: uuid.nullable().optional(),
+});
+
+export type PhotoboxHardwareInput = z.infer<typeof photoboxHardwareSchema>;
+
+/** Laporan konfirmasi uji cetak dari dashboard owner (bukan device token). */
+export const printTestReportSchema = z.object({
+  photobox_id: uuid,
+  confirmed: z.boolean(),
+  mode: z.enum(["browser", "bluetooth", "cups"]),
+  device_name: z.string().trim().max(60).optional(),
+});
+
+export type PrintTestReportInput = z.infer<typeof printTestReportSchema>;
+
 // --- Owner Platform — docs/04 §4.2–4.13, schema contract docs/08 §8.19 ---
 
 const idArray = z.array(uuid).max(200);
 
 export const packageCreateSchema = z.object({
   name: z.string().trim().min(1, "Nama package wajib diisi").max(80, "Nama maksimal 80 karakter"),
-  price: z.number().int("Harga harus integer").positive("Harga harus > 0"),
+  // Lantai harga = lantai produk POS (src/lib/form-ui.ts IDR_PRICE_FLOOR).
+  price: z
+    .number()
+    .int("Harga harus integer IDR")
+    .min(1000, "Harga minimal Rp 1.000")
+    .max(2_000_000_000, "Harga terlalu besar"),
   photo_count: z.number().int().min(1, "Jumlah foto ≥ 1").max(50),
   print_count: z.number().int().min(0, "Jumlah cetak ≥ 0").max(50),
   digital_output: z.boolean().optional().default(false),
@@ -789,7 +824,12 @@ export const packageCreateSchema = z.object({
 
 export const packageUpdateSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
-  price: z.number().int().positive().optional(),
+  price: z
+    .number()
+    .int("Harga harus integer IDR")
+    .min(1000, "Harga minimal Rp 1.000")
+    .max(2_000_000_000, "Harga terlalu besar")
+    .optional(),
   photo_count: z.number().int().min(1).max(50).optional(),
   print_count: z.number().int().min(0).max(50).optional(),
   digital_output: z.boolean().optional(),
@@ -1073,10 +1113,25 @@ export const posOrderCreateSchema = z.object({
     .max(50, "Maksimal 50 item per order"),
 });
 
-export const posManualPaySchema = z.object({
-  orderId: uuid,
-  method: z.enum(["cash", "bank_transfer", "other"]),
-});
+export const posManualPaySchema = z
+  .object({
+    orderId: uuid,
+    method: z.enum(["cash", "bank_transfer", "other"]),
+    /**
+     * Uang tunai yang diterima. Hanya untuk `cash`; batas bawah sebenarnya
+     * (`>= final_amount`) dicek server karena skema tidak tahu total order.
+     */
+    amount_received: z
+      .number()
+      .int("Uang diterima harus integer")
+      .min(0, "Uang diterima tidak boleh negatif")
+      .max(1_000_000_000, "Uang diterima terlalu besar")
+      .optional(),
+  })
+  .refine((v) => v.amount_received === undefined || v.method === "cash", {
+    message: "Uang diterima hanya untuk pembayaran tunai",
+    path: ["amount_received"],
+  });
 
 export const staffUpdateSchema = z.object({
   role: z.enum(["owner", "manager", "staff"]),

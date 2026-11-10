@@ -61,7 +61,7 @@ async function redisPipeline(commands: (string | number)[][]): Promise<unknown[]
 async function redisSlidingWindow(
   key: string,
   limit: number,
-  windowMs: number,
+  windowMs: number
 ): Promise<{ ok: boolean; retryAfterSec: number }> {
   const now = Date.now();
   const windowStart = now - windowMs;
@@ -79,9 +79,15 @@ async function redisSlidingWindow(
   if (count > limit) {
     // over limit — hapus member yang baru ditambahkan
     await redisCommand("ZREM", key, member).catch(() => {});
-    const oldest = (await redisCommand<string[]>("ZRANGEBYSCORE", key, windowStart, "+inf", "LIMIT", 0, 1).catch(
-      () => [],
-    )) as string[];
+    const oldest = (await redisCommand<string[]>(
+      "ZRANGEBYSCORE",
+      key,
+      windowStart,
+      "+inf",
+      "LIMIT",
+      0,
+      1
+    ).catch(() => [])) as string[];
     const firstEntry: string | undefined = oldest[0];
     const oldestTs = typeof firstEntry === "string" ? parseInt(firstEntry.split(":")[0]!, 10) : now;
     const retryAfterSec = Math.max(1, Math.ceil((oldestTs + windowMs - now) / 1000));
@@ -110,7 +116,7 @@ function sweep(now: number) {
 function inMemoryRateLimit(
   key: string,
   limit: number,
-  windowMs: number,
+  windowMs: number
 ): { ok: boolean; retryAfterSec: number } {
   const now = Date.now();
   sweep(now);
@@ -135,7 +141,7 @@ function inMemoryRateLimit(
 export async function rateLimit(
   key: string,
   limit: number,
-  windowMs: number,
+  windowMs: number
 ): Promise<{ ok: boolean; retryAfterSec: number }> {
   if (redisAvailable && !redisDegraded) {
     try {
@@ -207,7 +213,7 @@ export async function rateLimitByDevice(
   route: string,
   deviceToken: string | null | undefined,
   limit: number,
-  windowMs: number,
+  windowMs: number
 ): Promise<{ ok: boolean; retryAfterSec: number } | null> {
   if (!deviceToken) return null;
   const prefix = deviceToken.slice(0, 16);

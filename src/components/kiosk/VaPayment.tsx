@@ -48,7 +48,9 @@ export function VaPayment({
           <Copy className="size-4" aria-hidden />
           Salin nomor
         </KioskAction>
-        <p className="font-mono text-lg font-bold leading-none">{formatIDR(payment.total_amount)}</p>
+        <p className="font-mono text-lg font-bold leading-none">
+          {formatIDR(payment.total_amount)}
+        </p>
       </div>
       <p className="font-mono text-xs font-bold uppercase tracking-[0.08em]">
         {`Selesaikan transfer dalam ${String(Math.floor(left / 60)).padStart(2, "0")}:${String(

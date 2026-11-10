@@ -101,9 +101,7 @@ function withUrls(branding: BrandingConfig, urls: Record<string, string>): Brand
     logo_url: branding.logo_key ? (urls[branding.logo_key] ?? null) : null,
     kiosk: {
       ...branding.kiosk,
-      video_url: branding.kiosk?.video_key
-        ? (urls[branding.kiosk.video_key] ?? null)
-        : null,
+      video_url: branding.kiosk?.video_key ? (urls[branding.kiosk.video_key] ?? null) : null,
       pages,
     },
   };
@@ -205,7 +203,7 @@ function ColorField({
           id={id}
           type="color"
           aria-label={`${label} (pemilih warna)`}
-          value={/^#[0-9a-f]{6}$/i.test(value) ? value : placeholder ?? "#111111"}
+          value={/^#[0-9a-f]{6}$/i.test(value) ? value : (placeholder ?? "#111111")}
           disabled={disabled}
           onChange={(event) => onChange(event.target.value.toUpperCase())}
           className="h-11 w-14 shrink-0 cursor-pointer rounded-none border-2 border-ink bg-surface p-0 disabled:cursor-not-allowed disabled:opacity-50"
@@ -380,8 +378,8 @@ export function DesignBuilder({
   const [scope, setScope] = useState<"global" | "booth">(booths.length > 0 ? "booth" : "global");
   const [boothId, setBoothId] = useState(firstBooth);
   const [baselineGlobal, setBaselineGlobal] = useState<BrandingConfig>(globalBranding);
-  const [boothOverrides, setBoothOverrides] = useState<Record<string, BrandingConfig | null>>(
-    () => Object.fromEntries(booths.map((booth) => [booth.id, booth.override]))
+  const [boothOverrides, setBoothOverrides] = useState<Record<string, BrandingConfig | null>>(() =>
+    Object.fromEntries(booths.map((booth) => [booth.id, booth.override]))
   );
   const [draft, setDraft] = useState<BrandingConfig>(() =>
     booths.length > 0 ? clone(boothOverrides[firstBooth] ?? {}) : clone(globalBranding)
@@ -409,8 +407,7 @@ export function DesignBuilder({
   }, [scope, baselineGlobal, draft, urls]);
 
   const errorFor = (key: string): string | undefined =>
-    saveState.fieldErrors?.[key]?.[0] ??
-    saveState.fieldErrors?.[key.split(".")[0] ?? ""]?.[0];
+    saveState.fieldErrors?.[key]?.[0] ?? saveState.fieldErrors?.[key.split(".")[0] ?? ""]?.[0];
 
   const globalKiosk = baselineGlobal.kiosk ?? {};
 
@@ -477,11 +474,7 @@ export function DesignBuilder({
     setSaveState({});
     setSaved(false);
     setResetKeys([]);
-    setDraft(
-      next === "global"
-        ? clone(baselineGlobal)
-        : clone(boothOverrides[boothId] ?? {})
-    );
+    setDraft(next === "global" ? clone(baselineGlobal) : clone(boothOverrides[boothId] ?? {}));
   };
 
   const selectBooth = (id: string) => {
@@ -531,11 +524,7 @@ export function DesignBuilder({
     });
   };
 
-  const uploadAsset = (
-    kind: "logo" | "video" | "page-video",
-    file: File,
-    pageId?: KioskPageId
-  ) => {
+  const uploadAsset = (kind: "logo" | "video" | "page-video", file: File, pageId?: KioskPageId) => {
     setUploadError(null);
     const formData = new FormData();
     formData.set("scope", scope);
@@ -634,11 +623,15 @@ export function DesignBuilder({
   const pageAlign = draft.kiosk?.pages?.[page]?.align ?? "";
   const globalPageAlign = globalKiosk.pages?.[page]?.align ?? "";
 
-  const booleanValue = (key: "show_logo" | "show_tagline" | "show_mirror_toggle" | "allow_zoom_pan") => {
+  const booleanValue = (
+    key: "show_logo" | "show_tagline" | "show_mirror_toggle" | "allow_zoom_pan"
+  ) => {
     const value = draft.kiosk?.[key];
     return typeof value === "boolean" ? String(value) : "";
   };
-  const globalBoolean = (key: "show_logo" | "show_tagline" | "show_mirror_toggle" | "allow_zoom_pan") => {
+  const globalBoolean = (
+    key: "show_logo" | "show_tagline" | "show_mirror_toggle" | "allow_zoom_pan"
+  ) => {
     const value = globalKiosk[key];
     return typeof value === "boolean" ? (value ? "Ya" : "Tidak") : "Default";
   };
@@ -668,7 +661,11 @@ export function DesignBuilder({
             </Field>
             <div className="flex min-w-0 flex-col gap-1.5">
               <span className={LABEL_CLASS}>Cakupan</span>
-              <div role="group" aria-label="Cakupan branding" className="flex min-h-11 border-2 border-ink">
+              <div
+                role="group"
+                aria-label="Cakupan branding"
+                className="flex min-h-11 border-2 border-ink"
+              >
                 <button
                   type="button"
                   aria-pressed={scope === "booth"}
@@ -695,7 +692,9 @@ export function DesignBuilder({
           </div>
 
           {scope === "booth" && inherited ? (
-            <Alert tone="info">Booth ini mewarisi branding global. Ubah field lalu simpan untuk membuat kustomisasi.</Alert>
+            <Alert tone="info">
+              Booth ini mewarisi branding global. Ubah field lalu simpan untuk membuat kustomisasi.
+            </Alert>
           ) : null}
           {!canWrite ? (
             <Alert tone="warning">Anda hanya dapat melihat. Perubahan memerlukan izin tulis.</Alert>
@@ -724,7 +723,11 @@ export function DesignBuilder({
                   </span>
                 )}
                 <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-                  {scope === "booth" ? (draft.logo_key ? "Logo booth" : "Logo global") : "Logo global"}
+                  {scope === "booth"
+                    ? draft.logo_key
+                      ? "Logo booth"
+                      : "Logo global"
+                    : "Logo global"}
                 </span>
               </div>
               <FileField
@@ -741,7 +744,11 @@ export function DesignBuilder({
                   label="Warna aksen"
                   value={topValue("primary_color")}
                   placeholder={globalTopValue("primary_color") || "#FFD400"}
-                  hint={scope === "booth" ? `Global: ${globalTopValue("primary_color") || "default"}` : undefined}
+                  hint={
+                    scope === "booth"
+                      ? `Global: ${globalTopValue("primary_color") || "default"}`
+                      : undefined
+                  }
                   error={errorFor("primary_color")}
                   disabled={!canWrite}
                   onChange={(value) => setTop("primary_color", value)}
@@ -751,7 +758,11 @@ export function DesignBuilder({
                   label="Warna teks merek"
                   value={topValue("secondary_color")}
                   placeholder={globalTopValue("secondary_color") || "#111111"}
-                  hint={scope === "booth" ? `Global: ${globalTopValue("secondary_color") || "default"}` : undefined}
+                  hint={
+                    scope === "booth"
+                      ? `Global: ${globalTopValue("secondary_color") || "default"}`
+                      : undefined
+                  }
                   error={errorFor("secondary_color")}
                   disabled={!canWrite}
                   onChange={(value) => setTop("secondary_color", value)}
@@ -802,7 +813,9 @@ export function DesignBuilder({
                   label="Latar kiosk"
                   value={typeof draft.kiosk?.bg_color === "string" ? draft.kiosk.bg_color : ""}
                   placeholder={globalKiosk.bg_color || "#FFFDF5"}
-                  hint={scope === "booth" ? `Global: ${globalKiosk.bg_color || "default"}` : undefined}
+                  hint={
+                    scope === "booth" ? `Global: ${globalKiosk.bg_color || "default"}` : undefined
+                  }
                   error={errorFor("kiosk.bg_color")}
                   disabled={!canWrite}
                   onChange={(value) => setKiosk("bg_color", value)}
@@ -812,7 +825,9 @@ export function DesignBuilder({
                   label="Teks kiosk"
                   value={typeof draft.kiosk?.text_color === "string" ? draft.kiosk.text_color : ""}
                   placeholder={globalKiosk.text_color || "#111111"}
-                  hint={scope === "booth" ? `Global: ${globalKiosk.text_color || "default"}` : undefined}
+                  hint={
+                    scope === "booth" ? `Global: ${globalKiosk.text_color || "default"}` : undefined
+                  }
                   error={errorFor("kiosk.text_color")}
                   disabled={!canWrite}
                   onChange={(value) => setKiosk("text_color", value)}
@@ -829,7 +844,9 @@ export function DesignBuilder({
                   { value: "sans", label: "Sans" },
                   { value: "mono", label: "Mono" },
                 ]}
-                hint={scope === "booth" ? `Global: ${globalKiosk.font_family ?? "display"}` : undefined}
+                hint={
+                  scope === "booth" ? `Global: ${globalKiosk.font_family ?? "display"}` : undefined
+                }
                 error={errorFor("kiosk.font_family")}
                 disabled={!canWrite}
                 onChange={(value) => setKiosk("font_family", value)}
@@ -890,7 +907,11 @@ export function DesignBuilder({
                     { value: "center", label: "Tengah" },
                     { value: "right", label: "Kanan" },
                   ]}
-                  hint={scope === "booth" ? `Global: ${globalKiosk.align ?? "default layar"}` : undefined}
+                  hint={
+                    scope === "booth"
+                      ? `Global: ${globalKiosk.align ?? "default layar"}`
+                      : undefined
+                  }
                   error={errorFor("kiosk.align")}
                   disabled={!canWrite}
                   onChange={(value) => setKiosk("align", value)}
@@ -917,9 +938,7 @@ export function DesignBuilder({
                       { value: "false", label: "Tidak" },
                     ]}
                     disabled={!canWrite}
-                    onChange={(value) =>
-                      setKiosk(key, value === "" ? null : value === "true")
-                    }
+                    onChange={(value) => setKiosk(key, value === "" ? null : value === "true")}
                   />
                 ))}
               </div>
@@ -1092,13 +1111,18 @@ export function DesignBuilder({
                   label="Perataan layar"
                   value={pageAlign}
                   options={[
-                    { value: "", label: `${inheritLabel} (${globalPageAlign || globalKiosk.align || "default layar"})` },
+                    {
+                      value: "",
+                      label: `${inheritLabel} (${globalPageAlign || globalKiosk.align || "default layar"})`,
+                    },
                     { value: "left", label: "Kiri" },
                     { value: "center", label: "Tengah" },
                     { value: "right", label: "Kanan" },
                   ]}
                   disabled={!canWrite}
-                  onChange={(value) => setPageField(page, "align", value as KioskPageConfig["align"])}
+                  onChange={(value) =>
+                    setPageField(page, "align", value as KioskPageConfig["align"])
+                  }
                 />
               </div>
 
@@ -1142,7 +1166,7 @@ export function DesignBuilder({
             <Button
               type="button"
               onClick={save}
-              disabled={!canWrite || saving || !boothId && scope === "booth"}
+              disabled={!canWrite || saving || (!boothId && scope === "booth")}
               className="bg-accent"
             >
               {saving ? "Menyimpan..." : "Simpan"}
@@ -1161,7 +1185,10 @@ export function DesignBuilder({
               {scope === "booth" ? "Mode booth" : "Mode global"}
             </span>
             {saved ? (
-              <span role="status" className="font-mono text-[10px] uppercase tracking-[0.1em] text-accent-3-strong">
+              <span
+                role="status"
+                className="font-mono text-[10px] uppercase tracking-[0.1em] text-accent-3-strong"
+              >
                 Tersimpan
               </span>
             ) : null}

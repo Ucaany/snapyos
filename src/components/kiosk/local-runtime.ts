@@ -152,9 +152,52 @@ export async function saveDeviceSettings(
     return payload?.settings ?? {};
   } catch (error) {
     if (error instanceof KioskError) throw error;
-    throw new KioskError("NO_BRIDGE", "Runtime lokal booth tidak menjawab. Setelan tidak disimpan.");
+    throw new KioskError(
+      "NO_BRIDGE",
+      "Runtime lokal booth tidak menjawab. Setelan tidak disimpan."
+    );
   } finally {
     clearTimeout(timer);
+  }
+}
+
+/**
+ * Catat printer Bluetooth yang berhasil tersambung ke `print_settings.thermal`.
+ *
+ * Nama device + lebar kertas tidak bisa diketahui dari cloud (hanya ada di
+ * mesin booth), jadi setelah koneksi sukses nilainya ditulis balik ke store
+ * lokal. Best-effort: runtime mati / field ditolak tidak boleh menggagalkan
+ * cetak yang sudah terkirim.
+ */
+export async function rememberThermalPrinter(
+  input: { name?: string | null; paperWidthMm?: 58 | 80 | null },
+  bridgeUrl?: string | null
+): Promise<void> {
+  const name = input.name?.trim();
+  const width = input.paperWidthMm;
+  if (!name && !width) return;
+  try {
+    const current = await fetchDeviceSettings(bridgeUrl);
+    const print = current?.print_settings ?? {};
+    const thermal = {
+      ...(typeof print.thermal === "object" && print.thermal ? print.thermal : {}),
+      ...(name ? { bluetooth_device_name: name.slice(0, 60) } : {}),
+      ...(width ? { paper_width_mm: width } : {}),
+    };
+    // Field datar ikut ditulis: pembaca lama (`bluetoothWidthDots`,
+    // `printDefaults` runtime) hanya mengenal `bluetooth_paper_width_mm`.
+    await saveDeviceSettings(
+      {
+        print_settings: {
+          ...print,
+          ...(width ? { bluetooth_paper_width_mm: width } : {}),
+          thermal,
+        },
+      },
+      bridgeUrl
+    );
+  } catch {
+    // Runtime tidak ada = keadaan normal kiosk browser; jangan berisik.
   }
 }
 

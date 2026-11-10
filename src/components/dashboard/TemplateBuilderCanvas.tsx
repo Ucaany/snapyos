@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, ArrowUp, ArrowDown } from "lucide-react";
+import { Copy, CopyPlus, Maximize, Plus, Redo2, Undo2, ZoomIn, ZoomOut } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,17 +14,32 @@ import {
   CANVAS_PRESETS,
   DEFAULT_CANVAS_BACKGROUND,
   MAX_SLOTS,
-  SLOT_FITS,
-  SLOT_SHAPES,
   clampSlot,
   emptyLayout,
   layoutSchema,
-  slotAabb,
   slotsByZ,
   type CanvasPreset,
+  type EditorProperties,
   type LayoutSlot,
   type TemplateLayout,
 } from "@/lib/template-layout";
+import {
+  HANDLES,
+  hitHandle,
+  moveSlots,
+  resizeSlot,
+  unionBox,
+  type HandleId,
+} from "@/lib/template-editor";
+import { snapRect, type SnapGuide } from "@/lib/template-snap";
+import { SlotInspector } from "@/components/dashboard/template-builder/SlotInspector";
+import { TemplateTextPanel } from "@/components/dashboard/template-builder/TemplateTextPanel";
+import {
+  useCanvasViewport,
+  ZOOM_MAX,
+  ZOOM_MIN,
+} from "@/components/dashboard/template-builder/useCanvasViewport";
+import { useTemplateHistory } from "@/components/dashboard/template-builder/useTemplateHistory";
 
 export type TemplateLayoutSaveResult = {
   error?: string;
@@ -35,6 +50,11 @@ export type ChromaDetectAction = () => Promise<{
   layout?: unknown;
   frameUrl?: string | null;
   skipped?: number;
+  error?: string;
+}>;
+
+export type DuplicateTemplateAction = () => Promise<{
+  templateId?: string;
   error?: string;
 }>;
 
@@ -49,6 +69,8 @@ type Props = {
   onSave?: (layout: TemplateLayout, publish: boolean) => Promise<TemplateLayoutSaveResult>;
   /** Deteksi area hijau → slot mask. Dimatikan untuk read-only. */
   onDetectChroma?: ChromaDetectAction;
+  /** Duplikat template (frame + layout) menjadi template baru milik owner. */
+  onDuplicateTemplate?: DuplicateTemplateAction;
 };
 
 const PREVIEW_MAX_W = 900;
@@ -79,63 +101,30 @@ function createPlaceholder(index: number): HTMLCanvasElement {
   return canvas;
 }
 
-/** Validasi live (klien) yang mencerminkan aturan server — Phase 2 tetap server. */
-function validateLayout(layout: TemplateLayout): string[] {
-  const errors: string[] = [];
-  const { width: W, height: H } = layout.canvas;
+type LayoutIssue = { path: string; message: string };
 
-  if (layout.slots.length > MAX_SLOTS) {
-    errors.push(`Jumlah slot ${layout.slots.length} melebihi batas ${MAX_SLOTS}.`);
-  }
-
-  const idCount = new Map<string, number>();
-  const zCount = new Map<number, number>();
-  for (const slot of layout.slots) {
-    idCount.set(slot.id, (idCount.get(slot.id) ?? 0) + 1);
-    zCount.set(slot.z, (zCount.get(slot.z) ?? 0) + 1);
-  }
-  for (const [id, count] of idCount) {
-    if (count > 1) errors.push(`ID slot duplikat: ${id}.`);
-  }
-  for (const [z, count] of zCount) {
-    if (count > 1) errors.push(`z duplikat: ${z}.`);
-  }
-
-  layout.slots.forEach((slot, i) => {
-    const n = i + 1;
-    if (slot.width <= 0 || slot.height <= 0) {
-      errors.push(`Slot #${n}: width dan height harus > 0.`);
-    }
-    if (slot.shape === "circle" && Math.abs(slot.width - slot.height) > 0.01) {
-      errors.push(`Slot #${n}: shape circle harus persegi (width = height).`);
-    }
-    if (slot.shape === "mask" && (slot.points?.length ?? 0) < 3) {
-      errors.push(`Slot #${n}: shape mask wajib poligon minimal 3 titik.`);
-    }
-    const maxRadius = Math.min(slot.width, slot.height) / 2;
-    if ((slot.radius ?? 0) > maxRadius) {
-      errors.push(`Slot #${n}: radius melebihi ${Math.round(maxRadius)}px.`);
-    }
-    const box = slotAabb(slot);
-    if (box.left < -0.01 || box.top < -0.01 || box.right > W + 0.01 || box.bottom > H + 0.01) {
-      errors.push(`Slot #${n}: keluar batas canvas ${W}x${H}.`);
-    }
-  });
-
-  return errors;
+/**
+ * Validasi klien memakai `layoutSchema` yang SAMA dengan server (bukan salinan
+ * aturan): salinan lokal pernah meloloskan layout yang ditolak server.
+ */
+function validateLayout(layout: TemplateLayout): LayoutIssue[] {
+  const parsed = layoutSchema.safeParse(layout);
+  if (parsed.success) return [];
+  return parsed.error.issues.map((issue) => ({
+    path: issue.path.length > 0 ? issue.path.join(".") : "layout",
+    message: issue.message,
+  }));
 }
 
-function nextSlotId(slots: LayoutSlot[]): string {
+function nextSlotId(slots: readonly LayoutSlot[], prefix = "slot"): string {
   const ids = new Set(slots.map((s) => s.id));
   let seq = 1;
-  while (ids.has(`slot-${seq}`)) seq += 1;
-  return `slot-${seq}`;
+  while (ids.has(`${prefix}-${seq}`)) seq += 1;
+  return `${prefix}-${seq}`;
 }
 
-function renumberZ(slots: LayoutSlot[]): LayoutSlot[] {
-  return [...slots]
-    .sort((a, b) => a.z - b.z)
-    .map((slot, index) => ({ ...slot, z: index }));
+function renumberZ(slots: readonly LayoutSlot[]): LayoutSlot[] {
+  return [...slots].sort((a, b) => a.z - b.z).map((slot, index) => ({ ...slot, z: index }));
 }
 
 /** Titik (koordinat canvas) → koordinat lokal slot setelah rotasi inverse. */
@@ -152,7 +141,11 @@ function toSlotLocal(slot: LayoutSlot, px: number, py: number): { x: number; y: 
 }
 
 /** Ray casting point-in-polygon. */
-function pointInPolygon(points: readonly { x: number; y: number }[], px: number, py: number): boolean {
+function pointInPolygon(
+  points: readonly { x: number; y: number }[],
+  px: number,
+  py: number
+): boolean {
   let inside = false;
   for (let i = 0, j = points.length - 1; i < points.length; j = i, i += 1) {
     const a = points[i]!;
@@ -168,17 +161,35 @@ function pointInPolygon(points: readonly { x: number; y: number }[], px: number,
 }
 
 type DragState =
-  | { mode: "move"; id: string; startX: number; startY: number; origX: number; origY: number }
+  | {
+      mode: "move";
+      ids: string[];
+      startX: number;
+      startY: number;
+      origins: Map<string, { x: number; y: number }>;
+      checkpointed: boolean;
+    }
   | {
       mode: "resize";
       id: string;
+      handle: HandleId;
       startX: number;
       startY: number;
-      origW: number;
-      origH: number;
-      x: number;
-      y: number;
-    };
+      origin: { x: number; y: number; width: number; height: number };
+      checkpointed: boolean;
+    }
+  | { mode: "pan"; startX: number; startY: number; panX: number; panY: number };
+
+const CURSOR_BY_HANDLE: Record<HandleId, string> = {
+  nw: "nwse-resize",
+  n: "ns-resize",
+  ne: "nesw-resize",
+  e: "ew-resize",
+  se: "nwse-resize",
+  s: "ns-resize",
+  sw: "nesw-resize",
+  w: "ew-resize",
+};
 
 export function TemplateBuilderCanvas({
   templateName,
@@ -188,10 +199,12 @@ export function TemplateBuilderCanvas({
   readOnly = false,
   onSave,
   onDetectChroma,
+  onDuplicateTemplate,
 }: Props) {
   const router = useRouter();
   const uid = useId();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const stageRef = useRef<HTMLDivElement | null>(null);
   const placeholdersRef = useRef<HTMLCanvasElement[]>([]);
   const dragRef = useRef<DragState | null>(null);
   const frameRef = useRef<HTMLImageElement | null>(null);
@@ -201,29 +214,48 @@ export function TemplateBuilderCanvas({
   const activeFrameUrl = localFrameUrl ?? frameUrl ?? null;
   const [detecting, setDetecting] = useState(false);
   const [confirmDetect, setConfirmDetect] = useState(false);
-  const [detectMessage, setDetectMessage] = useState<
-    { kind: "ok" | "error"; text: string } | null
-  >(null);
+  const [detectMessage, setDetectMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(
+    null
+  );
 
-  const [layout, setLayout] = useState<TemplateLayout>(() => {
+  const initial = useMemo<TemplateLayout>(() => {
     if (initialLayout) {
       const parsed = layoutSchema.safeParse(initialLayout);
       if (parsed.success) return parsed.data;
     }
     return emptyLayout("4x6-portrait");
+  }, [initialLayout]);
+
+  const history = useTemplateHistory<TemplateLayout>(initial);
+  const layout = history.present;
+  const viewport = useCanvasViewport();
+
+  const [selectedIds, setSelectedIds] = useState<string[]>(() => {
+    const first = initial.slots[0];
+    return first ? [first.id] : [];
   });
-  const [selectedId, setSelectedId] = useState<string | null>(() =>
-    layout.slots.length > 0 ? (layout.slots[0]?.id ?? null) : null
-  );
-  const [bgInput, setBgInput] = useState(() => layout.canvas.background ?? DEFAULT_CANVAS_BACKGROUND);
+  const [guides, setGuides] = useState<SnapGuide[]>([]);
+  const [activeState, setActiveState] = useState(initialActive);
+  // Draft hex hanya saat owner mengetik. Tanpa draft, nilai DITURUNKAN dari
+  // kanvas — jadi chroma detect/deteksi yang mengganti background otomatis
+  // memperbarui input (tanpa effect yang menulis state).
+  const [bgDraft, setBgDraft] = useState<string | null>(null);
+  const bgInput = bgDraft ?? layout.canvas.background ?? DEFAULT_CANVAS_BACKGROUND;
   const [saveMessage, setSaveMessage] = useState<
     { kind: "ok"; text: string } | { kind: "error"; text: string; fields: string[] } | null
   >(null);
   const [pending, startTransition] = useTransition();
+  const [duplicating, startDuplicate] = useTransition();
 
+  const selectedId = selectedIds[selectedIds.length - 1] ?? null;
   const selected = layout.slots.find((slot) => slot.id === selectedId) ?? null;
-  const errors = readOnly ? [] : validateLayout(layout);
-  const invalid = errors.length > 0;
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const issues = readOnly ? [] : validateLayout(layout);
+  const invalid = issues.length > 0;
+  const issueFor = (path: string) => issues.find((issue) => issue.path === path)?.message;
+  const slotIndex = selected ? layout.slots.indexOf(selected) : -1;
+  /** Error zod milik field slot terpilih (path `slots.<i>.<field>`). */
+  const slotIssue = (field: string) => issueFor(`slots.${slotIndex}.${field}`);
 
   useEffect(() => {
     frameRef.current = null;
@@ -279,67 +311,146 @@ export function TemplateBuilderCanvas({
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const active = ordered.find((slot) => slot.id === selectedId);
-    if (!active) return;
-
     const scale = canvas.width / layout.canvas.width;
+    const line = Math.max(2, canvas.width * 0.004);
+
     ctx.save();
     ctx.strokeStyle = defaultBrandColors.destructive;
-    ctx.lineWidth = Math.max(2, canvas.width * 0.004);
+    ctx.lineWidth = line;
     ctx.setLineDash([10, 6]);
-    slotClipPath(ctx, active, scale);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    const handles = [
-      { x: active.x, y: active.y },
-      { x: active.x + active.width, y: active.y },
-      { x: active.x, y: active.y + active.height },
-      { x: active.x + active.width, y: active.y + active.height },
-    ];
-    const size = Math.max(8, canvas.width * 0.016);
-    // Slot mask tidak bisa di-resize: bbox-nya diturunkan dari poligon.
-    for (const handle of active.shape === "mask" ? [] : handles) {
-      const hx = handle.x * scale - size / 2;
-      const hy = handle.y * scale - size / 2;
-      ctx.fillStyle = defaultBrandColors.bg;
-      ctx.fillRect(hx, hy, size, size);
-      ctx.lineWidth = 2;
-      ctx.strokeRect(hx, hy, size, size);
+    for (const slot of ordered) {
+      if (!selectedSet.has(slot.id)) continue;
+      slotClipPath(ctx, slot, scale);
+      ctx.stroke();
     }
+    ctx.setLineDash([]);
     ctx.restore();
-  }, [layout, selectedId, frameVersion, activeFrameUrl]);
+
+    // Outline grup: satu bbox putus-putus untuk multi-select (>1 slot).
+    const selectedSlots = ordered.filter((slot) => selectedSet.has(slot.id));
+    if (selectedSlots.length > 1) {
+      const box = unionBox(selectedSlots);
+      if (box) {
+        ctx.save();
+        ctx.strokeStyle = defaultBrandColors.ink;
+        ctx.lineWidth = line;
+        ctx.setLineDash([14, 8]);
+        ctx.strokeRect(
+          box.left * scale,
+          box.top * scale,
+          (box.right - box.left) * scale,
+          (box.bottom - box.top) * scale
+        );
+        ctx.restore();
+      }
+    }
+
+    // 8 handle untuk slot tunggal (mask tidak bisa di-resize: bbox-nya turunan).
+    const single = selectedSlots.length === 1 ? selectedSlots[0] : undefined;
+    if (single && single.shape !== "mask") {
+      const size = Math.max(8, canvas.width * 0.016);
+      const cx = (single.x + single.width / 2) * scale;
+      const cy = (single.y + single.height / 2) * scale;
+      const rad = (single.rotation * Math.PI) / 180;
+      const points: { id: HandleId; x: number; y: number }[] = HANDLES.map((id) => {
+        const local = {
+          nw: { x: -single.width / 2, y: -single.height / 2 },
+          n: { x: 0, y: -single.height / 2 },
+          ne: { x: single.width / 2, y: -single.height / 2 },
+          e: { x: single.width / 2, y: 0 },
+          se: { x: single.width / 2, y: single.height / 2 },
+          s: { x: 0, y: single.height / 2 },
+          sw: { x: -single.width / 2, y: single.height / 2 },
+          w: { x: -single.width / 2, y: 0 },
+        }[id];
+        return {
+          id,
+          x: cx + (local.x * Math.cos(rad) - local.y * Math.sin(rad)) * scale,
+          y: cy + (local.x * Math.sin(rad) + local.y * Math.cos(rad)) * scale,
+        };
+      });
+      for (const handle of points) {
+        const hx = handle.x - size / 2;
+        const hy = handle.y - size / 2;
+        ctx.fillStyle = defaultBrandColors.bg;
+        ctx.fillRect(hx, hy, size, size);
+        ctx.strokeStyle = defaultBrandColors.ink;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(hx, hy, size, size);
+      }
+    }
+
+    // Snap guides.
+    if (guides.length > 0) {
+      ctx.save();
+      ctx.strokeStyle = defaultBrandColors.accent;
+      ctx.lineWidth = Math.max(1, canvas.width * 0.002);
+      ctx.setLineDash([8, 6]);
+      for (const guide of guides) {
+        ctx.beginPath();
+        if (guide.axis === "x") {
+          ctx.moveTo(guide.position * scale, 0);
+          ctx.lineTo(guide.position * scale, canvas.height);
+        } else {
+          ctx.moveTo(0, guide.position * scale);
+          ctx.lineTo(canvas.width, guide.position * scale);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }, [layout, selectedSet, guides, frameVersion, activeFrameUrl]);
 
   function toLayoutPoint(
     canvas: HTMLCanvasElement,
     clientX: number,
-    clientY: number,
-    canvasWidth: number
+    clientY: number
   ): { x: number; y: number } {
     const rect = canvas.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return { x: 0, y: 0 };
-    const drawScale = canvas.width / canvasWidth;
     return {
-      x: ((clientX - rect.left) * (canvas.width / rect.width)) / drawScale,
-      y: ((clientY - rect.top) * (canvas.height / rect.height)) / drawScale,
+      x: ((clientX - rect.left) / rect.width) * layout.canvas.width,
+      y: ((clientY - rect.top) / rect.height) * layout.canvas.height,
     };
   }
 
+  /** Patch slot diskret (satu langkah undo). */
   function patchSlot(id: string, patch: Partial<LayoutSlot>) {
-    setLayout((prev) => ({
-      ...prev,
-      slots: prev.slots.map((slot) => (slot.id === id ? { ...slot, ...patch } : slot)),
-    }));
+    history.commit({
+      ...layout,
+      slots: layout.slots.map((slot) => (slot.id === id ? { ...slot, ...patch } : slot)),
+    });
+  }
+
+  function patchProperties(id: string, patch: Partial<EditorProperties>) {
+    const slot = layout.slots.find((candidate) => candidate.id === id);
+    if (!slot) return;
+    const properties: EditorProperties = { ...(slot.properties ?? {}), ...patch };
+    // Kunci yang dihapus (undefined) benar-benar dibuang, bukan disimpan
+    // sebagai undefined — layout tanpa teks tetap identik byte.
+    for (const key of Object.keys(properties) as (keyof EditorProperties)[]) {
+      if (properties[key] === undefined) delete properties[key];
+    }
+    history.commit({
+      ...layout,
+      slots: layout.slots.map((candidate) =>
+        candidate.id === id
+          ? Object.keys(properties).length > 0
+            ? { ...candidate, properties }
+            : (({ properties: _drop, ...rest }) => rest)(candidate)
+          : candidate
+      ),
+    });
   }
 
   function applyCanvasSize(width: number, height: number, preset: CanvasPreset) {
     const nextW = Math.min(CANVAS_MAX, Math.max(1, Math.round(width)));
     const nextH = Math.min(CANVAS_MAX, Math.max(1, Math.round(height)));
     const canvas = { width: nextW, height: nextH };
-    setLayout((prev) => ({
-      ...prev,
-      canvas: { ...prev.canvas, width: nextW, height: nextH, preset },
-      slots: prev.slots.map((slot) => {
+    history.commit({
+      ...layout,
+      canvas: { ...layout.canvas, width: nextW, height: nextH, preset },
+      slots: layout.slots.map((slot) => {
         const clamped = clampSlot(slot, canvas);
         if (clamped.shape === "circle") {
           const side = Math.min(clamped.width, clamped.height);
@@ -347,12 +458,12 @@ export function TemplateBuilderCanvas({
         }
         return clamped;
       }),
-    }));
+    });
   }
 
   function handlePreset(preset: CanvasPreset) {
     if (preset === "custom") {
-      setLayout((prev) => ({ ...prev, canvas: { ...prev.canvas, preset } }));
+      history.commit({ ...layout, canvas: { ...layout.canvas, preset } });
       return;
     }
     applyCanvasSize(CANVAS_PRESETS[preset].width, CANVAS_PRESETS[preset].height, preset);
@@ -374,15 +485,38 @@ export function TemplateBuilderCanvas({
       fit: "cover",
       z: layout.slots.length,
     };
-    setLayout((prev) => ({ ...prev, slots: [...prev.slots, slot] }));
-    setSelectedId(slot.id);
+    history.commit({ ...layout, slots: [...layout.slots, slot] });
+    setSelectedIds([slot.id]);
   }
 
-  function deleteSlot() {
-    if (!selected || readOnly) return;
-    const remaining = renumberZ(layout.slots.filter((slot) => slot.id !== selected.id));
-    setLayout((prev) => ({ ...prev, slots: remaining }));
-    setSelectedId(remaining[0]?.id ?? null);
+  function duplicateSlot() {
+    if (!selected || readOnly || layout.slots.length >= MAX_SLOTS) return;
+    const offset = Math.round(Math.min(layout.canvas.width, layout.canvas.height) * 0.04) || 16;
+    const copy: LayoutSlot = clampSlot(
+      {
+        ...selected,
+        id: nextSlotId(layout.slots),
+        x: selected.x + offset,
+        y: selected.y + offset,
+        z: layout.slots.length,
+        // Poligon mask milik slot asal; salinan tetap sah karena lokal ke bbox.
+        points: selected.points ? selected.points.map((pt) => ({ ...pt })) : undefined,
+        properties: selected.properties ? { ...selected.properties } : undefined,
+      },
+      layout.canvas
+    );
+    history.commit({ ...layout, slots: [...layout.slots, copy] });
+    setSelectedIds([copy.id]);
+  }
+
+  function deleteSelection() {
+    if (readOnly || selectedIds.length === 0) return;
+    const remaining = renumberZ(layout.slots.filter((slot) => !selectedSet.has(slot.id)));
+    history.commit({ ...layout, slots: remaining });
+    setSelectedIds((prev) => {
+      const nextSelection = prev.filter((id) => !selectedSet.has(id));
+      return nextSelection.length > 0 ? nextSelection : remaining[0] ? [remaining[0].id] : [];
+    });
   }
 
   function moveZ(direction: -1 | 1) {
@@ -395,7 +529,7 @@ export function TemplateBuilderCanvas({
     const to = ordered[target];
     if (!from || !to) return;
     const swapped = ordered.map((slot, i) => (i === index ? to : i === target ? from : slot));
-    setLayout((prev) => ({ ...prev, slots: swapped.map((slot, i) => ({ ...slot, z: i })) }));
+    history.commit({ ...layout, slots: swapped.map((slot, i) => ({ ...slot, z: i })) });
   }
 
   function setShape(shape: LayoutSlot["shape"]) {
@@ -405,7 +539,6 @@ export function TemplateBuilderCanvas({
       patchSlot(selected.id, { shape, width: side, height: side, points: undefined });
       return;
     }
-    // Slot mask yang diubah bentuknya kehilangan poligon.
     patchSlot(selected.id, { shape, points: undefined });
   }
 
@@ -429,36 +562,61 @@ export function TemplateBuilderCanvas({
 
   function nudge(dx: number, dy: number) {
     if (!selected || readOnly) return;
-    const next = clampSlot(
-      { ...selected, x: selected.x + dx, y: selected.y + dy },
-      layout.canvas
-    );
-    patchSlot(selected.id, { x: next.x, y: next.y });
+    const ids = new Set(selectedIds);
+    const origins = new Map(layout.slots.map((slot) => [slot.id, { x: slot.x, y: slot.y }]));
+    history.commit({
+      ...layout,
+      slots: moveSlots(layout.slots, ids, dx, dy, layout.canvas, origins),
+    });
   }
 
   function handlePointerDown(event: React.PointerEvent<HTMLCanvasElement>) {
     const canvas = event.currentTarget;
-    if (readOnly || layout.slots.length === 0) return;
-    const point = toLayoutPoint(canvas, event.clientX, event.clientY, layout.canvas.width);
-    const drawScale = canvas.width / layout.canvas.width;
-    const handleRadius = 18 / Math.max(drawScale, 0.0001);
+    if (readOnly) return;
 
+    // Pan: tombol tengah atau Space+drag.
+    if (event.button === 1 || event.altKey) {
+      dragRef.current = {
+        mode: "pan",
+        startX: event.clientX,
+        startY: event.clientY,
+        panX: viewport.panX,
+        panY: viewport.panY,
+      };
+      canvas.setPointerCapture(event.pointerId);
+      canvas.style.cursor = "grabbing";
+      event.preventDefault();
+      return;
+    }
+    if (layout.slots.length === 0) return;
+
+    const point = toLayoutPoint(canvas, event.clientX, event.clientY);
+    const drawScale = canvas.width / layout.canvas.width;
+    const tolerance = 18 / Math.max(drawScale * viewport.zoom, 0.0001);
+
+    // Hit-test 8 handle dulu — semua handle, bukan hanya sudut tenggara.
+    // Handle digambar mengikuti rotasi slot, jadi titik diuji di ruang LOKAL
+    // slot (rotasi inverse) agar semua 8 handle benar-benar bisa dipegang.
     if (selected && selected.shape !== "mask") {
-      const cornerX = selected.x + selected.width;
-      const cornerY = selected.y + selected.height;
-      if (Math.hypot(point.x - cornerX, point.y - cornerY) <= handleRadius) {
+      const local = toSlotLocal(selected, point.x, point.y);
+      const handle = hitHandle({ ...selected, x: 0, y: 0 }, local.x, local.y, tolerance);
+      if (handle) {
         dragRef.current = {
           mode: "resize",
           id: selected.id,
+          handle,
           startX: point.x,
           startY: point.y,
-          origW: selected.width,
-          origH: selected.height,
-          x: selected.x,
-          y: selected.y,
+          origin: {
+            x: selected.x,
+            y: selected.y,
+            width: selected.width,
+            height: selected.height,
+          },
+          checkpointed: false,
         };
         canvas.setPointerCapture(event.pointerId);
-        canvas.style.cursor = "nwse-resize";
+        canvas.style.cursor = CURSOR_BY_HANDLE[handle];
         event.preventDefault();
         return;
       }
@@ -470,7 +628,6 @@ export function TemplateBuilderCanvas({
       point.x <= slot.x + slot.width &&
       point.y >= slot.y &&
       point.y <= slot.y + slot.height;
-    // Mask diuji point-in-polygon dulu; bbox jadi fallback agar mudah dipilih.
     const hit =
       byZDesc.find((slot) => {
         if (!inBbox(slot)) return false;
@@ -479,17 +636,38 @@ export function TemplateBuilderCanvas({
         return pointInPolygon(slot.points, local.x, local.y);
       }) ?? byZDesc.find(inBbox);
     if (!hit) {
-      setSelectedId(null);
+      setSelectedIds([]);
       return;
     }
-    setSelectedId(hit.id);
+
+    // Shift/Ctrl klik = tambah/hapus dari seleksi; tanpa modifier = seleksi
+    // tunggal, kecuali slot sudah bagian dari grup (drag grup dipertahankan).
+    let ids: string[];
+    if (event.shiftKey || event.metaKey || event.ctrlKey) {
+      ids = selectedSet.has(hit.id)
+        ? selectedIds.filter((id) => id !== hit.id)
+        : [...selectedIds, hit.id];
+      setSelectedIds(ids);
+      if (ids.length === 0) return;
+    } else if (selectedSet.has(hit.id) && selectedIds.length > 1) {
+      ids = selectedIds;
+    } else {
+      ids = [hit.id];
+      setSelectedIds(ids);
+    }
+
+    const moving = new Set(ids);
     dragRef.current = {
       mode: "move",
-      id: hit.id,
+      ids,
       startX: point.x,
       startY: point.y,
-      origX: hit.x,
-      origY: hit.y,
+      origins: new Map(
+        layout.slots
+          .filter((slot) => moving.has(slot.id))
+          .map((slot) => [slot.id, { x: slot.x, y: slot.y }])
+      ),
+      checkpointed: false,
     };
     canvas.setPointerCapture(event.pointerId);
     canvas.style.cursor = "grabbing";
@@ -499,57 +677,112 @@ export function TemplateBuilderCanvas({
   function handlePointerMove(event: React.PointerEvent<HTMLCanvasElement>) {
     const drag = dragRef.current;
     if (!drag) return;
-    const point = toLayoutPoint(
-      event.currentTarget,
-      event.clientX,
-      event.clientY,
-      layout.canvas.width
-    );
+    if (drag.mode === "pan") {
+      viewport.panBy(event.clientX - drag.startX, event.clientY - drag.startY);
+      dragRef.current = {
+        ...drag,
+        startX: event.clientX,
+        startY: event.clientY,
+        panX: viewport.panX,
+        panY: viewport.panY,
+      };
+      return;
+    }
+    const point = toLayoutPoint(event.currentTarget, event.clientX, event.clientY);
     const dx = point.x - drag.startX;
     const dy = point.y - drag.startY;
-    setLayout((prev) => {
-      const slots = prev.slots.map((slot) => {
-        if (slot.id !== drag.id) return slot;
-        if (drag.mode === "move") {
-          return clampSlot({ ...slot, x: drag.origX + dx, y: drag.origY + dy }, prev.canvas);
-        }
-        const maxW = Math.max(1, prev.canvas.width - drag.x);
-        const maxH = Math.max(1, prev.canvas.height - drag.y);
-        let width = Math.min(Math.max(1, drag.origW + dx), maxW);
-        let height = Math.min(Math.max(1, drag.origH + dy), maxH);
-        if (slot.shape === "circle") {
-          const side = Math.min(width, height);
-          width = side;
-          height = side;
-        }
-        return clampSlot({ ...slot, width, height }, prev.canvas);
+
+    // Checkpoint saat gerakan PERTAMA: klik tanpa drag tidak mengotori undo.
+    if (!drag.checkpointed && (dx !== 0 || dy !== 0)) {
+      history.checkpoint();
+      drag.checkpointed = true;
+    }
+
+    if (drag.mode === "resize") {
+      const slot = layout.slots.find((candidate) => candidate.id === drag.id);
+      if (!slot) return;
+      // Delta diputar ke ruang lokal slot agar resize benar untuk slot berotasi.
+      const rad = (-slot.rotation * Math.PI) / 180;
+      const localDx = dx * Math.cos(rad) - dy * Math.sin(rad);
+      const localDy = dx * Math.sin(rad) + dy * Math.cos(rad);
+      const next = resizeSlot(slot, drag.handle, localDx, localDy, layout.canvas, drag.origin);
+      history.replace({
+        ...layout,
+        slots: layout.slots.map((candidate) => (candidate.id === drag.id ? next : candidate)),
       });
-      return { ...prev, slots };
+      return;
+    }
+
+    let moveX = dx;
+    let moveY = dy;
+    let nextGuides: SnapGuide[] = [];
+    // Snap hanya untuk satu slot: snapping grup ke tepi slot lain membuat
+    // seluruh grup "melompat" tanpa alasan yang terlihat.
+    if (drag.ids.length === 1) {
+      const id = drag.ids[0]!;
+      const origin = drag.origins.get(id);
+      const slot = layout.slots.find((candidate) => candidate.id === id);
+      if (origin && slot) {
+        const result = snapRect(
+          { x: origin.x + dx, y: origin.y + dy, width: slot.width, height: slot.height },
+          layout.slots.filter((candidate) => candidate.id !== id),
+          layout.canvas
+        );
+        moveX = result.x - origin.x;
+        moveY = result.y - origin.y;
+        nextGuides = result.guides;
+      }
+    }
+    setGuides(nextGuides);
+    history.replace({
+      ...layout,
+      slots: moveSlots(layout.slots, new Set(drag.ids), moveX, moveY, layout.canvas, drag.origins),
     });
-    event.preventDefault();
   }
 
   function endDrag(event: React.PointerEvent<HTMLCanvasElement>) {
     if (!dragRef.current) return;
     dragRef.current = null;
+    setGuides([]);
     event.currentTarget.style.cursor = "";
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
   }
 
-  function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
-    if (!selected) {
-      if (event.key === "Enter" || event.key === " ") {
-        const first = layout.slots[0];
-        if (first) {
-          event.preventDefault();
-          setSelectedId(first.id);
-        }
+  const undo = useCallback(() => history.undo(), [history]);
+  const redo = useCallback(() => history.redo(), [history]);
+
+  // Undo/redo global (Cmd/Ctrl+Z, Shift+Cmd/Ctrl+Z) + Delete slot terpilih.
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName;
+      // Jangan bajak shortcut saat fokus di input/textarea (undo teks asli).
+      const typing =
+        tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target?.isContentEditable;
+      const mod = event.metaKey || event.ctrlKey;
+      if (mod && event.key.toLowerCase() === "z") {
+        if (typing) return;
+        event.preventDefault();
+        if (event.shiftKey) redo();
+        else undo();
+        return;
       }
-      return;
+      if (typing) return;
+      if (!readOnly && (event.key === "Delete" || event.key === "Backspace")) {
+        if (selectedIds.length === 0) return;
+        event.preventDefault();
+        deleteSelection();
+      }
     }
-    if (readOnly) return;
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [undo, redo, readOnly, selectedIds, layout, selectedSet]);
+
+  function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (readOnly || !selected) return;
     const step = event.shiftKey ? 10 : 1;
     if (event.key === "ArrowLeft") {
       event.preventDefault();
@@ -564,6 +797,18 @@ export function TemplateBuilderCanvas({
       event.preventDefault();
       nudge(0, step);
     }
+  }
+
+  function fitToStage() {
+    const canvas = canvasRef.current;
+    const stage = stageRef.current;
+    if (!canvas || !stage) return;
+    const rect = stage.getBoundingClientRect();
+    // Ruang untuk padding border + shadow bingkai.
+    viewport.fit(layout.canvas, {
+      width: Math.max(1, rect.width - 32),
+      height: Math.max(1, rect.height - 32),
+    });
   }
 
   function save(publish: boolean) {
@@ -584,8 +829,27 @@ export function TemplateBuilderCanvas({
         });
         return;
       }
+      // Badge status diturunkan ulang dari hasil simpan, bukan dari prop awal:
+      // publish/draft terakhir harus langsung terlihat tanpa reload.
+      setActiveState(publish);
       setSaveMessage({ kind: "ok", text: `Tersimpan (${publish ? "publish" : "draft"})` });
       router.refresh();
+    });
+  }
+
+  function duplicateTemplate() {
+    if (!onDuplicateTemplate || duplicating) return;
+    startDuplicate(async () => {
+      const result = await onDuplicateTemplate();
+      if (result.error || !result.templateId) {
+        setSaveMessage({
+          kind: "error",
+          text: result.error ?? "Gagal menduplikasi template.",
+          fields: [],
+        });
+        return;
+      }
+      router.push(`/dashboard/templates/builder/${result.templateId}`);
     });
   }
 
@@ -614,7 +878,14 @@ export function TemplateBuilderCanvas({
       setDetectMessage({ kind: "error", text: "Layout hasil deteksi tidak valid." });
       return;
     }
-    setLayout(parsed.data);
+    history.commit(parsed.data);
+    // Kanvas hasil deteksi membawa background baru — buang draft hex agar
+    // input menampilkan nilai deteksi.
+    setBgDraft(null);
+    setSelectedIds((prev) => {
+      const alive = prev.filter((id) => parsed.data.slots.some((slot) => slot.id === id));
+      return alive.length > 0 ? alive : parsed.data.slots[0] ? [parsed.data.slots[0].id] : [];
+    });
     if (result.frameUrl) {
       frameRef.current = null;
       setLocalFrameUrl(result.frameUrl);
@@ -631,54 +902,158 @@ export function TemplateBuilderCanvas({
     });
   }
 
+  const slotNumber = selected ? layout.slots.findIndex((slot) => slot.id === selected.id) + 1 : 0;
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center gap-2">
         <span
           className={
-            initialActive
+            activeState
               ? "border-2 border-ink bg-ink px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-bg"
               : "border-2 border-ink bg-muted px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-ink"
           }
         >
-          {initialActive ? "AKTIF" : "DRAFT"}
+          {activeState ? "AKTIF" : "DRAFT"}
         </span>
         {readOnly && (
           <span className="border-2 border-destructive bg-destructive/10 px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-ink">
             TEMPLATE PLATFORM — READ-ONLY
           </span>
         )}
+        {canEdit && (
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={undo}
+              disabled={!history.canUndo}
+              aria-label="Undo (Cmd/Ctrl+Z)"
+              title="Undo (Cmd/Ctrl+Z)"
+            >
+              <Undo2 aria-hidden />
+              Undo
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={redo}
+              disabled={!history.canRedo}
+              aria-label="Redo (Shift+Cmd/Ctrl+Z)"
+              title="Redo (Shift+Cmd/Ctrl+Z)"
+            >
+              <Redo2 aria-hidden />
+              Redo
+            </Button>
+            {onDuplicateTemplate && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={duplicateTemplate}
+                disabled={duplicating}
+                aria-label="Duplikat template jadi template baru"
+              >
+                <CopyPlus aria-hidden />
+                {duplicating ? "Menduplikasi…" : "Duplikat template"}
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         <section className="flex flex-col gap-3" aria-label="Preview template">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={viewport.zoomOut}
+              disabled={viewport.zoom <= ZOOM_MIN}
+              aria-label="Perkecil tampilan"
+            >
+              <ZoomOut aria-hidden />
+            </Button>
+            <span className="min-w-16 border-2 border-ink bg-muted px-2 py-1 text-center font-mono text-[11px] font-bold tabular-nums">
+              {`${Math.round(viewport.zoom * 100)}%`}
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={viewport.zoomIn}
+              disabled={viewport.zoom >= ZOOM_MAX}
+              aria-label="Perbesar tampilan"
+            >
+              <ZoomIn aria-hidden />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={fitToStage}
+              aria-label="Sesuaikan ke layar"
+            >
+              <Maximize aria-hidden />
+              Fit
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={viewport.reset}
+              aria-label="Kembalikan zoom 100%"
+            >
+              100%
+            </Button>
+          </div>
           <div
-            role="application"
-            tabIndex={0}
-            aria-label={`Preview template ${templateName}. Gunakan tombol panah untuk menggeser slot terpilih, Shift untuk 10 piksel.`}
-            onKeyDown={handleKeyDown}
-            className="relative mx-auto w-fit max-w-full border-2 border-ink bg-bg p-2 shadow-[4px_4px_0_0_#111111] outline-none focus-visible:ring-2 focus-visible:ring-ink"
+            ref={stageRef}
+            className="relative flex max-h-[60vh] items-center justify-center overflow-hidden border-2 border-ink bg-muted p-2"
           >
-            <canvas
-              ref={canvasRef}
-              className="block h-auto max-h-[60vh] w-auto max-w-full touch-none border-2 border-ink bg-ink"
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={endDrag}
-              onPointerCancel={endDrag}
-              aria-hidden="true"
-            />
+            <div
+              role="application"
+              tabIndex={0}
+              aria-label={`Preview template ${templateName}. Panah menggeser slot, Shift 10 piksel. Alt+drag menggeser tampilan, zoom ${Math.round(viewport.zoom * 100)} persen.`}
+              onKeyDown={handleKeyDown}
+              className="w-fit max-w-full border-2 border-ink bg-bg p-2 shadow-hard outline-none focus-visible:ring-2 focus-visible:ring-ink"
+              style={{ transform: `translate(${viewport.panX}px, ${viewport.panY}px)` }}
+            >
+              <canvas
+                ref={canvasRef}
+                className="block h-auto w-auto touch-none border-2 border-ink bg-ink"
+                style={{
+                  maxWidth: `min(100%, ${PREVIEW_MAX_W * viewport.zoom}px)`,
+                  maxHeight: `calc(60vh * ${viewport.zoom})`,
+                }}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={endDrag}
+                onPointerCancel={endDrag}
+                onPointerLeave={endDrag}
+                onContextMenu={(event) => event.preventDefault()}
+                aria-hidden="true"
+              />
+            </div>
           </div>
           <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
             {layout.slots.length === 0
               ? "Belum ada slot. Frame tampil penuh (legacy) sampai Anda menambah slot."
-              : `${layout.slots.length} slot · kanvas ${layout.canvas.width}x${layout.canvas.height}`}
+              : `${layout.slots.length} slot · ${selectedIds.length} terpilih · kanvas ${layout.canvas.width}x${layout.canvas.height}`}
+          </p>
+          <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+            Shift+klik untuk multi-pilih · Delete hapus slot · Alt+drag geser tampilan
           </p>
         </section>
 
         <section className="flex min-w-0 flex-col gap-5" aria-label="Kontrol layout">
           <div className="flex flex-col gap-2">
-            <p className={labelClass}>Slot ({layout.slots.length}/{MAX_SLOTS})</p>
+            <p className={labelClass}>
+              Slot ({layout.slots.length}/{MAX_SLOTS})
+            </p>
             {layout.slots.length === 0 ? (
               <p className="border-2 border-ink/20 bg-muted px-3 py-2 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
                 Belum ada slot. Frame tampil penuh (legacy) sampai Anda menambah slot.
@@ -689,9 +1064,16 @@ export function TemplateBuilderCanvas({
                   <li key={slot.id}>
                     <button
                       type="button"
-                      aria-pressed={selectedId === slot.id}
+                      aria-pressed={selectedSet.has(slot.id)}
                       aria-label={`Pilih ${slot.id}, bentuk ${slot.shape}, z ${slot.z}`}
-                      onClick={() => setSelectedId(slot.id)}
+                      onClick={(event) =>
+                        setSelectedIds((prev) => {
+                          if (!event.shiftKey && !event.metaKey && !event.ctrlKey) return [slot.id];
+                          return prev.includes(slot.id)
+                            ? prev.filter((id) => id !== slot.id)
+                            : [...prev, slot.id];
+                        })
+                      }
                       className="flex min-h-11 w-full items-center justify-between gap-2 px-3 py-2 text-left font-mono text-xs uppercase tracking-[0.05em] hover:bg-muted aria-pressed:bg-accent aria-pressed:text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
                     >
                       <span className="min-w-0 break-words">
@@ -706,210 +1088,62 @@ export function TemplateBuilderCanvas({
               </ul>
             )}
             {canEdit && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                aria-label="Tambah slot"
-                onClick={addSlot}
-                disabled={layout.slots.length >= MAX_SLOTS}
-              >
-                <Plus aria-hidden />
-                Tambah slot
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  aria-label="Tambah slot"
+                  onClick={addSlot}
+                  disabled={layout.slots.length >= MAX_SLOTS}
+                >
+                  <Plus aria-hidden />
+                  Tambah slot
+                </Button>
+                {selected && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    aria-label="Duplikat slot terpilih"
+                    onClick={duplicateSlot}
+                    disabled={layout.slots.length >= MAX_SLOTS}
+                  >
+                    <Copy aria-hidden />
+                    Duplikat slot
+                  </Button>
+                )}
+              </div>
             )}
           </div>
 
           {canEdit && selected && (
-            <div className="flex flex-col gap-4 border-2 border-ink bg-surface p-3 shadow-[4px_4px_0_0_#111111]">
-              <p className={labelClass}>{`Slot terpilih: ${selected.id}`}</p>
-
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="sm"
-                  aria-label="Hapus slot terpilih"
-                  onClick={deleteSlot}
-                >
-                  <Trash2 aria-hidden />
-                  Hapus slot
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  aria-label="Naikkan z slot terpilih"
-                  onClick={() => moveZ(1)}
-                >
-                  <ArrowUp aria-hidden />
-                  Naikkan z
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  aria-label="Turunkan z slot terpilih"
-                  onClick={() => moveZ(-1)}
-                >
-                  <ArrowDown aria-hidden />
-                  Turunkan z
-                </Button>
-              </div>
-
-              <fieldset className="flex flex-col gap-2">
-                <legend className={labelClass}>Bentuk</legend>
-                <div className="flex flex-wrap gap-2">
-                  {SLOT_SHAPES.filter((shape) => shape !== "mask").map((shape) => (
-                    <Button
-                      key={shape}
-                      type="button"
-                      size="sm"
-                      variant={selected.shape === shape ? "default" : "outline"}
-                      aria-label={`Bentuk ${shape}`}
-                      aria-pressed={selected.shape === shape}
-                      onClick={() => setShape(shape)}
-                    >
-                      {shape}
-                    </Button>
-                  ))}
-                </div>
-                {selected.shape === "mask" && (
-                  <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                    Slot mask hanya lahir dari deteksi area hijau.
-                  </p>
-                )}
-              </fieldset>
-
-              <fieldset className="flex flex-col gap-2">
-                <legend className={labelClass}>Fit foto</legend>
-                <div className="flex flex-wrap gap-2">
-                  {SLOT_FITS.map((fit) => (
-                    <Button
-                      key={fit}
-                      type="button"
-                      size="sm"
-                      variant={(selected.fit ?? "cover") === fit ? "default" : "outline"}
-                      aria-label={`Fit ${fit}`}
-                      aria-pressed={(selected.fit ?? "cover") === fit}
-                      onClick={() => patchSlot(selected.id, { fit })}
-                    >
-                      {fit}
-                    </Button>
-                  ))}
-                </div>
-              </fieldset>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1">
-                  <label htmlFor={`${uid}-x`} className={labelClass}>
-                    X
-                  </label>
-                  <Input
-                    id={`${uid}-x`}
-                    type="number"
-                    step={1}
-                    value={selected.x}
-                    onChange={(event) =>
-                      patchSlot(selected.id, {
-                        x: Number.isFinite(Number(event.target.value))
-                          ? Number(event.target.value)
-                          : 0,
-                      })
-                    }
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label htmlFor={`${uid}-y`} className={labelClass}>
-                    Y
-                  </label>
-                  <Input
-                    id={`${uid}-y`}
-                    type="number"
-                    step={1}
-                    value={selected.y}
-                    onChange={(event) =>
-                      patchSlot(selected.id, {
-                        y: Number.isFinite(Number(event.target.value))
-                          ? Number(event.target.value)
-                          : 0,
-                      })
-                    }
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label htmlFor={`${uid}-w`} className={labelClass}>
-                    Width
-                  </label>
-                  <Input
-                    id={`${uid}-w`}
-                    type="number"
-                    step={1}
-                    value={selected.width}
-                    disabled={selected.shape === "mask"}
-                    onChange={(event) => setWidth(Number(event.target.value) || 0)}
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label htmlFor={`${uid}-h`} className={labelClass}>
-                    Height
-                  </label>
-                  <Input
-                    id={`${uid}-h`}
-                    type="number"
-                    step={1}
-                    value={selected.height}
-                    disabled={selected.shape === "mask"}
-                    onChange={(event) => setHeight(Number(event.target.value) || 0)}
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label htmlFor={`${uid}-radius`} className={labelClass}>
-                    Radius
-                  </label>
-                  <Input
-                    id={`${uid}-radius`}
-                    type="number"
-                    step={1}
-                    min={0}
-                    max={Math.floor(Math.min(selected.width, selected.height) / 2)}
-                    value={selected.radius ?? 0}
-                    disabled={selected.shape === "mask"}
-                    onChange={(event) =>
-                      patchSlot(selected.id, {
-                        radius: Number.isFinite(Number(event.target.value))
-                          ? Math.max(0, Number(event.target.value))
-                          : 0,
-                      })
-                    }
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label htmlFor={`${uid}-rotation`} className={labelClass}>
-                    Rotation
-                  </label>
-                  <Input
-                    id={`${uid}-rotation`}
-                    type="number"
-                    step={1}
-                    min={-180}
-                    max={180}
-                    value={selected.rotation}
-                    onChange={(event) =>
-                      patchSlot(selected.id, {
-                        rotation: Number.isFinite(Number(event.target.value))
-                          ? Number(event.target.value)
-                          : 0,
-                      })
-                    }
-                  />
-                </div>
-              </div>
-            </div>
+            <>
+              <SlotInspector
+                uid={uid}
+                slot={selected}
+                slotNumber={slotNumber}
+                canEdit={canEdit}
+                onPatch={(patch) => patchSlot(selected.id, patch)}
+                onShape={setShape}
+                onWidth={setWidth}
+                onHeight={setHeight}
+                onDelete={deleteSelection}
+                onDuplicate={duplicateSlot}
+                onMoveZ={moveZ}
+                fieldIssue={slotIssue}
+              />
+              <TemplateTextPanel
+                uid={uid}
+                slot={selected}
+                canEdit={canEdit}
+                onPatchProperties={(patch) => patchProperties(selected.id, patch)}
+              />
+            </>
           )}
 
           {canEdit && (
-            <div className="flex flex-col gap-4 border-2 border-ink bg-surface p-3 shadow-[4px_4px_0_0_#111111]">
+            <div className="flex flex-col gap-4 border-2 border-ink bg-surface p-3 shadow-hard">
               <fieldset className="flex flex-col gap-2">
                 <legend className={labelClass}>Preset kanvas</legend>
                 <div className="flex flex-wrap gap-2">
@@ -995,7 +1229,13 @@ export function TemplateBuilderCanvas({
                         "custom"
                       )
                     }
+                    aria-invalid={Boolean(issueFor("canvas.width"))}
                   />
+                  {issueFor("canvas.width") && (
+                    <p role="alert" className="font-mono text-[10px] uppercase text-destructive">
+                      {issueFor("canvas.width")}
+                    </p>
+                  )}
                 </div>
                 <div className="flex flex-col gap-1">
                   <label htmlFor={`${uid}-ch`} className={labelClass}>
@@ -1015,7 +1255,13 @@ export function TemplateBuilderCanvas({
                         "custom"
                       )
                     }
+                    aria-invalid={Boolean(issueFor("canvas.height"))}
                   />
+                  {issueFor("canvas.height") && (
+                    <p role="alert" className="font-mono text-[10px] uppercase text-destructive">
+                      {issueFor("canvas.height")}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -1030,11 +1276,11 @@ export function TemplateBuilderCanvas({
                     value={HEX.test(bgInput) ? bgInput : DEFAULT_CANVAS_BACKGROUND}
                     onChange={(event) => {
                       const value = event.target.value;
-                      setBgInput(value);
-                      setLayout((prev) => ({
-                        ...prev,
-                        canvas: { ...prev.canvas, background: value },
-                      }));
+                      setBgDraft(value);
+                      history.commit({
+                        ...layout,
+                        canvas: { ...layout.canvas, background: value },
+                      });
                     }}
                     aria-label="Warna background kanvas"
                     className="h-11 w-20 cursor-pointer border-2 border-ink bg-surface p-1 shadow-[2px_2px_0_0_#111111] focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
@@ -1049,21 +1295,31 @@ export function TemplateBuilderCanvas({
                     value={bgInput}
                     onChange={(event) => {
                       const value = event.target.value;
-                      setBgInput(value);
+                      setBgDraft(value);
                       if (HEX.test(value)) {
-                        setLayout((prev) => ({
-                          ...prev,
-                          canvas: { ...prev.canvas, background: value },
-                        }));
+                        history.replace({
+                          ...layout,
+                          canvas: { ...layout.canvas, background: value },
+                        });
                       }
                     }}
-                    aria-invalid={!HEX.test(bgInput)}
+                    onBlur={() => {
+                      // Hex tidak valid ditinggalkan → kembali ke nilai kanvas.
+                      if (!HEX.test(bgInput)) setBgDraft(null);
+                    }}
+                    aria-invalid={!HEX.test(bgInput) || Boolean(issueFor("canvas.background"))}
                     placeholder="#ffffff"
                   />
-                  {!HEX.test(bgInput) && (
+                  {!HEX.test(bgInput) ? (
                     <p className="font-mono text-[10px] uppercase text-destructive">
                       Hex harus format #rrggbb
                     </p>
+                  ) : (
+                    issueFor("canvas.background") && (
+                      <p role="alert" className="font-mono text-[10px] uppercase text-destructive">
+                        {issueFor("canvas.background")}
+                      </p>
+                    )
                   )}
                 </div>
               </div>
@@ -1078,11 +1334,13 @@ export function TemplateBuilderCanvas({
                   className="border-2 border-destructive bg-destructive/10 px-3 py-2"
                 >
                   <p className="font-mono text-xs font-bold uppercase tracking-[0.08em]">
-                    {`${errors.length} masalah layout — simpan dinonaktifkan`}
+                    {`${issues.length} masalah layout — simpan dinonaktifkan`}
                   </p>
                   <ul className="mt-2 flex list-inside list-disc flex-col gap-1 font-mono text-[11px] text-ink">
-                    {errors.map((error) => (
-                      <li key={error}>{error}</li>
+                    {issues.map((issue) => (
+                      <li key={`${issue.path}-${issue.message}`}>
+                        {`${issue.path}: ${issue.message}`}
+                      </li>
                     ))}
                   </ul>
                 </div>

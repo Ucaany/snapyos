@@ -12,6 +12,7 @@ import type {
 } from "@/lib/kiosk-types";
 import { kioskVisualStyle } from "@/lib/kiosk-types";
 import { mergeAppearance } from "@/lib/appearance-merge";
+import { availablePrintPaths } from "@/lib/print/print-mode";
 import { printPlan } from "@/lib/print-layout";
 import { resolveCaptureCount } from "@/lib/template-fit";
 import { apiForm, apiPost, KioskError } from "@/components/kiosk/api";
@@ -36,6 +37,7 @@ import {
   purgeOrphaned,
 } from "@/components/kiosk/offline-queue";
 import { purgeOtherBusinesses, warmTemplateCache } from "@/components/kiosk/template-cache";
+import { resolveGifFrames } from "@/components/kiosk/photo-render";
 import { ActivationScreen } from "@/components/kiosk/ActivationScreen";
 import { SetupWizard } from "@/components/kiosk/SetupWizard";
 import { WelcomeScreen } from "@/components/kiosk/WelcomeScreen";
@@ -99,7 +101,11 @@ type VerifyData = {
   /** Checkout paid yang sesinya belum dibuat (exit/reload pasca-bayar) — klaim, jangan bayar ulang. */
   claimable_checkout_id?: string | null;
 };
-type FinalizeResult = { result_token: string | null; gif_url: string | null; expires_at?: string | null };
+type FinalizeResult = {
+  result_token: string | null;
+  gif_url: string | null;
+  expires_at?: string | null;
+};
 /** pendingSync = menunggu sinkron antrian offline; syncFailed = terminal (grace habis). */
 type ResultState = FinalizeResult & { pendingSync?: boolean; syncFailed?: boolean };
 
@@ -566,20 +572,28 @@ export function KioskApp({
     setPhotos(captured);
     setRetakeCount(retakes);
   }, []);
+  // Sakelar induk + grup `photo`/`thermal`: satu sumber kebenaran jalur cetak.
+  const hasEnabledPrintPath = availablePrintPaths(currentPhotobox.print_settings).length > 0;
+
   const finalizeAndFinish = useCallback(
     async (final: FinalPhoto[]) => {
       if (!deviceToken || !session) return;
       setBusy(true);
       setNotice(null);
 
-      const shouldPrint =
-        currentPhotobox.print_settings.enabled !== false && (selectedPackage?.print_count ?? 0) > 0;
+      // Ada minimal satu jalur cetak aktif? `enabled` datar + grup
+      // `photo`/`thermal` ditegakkan `availablePrintPaths`; PrintFlow
+      // mengulang pemeriksaan itu agar renderer tunggal pun aman.
+      const shouldPrint = hasEnabledPrintPath && (selectedPackage?.print_count ?? 0) > 0;
 
-      // GIF slideshow: frame ber-slot menghasilkan SATU composite, jadi
-      // slideshow memakai capture mentah (pose bergantian). Template legacy
-      // memakai foto berframe — sesuai docs/05 §5.13.
-      const gifSource =
-        selectedTemplate?.layout ? photos.map((p) => p.blob) : final.map((p) => p.blob);
+      // GIF slideshow: template ber-slot → satu JPEG berframe per foto
+      // (composeFrame, slot terisi foto itu). Template legacy → foto final.
+      // Gagal render frame → balik ke foto mentah (GIF tetap ada).
+      const gifSource = await resolveGifFrames(
+        selectedTemplate?.layout ? photos.map((p) => p.blob) : final.map((p) => p.blob),
+        selectedTemplate?.layout ?? null,
+        selectedTemplate?.file_url ?? null
+      );
 
       // Sesi `local_*` hanya dikenal runtime lokal. Cloud tidak punya barisnya,
       // jadi finalize HARUS ke runtime walau internet sudah hidup lagi — sync
@@ -689,7 +703,7 @@ export function KioskApp({
       deviceToken,
       session,
       selectedTemplate,
-      currentPhotobox.print_settings.enabled,
+      hasEnabledPrintPath,
       selectedPackage,
       businessSlug,
       retakeCount,
@@ -704,7 +718,6 @@ export function KioskApp({
     },
     [finalizeAndFinish]
   );
-
   /** Abort ke tempat sesi itu hidup: `local_*` di runtime, sisanya di cloud. */
   function abortSession(sessionId: string) {
     if (sessionId.startsWith("local_")) {
@@ -766,6 +779,14 @@ export function KioskApp({
     );
   }, [selectedPackage, selectedTemplate, currentPhotobox.print_settings.layout]);
 
+  // QR hasil di lembar cetak menunjuk ke halaman /r/[token] booth ini.
+  // Dihitung dari origin saat render cetak (bukan saat init) agar pindah
+  // domain/port kiosk tidak mencetak URL lama.
+  const resultUrlForQr =
+    typeof window !== "undefined" && result?.result_token
+      ? `${window.location.origin}/r/${result.result_token}`
+      : null;
+
   // Frame ber-slot adalah kontrak capture. Package tetap mengatur harga dan
   // print_count, tetapi tidak boleh memotong frame 6 slot menjadi 3 capture.
   // Template legacy tanpa layout tetap memakai photo_count package.
@@ -811,10 +832,12 @@ export function KioskApp({
       // double scroll (shell + layar).
       data-kiosk-shell="true"
       className="flex h-[100dvh] flex-col overflow-hidden bg-bg text-ink"
-      style={{
-        // Safe-area is applied once by KioskScreenRenderer per customer screen.
-        // The shell only owns the viewport and operator overlays.
-      }}
+      style={
+        {
+          // Safe-area is applied once by KioskScreenRenderer per customer screen.
+          // The shell only owns the viewport and operator overlays.
+        }
+      }
     >
       {notice && (
         <div
@@ -940,6 +963,7 @@ export function KioskApp({
             kioskStyle={pageStyle("template")}
             titleText={kioskBranding?.template_title}
             videoUrl={kioskBranding?.pages?.template?.video_url ?? null}
+            defaultTemplateId={currentPhotobox.default_template_id ?? null}
             onSelect={handleTemplate}
           />
         </KioskScreenRenderer>
@@ -1004,6 +1028,8 @@ export function KioskApp({
             photos={finalPhotos}
             plan={plan}
             printSettings={currentPhotobox.print_settings}
+            purpose="photo"
+            resultUrl={resultUrlForQr}
             jobId={session?.session_id ?? result?.result_token ?? undefined}
             reprint={reprintRequested}
             framed={Boolean(selectedTemplate)}
@@ -1032,10 +1058,7 @@ export function KioskApp({
             kioskStyle={pageStyle("result")}
             videoUrl={kioskBranding?.pages?.result?.video_url ?? null}
             printed={printed}
-            canPrint={
-              currentPhotobox.print_settings.enabled !== false &&
-              (selectedPackage?.print_count ?? 0) > 0
-            }
+            canPrint={hasEnabledPrintPath && (selectedPackage?.print_count ?? 0) > 0}
             pendingSync={result.pendingSync === true}
             syncFailed={result.syncFailed === true}
             expiresAt={result.expires_at ?? null}

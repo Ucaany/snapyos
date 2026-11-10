@@ -11,48 +11,8 @@ import { can } from "@/lib/rbac";
 import { rangeBoundariesTz, type DateRangeInput } from "@/lib/dashboard-math";
 import { buildTxInsightsFromGroups, type TxInsightGroup, type TxInsights } from "@/lib/tx-insights";
 
-type Dimension = "outlet" | "package" | "photobox" | "payment_method";
-
-export type BreakdownItem = { key: string; label: string; amount: number; count: number };
-
-export async function getRevenueBreakdown(
-  userId: string,
-  businessId: string,
-  query: DateRangeInput,
-  dimension: Dimension
-): Promise<{ range: { from: string; to: string }; total: number; items: BreakdownItem[] }> {
-  const { range, role } = await resolveRange(userId, businessId, query);
-  if (!can(role as "owner" | "manager" | "staff", "transaction:read")) {
-    throw new ApiError("FORBIDDEN", "Anda tidak punya akses data finansial");
-  }
-
-  const { startMs, endMs } = rangeBoundariesTz(range.from, range.to, range.timeZone);
-
-  const supabase = createServerClient();
-  const { data, error } = await supabase.rpc("revenue_breakdown", {
-    p_business: businessId,
-    p_start: new Date(startMs).toISOString(),
-    p_end: new Date(endMs).toISOString(),
-    p_dim: dimension,
-  });
-  if (error) throw new ApiError("INTERNAL", "Gagal memuat breakdown revenue");
-
-  const items = (
-    (data ?? []) as { dim_key: string; label: string; amount: number; tx_count: number }[]
-  )
-    .map((row) => ({
-      key: row.dim_key,
-      label: row.label,
-      amount: Number(row.amount ?? 0),
-      count: Number(row.tx_count ?? 0),
-    }))
-    .sort((a, b) => b.amount - a.amount);
-  return {
-    range: { from: range.from, to: range.to },
-    total: items.reduce((s, i) => s + i.amount, 0),
-    items,
-  };
-}
+export type { BreakdownDimension, BreakdownItem, RevenueBreakdown } from "@/server/dashboard";
+export { getRevenueBreakdown } from "@/server/dashboard";
 
 /**
  * Tx Insights owner — SEMUA status transaksi + jam ramai + outlet teramai

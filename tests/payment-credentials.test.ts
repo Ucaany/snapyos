@@ -6,8 +6,13 @@ import {
   assertPaymentCredentialOwner,
   assertPaymentCredentialTenant,
   assertActiveCredentialLimit,
+  canTestCredentialInEnvironment,
   canTestPaymentCredential,
+  PAYMENT_FIELD_LABELS,
+  PAYMENT_METHODS,
+  paymentWebhookStatus,
   redactPaymentCredential,
+  validatePaymentField,
 } from "../src/lib/payment-credentials.ts";
 import { paymentCredentialCreateSchema } from "../src/lib/validators.ts";
 import { credentialMetadata } from "../src/server/payment-credentials-codec.ts";
@@ -65,6 +70,7 @@ test("private credentials are encrypted at rest and never returned by redaction"
   assert.equal(serialized.includes("private_key"), false);
   assert.deepEqual(publicRow.enabled_methods, ["QRIS"]);
   assert.equal(publicRow.webhook_url, null);
+  assert.match(String(publicRow.webhook_reason), /SnapyOS_PUBLIC_BASE_URL/);
 });
 
 test("callback URL requires absolute HTTPS public base URL", async () => {
@@ -158,4 +164,103 @@ test("Tripay maps merchant code, API key and encrypted private key", () => {
   assert.equal(typeof metadata.private_key_encrypted, "string");
   assert.equal(decrypt(String(metadata.private_key_encrypted), KEY), "private-key");
   assert.equal("private_key" in metadata, false);
+});
+
+function withBase(value: string | undefined, run: () => void) {
+  const prior = process.env.SnapyOS_PUBLIC_BASE_URL;
+  try {
+    if (value === undefined) delete process.env.SnapyOS_PUBLIC_BASE_URL;
+    else process.env.SnapyOS_PUBLIC_BASE_URL = value;
+    run();
+  } finally {
+    if (prior === undefined) delete process.env.SnapyOS_PUBLIC_BASE_URL;
+    else process.env.SnapyOS_PUBLIC_BASE_URL = prior;
+  }
+}
+
+test("webhook diagnosis names the concrete cause when the URL is missing", () => {
+  withBase(undefined, () => {
+    const status = paymentWebhookStatus("midtrans");
+    assert.equal(status.url, null);
+    assert.match(String(status.reason), /SnapyOS_PUBLIC_BASE_URL kosong/);
+  });
+  withBase("not a url", () => {
+    const status = paymentWebhookStatus("tripay");
+    assert.equal(status.url, null);
+    assert.match(String(status.reason), /bukan URL valid/);
+  });
+  withBase("http://localhost:3000", () => {
+    const status = paymentWebhookStatus("pakasir");
+    assert.equal(status.url, null);
+    assert.match(String(status.reason), /http:\/\/ — webhook wajib HTTPS/);
+  });
+  withBase("https://snapyos.example", () => {
+    const status = paymentWebhookStatus("midtrans");
+    assert.deepEqual(status, {
+      url: "https://snapyos.example/api/webhooks/payment/midtrans",
+      reason: null,
+    });
+  });
+});
+
+test("connection test is enabled for all three providers, production only for read-only probes", () => {
+  for (const provider of ["midtrans", "tripay", "pakasir"] as const) {
+    assert.equal(canTestPaymentCredential(provider), true);
+    assert.equal(canTestCredentialInEnvironment(provider, "sandbox"), true);
+  }
+  assert.equal(canTestCredentialInEnvironment("midtrans", "production"), false);
+  assert.equal(canTestCredentialInEnvironment("tripay", "production"), true);
+  assert.equal(canTestCredentialInEnvironment("pakasir", "production"), true);
+});
+
+test("field labels and format validation are provider-specific", () => {
+  assert.equal(PAYMENT_FIELD_LABELS.pakasir.merchant_id, "Project Slug");
+  assert.equal(PAYMENT_FIELD_LABELS.pakasir.client_key, null);
+  assert.equal(PAYMENT_FIELD_LABELS.midtrans.client_key, "Client Key");
+  assert.equal(PAYMENT_FIELD_LABELS.tripay.private_key, "Private Key");
+  assert.equal(PAYMENT_FIELD_LABELS.tripay.webhook_secret, null);
+
+  assert.equal(validatePaymentField("pakasir", "merchant_id", "my-project"), null);
+  assert.match(String(validatePaymentField("pakasir", "merchant_id", "My Project")), /huruf kecil/);
+  assert.equal(validatePaymentField("midtrans", "server_key", "SB-Mid-server-abc"), null);
+  assert.match(String(validatePaymentField("midtrans", "server_key", "abc")), /SB-Mid-server-/);
+  assert.equal(validatePaymentField("midtrans", "client_key", "Mid-client-xyz"), null);
+  assert.match(
+    String(validatePaymentField("midtrans", "client_key", "SB-Mid-server-abc")),
+    /SB-Mid-client-/
+  );
+  assert.equal(validatePaymentField("tripay", "merchant_id", "T12345"), null);
+  assert.match(String(validatePaymentField("tripay", "merchant_id", "T 123")), /Merchant Code/);
+  // Providers without a rule for the field never fail locally.
+  assert.equal(validatePaymentField("tripay", "server_key", "anything"), null);
+});
+
+test("credential metadata rejects an empty method selection", () => {
+  assert.throws(
+    () =>
+      credentialMetadata({
+        provider: "midtrans",
+        enabled_methods: [],
+      }),
+    /minimal satu metode/i
+  );
+  assert.throws(
+    () =>
+      paymentCredentialCreateSchema.parse({
+        provider: "tripay",
+        merchant_id: "MERCHANT-CODE",
+        server_key: "api-key",
+        private_key: "private-key",
+        environment: "sandbox",
+        enabled_methods: [],
+      }),
+    /minimal satu metode/i
+  );
+});
+
+test("every PAYMENT_METHODS entry normalizes and only QRIS-bearing providers list QRIS", () => {
+  assert.deepEqual(PAYMENT_METHODS.pakasir, ["qris"]);
+  for (const provider of ["midtrans", "tripay", "pakasir"] as const) {
+    assert.ok(PAYMENT_METHODS[provider].length > 0);
+  }
 });

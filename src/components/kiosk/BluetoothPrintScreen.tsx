@@ -20,13 +20,9 @@ import {
   type EscPosLink,
 } from "@/lib/print/bluetooth";
 import { SerialPrintError, writeEscPosSerial, writeEscPosSerialGranted } from "@/lib/print/serial";
-import {
-  autoPrintStorageKey,
-  claimAutoPrintAttempt,
-  getAutoPrintStore,
-  shouldClaimAutoPrint,
-} from "@/lib/print/auto-print";
+import { useAutoPrintJob } from "@/hooks/use-auto-print-job";
 import { usePrintTransport } from "@/hooks/use-print-transport";
+import { rememberThermalPrinter } from "@/components/kiosk/local-runtime";
 
 type Props = {
   photos: { blob: Blob }[];
@@ -70,11 +66,13 @@ export function BluetoothPrintScreen({
   const linkRef = useRef<EscPosLink | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const doneRef = useRef(false);
-  const autoClaimedRef = useRef(false);
 
   const auto = shouldAutoPrint(printSettings);
+  const autoJob = useAutoPrintJob({ scope: "kiosk", id: jobId, reprint, auto });
   const copies = printCopies(printSettings);
   const widthDots = bluetoothWidthDots(printSettings);
+  const paperWidthMm: 58 | 80 = widthDots === 384 ? 58 : 80;
+  const bridgeUrl = printSettings?.bridge_url ?? null;
   const transport = usePrintTransport();
   const supported = transport.bluetooth;
   const serialSupported = transport.serial;
@@ -146,6 +144,8 @@ export function BluetoothPrintScreen({
         setPrinterName(device.name ?? "Printer Bluetooth");
         const link = await connectEscPos(device);
         linkRef.current = link;
+        // Koneksi sukses = satu-satunya bukti printer ini dipakai booth.
+        void rememberThermalPrinter({ name: device.name, paperWidthMm }, bridgeUrl);
         await run(link);
       } catch (error) {
         if (error instanceof BluetoothPrintError && error.code === "NO_DEVICE") {
@@ -160,7 +160,7 @@ export function BluetoothPrintScreen({
         setState("error");
       }
     },
-    [run]
+    [bridgeUrl, paperWidthMm, run]
   );
 
   /** Jalur printer Classic SPP: Web Serial mengirim job yang sama. */
@@ -244,14 +244,7 @@ export function BluetoothPrintScreen({
     // kali. jobId kosong = hanya guard ref per mount (tidak ada kunci stabil).
     // Ref menahan Strict Mode double-effect (instance sama) agar percobaan
     // kedua tetap jalan tanpa mengklaim ulang; storage menahan remount/refresh.
-    if (!autoClaimedRef.current) {
-      if (jobId && shouldClaimAutoPrint({ auto, reprint, jobId })) {
-        if (!claimAutoPrintAttempt(autoPrintStorageKey("kiosk", jobId), getAutoPrintStore())) {
-          return;
-        }
-      }
-      autoClaimedRef.current = true;
-    }
+    if (!autoJob.claim()) return;
     let cancelled = false;
     void (async () => {
       if (supported) {
@@ -267,6 +260,7 @@ export function BluetoothPrintScreen({
             }
             linkRef.current = link;
             setPrinterName(device.name ?? "Printer Bluetooth");
+            void rememberThermalPrinter({ name: device.name, paperWidthMm }, bridgeUrl);
             await run(link);
             return;
           } catch {

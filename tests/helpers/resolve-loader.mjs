@@ -78,5 +78,18 @@ export async function resolve(specifier, context, nextResolve) {
     const url = resolveAlias(specifier);
     if (url) return { url, shortCircuit: true };
   }
+  // Impor relatif tanpa ekstensi (`./config`) lazim di TS/Next; Node butuh
+  // ekstensi eksplisit. Coba `.ts`/`.tsx` sebelum menyerah.
+  if (
+    specifier.startsWith(".") &&
+    !path.extname(specifier) &&
+    context.parentURL?.startsWith("file:")
+  ) {
+    const base = new URL(specifier, context.parentURL);
+    for (const suffix of [".ts", ".tsx", "/index.ts", "/index.tsx"]) {
+      const candidate = new URL(base.href + suffix);
+      if (existsSync(candidate)) return { url: candidate.href, shortCircuit: true };
+    }
+  }
   return nextResolve(specifier, context);
 }

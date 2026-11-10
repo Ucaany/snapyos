@@ -13,6 +13,7 @@ import type { FormState } from "@/server/auth-actions";
 import { createPackage, deletePackage, updatePackage } from "@/server/packages";
 import {
   deleteTemplate,
+  duplicateTemplate,
   saveTemplateLayout,
   updateTemplate,
   uploadTemplate,
@@ -145,9 +146,7 @@ export async function updateTemplateAction(
   try {
     await updateTemplate(ctx.user.id, ctx.businessId, id, {
       name: str(formData, "name") || undefined,
-      category: categoryRaw
-        ? (categoryRaw as (typeof TEMPLATE_CATEGORIES)[number])
-        : undefined,
+      category: categoryRaw ? (categoryRaw as (typeof TEMPLATE_CATEGORIES)[number]) : undefined,
       is_active: bool(formData, "is_active"),
     });
   } catch (error) {
@@ -197,6 +196,30 @@ export async function saveTemplateLayoutAction(
   revalidatePath("/dashboard/templates");
   revalidatePath("/dashboard/packages");
   return { error: undefined };
+}
+
+/**
+ * Duplikat template (frame + layout) jadi template baru milik business ini.
+ * Dipakai tombol "Duplikat template" di builder — template platform read-only
+ * tetap tidak tersentuh.
+ */
+export async function duplicateTemplateAction(templateId: string): Promise<{
+  templateId?: string;
+  error?: string;
+}> {
+  const ctx = await requireActiveBusiness();
+  if (!ctx) return { error: "Sesi berakhir. Silakan login ulang." };
+  await requireEffectiveSubscription(ctx.businessId, "write");
+  if (typeof templateId !== "string" || !templateId.trim()) {
+    return { error: "Template tidak valid" };
+  }
+  try {
+    const created = await duplicateTemplate(ctx.user.id, ctx.businessId, templateId);
+    revalidatePath("/dashboard/templates");
+    return { templateId: created.id };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Gagal menduplikasi template." };
+  }
 }
 
 /**

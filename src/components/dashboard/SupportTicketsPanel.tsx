@@ -63,11 +63,7 @@ export function SupportTicketsPanel({ tickets }: { tickets: SupportTicket[] }) {
           <p className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
             {`TIKET ${String(tickets.length).padStart(2, "0")}`}
           </p>
-          <CollapsibleTrigger
-            className="px-3"
-            aria-label="Buka form tiket baru"
-            title="Tiket baru"
-          >
+          <CollapsibleTrigger aria-label="Buka form tiket baru" title="Tiket baru">
             <Plus aria-hidden />
             <span className="sr-only">Tiket baru</span>
           </CollapsibleTrigger>

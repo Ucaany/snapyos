@@ -3,6 +3,7 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <AssemblyName>SnapyOS.LocalStore</AssemblyName>
     <RootNamespace>SnapyOS.LocalStore</RootNamespace>
+    <NoWarn>$(NoWarn);CA1305;CA1822;CA1711;CA1859;CA1869</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite" />

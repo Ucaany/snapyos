@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { fillSlots, resolveCaptureCount } from "../src/lib/template-fit.ts";
+import { fillSlots, framePerPhoto, resolveCaptureCount } from "../src/lib/template-fit.ts";
 
 test("resolveCaptureCount: slot frame mengalahkan jumlah foto package", () => {
   assert.equal(resolveCaptureCount(3, 6), 6);
@@ -45,4 +45,32 @@ test("input tidak valid menghasilkan daftar kosong", () => {
   assert.deepEqual(fillSlots(-2, 3), []);
   assert.deepEqual(fillSlots(3, -1), []);
   assert.deepEqual(fillSlots(3.9, 2.2), [0, 1, 0]);
+});
+
+test("framePerPhoto: tepat satu slot terisi per foto, sisanya kosong", () => {
+  assert.deepEqual(framePerPhoto(4, 0), [0, null, null, null]);
+  assert.deepEqual(framePerPhoto(4, 2), [null, null, 2, null]);
+  assert.deepEqual(framePerPhoto(4, 3), [null, null, null, 3]);
+});
+
+test("framePerPhoto: indeks di luar frame tidak mengisi slot apa pun", () => {
+  for (const index of [-1, 4, 99, Number.NaN]) {
+    const slots = framePerPhoto(4, index);
+    assert.equal(slots.length, 4);
+    assert.ok(
+      slots.every((s) => s === null),
+      `indeks ${index} tidak boleh mengisi slot`
+    );
+  }
+  assert.deepEqual(framePerPhoto(0, 0), []);
+});
+
+test("framePerPhoto x jumlah foto: setiap foto menyumbang satu frame ber-slot", () => {
+  const slotCount = 6;
+  const frames = Array.from({ length: slotCount }, (_, i) => framePerPhoto(slotCount, i));
+  assert.equal(frames.length, slotCount);
+  frames.forEach((frame, i) => {
+    assert.equal(frame.filter((s) => s !== null).length, 1, `frame ${i} wajib satu slot terisi`);
+    assert.equal(frame[i], i);
+  });
 });

@@ -50,8 +50,17 @@ export function ResultShareActions({ sharePath, zipHref }: Props) {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={() => void copyLink()} className={buttonClass} disabled={!sharePath}>
-          {copied ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />}
+        <button
+          type="button"
+          onClick={() => void copyLink()}
+          className={buttonClass}
+          disabled={!sharePath}
+        >
+          {copied ? (
+            <Check className="size-4" aria-hidden />
+          ) : (
+            <Copy className="size-4" aria-hidden />
+          )}
           {copied ? "Link tersalin" : "Salin link"}
         </button>
         {sharePath && (

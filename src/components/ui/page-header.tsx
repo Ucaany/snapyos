@@ -41,7 +41,9 @@ export function PageHeader({
         <h1
           className={cn(
             "min-w-0 break-words font-display font-black uppercase tracking-tight",
-            size === "hero" ? "text-3xl sm:text-4xl md:text-5xl" : "text-2xl sm:text-3xl md:text-4xl"
+            size === "hero"
+              ? "text-3xl sm:text-4xl md:text-5xl"
+              : "text-2xl sm:text-3xl md:text-4xl"
           )}
         >
           {title}

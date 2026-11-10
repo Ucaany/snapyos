@@ -16,9 +16,14 @@ export type CameraStatus = {
   last_error?: string;
 };
 
+/** `id` = token yang bisa dipakai memilih perangkat (path/index/port). */
+export type CameraInfo = { id: string; label: string };
+
 export type CameraAdapter = {
   readonly kind: CameraKind;
   readonly mock: boolean;
+  /** Deteksi read-only; tidak membuka perangkat. */
+  list(): Promise<CameraInfo[]>;
   status(): Promise<CameraStatus>;
   preview(): Promise<Buffer>;
   capture(): Promise<Buffer>;

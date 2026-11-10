@@ -22,11 +22,25 @@ export function fillSlots(slotCount: number, photoCount: number): number[] {
   return Array.from({ length: slots }, (_, i) => i % photos);
 }
 
+/**
+ * Sumber slot untuk SATU foto pada GIF berframe: slot `photoIndex` terisi foto
+ * itu, slot lain kosong. Satu gambar per iterasi mempertahankan kanvas template
+ * (frame + slot) tanpa menahan N render sekaligus.
+ *
+ * @returns array sepanjang `slotCount`; semua `null` bila indeks di luar frame
+ */
+export function framePerPhoto(slotCount: number, photoIndex: number): (number | null)[] {
+  const slots = Number.isFinite(slotCount) ? Math.max(0, Math.floor(slotCount)) : 0;
+  const out = Array.from({ length: slots }, () => null as number | null);
+  if (Number.isInteger(photoIndex) && photoIndex >= 0 && photoIndex < slots) {
+    out[photoIndex] = photoIndex;
+  }
+  return out;
+}
+
 /** Jumlah capture yang benar-benar dipakai setelah frame dipilih. */
 export function resolveCaptureCount(packagePhotoCount: number, templateSlotCount: number): number {
-  const slots = Number.isFinite(templateSlotCount)
-    ? Math.max(0, Math.floor(templateSlotCount))
-    : 0;
+  const slots = Number.isFinite(templateSlotCount) ? Math.max(0, Math.floor(templateSlotCount)) : 0;
   if (slots > 0) return slots;
   const photos = Number.isFinite(packagePhotoCount) ? Math.floor(packagePhotoCount) : 1;
   return Math.max(1, photos);

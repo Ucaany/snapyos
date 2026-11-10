@@ -61,9 +61,7 @@ function DetailBlock({
               Transaksi ({detail.transactions.length})
             </h3>
             {detail.transactions.length === 0 ? (
-              <p className="mt-2 font-mono text-xs text-muted-foreground">
-                Belum ada transaksi.
-              </p>
+              <p className="mt-2 font-mono text-xs text-muted-foreground">Belum ada transaksi.</p>
             ) : (
               <ul className="mt-2 divide-y-2 divide-ink/10 border-2 border-ink bg-surface">
                 {detail.transactions.map((t) => (

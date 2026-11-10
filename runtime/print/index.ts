@@ -16,12 +16,20 @@ import { printGeometry, type Geometry } from "./geometry.ts";
 
 export type PrinterHealth = { ok: boolean; printer: string | null; output: string };
 export type SubmitResult = { job_id: string | null; detail?: string };
+export type PrinterInfo = { name: string; default: boolean };
 
 export type PrinterAdapter = {
   readonly kind: "cups" | "windows" | "mock";
   readonly mock: boolean;
+  /** Deteksi read-only; tidak mengubah antrean maupun setelan. */
+  list(): Promise<PrinterInfo[]>;
   health(printerName?: string): Promise<PrinterHealth>;
-  submit(pdf: Buffer, printerName: string, geometry: Geometry): Promise<SubmitResult>;
+  submit(
+    pdf: Buffer,
+    printerName: string,
+    geometry: Geometry,
+    mediaName?: string
+  ): Promise<SubmitResult>;
 };
 
 async function withTempPdf(pdf: Buffer, task: (file: string) => Promise<SubmitResult>) {
@@ -34,10 +42,43 @@ async function withTempPdf(pdf: Buffer, task: (file: string) => Promise<SubmitRe
   }
 }
 
+/** `lpstat -p -d`: baris `printer X is ...` + `system default destination: X`. */
+export function parseCupsPrinters(output: string): PrinterInfo[] {
+  const names = new Set<string>();
+  let fallback: string | null = null;
+  for (const raw of output.split(/\r?\n/)) {
+    const line = raw.trim();
+    const printer = /^printer\s+(\S+)\s+is\b/i.exec(line);
+    if (printer) names.add(printer[1]!);
+    const def = /^system default destination:\s*(\S+)/i.exec(line);
+    if (def) fallback = def[1]!;
+  }
+  if (fallback) names.add(fallback);
+  return [...names].sort().map((name) => ({ name, default: name === fallback }));
+}
+
+/** Output PowerShell `"$($_.Name)|$($_.Default)"` per printer. */
+export function parseWindowsPrinters(output: string): PrinterInfo[] {
+  return output
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [name, def] = line.split("|");
+      return { name: (name || "").trim(), default: /^true$/i.test((def || "").trim()) };
+    })
+    .filter((entry) => entry.name.length > 0);
+}
+
 function createCupsPrinter(config: RuntimeConfig): PrinterAdapter {
   return {
     kind: "cups",
     mock: false,
+
+    async list() {
+      const result = await runCommand(config.lpstatBin, ["-p", "-d"], 10_000);
+      return parseCupsPrinters(result.stdout.toString("utf8"));
+    },
 
     async health(printerName) {
       const args = ["-p"];
@@ -62,21 +103,25 @@ function createCupsPrinter(config: RuntimeConfig): PrinterAdapter {
       };
     },
 
-    submit(pdf, printerName, geometry) {
+    submit(pdf, printerName, geometry, mediaName) {
       return withTempPdf(pdf, async (file) => {
         const args: string[] = [];
         if (printerName) args.push("-d", printerName);
-        args.push(
-          "-n",
-          "1",
-          "-o",
-          `media=Custom.${geometry.widthMm}x${geometry.heightMm}mm`,
-          "-o",
-          "fit-to-page",
-          file
-        );
-        const result = await runCommand(config.cupsBin, args, config.timeoutMs);
-        return { job_id: result.stdout.toString("utf8").trim() || null };
+        // Nama media driver bisa berbeda per printer (DNP/Citizen/Selphy);
+        // owner dapat mengisinya lewat `print_settings.media_name`.
+        const media =
+          (mediaName && mediaName.trim().slice(0, 120)) ||
+          `Custom.${geometry.widthMm}x${geometry.heightMm}mm`;
+        args.push("-n", "1", "-o", `media=${media}`, "-o", "fit-to-page", file);
+        try {
+          const result = await runCommand(config.cupsBin, args, config.timeoutMs);
+          return { job_id: result.stdout.toString("utf8").trim() || null };
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          throw new Error(
+            `${message}. Periksa printer dengan \`lpstat -p\` dan printer default dengan \`lpoptions -d\`.`
+          );
+        }
       });
     },
   };
@@ -98,6 +143,14 @@ function createWindowsPrinter(config: RuntimeConfig): PrinterAdapter {
   return {
     kind: "windows",
     mock: false,
+
+    async list() {
+      const result = await ps(
+        `Get-Printer | ForEach-Object { "$($_.Name)|$($_.Default)" }`,
+        15_000
+      );
+      return parseWindowsPrinters(result.stdout.toString("utf8"));
+    },
 
     async health(printerName) {
       const script = printerName
@@ -136,6 +189,9 @@ function createMockPrinter(): PrinterAdapter {
   return {
     kind: "mock",
     mock: true,
+    async list() {
+      return [];
+    },
     async health(printerName) {
       return { ok: true, printer: printerName || "MOCK_PRINTER", output: "mock printer siap" };
     },

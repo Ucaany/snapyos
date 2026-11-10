@@ -33,7 +33,11 @@ const expected = await fetch(API_TEMPLATES)
   .then((res) => res.json())
   .then((json) => json?.data ?? [])
   .catch(() => []);
-report.record("endpoint daftar template menjawab", Array.isArray(expected), `count=${expected?.length ?? "?"}`);
+report.record(
+  "endpoint daftar template menjawab",
+  Array.isArray(expected),
+  `count=${expected?.length ?? "?"}`
+);
 
 const SNAPSHOT_KEY = `snapyos.templates.${cfg.businessSlug}`;
 const INDEX_KEY = `snapyos.template-index.${cfg.businessSlug}`;
@@ -47,11 +51,15 @@ page.on("request", (request) => {
   if (request.url().includes("/templates")) listRequests.push(request.url());
 });
 page.on("response", (response) => {
-  if (response.url().includes("/api/v1/public/frame")) frameResponses.push(response.fromServiceWorker());
+  if (response.url().includes("/api/v1/public/frame"))
+    frameResponses.push(response.fromServiceWorker());
 });
 
 async function openTemplateScreen() {
-  await page.getByRole("button", { name: /mulai|start/i }).first().waitFor({ timeout: 60_000 });
+  await page
+    .getByRole("button", { name: /mulai|start/i })
+    .first()
+    .waitFor({ timeout: 60_000 });
   await startPackage(page);
   await page.getByRole("heading", { name: /pilih frame/i }).waitFor({ timeout: 60_000 });
   await page
@@ -77,7 +85,10 @@ async function readIndex() {
 try {
   await seedDevice(page, { token, photoboxSlug: cfg.photoboxSlug });
   await page.goto(cfg.kioskUrl, { waitUntil: "domcontentloaded" });
-  await page.getByRole("button", { name: /mulai|start/i }).first().waitFor({ timeout: 60_000 });
+  await page
+    .getByRole("button", { name: /mulai|start/i })
+    .first()
+    .waitFor({ timeout: 60_000 });
 
   // Warm berjalan saat idle di layar welcome.
   await page
@@ -95,7 +106,10 @@ try {
     .catch(() => undefined);
 
   const warmed = await readIndex();
-  report.record("snapshot daftar template tersimpan", (await page.evaluate((key) => Boolean(window.localStorage.getItem(key)), SNAPSHOT_KEY)) === true);
+  report.record(
+    "snapshot daftar template tersimpan",
+    (await page.evaluate((key) => Boolean(window.localStorage.getItem(key)), SNAPSHOT_KEY)) === true
+  );
   report.record(
     "thumbnail semua template masuk Cache Storage",
     warmed.thumbs === expected.length && warmed.thumbs > 0,
@@ -119,9 +133,13 @@ try {
   report.record("grid tampil tanpa skeleton", skeleton === 0, `skeleton=${skeleton}`);
 
   await page
-    .waitForFunction(() => [...document.images].some((img) => img.complete && img.naturalWidth > 0), null, {
-      timeout: 30_000,
-    })
+    .waitForFunction(
+      () => [...document.images].some((img) => img.complete && img.naturalWidth > 0),
+      null,
+      {
+        timeout: 30_000,
+      }
+    )
     .catch(() => undefined);
   report.record(
     "gambar frame dilayani service worker",
@@ -143,10 +161,12 @@ try {
   await page.reload({ waitUntil: "domcontentloaded" });
   await openTemplateScreen();
 
-  const cachedChip = await page.getByText(/dari cache/i).first().isVisible().catch(() => false);
-  const frameCards = await page
-    .getByRole("button", { name: /gunakan frame|tanpa frame/i })
-    .count();
+  const cachedChip = await page
+    .getByText(/dari cache/i)
+    .first()
+    .isVisible()
+    .catch(() => false);
+  const frameCards = await page.getByRole("button", { name: /gunakan frame|tanpa frame/i }).count();
   report.record("fetch daftar gagal + snapshot ada → chip Dari cache", cachedChip);
   report.record("grid tetap dirender dari snapshot", frameCards > 0, `cards=${frameCards}`);
   await page.unroute("**/api/v1/public/*/templates", abortList);
@@ -163,7 +183,9 @@ try {
       if (thumb) {
         const cache = await caches.open("snapyos-template-assets-v1");
         const base = thumb.key.slice(0, thumb.key.lastIndexOf("@"));
-        cached = Boolean(await cache.match(`${window.location.origin}/__frame/${encodeURIComponent(base)}@480`));
+        cached = Boolean(
+          await cache.match(`${window.location.origin}/__frame/${encodeURIComponent(base)}@480`)
+        );
       }
       return {
         snapshot: Boolean(window.localStorage.getItem(snapshotKey)),
@@ -175,7 +197,6 @@ try {
   report.record("offline: snapshot tetap tersedia", offline.snapshot);
   report.record("offline: thumbnail tersedia di Cache Storage", offline.cached);
   await context.setOffline(false);
-
 } catch (error) {
   report.record(
     "alur template cache berjalan",

@@ -7,24 +7,33 @@ type Props = {
   provider: GatewayProvider;
   selected: string[];
   disabled?: boolean;
+  onChange?(next: string[]): void;
 };
 
 const providerHints: Record<GatewayProvider, string> = {
   pakasir: "QRIS hanya (project merchant personal).",
-  midtrans: "QRIS, redirect, dan Virtual Account bank transfer.",
-  tripay: "QRIS, payment channel, dan Virtual Account.",
+  midtrans: "QRIS, e-wallet redirect, dan Virtual Account bank transfer.",
+  tripay: "QRIS, gerai retail, dan Virtual Account (closed payment).",
 };
 
 /**
- * PaymentMethodSelector — check metode enabled per provider.
- * Backend `allowedPaymentMethods` tetap filter final (frontend hanya tampilan).
+ * PaymentMethodSelector — check metode enabled per provider dari `PAYMENT_METHODS`.
+ * Controlled: state pemilik form yang menyimpan ke `metadata.enabled_methods`.
+ * Backend `assertEnabledPaymentMethods` tetap penjaga final (minimal satu valid).
  */
-export function PaymentMethodSelector({ provider, selected, disabled }: Props) {
+export function PaymentMethodSelector({ provider, selected, disabled, onChange }: Props) {
   const methods = PAYMENT_METHODS[provider];
+  const toggle = (method: string, checked: boolean) => {
+    if (!onChange) return;
+    onChange(
+      checked ? [...new Set([...selected, method])] : selected.filter((item) => item !== method)
+    );
+  };
+
   return (
     <fieldset disabled={disabled} className="border-2 border-ink bg-muted p-3">
       <legend className="px-1 font-mono text-[10px] font-bold uppercase tracking-[0.14em]">
-        [ METODE TERSEDIA ]
+        [ METODE TERSEDIA ] MIN. 1
       </legend>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {methods.map((method) => (
@@ -36,7 +45,8 @@ export function PaymentMethodSelector({ provider, selected, disabled }: Props) {
               name="enabled_methods"
               type="checkbox"
               value={method}
-              defaultChecked={selected.includes(method)}
+              checked={selected.includes(method)}
+              onChange={(event) => toggle(method, event.target.checked)}
               className="size-4 accent-ink"
             />
             {method}

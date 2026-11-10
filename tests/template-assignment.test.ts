@@ -7,10 +7,7 @@ import {
   isTemplateAssignable,
   type AssignableTemplateRow,
 } from "../src/lib/template-assignment.ts";
-import {
-  PUBLIC_CONFIG_GLOBAL_TAG,
-  publicConfigCacheTags,
-} from "../src/lib/template-cache.ts";
+import { PUBLIC_CONFIG_GLOBAL_TAG, publicConfigCacheTags } from "../src/lib/template-cache.ts";
 
 const BIZ = "biz-1";
 

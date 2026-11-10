@@ -69,7 +69,7 @@ function resolveConfig(credential: GatewayCredential | null): {
 async function pakasirRequest(url: string, init?: RequestInit) {
   const response = await fetch(url, { ...init, cache: "no-store" as RequestCache });
   const json = (await response.json().catch(() => null)) as Record<string, unknown> | null;
-  return { ok: response.ok, json };
+  return { ok: response.ok, status: response.status, json };
 }
 
 export function createPakasirGateway(credential: GatewayCredential | null): PaymentGateway {
@@ -110,6 +110,26 @@ export function createPakasirGateway(credential: GatewayCredential | null): Paym
         expiresAt: parseProviderDateTime(result.expired_at) ?? result.expired_at,
         providerRef: result.txn_id,
       } satisfies GatewayCreateResult;
+    },
+
+    /**
+     * Probe auth tanpa membuat transaksi. `getStatus` mengembalikan "pending"
+     * untuk SETIAP respons non-OK, jadi API key salah tidak pernah terlihat;
+     * di sini 401/403 dilempar agar tombol tes bisa gagal dengan jujur.
+     * 404 = key valid tapi txn dummy tidak ada (hasil yang diharapkan).
+     */
+    async probeCredential() {
+      const { apiKey, project, baseUrl } = resolveConfig(credential);
+      const { ok, status } = await pakasirRequest(
+        `${baseUrl}/api/v2/transaction-status/${encodeURIComponent(project)}/SnapyOS-TESTCONNECT`,
+        { headers: { "X-Api-Key": apiKey } }
+      );
+      if (status === 401 || status === 403) {
+        throw new Error("API key Pakasir ditolak provider (401/403)");
+      }
+      if (!ok && status !== 404) {
+        throw new Error(`Probe kredensial Pakasir gagal (HTTP ${status})`);
+      }
     },
 
     async getStatus(orderId, amount, providerRef) {

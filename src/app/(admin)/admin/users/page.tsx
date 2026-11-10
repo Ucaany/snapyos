@@ -1,9 +1,5 @@
 import Link from "next/link";
-import {
-  Mail,
-  UserPlus,
-  Users,
-} from "lucide-react";
+import { Mail, UserPlus, Users } from "lucide-react";
 
 import { AdminActionButton, AdminActionForm } from "@/components/admin/AdminActionForm";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";

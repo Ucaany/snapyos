@@ -40,3 +40,61 @@ test("Design Builder memakai aksi baru per-booth", async () => {
   assert.match(actions, /resetBoothBrandingAction/);
   assert.match(actions, /photobox:write/);
 });
+
+test("halaman hardware booth: action ter-gate, audit, invalidate, dan panel uji cetak", async () => {
+  const actions = await readFile("src/server/hardware-actions.ts", "utf8");
+  assert.match(actions, /requireEffectiveSubscription\(ctx\.businessId, "write"\)/);
+  assert.match(actions, /can\(ctx\.role, "photobox:write"\)/);
+  assert.match(actions, /photoboxHardwareSchema\.parse/);
+  assert.match(actions, /printTestReportSchema\.parse/);
+  assert.match(actions, /insertAudit\(/);
+  assert.match(actions, /invalidatePublicConfig\(ctx\.businessId\)/);
+  assert.match(actions, /export async function reportPrintTestAction/);
+  assert.match(actions, /device_status: \{ \.\.\.status, printer \}/);
+
+  const page = await readFile(
+    "src/app/(dashboard)/dashboard/photoboxes/[id]/hardware/page.tsx",
+    "utf8"
+  );
+  assert.match(page, /PhotoboxHardwarePanel/);
+  assert.match(page, /getPhotobox\(/);
+
+  const panel = await readFile("src/components/dashboard/photobox-hardware.tsx", "utf8");
+  for (const name of [
+    "PhotoPathEditor",
+    "ThermalPhotoEditor",
+    "ReceiptPathEditor",
+    "CameraSetupEditor",
+    "HardwareDetectButton",
+  ]) {
+    assert.match(panel, new RegExp(`export function ${name}`), `${name} hilang`);
+  }
+  assert.match(panel, /PrintTestPanel/);
+  assert.match(panel, /reportPrintTestAction/);
+  assert.match(panel, /Deteksi ulang/);
+  // Bridge mati = status netral, bukan error merah.
+  assert.match(panel, /Bridge lokal tidak menjawab/);
+  // Status bridge mati memakai NEUTRAL, bukan kelas error merah.
+  assert.match(panel, /state === "unreachable" \? NEUTRAL/);
+});
+
+test("SetupWizard menyimpan hasil uji cetak lewat onReport, bukan no-op", async () => {
+  const wizard = await readFile("src/components/kiosk/SetupWizard.tsx", "utf8");
+  assert.doesNotMatch(wizard, /onReport=\{\(\) => undefined\}/);
+  assert.match(wizard, /onReport=\{async \(result\) => \{/);
+  assert.match(wizard, /printer: \{[\s\S]*confirmed: result\.confirmed/);
+});
+
+test("PhotoboxesTable menautkan halaman hardware per booth", async () => {
+  const table = await readFile("src/components/dashboard/PhotoboxesTable.tsx", "utf8");
+  assert.match(table, /\/dashboard\/photoboxes\/\$\{box\.id\}\/hardware/);
+});
+
+test("panel PIN booth tetap boleh menulis grup printer yang sama (override lokal)", async () => {
+  const payload = await readFile("src/lib/booth-settings-payload.ts", "utf8");
+  assert.match(payload, /photo: draft\.print\.photo/);
+  assert.match(payload, /thermal: draft\.print\.thermal/);
+  assert.match(payload, /receipt: draft\.print\.receipt/);
+  const contract = await readFile("src/lib/device-settings-contract.ts", "utf8");
+  assert.match(contract, /print_settings: \["photo", "thermal", "receipt"\]/);
+});

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using SnapyOS.Wpf.Composition;
+using SnapyOS.Wpf.Kiosk;
 using SnapyOS.Wpf.Mvvm;
 using SnapyOS.Wpf.Views;
 using Xunit;
@@ -13,9 +14,11 @@ public sealed class FoundationTests
     {
         var services = new ServiceCollection();
         ServiceRegistration.AddFoundation(services);
-        using var provider = services.BuildServiceProvider();
 
-        Assert.NotNull(provider.GetService<ShellWindow>());
+        // Windows require an STA thread to construct, so assert the DI contract instead of instantiating UI.
+        Assert.Contains(services, descriptor => descriptor.ServiceType == typeof(ShellWindow));
+        Assert.Contains(services, descriptor => descriptor.ServiceType == typeof(KioskWindow));
+        Assert.Contains(services, descriptor => descriptor.ServiceType == typeof(KioskFlowViewModel));
     }
 
     [Fact]

@@ -191,11 +191,40 @@ printf '%s\\n' 'request id is TEST_PHOTO-1 (1 file(s))'`
       }),
     });
     assert.equal(print.status, 200);
-    assert.equal((await print.json()).job_id, "request id is TEST_PHOTO-1 (1 file(s))");
+    const printBody = await print.json();
+    // Sejak antrean lokal, `job_id` = ID job runtime (UUID), bukan teks spooler.
+    assert.match(String(printBody.job_id), /^[0-9a-f-]{36}$/);
+    assert.equal(printBody.status, "submitted");
     const lpArgs = await readFile(lpLog, "utf8");
     assert.match(lpArgs, /media=Custom\.101\.6x152\.4mm/);
     assert.match(lpArgs, /fit-to-page/);
     assert.match(lpArgs, /-n 1/);
+
+    // Dedupe: payload sama tidak mengirim job kedua.
+    const again = await fetch(`${baseUrl}/print`, {
+      method: "POST",
+      headers: { origin: "http://localhost:3000", "content-type": "application/json", ...auth },
+      body: JSON.stringify({
+        paper_size: "4x6",
+        orientation: "portrait",
+        margins_mm: 3,
+        sheets: [[pngBase64], [pngBase64]],
+      }),
+    });
+    const againBody = await again.json();
+    assert.equal(againBody.job_id, printBody.job_id);
+    assert.equal(againBody.deduplicated, true);
+
+    const jobs = await (await fetch(`${baseUrl}/print/jobs?limit=5`, { headers: auth })).json();
+    assert.equal(jobs.jobs.length, 1);
+    assert.equal(jobs.jobs[0].status, "submitted");
+    assert.equal(jobs.jobs[0].spool_job_id, "request id is TEST_PHOTO-1 (1 file(s))");
+
+    const confirmed = await fetch(`${baseUrl}/print/jobs/${printBody.job_id}/confirm`, {
+      method: "POST",
+      headers: auth,
+    });
+    assert.equal((await confirmed.json()).job.status, "done");
 
     const printer = await fetch(`${baseUrl}/printer/health?printer=TEST_PHOTO`, { headers: auth });
     assert.equal(printer.status, 200);

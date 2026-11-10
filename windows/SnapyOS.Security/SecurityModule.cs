@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using SnapyOS.Core;
 using SnapyOS.LocalStore;
 
 namespace SnapyOS.Security;
@@ -62,12 +63,14 @@ public sealed class DpapiSecretStore : IProtectedSecretStore
 public sealed class PinSecurityService : IDisposable
 {
     private const string SetupKey = "security_setup_complete";
-    private readonly LocalStore _store;
+    private readonly SnapyOS.LocalStore.LocalStore _store;
     private readonly IProtectedSecretStore _secrets;
     private readonly PinPolicy _policy;
     private bool _disposed;
 
-    public PinSecurityService(LocalStore store, IProtectedSecretStore secrets, PinPolicy? policy = null)
+    private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);
+
+    public PinSecurityService(SnapyOS.LocalStore.LocalStore store, IProtectedSecretStore secrets, PinPolicy? policy = null)
     {
         _store = store;
         _secrets = secrets;
@@ -130,16 +133,18 @@ public sealed class PinSecurityService : IDisposable
         WriteAudit("PinConfigured", kind);
     }
 
-    public IReadOnlyList<SecurityAuditEvent> ReadAuditEvents() => _store.ReadSecurityAuditEvents();
+    public IReadOnlyList<SecurityAuditEvent> ReadAuditEvents() => _store.ReadSecurityAuditEvents()
+        .Select(row => new SecurityAuditEvent(row.EventType, Enum.TryParse<PinKind>(row.PinKind, out var kind) ? kind : null, row.OccurredAt))
+        .ToArray();
     public void Dispose() => _disposed = true;
 
     private static byte[] HashPin(ReadOnlySpan<byte> pin) => SHA256.HashData(pin);
     private static bool IsValidPin(string? pin) => pin is { Length: >= 4 and <= 6 } && pin.All(char.IsDigit);
     private static string SecretName(PinKind kind) => $"pin_{kind.ToString().ToLowerInvariant()}";
-    private (int FailedAttempts, DateTimeOffset LockedUntil) ReadLockout(PinKind kind) => _store.ReadPinLockout(kind);
-    private void SaveLockout(PinKind kind, int attempts, DateTimeOffset? until) => _store.SavePinLockout(kind, attempts, until);
+    private (int FailedAttempts, DateTimeOffset LockedUntil) ReadLockout(PinKind kind) => _store.ReadPinLockout(kind.ToString());
+    private void SaveLockout(PinKind kind, int attempts, DateTimeOffset? until) => _store.SavePinLockout(kind.ToString(), attempts, until);
     private void ResetLockout(PinKind kind) => SaveLockout(kind, 0, null);
 
     private void EnsureSecurityTables() => _store.Execute(@"CREATE TABLE IF NOT EXISTS security_pin_lockouts(pin_kind TEXT PRIMARY KEY, failed_attempts INTEGER NOT NULL, locked_until TEXT); CREATE TABLE IF NOT EXISTS security_audit_events(event_id TEXT PRIMARY KEY, event_type TEXT NOT NULL, pin_kind TEXT, occurred_at TEXT NOT NULL);", null);
-    private void WriteAudit(string eventType, PinKind? kind) => _store.WriteSecurityAudit(eventType, kind, DateTimeOffset.UtcNow);
+    private void WriteAudit(string eventType, PinKind? kind) => _store.WriteSecurityAudit(eventType, kind?.ToString(), DateTimeOffset.UtcNow);
 }

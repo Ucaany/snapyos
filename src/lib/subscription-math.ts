@@ -55,9 +55,7 @@ export function effectiveSessions(planMax: number, addOnQuantities: number[]): n
  * ber-kode `extra_session` yang berkontribusi (docs/02 §2.9); add-on lain
  * (POS, storage) TIDAK boleh menggelembungkan kuota sesi tampilan.
  */
-export function sessionAddOnQuantities(
-  addOns: { code: string; quantity: number }[]
-): number[] {
+export function sessionAddOnQuantities(addOns: { code: string; quantity: number }[]): number[] {
   return addOns.filter((a) => a.code === "extra_session").map((a) => a.quantity);
 }
 

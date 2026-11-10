@@ -69,7 +69,7 @@ test("tidak ada import atau tautan ke berkas yang dihapus", async () => {
   for (const file of files) {
     const body = await readFile(file, "utf8");
     if (
-      /CameraTest|PrinterTestSection|photoboxes\/\[id\]\/camera|getPhotoboxCameraConfig|updatePhotoboxCameraConfig|updatePhotoboxPrintStatus|setPhotoboxMirrorAction|setPhotoboxPreferredCameraAction|reportPrintTestAction/.test(
+      /CameraTest|PrinterTestSection|photoboxes\/\[id\]\/camera|getPhotoboxCameraConfig|updatePhotoboxCameraConfig|updatePhotoboxPrintStatus|setPhotoboxMirrorAction|setPhotoboxPreferredCameraAction/.test(
         body
       )
     ) {

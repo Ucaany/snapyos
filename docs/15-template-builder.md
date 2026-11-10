@@ -99,20 +99,20 @@ ALTER TABLE templates ADD COLUMN layout jsonb NOT NULL DEFAULT '{}';
 }
 ```
 
-| Field                      | Ket                                                                                                                                                                                                                           |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `version`                  | versi contract, mulai `1`                                                                                                                                                                                                     |
-| `canvas.width/height`      | resolusi design dalam px (bukan persen — deterministik & mudah divalidasi)                                                                                                                                                    |
-| `canvas.preset`            | `4x6-portrait` (1200×1800) · `4x6-landscape` (1800×1200) · `2x6-strip` (600×1800) · `square` (1500×1500) · `custom` (max 3000×3000)                                                                                           |
+| Field                      | Ket                                                                                                                                                                                                                             |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `version`                  | versi contract, mulai `1`                                                                                                                                                                                                       |
+| `canvas.width/height`      | resolusi design dalam px (bukan persen — deterministik & mudah divalidasi)                                                                                                                                                      |
+| `canvas.preset`            | `4x6-portrait` (1200×1800) · `4x6-landscape` (1800×1200) · `2x6-strip` (600×1800) · `square` (1500×1500) · `custom` (max 3000×3000)                                                                                             |
 | `canvas.background`        | hex `#rrggbb`, default `#ffffff`. Warna dasar di bawah foto — satu-satunya latar yang terlihat lewat lubang alpha frame (termasuk area hijau yang dihapus deteksi). Tanpa ini area tersebut tercetak hitam (output final JPEG). |
-| `slots[].shape`            | `rect` \| `rounded` \| `circle` \| `ellipse` \| `mask`                                                                                                                                                                      |
-| `slots[].points`           | wajib untuk `mask`: 3..512 titik `{x,y}` lokal slot (`0..width` × `0..height`), ring tertutup implisit. Bentuk lain menolak `points`.                                                                                        |
-| `layout.chroma`            | opsional. Metadata deteksi area hijau: `source_key`/`source_url` (frame ASLI, dipakai agar deteksi ulang idempoten), `detected_at`, `skipped` (komponen hijau dibuang).                                                       |
-| `slots[].x/y/width/height` | px design, posisi kiri-atas sebelum rotasi                                                                                                                                                                                    |
-| `slots[].rotation`         | derajat, pivot = center slot, rentang −180..180                                                                                                                                                                               |
-| `slots[].radius`           | corner radius px, hanya untuk `rounded`                                                                                                                                                                                       |
-| `slots[].fit`              | `cover` (default) \| `contain` \| `fill`                                                                                                                                                                                                |
-| `slots[].z`                | urutan render antar slot (kecil dulu); `photos.order_index` → slot urut `z`                                                                                                                                                   |
+| `slots[].shape`            | `rect` \| `rounded` \| `circle` \| `ellipse` \| `mask`                                                                                                                                                                          |
+| `slots[].points`           | wajib untuk `mask`: 3..512 titik `{x,y}` lokal slot (`0..width` × `0..height`), ring tertutup implisit. Bentuk lain menolak `points`.                                                                                           |
+| `layout.chroma`            | opsional. Metadata deteksi area hijau: `source_key`/`source_url` (frame ASLI, dipakai agar deteksi ulang idempoten), `detected_at`, `skipped` (komponen hijau dibuang).                                                         |
+| `slots[].x/y/width/height` | px design, posisi kiri-atas sebelum rotasi                                                                                                                                                                                      |
+| `slots[].rotation`         | derajat, pivot = center slot, rentang −180..180                                                                                                                                                                                 |
+| `slots[].radius`           | corner radius px, hanya untuk `rounded`                                                                                                                                                                                         |
+| `slots[].fit`              | `cover` (default) \| `contain` \| `fill`                                                                                                                                                                                        |
+| `slots[].z`                | urutan render antar slot (kecil dulu); `photos.order_index` → slot urut `z`                                                                                                                                                     |
 
 ### Validasi server-side (trust boundary — wajib)
 
@@ -198,7 +198,7 @@ Urutan render (satu frame/output):
 
 **Chroma = slot dari frame, bukan keying foto.** Editor kiosk **tidak** punya kontrol chroma. Area hijau pada PNG frame diubah owner menjadi slot mask lewat tombol deteksi di builder: server memakai predikat `isGreenBackground` yang sama untuk (a) menghitung poligon slot dan (b) membuat alpha 0 pada piksel hijau di file frame baru, sehingga lubang file selalu identik dengan bentuk slot. Piksel transparan menampilkan `canvas.background` (output final JPEG, jadi latar wajib berwarna). Frame JPG/WebP tanpa alpha tetap diterima; hasil deteksi selalu ditulis PNG. Deteksi ulang selalu memakai file asli (`layout.chroma.source_key`), jadi idempoten.
 
-**GIF slideshow:** template ber-slot memakai capture mentah (pose bergantian), template legacy memakai foto final berframe. Server menerima `gif_photos` opsional; tanpa field itu GIF jatuh ke foto final.
+**GIF slideshow:** template ber-slot memakai **satu JPEG berframe per foto capture** — klien merender tiap foto lewat `composeFrame` dengan hanya slot foto itu terisi (`framePerPhoto`), kanvas = canvas template, frame PNG template di atasnya (`renderFramePerPhotoBlobs`, satu kanvas dipakai ulang → memori O(satu frame)). Template legacy memakai foto final berframe. Server menerima `gif_photos` opsional; tanpa field itu GIF jatuh ke foto final. GIF gagal dirender di klien → kirim capture mentah (GIF tetap ada). Delay/lebar dari `business_settings.output.gif`.
 
 Output = full resolusi design canvas. Render final dijalankan di browser (editor kiosk) dan diunggah sebagai JPEG; server tidak mengomposit ulang. GIF & result online tidak berubah (tetap dari foto final hasil composite klien).
 
@@ -211,7 +211,7 @@ Output = full resolusi design canvas. Render final dijalankan di browser (editor
 | §5.4 Choose Template | Thumbnail = frame WebP 480px (bukan composite slot); semua template aktif yang assignable tampil; tanpa assignment = semua template aktif            |
 | §5.6 Capture         | Frame ber-slot: jumlah capture = `template.slot_count`; legacy: `package.photo_count`; slot yang perlu mengulang foto diisi bergiliran (`fillSlots`) |
 | §5.9 Editor          | Zoom/pan menyesuaikan foto **di dalam slot** (bukan full canvas); zoom minimal = cover-fit; filter/adjust/sticker/text tetap di atas composite       |
-| §5.15 Print          | `PrintLayoutRenderer` mencetak JPEG final hasil render klien (yang diunggah) — tidak ada render ulang di server                                         |
+| §5.15 Print          | `PrintLayoutRenderer` mencetak JPEG final hasil render klien (yang diunggah) — tidak ada render ulang di server                                      |
 
 ## 15.6 API (patch `08-api-spec.md` §8.7)
 
@@ -223,10 +223,10 @@ Output = full resolusi design canvas. Render final dijalankan di browser (editor
 
 Endpoint publik (tetap aktif):
 
-| Endpoint                                              | Perilaku                                                                                                       |
-| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `GET /api/v1/public/:businessSlug/templates?package=` | payload berisi `layout`, `slot_count`, `version`, `thumbnail_url`; `?package` opsional; tanpa filter slot        |
-| `GET /api/v1/public/frame?url=&cache=&w=`             | proxy biner frame/thumbnail (resize 480px)                                                                      |
+| Endpoint                                              | Perilaku                                                                                                  |
+| ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `GET /api/v1/public/:businessSlug/templates?package=` | payload berisi `layout`, `slot_count`, `version`, `thumbnail_url`; `?package` opsional; tanpa filter slot |
+| `GET /api/v1/public/frame?url=&cache=&w=`             | proxy biner frame/thumbnail (resize 480px)                                                                |
 
 - Public template payload: `id, name, category, file_url, thumbnail_url, layout, slot_count, version, package_ids`.
 - `POST /sessions` **tidak** menyimpan `template_id` (kolom belum ada); finalize menerima `template_id` dari kiosk — lihat §15.10.
@@ -293,3 +293,44 @@ Template **global** platform dapat dijual sebagai template premium per business.
 - **PNG tanpa alpha channel** belum dideteksi saat upload frame; template tanpa lubang alpha akan menutupi seluruh foto.
 - **Deteksi hijau bergantung kualitas desain.** Gradien, bayangan, atau hijau pudar di bawah ambang predikat tidak terdeteksi; noise dibuang oleh filter luas minimum (0.1% kanvas, sisi ≥ 8 px). Frame dengan hijau menyatu ke tepi kanvas ditutup di tepi dan titik di-clamp.
 - **Fringe di tepi slot.** Alpha frame dibuat biner (piksel hijau → alpha 0) agar lubang identik dengan poligon slot; piksel anti-alias di tepi hijau yang tidak lolos predikat bisa tersisa sebagai garis tipis. Kandidat: erode poligon atau band alpha lembut saat terlihat pada cetak.
+
+## 15.11 Undo/Redo, Duplicate, Snap, Layer Teks (implementasi 2026-11-09)
+
+**Undo/redo — `useTemplateHistory`** (`src/components/dashboard/template-builder/useTemplateHistory.ts`):
+
+- Batas riwayat `HISTORY_LIMIT = 100` langkah; state `{ past, present, future }`.
+- Tiga operasi berbeda perannya: `commit(next)` = catat langkah undo + ganti present (aksi diskret: tambah/hapus/duplikat slot, ubah shape, ubah preset), `checkpoint()` + `replace(next)` = satu langkah undo untuk satu drag (drag memanggil `checkpoint()` sekali saat mulai, lalu `replace()` per `pointermove` — satu drag = satu undo, bukan 60), `reset(next)` = buang riwayat (mis. layout baru dari server).
+- Shortcut global: `Cmd/Ctrl+Z` undo, `Shift+Cmd/Ctrl+Z` redo. Shortcut **tidak** dibajak saat fokus di `input`/`textarea` (undo teks asli browser tetap jalan).
+- Tombol UI undo/redo disabled mengikuti `canUndo`/`canRedo`. Tidak ada persistensi riwayat — reload = riwayat kosong.
+
+**Duplicate** — dua tingkat, keduanya membuat baris baru:
+
+| Aksi                  | Fungsi                                                                                                       | Perilaku                                                                                                                                                                                                                                                                                                                                             |
+| --------------------- | ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Duplikat **slot**     | `duplicateSlot()` di canvas                                                                                  | Menyalin slot terpilih (geometri + `properties`), z di-renumber kontigu; satu langkah undo                                                                                                                                                                                                                                                           |
+| Duplikat **template** | `duplicateTemplate()` → `duplicateTemplateAction` → `duplicateTemplate()` server (`src/server/templates.ts`) | Menyalin baris template + layout/draft + key storage (URL disimpan apa adanya, key storage diduplikasi) menjadi template baru milik owner; audit `template.duplicate`; setelah sukses router membuka `/dashboard/templates/builder/<id baru>`. Tombol hanya muncul bila prop `onDuplicateTemplate` diberikan (template global read-only tidak punya) |
+
+**Snap** — `src/lib/template-snap.ts` (`snapRect`, `SnapGuide`), murni tanpa DOM:
+
+- Target snap: tepi + tengah **kanvas**, serta tepi + tengah **slot lain**.
+- Hanya berlaku saat **satu** slot digeser (`drag.ids.length === 1`); snapping grup ke tepi slot lain sengaja tidak dilakukan karena membuat seluruh grup "melompat" tanpa alasan yang terlihat.
+- Guide yang dihasilkan (`SnapGuide[]`, axis `x`/`y` + posisi) dirender sebagai garis bantu dan dikosongkan saat drag selesai.
+- Resize **tidak** memakai snap: delta diputar ke ruang lokal slot (`-rotation`) supaya handle benar untuk slot berotasi.
+
+**Layer teks** — `slot.properties.text` (`editorPropertySchema` di `src/lib/template-layout.ts`, panel `TemplateTextPanel`):
+
+- Teks maksimal 2000 karakter; `composeFrame` menggambarnya **di atas frame** (bukan di dalam foto yang ter-clip slot), jadi tidak terpotong clip dan tidak tertutup PNG frame.
+- Properti pendukung: `fontFamily` (`display`/`sans`/`mono`), `fontSize` 8–240, `fontWeight` 400–900, `lineHeight` 0.8–3, `letterSpacing` -0.2–2, `color`, `background`, `opacity`, alignment.
+- Field yang kosong **tidak ditulis** (bukan `undefined`-key) sehingga layout tanpa teks tetap identik byte dengan layout lama.
+- Slot tanpa `properties` merender persis seperti layout pra-fitur.
+
+**Template default + auto-assign:**
+
+| Fitur                  | Implementasi                                                                                                                                                                                                                            | Perilaku                                                                                                                                                                                                                                                                                                    |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Template default booth | `photoboxes.default_template_id` (FK `on delete set null`, migrasi `0075`); disimpan lewat `savePhotoboxHardwareAction`, divalidasi `assertTemplateAssignable` (nonaktif/belum dibeli → `VALIDATION_ERROR` field `default_template_id`) | Kiosk memakai `selectAutoTemplate(templates, defaultTemplateId)`: default booth menang **bila masih eligible** untuk paket itu; kalau tidak, hanya satu template eligible → auto-pilih; lebih dari satu → customer memilih                                                                                  |
+| Assign otomatis paket  | Tombol "Assign otomatis" di `PackageFields` → `autoAssignTemplateIds` (`src/lib/template-select.ts`)                                                                                                                                    | Urutan: (1) semua template dengan `slot_count == photo_count`, (2) cocok `capture_mode` (`photostrip` → slot ≥ max(2, photoCount), `burst` → slot ≥ 2, `single` → slot 1), (3) slot terdekat supaya tombol tidak pernah no-op. Hasilnya hanya mengisi pilihan di form; simpan paket tetap lewat aksi normal |
+
+Catatan batas: template default **tidak** memaksa customer memakai template itu — ia hanya menang saat eligible, jadi menghapus assignment paket tidak membuat booth menunjuk template yang tidak ditawarkan.
+
+**Tes:** `useTemplateHistory` belum punya tes unit sendiri (riwayat diverifikasi manual di builder). Yang tertutup tes: `tests/template-text-render.test.ts` (teks di atas frame), `tests/template-auto-pick.test.ts` (`selectAutoTemplate`), `tests/template-assignment.test.ts` (assignability), `tests/template-layout.test.ts` (validasi `layoutSchema`). Klaim di atas berasal dari kode, bukan asumsi.

@@ -125,14 +125,38 @@ export class R2StorageProvider implements StorageProvider {
 
   async remove(bucket: StorageBucket, keys: string[]): Promise<StorageResult<null>> {
     if (keys.length === 0) return { data: null, error: null };
+    const areaPrefix = r2Key(bucket, "");
+    const objectKeys = keys.map((k) => r2Key(bucket, k));
     try {
-      await this.client.send(
+      const response = await this.client.send(
         new DeleteObjectsCommand({
           Bucket: this.bucket(bucket),
-          Delete: { Objects: keys.map((k) => ({ Key: r2Key(bucket, k) })) },
+          Delete: { Objects: objectKeys.map((k) => ({ Key: k })) },
         })
       );
-      return { data: null, error: null };
+      // DeleteObjects SELALU membalas 200 walau sebagian objek gagal. Satu-
+      // satunya bukti sukses per key adalah absennya key itu di `Errors[]`.
+      const errors = response.Errors ?? [];
+      if (errors.length === 0) return { data: null, error: null };
+
+      // Kembalikan key ASLI (bentuk DB, tanpa prefix area) agar caller dapat
+      // menahan baris/ledger untuk key itu saja.
+      const failed: string[] = [];
+      const detail: string[] = [];
+      for (const err of errors) {
+        const r2ObjectKey = err.Key ?? "";
+        const original = r2ObjectKey.startsWith(areaPrefix)
+          ? r2ObjectKey.slice(areaPrefix.length)
+          : r2ObjectKey;
+        failed.push(original);
+        detail.push(
+          `${original || "(key kosong)"}: ${err.Code ?? "Unknown"}${err.Message ? ` (${err.Message})` : ""}`
+        );
+      }
+      return {
+        data: null,
+        error: { message: `Hapus objek gagal: ${detail.join("; ")}`, keys: failed },
+      };
     } catch (error) {
       return { data: null, error: { message: messageFrom(error) } };
     }
@@ -243,7 +267,10 @@ export class R2StorageProvider implements StorageProvider {
           all.push({
             id: obj.Key,
             name: obj.Key.slice(fullPrefix.length),
-            metadata: { size: obj.Size ?? 0 },
+            metadata: {
+              size: obj.Size ?? 0,
+              ...(obj.LastModified ? { lastModified: obj.LastModified.toISOString() } : {}),
+            },
           });
         }
         if (!page.IsTruncated || !page.NextContinuationToken) break;

@@ -13,14 +13,9 @@ import { cn } from "@/lib/utils";
  */
 
 /** Permukaan kartu daftar (`<li>`) — variant shadow 3px, satu definisi. */
-export const STAFF_CARD_SURFACE =
-  "border-2 border-ink bg-surface shadow-[3px_3px_0_0_#111111]";
+export const STAFF_CARD_SURFACE = "border-2 border-ink bg-surface shadow-[3px_3px_0_0_#111111]";
 
-export function StaffPanel({
-  className,
-  children,
-  ...props
-}: React.ComponentProps<"section">) {
+export function StaffPanel({ className, children, ...props }: React.ComponentProps<"section">) {
   return (
     <section {...props}>
       <Card className={cn("gap-0 p-0", className)}>{children}</Card>

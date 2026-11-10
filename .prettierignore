@@ -4,3 +4,7 @@
 .audit-out/
 .audit-run/
 .e2e-tmp/
+.audit-security/
+windows/*.zip
+windows/**/bin/
+windows/**/obj/

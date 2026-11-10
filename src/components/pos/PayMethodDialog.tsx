@@ -1,16 +1,22 @@
 "use client";
 
+import { useState } from "react";
 import { Banknote, Landmark, Package } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { formatIDR } from "@/lib/dashboard-math";
+import { posCashChange } from "@/lib/pos-math";
 
 /**
  * PayMethodDialog — pilih metode pembayaran offline (docs/pos/03 §5.3).
  * Pakai primitif base-ui Dialog (sama pola ui/dialog.tsx) supaya focus trap,
  * restore fokus ke pemicu, aria-modal, dan Escape ditangani runtime — bukan
  * hand-rolled. Dipasang hanya saat order pending, jadi selalu terbuka.
+ *
+ * Uang tunai: kasir boleh mengisi uang diterima untuk menghitung kembalian.
+ * Kembalian di sini HANYA tampilan; server menghitung ulang (A8).
  */
 export function PayMethodDialog({
   orderNumber,
@@ -24,9 +30,23 @@ export function PayMethodDialog({
   finalAmount: number;
   busy: boolean;
   error?: string | null;
-  onPay: (method: "cash" | "bank_transfer" | "other") => void | Promise<void>;
+  onPay: (
+    method: "cash" | "bank_transfer" | "other",
+    amountReceived?: number
+  ) => void | Promise<void>;
   onCancel: () => void | Promise<void>;
 }) {
+  const [raw, setRaw] = useState("");
+  const amountReceived = raw === "" ? null : Number(raw);
+  const change = posCashChange(finalAmount, amountReceived);
+  const short = amountReceived !== null && change !== null && change < 0;
+
+  const quick = [
+    { label: "UANG PAS", value: finalAmount },
+    { label: "50.000", value: 50_000 },
+    { label: "100.000", value: 100_000 },
+  ];
+
   return (
     <DialogPrimitive.Root
       open
@@ -60,8 +80,68 @@ export function PayMethodDialog({
             </p>
           )}
 
-          <div className="mt-6 flex flex-col gap-3">
-            <Button size="lg" disabled={busy} onClick={() => void onPay("cash")}>
+          <div className="mt-5 border-2 border-ink p-3">
+            <label
+              htmlFor="pos-amount-received"
+              className="block font-mono text-[10px] font-bold uppercase tracking-[0.15em]"
+            >
+              Uang diterima
+            </label>
+            <Input
+              id="pos-amount-received"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder={String(finalAmount)}
+              value={raw}
+              disabled={busy}
+              aria-invalid={short}
+              className="mt-2 font-mono text-lg tabular-nums"
+              onChange={(event) => setRaw(event.target.value.replace(/\D/g, "").slice(0, 10))}
+            />
+            <div className="mt-2 flex flex-wrap gap-2">
+              {quick.map((q) => (
+                <Button
+                  key={q.label}
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={busy || q.value < finalAmount}
+                  onClick={() => setRaw(String(q.value))}
+                >
+                  {q.label}
+                </Button>
+              ))}
+            </div>
+
+            <div
+              aria-live="polite"
+              className="mt-3 flex items-baseline justify-between border-t-2 border-ink/10 pt-3"
+            >
+              <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+                Kembalian
+              </span>
+              <span
+                className={
+                  short
+                    ? "font-display text-3xl font-bold uppercase text-destructive"
+                    : "font-display text-3xl font-bold uppercase"
+                }
+              >
+                {change === null
+                  ? "—"
+                  : short
+                    ? `KURANG ${formatIDR(Math.abs(change))}`
+                    : formatIDR(change)}
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-col gap-3">
+            <Button
+              size="lg"
+              disabled={busy || short}
+              onClick={() => void onPay("cash", amountReceived ?? undefined)}
+            >
               <Banknote aria-hidden />
               {busy ? "Memproses…" : "Tunai"}
             </Button>

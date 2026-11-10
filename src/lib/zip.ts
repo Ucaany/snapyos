@@ -27,7 +27,10 @@ export function crc32(data: Uint8Array): number {
 
 /** Nama aman di dalam ZIP (tanpa path traversal / karakter kontrol). */
 export function safeZipName(name: string, fallback: string): string {
-  const base = name.replace(/[/\\]/g, "_").replace(/[\u0000-\u001f\u007f]/g, "").trim();
+  const base = name
+    .replace(/[/\\]/g, "_")
+    .replace(/[\u0000-\u001f\u007f]/g, "")
+    .trim();
   return base.length > 0 ? base.slice(0, 120) : fallback;
 }
 
@@ -59,7 +62,8 @@ export function createZip(files: ZipFile[]): Uint8Array {
     used.set(name, count + 1);
     if (count > 0) {
       const dot = name.lastIndexOf(".");
-      name = dot > 0 ? `${name.slice(0, dot)}-${count + 1}${name.slice(dot)}` : `${name}-${count + 1}`;
+      name =
+        dot > 0 ? `${name.slice(0, dot)}-${count + 1}${name.slice(dot)}` : `${name}-${count + 1}`;
     }
     const nameBytes = encoder.encode(name);
     const data = file.data instanceof Uint8Array ? file.data : new Uint8Array(file.data);

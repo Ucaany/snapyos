@@ -31,7 +31,11 @@ function createSubscriptionInvoiceBody(src: string): string {
 test("P0 #3 downgrade guard: staff tanpa owner + cek package/template", async () => {
   const src = await read("src/server/subscription.ts");
   assert.match(src, /\.neq\("role",\s*"owner"\)/, "staff count harus mengecualikan owner");
-  assert.match(src, /max_packages,\s*max_templates/, "plan select memuat max_packages/max_templates");
+  assert.match(
+    src,
+    /max_packages,\s*max_templates/,
+    "plan select memuat max_packages/max_templates"
+  );
   assert.match(src, /usage\.packages > planRow\.max_packages/);
   assert.match(src, /usage\.templates > planRow\.max_templates/);
   assert.match(src, /PLAN_LIMIT_REACHED/);
@@ -39,7 +43,10 @@ test("P0 #3 downgrade guard: staff tanpa owner + cek package/template", async ()
 
 test("P0 #7 renewal plan-sama: isRenewal + plan_change new_period", async () => {
   const src = await read("src/server/subscription.ts");
-  assert.match(src, /const isRenewal = currentRow\.status === "past_due" \|\| currentRow\.status === "expired"/);
+  assert.match(
+    src,
+    /const isRenewal = currentRow\.status === "past_due" \|\| currentRow\.status === "expired"/
+  );
   assert.match(src, /isRenewal \? \{ new_period: true \} : \{\}/);
   assert.match(src, /isRenewal \|\|/);
 });

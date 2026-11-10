@@ -1,13 +1,210 @@
 <Window x:Class="SnapyOS.Wpf.Views.ShellWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="SnapyOS"
-        Width="960"
-        Height="640">
-  <Grid Margin="24">
-    <TextBlock Text="SnapyOS Windows foundation"
-               FontSize="28"
-               VerticalAlignment="Center"
-               HorizontalAlignment="Center" />
-  </Grid>
+        Title="SnapyOS Control Center"
+        Width="1180"
+        Height="760"
+        MinWidth="900"
+        MinHeight="600"
+        Background="#FFFDF5"
+        Foreground="#111111"
+        Closing="ShellWindow_OnClosing"
+        FontFamily="{DynamicResource BodyFont}">
+  <Window.Resources>
+    <SolidColorBrush x:Key="InkBrush" Color="#111111" />
+    <SolidColorBrush x:Key="PaperBrush" Color="#FFFDF5" />
+    <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="AccentBrush" Color="#FFD400" />
+    <SolidColorBrush x:Key="MutedBrush" Color="#5C5C5C" />
+    <Style TargetType="Button">
+      <Setter Property="Foreground" Value="#111111" />
+      <Setter Property="Background" Value="#FFFFFF" />
+      <Setter Property="BorderBrush" Value="#111111" />
+      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="Padding" Value="14,10" />
+      <Setter Property="Margin" Value="0,0,0,8" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="ButtonBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center" />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="ButtonBorder" Property="Background" Value="#FFD400" />
+              </Trigger>
+              <Trigger Property="IsPressed" Value="True">
+                <Setter TargetName="ButtonBorder" Property="RenderTransform">
+                  <Setter.Value><TranslateTransform X="2" Y="2" /></Setter.Value>
+                </Setter>
+              </Trigger>
+              <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter TargetName="ButtonBorder" Property="BorderThickness" Value="4" />
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.45" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="NavButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+      <Setter Property="Background" Value="#FFFFFF" />
+      <Setter Property="Margin" Value="0,0,0,6" />
+    </Style>
+    <Style TargetType="PasswordBox">
+      <Setter Property="BorderBrush" Value="#111111" />
+      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="Padding" Value="10,8" />
+      <Setter Property="Background" Value="#FFFFFF" />
+      <Setter Property="Foreground" Value="#111111" />
+      <Style.Triggers>
+        <Trigger Property="IsKeyboardFocused" Value="True">
+          <Setter Property="BorderThickness" Value="4" />
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+    <Style TargetType="TextBox">
+      <Setter Property="BorderBrush" Value="#111111" />
+      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="Padding" Value="10,8" />
+      <Setter Property="Background" Value="#FFFFFF" />
+      <Setter Property="Foreground" Value="#111111" />
+      <Style.Triggers>
+        <Trigger Property="IsKeyboardFocused" Value="True">
+          <Setter Property="BorderThickness" Value="4" />
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+    <Style x:Key="StatePanel" TargetType="Border">
+      <Setter Property="Padding" Value="20" />
+      <Setter Property="BorderBrush" Value="#111111" />
+      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="Background" Value="#FFFFFF" />
+      <Setter Property="Margin" Value="0,24,0,0" />
+    </Style>
+    <Style x:Key="LoadingVisibility" TargetType="Border" BasedOn="{StaticResource StatePanel}">
+      <Setter Property="Visibility" Value="Collapsed" />
+      <Style.Triggers><DataTrigger Binding="{Binding CurrentPage.IsLoading}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+    </Style>
+    <Style x:Key="EmptyVisibility" TargetType="Border" BasedOn="{StaticResource StatePanel}">
+      <Setter Property="Visibility" Value="Collapsed" />
+      <Style.Triggers><DataTrigger Binding="{Binding CurrentPage.IsEmpty}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+    </Style>
+    <Style x:Key="ReadyVisibility" TargetType="Border" BasedOn="{StaticResource StatePanel}">
+      <Setter Property="Visibility" Value="Collapsed" />
+      <Style.Triggers><DataTrigger Binding="{Binding CurrentPage.IsReady}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+    </Style>
+    <Style x:Key="ErrorVisibility" TargetType="Border" BasedOn="{StaticResource StatePanel}">
+      <Setter Property="Visibility" Value="Collapsed" />
+      <Style.Triggers><DataTrigger Binding="{Binding CurrentPage.IsError}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+    </Style>
+    <Style x:Key="PinVisibility" TargetType="Border" BasedOn="{StaticResource StatePanel}">
+      <Setter Property="Visibility" Value="Collapsed" />
+      <Style.Triggers><DataTrigger Binding="{Binding PinPromptVisible}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+    </Style>
+    <Style x:Key="UnsavedVisibility" TargetType="Border" BasedOn="{StaticResource StatePanel}">
+      <Setter Property="Visibility" Value="Collapsed" />
+      <Style.Triggers><DataTrigger Binding="{Binding UnsavedPromptVisible}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+    </Style>
+  </Window.Resources>
+
+  <DockPanel>
+    <Border DockPanel.Dock="Bottom" Background="#111111" Padding="16,10">
+      <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+        <TextBlock Text="SNAPYOS / CONTROL CENTER" Foreground="#FFFDF5" FontFamily="{DynamicResource MetaFont}" FontSize="11" VerticalAlignment="Center" />
+        <TextBlock Grid.Column="1" Text="{Binding ConnectionDetail}" Foreground="#FFFDF5" Margin="12,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+        <TextBlock Grid.Column="2" Text="{Binding ConnectionLabel}" Foreground="#FFD400" FontFamily="{DynamicResource MetaFont}" FontWeight="Bold" VerticalAlignment="Center" />
+      </Grid>
+    </Border>
+
+    <Grid Margin="24">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="230" /><ColumnDefinition Width="24" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+
+      <Border Grid.Column="0" Background="#FFFFFF" BorderBrush="#111111" BorderThickness="2" Padding="16">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Top">
+            <TextBlock Text="SNAPYOS" FontSize="28" FontWeight="Black" />
+            <TextBlock Text="CONTROL CENTER" FontFamily="{DynamicResource MetaFont}" FontSize="11" Margin="0,2,0,28" />
+            <TextBlock Text="NAVIGASI" FontFamily="{DynamicResource MetaFont}" FontSize="11" Foreground="#5C5C5C" Margin="0,0,0,10" />
+          </StackPanel>
+          <ItemsControl ItemsSource="{Binding Navigation}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Button Content="{Binding Label}" Command="{Binding Command}" Style="{StaticResource NavButton}" AutomationProperties.Name="{Binding Label}" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </DockPanel>
+      </Border>
+
+      <Grid Grid.Column="2">
+        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+        <Grid Margin="0,0,0,20">
+          <StackPanel>
+            <TextBlock Text="{Binding CurrentPage.Eyebrow}" FontFamily="{DynamicResource MetaFont}" FontSize="11" Foreground="#5C5C5C" />
+            <TextBlock Text="{Binding CurrentPage.Label}" FontSize="34" FontWeight="Black" Margin="0,4,0,4" />
+            <TextBlock Text="{Binding CurrentPage.Description}" FontSize="16" MaxWidth="700" />
+            <TextBlock Text="{Binding LockdownDetail}" FontSize="12" Foreground="#5C5C5C" MaxWidth="700" TextWrapping="Wrap" Margin="0,8,0,0" />
+          </StackPanel>
+          <StackPanel HorizontalAlignment="Right" VerticalAlignment="Bottom">
+            <TextBlock Text="{Binding StatusLabel}" FontFamily="{DynamicResource MetaFont}" FontSize="11" FontWeight="Bold" />
+            <TextBlock Text="{Binding LockdownLabel}" FontFamily="{DynamicResource MetaFont}" FontSize="11" FontWeight="Bold" Foreground="#FFD400" />
+          </StackPanel>
+        </Grid>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+          <Grid>
+            <Border Style="{StaticResource LoadingVisibility}">
+              <StackPanel><TextBlock Text="MEMUAT" FontFamily="{DynamicResource MetaFont}" FontWeight="Bold" /><TextBlock Text="{Binding CurrentPage.StateMessage}" Margin="0,8,0,0" /></StackPanel>
+            </Border>
+            <Border Style="{StaticResource EmptyVisibility}">
+              <StackPanel><TextBlock Text="KOSONG" FontFamily="{DynamicResource MetaFont}" FontWeight="Bold" /><TextBlock Text="{Binding CurrentPage.StateMessage}" Margin="0,8,0,0" /></StackPanel>
+            </Border>
+            <Border Style="{StaticResource ReadyVisibility}">
+              <StackPanel>
+                <TextBlock Text="STRUKTUR AKTIF" FontFamily="{DynamicResource MetaFont}" FontWeight="Bold" />
+                <TextBlock Text="{Binding CurrentPage.StateMessage}" Margin="0,8,0,16" />
+                <TextBlock Text="Route shell siap dihubungkan ke service runtime yang sesuai." Foreground="#5C5C5C" TextWrapping="Wrap" />
+                <ContentControl x:Name="KioskStudioHost" Visibility="{Binding CurrentPage.IsEditor, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,20,0,0" />
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource ErrorVisibility}" Background="#FF5C8A">
+              <StackPanel><TextBlock Text="ERROR" FontFamily="{DynamicResource MetaFont}" FontWeight="Bold" /><TextBlock Text="{Binding CurrentPage.StateMessage}" Margin="0,8,0,0" TextWrapping="Wrap" /></StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource PinVisibility}" Background="#FFD400" Panel.ZIndex="2">
+              <StackPanel>
+                <TextBlock Text="AKSES ADMIN" FontFamily="{DynamicResource MetaFont}" FontWeight="Bold" />
+                <TextBlock Text="{Binding PendingRouteLabel}" FontSize="22" FontWeight="Bold" Margin="0,6,0,2" />
+                <TextBlock Text="{Binding PinMessage}" Margin="0,0,0,12" TextWrapping="Wrap" />
+                <PasswordBox x:Name="AdminPinBox" Width="240" HorizontalAlignment="Left" PasswordChanged="AdminPinBox_OnPasswordChanged" AutomationProperties.Name="PIN admin" />
+                <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                  <Button Content="Verifikasi" Command="{Binding ConfirmPinCommand}" Margin="0,0,8,0" />
+                  <Button Content="Batal" Command="{Binding CancelPinCommand}" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource UnsavedVisibility}" Background="#FFFFFF" Panel.ZIndex="2">
+              <StackPanel>
+                <TextBlock Text="PERUBAHAN BELUM DISIMPAN" FontFamily="{DynamicResource MetaFont}" FontWeight="Bold" />
+                <TextBlock Text="Pindah ke route berikutnya dan buang perubahan?" Margin="0,8,0,14" />
+                <StackPanel Orientation="Horizontal">
+                  <Button Content="Simpan" Command="{Binding SaveChangesCommand}" Margin="0,0,8,0" Background="#FFD400" />
+                  <Button Content="Tetap di sini" Command="{Binding KeepEditingCommand}" Margin="0,0,8,0" />
+                  <Button Content="Buang perubahan" Command="{Binding DiscardChangesCommand}" Background="#FF5C8A" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+          </Grid>
+        </ScrollViewer>
+      </Grid>
+    </Grid>
+  </DockPanel>
 </Window>

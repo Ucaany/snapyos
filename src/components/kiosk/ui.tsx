@@ -52,13 +52,7 @@ export function kioskFont(min: number, max: number, scale = 1, vw = 3.4): string
   return `calc(clamp(${min}rem, ${vw}vw, ${max}rem) * ${scale})`;
 }
 
-export function KioskEyebrow({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
+export function KioskEyebrow({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <p
       className={cn(
@@ -158,7 +152,11 @@ export function KioskHeader({
         <div
           className={cn(
             "flex shrink-0 flex-wrap items-center gap-2",
-            align === "center" ? "justify-center" : align === "right" ? "justify-end" : "justify-start"
+            align === "center"
+              ? "justify-center"
+              : align === "right"
+                ? "justify-end"
+                : "justify-start"
           )}
         >
           {actions}
@@ -296,11 +294,7 @@ export function KioskLoading({
   className?: string;
 }) {
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      className={cn("flex w-full flex-col gap-2", className)}
-    >
+    <div role="status" aria-live="polite" className={cn("flex w-full flex-col gap-2", className)}>
       <span className="sr-only">{label}</span>
       {Array.from({ length: Math.max(1, rows) }).map((_, i) => (
         <span

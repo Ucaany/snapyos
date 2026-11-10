@@ -1,10 +1,13 @@
 # Windows Kiosk dan Control Center: Scope
 
-Status: active  
+Status: paused (2026-11-08) — Windows native dibekukan; target aktif = PWA Android/web
 Audience: owner, admin, operator, developer  
-Last updated: 2026-11-01  
-Last verified: 2026-11-01  
+Last updated: 2026-11-08
+Last verified: 2026-11-01
+
 Source of truth: keputusan produk sesi ini, `AGENTS.md`, `DESIGN.md`, `docs/03-architecture.md`, `docs/05-customer-photobox.md`, `runtime/settings/index.ts`, `runtime/sync/worker.ts`
+
+> **FREEZE 2026-11-08:** Windows WPF (Kiosk + Control Center) ditahan. Target distribusi aktif adalah PWA kiosk Android/web (Add to Home Screen, tanpa TWA/APK/Play Store). Dokumen ini disimpan sebagai status historis; kode `windows/` tidak dihapus.
 
 ## 1. Tujuan
 
@@ -23,8 +26,9 @@ Keputusan utama:
 - Output: photo strip, GIF, QR result, dan auto-print.
 - Satu PC menjalankan satu booth.
 - Installer dibuat manual dan dipasang manual.
-- Admin mengunggah katalog installer.
-- Owner mengunduh installer dan melihat versi.
+- Katalog installer dan signed download tetap dibaca untuk kompatibilitas.
+- Owner melihat versi dan unduh installer dari Manajemen Perangkat.
+- Mutasi katalog installer dan editor branding dashboard tidak lagi tersedia; import WPF tetap dipertahankan.
 - Tidak ada auto-update.
 
 ## 2. In scope

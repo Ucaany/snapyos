@@ -32,7 +32,11 @@ export function PosReportsDayChartInner({ data }: { data: { date: string; amount
   return (
     <ChartContainer config={chartConfig} className="mt-2 aspect-auto h-[180px] w-full">
       <BarChart accessibilityLayer data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-        <CartesianGrid vertical={false} stroke={chart.gridStroke} strokeOpacity={chart.gridOpacity} />
+        <CartesianGrid
+          vertical={false}
+          stroke={chart.gridStroke}
+          strokeOpacity={chart.gridOpacity}
+        />
         <XAxis
           dataKey="date"
           tickLine={false}

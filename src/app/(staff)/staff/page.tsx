@@ -138,13 +138,17 @@ export default async function StaffDashboardPage() {
                 </p>
                 <div className="mt-4 grid grid-cols-2 gap-2 border-t-2 border-ink pt-3">
                   <div>
-                    <p className="font-mono text-[11px] uppercase tracking-[0.14em]">SESI HARI INI</p>
+                    <p className="font-mono text-[11px] uppercase tracking-[0.14em]">
+                      SESI HARI INI
+                    </p>
                     <p className="font-mono text-xl font-bold leading-none">
                       {String(overview.todayCount).padStart(2, "0")}
                     </p>
                   </div>
                   <div>
-                    <p className="font-mono text-[11px] uppercase tracking-[0.14em]">LIVE SEKARANG</p>
+                    <p className="font-mono text-[11px] uppercase tracking-[0.14em]">
+                      LIVE SEKARANG
+                    </p>
                     <p className="font-mono text-xl font-bold leading-none">
                       {String(liveCount).padStart(2, "0")}
                     </p>
@@ -328,8 +332,7 @@ function StatusStrip({
   note: string;
   tone: "ok" | "warn" | "neutral";
 }) {
-  const toneClass =
-    tone === "ok" ? "bg-accent-3" : tone === "warn" ? "bg-accent" : "bg-surface";
+  const toneClass = tone === "ok" ? "bg-accent-3" : tone === "warn" ? "bg-accent" : "bg-surface";
   return (
     <div className="flex min-h-[5.5rem] items-center gap-3 border-2 border-ink bg-surface p-3 shadow-[3px_3px_0_0_#111111]">
       <span
@@ -362,11 +365,7 @@ function TelemetryCell({
   tone: "ok" | "warn" | "neutral";
 }) {
   const accent =
-    tone === "ok"
-      ? "border-t-accent-3"
-      : tone === "warn"
-        ? "border-t-accent"
-        : "border-t-ink";
+    tone === "ok" ? "border-t-accent-3" : tone === "warn" ? "border-t-accent" : "border-t-ink";
   return (
     <div className={`border-2 border-t-4 border-ink bg-bg p-3 ${accent}`}>
       <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">

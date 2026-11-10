@@ -18,11 +18,11 @@
 
 ### 3.1.1 Penyimpanan Cache Kiosk (PWA, 2026-11-08)
 
-| Penyimpanan | Isi | Penulis |
-| --- | --- | --- |
-| `localStorage` `snapyos.templates.<slug>` | snapshot JSON daftar template (`schema: 1`, `fetchedAt`, `templates[]`) | klien (`src/components/kiosk/template-cache.ts`) |
-| `localStorage` `snapyos.template-index.<slug>` | index aset `{ key, bytes, lastUsed }` — sumber kebenaran daftar key + LRU | klien |
-| Cache Storage `snapyos-template-assets-v1` | biner thumbnail `templateId:version@480` + frame `templateId:version@full` | klien; **SW hanya membaca** (`cache-first` untuk proxy frame dengan `?cache=` valid) |
+| Penyimpanan                                    | Isi                                                                        | Penulis                                                                              |
+| ---------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `localStorage` `snapyos.templates.<slug>`      | snapshot JSON daftar template (`schema: 1`, `fetchedAt`, `templates[]`)    | klien (`src/components/kiosk/template-cache.ts`)                                     |
+| `localStorage` `snapyos.template-index.<slug>` | index aset `{ key, bytes, lastUsed }` — sumber kebenaran daftar key + LRU  | klien                                                                                |
+| Cache Storage `snapyos-template-assets-v1`     | biner thumbnail `templateId:version@480` + frame `templateId:version@full` | klien; **SW hanya membaca** (`cache-first` untuk proxy frame dengan `?cache=` valid) |
 
 Rate limit publik: `GET /api/v1/public/:slug/templates` 120/menit/IP, `GET /api/v1/public/frame` 180/menit/IP. Detail perilaku: `docs/05` §5.4.
 
@@ -226,3 +226,96 @@ Setiap halaman/section di `04`/`05`/`10`/`11.5–11.8` wajib dijabarkan menjadi 
 
 - Seluruh copy UI saat ini **bahasa Indonesia** (hardcoded di PRD). Belum ada requirement lokalisasi multi-bahasa.
 - Keputusan: MVP **Indonesia-only** (hardcode string, tanpa framework i18n). Tambah `next-intl`/`i18next` **hanya jika** kebutuhan multi-bahasa muncul (mis. target pasar non-ID). Jangan pasang framework i18n "untuk nanti".
+
+## 3.9 Storage Lifecycle (R2 + Supabase, retention, orphan sweep, reconcile)
+
+> Catatan: `docs/09-security-storage.md` belum ada di repo meski dirujuk beberapa dokumen
+> (lihat `docs/README.md`). Bagian ini adalah padanan storage yang berlaku; sumber
+> kebenaran tetap kode (`src/server/storage/`, `src/lib/r2/`, `src/app/api/cron/`).
+
+### 3.9.1 Dua bucket, dua umur
+
+| Area (R2)          | Env bucket                   | Isi                                          | Umur                      |
+| ------------------ | ---------------------------- | -------------------------------------------- | ------------------------- |
+| `business-assets`  | `R2_BUCKET_BUSINESS_ASSETS`  | logo/branding, template, sticker, aset event | jangka panjang            |
+| `generated-photos` | `R2_BUCKET_GENERATED_PHOTOS` | `sessions/<id>/photo-NN.jpg`, `result.gif`   | dibatasi `retention_days` |
+
+`R2_BUCKET` (legacy single-bucket) tetap dibaca sebagai fallback nama bucket per area.
+Kredensial `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` hanya di server
+(`src/lib/r2/config.ts` meng-`import "server-only"`), endpoint diturunkan dari account id
+kecuali `R2_ENDPOINT` diisi. `r2Key()` menolak segmen `..` dan backslash (guard
+path-traversal), dan pemanggil tetap wajib allowlist id yang masuk key.
+
+### 3.9.2 Dual provider (tulis vs baca)
+
+- **Tulis** = `getWriteStorage()` (R2 default), **baca/hapus** = `resolveStorage(bucket, key)`
+  yang mencoba provider pemilik key lalu fallback. Objek era Supabase tidak boleh stranded.
+- `activeStorageProviders()` = write + fallback (dedup) — dipakai kuota dan sweep supaya
+  byte R2 tidak hilang saat provider tulis di-set ke Supabase.
+- `signedUrlMap()` mengelompokkan key per provider lalu satu panggilan batch per provider;
+  `downloadBy` memaksa presign per-key karena nama unduhan berbeda.
+- Akuntansi kuota atomik lewat RPC `storage_account_add` / `storage_account_sub`
+  (`src/server/storage-usage.ts`), bukan hitung ulang per request.
+
+### 3.9.3 Retention media hasil foto — `GET /api/cron/retention`
+
+Jadwal `0 20 * * *`, `maxDuration = 60`, auth `Bearer CRON_SECRET` **fail-closed**
+(secret kosong di production = tolak; dev opt-in `RETENTION_CRON_OPEN=1`).
+
+- Rentang `retention_days` 1–3 hari (`RETENTION_MIN_DAYS`/`MAX_DAYS`), default 3; satu sumber
+  untuk jalur tenant (`businessSettingsUpdateSchema`) dan admin (`adminSettingsUpdateSchema`).
+- Yang dihapus hanya **media** (photos + `result_gif_key`). Baris `sessions`,
+  `transactions`, dan `payments` DIPERTAHANKAN — sumber kebenaran finansial tidak boleh ikut hilang.
+- `retentionCutoff()` = `now − retention_days`; kandidat = sesi finalized sebelum cutoff
+  yang `media_cleaned_at` masih null.
+- Batch per business + marker `media_cleaned_at` agar backlog tersalirkan dan kegagalan
+  storage di-retry run berikutnya. `media_cleaned_at` HANYA di-set bila semua object sesi
+  berhasil dihapus atau sudah absen (satu failure = sesi ditahan).
+- Cron yang sama juga **auto-expire** sesi aktif stagnan lewat `expires_at + grace` offline
+  (`OFFLINE_FINALIZE_GRACE_MS`): tanpa itu partial unique index "1 sesi aktif per photobox"
+  mengunci booth selamanya.
+- `accountSub` gagal → sesi **ditahan** (media + `media_cleaned_at` tetap) supaya akuntansi
+  diulang; `missing:true` (migrasi akuntansi belum ada) → fail-open, media tetap dibersihkan
+  agar backlog tidak menumpuk.
+
+### 3.9.4 Orphan sweep — `GET /api/cron/orphan-sweep`
+
+Jadwal `40 2 * * *`, `maxDuration = 60`. Menghapus objek `generated-photos` yang **tidak
+direferensikan** `photos.file_key` / `sessions.result_gif_key` (mis. finalize gagal setelah
+upload) dan tetap menagih storage selamanya.
+
+| Batas                  | Nilai                                                      |
+| ---------------------- | ---------------------------------------------------------- |
+| Umur minimum objek     | 24 jam (`MIN_AGE_MS`) — upload berjalan tidak ikut tersapu |
+| Objek dipindai per run | 2000 (`MAX_SCAN_PER_RUN`), paginated per business          |
+| Objek dihapus per run  | 500 (`MAX_DELETE_PER_RUN`) — backlog tersalirkan harian    |
+| Dry run                | `?dry_run=1` atau `ORPHAN_SWEEP_DRY_RUN=1`                 |
+
+- Fail-closed: error query referensi berarti kita **tidak tahu** apa yang direferensikan →
+  run berhenti, bukan menghapus buta.
+- Akuntansi: `used_bytes` hanya dikurangi untuk key yang dilaporkan **berhasil** (atau sudah
+  absen) — HTTP 200 DeleteObjects bukan bukti sukses (`splitRemoveOutcome`).
+- Scan rekursif dari folder level-1 (business id) lintas `activeStorageProviders()`.
+
+### 3.9.5 Reconcile kuota — `GET /api/cron/reconcile-storage`
+
+Jadwal `23 2 * * *`, `maxDuration = 120`. **Mengoreksi drift**, bukan sekadar seed awal:
+ledger `storage_objects` vs listing bucket dibandingkan `planStorageReconcile()`
+(`src/lib/storage-reconcile.ts`, murni sehingga bisa diuji):
+
+| Delta                                            | Aksi                                     |
+| ------------------------------------------------ | ---------------------------------------- |
+| Ada di bucket, tidak di ledger (atau bytes beda) | `add` / `resize` → `storage_account_add` |
+| Ada di ledger, tidak di bucket                   | `remove` → `storage_account_sub`         |
+
+- Rencana hanya berisi delta; ledger == listing → rencana kosong, cron aman diulang.
+- Byte tidak valid (`NaN`/negatif) dinormalkan 0, sama seperti RPC.
+- Bucket yang listing-nya **gagal** di-skip dari koreksi `remove` (jangan menghapus akuntansi
+  berdasarkan listing parsial).
+
+### 3.9.6 Cron terkait
+
+`vercel.json` menjadwalkan tujuh cron: `retention` (0 20), `subscription-lifecycle` (0 0),
+`subscription-expiry-reminder` (0 6), `payment-recovery` (0 21), `device-cleanup` (0 3),
+`reconcile-storage` (23 2), `orphan-sweep` (40 2) — semua UTC. `deploy/cron/snapyos.cron`
+memuat jadwal yang sama untuk deployment non-Vercel.

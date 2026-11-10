@@ -354,7 +354,9 @@ test("layoutSchema: batas rotation-aware — slot muat di rotasi 0 tetapi keluar
   const rotated = slot({ x: 100, y: 100, width: 1000, height: 300, rotation: 90 });
   const parsed = layoutSchema.safeParse(layoutWithCanvas([rotated]));
   assert.equal(parsed.success, false);
-  assert.ok(parsed.error.issues.some((i) => i.message === "slot keluar batas canvas setelah rotasi"));
+  assert.ok(
+    parsed.error.issues.some((i) => i.message === "slot keluar batas canvas setelah rotasi")
+  );
 });
 
 test("layoutSchema: slot berotasi yang tetap di dalam canvas diterima", () => {
@@ -381,9 +383,7 @@ test("layoutSchema: z berlubang ditolak, z 0..n-1 diterima", () => {
   const gap = layoutWithCanvas([slot({ id: "a", z: 0 }), slot({ id: "b", z: 2 })]);
   const gapParsed = layoutSchema.safeParse(gap);
   assert.equal(gapParsed.success, false);
-  assert.ok(
-    gapParsed.error.issues.some((i) => i.message === "z slot harus 0..n-1 tanpa celah")
-  );
+  assert.ok(gapParsed.error.issues.some((i) => i.message === "z slot harus 0..n-1 tanpa celah"));
 
   const contiguous = layoutWithCanvas([
     slot({ id: "a", z: 0 }),
@@ -398,7 +398,9 @@ test("layoutSchema: preset tidak cocok dengan dimensi ditolak, custom bebas", ()
   assert.equal(layoutSchema.safeParse(mismatch).success, false);
   const parsed = layoutSchema.safeParse(mismatch);
   assert.equal(parsed.success, false);
-  assert.ok(parsed.error.issues.some((i) => i.message === "preset tidak cocok dengan dimensi canvas"));
+  assert.ok(
+    parsed.error.issues.some((i) => i.message === "preset tidak cocok dengan dimensi canvas")
+  );
 
   const custom = layoutWithCanvas([], { preset: "custom", width: 1200, height: 1800 });
   assert.equal(layoutSchema.safeParse(custom).success, true);
@@ -412,13 +414,17 @@ test("layoutSchema: radius > setengah sisi terpendek ditolak, sama diterima", ()
   const tooBig = layoutWithCanvas([slot({ radius: 351 })]);
   const parsed = layoutSchema.safeParse(tooBig);
   assert.equal(parsed.success, false);
-  assert.ok(parsed.error.issues.some((i) => i.message === "radius melebihi setengah sisi terpendek"));
+  assert.ok(
+    parsed.error.issues.some((i) => i.message === "radius melebihi setengah sisi terpendek")
+  );
 
   assert.equal(layoutSchema.safeParse(layoutWithCanvas([slot({ radius: 350 })])).success, true);
 });
 
 test("layoutSchema: circle wajib persegi; ellipse bebas rasio", () => {
-  const circleBad = layoutWithCanvas([slot({ shape: "circle", width: 700, height: 600, radius: 24 })]);
+  const circleBad = layoutWithCanvas([
+    slot({ shape: "circle", width: 700, height: 600, radius: 24 }),
+  ]);
   const parsed = layoutSchema.safeParse(circleBad);
   assert.equal(parsed.success, false);
   assert.ok(
@@ -426,8 +432,9 @@ test("layoutSchema: circle wajib persegi; ellipse bebas rasio", () => {
   );
 
   assert.equal(
-    layoutSchema.safeParse(layoutWithCanvas([slot({ shape: "circle", width: 700, height: 700, radius: 24 })]))
-      .success,
+    layoutSchema.safeParse(
+      layoutWithCanvas([slot({ shape: "circle", width: 700, height: 700, radius: 24 })])
+    ).success,
     true
   );
   assert.equal(
@@ -443,9 +450,7 @@ test("layoutSchema: crop keluar batas [0,1] ditolak", () => {
   ]);
   const parsed = layoutSchema.safeParse(outside);
   assert.equal(parsed.success, false);
-  assert.ok(
-    parsed.error.issues.some((i) => i.path.join(".") === "slots.0.properties.crop.width")
-  );
+  assert.ok(parsed.error.issues.some((i) => i.path.join(".") === "slots.0.properties.crop.width"));
 
   const inside = layoutWithCanvas([
     slot({ properties: { crop: { x: 0.1, y: 0.1, width: 0.5, height: 0.5 } } }),
@@ -471,7 +476,9 @@ test("layoutSchema: mask dengan poligon valid lolos", () => {
 test("layoutSchema: mask tanpa points atau < 3 titik ditolak", () => {
   const missing = layoutSchema.safeParse(layoutWithCanvas([slot({ shape: "mask" })]));
   assert.equal(missing.success, false);
-  assert.ok(missing.error.issues.some((i) => i.message === "shape mask wajib poligon minimal 3 titik"));
+  assert.ok(
+    missing.error.issues.some((i) => i.message === "shape mask wajib poligon minimal 3 titik")
+  );
 
   const two = layoutSchema.safeParse(
     layoutWithCanvas([slot({ shape: "mask", points: triangle.slice(0, 2) })])

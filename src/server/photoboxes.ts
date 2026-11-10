@@ -89,11 +89,13 @@ export type PhotoboxRow = {
   branding: BrandingConfig | null;
   /** Saluran pembayaran per-booth (null = gateway + voucher). */
   payment_mode: "gateway" | "voucher" | null;
+  /** Template default booth (null = ikut template paket). */
+  default_template_id: string | null;
   created_at: string;
 };
 
 const COLUMNS =
-  "id, slug, name, status, camera, printer, display, outlet_id, device_status, exit_pin_hash, camera_settings, print_settings, session_settings, branding, payment_mode, created_at";
+  "id, slug, name, status, camera, printer, display, outlet_id, device_status, exit_pin_hash, camera_settings, print_settings, session_settings, branding, payment_mode, default_template_id, created_at";
 
 async function requireMembership(userId: string, businessId: string, permission: Permission) {
   const membership = await getMembership(userId, businessId);
@@ -175,8 +177,22 @@ export async function listPhotoboxes(userId: string, businessId: string): Promis
     session_settings: (row.session_settings as SessionSettings | null) ?? {},
     branding: (row.branding as BrandingConfig | null) ?? null,
     payment_mode: (row as { payment_mode?: "gateway" | "voucher" | null }).payment_mode ?? null,
+    default_template_id:
+      (row as { default_template_id?: string | null }).default_template_id ?? null,
     created_at: row.created_at,
   }));
+}
+
+/** Satu booth milik business — dipakai halaman hardware (404 lintas tenant). */
+export async function getPhotobox(
+  userId: string,
+  businessId: string,
+  photoboxId: string
+): Promise<PhotoboxRow> {
+  const rows = await listPhotoboxes(userId, businessId);
+  const row = rows.find((candidate) => candidate.id === photoboxId);
+  if (!row) throw new ApiError("NOT_FOUND", "Photobox tidak ditemukan");
+  return row;
 }
 
 export async function createPhotobox(
@@ -187,11 +203,7 @@ export async function createPhotobox(
   const parsed = photoboxCreateSchema.parse(input);
   await requireMembership(userId, businessId, "photobox:write");
 
-  const {
-    camera_settings: cameraSettings,
-    exit_pin: exitPin,
-    ...photoboxColumns
-  } = parsed;
+  const { camera_settings: cameraSettings, exit_pin: exitPin, ...photoboxColumns } = parsed;
   const slug = parsed.slug ?? slugify(parsed.name);
   assertSlug(slug);
   await assertOutletOwned(businessId, parsed.outlet_id);

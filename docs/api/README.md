@@ -10,7 +10,6 @@ Source of truth: route handlers in `src/app/api/`, server actions in `src/server
 
 Server actions adalah jalur utama untuk owner dashboard CRUD. REST hanya dipakai bila client, device, browser download, public kiosk, webhook, atau admin membutuhkan HTTP contract. POS owner tidak memiliki REST API.
 
-
 ## Public kiosk
 
 | Method | Route                                                           | Auth             | Purpose                             |

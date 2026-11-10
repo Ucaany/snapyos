@@ -58,9 +58,7 @@ export type PrintPlan =
 
 /** Normalisasi nilai paper lama/asing ke preset yang valid. */
 export function normalizePaperSize(value: unknown): PrintPaperSize {
-  return value === "A6" || value === "2x6" || value === "5x7" || value === "6x8"
-    ? value
-    : "4x6";
+  return value === "A6" || value === "2x6" || value === "5x7" || value === "6x8" ? value : "4x6";
 }
 
 /**
@@ -74,7 +72,8 @@ export function printPageSize(
   const base = PRINT_PAPER_MM[normalizePaperSize(settings?.paper_size)];
   let landscape = settings?.orientation === "landscape";
   if (settings?.orientation === "auto") {
-    landscape = typeof canvasAspect === "number" && Number.isFinite(canvasAspect) && canvasAspect > 1;
+    landscape =
+      typeof canvasAspect === "number" && Number.isFinite(canvasAspect) && canvasAspect > 1;
   }
   // Dua strip 2x6 masuk satu kertas 4x6 landscape: 2 × 50.8 lebar = 101.6,
   // tinggi 152.4. Hanya berlaku pada kertas 4x6.

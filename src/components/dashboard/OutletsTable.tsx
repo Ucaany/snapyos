@@ -1,17 +1,14 @@
 "use client";
 
 import { Fragment, useActionState, useState } from "react";
-import { ChevronDown, Plus, Store } from "lucide-react";
+import { Plus, Store } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { RecordCard } from "@/components/ui/record-card";
-import {
-  RecordCollection,
-  RecordEditButton,
-} from "@/components/ui/record-collection";
+import { RecordCollection, RecordEditButton } from "@/components/ui/record-collection";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { WilayahPicker } from "@/components/dashboard/WilayahPicker";
 import { DeleteConfirmForm } from "@/components/dashboard/DeleteConfirmForm";
@@ -203,17 +200,9 @@ export function OutletsTable({ outlets, canWrite, maxOutlets }: Props) {
                 Plan limit
               </span>
             </div>{" "}
-            <CollapsibleTrigger
-              className="px-3"
-              aria-label="Buka form outlet baru"
-              title="Outlet baru"
-            >
+            <CollapsibleTrigger aria-label="Buka form outlet baru" title="Outlet baru">
               <Plus aria-hidden />
               <span className="sr-only">Outlet baru</span>
-              <ChevronDown
-                className="transition-transform duration-100 [[data-panel-open]_&]:rotate-180"
-                aria-hidden
-              />
             </CollapsibleTrigger>
           </div>
           <CollapsiblePanel className="mt-4">

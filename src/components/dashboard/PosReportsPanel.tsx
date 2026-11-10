@@ -77,9 +77,7 @@ export function PosReportsPanel({ data, timeZone }: { data: PosReportsData; time
         <Metric
           label="Metode dominan"
           value={
-            dominant
-              ? `${dominant.key.toUpperCase()} \u00b7 ${formatIDR(dominant.amount)}`
-              : "-"
+            dominant ? `${dominant.key.toUpperCase()} \u00b7 ${formatIDR(dominant.amount)}` : "-"
           }
         />
       </div>

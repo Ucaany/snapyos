@@ -446,7 +446,8 @@ export async function recordLatePaymentVoidInvoice(
     invoice_id: args.invoiceId,
     subscription_id: args.subscriptionId,
     reason: INTENT_FAILURE_REASON.LATE_PAYMENT_VOID_INVOICE,
-    message: "Pembayaran diterima untuk invoice yang sudah dibatalkan (void) — perlu review/refund manual.",
+    message:
+      "Pembayaran diterima untuk invoice yang sudah dibatalkan (void) — perlu review/refund manual.",
     intent_snapshot: snapshot,
     amount: args.amount,
   });
@@ -535,9 +536,7 @@ export async function applyInvoiceIntentWithDeps(
   };
 
   try {
-    const planItem = [...items]
-      .reverse()
-      .find((i) => i.type === "plan_change" && i.plan_id);
+    const planItem = [...items].reverse().find((i) => i.type === "plan_change" && i.plan_id);
     const addOnItems = items
       .map((item, index) => ({ item, index }))
       .filter((e) => e.item.type === "add_on" && e.item.add_on_id);

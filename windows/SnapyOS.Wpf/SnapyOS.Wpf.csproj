@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
@@ -6,9 +6,16 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <AssemblyName>SnapyOS.Wpf</AssemblyName>
     <RootNamespace>SnapyOS.Wpf</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <NoWarn>$(NoWarn);CA1822;CA1826;CA1859</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../SnapyOS.Contracts/SnapyOS.Contracts.csproj" />
+    <ProjectReference Include="../SnapyOS.Core/SnapyOS.Core.csproj" />
+    <ProjectReference Include="../SnapyOS.LocalStore/SnapyOS.LocalStore.csproj" />
+    <ProjectReference Include="../SnapyOS.Security/SnapyOS.Security.csproj" />
+    <ProjectReference Include="../SnapyOS.Agent/SnapyOS.Agent.csproj" />
+    <ProjectReference Include="../SnapyOS.Printing/SnapyOS.Printing.csproj" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />

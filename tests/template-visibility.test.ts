@@ -45,9 +45,7 @@ test("assignment package menyempitkan daftar tanpa memandang jumlah slot", () =>
   // Regresi: dulu frame 4 slot disembunyikan dari paket 3 foto.
   const rows = [t("a", 4), t("b", 1), t("c", 2)];
   assert.deepEqual(
-    selectVisibleTemplates(rows, { assignedIds: new Set(["a", "b"]), photoCount: 3 }).map(
-      (r) => r.id
-    ),
+    selectVisibleTemplates(rows, { assignedIds: new Set(["a", "b"]) }).map((r) => r.id),
     ["a", "b"]
   );
 });
@@ -55,11 +53,7 @@ test("assignment package menyempitkan daftar tanpa memandang jumlah slot", () =>
 test("frame 6 slot tampil untuk paket 3 foto", () => {
   const rows = [t("enam", 6)];
   assert.deepEqual(
-    selectVisibleTemplates(rows, {
-      assignedIds: null,
-      photoCount: 3,
-      slotCountOf: slotCount,
-    }).map((r) => r.id),
+    selectVisibleTemplates(rows, { assignedIds: null }).map((r) => r.id),
     ["enam"]
   );
 });
@@ -76,6 +70,21 @@ test("assignment menunjuk template yang sudah tidak aktif: jatuh ke semua kandid
   const rows = [t("a", 2), t("b", 3)];
   assert.deepEqual(
     selectVisibleTemplates(rows, { assignedIds: new Set(["hilang"]) }).map((r) => r.id),
+    ["a", "b"]
+  );
+});
+
+test("packageId: saring dari package_ids kandidat, kosong -> semua", () => {
+  const rows = [
+    { id: "a", package_ids: ["p1"] },
+    { id: "b", package_ids: ["p2"] },
+  ];
+  assert.deepEqual(
+    selectVisibleTemplates(rows, { packageId: "p1" }).map((r) => r.id),
+    ["a"]
+  );
+  assert.deepEqual(
+    selectVisibleTemplates(rows, { packageId: "p9" }).map((r) => r.id),
     ["a", "b"]
   );
 });

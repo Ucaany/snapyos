@@ -527,15 +527,25 @@ create table pos_orders (
   payment_method text not null default 'cash'
     check (payment_method in ('cash', 'bank_transfer', 'other')),           -- offline-only (A2)
   payment_reference text,
+  -- 0083: uang tunai nyata, bukan menumpang payment_reference.
+  amount_received integer,
+  change_amount integer,
   paid_at timestamptz,
   paper_width_mm integer not null default 80 check (paper_width_mm in (58, 80)),
   print_mode text not null default 'browser'
-    check (print_mode in ('browser', 'bluetooth')),
+    check (print_mode in ('browser', 'bluetooth', 'cups')),
   auto_print boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint pos_orders_business_number_key unique (business_id, number),
-  constraint pos_orders_amounts_valid check (final_amount = gross_amount - discount_amount)
+  constraint pos_orders_amounts_valid check (final_amount = gross_amount - discount_amount),
+  constraint pos_orders_cash_change_valid check (
+    (amount_received is null and change_amount is null)
+    or (
+      amount_received >= final_amount
+      and change_amount = amount_received - final_amount
+    )
+  )
 );
 create index idx_pos_orders_business_status on pos_orders (business_id, status);
 create index idx_pos_orders_business_paid on pos_orders (business_id, paid_at) where status = 'paid';
@@ -654,7 +664,9 @@ create or replace function pos_complete_payment(
   p_photobox_id uuid,
   p_gross integer,
   p_discount integer,
-  p_final integer
+  p_final integer,
+  p_amount_received integer default null,
+  p_change_amount integer default null
 ) returns uuid
 language plpgsql
 as $$
@@ -673,7 +685,9 @@ begin
   update pos_orders
      set status = 'paid',
          paid_at = now(),
-         payment_method = p_method
+         payment_method = p_method,
+         amount_received = p_amount_received,
+         change_amount = p_change_amount
    where id = p_order_id
      and business_id = p_business
      and status = 'pending';
@@ -2276,8 +2290,8 @@ create policy svc_all on subscription_intent_failures for all to service_role us
 -- tidak pernah dipanggil sebagai RPC. Signature persis agar tak salah overload.
 -- ============================================================================
 
-revoke execute on function pos_complete_payment(uuid, uuid, text, uuid, text, uuid, uuid, integer, integer, integer) from public, anon, authenticated;
-grant execute on function pos_complete_payment(uuid, uuid, text, uuid, text, uuid, uuid, integer, integer, integer) to service_role;
+revoke execute on function pos_complete_payment(uuid, uuid, text, uuid, text, uuid, uuid, integer, integer, integer, integer, integer) from public, anon, authenticated;
+grant execute on function pos_complete_payment(uuid, uuid, text, uuid, text, uuid, uuid, integer, integer, integer, integer, integer) to service_role;
 
 revoke execute on function pos_decrement_stock(uuid, uuid, integer) from public, anon, authenticated;
 grant execute on function pos_decrement_stock(uuid, uuid, integer) to service_role;
@@ -2490,7 +2504,7 @@ grant execute on function add_business_member_with_quota(uuid, integer, uuid, te
 alter function bootstrap_admin(text) set search_path = public, pg_temp;
 
 alter function activate_device_atomically(text, text) set search_path = public, pg_temp;
-alter function pos_complete_payment(uuid, uuid, text, uuid, text, uuid, uuid, integer, integer, integer) set search_path = public, pg_temp;
+alter function pos_complete_payment(uuid, uuid, text, uuid, text, uuid, uuid, integer, integer, integer, integer, integer) set search_path = public, pg_temp;
 alter function pos_decrement_stock(uuid, uuid, integer) set search_path = public, pg_temp;
 alter function settle_paid_payment_atomically(uuid, text, text) set search_path = public, pg_temp;
 alter function create_voucher_payment_atomically(uuid, uuid, text, text, text, text) set search_path = public, pg_temp;

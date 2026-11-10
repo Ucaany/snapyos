@@ -436,7 +436,7 @@ YOUR PHOTOS ARE READY!
 
 Menyediakan:
 
-- **Unduh GIF animasi slideshow** — foto bergantian otomatis; digenerate **server-side saat finalize**; storage key di `sessions.result_gif_key`. Template legacy memakai foto berframe; frame ber-slot memakai capture mentah (composite tunggal tidak bisa jadi slideshow). Preview GIF autoplay loop di atas halaman.
+- **Unduh GIF animasi slideshow** — foto bergantian otomatis; digenerate **server-side saat finalize**; storage key di `sessions.result_gif_key`. Template ber-slot: klien merender **satu JPEG berframe per foto capture** lewat `composeFrame` (slot milik foto itu terisi, slot lain kosong, kanvas + frame = template) — `renderFramePerPhotoBlobs` → `gif_photos`; GIF lalu memperlihatkan template ber-slot bergantian. Template legacy memakai foto final apa adanya. Klien yang gagal memuat frame jatuh ke foto mentah (GIF tetap ada). Delay & lebar GIF dari `business_settings.output.gif` (`frame_delay_ms` 100–3000, `max_width` 240–1080, default 800/480; `enabled: false` = tanpa GIF). Preview GIF autoplay loop di atas halaman.
 - **Unduh foto berframe** (statis, per foto — hasil edit + frame pilihan customer), tampil sebagai grid thumbnail, bisa diunduh per foto.
 - **Unduh semua (ZIP)** — `GET /api/v1/public/results/:resultToken/zip`: ZIP store-only tanpa dependensi baru, batas 50 berkas / 100 MB, rate limit 10/menit/IP, validasi retention + tenant lewat `getResult`. Isi: GIF slideshow + semua foto berframe.
 - **Salin link & kirim via WhatsApp** — tombol di kiosk `/r` dan `ResultScreen`; teks menyebut tanggal berlaku (`finalized_at + retention_days`, dikirim sebagai `expires_at` dari `getResult`/finalize).
@@ -479,7 +479,12 @@ QR mengarah ke secure online result page (GIF + foto berframe, §5.13). Result m
 
 **Purpose:** Mencetak hasil foto (bila package include print) via printer OS kiosk.
 
-**Pendekatan:** **Browser print / OS printer** (`window.print()` + `@media print`), target Chrome kiosk mode (`--kiosk-printing` untuk auto-print tanpa dialog). Fleksibel untuk printer foto umum (DNP dye-sublimation, Citizen, Canon Selphy, inkjet) yang terpasang sebagai printer default OS. Di tablet Android/iPad dialog print sistem selalu muncul (browser tidak bisa silent-print); hanya Chrome desktop `--kiosk-printing` yang senyap.
+**Pendekatan:** **dua jalur cetak hasil foto**, keduanya lewat perangkat kiosk sendiri:
+
+1. **`photo` — printer foto** (DNP/Citizen/Selphy/inkjet). Transport: dialog OS `window.print()` (+ `--kiosk-printing` untuk silent-print desktop) atau **CUPS via bridge lokal** (`POST /print` ke `http://127.0.0.1:17777`). Di tablet Android/iPad dialog print sistem selalu muncul (browser tidak bisa silent-print).
+2. **`thermal` — printer thermal 1-bit ESC/POS** (kertas 58/80 mm), lewat Web Bluetooth atau Web Serial. Jalur ini **selalu** `mode = bluetooth` (`resolvePrintMode` memaksa), dan struk POS punya jalur ketiga `receipt` (§5.15.2) — bukan bagian cetak hasil foto.
+
+Jalur aktif dihitung `availablePrintPaths(print_settings)` dari grup `photo`/`thermal` (fallback field datar untuk baris lama). Satu jalur aktif → langsung dipakai; dua jalur aktif → `PrintChoice` meminta customer memilih; nol jalur aktif → layar "printer tidak tersedia" (bukan diam-diam membuka dialog OS).
 
 ### 5.15.1 Print Flow (v2: auto-trigger saat finalize)
 
@@ -488,13 +493,18 @@ Customer tekan [ SELESAI ] di editor  ATAU  auto-finalize (timeout post-paid)
    ↓
 Finalize → upload foto final → generate result + GIF
    ↓
-App render print layout (canvas):
-   - 1 foto 4x6"  ATAU  2 strip 2x6" (photostrip dari satu kertas 4x6")
+App render print layout (canvas), sesuai jalur aktif:
+   - photo  : 1 foto 4x6" ATAU 2 strip 2x6" (photostrip dari satu kertas 4x6")
+   - thermal: raster 1-bit per foto, lebar 384 dot (58 mm) / 576 dot (80 mm)
    - Gambar + template frame + branding owner
    ↓
-print_count menentukan jumlah lembar cetak. `copies` pada konfigurasi booth menggandakan set lembar bila diperlukan.
+print_count menentukan jumlah lembar cetak. `copies` pada konfigurasi booth
+menggandakan set lembar bila diperlukan (`printSheets`, batas 20).
    ↓
-Bridge CUPS lokal mencetak PDF langsung tanpa dialog; `window.print()` tetap tersedia sebagai fallback (Chrome kiosk `--kiosk-printing` dapat silent-print).
+photo→CUPS: bridge lokal mencetak PDF tanpa dialog. photo→browser: `window.print()`
+(Chrome kiosk `--kiosk-printing` silent-print). thermal: job ESC/POS ke Web
+Bluetooth / Web Serial; tanpa Web Bluetooth layar Bluetooth menawarkan tombol
+eksplisit "Cetak lewat dialog" — tidak pernah pindah jalur diam-diam.
    ↓
 [ PRINT TEST ] tersedia di Setup Wizard (§5.0.1) & dashboard owner
    ↓
@@ -503,11 +513,13 @@ Status printer: tercatat di photoboxes.device_status (owner lihat di dashboard)
 
 ### 5.15.2 Print Settings (owner-configurable, per photobox)
 
-`photoboxes.print_settings` jsonb:
+`photoboxes.print_settings` jsonb. Bentuk lama (datar) tetap dibaca; bentuk baru memakai **grup per jalur** `photo` / `thermal` / `receipt`, dan `resolvePurposeSettings` menjatuhkan grup ke field datar sehingga renderer tidak perlu tahu bentuk mana yang dipakai.
 
 ```json
 {
   "enabled": true,
+  "mode": "cups",
+  "printer_name": "",
   "paper_size": "4x6",
   "layout": "single",
   "orientation": "auto",
@@ -517,19 +529,50 @@ Status printer: tercatat di photoboxes.device_status (owner lihat di dashboard)
   "auto_print": true,
   "copies": 1,
   "margins_mm": 0,
-  "mode": "cups",
   "bridge_url": "http://127.0.0.1:17777",
-  "printer_name": ""
+  "bluetooth_paper_width_mm": 80,
+  "bluetooth_device_name": "",
+  "photo": { "enabled": true, "mode": "cups" },
+  "thermal": { "enabled": true, "paper_width_mm": 80, "printer_name": "" },
+  "receipt": { "enabled": true, "mode": "browser", "paper_width_mm": 58 }
 }
 ```
 
-| Field | Nilai | Arti |
-| --- | --- | --- |
-| `paper_size` | `4x6` \| `2x6` \| `5x7` \| `6x8` \| `A6` | Preset kertas fisik (mm: 101.6×152.4, 50.8×152.4, 127×177.8, 152.4×203.2, 105×148) |
-| `orientation` | `portrait` \| `landscape` \| `auto` | `auto` = landscape bila rasio kanvas > 1, selain itu portrait |
-| `fit` | `auto` \| `contain` \| `cover` | `auto`: frame/strip → `contain` (bingkai tak terpotong), foto tunggal → `cover` |
-| `strip_2up` | boolean | Dua salinan strip pada satu kertas 4x6 landscape (hanya layout strip, kanvas ±1:3) |
-| `media_name` | string | Override nama media CUPS; kosong = `Custom.WxHmm` |
+**Field baru (grup `photo`)** — `src/lib/validators.ts` `printPhotoSettingsSchema`:
+
+| Field          | Nilai                                    | Arti                                                                               |
+| -------------- | ---------------------------------------- | ---------------------------------------------------------------------------------- |
+| `enabled`      | boolean                                  | Jalur printer foto ditawarkan ke customer                                          |
+| `mode`         | `browser` \| `bluetooth` \| `cups`       | Transport: dialog OS, ESC/POS thermal, atau bridge CUPS                            |
+| `printer_name` | string ≤128                              | Nama printer CUPS; kosong = default OS                                             |
+| `paper_size`   | `4x6` \| `2x6` \| `5x7` \| `6x8` \| `A6` | Preset kertas fisik (mm: 101.6×152.4, 50.8×152.4, 127×177.8, 152.4×203.2, 105×148) |
+| `orientation`  | `portrait` \| `landscape` \| `auto`      | `auto` = landscape bila rasio kanvas > 1, selain itu portrait                      |
+| `fit`          | `auto` \| `contain` \| `cover`           | `auto`: frame/strip → `contain` (bingkai tak terpotong), foto tunggal → `cover`    |
+| `margins_mm`   | integer 0–20                             | Margin cetak                                                                       |
+| `media_name`   | string ≤120                              | Override nama media CUPS; kosong = `Custom.WxHmm`                                  |
+| `strip_2up`    | boolean                                  | Dua salinan strip pada satu kertas 4x6 landscape (hanya layout strip, kanvas ±1:3) |
+| `auto_print`   | boolean                                  | Cetak langsung setelah finalize                                                    |
+| `bridge_url`   | URL ≤300                                 | URL bridge lokal; kosong = `http://127.0.0.1:17777`                                |
+
+**Grup `thermal`** (`printThermalSettingsSchema`): `enabled`, `paper_width_mm` (`58`|`80`), `printer_name`, `bluetooth_device_name` (≤60, informasi petugas bukan kredensial), `auto_print`. Grup ini **tidak** menyimpan `mode` — `resolvePrintMode` memaksa `bluetooth` untuk semua cetak thermal.
+
+**Grup `receipt`** (`printReceiptSettingsSchema`, struk POS): `enabled`, `mode` (`browser`|`bluetooth`|`cups`), `paper_width_mm` (`58`|`80`), `printer_name`, `auto_print`. Snapshot-nya ikut tersimpan di `pos_orders` (`paper_width_mm`, `print_mode`, `auto_print`) saat order dibuat.
+
+### 5.15.2a Kepemilikan Setelan: owner menulis, booth menimpa
+
+Dua penulis menyentuh jsonb yang sama, jadi kepemilikan field eksplisit di `src/lib/device-settings-contract.ts` (`CLOUD_OWNED_SETTING_FIELDS`) dan ditegakkan server, bukan hanya UI:
+
+| Pemilik                     | Field                                                                                                                                                                                                                 | Kenapa                                                                                                                  |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| **Cloud (owner/dashboard)** | `print_settings.copies`, `print_settings.layout`                                                                                                                                                                      | Keduanya mengubah **biaya & produk** yang dijual (jumlah lembar, strip vs single) — tidak boleh diubah dari mesin booth |
+| **Device (aplikasi booth)** | sisanya: `mode`, `printer_name`, `paper_size`, `orientation`, `fit`, `margins_mm`, `media_name`, `strip_2up`, `auto_print`, `bridge_url`, `paper_width_mm`, `bluetooth_device_name`, grup `photo`/`thermal`/`receipt` | Hanya mesin di lokasi yang tahu printer apa yang terpasang                                                              |
+
+Aturan penegakan:
+
+- `PATCH /api/v1/public/devices/settings` menolak field cloud dengan **`403 FIELD_NOT_DEVICE_OWNED`** (bukan membuang diam-diam), dan menolak `appearance_settings` dengan `403 LOCAL_ONLY_SETTING` — grup tampilan tidak pernah naik ke `photoboxes`.
+- Merge **per-key**, bukan replace (`mergeDeviceSettings`): laporan booth yang hanya tahu `paper_size` tidak boleh menghapus `copies` milik cloud. Grup bersarang (`photo`/`thermal`/`receipt`) digabung satu level lagi.
+- Dashboard owner menyimpan grup lewat `savePhotoboxHardwareAction`; action itu mem-_mirror_ nilai grup ke field datar (`mode`, `printer_name`, `paper_size`, …) karena kiosk, `PrintTestPanel`, dan `print-layout` membaca bentuk datar.
+- `appearance_settings` (tampilan booth) menang atas branding cloud tapi tidak pernah disinkronkan ke cloud (`LOCAL_ONLY_DEVICE_GROUPS`).
 
 ### 5.15.3 Print Layout Mapping
 
@@ -546,7 +589,8 @@ Layout ditentukan `print_settings.layout` + `package.print_count`.
 
 Browser **tidak bisa** enumerate printer (standar web). Jadi "deteksi" dilakukan:
 
-1. **Print Test di Setup Wizard (§5.0.1)** & dashboard owner → mode CUPS mengirim PDF langsung ke bridge lokal, mode browser membuka `window.print()`, mode thermal mengirim ESC/POS → owner konfirmasi fisik ("Test print berhasil?" Ya/Tidak).
+1. **Print Test di Setup Wizard (§5.0.1)** & dashboard owner → mode CUPS mengirim PDF langsung ke bridge lokal, mode browser membuka `window.print()`, mode thermal mengirim ESC/POS → owner konfirmasi fisik ("Test print berhasil?" Ya/Tidak). Hasil dikirim `reportPrintTestAction` dan tersimpan sebagai `device_status.printer.confirmed`.
+   1b. **Deteksi lewat bridge** (`HardwareDetectButton`, dashboard `/dashboard/photoboxes/[id]/hardware`): `GET /health` (kamera + model), `GET /printer/health` dengan header `X-Bridge-Token` (nama printer aktif / `ok` untuk printer default OS), `GET /v1/camera/status`. Bridge mati adalah keadaan normal di komputer owner — hasil kosong berarti isi nama manual, bukan error. `GET /printer/list` (fitur `listCupsPrinters`) mengembalikan daftar printer CUPS + penanda default.
 2. **Printer default OS** harus di-set di kiosk, atau isi `printer_name` CUPS. Bridge CUPS memakai `lp`/`lpstat` dan opsi media sesuai `media_name` (fallback `Custom.WxHmm`), plus `fit-to-page`.
    Ukuran preset: `4x6` = `101.6 × 152.4 mm`, `2x6` = `50.8 × 152.4 mm`, `5x7` = `127 × 177.8 mm`, `6x8` = `152.4 × 203.2 mm`, `A6` = `105 × 148 mm`; driver harus menerima media custom atau profile kertas yang ekuivalen. Print Test menggambar kotak batas pada margin aktif, sehingga ukuran, orientasi, dan area aman bisa diverifikasi secara fisik.
 3. Status disimpan ke `photoboxes.device_status.printer = { status, last_test_at, confirmed, mode, job }`. `job` = `{ status, last_error, queue_pending, queue_retrying, last_job_at }` dari heartbeat runtime; semua field opsional agar runtime lama tetap lolos validasi.
@@ -555,18 +599,30 @@ Browser **tidak bisa** enumerate printer (standar web). Jadi "deteksi" dilakukan
 
 ### 5.15.5 Error Handling (print)
 
-| Kondisi                             | Pesan / Aksi                                            |
-| ----------------------------------- | ------------------------------------------------------- |
-| Printer tidak tersedia              | "Printer tidak terdeteksi. Jalankan [ PRINT TEST ]."    |
-| Kertas habis                        | deteksi tidak memungkinkan via web → panduan di Bantuan |
-| print gagal (onbeforeprint/onerror) | "Gagal mencetak." + [ CETAK ULANG ]                     |
-| package tanpa print                 | langsung ke result (download/QR)                        |
+| Kondisi                             | Pesan / Aksi                                                                                 |
+| ----------------------------------- | -------------------------------------------------------------------------------------------- |
+| Printer tidak tersedia              | "Printer tidak terdeteksi. Jalankan [ PRINT TEST ]."                                         |
+| Tidak ada jalur cetak aktif         | `PrintUnavailable` — berhenti dengan pesan, bukan membuka dialog OS yang tidak dikonfigurasi |
+| Kertas habis                        | deteksi tidak memungkinkan via web → panduan di Bantuan                                      |
+| print gagal (onbeforeprint/onerror) | "Gagal mencetak." + [ CETAK ULANG ]                                                          |
+| Web Bluetooth/Serial tidak tersedia | layar Bluetooth menampilkan tombol eksplisit "Cetak lewat dialog"                            |
+| package tanpa print                 | langsung ke result (download/QR)                                                             |
 
 ### 5.15.6 Components
 
-`PrintLayoutRenderer` (canvas → printable DOM), `PrintButton`, `PrintTestButton` (setup wizard & owner), `PrintStatusIndicator`, `FinalizeButton` ([ SELESAI ] — trigger print + result).
+`src/components/kiosk/PrintFlow.tsx` memilih renderer dari `availablePrintPaths` + `resolvePrintMode`:
 
-**Acceptance:** (AC 60) finalize memicu auto-print (Chrome kiosk); print test tersedia di setup wizard & dashboard; auto-print berjalan di kiosk mode.
+| Komponen               | Jalur                                                                 |
+| ---------------------- | --------------------------------------------------------------------- |
+| `PrintLayoutRenderer`  | `photo` + `mode = browser` (canvas → DOM printable, `window.print()`) |
+| `CupsPrintScreen`      | `photo` + `mode = cups` (bridge lokal)                                |
+| `BluetoothPrintScreen` | `thermal` (ESC/POS raster, Web Bluetooth / Web Serial)                |
+| `PrintChoice`          | dua jalur aktif — pilihan eksplisit customer                          |
+| `PrintUnavailable`     | nol jalur aktif                                                       |
+
+Pendukung: `PrintTestPanel` (setup wizard & dashboard owner), `HardwareDetectButton`, `printPlan`/`printSheets` (`src/lib/print-layout.ts`, dipakai bersama jalur browser dan thermal), `FinalizeButton` ([ SELESAI ] — trigger print + result).
+
+**Acceptance:** (AC 60) finalize memicu auto-print pada jalur aktif; dua jalur aktif memunculkan pilihan eksplisit; print test tersedia di setup wizard & dashboard; tidak ada jalur aktif berarti pesan, bukan cetak diam-diam.
 
 ---
 

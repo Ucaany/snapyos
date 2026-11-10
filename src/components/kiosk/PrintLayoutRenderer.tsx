@@ -13,12 +13,7 @@ import {
   shouldAutoPrint,
 } from "@/lib/print-layout";
 import { useObjectUrls } from "@/components/kiosk/use-object-url";
-import {
-  autoPrintStorageKey,
-  claimAutoPrintAttempt,
-  getAutoPrintStore,
-  shouldClaimAutoPrint,
-} from "@/lib/print/auto-print";
+import { useAutoPrintJob } from "@/hooks/use-auto-print-job";
 
 type Props = {
   photos: { blob: Blob }[];
@@ -73,16 +68,12 @@ function PrintLayoutRendererInner({
   onDone,
 }: Props) {
   const [state, setState] = useState<PrintState>("loading");
-  // Claim auto-print sudah terpakai (remount/refresh) → tampilkan tombol
-  // manual, jangan mengaku "permintaan cetak dikirim" tanpa window.print().
-  const [autoBlocked, setAutoBlocked] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [retryKey, setRetryKey] = useState(0);
   const sheetRefs = useRef<(HTMLDivElement | null)[]>([]);
   const doneRef = useRef(false);
   // Guard re-entrancy: "Cetak" dobel-cepat tidak boleh memicu window.print()/listener/onDone dua kali.
   const printingRef = useRef(false);
-  const autoClaimedRef = useRef(false);
   // Retry manual setelah auto-print gagal: boleh mencetak lagi walau claim
   // auto-print untuk job ini sudah terpakai.
   const manualRetryRef = useRef(false);
@@ -90,6 +81,9 @@ function PrintLayoutRendererInner({
   const printCleanupRef = useRef<(() => void) | null>(null);
 
   const auto = shouldAutoPrint(printSettings);
+  // Satu guard auto-print untuk ketiga renderer (lihat `use-auto-print-job`).
+  const autoJob = useAutoPrintJob({ scope: "kiosk", id: jobId, reprint, auto });
+  const autoBlocked = autoJob.blocked;
   const copies = printCopies(printSettings);
   const page = printPageSize(printSettings, canvasAspect);
   const strip = plan.kind === "strip";
@@ -215,28 +209,15 @@ function PrintLayoutRendererInner({
         if (cancelled) return;
         // auto_print=false → tunggu tombol "Cetak" (manual, mis. tablet).
         if (auto) {
-          // Claim tepat sebelum dialog dibuka. Ref menahan Strict Mode
-          // double-effect (instance sama); storage menahan remount/refresh.
+          // Claim tepat sebelum dialog dibuka. `useAutoPrintJob` menahan
+          // Strict Mode double-effect dan remount/refresh.
           const bypassClaim = reprint || manualRetryRef.current;
           manualRetryRef.current = false;
-          if (!autoClaimedRef.current) {
-            if (jobId && shouldClaimAutoPrint({ auto, reprint: bypassClaim, jobId })) {
-              if (
-                !claimAutoPrintAttempt(autoPrintStorageKey("kiosk", jobId), getAutoPrintStore())
-              ) {
-                setAutoBlocked(true);
-                setState("ready");
-                return;
-              }
-            }
-            autoClaimedRef.current = true;
-            doPrint();
+          if (!autoJob.claim(bypassClaim)) {
+            setState("ready");
             return;
           }
-          // Percobaan auto-print sudah dimulai di mount ini. Jangan ulangi
-          // hanya karena effect Strict Mode berjalan dua kali; retry eksplisit
-          // tetap diizinkan lewat bypassClaim.
-          if (bypassClaim) doPrint();
+          doPrint();
         }
       } catch (e) {
         if (cancelled) return;
@@ -282,7 +263,7 @@ function PrintLayoutRendererInner({
 
   function handleRetry() {
     setErrorMsg("");
-    setAutoBlocked(false);
+    autoJob.reset();
     manualRetryRef.current = true;
     setState("loading");
     setRetryKey((k) => k + 1);

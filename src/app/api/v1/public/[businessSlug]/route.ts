@@ -16,10 +16,13 @@ export async function GET(request: Request, { params }: Params) {
     const ip = getClientIp(request.headers);
     const rl = await rateLimit(`config:${ip}`, 60, 60_000);
     if (!rl.ok) {
-      return NextResponse.json({ error: "Too many requests" }, {
-        status: 429,
-        headers: { "Retry-After": String(rl.retryAfterSec) },
-      });
+      return NextResponse.json(
+        { error: "Too many requests" },
+        {
+          status: 429,
+          headers: { "Retry-After": String(rl.retryAfterSec) },
+        }
+      );
     }
 
     const { businessSlug } = await params;

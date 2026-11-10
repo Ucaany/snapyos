@@ -5,7 +5,12 @@ import { Copy, Pencil, PlugZap, Power, PowerOff, Trash2 } from "lucide-react";
 
 import { PaymentCredentialForm } from "@/components/dashboard/PaymentCredentialForm";
 import { IconButton } from "@/components/ui/icon-button";
-import { canTestPaymentCredential, type PaymentCredentialPublic } from "@/lib/payment-credentials";
+import {
+  canTestCredentialInEnvironment,
+  type PaymentCredentialPublic,
+  type PaymentWebhookStatus,
+} from "@/lib/payment-credentials";
+import type { GatewayProvider } from "@/server/payment/providers/types";
 import {
   deleteCredentialAction,
   testCredentialAction,
@@ -14,6 +19,7 @@ import {
 
 type Props = {
   credential: PaymentCredentialPublic;
+  webhookUrls?: Record<GatewayProvider, PaymentWebhookStatus>;
   onChanged(): void;
 };
 
@@ -28,7 +34,7 @@ const providerNames: Record<string, string> = {
  * webhook URL (computed), aksi toggle / test sandbox / edit / hapus.
  * Secret never disalin; aksi fail-closed (error ditampilkan).
  */
-export function PaymentCredentialCard({ credential, onChanged }: Props) {
+export function PaymentCredentialCard({ credential, webhookUrls, onChanged }: Props) {
   const [pending, setPending] = useState(false);
   const [editing, setEditing] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -65,19 +71,21 @@ export function PaymentCredentialCard({ credential, onChanged }: Props) {
     }
   }
 
-  const testSupported = canTestPaymentCredential(credential.provider);
-  const testable = credential.environment === "sandbox" && testSupported;
-  const testDisabledReason = !testSupported
-    ? "Tes koneksi belum tersedia untuk provider ini."
-    : credential.environment === "production"
-      ? "Tes koneksi hanya tersedia untuk credential sandbox."
-      : null;
+  const testable = canTestCredentialInEnvironment(credential.provider, credential.environment);
+  const testDisabledReason = testable
+    ? null
+    : "Tes Midtrans membuat transaksi uji, jadi hanya tersedia untuk credential sandbox.";
+  const testSuccess =
+    credential.provider === "midtrans"
+      ? "Koneksi sandbox berhasil terverifikasi"
+      : `Kredensial ${credential.environment} berhasil diverifikasi`;
   const testLabel = credential.environment === "production" ? "Tes Production" : "Tes Sandbox";
 
   if (editing) {
     return (
       <PaymentCredentialForm
         credential={credential}
+        webhookUrls={webhookUrls}
         onCancel={() => setEditing(false)}
         onSaved={() => {
           setEditing(false);
@@ -141,7 +149,7 @@ export function PaymentCredentialCard({ credential, onChanged }: Props) {
             </>
           ) : (
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Webhook URL tersedia setelah SnapyOS_PUBLIC_BASE_URL dikonfigurasi.
+              Webhook nonaktif: {credential.webhook_reason ?? "URL publik belum dikonfigurasi."}
             </p>
           )}
         </div>
@@ -158,7 +166,7 @@ export function PaymentCredentialCard({ credential, onChanged }: Props) {
         </div>
       ) : (
         <p className="border-2 border-ink bg-muted p-3 text-sm leading-relaxed text-muted-foreground">
-          Webhook URL tersedia setelah SnapyOS_PUBLIC_BASE_URL dikonfigurasi.
+          Webhook nonaktif: {credential.webhook_reason ?? "URL publik belum dikonfigurasi."}
         </p>
       )}
 
@@ -181,12 +189,7 @@ export function PaymentCredentialCard({ credential, onChanged }: Props) {
           variant="secondary"
           compact
           disabled={pending || !testable}
-          onClick={() =>
-            void run(
-              () => testCredentialAction(credential.id),
-              "Koneksi sandbox berhasil terverifikasi"
-            )
-          }
+          onClick={() => void run(() => testCredentialAction(credential.id), testSuccess)}
         />
         <IconButton
           label="Ubah credential"

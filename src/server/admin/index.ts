@@ -73,10 +73,7 @@ export {
   type AdminTemplatePurchaseRow,
 } from "./templates";
 export { adminPosRevenueSummary } from "./pos";
-export {
-  type InstallerRow,
-  listInstallers,
-} from "./installers";
+export { type InstallerRow, listInstallers } from "./installers";
 export { type AdminPromoRow, listPromos, createPromo, updatePromo } from "./promos";
 export { type AdminAuditRow, listAuditLogs, deleteAuditLogs } from "./audit";
 export {

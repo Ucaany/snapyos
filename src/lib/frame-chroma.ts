@@ -34,11 +34,7 @@ export type DetectResult = {
 };
 
 /** 1 = piksel hijau (dan tidak transparan), selain itu 0. */
-export function greenMask(
-  rgba: Uint8ClampedArray,
-  width: number,
-  height: number
-): Uint8Array {
+export function greenMask(rgba: Uint8ClampedArray, width: number, height: number): Uint8Array {
   const mask = new Uint8Array(width * height);
   for (let i = 0, p = 0; i < mask.length; i += 1, p += 4) {
     if ((rgba[p + 3] ?? 0) === 0) continue;
@@ -50,11 +46,7 @@ export function greenMask(
 }
 
 /** Komponen terhubung 8-neighbor, iteratif (tanpa rekursi). */
-export function connectedComponents(
-  mask: Uint8Array,
-  width: number,
-  height: number
-): Component[] {
+export function connectedComponents(mask: Uint8Array, width: number, height: number): Component[] {
   const seen = new Uint8Array(mask.length);
   const stack = new Int32Array(mask.length);
   const components: Component[] = [];

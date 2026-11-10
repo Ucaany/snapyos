@@ -601,6 +601,25 @@ export async function finalizeSession(
     .eq("id", session.photobox_id)
     .eq("business_id", device.businessId)
     .maybeSingle();
+  // Setelan output digital (business_settings.output.gif) — acuan GIF sesi ini:
+  // enabled, delay frame, lebar output. Nilai di luar rentang di-clamp di
+  // generateSlideshowGif.
+  const { data: outputRow } = await supabase
+    .from("business_settings")
+    .select("output")
+    .eq("business_id", device.businessId)
+    .maybeSingle();
+  const gifOutput =
+    (
+      outputRow as {
+        output?: { gif?: { enabled?: boolean; frame_delay_ms?: number; max_width?: number } };
+      } | null
+    )?.output?.gif ?? {};
+  const gifOptions = {
+    frameDelayMs: gifOutput.frame_delay_ms,
+    maxWidth: gifOutput.max_width,
+  };
+
   const maxRetakes = (sessionPhotobox?.session_settings as { max_retakes?: number | null } | null)
     ?.max_retakes;
   if (
@@ -672,13 +691,20 @@ export async function finalizeSession(
   // GIF slideshow server-side (docs/05 §5.13) — di-decode frame-by-frame
   // (puncak memori O(satu frame), bukan O(semua frame)). Sumber: capture
   // mentah bila ada; klien lama tanpa `gif_photos` tetap memakai hasil akhir.
-  const gif = generateSlideshowGif(gifBodies.length > 0 ? gifBodies : bodies);
-  const { error: gifErr } = await getStorage().upload(GENERATED_BUCKET, gifKey, gif, {
-    contentType: "image/gif",
-    upsert: true,
-  });
-  if (gifErr) throw new ApiError("INTERNAL", "Gagal mengunggah GIF");
-  await accountStorageAdd(device.businessId, GENERATED_BUCKET, gifKey, gif.length);
+  // `output.gif.enabled === false` → tidak ada GIF sama sekali (result tanpa
+  // GIF, bukan GIF gagal ditampilkan).
+  const gifEnabled = gifOutput.enabled !== false;
+  let gifResultKey: string | null = null;
+  if (gifEnabled) {
+    const gif = generateSlideshowGif(gifBodies.length > 0 ? gifBodies : bodies, gifOptions);
+    const { error: gifErr } = await getStorage().upload(GENERATED_BUCKET, gifKey, gif, {
+      contentType: "image/gif",
+      upsert: true,
+    });
+    if (gifErr) throw new ApiError("INTERNAL", "Gagal mengunggah GIF");
+    await accountStorageAdd(device.businessId, GENERATED_BUCKET, gifKey, gif.length);
+    gifResultKey = gifKey;
+  }
 
   // KLAIM EKSKLUSIF sebelum menyentuh tabel `photos`. Dulu rows di-insert lebih
   // dulu lalu status di-CAS: dua finalize bersamaan (retry HTTP ganda) sama-sama
@@ -695,7 +721,7 @@ export async function finalizeSession(
       status: "completed",
       completed_at: completedAt,
       finalized_at: completedAt,
-      result_gif_key: gifKey,
+      result_gif_key: gifResultKey,
       retake_count: parsed.retake_count ?? session.retake_count,
     })
     .eq("id", session.id)

@@ -45,7 +45,7 @@ public static class ConfigurationSchema
 
     private static readonly HashSet<string> KnownFields = new(StringComparer.Ordinal)
     {
-        "camera", "printer", "session", "appearance", "retention"
+        "camera", "printer", "session", "appearance", "retention", "kiosk"
     };
 
     public static JsonObject Migrate(JsonObject values, int sourceVersion)

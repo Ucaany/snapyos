@@ -348,6 +348,11 @@ export type PhotoboxConfig = {
   print_settings: PrintSettings;
   session_settings: SessionSettings;
   device_status: Record<string, unknown> | null;
+  /**
+   * Template default booth (keduanya opsional agar payload lama tetap sah).
+   * Kiosk memakainya untuk auto-pilih frame; `null` = ikut template paket.
+   */
+  default_template_id?: string | null;
 };
 
 export type PublicConfig = {

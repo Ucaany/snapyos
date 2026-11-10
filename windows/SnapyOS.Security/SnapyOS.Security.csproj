@@ -6,6 +6,8 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="System.Security.Cryptography.ProtectedData" />
+    <ProjectReference Include="../SnapyOS.Contracts/SnapyOS.Contracts.csproj" />
+    <ProjectReference Include="../SnapyOS.Core/SnapyOS.Core.csproj" />
     <ProjectReference Include="../SnapyOS.LocalStore/SnapyOS.LocalStore.csproj" />
   </ItemGroup>
 </Project>

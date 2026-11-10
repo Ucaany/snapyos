@@ -178,6 +178,43 @@ export function insertEvent(
   );
 }
 
+/** Read-only aggregate used by diagnostics. Payload paths and event details stay local. */
+export function readQueueDiagnostics(db: DatabaseSync, now = Date.now()) {
+  const rows = db
+    .prepare(
+      "select case when q.attempts > 0 then 'retrying' else s.state end as state, count(*) as count, min(q.next_attempt_at) as oldest_due, max(q.last_error) as latest_error from finalize_queue q join sessions s on s.id = q.session_id where s.synced_at is null group by case when q.attempts > 0 then 'retrying' else s.state end"
+    )
+    .all() as {
+    state: string;
+    count: number;
+    oldest_due: string | null;
+    latest_error: string | null;
+  }[];
+  const result = {
+    pending: 0,
+    due: 0,
+    retrying: 0,
+    running: 0,
+    quarantined: 0,
+    latest_error: null as string | null,
+  };
+  for (const row of rows) {
+    const count = Number(row.count) || 0;
+    if (row.state === "finalized") result.pending = count;
+    if (row.state === "retrying") result.retrying = count;
+    if (row.state === "running") result.running = count;
+    if (row.state === "quarantined") result.quarantined = count;
+    if (
+      (row.state === "finalized" || row.state === "retrying" || row.state === "running") &&
+      row.oldest_due &&
+      Date.parse(row.oldest_due) <= now
+    )
+      result.due += count;
+    if (row.latest_error) result.latest_error = row.latest_error.slice(0, 200);
+  }
+  return result;
+}
+
 // --- export ---
 
 /**

@@ -82,7 +82,10 @@ try {
 
     const frameHeading = page.getByRole("heading", { name: /pilih frame/i });
     await frameHeading.waitFor({ timeout: 30_000 });
-    await page.getByText(/memuat\.\.\./i).waitFor({ state: "hidden", timeout: 20_000 }).catch(() => undefined);
+    await page
+      .getByText(/memuat\.\.\./i)
+      .waitFor({ state: "hidden", timeout: 20_000 })
+      .catch(() => undefined);
 
     const sixSlotFrame = page.getByRole("button", { name: /^33\b/i }).first();
     await sixSlotFrame.waitFor({ timeout: 30_000 });
@@ -90,10 +93,17 @@ try {
     await page.getByRole("button", { name: /gunakan frame/i }).click();
 
     await captureAll(page, 6);
-    await page.getByText(/edit foto/i).first().waitFor({ timeout: 30_000 });
+    await page
+      .getByText(/edit foto/i)
+      .first()
+      .waitFor({ timeout: 30_000 });
 
     const photoControls = await page.getByRole("button", { name: /^Foto [1-6]$/i }).count();
-    report.record("frame 6 slot menentukan enam capture", photoControls === 6, `controls=${photoControls}`);
+    report.record(
+      "frame 6 slot menentukan enam capture",
+      photoControls === 6,
+      `controls=${photoControls}`
+    );
     report.record("editor menerima enam foto", photoControls === 6, `controls=${photoControls}`);
 
     const canvas = page.locator("canvas").first();
@@ -117,7 +127,11 @@ try {
       composite.width > 0 && composite.height > 0 && Math.abs(composite.ratio - 2 / 3) < 0.01,
       JSON.stringify(composite)
     );
-    report.record("frame dan slot menghasilkan piksel composite", composite.nonTransparent > 0, JSON.stringify(composite));
+    report.record(
+      "frame dan slot menghasilkan piksel composite",
+      composite.nonTransparent > 0,
+      JSON.stringify(composite)
+    );
 
     const finalizeResponsePromise = page.waitForResponse(
       (response) => response.url().includes("/finalize"),
@@ -125,7 +139,12 @@ try {
     );
     await page.getByRole("button", { name: /^selesai$/i }).click({ force: true });
     const finalizeResponse = await finalizeResponsePromise.catch(async (error) => {
-      const screen = (await page.locator("body").innerText().catch(() => "")).slice(-1_000);
+      const screen = (
+        await page
+          .locator("body")
+          .innerText()
+          .catch(() => "")
+      ).slice(-1_000);
       throw new Error(`${error.message}; screen=${screen}`);
     });
     await finalizeResponse.finished();
@@ -136,13 +155,20 @@ try {
       printSheetCount === 2,
       `printSheets=${printSheetCount}`
     );
-    await page.getByRole("button", { name: /^lanjut$/i }).last().click({ force: true });
-    const resultHeading = page.getByText(/foto kamu jadi|hasil digital siap|permintaan print dikirim/i).first();
+    await page
+      .getByRole("button", { name: /^lanjut$/i })
+      .last()
+      .click({ force: true });
+    const resultHeading = page
+      .getByText(/foto kamu jadi|hasil digital siap|permintaan print dikirim/i)
+      .first();
     const resultVisible = await resultHeading.isVisible({ timeout: 90_000 }).catch(() => false);
     report.record(
       "finalize dan alur hasil selesai",
       resultVisible,
-      finalizeResponses.length > 0 ? JSON.stringify(finalizeResponses.at(-1)) : "no finalize response"
+      finalizeResponses.length > 0
+        ? JSON.stringify(finalizeResponses.at(-1))
+        : "no finalize response"
     );
     report.record("tanpa console error", errors.length === 0, errors.slice(0, 3).join(" | "));
   } finally {
@@ -150,7 +176,10 @@ try {
   }
 } finally {
   await resetBooth(sb, photobox.id);
-  await sb.from("photoboxes").update({ print_settings: previousPrintSettings }).eq("id", photobox.id);
+  await sb
+    .from("photoboxes")
+    .update({ print_settings: previousPrintSettings })
+    .eq("id", photobox.id);
   await releasePrintLock();
 }
 

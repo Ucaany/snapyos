@@ -10,11 +10,12 @@ import { requirePosAccess } from "@/server/pos-entitlement";
 import {
   classifyPosManualPay,
   computePosTotals,
+  posCashChange,
   posOrderNumber,
   posDayRange,
 } from "@/lib/pos-math";
 import { formatTxNumber, todayISO } from "@/lib/dashboard-math";
-import { resolvePosReceiptSettings } from "@/lib/pos-receipt-settings";
+import { isPosReceiptEnabled, resolvePosReceiptSettings } from "@/lib/pos-receipt-settings";
 import {
   posOrderCreateSchema,
   posManualPaySchema,
@@ -52,14 +53,28 @@ export type PosOrderRow = {
   discount_amount: number;
   final_amount: number;
   payment_method: string;
+  /** Uang tunai diterima; null untuk non-tunai / baris lama (0083). */
+  amount_received: number | null;
+  /** Kembalian = amount_received - final_amount; null bila tidak ada tunai. */
+  change_amount: number | null;
   paid_at: string | null;
   created_at: string;
   /** Lebar kertas printer thermal booth (58/80mm); null untuk jalur browser. */
   paper_width_mm: 58 | 80 | null;
   /** Jalur cetak booth saat transaksi dibuat. */
-  print_mode: "browser" | "bluetooth";
+  print_mode: "browser" | "bluetooth" | "cups";
   /** Auto-print struk saat halaman struk dibuka (sekali per sesi browser). */
   auto_print: boolean;
+  /** Printer CUPS tujuan struk (mode `cups`); null = default bridge. */
+  printer_name_setting: string | null;
+  /** URL bridge CUPS dari setelan booth; null = default bridge. */
+  bridge_url: string | null;
+  /**
+   * `print_settings.enabled`/`receipt.enabled` booth saat struk dimuat.
+   * Bukan snapshot order: owner yang mematikan jalur struk harus langsung
+   * berlaku, bukan menunggu transaksi berikutnya.
+   */
+  receipt_enabled: boolean;
 };
 
 export type PosOrderDetail = { order: PosOrderRow; items: PosOrderItemRow[] };
@@ -68,15 +83,26 @@ type JoinName = { name: string } | { name: string }[] | null;
 type JoinBooth = {
   name: string;
   print_settings?: {
+    enabled?: boolean;
     bluetooth_paper_width_mm?: number;
     mode?: string;
     auto_print?: boolean;
+    bridge_url?: string;
+    printer_name?: string;
+    receipt?: {
+      enabled?: boolean;
+      mode?: string;
+      paper_width_mm?: number;
+      auto_print?: boolean;
+      bridge_url?: string;
+      printer_name?: string;
+    } | null;
   } | null;
 } | null;
 
 const ORDER_COLUMNS = `id, number, status, business_id, photobox_id, outlet_id, cashier_user_id,
-  gross_amount, discount_amount, final_amount, payment_method, paid_at, created_at,
-  paper_width_mm, print_mode, auto_print,
+  gross_amount, discount_amount, final_amount, payment_method, amount_received, change_amount,
+  paid_at, created_at, paper_width_mm, print_mode, auto_print,
   photoboxes ( name, print_settings ), outlets ( name ), cashier:users ( name )`;
 
 const ITEM_COLUMNS = `id, pos_product_id, name_snapshot, sku_snapshot, unit_price_snapshot, quantity, subtotal`;
@@ -109,6 +135,8 @@ function mapOrder(row: unknown): PosOrderRow {
     discount_amount: number;
     final_amount: number;
     payment_method: string;
+    amount_received?: number | null;
+    change_amount?: number | null;
     paid_at: string | null;
     created_at: string;
     paper_width_mm?: number | null;
@@ -139,6 +167,8 @@ function mapOrder(row: unknown): PosOrderRow {
     discount_amount: r.discount_amount,
     final_amount: r.final_amount,
     payment_method: r.payment_method,
+    amount_received: typeof r.amount_received === "number" ? r.amount_received : null,
+    change_amount: typeof r.change_amount === "number" ? r.change_amount : null,
     paid_at: r.paid_at,
     created_at: r.created_at,
     paper_width_mm:
@@ -146,10 +176,13 @@ function mapOrder(row: unknown): PosOrderRow {
         ? r.paper_width_mm
         : receiptSettings.paperWidthMm,
     print_mode:
-      r.print_mode === "bluetooth" || r.print_mode === "browser"
+      r.print_mode === "bluetooth" || r.print_mode === "browser" || r.print_mode === "cups"
         ? r.print_mode
         : receiptSettings.printMode,
     auto_print: typeof r.auto_print === "boolean" ? r.auto_print : receiptSettings.autoPrint,
+    printer_name_setting: receiptSettings.printerName,
+    bridge_url: receiptSettings.bridgeUrl,
+    receipt_enabled: isPosReceiptEnabled(booth?.print_settings ?? null),
   };
 }
 
@@ -476,6 +509,17 @@ export async function payPosOrderManually(
     throw new ApiError("POS_ORDER_NOT_PAYABLE", "Order tidak berstatus pending");
   }
 
+  // Uang tunai: batas bawah hanya diketahui di sini (butuh final_amount dari DB).
+  const amountReceived = parsed.amount_received ?? null;
+  if (amountReceived !== null && amountReceived < order.final_amount) {
+    throw new ApiError(
+      "VALIDATION_ERROR",
+      `Uang diterima kurang dari total (${order.final_amount}).`,
+      { final_amount: order.final_amount, amount_received: amountReceived }
+    );
+  }
+  const changeAmount = posCashChange(order.final_amount, amountReceived);
+
   const tz = membership.business.timezone ?? "Asia/Jakarta";
   const number = formatTxNumber(todayISO(tz), randomUUID().replace(/-/g, "").slice(0, 6));
 
@@ -493,6 +537,8 @@ export async function payPosOrderManually(
     p_gross: order.gross_amount,
     p_discount: order.discount_amount,
     p_final: order.final_amount,
+    p_amount_received: amountReceived,
+    p_change_amount: changeAmount,
   });
   if (rpcError) {
     // 23505 = unique violation on idx_tx_pos_order_unique → already processed (race).
@@ -592,7 +638,13 @@ export async function payPosOrderManually(
     businessId,
     action: "pos.order.paid.manual",
     target: order.id,
-    meta: { number: order.number, method: parsed.method, amount: order.final_amount },
+    meta: {
+      number: order.number,
+      method: parsed.method,
+      amount: order.final_amount,
+      amount_received: amountReceived,
+      change_amount: changeAmount,
+    },
   });
 
   return { orderId: order.id };

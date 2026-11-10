@@ -2,15 +2,12 @@
 
 import { Fragment, useState } from "react";
 import Link from "next/link";
-import { Camera, ChevronDown, Pencil, Plus } from "lucide-react";
+import { Camera, Pencil, Plus, Printer } from "lucide-react";
 
 import { EmptyState } from "@/components/ui/empty-state";
-import { IconButton } from "@/components/ui/icon-button";
+import { IconButton, IconLink } from "@/components/ui/icon-button";
 import { RecordCard } from "@/components/ui/record-card";
-import {
-  RecordCollection,
-  RecordEditButton,
-} from "@/components/ui/record-collection";
+import { RecordCollection, RecordEditButton } from "@/components/ui/record-collection";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { PhotoboxForm } from "@/components/dashboard/PhotoboxForm";
@@ -110,6 +107,12 @@ export function PhotoboxesTable({
                         canWrite={canWrite}
                         pwaKioskEnabled={pwaKioskEnabled}
                       />
+                      <IconLink
+                        href={`/dashboard/photoboxes/${box.id}/hardware`}
+                        label={`Hardware photobox ${box.name}`}
+                        icon={Printer}
+                        compact
+                      />
                       <IconButton
                         label={`Ubah photobox ${box.name}`}
                         icon={Pencil}
@@ -177,6 +180,12 @@ export function PhotoboxesTable({
                     photobox={box}
                     canWrite={canWrite}
                     pwaKioskEnabled={pwaKioskEnabled}
+                  />
+                  <IconLink
+                    href={`/dashboard/photoboxes/${box.id}/hardware`}
+                    label={`Hardware photobox ${box.name}`}
+                    icon={Printer}
+                    compact
                   />
                   <RecordEditButton
                     label={`Ubah photobox ${box.name}`}
@@ -257,17 +266,9 @@ export function PhotoboxesTable({
         </p>
         {canWrite && !limitReached && !noOutlet && (
           <Collapsible open={createOpen} onOpenChange={setCreateOpen}>
-            <CollapsibleTrigger
-              className="px-3"
-              aria-label="Buka form photobox baru"
-              title="Photobox baru"
-            >
+            <CollapsibleTrigger aria-label="Buka form photobox baru" title="Photobox baru">
               <Plus className="size-4" aria-hidden />
               <span className="sr-only">Photobox baru</span>
-              <ChevronDown
-                className="size-4 transition-transform duration-100 [[data-panel-open]_&]:rotate-180"
-                aria-hidden
-              />
             </CollapsibleTrigger>
             <CollapsiblePanel className="mt-4">
               <PhotoboxForm

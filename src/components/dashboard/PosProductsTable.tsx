@@ -215,11 +215,7 @@ export function PosProductsTable({
                 {String(products.length).padStart(2, "0")}
               </span>
             </div>
-            <CollapsibleTrigger
-              className="px-3"
-              aria-label="Buka form produk baru"
-              title="Produk baru"
-            >
+            <CollapsibleTrigger aria-label="Buka form produk baru" title="Produk baru">
               <Plus aria-hidden />
               <span className="sr-only">Produk baru</span>
             </CollapsibleTrigger>

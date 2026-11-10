@@ -3,6 +3,7 @@
  *  (payment-methods, payment-create, qris) + test kiosk-payment-methods.
  */
 
+import { PAYMENT_METHODS, type PaymentMethodCode } from "../../lib/payment-credentials.ts";
 import type { KioskPaymentDisplay, KioskPaymentMethod } from "@/lib/kiosk-types";
 
 export type { KioskPaymentDisplay, KioskPaymentKind, KioskPaymentMethod } from "@/lib/kiosk-types";
@@ -13,33 +14,85 @@ type DirectCredential = {
   enabledMethods: readonly string[];
 };
 
-const MIDTRANS_VA = new Set(["bca", "bni", "bri", "mandiri", "permata"]);
-const MIDTRANS_REDIRECT = new Set(["gopay", "shopeepay"]);
-const TRIPAY_VA = new Set(["BCAVA", "BNIVA", "BRIVA", "MANDIRIVA", "PERMATAVA"]);
-const TRIPAY_REDIRECT = new Set(["ALFAMART", "INDOMARET"]);
+type DisplayTable<P extends KioskGatewayProvider> = Record<
+  PaymentMethodCode<P>,
+  KioskPaymentDisplay
+>;
+
+/**
+ * Tampilan kiosk per metode, ekshaustif terhadap `PAYMENT_METHODS`. Menambah
+ * metode baru tanpa menentukan tampilannya = type error, bukan fallback diam-diam
+ * ke QR (yang dulu menampilkan QR untuk transaksi VA/redirect).
+ */
+const METHOD_DISPLAY: { [P in KioskGatewayProvider]: DisplayTable<P> } = {
+  midtrans: {
+    qris: "qris",
+    gopay: "redirect",
+    shopeepay: "redirect",
+    bca: "va",
+    bni: "va",
+    bri: "va",
+    permata: "va",
+  },
+  tripay: {
+    QRIS: "qris",
+    BCAVA: "va",
+    BNIVA: "va",
+    BRIVA: "va",
+    MANDIRIVA: "va",
+    PERMATAVA: "va",
+    ALFAMART: "redirect",
+    INDOMARET: "redirect",
+  },
+  pakasir: { qris: "qris" },
+};
+
+/** Peta `METHOD.toUpperCase()` → ejaan kanonik `PAYMENT_METHODS` per provider. */
+const METHOD_LOOKUP: Record<KioskGatewayProvider, Map<string, string>> = {
+  midtrans: new Map(PAYMENT_METHODS.midtrans.map((method) => [method.toUpperCase(), method])),
+  tripay: new Map(PAYMENT_METHODS.tripay.map((method) => [method.toUpperCase(), method])),
+  pakasir: new Map(PAYMENT_METHODS.pakasir.map((method) => [method.toUpperCase(), method])),
+};
+
+/**
+ * Satu pintu normalisasi metode: input apa pun (case beda / string sampah
+ * dari metadata lama) → ejaan kanonik provider. Metode tak dikenal DITOLAK
+ * dengan pesan jelas; tidak ada fallback diam-diam ke "qris" yang bisa
+ * menagih lewat kanal berbeda dari pilihan customer.
+ */
+export function normalizePaymentMethod(provider: KioskGatewayProvider, method: string): string {
+  const canonical = METHOD_LOOKUP[provider].get(method.trim().toUpperCase());
+  if (!canonical) {
+    throw new Error(
+      `Metode pembayaran "${method}" tidak dikenal untuk provider ${provider}. ` +
+        `Pilihan valid: ${PAYMENT_METHODS[provider].join(", ")}.`
+    );
+  }
+  return canonical;
+}
 
 export function paymentMethodId(provider: KioskGatewayProvider, method: string): string {
-  return `${provider}:${method}`;
+  return `${provider}:${normalizePaymentMethod(provider, method)}`;
 }
 
 export function paymentDisplay(
   provider: KioskGatewayProvider,
   method: string
 ): KioskPaymentDisplay {
-  if (provider === "pakasir" || method.toLowerCase() === "qris") return "qris";
-  if (provider === "midtrans") {
-    if (MIDTRANS_VA.has(method.toLowerCase())) return "va";
-    if (MIDTRANS_REDIRECT.has(method.toLowerCase())) return "redirect";
-    return "qris";
+  const canonical = normalizePaymentMethod(provider, method);
+  const display = (METHOD_DISPLAY[provider] as Record<string, KioskPaymentDisplay>)[canonical];
+  if (!display) {
+    throw new Error(`Tampilan pembayaran "${canonical}" belum didefinisikan untuk ${provider}.`);
   }
-  if (TRIPAY_VA.has(method.toUpperCase())) return "va";
-  if (TRIPAY_REDIRECT.has(method.toUpperCase())) return "redirect";
-  return "qris";
+  return display;
 }
 
 function paymentLabel(provider: KioskGatewayProvider, method: string): string {
-  if (method.toLowerCase() === "qris") return provider === "pakasir" ? "QRIS PAKASIR" : "QRIS";
-  return method.toUpperCase();
+  const canonical = normalizePaymentMethod(provider, method);
+  if (canonical === "qris" || canonical === "QRIS") {
+    return provider === "pakasir" ? "QRIS PAKASIR" : "QRIS";
+  }
+  return canonical.toUpperCase();
 }
 
 /** Metode online hanya dari credential owner; kosong → voucher + cash (no aggregator fallback). */
@@ -53,7 +106,7 @@ export function buildKioskPaymentMethods(
       display: paymentDisplay(provider, method),
       label: paymentLabel(provider, method),
       provider,
-      method,
+      method: normalizePaymentMethod(provider, method),
       hint: "Gateway merchant",
     }))
   );

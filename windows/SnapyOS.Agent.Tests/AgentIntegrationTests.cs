@@ -9,16 +9,16 @@ using Xunit;
 
 namespace SnapyOS.Agent.Tests;
 
-public sealed class AgentIntegrationTests : IAsyncLifetime
+public sealed class AgentIntegrationTests : IAsyncLifetime, IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), $"snapyos-agent-{Guid.NewGuid():N}");
-    private LocalStore _store = null!;
+    private SnapyOS.LocalStore.LocalStore _store = null!;
     private AgentServer _server = null!;
     private HttpClient _client = null!;
 
     public async Task InitializeAsync()
     {
-        _store = new LocalStore(LocalStoreOptions.ForDirectory(_root));
+        _store = new SnapyOS.LocalStore.LocalStore(SnapyOS.LocalStore.LocalStoreOptions.ForDirectory(_root));
         var config = new ConfigurationRepository(_store);
         config.SaveDraft(new JsonObject { ["camera"] = new JsonObject { ["provider"] = "Bridge" } });
         await config.ApplyAsync(new HealthyCheck());
@@ -84,6 +84,8 @@ public sealed class AgentIntegrationTests : IAsyncLifetime
         _store?.Dispose();
         try { Directory.Delete(_root, true); } catch { }
     }
+
+    public void Dispose() => _store?.Dispose();
 
     private sealed class HealthyCheck : IConfigurationHealthCheck { public Task<bool> CheckAsync(ConfigurationDocument configuration, CancellationToken cancellationToken = default) => Task.FromResult(true); }
     private sealed class FakeHardware : IAgentHardwareStatus { public Task<DeviceStatus> CameraAsync(CancellationToken cancellationToken) => Task.FromResult(new DeviceStatus("ready")); public Task<DeviceStatus> PrinterAsync(CancellationToken cancellationToken) => Task.FromResult(new DeviceStatus("ready")); }

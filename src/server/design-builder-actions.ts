@@ -123,9 +123,14 @@ export async function saveBrandingAction(input: SaveBrandingInput): Promise<Form
       if (!can(active.role, "business:update")) {
         return { error: "Anda tidak punya izin mengubah branding global." };
       }
-      await updateBranding(user.id, active.business.id, brandingSchema.parse(input.branding ?? {}), {
-        resetKeys: sanitizeResetKeys(input.resetKeys),
-      });
+      await updateBranding(
+        user.id,
+        active.business.id,
+        brandingSchema.parse(input.branding ?? {}),
+        {
+          resetKeys: sanitizeResetKeys(input.resetKeys),
+        }
+      );
     }
   } catch (error) {
     return toFormState(error, "Gagal menyimpan branding. Coba lagi.");
@@ -164,8 +169,7 @@ export async function uploadBrandAssetAction(formData: FormData): Promise<BrandA
 
   const scope = String(formData.get("scope") ?? "global") === "booth" ? "booth" : "global";
   const rawKind = String(formData.get("kind") ?? "logo");
-  const kind =
-    rawKind === "page-video" ? "page-video" : rawKind === "video" ? "video" : "logo";
+  const kind = rawKind === "page-video" ? "page-video" : rawKind === "video" ? "video" : "logo";
   const photoboxId = String(formData.get("photoboxId") ?? "");
   const rawPage = String(formData.get("page") ?? "");
   const raw = formData.get("file");
@@ -197,12 +201,7 @@ export async function uploadBrandAssetAction(formData: FormData): Promise<BrandA
     if (kind === "page-video") {
       const pageId = kioskPageIdSchema.safeParse(rawPage);
       if (!pageId.success) return { error: "Pilih layar kiosk yang valid." };
-      const result = await uploadKioskPageVideo(
-        user.id,
-        active.business.id,
-        pageId.data,
-        raw
-      );
+      const result = await uploadKioskPageVideo(user.id, active.business.id, pageId.data, raw);
       const key = result.kiosk?.pages?.[pageId.data]?.video_key ?? undefined;
       const urls = await signBrandingAssets(result);
       revalidateBuilder();

@@ -14,7 +14,13 @@ import "server-only";
 /** Nama bucket/area logis (identik dengan nama bucket Supabase existing). */
 export type StorageBucket = "business-assets" | "generated-photos";
 
-export type StorageError = { message: string };
+/**
+ * Error storage. `keys` (opsional) = key yang GAGAL secara spesifik pada
+ * operasi batch (mis. `DeleteObjects` R2 yang membalas 200 tapi memuat
+ * `Errors[]`). Caller memakai ini agar hanya key gagal yang ditahan/di-retry,
+ * bukan seluruh batch.
+ */
+export type StorageError = { message: string; keys?: string[] };
 
 export type StorageResult<T> = { data: T | null; error: StorageError | null };
 
@@ -27,7 +33,8 @@ export type UploadOptions = {
 export type StorageListEntry = {
   id: string | null;
   name: string;
-  metadata?: { size?: number } | null;
+  /** `lastModified` ISO — dipakai sweep objek yatim (umur objek). */
+  metadata?: { size?: number; lastModified?: string } | null;
 };
 
 export type ListOptions = {

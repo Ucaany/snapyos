@@ -15,10 +15,7 @@ import {
   type KioskVisualStyle,
   type PhotoEdit,
 } from "@/lib/kiosk-types";
-import {
-  slotsByZ,
-  type TemplateLayout,
-} from "@/lib/template-layout";
+import { slotsByZ, type TemplateLayout } from "@/lib/template-layout";
 import { fillSlots } from "@/lib/template-fit";
 import { composeFrame } from "@/lib/compose-frame";
 import {
@@ -159,12 +156,8 @@ function EditorInner({
   const edit = edits[activePhoto] ?? defaultEdit();
   // Overlay SEMUA foto dipetakan ke slot: satu composite memuat teks/stiker
   // tiap foto, bukan hanya foto yang sedang aktif.
-  const usedPhotoIndices = Array.from(
-    new Set(fillSlots(layout?.slots.length ?? 0, photos.length))
-  );
-  const slotOverlays = usedPhotoIndices.flatMap(
-    (photoIndex) => edits[photoIndex]?.overlays ?? []
-  );
+  const usedPhotoIndices = Array.from(new Set(fillSlots(layout?.slots.length ?? 0, photos.length)));
+  const slotOverlays = usedPhotoIndices.flatMap((photoIndex) => edits[photoIndex]?.overlays ?? []);
 
   // load semua foto sekali (mode composite butuh semua slot terisi)
   useEffect(() => {
@@ -513,7 +506,7 @@ function EditorInner({
       for (let i = 0; i < photos.length; i++) {
         const blob = await renderFramedPhotoBlob(
           photos[i]!.blob,
-          (edits[i] ?? defaultEdit()),
+          edits[i] ?? defaultEdit(),
           frameRef.current
         );
         results.push({ blob });
@@ -639,7 +632,10 @@ function EditorInner({
           {/* Filters per foto: setiap foto punya filter sendiri. */}
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between gap-2">
-              <p className={sectionLabel} style={{ color: kioskStyle ? kioskStyle.text : undefined }}>
+              <p
+                className={sectionLabel}
+                style={{ color: kioskStyle ? kioskStyle.text : undefined }}
+              >
                 {`Filter foto ${active + 1}`}
               </p>
               <button

@@ -38,7 +38,7 @@ var template = new TemplateCatalogItem
     Category = "photostrip",
     SlotCount = 2,
     Elements = [new CanvasElement { ElementId = "frame", Kind = ElementKind.Frame, Width = 1200, Height = 1800 }],
-    Assets = [new AssetManifest { AssetId = "frame-asset", ObjectKey = "business/templates/frame.png", ContentType = "image/png", SizeBytes = 10, Sha256 = "abc" }],
+    Assets = [new AssetManifest { AssetId = "frame-asset", ObjectKey = "business/templates/frame.png", ContentType = "image/png", SizeBytes = 10, Sha256 = new string('a', 64) }],
     IsActive = true
 };
 Assert(ContractValidator.Validate(template).Count == 0, "Nested template contract must pass validation.");

@@ -554,12 +554,13 @@ export const HELP_ARTICLES: HelpArticle[] = [
     title: "Owner: Template dan Frame",
     category: "Owner",
     summary:
-      "Upload frame sendiri, atur slot di builder, dan assign ke paket dengan aturan slot yang benar.",
+      "Upload frame sendiri, atur slot di builder, pakai undo/redo, duplikat, snap, dan layer teks, lalu assign ke paket atau jadikan default booth.",
     audience: "Owner dan manager",
     estimate: "10 menit",
     prerequisites: [
       "Minimal satu package dengan photo count jelas.",
       "File frame PNG, JPG, atau WebP; PNG paling cocok untuk transparansi.",
+      "Akses dashboard owner dengan izin template:write.",
     ],
     sections: [
       {
@@ -615,6 +616,86 @@ export const HELP_ARTICLES: HelpArticle[] = [
           "Uji dari kiosk: pilih paket, bayar, pastikan frame muncul di layar pilih template.",
         ],
       },
+      {
+        heading: "Assign otomatis di form paket",
+        paragraphs: [
+          "Tombol Assign otomatis memilih template yang paling cocok dengan paket, supaya Anda tidak perlu mencocokkan slot satu per satu.",
+          "Urutan pemilihannya: template yang jumlah slotnya sama dengan jumlah foto paket, lalu template yang cocok dengan mode capture (photostrip butuh minimal dua slot, single butuh satu slot), lalu slot yang paling dekat. Tombol ini hanya mengisi pilihan di form; simpan paket tetap lewat tombol simpan.",
+        ],
+        steps: [
+          "Edit package, atur jumlah foto dan mode capture lebih dulu.",
+          "Tekan Assign otomatis.",
+          "Periksa daftar template terpilih, sesuaikan manual bila perlu.",
+          "Simpan paket.",
+        ],
+      },
+      {
+        heading: "Undo dan redo",
+        paragraphs: [
+          "Setiap perubahan layout bisa dibatalkan. Riwayat menyimpan sampai 100 langkah, dan satu kali geser dihitung satu langkah meskipun pointer bergerak puluhan kali.",
+          "Gunakan tombol Undo dan Redo di builder, atau pintasan Ctrl+Z dan Shift+Ctrl+Z. Di Mac, gunakan Cmd+Z dan Shift+Cmd+Z. Saat kursor berada di kolom isian, pintasan itu tetap dipakai untuk membatalkan ketikan, bukan layout.",
+        ],
+        note: "Riwayat tidak disimpan. Menutup atau memuat ulang halaman builder mengosongkan riwayat, jadi simpan draft sebelum berpindah halaman.",
+      },
+      {
+        heading: "Duplikat slot dan template",
+        paragraphs: [
+          "Duplikat berguna untuk membuat variasi tanpa mengulang dari nol, dan ada dua tingkat: slot dan template.",
+        ],
+        table: {
+          head: ["Duplikat", "Hasil", "Catatan"],
+          rows: [
+            [
+              "Slot",
+              "Slot baru dengan bentuk, ukuran, rotasi, dan teks yang sama",
+              "Bisa dibatalkan dengan Undo",
+            ],
+            [
+              "Template",
+              "Template baru milik Anda berisi layout dan file frame yang sama",
+              "Membuka builder template baru",
+            ],
+          ],
+        },
+        steps: [
+          "Pilih slot, lalu tekan Duplikat di panel properti.",
+          "Atau tekan Duplikat template untuk membuat salinan seluruh template.",
+          "Sesuaikan salinan, lalu simpan sebagai draft atau publish.",
+        ],
+      },
+      {
+        heading: "Snap saat menggeser slot",
+        paragraphs: [
+          "Saat satu slot digeser, tepi dan titik tengahnya menempel pada tepi dan titik tengah kanvas serta slot lain. Garis bantu muncul sebagai penanda, lalu hilang saat geser selesai.",
+          "Snap hanya berlaku untuk satu slot. Menggeser beberapa slot sekaligus tidak menempel, supaya seluruh grup tidak melompat tanpa alasan yang terlihat.",
+        ],
+      },
+      {
+        heading: "Layer teks",
+        paragraphs: [
+          "Setiap slot bisa membawa teks, misalnya nama event atau tahun. Teks digambar di atas frame pada hasil akhir, jadi tidak terpotong lubang foto dan tidak tertutup gambar frame.",
+          "Atur jenis font, ketebalan, ukuran, jarak baris, jarak huruf, warna, latar, dan perataan. Mengosongkan teks akan menyembunyikannya, dan template tanpa teks tetap identik dengan template sebelum fitur ini ada.",
+        ],
+        steps: [
+          "Pilih slot, buka panel Layer teks.",
+          "Tulis teks, maksimal 2000 karakter.",
+          "Atur font, ukuran, warna, dan perataan.",
+          "Periksa preview, lalu simpan.",
+        ],
+      },
+      {
+        heading: "Template default booth",
+        paragraphs: [
+          "Booth bisa punya satu template default. Kiosk memilih template itu otomatis bila template tersebut masih ditawarkan untuk paket yang dibeli tamu. Bila tidak lagi cocok, tamu memilih sendiri dari template yang tersedia, atau langsung terpilih bila hanya ada satu.",
+          "Template default tidak memaksa tamu memakai template tertentu. Ia hanya menang saat memang tersedia, jadi aman dipakai untuk menyamakan tampilan antar booth.",
+        ],
+        steps: [
+          "Buka halaman hardware booth.",
+          "Pilih template default dari daftar template yang boleh dipakai business Anda.",
+          "Simpan, lalu uji dari kiosk dengan paket yang berbeda.",
+        ],
+        note: "Hanya template aktif milik Anda, atau template platform yang sudah dibeli, yang bisa dijadikan default. Selain itu simpan ditolak.",
+      },
     ],
     troubleshooting: [
       {
@@ -626,13 +707,30 @@ export const HELP_ARTICLES: HelpArticle[] = [
       },
       {
         gejala: "Hasil print beda dari preview",
-        penyebab: "Frame diganti setelah sesi dibuat",
-        solusi: "Sesi memakai snapshot saat transaksi. Buat sesi baru setelah publish.",
+        penyebab: "Template diedit setelah kiosk memuatnya untuk sesi berjalan",
+        solusi:
+          "Kiosk memakai template yang dimuat saat sesi berjalan. Muat ulang booth agar versi baru terambil, lalu ulangi sesi.",
       },
       {
         gejala: "Upload ditolak",
         penyebab: "Tipe atau ukuran file di luar aturan",
         solusi: "Ekspor ulang PNG atau JPG di bawah 5 MB.",
+      },
+      {
+        gejala: "Undo tidak mengembalikan perubahan",
+        penyebab: "Riwayat kosong karena halaman baru dimuat ulang",
+        solusi:
+          "Riwayat hanya berlaku selama halaman terbuka; ulangi perubahan atau muat draft tersimpan.",
+      },
+      {
+        gejala: "Teks tidak terlihat di hasil",
+        penyebab: "Teks dikosongkan, atau slot tidak dipilih saat mengisi panel",
+        solusi: "Pilih slot, isi teks, lalu simpan dan periksa preview.",
+      },
+      {
+        gejala: "Template default tidak terpilih di kiosk",
+        penyebab: "Template tidak ditawarkan untuk paket itu, atau sudah nonaktif",
+        solusi: "Pastikan template aktif dan ter-assign ke paket, atau biarkan tamu memilih.",
       },
     ],
     nextSteps: [
@@ -886,6 +984,41 @@ export const HELP_ARTICLES: HelpArticle[] = [
           "Terima cash atau transfer offline. Order paid insert ke transactions untuk reporting tanpa kredit saldo.",
         ],
       },
+      {
+        heading: "Uang tunai dan kembalian",
+        paragraphs: [
+          "Saat menerima tunai, kasir mengisi uang yang diterima. Server yang menghitung kembalian, bukan layar kasir, dan hasilnya tersimpan bersama order sehingga riwayat tidak bisa berbeda dengan struk.",
+          "Bila uang yang diisi kurang dari total, order ditolak dengan pesan yang menyebut total dan jumlah yang diterima. Untuk transfer atau pembayaran lain, kolom uang diterima boleh kosong.",
+        ],
+        steps: [
+          "Tekan Bayar Tunai di terminal.",
+          "Isi uang yang diterima dari pelanggan.",
+          "Periksa kembalian yang tampil sebelum menyerahkan uang.",
+          "Selesaikan order, lalu cetak atau serahkan struk.",
+        ],
+        table: {
+          head: ["Kolom", "Isi", "Catatan"],
+          rows: [
+            ["Total", "dihitung server", "Tidak bisa diubah dari terminal"],
+            ["Uang diterima", "diisi kasir", "Wajib minimal sama dengan total"],
+            ["Kembalian", "dihitung server", "Tersimpan bersama order"],
+          ],
+        },
+      },
+      {
+        heading: "Cetak struk: 58 atau 80 mm",
+        paragraphs: [
+          "Struk punya jalur cetak sendiri, terpisah dari cetak foto. Tiga pilihan transport: dialog sistem, CUPS lewat bridge lokal, atau thermal lewat Bluetooth.",
+          "Lebar kertas hanya dua: 58 mm dan 80 mm. Pada 58 mm struk memuat 32 kolom, pada 80 mm 48 kolom. Nama produk yang terlalu panjang dipotong dengan elipsis, bukan dibungkus, jadi jaga nama produk tetap pendek.",
+        ],
+        steps: [
+          "Pastikan owner sudah mengaktifkan jalur struk di halaman hardware booth.",
+          "Selesaikan pembayaran.",
+          "Tekan Cetak pada layar struk, atau biarkan cetak otomatis bila diaktifkan.",
+          "Periksa kertas keluar. Pesan terkirim belum berarti kertas tercetak.",
+        ],
+        note: "Jalur dan lebar kertas disalin ke order saat order dibuat. Mengganti printer setelahnya tidak mengubah struk lama.",
+      },
     ],
     troubleshooting: [
       {
@@ -902,6 +1035,21 @@ export const HELP_ARTICLES: HelpArticle[] = [
         gejala: "Staff tidak melihat menu POS",
         penyebab: "Tanpa permission atau tanpa entitlement",
         solusi: "Cek role dan pos enabled per booth.",
+      },
+      {
+        gejala: "Uang diterima kurang dari total",
+        penyebab: "Nominal tunai yang diisi di bawah total order",
+        solusi: "Isi ulang sesuai total, atau ubah item di cart sebelum membayar.",
+      },
+      {
+        gejala: "Struk terpotong",
+        penyebab: "Lebar kertas tidak cocok dengan printer",
+        solusi: "Samakan pilihan 58 atau 80 mm di setelan hardware booth.",
+      },
+      {
+        gejala: "Tombol cetak tidak muncul",
+        penyebab: "Jalur struk dimatikan owner untuk booth itu",
+        solusi: "Minta owner mengaktifkan jalur struk di halaman hardware.",
       },
     ],
     nextSteps: [
@@ -1284,6 +1432,308 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
   },
   {
+    slug: "panduan-printer-kamera",
+    title: "Panduan Printer dan Kamera",
+    category: "Perangkat",
+    summary:
+      "Menyiapkan dua jalur cetak hasil foto, jalur struk POS, kamera DSLR lewat bridge, dan membaca hasil deteksi perangkat.",
+    audience: "Owner, manager, dan operator booth",
+    estimate: "10 menit",
+    prerequisites: [
+      "Akses dashboard owner dengan izin photobox:write.",
+      "Bridge lokal berjalan di komputer booth bila memakai kamera DSLR atau printer CUPS.",
+      "PHOTOBOOTH_BRIDGE_TOKEN terpasang di service bridge dan di Setup Perangkat kiosk.",
+    ],
+    sections: [
+      {
+        heading: "Ringkasan",
+        paragraphs: [
+          "Ada tiga jalur cetak, dan ketiganya diatur terpisah supaya satu printer tidak mengganggu yang lain. Jalur photo mencetak hasil foto ke printer foto (DNP, Canon Selphy, inkjet). Jalur thermal mencetak foto sebagai raster 1-bit ke printer thermal 58 atau 80 mm. Jalur receipt khusus struk POS.",
+          "Browser tidak bisa mendaftar printer sendiri. Jadi deteksi dilakukan lewat bridge lokal atau uji cetak fisik: bridge menjawab daftar dan nama printer, sedangkan uji cetak membuktikan kertas benar-benar keluar. Status yang tersimpan berasal dari konfirmasi operator, bukan tebakan.",
+        ],
+      },
+      {
+        heading: "Buka setelan hardware",
+        paragraphs: [
+          "Setelan perangkat berada di dashboard owner, bukan di layar kiosk. Halaman ini menyimpan per grup: kamera, jalur foto, jalur thermal, jalur struk, dan template default. Menyimpan satu grup tidak menimpa grup lain.",
+        ],
+        steps: [
+          "Buka Photoboxes, pilih booth, lalu masuk ke halaman Hardware.",
+          "Isi URL bridge lokal bila bukan default. Kosong berarti http://127.0.0.1:17777.",
+          "Tekan Deteksi untuk membaca kamera dan printer dari bridge.",
+          "Simpan per grup, lalu jalankan uji cetak dan jawab konfirmasi fisik.",
+        ],
+        note: "Bridge yang tidak menjawab bukan error. Di komputer owner tanpa bridge, isi nama perangkat manual; kiosk tetap mencetak lewat dialog sistem.",
+      },
+      {
+        heading: "Jalur foto",
+        paragraphs: [
+          "Jalur foto memakai printer foto. Pilih transportnya: dialog sistem (paling sederhana, muncul dialog di tablet), CUPS lewat bridge (tanpa dialog di komputer kiosk), atau thermal bila memang printer thermal yang dipakai untuk foto.",
+          "Ukuran kertas, orientasi, penyesuaian gambar, margin, nama media CUPS, dan nama printer diatur di sini. Ukuran yang tersedia: 4x6, 2x6, 5x7, 6x8, dan A6.",
+        ],
+        steps: [
+          "Isi nama printer foto, atau tekan Deteksi lalu pilih dari daftar.",
+          "Pilih jalur cetak: Dialog OS, CUPS, atau Thermal Bluetooth.",
+          "Pilih ukuran kertas dan orientasi. Auto berarti mengikuti bentuk foto.",
+          "Aktifkan Cetak foto aktif, dan Cetak otomatis bila ingin langsung cetak setelah sesi selesai.",
+          "Jalankan uji cetak, lalu tandai berhasil hanya bila kertas benar-benar keluar.",
+        ],
+        table: {
+          head: ["Setelan", "Nilai", "Catatan"],
+          rows: [
+            ["Ukuran kertas", "4x6, 2x6, 5x7, 6x8, A6", "Driver harus menerima media ini"],
+            ["Nama media CUPS", "teks bebas", "Kosong = Custom lebar x tinggi"],
+            ["Margin", "0 sampai 20 mm", "Area aman diverifikasi lewat uji cetak"],
+            ["Dua strip per kertas", "aktif atau nonaktif", "Hanya untuk layout strip 2x6"],
+          ],
+        },
+      },
+      {
+        heading: "Jalur thermal 58 dan 80 mm",
+        paragraphs: [
+          "Printer thermal mencetak foto sebagai raster hitam-putih. Lebar kertas hanya 58 mm atau 80 mm, dan lebar itu menentukan berapa titik yang dikirim ke printer: 58 mm sekitar 384 titik, 80 mm sekitar 576 titik.",
+          "Transport-nya Web Bluetooth atau Web Serial. Tidak ada pilihan dialog sistem di jalur ini, dan kiosk tidak akan diam-diam memindahkan cetakan ke dialog sistem. Bila browser tidak mendukung Bluetooth, layar cetak menampilkan tombol eksplisit untuk memakai dialog.",
+        ],
+        steps: [
+          "Isi nama printer thermal untuk catatan petugas.",
+          "Pilih lebar kertas 58 atau 80 mm. Default 80 mm untuk foto.",
+          "Nyalakan printer, aktifkan Bluetooth di perangkat, lalu hubungkan dari layar cetak.",
+          "Aktifkan Cetak thermal otomatis bila ingin tanpa klik tambahan.",
+        ],
+        note: "Nama perangkat Bluetooth tersimpan sebagai informasi untuk petugas, bukan kredensial. Jangan menganggapnya pengaman.",
+      },
+      {
+        heading: "Jalur struk POS",
+        paragraphs: [
+          "Struk memakai jalur sendiri karena kertasnya gulungan, bukan lembar foto. Pilih transport dialog sistem, CUPS lewat bridge, atau thermal, lalu pilih lebar 58 atau 80 mm. Default struk 58 mm karena itu ukuran printer kasir paling umum.",
+          "Jalur dan lebar kertas dicatat pada setiap order POS saat order dibuat. Mengganti printer setelahnya tidak mengubah struk lama, jadi riwayat tetap konsisten.",
+        ],
+        steps: [
+          "Isi nama printer struk.",
+          "Pilih jalur cetak struk dan lebar kertas.",
+          "Aktifkan Struk aktif dan Struk otomatis bila diinginkan.",
+          "Buka satu order di terminal POS, cetak, lalu periksa hasilnya secara fisik.",
+        ],
+      },
+      {
+        heading: "Kamera",
+        paragraphs: [
+          "Kamera punya dua sumber: kamera bawaan perangkat lewat izin browser, atau kamera DSLR yang dikendalikan bridge lokal. Untuk DSLR, bridge memakai gphoto2 dan hanya berjalan di komputer kiosk yang tersambung USB.",
+          "Di halaman hardware Anda bisa memilih kamera yang dipakai, mengatur hitungan mundur, resolusi tangkap, cermin pratinjau, dan orientasi layar.",
+        ],
+        steps: [
+          "Pilih sumber kamera: browser atau bridge.",
+          "Tekan Deteksi untuk membaca model kamera yang tersambung.",
+          "Atur hitungan mundur, resolusi, cermin pratinjau, dan orientasi layar.",
+          "Simpan, lalu uji dari layar kamera kiosk.",
+        ],
+      },
+      {
+        heading: "Siapa yang boleh mengubah apa",
+        paragraphs: [
+          "Ada dua penulis setelan yang sama: dashboard owner dan aplikasi booth. Pembagiannya tegas supaya biaya dan produk tidak bisa diubah dari mesin di lokasi.",
+        ],
+        bullets: [
+          "Milik dashboard: jumlah salinan cetak dan layout. Keduanya memengaruhi biaya dan produk yang dijual.",
+          "Milik booth: kamera, printer, ukuran kertas, margin, media, jalur cetak, URL bridge, dan timer sesi.",
+          "Booth yang mencoba menulis setelan milik dashboard ditolak dengan pesan FIELD_NOT_DEVICE_OWNED, bukan diabaikan diam-diam.",
+          "Setelan tampilan booth hanya berlaku di mesin itu dan tidak pernah dikirim ke cloud.",
+        ],
+      },
+    ],
+    troubleshooting: [
+      {
+        gejala: "Bridge lokal tidak menjawab",
+        penyebab: "Service bridge belum jalan, atau URL bridge salah",
+        solusi: "Jalankan bridge di komputer booth, lalu samakan URL di halaman hardware.",
+      },
+      {
+        gejala: "Deteksi printer kosong",
+        penyebab: "Token bridge belum diisi atau tidak cocok",
+        solusi: "Isi token bridge yang sama di service dan di Setup Perangkat kiosk.",
+      },
+      {
+        gejala: "Uji cetak sukses tapi kertas tidak keluar",
+        penyebab: "Spooler menerima job, bukan bukti kertas tercetak",
+        solusi:
+          "Periksa kertas, daya, dan nama printer. Jangan tandai berhasil sebelum kertas keluar.",
+      },
+      {
+        gejala: "Hasil thermal terpotong",
+        penyebab: "Lebar kertas tidak cocok dengan printer",
+        solusi: "Samakan pilihan 58 atau 80 mm dengan printer yang terpasang.",
+      },
+      {
+        gejala: "Setelan tersimpan tapi booth tidak berubah",
+        penyebab: "Nilai tersimpan di grup, sedangkan kiosk membaca nilai datar",
+        solusi:
+          "Simpan lewat halaman hardware agar nilai grup ikut disalin ke setelan datar, lalu reload booth.",
+      },
+    ],
+    nextSteps: [
+      {
+        title: "Owner: Kelola Outlet dan Booth",
+        slug: "panduan-photobox-owner",
+        desc: "Urutan setup booth.",
+      },
+      {
+        title: "Kamera dan Printer Kompatibel",
+        slug: "perangkat-kompatibel",
+        desc: "Seri yang didukung.",
+      },
+      {
+        title: "Owner: Staff dan POS Kasir",
+        slug: "panduan-staff-pos",
+        desc: "Cetak struk dari terminal.",
+      },
+    ],
+  },
+  {
+    slug: "panduan-payment-gateway",
+    title: "Owner: Panduan Payment Gateway",
+    category: "Pembayaran",
+    summary:
+      "Menambah credential Pakasir, Midtrans, atau Tripay langkah demi langkah, mengatur metode, membaca tes koneksi, dan menyiapkan URL webhook.",
+    audience: "Owner",
+    estimate: "12 menit",
+    prerequisites: [
+      "Akun merchant Pakasir, Midtrans, atau Tripay milik Anda sendiri.",
+      "Akses dashboard owner sebagai owner; manager dan staff tidak bisa mengelola gateway.",
+    ],
+    sections: [
+      {
+        heading: "Ringkasan",
+        paragraphs: [
+          "Dana pembayaran kiosk masuk langsung ke rekening merchant Anda, bukan ke rekening platform. Karena itu credential disimpan per business dan dikelola sendiri oleh owner.",
+          "Selama belum ada credential aktif, kiosk tetap bisa melayani tamu dengan voucher dan tunai. Itu keadaan normal, bukan kerusakan.",
+        ],
+      },
+      {
+        heading: "Tambah credential",
+        paragraphs: [
+          "Satu credential mewakili satu provider pada satu environment. Isian berbeda per provider, dan form hanya menampilkan field yang relevan.",
+        ],
+        steps: [
+          "Buka Settings lalu Payment.",
+          "Tekan Tambah Payment Gateway.",
+          "Pilih provider: Pakasir, Midtrans, atau Tripay.",
+          "Pilih environment Sandbox untuk uji coba, Production untuk menerima uang nyata.",
+          "Isi label, merchant, dan kunci rahasia sesuai provider.",
+          "Pilih minimal satu metode pembayaran.",
+          "Aktifkan credential, lalu simpan.",
+        ],
+        table: {
+          head: ["Provider", "Field wajib saat membuat", "Metode yang tersedia"],
+          rows: [
+            ["Pakasir", "Project Slug, API Key, Webhook Secret", "QRIS"],
+            [
+              "Midtrans",
+              "Merchant ID, Server Key, Client Key",
+              "QRIS, GoPay, ShopeePay, VA BCA/BNI/BRI/Permata",
+            ],
+            ["Tripay", "Merchant Code, API Key, Private Key", "QRIS, VA, Alfamart, Indomaret"],
+          ],
+        },
+        note: "Saat mengedit, kolom rahasia yang dibiarkan kosong berarti nilai lama dipertahankan. Nilainya tidak pernah ditampilkan kembali, jadi simpan salinan aman di tempat Anda sendiri.",
+      },
+      {
+        heading: "Aturan yang perlu diketahui",
+        paragraphs: [
+          "Beberapa batas ditegakkan server, bukan hanya tampilan, supaya kesalahan tidak baru terasa saat tamu sudah membayar.",
+        ],
+        bullets: [
+          "Maksimal dua credential aktif sekaligus per business. Nonaktifkan satu untuk mengaktifkan yang lain.",
+          "Minimal satu metode harus dipilih. Metode yang tidak didukung provider ditolak dengan daftar pilihan yang valid.",
+          "Ejaan metode dinormalkan server, jadi qris dan QRIS diperlakukan sama.",
+          "Kiosk hanya memakai credential yang environment-nya cocok dengan environment aplikasi.",
+          "Kiosk tidak pernah memilih credential dari data yang dikirim browser; server yang menentukan.",
+        ],
+      },
+      {
+        heading: "Tes koneksi",
+        paragraphs: [
+          "Tombol tes memanggil provider memakai credential yang tersimpan. Untuk Midtrans, tes membuat transaksi uji lalu membatalkannya, jadi hanya tersedia untuk sandbox. Pakasir dan Tripay hanya membaca status, jadi aman diuji di environment mana pun.",
+        ],
+        steps: [
+          "Simpan credential terlebih dahulu.",
+          "Tekan Tes Sandbox atau Tes Production pada kartu credential.",
+          "Bila gagal, periksa ulang kunci, environment, dan status project di dashboard provider.",
+        ],
+      },
+      {
+        heading: "Siapkan URL webhook",
+        paragraphs: [
+          "URL webhook tidak disimpan di database; nilainya dihitung dari alamat publik aplikasi. Karena itu ada tiga syarat yang harus benar sebelum URL muncul.",
+        ],
+        bullets: [
+          "Alamat publik aplikasi harus terisi.",
+          "Nilainya harus URL yang sah.",
+          "Protokolnya wajib HTTPS. Alamat http ditolak.",
+        ],
+        steps: [
+          "Buka kartu credential, lihat bagian Webhook URL.",
+          "Bila URL tampil, tekan Salin webhook URL.",
+          "Daftarkan URL itu di dashboard provider: Pakasir di Detail Proyek beserta Webhook Secret, Midtrans di Payment Notification URL, Tripay di Callback URL.",
+          "Bila tulisan Webhook nonaktif muncul, alasan pastinya tertera di sana. Perbaiki alamat publik lebih dulu.",
+        ],
+        note: "Untuk Midtrans dan Tripay, kiosk tidak menawarkan metode online selama URL webhook belum aktif. Pakasir tetap bisa karena verifikasinya dilakukan server ke server, bukan lewat URL callback.",
+      },
+      {
+        heading: "Uji dari sisi tamu",
+        paragraphs: [
+          "Credential yang benar belum tentu berarti alur tamu benar. Uji satu transaksi kecil dari kiosk.",
+        ],
+        steps: [
+          "Buka kiosk, pilih paket termurah.",
+          "Periksa metode yang muncul sesuai yang Anda aktifkan.",
+          "Selesaikan pembayaran, lalu pastikan status berubah menjadi paid tanpa reload.",
+          "Periksa transaksi tercatat di dashboard keuangan.",
+        ],
+      },
+    ],
+    troubleshooting: [
+      {
+        gejala: "Tes credential gagal",
+        penyebab: "Kunci salah, environment tertukar, atau project belum aktif",
+        solusi: "Salin ulang kunci, samakan sandbox dan production, periksa dashboard provider.",
+      },
+      {
+        gejala: "Webhook nonaktif",
+        penyebab: "Alamat publik kosong, bukan URL sah, atau bukan HTTPS",
+        solusi: "Perbaiki alamat publik aplikasi; alasan spesifik tampil di kartu credential.",
+      },
+      {
+        gejala: "Metode online tidak muncul di kiosk",
+        penyebab:
+          "Tidak ada credential aktif yang cocok environment, atau URL webhook belum aktif untuk provider itu",
+        solusi: "Aktifkan credential yang benar dan lengkapi URL webhook.",
+      },
+      {
+        gejala: "Tidak bisa mengaktifkan credential baru",
+        penyebab: "Sudah ada dua credential aktif",
+        solusi: "Nonaktifkan satu credential lebih dulu.",
+      },
+      {
+        gejala: "Pembayaran masuk tapi status belum paid",
+        penyebab: "Webhook belum sampai atau nominal tidak cocok",
+        solusi: "Tunggu beberapa detik; jangan ubah harga saat pembayaran masih berjalan.",
+      },
+    ],
+    nextSteps: [
+      { title: "Cara Bayar di Kiosk", slug: "panduan-qris", desc: "Uji dari sisi tamu." },
+      {
+        title: "Owner: Keuangan dan Laporan",
+        slug: "panduan-finance-laporan",
+        desc: "Baca settlement.",
+      },
+      {
+        title: "Owner: Template dan Frame",
+        slug: "panduan-template",
+        desc: "Lanjut ke konten booth.",
+      },
+    ],
+  },
+  {
     slug: "faq",
     title: "Pertanyaan Umum",
     category: "FAQ",
@@ -1533,13 +1983,13 @@ export const DOC_GROUPS: DocGroup[] = [
     slug: "pembayaran",
     title: "Pembayaran",
     desc: "QRIS, voucher, dan tunai di kiosk plus setup merchant.",
-    slugs: ["panduan-qris", "panduan-payment-setup"],
+    slugs: ["panduan-qris", "panduan-payment-setup", "panduan-payment-gateway"],
   },
   {
     slug: "perangkat",
     title: "Perangkat",
-    desc: "Kamera dan printer yang didukung plus cara memilih.",
-    slugs: ["perangkat-kompatibel"],
+    desc: "Kamera dan printer yang didukung, dua jalur cetak, dan cara deteksi perangkat.",
+    slugs: ["perangkat-kompatibel", "panduan-printer-kamera"],
   },
   {
     slug: "bantuan",

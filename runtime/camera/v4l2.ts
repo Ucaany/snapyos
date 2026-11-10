@@ -14,7 +14,28 @@
 import { access } from "node:fs/promises";
 import { createLock, runCommand } from "../http.ts";
 import type { CameraRole, RuntimeConfig } from "../config.ts";
-import { isJpeg, type CameraAdapter, type CameraStatus } from "./types.ts";
+import { isJpeg, type CameraAdapter, type CameraInfo, type CameraStatus } from "./types.ts";
+
+/**
+ * `v4l2-ctl --list-devices`: baris tanpa indentasi = "label (bus):", lalu
+ * `/dev/videoN` sebagai baris berindentasi.
+ */
+export function parseV4l2Devices(output: string): CameraInfo[] {
+  const devices: CameraInfo[] = [];
+  let label = "";
+  for (const raw of output.split(/\r?\n/)) {
+    if (!raw.trim()) continue;
+    const indented = /^\s+\S/.test(raw);
+    if (!indented) {
+      label = raw.trim().replace(/:$/, "");
+      continue;
+    }
+    const device = raw.trim();
+    if (!device.startsWith("/dev/")) continue;
+    devices.push({ id: device, label: label ? `${label} (${device})` : device });
+  }
+  return devices;
+}
 
 export function createV4l2Camera(
   config: RuntimeConfig,
@@ -66,6 +87,11 @@ export function createV4l2Camera(
     kind: "v4l2",
     mock: false,
 
+    async list(): Promise<CameraInfo[]> {
+      const result = await lock(() => runCommand(config.v4l2CtlBin, ["--list-devices"], 10_000));
+      return parseV4l2Devices(result.stdout.toString("utf8"));
+    },
+
     async status(): Promise<CameraStatus> {
       try {
         await access(device);
@@ -78,9 +104,7 @@ export function createV4l2Camera(
         };
       }
       try {
-        await lock(() =>
-          runCommand(config.ffmpegBin, ["-hide_banner", "-version"], 8_000)
-        );
+        await lock(() => runCommand(config.ffmpegBin, ["-hide_banner", "-version"], 8_000));
       } catch (error) {
         return {
           adapter: "v4l2",

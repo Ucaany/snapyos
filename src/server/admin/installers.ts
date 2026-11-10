@@ -4,7 +4,8 @@ import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
 import { requireAdmin } from "./guard";
 
-const COLUMNS = "id, version, channel, min_windows_version, architecture, file_name, object_key, content_type, file_size_bytes, sha256, changelog, compatibility_notes, is_active, is_deprecated, published_at, created_at, updated_at";
+const COLUMNS =
+  "id, version, channel, min_windows_version, architecture, file_name, object_key, content_type, file_size_bytes, sha256, changelog, compatibility_notes, is_active, is_deprecated, published_at, created_at, updated_at";
 
 export type InstallerRow = {
   id: string;

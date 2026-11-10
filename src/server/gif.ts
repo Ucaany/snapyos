@@ -6,9 +6,9 @@
 import "server-only";
 import jpeg from "jpeg-js";
 import { applyPalette, GIFEncoder, quantize } from "gifenc";
+import { resolveGifOptions, type GifOptions } from "@/lib/gif-options";
 
-const GIF_MAX_WIDTH = 480;
-const FRAME_DELAY_MS = 800;
+export type { GifOptions };
 
 type RgbaFrame = { width: number; height: number; data: Uint8Array };
 
@@ -60,16 +60,21 @@ function downscale(src: RgbaFrame, maxW: number): RgbaFrame {
 
 /** Generate GIF animasi slideshow dari buffer JPEG (urutan = urutan frames).
  *  Dekode + downscale + quantize SATU frame per iterasi lalu lepas buffer-nya —
- *  puncak memori O(satu frame) bukan O(semua frame) (cegah OOM sesi banyak foto). */
-export function generateSlideshowGif(frames: Buffer[]): Buffer {
+ *  puncak memori O(satu frame) bukan O(semua frame) (cegah OOM sesi banyak foto).
+ *  `opts` = acuan `business_settings.output.gif` (delay & lebar); nilai di luar
+ *  rentang di-clamp, bukan melempar, supaya setelan lama/rusak tidak mematikan
+ *  output digital. */
+export function generateSlideshowGif(frames: Buffer[], opts: GifOptions = {}): Buffer {
   if (frames.length === 0) throw new Error("Tidak ada frame untuk GIF");
+
+  const { maxWidth, frameDelayMs: delay } = resolveGifOptions(opts);
 
   const gif = GIFEncoder();
   for (const buf of frames) {
-    const frame = downscale(decodeJpeg(buf), GIF_MAX_WIDTH);
+    const frame = downscale(decodeJpeg(buf), maxWidth);
     const palette = quantize(frame.data, 256, { format: "rgb565" });
     const index = applyPalette(frame.data, palette, "rgb565");
-    gif.writeFrame(index, frame.width, frame.height, { palette, delay: FRAME_DELAY_MS });
+    gif.writeFrame(index, frame.width, frame.height, { palette, delay });
     // `frame` (RGBA penuh) keluar scope tiap iterasi → GC bebas sebelum frame
     // berikutnya didekode. `buf` (JPEG asli) dipegang pemanggil.
   }

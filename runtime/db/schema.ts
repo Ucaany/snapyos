@@ -10,7 +10,7 @@
 import type { DatabaseSync } from "node:sqlite";
 
 /** Versi skema saat ini. Naikkan saat ada migrasi baru. */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 /** Tabel yang ikut export/import setelan. PIN darurat sengaja TIDAK di sini. */
 const MIGRATION_1 = `
@@ -88,8 +88,39 @@ create unique index if not exists idx_captures_idempotency
   on captures (session_id, idempotency_key) where idempotency_key is not null;
 `;
 
+/**
+ * Phase 3: antrean cetak lokal (offline-first).
+ *
+ * `dedupe_key` mencegah satu sesi yang sama dicetak otomatis dua kali.
+ * Status berhenti di `submitted` karena spooler tidak memberi bukti fisik;
+ * `done` hanya dari konfirmasi operator.
+ */
+const MIGRATION_3 = `
+create table if not exists print_jobs (
+  id text primary key,
+  dedupe_key text not null unique,
+  session_id text,
+  mode text not null,
+  paper_size text,
+  orientation text,
+  copies integer not null default 1,
+  sheets integer not null default 1,
+  printer_name text,
+  media_name text,
+  pdf_path text,
+  spool_job_id text,
+  status text not null default 'queued',
+  attempts integer not null default 0,
+  error text,
+  created_at text not null,
+  updated_at text not null
+);
+create index if not exists idx_print_jobs_created on print_jobs (created_at);
+create index if not exists idx_print_jobs_status on print_jobs (status);
+`;
+
 /** Migrasi berurutan; indeks array + 1 = versi skema. */
-const MIGRATIONS: readonly string[] = [MIGRATION_1, MIGRATION_2];
+const MIGRATIONS: readonly string[] = [MIGRATION_1, MIGRATION_2, MIGRATION_3];
 
 export function readVersion(db: DatabaseSync): number {
   const row = db.prepare("pragma user_version").get() as { user_version?: number } | undefined;

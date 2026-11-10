@@ -520,8 +520,7 @@ export async function createSubscriptionInvoice(
       usage.photoboxes > planRow.max_photoboxes &&
         `photobox ${usage.photoboxes}/${planRow.max_photoboxes}`,
       usage.staff > planRow.max_staff && `staff ${usage.staff}/${planRow.max_staff}`,
-      usage.packages > planRow.max_packages &&
-        `package ${usage.packages}/${planRow.max_packages}`,
+      usage.packages > planRow.max_packages && `package ${usage.packages}/${planRow.max_packages}`,
       usage.templates > planRow.max_templates &&
         `template ${usage.templates}/${planRow.max_templates}`,
     ].filter((v): v is string => Boolean(v));
@@ -606,9 +605,7 @@ export async function createSubscriptionInvoice(
   // Exception: recovery (expired) SELALU menyertakan plan_change — renew
   // plan lama/baru = aktivasi ulang, periode baru dari now() (docs/02 §2.4).
   const isActualPlanChange =
-    isRecovery ||
-    isRenewal ||
-    (Boolean(input.planCode) && input.planCode !== currentPlan?.code);
+    isRecovery || isRenewal || (Boolean(input.planCode) && input.planCode !== currentPlan?.code);
   const items: InvoiceIntentItem[] = [
     ...(isActualPlanChange
       ? [

@@ -63,7 +63,7 @@ psql -f db/migrations/0027_direct_merchant_payment_rollback.sql
 | 0003     | `0003-owner-dashboard-indexes.sql`                  | Dashboard query indexes                                                                  |
 | …        | …                                                   | …                                                                                        |
 | 0026     | `0026_session_timer_pos_atomicity.sql`              | Session timer + atomic POS payment                                                       |
-| 0027     | `0027_direct_merchant_payment.sql`                  | Payment credentials + device logs                                                       |
+| 0027     | `0027_direct_merchant_payment.sql`                  | Payment credentials + device logs                                                        |
 | 0053     | `0053_business_profile_storage.sql`                 | Profil bisnis (whatsapp/owner/kontak/alamat) + add-on storage                            |
 | 0054     | `0054_plan_storage_feature.sql`                     | Feature flag `storage` per plan + data migration default on                              |
 | 0058     | `0058_broadcast_kind_template_history.sql`          | Broadcast email kind + template history                                                  |
@@ -79,7 +79,7 @@ psql -f db/migrations/0027_direct_merchant_payment_rollback.sql
 | 0078     | `0078_webhook_hot_path_indexes.sql`                 | Tiga index webhook/payment — **diterapkan** (katalog Postgres)                           |
 | 0079     | `0079_customer_fk_restrict.sql`                     | FK customers → `ON DELETE RESTRICT` — **diterapkan** (katalog Postgres)                  |
 | 0080     | `0080_fix_circular_fk_transactions_payments.sql`    | Hapus FK `transactions.payment_id` — **diterapkan**                                      |
-| 0081     | `0081_installer_catalog.sql`                        | Katalog installer Windows private + metadata kompatibilitas                            |
+| 0081     | `0081_installer_catalog.sql`                        | Katalog installer Windows private + metadata kompatibilitas                              |
 
 Status di atas diverifikasi 2026-10-27 dengan dua lapis: probe PostgREST
 (`node scripts/probe-migration-status.mjs`, semua panggilan no-op) untuk objek

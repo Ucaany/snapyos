@@ -48,7 +48,11 @@ export function QrisPayment({
     : { borderRadius: radius };
   return (
     <div className="grid w-full gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:items-start">
-      <KioskCard elevated className="flex flex-col gap-4 p-4 md:p-5" style={{ borderRadius: radius }}>
+      <KioskCard
+        elevated
+        className="flex flex-col gap-4 p-4 md:p-5"
+        style={{ borderRadius: radius }}
+      >
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col gap-1.5">
             <KioskEyebrow>{"PINDAI QRIS"}</KioskEyebrow>
@@ -85,10 +89,7 @@ export function QrisPayment({
         </div>
       </KioskCard>
 
-      <KioskCard
-        className="flex flex-col justify-center gap-4 p-4 md:p-5"
-        style={accentStyle}
-      >
+      <KioskCard className="flex flex-col justify-center gap-4 p-4 md:p-5" style={accentStyle}>
         <KioskEyebrow className="opacity-70">{"STATUS PEMBAYARAN"}</KioskEyebrow>
         <p className="flex items-center gap-2 font-display text-base uppercase leading-none tracking-[-0.01em] md:text-lg">
           <span
@@ -97,9 +98,7 @@ export function QrisPayment({
             }`}
             aria-hidden
           />
-          <span aria-live="polite">
-            {online ? "Menunggu pembayaran" : "Menunggu koneksi"}
-          </span>
+          <span aria-live="polite">{online ? "Menunggu pembayaran" : "Menunggu koneksi"}</span>
         </p>
         {payment.expires_at && (
           <p className="font-mono text-xs font-bold uppercase tracking-[0.08em]">

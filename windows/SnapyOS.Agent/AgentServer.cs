@@ -35,7 +35,8 @@ public sealed class AgentServer : IAsyncDisposable
         _kiosk = kiosk;
         _sync = sync;
         var port = options.Port == 0 ? GetFreePort() : options.Port;
-        BaseAddress = new Uri($"http://127.0.0.1:{port}/");
+        // `localhost` gets the default HTTP.sys reservation on Windows; a literal 127.0.0.1 prefix needs an explicit URLACL.
+        BaseAddress = new Uri($"http://localhost:{port}/");
         _listener.Prefixes.Add(BaseAddress.ToString());
     }
 

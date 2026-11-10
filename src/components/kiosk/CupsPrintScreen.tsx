@@ -11,13 +11,8 @@ import {
   resolvePrintFit,
   shouldAutoPrint,
 } from "@/lib/print-layout";
-import {
-  autoPrintStorageKey,
-  claimAutoPrintAttempt,
-  getAutoPrintStore,
-  shouldClaimAutoPrint,
-} from "@/lib/print/auto-print";
-import { retryCupsJob, submitCupsPrint } from "@/lib/print/cups";
+import { useAutoPrintJob } from "@/hooks/use-auto-print-job";
+import { confirmCupsJob, retryCupsJob, submitCupsPrint } from "@/lib/print/cups";
 
 type Props = {
   photos: { blob: Blob }[];
@@ -48,28 +43,38 @@ export function CupsPrintScreen({
   const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
   const doneRef = useRef(false);
-  const claimedRef = useRef(false);
   const manualRetryRef = useRef(false);
+  // Operator sudah menekan "Kertas keluar" — cegah onDone ganda.
+  const confirmedRef = useRef(false);
   const printingRef = useRef(false);
+  const [confirming, setConfirming] = useState(false);
   // Job antrean runtime — retry memakai endpoint, bukan kirim ulang buta.
   const serverJobRef = useRef<string | null>(null);
   const auto = shouldAutoPrint(printSettings);
+  // Destructure: objek hook dibuat ulang tiap render, `claim` stabil via useCallback.
+  const { claim: claimAutoPrint } = useAutoPrintJob({
+    scope: "kiosk",
+    id: jobId,
+    reprint,
+    auto,
+  });
   const copies = printCopies(printSettings);
   const page = printPageSize(printSettings, canvasAspect);
   const strip = plan.kind === "strip";
   const fit = resolvePrintFit(printSettings?.fit, { framed, strip });
-  const sheetIndexes = useMemo(() => printSheets(plan, photos.length, copies), [copies, photos.length, plan]);
+  const sheetIndexes = useMemo(
+    () => printSheets(plan, photos.length, copies),
+    [copies, photos.length, plan]
+  );
   const totalSheets = sheetIndexes.length;
 
-  const finish = useCallback(
-    (success: boolean) => {
-      if (doneRef.current) return;
-      doneRef.current = true;
-      setState(success ? "done" : "error");
-      if (success) window.setTimeout(() => onDone(true), 300);
-    },
-    [onDone]
-  );
+  // Sukses TIDAK langsung menutup layar: operator wajib mengonfirmasi
+  // "Kertas keluar" (`confirmCupsJob`), karena spooler bukan bukti fisik.
+  const finish = useCallback((success: boolean) => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    setState(success ? "done" : "error");
+  }, []);
 
   const print = useCallback(async () => {
     if (printingRef.current || doneRef.current) return;
@@ -128,26 +133,40 @@ export function CupsPrintScreen({
       setState("ready");
       if (!auto) return;
       const bypassClaim = reprint || manualRetryRef.current;
-      if (!claimedRef.current) {
-        if (jobId && shouldClaimAutoPrint({ auto, reprint: bypassClaim, jobId })) {
-          if (!claimAutoPrintAttempt(autoPrintStorageKey("kiosk", jobId), getAutoPrintStore())) {
-            setError("Cetak otomatis untuk sesi ini sudah pernah dikirim.");
-            setState("error");
-            return;
-          }
-        }
-        claimedRef.current = true;
-        void print();
-      } else if (bypassClaim) {
-        void print();
+      if (!claimAutoPrint(bypassClaim)) {
+        setError("Cetak otomatis untuk sesi ini sudah pernah dikirim.");
+        setState("error");
+        return;
       }
+      void print();
     };
     void prepare();
     return () => {
       cancelled = true;
       printingRef.current = false;
     };
-  }, [auto, finish, jobId, plan.kind, print, reprint, retryKey]);
+  }, [auto, claimAutoPrint, finish, jobId, plan.kind, print, reprint, retryKey]);
+
+  /** Operator memastikan kertas keluar → job ditutup sebagai `done`. */
+  const confirmPaperOut = async () => {
+    if (confirmedRef.current) return;
+    confirmedRef.current = true;
+    const jobIdValue = serverJobRef.current;
+    if (!jobIdValue || confirming) {
+      onDone(true);
+      return;
+    }
+    setConfirming(true);
+    try {
+      await confirmCupsJob(printSettings, jobIdValue);
+    } catch {
+      // Konfirmasi gagal (bridge mati setelah job terkirim) tidak boleh
+      // menahan customer: kertas sudah keluar, sesi tetap lanjut.
+    } finally {
+      setConfirming(false);
+      onDone(true);
+    }
+  };
 
   const retry = () => {
     doneRef.current = false;
@@ -159,7 +178,10 @@ export function CupsPrintScreen({
   };
 
   const skip = () => {
-    if (state === "printing" || doneRef.current) return;
+    // Hanya cegah melewati saat job masih dikirim. Setelah `done`, customer
+    // boleh lanjut tanpa mengonfirmasi kertas (mis. kertas macet).
+    if (state === "printing" || confirmedRef.current) return;
+    confirmedRef.current = true;
     doneRef.current = true;
     onDone(false);
   };
@@ -179,8 +201,12 @@ export function CupsPrintScreen({
               {error || "Periksa bridge lokal, CUPS, kertas, dan nama printer."}
             </p>
             <div className="flex flex-wrap justify-center gap-2.5">
-              <Button size="lg" variant="outline" onClick={retry}>Coba lagi</Button>
-              <Button size="lg" onClick={skip}>Lanjut tanpa cetak</Button>
+              <Button size="lg" variant="outline" onClick={retry}>
+                Coba lagi
+              </Button>
+              <Button size="lg" onClick={skip}>
+                Lanjut tanpa cetak
+              </Button>
             </div>
           </>
         ) : state === "done" ? (
@@ -193,8 +219,21 @@ export function CupsPrintScreen({
               {`${totalSheets} LEMBAR · ${page.widthMm} × ${page.heightMm} MM · ${fit.toUpperCase()}`}
             </p>
             <p className="max-w-[44ch] text-[10px] uppercase leading-relaxed tracking-[0.1em] text-muted-foreground">
-              Spooler menerima job. Kertas keluar dikonfirmasi petugas.
+              Spooler menerima job. Konfirmasi setelah kertas benar-benar keluar.
             </p>
+            <div className="flex flex-wrap justify-center gap-2.5">
+              <Button
+                size="lg"
+                className="bg-accent"
+                disabled={confirming}
+                onClick={() => void confirmPaperOut()}
+              >
+                <Check className="size-5" aria-hidden /> Kertas keluar
+              </Button>
+              <Button size="lg" variant="outline" onClick={skip}>
+                Lanjut
+              </Button>
+            </div>
           </>
         ) : state === "ready" ? (
           <>
@@ -206,8 +245,14 @@ export function CupsPrintScreen({
               {`${totalSheets} lembar · CUPS lokal · ${page.widthMm} × ${page.heightMm} mm · ${fit} · margin ${page.marginMm} mm`}
             </p>
             <div className="flex flex-wrap justify-center gap-2.5">
-              {!auto && <Button size="lg" onClick={() => void print()}><Printer className="size-5" aria-hidden /> Cetak</Button>}
-              <Button size="lg" variant="outline" onClick={skip}>Lanjut</Button>
+              {!auto && (
+                <Button size="lg" onClick={() => void print()}>
+                  <Printer className="size-5" aria-hidden /> Cetak
+                </Button>
+              )}
+              <Button size="lg" variant="outline" onClick={skip}>
+                Lanjut
+              </Button>
             </div>
           </>
         ) : (
