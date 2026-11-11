@@ -1,9 +1,0 @@
-{
-  "executablePath": "C:\\Program Files\\SnapyOS\\SnapyOS.Wpf.exe",
-  "launcherPath": "C:\\Program Files\\SnapyOS\\SnapyOS.Launcher.exe",
-  "arguments": "",
-  "startupTaskName": "SnapyOS Kiosk",
-  "maxRelaunches": 5,
-  "relaunchDelaySeconds": 2,
-  "policyMode": "application-fallback"
-}
