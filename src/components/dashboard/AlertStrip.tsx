@@ -25,10 +25,10 @@ export function AlertStrip({ alerts }: { alerts: DashboardAlert[] }) {
     return (
       <p
         role="status"
-        className="flex items-center gap-2 border-2 border-ink bg-accent-3 px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.08em] shadow-[2px_2px_0_0_#111111]"
+        className="flex items-center gap-2 border-2 border-ink bg-accent-3 px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.08em] shadow-hard-sm"
       >
         <CircleCheck className="size-4 shrink-0" aria-hidden />
-        Semua sistem normal — tidak ada peringatan operasional
+        Semua sistem normal, tidak ada peringatan operasional
       </p>
     );
   }
@@ -46,7 +46,7 @@ export function AlertStrip({ alerts }: { alerts: DashboardAlert[] }) {
               key={alert.key}
               role={alert.tone === "danger" ? "alert" : "status"}
               className={cn(
-                "flex min-w-0 items-start gap-3 border-2 p-3 shadow-[2px_2px_0_0_#111111]",
+                "flex min-w-0 items-start gap-3 border-2 p-3 shadow-hard-sm",
                 TONE_STYLE[alert.tone]
               )}
             >
@@ -55,7 +55,7 @@ export function AlertStrip({ alerts }: { alerts: DashboardAlert[] }) {
                 <p className="font-mono text-xs font-bold uppercase tracking-[0.08em]">
                   {alert.title}
                 </p>
-                <p className="mt-1 break-words font-mono text-[11px] leading-relaxed text-muted-foreground">
+                <p className="mt-1 break-words text-xs leading-relaxed text-muted-foreground">
                   {alert.detail}
                 </p>
                 <Link

@@ -59,7 +59,7 @@ function StatTile({
   sub: string;
 }) {
   return (
-    <div className="border-2 border-ink bg-surface p-4 shadow-[4px_4px_0_0_#111111] md:p-5">
+    <div className="border-2 border-ink bg-surface p-4 shadow-hard md:p-5">
       <div className="flex items-center justify-between gap-3">
         <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
           {label}
@@ -99,11 +99,12 @@ function RoleForm({ member, currentUserId }: { member: StaffDirectoryRow; curren
         <input type="hidden" name="user_id" value={member.userId} />
         <select
           key={member.role}
+          id={`role-${member.userId}`}
           name="role"
           defaultValue={member.role}
           disabled={pending || member.userId === currentUserId}
           aria-label={`Role ${member.name ?? member.email}`}
-          className="h-11 border-2 border-ink bg-surface px-2 font-mono text-xs uppercase shadow-[2px_2px_0_0_#111111] disabled:opacity-60"
+          className="h-11 border-2 border-ink bg-surface px-2 font-mono text-xs uppercase shadow-hard-sm disabled:opacity-60"
         >
           <option value="owner">OWNER</option>
           <option value="manager">MANAGER</option>
@@ -201,7 +202,7 @@ function PinField({
           disabled={pending}
           aria-label={`PIN login ${booth.name}`}
           aria-invalid={Boolean(pinError)}
-          className="h-8 max-w-[120px] font-mono text-xs"
+          className="min-h-11 max-w-[120px] font-mono text-xs"
         />
         <Button type="submit" variant="outline" size="sm" disabled={pending}>
           {pending ? "…" : "Set"}
@@ -341,6 +342,14 @@ export function StaffPanel({
   const [inviteState, inviteAction, inviting] = useActionState(inviteStaffAction, initial);
   const [editingBooths, setEditingBooths] = useState<string | null>(null);
 
+  // Tampilan grid tidak memuat form role; tombol "Ubah role" memindahkan ke
+  // tampilan daftar lalu memfokuskan select role anggota tersebut.
+  function focusRoleField(userId: string) {
+    requestAnimationFrame(() => {
+      document.getElementById(`role-${userId}`)?.focus();
+    });
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -366,7 +375,7 @@ export function StaffPanel({
 
       <form
         action={inviteAction}
-        className="flex flex-col gap-6 border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111] md:p-6"
+        className="flex flex-col gap-6 border-2 border-ink bg-surface p-5 shadow-hard md:p-6"
         noValidate
       >
         <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">{"Tambah staff"}</p>
@@ -438,7 +447,7 @@ export function StaffPanel({
           storageKey="snapyos.view.staff"
           label="Daftar staff"
           list={
-            <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
+            <div className="overflow-x-auto border-2 border-ink bg-surface shadow-hard">
               <table className="w-full border-collapse text-left lg:min-w-[960px]">
                 <caption className="sr-only">
                   Daftar staff, role, akses booth, dan transaksi hari ini
@@ -626,7 +635,7 @@ export function StaffPanel({
                         <RecordEditButton
                           label={`Ubah role ${member.name ?? member.email ?? ""}`}
                           icon={UserCog}
-                          onEdit={() => {}}
+                          onEdit={() => focusRoleField(member.userId)}
                         />
                         <RemoveForm member={member} currentUserId={currentUserId} />
                       </>

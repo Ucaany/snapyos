@@ -95,7 +95,7 @@ export function PremiumTemplatesGrid({ templates }: Props) {
 
   const list = (
     <ul
-      className="flex flex-col divide-y-2 divide-ink/10 border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]"
+      className="flex flex-col divide-y-2 divide-ink/10 border-2 border-ink bg-surface shadow-hard"
       aria-label="Template premium (tampilan daftar)"
     >
       {templates.map((tpl) => (
@@ -142,9 +142,9 @@ export function PremiumTemplatesGrid({ templates }: Props) {
       {templates.map((tpl) => (
         <li
           key={tpl.id}
-          className="flex min-w-0 flex-col border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]"
+          className="flex min-w-0 flex-col border-2 border-ink bg-surface shadow-hard"
         >
-          <div className="flex h-44 items-center justify-center overflow-hidden border-b-2 border-ink bg-[repeating-linear-gradient(45deg,#FFFDF5_0_10px,#F4F4F0_10px_20px)]">
+          <div className="flex h-44 items-center justify-center overflow-hidden border-b-2 border-ink bg-checker">
             {tpl.thumbnail_url || tpl.file_url ? (
               <Image
                 src={tpl.thumbnail_url ?? tpl.file_url}

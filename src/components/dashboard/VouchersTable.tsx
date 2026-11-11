@@ -45,10 +45,11 @@ function requirementLabel(vcr: VoucherRow): string {
 /** VouchersTable - CRUD voucher + ringkasan analytics inline (docs/04 §4.11). */
 export function VouchersTable({ vouchers, analytics, packages, outlets, canWrite }: Props) {
   const [createState, createAction, creating] = useActionState(createVoucherAction, initial);
+  const [created, setCreated] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const table = (
-    <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
+    <div className="overflow-x-auto border-2 border-ink bg-surface shadow-hard">
       <table className="w-full border-collapse text-left lg:min-w-[920px]">
         <caption className="sr-only">Daftar voucher</caption>
         <thead>
@@ -225,8 +226,9 @@ export function VouchersTable({ vouchers, analytics, packages, outlets, canWrite
           <CollapsiblePanel className="mt-4">
             <form
               action={createAction}
-              className="flex flex-col gap-6 border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111] md:p-6"
+              className="flex flex-col gap-6 border-2 border-ink bg-surface p-5 shadow-hard md:p-6"
               noValidate
+              onSubmit={() => setCreated(true)}
             >
               <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
                 {"Voucher baru"}
@@ -253,6 +255,15 @@ export function VouchersTable({ vouchers, analytics, packages, outlets, canWrite
             </form>
           </CollapsiblePanel>
         </Collapsible>
+      )}
+
+      {created && !creating && !createState.error && (
+        <p
+          role="status"
+          className="border-2 border-ink bg-accent-3 px-3 py-2 font-mono text-xs uppercase tracking-[0.05em] shadow-hard"
+        >
+          {"[ OK ]"} Voucher tersimpan.
+        </p>
       )}
 
       {vouchers.length === 0 ? (

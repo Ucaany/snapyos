@@ -1,3 +1,6 @@
+import { AccessDeniedPanel } from "@/components/dashboard/AccessDeniedPanel";
+import { PageShell } from "@/components/layout/PageShell";
+
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -45,16 +48,9 @@ export default async function AnalyticsPage({
   const financialAccess = can(active.role, "transaction:read");
   if (!financialAccess) {
     return (
-      <div className="p-6 md:p-10">
-        <Card className="border-destructive">
-          <CardHeader>
-            <CardTitle>Akses finansial terbatas</CardTitle>
-            <CardDescription>
-              Role {active.role.toUpperCase()} tidak melihat data revenue.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
+      <PageShell>
+        <AccessDeniedPanel resource="revenue" />
+      </PageShell>
     );
   }
 
@@ -87,7 +83,7 @@ export default async function AnalyticsPage({
   };
 
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
+    <PageShell>
       <PageHeader
         eyebrow="ANALITIK: PENDAPATAN"
         title="Analitik Pendapatan"
@@ -186,6 +182,6 @@ export default async function AnalyticsPage({
           )}
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   );
 }

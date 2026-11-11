@@ -24,7 +24,7 @@ export function KioskPaymentPreview({ booths, selectedId, methods, basePath }: P
   return (
     <section
       aria-labelledby="kiosk-method-preview"
-      className="grid gap-3 border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111]"
+      className="grid gap-3 border-2 border-ink bg-surface p-5 shadow-hard"
     >
       <div className="flex flex-wrap items-end justify-between gap-3 border-b-2 border-ink pb-3">
         <h2 id="kiosk-method-preview" className="font-display text-xl uppercase tracking-tight">

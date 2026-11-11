@@ -7,9 +7,12 @@
  */
 
 import dynamic from "next/dynamic";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
 
+import { buttonVariants } from "@/components/ui/button-variants";
 import { ChartSkeleton } from "@/components/ui/chart-skeleton";
+import { cn } from "@/lib/utils";
 import { formatIDR } from "@/lib/dashboard-math";
 import type { PosRevenueReport, PosBreakdownRow, PosVsKioskSplit } from "@/lib/pos-reports-math";
 
@@ -39,7 +42,7 @@ export type PosReportsData = {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col gap-1 border-2 border-ink bg-surface p-4 shadow-[3px_3px_0_0_#111111]">
+    <div className="flex flex-col gap-1 border-2 border-ink bg-surface p-4 shadow-hard-xs">
       <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
         {label}
       </span>
@@ -53,16 +56,9 @@ function parseTab(raw: string | null): TabKey {
 }
 
 export function PosReportsPanel({ data, timeZone }: { data: PosReportsData; timeZone?: string }) {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const tab = parseTab(searchParams.get("tab"));
-
-  function setTab(next: TabKey) {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("tab", next);
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-  }
 
   const { revenue, split, breakdowns } = data;
   const rows = breakdowns[tab];
@@ -83,9 +79,9 @@ export function PosReportsPanel({ data, timeZone }: { data: PosReportsData; time
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <div className="border-2 border-ink bg-surface p-4 shadow-[3px_3px_0_0_#111111]">
+        <div className="border-2 border-ink bg-surface p-4 shadow-hard-xs">
           <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-            SPLIT POS VS KIOSK (PAID)
+            POS VS KIOSK (LUNAS)
           </p>
           <dl className="mt-3 grid grid-cols-3 gap-3 font-mono text-xs">
             <div>
@@ -110,9 +106,9 @@ export function PosReportsPanel({ data, timeZone }: { data: PosReportsData; time
         </div>
 
         {breakdowns.day.length > 0 ? (
-          <div className="border-2 border-ink bg-surface p-4 shadow-[3px_3px_0_0_#111111]">
+          <div className="border-2 border-ink bg-surface p-4 shadow-hard-xs">
             <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-              REVENUE POS PER HARI
+              PENDAPATAN POS PER HARI
             </p>
             <PosReportsDayChart
               data={breakdowns.day.map((d) => ({ date: d.label, amount: d.amount }))}
@@ -122,31 +118,33 @@ export function PosReportsPanel({ data, timeZone }: { data: PosReportsData; time
       </div>
 
       <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap gap-2" role="tablist" aria-label="Breakdown POS">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              role="tab"
-              aria-selected={tab === t.key}
-              onClick={() => setTab(t.key)}
-              className={
-                tab === t.key
-                  ? "border-2 border-ink bg-accent px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.08em] shadow-[2px_2px_0_0_#111111]"
-                  : "border-2 border-ink bg-surface px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.08em] hover:bg-muted"
-              }
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        <nav aria-label="Breakdown POS" className="flex flex-wrap gap-2">
+          {TABS.map((t) => {
+            const params = new URLSearchParams(searchParams.toString());
+            params.set("tab", t.key);
+            const active = tab === t.key;
+            return (
+              <Link
+                key={t.key}
+                href={`${pathname}?${params.toString()}`}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  buttonVariants({ variant: active ? "default" : "outline", size: "sm" }),
+                  "font-mono uppercase tracking-[0.08em]"
+                )}
+              >
+                {t.label}
+              </Link>
+            );
+          })}
+        </nav>
 
         {rows.length === 0 ? (
           <p className="border-2 border-dashed border-ink/40 bg-muted p-6 font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
             {"BELUM ADA DATA PADA RENTANG INI"}
           </p>
         ) : (
-          <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
+          <div className="overflow-x-auto border-2 border-ink bg-surface shadow-hard">
             <table className="w-full md:min-w-[420px] border-collapse text-left">
               <caption className="sr-only">{`Breakdown POS per ${tab}`}</caption>
               <thead>

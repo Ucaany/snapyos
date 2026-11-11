@@ -34,7 +34,7 @@ export function BoothStatusGrid({ items }: { items: BoothHealthItem[] }) {
       {items.map((booth) => (
         <li
           key={booth.id}
-          className="flex min-w-0 flex-col gap-2 border-2 border-ink bg-surface p-3 shadow-[4px_4px_0_0_#111111]"
+          className="flex min-w-0 flex-col gap-2 border-2 border-ink bg-surface p-3 shadow-hard"
         >
           <div className="flex min-w-0 items-start justify-between gap-2">
             <div className="min-w-0">

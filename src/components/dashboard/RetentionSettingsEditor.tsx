@@ -31,7 +31,7 @@ export function RetentionSettingsEditor({ retentionDays, canWrite }: Props) {
   return (
     <form action={formAction} onSubmit={() => setTouched(true)} noValidate className="contents">
       <section
-        className="border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111]"
+        className="border-2 border-ink bg-surface p-6 shadow-hard"
         aria-labelledby="retention-settings-heading"
       >
         <div className="mb-5 flex items-center justify-between gap-4 border-b-2 border-ink pb-4">

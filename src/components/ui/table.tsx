@@ -17,7 +17,7 @@ function Table({
     <div
       data-slot="table-container"
       className={cn(
-        "overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]",
+        "overflow-x-auto border-2 border-ink bg-surface shadow-hard",
         containerClassName
       )}
     >

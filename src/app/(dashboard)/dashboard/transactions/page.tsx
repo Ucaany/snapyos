@@ -1,3 +1,6 @@
+import { AccessDeniedPanel } from "@/components/dashboard/AccessDeniedPanel";
+import { PageShell } from "@/components/layout/PageShell";
+
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Filter } from "lucide-react";
@@ -5,7 +8,6 @@ import { Filter } from "lucide-react";
 import { DateRangeFilter } from "@/components/dashboard/DateRangeFilter";
 import { PreserveSearchParams } from "@/components/dashboard/PreserveSearchParams";
 import { TransactionsView } from "@/components/dashboard/TransactionsView";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { IconButton } from "@/components/ui/icon-button";
 import { PageHeader } from "@/components/ui/page-header";
 import { Select } from "@/components/ui/select";
@@ -21,7 +23,7 @@ export const metadata: Metadata = {
 };
 
 const inputClass =
-  "h-11 w-full rounded-none border-2 border-ink bg-surface px-3 font-mono text-sm shadow-[2px_2px_0_0_#111111] outline-none focus-visible:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink md:w-auto";
+  "h-11 w-full rounded-none border-2 border-ink bg-surface px-3 font-mono text-sm shadow-hard-sm outline-none focus-visible:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink md:w-auto";
 
 const STATUS_OPTIONS = ["paid", "pending", "failed", "cancelled", "refunded"];
 const METHOD_OPTIONS = ["qris", "cash", "bank_transfer", "other", "offline", "manual", "voucher"];
@@ -57,16 +59,9 @@ export default async function TransactionsPage({
 
   if (!can(active.role, "transaction:read")) {
     return (
-      <div className="p-6 md:p-10">
-        <Card className="border-destructive">
-          <CardHeader>
-            <CardTitle>Akses finansial terbatas</CardTitle>
-            <CardDescription>
-              Role {active.role.toUpperCase()} tidak melihat data transaksi.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
+      <PageShell>
+        <AccessDeniedPanel resource="revenue" />
+      </PageShell>
     );
   }
   // Form catat manual = owner-only (transaksi manual non-withdrawable).
@@ -94,7 +89,7 @@ export default async function TransactionsPage({
   };
 
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
+    <PageShell>
       <PageHeader
         eyebrow={`${result.total} TRANSAKSI DITEMUKAN`}
         title="Transaksi"
@@ -112,7 +107,7 @@ export default async function TransactionsPage({
       <form
         method="get"
         action="/dashboard/transactions"
-        className="grid grid-cols-2 gap-3 border-2 border-ink bg-surface p-4 shadow-[4px_4px_0_0_#111111] md:grid-cols-7"
+        className="grid grid-cols-2 gap-3 border-2 border-ink bg-surface p-4 shadow-hard md:grid-cols-7"
         aria-label="Filter transaksi"
       >
         <PreserveSearchParams
@@ -182,6 +177,6 @@ export default async function TransactionsPage({
         nextHref={result.page < totalPages ? pageHref(result.page + 1) : null}
         timeZone={active.business.timezone || "Asia/Jakarta"}
       />
-    </div>
+    </PageShell>
   );
 }

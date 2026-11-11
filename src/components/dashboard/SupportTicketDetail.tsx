@@ -27,7 +27,7 @@ export function SupportTicketDetail({ ticket }: { ticket: SupportTicketDetail })
         compact
       />
 
-      <div className="border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111] md:p-6">
+      <div className="border-2 border-ink bg-surface p-5 shadow-hard md:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex flex-col gap-1">
             <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
@@ -58,7 +58,7 @@ export function SupportTicketDetail({ ticket }: { ticket: SupportTicketDetail })
           </div>
         ) : (
           ticket.replies.map((r) => (
-            <div key={r.id} className="border-2 border-ink bg-bg p-4 shadow-[4px_4px_0_0_#111111]">
+            <div key={r.id} className="border-2 border-ink bg-bg p-4 shadow-hard">
               <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
                 {r.author_name ?? "Tim SnapyOS"} · {dateFmt.format(new Date(r.created_at))}
               </p>
@@ -71,7 +71,7 @@ export function SupportTicketDetail({ ticket }: { ticket: SupportTicketDetail })
       {ticket.status !== "resolved" ? (
         <form
           action={action}
-          className="flex flex-col gap-4 border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111] md:p-6"
+          className="flex flex-col gap-4 border-2 border-ink bg-surface p-5 shadow-hard md:p-6"
           noValidate
         >
           <input type="hidden" name="ticketId" value={ticket.id} />

@@ -1,3 +1,5 @@
+import { PageShell } from "@/components/layout/PageShell";
+
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { BookOpen } from "lucide-react";
@@ -25,7 +27,7 @@ export default async function SupportPage() {
   const tickets = await listSupportTickets();
 
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
+    <PageShell>
       <PageHeader
         eyebrow={`BANTUAN: ${active.role.toUpperCase()}`}
         title="Tiket Bantuan"
@@ -37,6 +39,6 @@ export default async function SupportPage() {
         </IconLink>
       </div>
       <SupportTicketsPanel tickets={tickets} />
-    </div>
+    </PageShell>
   );
 }

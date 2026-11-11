@@ -20,7 +20,7 @@ import type { PrintSettings } from "@/lib/kiosk-types";
 import { reportPrintTestAction, savePhotoboxHardwareAction } from "@/server/hardware-actions";
 
 const SECTION =
-  "flex flex-col gap-4 border-2 border-ink bg-surface p-4 shadow-[4px_4px_0_0_#111111] md:p-5";
+  "flex flex-col gap-4 border-2 border-ink bg-surface p-4 shadow-hard md:p-5";
 const LABEL = "font-mono text-[10px] font-bold uppercase tracking-[0.16em]";
 const HEADING = "font-display text-lg uppercase leading-none tracking-[-0.01em]";
 const NEUTRAL =

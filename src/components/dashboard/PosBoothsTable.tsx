@@ -43,7 +43,7 @@ export function PosBoothsTable({
   );
 
   const table = (
-    <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
+    <div className="overflow-x-auto border-2 border-ink bg-surface shadow-hard">
       <table className="w-full border-collapse text-left lg:min-w-[720px]">
         <caption className="sr-only">Booth POS</caption>
         <thead>

@@ -3,7 +3,7 @@ import { ChevronDown, ScrollText, Search } from "lucide-react";
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminPaginator } from "@/components/admin/AdminPaginator";
-import { AdminRecordCard } from "@/components/admin/AdminRecordCard";
+import { RecordCard } from "@/components/ui/record-card";
 import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
 import { RecordCollection } from "@/components/admin/RecordCollection";
 import { Button } from "@/components/ui/button";
@@ -191,7 +191,7 @@ export default async function AdminAuditPage({
           grid={
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
               {items.map((log) => (
-                <AdminRecordCard
+                <RecordCard
                   key={log.id}
                   title={log.action}
                   subtitle={`${log.actor_email ?? "system"} · ${dateTimeFmt.format(new Date(log.created_at))}`}

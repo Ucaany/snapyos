@@ -1,3 +1,5 @@
+import { PageShell } from "@/components/layout/PageShell";
+
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -31,7 +33,7 @@ export default async function TemplatesPage() {
   ]);
 
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
+    <PageShell>
       <PageHeader
         eyebrow={`TEMPLATE: ${active.role.toUpperCase()}`}
         title="Template & Frame"
@@ -52,7 +54,7 @@ export default async function TemplatesPage() {
         </div>
         <PremiumTemplatesGrid templates={premium} />
         {purchased.length > 0 && (
-          <div className="border-2 border-ink bg-surface p-4 shadow-[4px_4px_0_0_#111111]">
+          <div className="border-2 border-ink bg-surface p-4 shadow-hard">
             <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
               {`Sudah dimiliki: ${purchased.length}`}
             </p>
@@ -80,6 +82,6 @@ export default async function TemplatesPage() {
       </section>
 
       <TemplatesGrid templates={templates} canWrite={canWrite} />
-    </div>
+    </PageShell>
   );
 }

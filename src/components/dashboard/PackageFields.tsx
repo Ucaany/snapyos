@@ -215,7 +215,7 @@ export function PackageFields({
               checked={digitalOutput}
               onChange={(event) => setDigitalOutput(event.target.checked)}
               disabled={pending}
-              className="size-4 accent-[#111111]"
+              className="size-4 accent-ink"
             />
             Digital copy
           </label>
@@ -225,7 +225,7 @@ export function PackageFields({
               name="is_active"
               defaultChecked={pkg?.is_active ?? true}
               disabled={pending}
-              className="size-4 accent-[#111111]"
+              className="size-4 accent-ink"
             />
             Aktif
           </label>

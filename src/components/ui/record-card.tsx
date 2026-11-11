@@ -28,7 +28,7 @@ export function RecordCard({
     <div
       data-slot="record-card"
       className={cn(
-        "flex min-w-0 flex-col gap-3 border-2 border-ink bg-surface p-3 shadow-[2px_2px_0_0_#111111]",
+        "flex min-w-0 flex-col gap-3 border-2 border-ink bg-surface p-3 shadow-hard-sm",
         className
       )}
     >

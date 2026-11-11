@@ -115,7 +115,7 @@ function UsageRow({
           {label}
         </span>
         <span className="font-mono text-xs font-bold tabular-nums">
-          {included ? `${used} / ${max}` : "—"}
+          {included ? `${used} / ${max}` : "-"}
         </span>
       </div>
       <div
@@ -177,9 +177,6 @@ function PlanCardBlock({
       </CardHeader>
       <CardContent className="flex flex-1 flex-col gap-4">
         <ul className="flex flex-col gap-2 text-xs text-muted-foreground">
-          <li className="flex items-center gap-2">
-            <Check className="size-4" aria-hidden /> 1 outlet, 1 photobox, 1 perangkat online
-          </li>
           {Object.entries(plan.features ?? {}).map(([key, enabled]) => (
             <li key={key} className="flex items-center gap-2">
               {enabled ? (
@@ -330,9 +327,9 @@ export function SubscriptionPanel({
               {!subscription
                 ? "tidak ada langganan"
                 : isCancelledStatus
-                  ? "dibatalkan — perlu aktivasi admin/support"
+                  ? "dibatalkan, perlu aktivasi admin/support"
                   : isExpired
-                    ? "kedaluwarsa — tidak diperpanjang otomatis"
+                    ? "kedaluwarsa, tidak diperpanjang otomatis"
                     : isCancelled
                       ? "berakhir di akhir periode"
                       : "berlanjut otomatis"}
@@ -341,14 +338,14 @@ export function SubscriptionPanel({
             {isCancelledStatus && (
               <div
                 role="status"
-                className="border-2 border-destructive bg-surface p-4 shadow-[4px_4px_0_0_#111111]"
+                className="border-2 border-destructive bg-surface p-4 shadow-hard"
               >
                 <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-destructive">
                   Langganan dibatalkan
                 </p>
                 <p className="mt-2 max-w-[70ch] text-xs text-muted-foreground">
                   Langganan ini berstatus dibatalkan. Mengaktifkan kembali TIDAK bisa dilakukan
-                  sendiri — hubungi admin/support untuk aktivasi manual (docs/02 §2.4). Paket dan
+                  sendiri, hubungi admin/support untuk aktivasi manual (docs/02 §2.4). Paket dan
                   invoice tetap ditampilkan di bawah.
                 </p>
               </div>

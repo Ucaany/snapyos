@@ -276,7 +276,7 @@ export function VoucherFields({
           checked={values.is_active}
           onChange={(e) => set("is_active", e.target.checked)}
           disabled={pending}
-          className="size-4 accent-[#111111]"
+          className="size-4 accent-ink"
         />
         Aktif
       </label>

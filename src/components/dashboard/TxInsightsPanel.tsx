@@ -58,7 +58,7 @@ export function TxInsightsPanel({
           cta={
             <Link
               href="/dashboard/transactions"
-              className="border-2 border-ink bg-surface px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.05em] text-ink shadow-[2px_2px_0_0_#111111] hover:bg-accent active:translate-y-[1px] active:shadow-none"
+              className="border-2 border-ink bg-surface px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.05em] text-ink shadow-hard-sm hover:bg-accent active:translate-y-[1px] active:shadow-none"
             >
               Buka halaman transaksi
             </Link>
@@ -91,7 +91,7 @@ export function TxInsightsPanel({
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Bar 2: jam ramai: histogram 24 slot CSS. */}
-        <div className="border-2 border-ink bg-surface p-4 shadow-[3px_3px_0_0_#111111] md:p-5">
+        <div className="border-2 border-ink bg-surface p-4 shadow-hard-xs md:p-5">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h3 className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
               {"JAM RAMAI"}
@@ -134,7 +134,7 @@ export function TxInsightsPanel({
         </div>
 
         {/* Bar 3: outlet teramai (real, sorted by count). */}
-        <div className="border-2 border-ink bg-surface p-4 shadow-[3px_3px_0_0_#111111] md:p-5">
+        <div className="border-2 border-ink bg-surface p-4 shadow-hard-xs md:p-5">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h3 className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
               {"OUTLET TERAMAI"}

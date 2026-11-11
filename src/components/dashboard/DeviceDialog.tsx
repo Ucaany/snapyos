@@ -257,7 +257,7 @@ export function DeviceDialog({
           <span className="block font-mono text-[10px] font-normal uppercase tracking-[0.2em] text-muted-foreground">
             {`PERANGKAT: ${photobox.name.toUpperCase()}`}
           </span>
-          Device pairing
+          Pairing perangkat
         </DialogTitle>
         <DialogDescription className="sr-only">
           Manajemen perangkat dan kode aktivasi photobox
@@ -403,7 +403,7 @@ export function DeviceDialog({
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-              Device terpasang
+              Perangkat terpasang
             </p>
             {canWrite && devices.some((d) => d.status === "active") && (
               <Button

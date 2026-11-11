@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Copy, Pencil, PlugZap, Power, PowerOff, Trash2 } from "lucide-react";
 
 import { PaymentCredentialForm } from "@/components/dashboard/PaymentCredentialForm";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { IconButton } from "@/components/ui/icon-button";
 import {
   canTestCredentialInEnvironment,
@@ -37,10 +38,14 @@ const providerNames: Record<string, string> = {
 export function PaymentCredentialCard({ credential, webhookUrls, onChanged }: Props) {
   const [pending, setPending] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function run(action: () => Promise<{ ok: true } | { error: string }>, success: string) {
+  async function run(
+    action: () => Promise<{ ok: true } | { error: string }>,
+    success: string
+  ): Promise<string | void> {
     setPending(true);
     setNotice(null);
     setError(null);
@@ -48,12 +53,14 @@ export function PaymentCredentialCard({ credential, webhookUrls, onChanged }: Pr
       const result = await action();
       if ("error" in result) {
         setError(result.error);
-      } else {
-        setNotice(success);
-        onChanged();
+        return result.error;
       }
+      setNotice(success);
+      onChanged();
     } catch {
-      setError("Terjadi kesalahan. Coba lagi.");
+      const message = "Terjadi kesalahan. Coba lagi.";
+      setError(message);
+      return message;
     } finally {
       setPending(false);
     }
@@ -96,7 +103,7 @@ export function PaymentCredentialCard({ credential, webhookUrls, onChanged }: Pr
   }
 
   return (
-    <article className="grid gap-4 border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111]">
+    <article className="grid gap-4 border-2 border-ink bg-surface p-5 shadow-hard">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b-2 border-ink pb-3">
         <div>
           <h3 className="font-display text-xl uppercase tracking-tight">
@@ -220,15 +227,19 @@ export function PaymentCredentialCard({ credential, webhookUrls, onChanged }: Pr
           variant="destructive"
           compact
           disabled={pending}
-          onClick={() => {
-            if (
-              window.confirm("Hapus credential merchant ini? Pembayaran metode hilang dari kiosk.")
-            ) {
-              void run(() => deleteCredentialAction(credential.id), "Credential dihapus");
-            }
-          }}
+          onClick={() => setConfirmOpen(true)}
         />
       </div>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Hapus credential merchant?"
+        description="Pembayaran dengan metode ini hilang dari kiosk. Transaksi lama tetap tersimpan."
+        confirmLabel="Hapus"
+        variant="destructive"
+        onConfirm={() => run(() => deleteCredentialAction(credential.id), "Credential dihapus")}
+      />
 
       {!testable && testDisabledReason && (
         <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">

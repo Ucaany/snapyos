@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function LoadingSubscription() {
   return (
-    <div className="flex flex-col gap-8 p-6 md:p-10" aria-busy="true" aria-live="polite">
+    <div className="flex flex-col gap-6 p-4 sm:p-6 md:gap-8 md:p-10" aria-busy="true" aria-live="polite">
       <div className="flex flex-col gap-3">
         <Skeleton className="h-3 w-48" />
         <Skeleton className="h-10 w-72" />

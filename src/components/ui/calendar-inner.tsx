@@ -19,7 +19,7 @@ export type CalendarProps = DayPickerProps;
  */
 
 const NAV_BUTTON =
-  "inline-flex size-8 cursor-pointer items-center justify-center border-2 border-ink bg-surface text-ink shadow-[2px_2px_0_0_#111111] outline-none transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0_0_#111111] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:pointer-events-none disabled:opacity-40 aria-disabled:pointer-events-none aria-disabled:opacity-40";
+  "inline-flex size-8 cursor-pointer items-center justify-center border-2 border-ink bg-surface text-ink shadow-hard-sm outline-none transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-hard-2xs active:translate-x-[2px] active:translate-y-[2px] active:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:pointer-events-none disabled:opacity-40 aria-disabled:pointer-events-none aria-disabled:opacity-40";
 
 export function Calendar({
   className,
@@ -63,7 +63,7 @@ export function Calendar({
         range_end: "",
         range_middle: "[&>button]:border-ink/30 [&>button]:bg-accent/40",
         selected:
-          "[&>button]:border-ink [&>button]:bg-accent [&>button]:font-bold [&>button]:shadow-[2px_2px_0_0_#111111]",
+          "[&>button]:border-ink [&>button]:bg-accent [&>button]:font-bold [&>button]:shadow-hard-sm",
         today:
           "[&>button]:font-bold [&>button]:underline [&>button]:decoration-2 [&>button]:underline-offset-4",
         outside: "text-muted-foreground/50",

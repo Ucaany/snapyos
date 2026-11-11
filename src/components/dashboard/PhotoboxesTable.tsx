@@ -49,7 +49,7 @@ export function PhotoboxesTable({
   const noPinBooths = photoboxes.filter((p) => !p.has_exit_pin);
 
   const table = (
-    <div className="overflow-x-auto border-2 border-ink shadow-[4px_4px_0_0_#111111]">
+    <div className="overflow-x-auto border-2 border-ink shadow-hard">
       <table className="w-full border-collapse bg-surface text-left lg:min-w-[820px]">
         <caption className="sr-only">Daftar photobox</caption>
         <thead>
@@ -213,7 +213,7 @@ export function PhotoboxesTable({
       {canWrite && noPinBooths.length > 0 && (
         <aside
           role="alert"
-          className="border-2 border-ink bg-accent p-4 shadow-[4px_4px_0_0_#111111]"
+          className="border-2 border-ink bg-accent p-4 shadow-hard"
         >
           <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em]">
             {"PERINGATAN KEAMANAN · " + noPinBooths.length + " BOOTH TANPA PIN"}
@@ -237,7 +237,7 @@ export function PhotoboxesTable({
       {canWrite && legacyPinBooths.length > 0 && (
         <aside
           role="alert"
-          className="border-2 border-destructive bg-destructive/10 p-4 shadow-[4px_4px_0_0_#111111]"
+          className="border-2 border-destructive bg-destructive/10 p-4 shadow-hard"
         >
           <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-destructive">
             {"EXIT-PIN LEGACY · " + legacyPinBooths.length + " BOOTH"}
@@ -286,7 +286,7 @@ export function PhotoboxesTable({
       {canWrite && createDone && (
         <p
           role="status"
-          className="border-2 border-ink bg-accent-3 px-3 py-2 font-mono text-xs uppercase tracking-[0.05em] shadow-[4px_4px_0_0_#111111]"
+          className="border-2 border-ink bg-accent-3 px-3 py-2 font-mono text-xs uppercase tracking-[0.05em] shadow-hard"
         >
           {"[ OK ]"} Photobox tersimpan. URL perangkat siap dipakai di kiosk.
         </p>

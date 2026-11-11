@@ -1,3 +1,5 @@
+import { PageShell } from "@/components/layout/PageShell";
+
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -32,7 +34,7 @@ export default async function PackagesPage() {
   ]);
 
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
+    <PageShell>
       <PageHeader
         eyebrow={`PAKET: ${active.role.toUpperCase()}`}
         title="Paket"
@@ -46,6 +48,6 @@ export default async function PackagesPage() {
         photoboxes={photoboxes.map((b) => ({ id: b.id, name: b.name }))}
         canWrite={canWrite}
       />
-    </div>
+    </PageShell>
   );
 }

@@ -1283,7 +1283,7 @@ export function TemplateBuilderCanvas({
                       });
                     }}
                     aria-label="Warna background kanvas"
-                    className="h-11 w-20 cursor-pointer border-2 border-ink bg-surface p-1 shadow-[2px_2px_0_0_#111111] focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
+                    className="h-11 w-20 cursor-pointer border-2 border-ink bg-surface p-1 shadow-hard-sm focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
                   />
                 </div>
                 <div className="flex min-w-40 flex-1 flex-col gap-1">

@@ -32,6 +32,7 @@ type Props = {
 /** TemplatesGrid - upload & kelola frame (docs/04 §4.10, §4.10.1 MVP). */
 export function TemplatesGrid({ templates, canWrite }: Props) {
   const [uploadState, uploadAction, uploading] = useActionState(uploadTemplateAction, initial);
+  const [uploaded, setUploaded] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const actions = (tpl: TemplateRow, fromGrid: boolean) => (
@@ -70,7 +71,7 @@ export function TemplatesGrid({ templates, canWrite }: Props) {
 
   const list = (
     <ul
-      className="flex flex-col divide-y-2 divide-ink/10 border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]"
+      className="flex flex-col divide-y-2 divide-ink/10 border-2 border-ink bg-surface shadow-hard"
       aria-label="Template (tampilan daftar)"
     >
       {templates.map((tpl) => {
@@ -125,9 +126,9 @@ export function TemplatesGrid({ templates, canWrite }: Props) {
         return (
           <li
             key={tpl.id}
-            className="flex min-w-0 flex-col border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]"
+            className="flex min-w-0 flex-col border-2 border-ink bg-surface shadow-hard"
           >
-            <div className="flex h-44 items-center justify-center overflow-hidden border-b-2 border-ink bg-[repeating-linear-gradient(45deg,#FFFDF5_0_10px,#F4F4F0_10px_20px)]">
+            <div className="flex h-44 items-center justify-center overflow-hidden border-b-2 border-ink bg-checker">
               {previewSrc ? (
                 <Image
                   src={previewSrc}
@@ -168,7 +169,7 @@ export function TemplatesGrid({ templates, canWrite }: Props) {
                 {tpl.slot_count > 0 ? `${tpl.slot_count} slot foto` : "Tanpa slot (frame penuh)"}
               </p>
               {tpl.is_active && (
-                <p className="border-2 border-ink/20 bg-muted px-2 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+                <p className="border-2 border-ink/20 bg-muted px-2 py-1.5 text-xs leading-relaxed text-muted-foreground">
                   {tpl.slot_count > 0
                     ? `Tampil di semua paket. ${tpl.slot_count} slot; foto diisi bergiliran bila paket punya foto lebih sedikit.`
                     : "Tampil di semua paket sebagai frame penuh."}
@@ -176,7 +177,7 @@ export function TemplatesGrid({ templates, canWrite }: Props) {
               )}
 
               {tpl.is_global ? (
-                <p className="mt-auto border-t-2 border-ink/10 pt-3 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+                <p className="mt-auto border-t-2 border-ink/10 pt-3 text-xs leading-relaxed text-muted-foreground">
                   Template platform — read-only. Kelola dari panel admin platform.
                 </p>
               ) : editingId === tpl.id && canWrite ? (
@@ -201,8 +202,9 @@ export function TemplatesGrid({ templates, canWrite }: Props) {
       {canWrite && (
         <form
           action={uploadAction}
-          className="flex flex-col gap-6 border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111] md:p-6"
+          className="flex flex-col gap-6 border-2 border-ink bg-surface p-5 shadow-hard md:p-6"
           noValidate
+          onSubmit={() => setUploaded(true)}
         >
           <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
             {"Upload frame baru"}
@@ -250,7 +252,7 @@ export function TemplatesGrid({ templates, canWrite }: Props) {
                 accept="image/png,image/jpeg,image/webp"
                 disabled={uploading}
                 aria-invalid={Boolean(fieldError(uploadState, "file"))}
-                className="h-11 w-full border-2 border-ink bg-surface px-3 py-2.5 font-mono text-xs shadow-[2px_2px_0_0_#111111] file:mr-3 file:border-2 file:border-ink file:bg-accent file:px-2 file:py-1 file:font-mono file:text-[10px] file:font-bold file:uppercase"
+                className="h-11 w-full border-2 border-ink bg-surface px-3 py-2.5 font-mono text-xs shadow-hard-sm file:mr-3 file:border-2 file:border-ink file:bg-accent file:px-2 file:py-1 file:font-mono file:text-[10px] file:font-bold file:uppercase"
               />
               {fieldError(uploadState, "file") && (
                 <p role="alert" className="font-mono text-xs text-destructive">
@@ -302,6 +304,15 @@ export function TemplatesGrid({ templates, canWrite }: Props) {
             </Button>
           </div>
         </form>
+      )}
+
+      {uploaded && !uploading && !uploadState.error && (
+        <p
+          role="status"
+          className="border-2 border-ink bg-accent-3 px-3 py-2 font-mono text-xs uppercase tracking-[0.05em] shadow-hard"
+        >
+          {"[ OK ]"} Template terunggah.
+        </p>
       )}
 
       {templates.length === 0 ? (

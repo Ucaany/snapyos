@@ -25,7 +25,7 @@ const SubscriptionCheckout = dynamic(
         aria-live="polite"
         className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-ink/60"
       >
-        <span className="flex items-center gap-2 border-2 border-ink bg-surface px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.1em] text-ink shadow-[4px_4px_0_0_#111111]">
+        <span className="flex items-center gap-2 border-2 border-ink bg-surface px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.1em] text-ink shadow-hard">
           <Loader2 className="size-4 animate-spin" aria-hidden />
           Memuat checkout…
         </span>

@@ -64,7 +64,7 @@ export function TransactionsView({
   const boothOptions = outletId ? photoboxes.filter((b) => b.outlet_id === outletId) : photoboxes;
 
   const table = (
-    <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
+    <div className="overflow-x-auto border-2 border-ink bg-surface shadow-hard">
       <table className="w-full border-collapse text-left xl:min-w-[1240px]">
         <caption className="sr-only">Daftar transaksi</caption>
         <thead>
@@ -131,7 +131,7 @@ export function TransactionsView({
               </td>
               <td className="hidden px-4 py-3.5 lg:table-cell">
                 {tx.payment_method === "manual" || tx.withdrawable === false ? (
-                  <span className="inline-block border-2 border-ink bg-accent-2 px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.08em]">
+                  <span className="inline-block border-2 border-ink bg-ink/5 px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.08em]">
                     Tidak Dapat Ditarik
                   </span>
                 ) : (
@@ -226,13 +226,13 @@ export function TransactionsView({
           <CollapsiblePanel className="mt-4">
             <form
               action={action}
-              className="flex flex-col gap-6 border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111] md:p-6"
+              className="flex flex-col gap-6 border-2 border-ink bg-surface p-5 shadow-hard md:p-6"
               noValidate
             >
               <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
                 {"Transaksi manual (langsung paid)"}
               </p>
-              <div className="border-2 border-ink bg-accent-2 p-3 font-mono text-xs uppercase tracking-[0.05em]">
+              <div className="border-2 border-ink bg-ink/5 p-3 font-mono text-xs uppercase tracking-[0.05em]">
                 {"TRANSAKSI MANUAL TIDAK MASUK SALDO WITHDRAWABLE"}
               </div>
               <div className="grid grid-cols-1 gap-5 md:grid-cols-3">

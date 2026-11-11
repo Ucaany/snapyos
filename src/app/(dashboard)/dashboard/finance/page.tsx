@@ -1,3 +1,6 @@
+import { AccessDeniedPanel } from "@/components/dashboard/AccessDeniedPanel";
+import { PageShell } from "@/components/layout/PageShell";
+
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -44,16 +47,9 @@ export default async function FinancePage({
 
   if (!can(active.role, "finance:read")) {
     return (
-      <div className="p-6 md:p-10">
-        <Card className="border-destructive">
-          <CardHeader>
-            <CardTitle>Akses finansial terbatas</CardTitle>
-            <CardDescription>
-              Role {active.role.toUpperCase()} tidak melihat data finance.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
+      <PageShell>
+        <AccessDeniedPanel resource="finance" />
+      </PageShell>
     );
   }
   const canWrite = can(active.role, "expense:write");
@@ -69,20 +65,20 @@ export default async function FinancePage({
   ]);
 
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <PageHeader
-          eyebrow="KEUANGAN: ESTIMASI LABA"
-          title="Keuangan"
-          description="Pendapatan dihitung dari transaksi paid (source of truth: transactions); biaya dicatat manual. Bukan software akuntansi. Termasuk transaksi POS (offline) yang tidak mengubah saldo."
-        />
-        <DateRangeFilter
-          from={summary.range.from}
-          to={summary.range.to}
-          timeZone={active.business.timezone || "Asia/Jakarta"}
-          basePath="/dashboard/finance"
-        />
-      </header>
+    <PageShell>
+      <PageHeader
+        eyebrow="KEUANGAN: ESTIMASI LABA"
+        title="Keuangan"
+        description="Pendapatan dihitung dari transaksi paid (source of truth: transactions); biaya dicatat manual. Bukan software akuntansi. Termasuk transaksi POS (offline) yang tidak mengubah saldo."
+        right={
+          <DateRangeFilter
+            from={summary.range.from}
+            to={summary.range.to}
+            timeZone={active.business.timezone || "Asia/Jakarta"}
+            basePath="/dashboard/finance"
+          />
+        }
+      />
 
       <section aria-label="Ringkasan finance" className="grid grid-cols-1 gap-6 md:grid-cols-12">
         <MetricCard
@@ -143,6 +139,6 @@ export default async function FinancePage({
         outlets={outlets.map((o) => ({ id: o.id, name: o.name }))}
         canWrite={canWrite}
       />
-    </div>
+    </PageShell>
   );
 }

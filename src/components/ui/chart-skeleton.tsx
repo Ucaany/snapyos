@@ -11,7 +11,7 @@ export function ChartSkeleton({
 }) {
   return (
     <Skeleton
-      className={cn("w-full border-2 border-ink shadow-[4px_4px_0_0_#111111]", height, className)}
+      className={cn("w-full border-2 border-ink shadow-hard", height, className)}
     />
   );
 }

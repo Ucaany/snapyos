@@ -14,6 +14,6 @@ export type { CalendarProps } from "./calendar-inner";
 export const Calendar = dynamic(() => import("./calendar-inner").then((mod) => mod.Calendar), {
   ssr: false,
   loading: () => (
-    <Skeleton className="h-72 w-64 border-2 border-ink shadow-[4px_4px_0_0_#111111]" />
+    <Skeleton className="h-72 w-64 border-2 border-ink shadow-hard" />
   ),
 });

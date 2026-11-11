@@ -24,9 +24,11 @@ import {
 } from "lucide-react";
 
 /**
- * Daftar nav owner — dipakai sidebar brutalis (client) DAN shell tema modern
- * (server layout). Modul netral: tanpa "use client", jadi bisa dipanggil dari
- * server component. Tipe & data saja, tanpa JSX.
+ * Daftar nav owner — dipakai `Sidebar` dan `MobileNav` (client). Modul netral:
+ * tanpa "use client", jadi bisa dipanggil dari server component.
+ *
+ * Setiap item WAJIB punya route nyata di `src/app/(dashboard)` atau route
+ * publik sah. `/docs` valid (ada di `src/app/(marketing)/docs`).
  *
  * POS & Unduh PWA menyusul saat entitlement/fitur aktif (docs/04 §4.2–4.3);
  * keamanan tetap di server (requirePosAccess).

@@ -4,7 +4,7 @@ import { Mail, UserPlus, Users } from "lucide-react";
 import { AdminActionButton, AdminActionForm } from "@/components/admin/AdminActionForm";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminPaginator } from "@/components/admin/AdminPaginator";
-import { AdminRecordCard } from "@/components/admin/AdminRecordCard";
+import { RecordCard } from "@/components/ui/record-card";
 import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
 import { RecordCollection } from "@/components/admin/RecordCollection";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
@@ -381,7 +381,7 @@ export default async function AdminUsersPage({
           grid={
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {items.map((u) => (
-                <AdminRecordCard
+                <RecordCard
                   key={u.id}
                   title={
                     <Link

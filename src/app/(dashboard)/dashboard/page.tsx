@@ -1,3 +1,6 @@
+import { AccessDeniedPanel } from "@/components/dashboard/AccessDeniedPanel";
+import { PageShell } from "@/components/layout/PageShell";
+
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -116,7 +119,7 @@ export default async function DashboardPage({
   )}`;
 
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
+    <PageShell>
       <PageHeader
         eyebrow={`DASHBOARD: ${active.role.toUpperCase()}`}
         title={active.business.name}
@@ -166,15 +169,7 @@ export default async function DashboardPage({
       </section>
 
       {!financialAccess || !summary || !series || !delta || !breakdowns ? (
-        <Card className="border-destructive bg-surface">
-          <CardHeader>
-            <CardTitle>Akses finansial terbatas</CardTitle>
-            <CardDescription>
-              Role {active.role.toUpperCase()} tidak melihat data revenue. Blok operasional di atas
-              tetap lengkap; hubungi owner untuk akses finansial penuh.
-            </CardDescription>
-          </CardHeader>
-        </Card>
+        <AccessDeniedPanel resource="revenue" />
       ) : (
         <>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-12">
@@ -204,16 +199,12 @@ export default async function DashboardPage({
 
           <StatStrip
             label="Ringkasan metrik"
-            columns={8}
+            columns={4}
             items={[
               { label: "Hari Ini", value: formatIDR(summary.revenueToday) },
               { label: "Bulan Ini", value: formatIDR(summary.revenueMonth) },
               { label: "Transaksi Lunas", value: String(summary.paidTx) },
               { label: "Rata-rata / Transaksi", value: formatIDR(summary.avgTransaction) },
-              { label: "Sesi Foto", value: String(metrics.sessions) },
-              { label: "Pelanggan", value: String(metrics.customers) },
-              { label: "Booth Online", value: String(boothHealth.online) },
-              { label: "Outlet Aktif", value: String(metrics.activeOutlets) },
             ]}
           />
 
@@ -257,6 +248,6 @@ export default async function DashboardPage({
           </Card>
         </>
       )}
-    </div>
+    </PageShell>
   );
 }

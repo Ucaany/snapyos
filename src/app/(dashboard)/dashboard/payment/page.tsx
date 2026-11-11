@@ -1,3 +1,5 @@
+import { PageShell } from "@/components/layout/PageShell";
+
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -48,10 +50,10 @@ export default async function PaymentGatewayPage({
   };
 
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
+    <PageShell>
       <PageHeader
         eyebrow="KEUANGAN / PAYMENT GATEWAY"
-        title="Payment Gateway"
+        title="Pembayaran"
         description="Credential merchant terenkripsi (Pakasir / Midtrans / Tripay). Dana pembayaran masuk rekening owner langsung, bukan platform. Secret tidak pernah ditampilkan kembali setelah tersimpan."
         meta="[ DIRECT MERCHANT ] PAKASIR · MIDTRANS · TRIPAY"
       />
@@ -66,6 +68,6 @@ export default async function PaymentGatewayPage({
         methods={kioskMethods}
         basePath="/dashboard/payment"
       />
-    </div>
+    </PageShell>
   );
 }

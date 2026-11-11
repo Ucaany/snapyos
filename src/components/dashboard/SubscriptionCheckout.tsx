@@ -210,7 +210,7 @@ export function SubscriptionCheckout({
                           value={qty}
                           onChange={(e) => setQty(a.id, Number(e.target.value))}
                           aria-label={`Jumlah ${a.name}`}
-                          className="h-9 w-16 rounded-none border-2 border-ink bg-surface px-2 text-center text-sm tabular-nums outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+                          className="min-h-11 w-16 rounded-none border-2 border-ink bg-surface px-2 text-center text-sm tabular-nums outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
                         />
                         <Button
                           type="button"
@@ -244,7 +244,7 @@ export function SubscriptionCheckout({
                 }}
                 placeholder="Kode promo"
                 aria-label="Kode promo"
-                className="h-9 min-w-40 flex-1 rounded-none border-2 border-ink bg-surface px-3 py-1 text-sm outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+                className="min-h-11 min-w-40 flex-1 rounded-none border-2 border-ink bg-surface px-3 py-1 text-sm outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
               />
               <Button
                 type="button"

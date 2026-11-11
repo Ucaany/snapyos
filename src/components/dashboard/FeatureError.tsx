@@ -34,7 +34,7 @@ export function FeatureError({ title, description, error, reset }: FeatureErrorP
     <div className="p-6 md:p-10">
       <div
         role="alert"
-        className="flex max-w-xl flex-col items-start gap-4 border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111]"
+        className="flex max-w-xl flex-col items-start gap-4 border-2 border-ink bg-surface p-6 shadow-hard"
       >
         <h1 className="font-display text-2xl uppercase tracking-tight text-ink">{title}</h1>
         <p className="text-sm leading-relaxed text-muted-foreground">{description}</p>

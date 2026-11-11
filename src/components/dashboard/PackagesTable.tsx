@@ -79,10 +79,11 @@ function DuplicateButton({ pkg, compact }: { pkg: PackageRow; compact?: boolean 
 /** PackagesTable - CRUD paket (docs/04 §4.9). */
 export function PackagesTable({ packages, templateCount, outlets, photoboxes, canWrite }: Props) {
   const [createState, createAction, creating] = useActionState(createPackageAction, initial);
+  const [created, setCreated] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const table = (
-    <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
+    <div className="overflow-x-auto border-2 border-ink bg-surface shadow-hard">
       <table className="w-full border-collapse text-left lg:min-w-[900px]">
         <caption className="sr-only">Daftar paket</caption>
         <thead>
@@ -240,7 +241,7 @@ export function PackagesTable({ packages, templateCount, outlets, photoboxes, ca
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2 border-2 border-ink bg-surface px-4 py-3 shadow-[4px_4px_0_0_#111111] sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-2 border-2 border-ink bg-surface px-4 py-3 shadow-hard sm:flex-row sm:items-center sm:justify-between">
         <p className="font-mono text-xs uppercase tracking-[0.1em]">
           <span className="font-bold">{`${templateCount} TEMPLATE AKTIF`}</span>
           <span className="text-muted-foreground">{" \u00b7 Semua tersedia untuk paket ini"}</span>
@@ -267,8 +268,9 @@ export function PackagesTable({ packages, templateCount, outlets, photoboxes, ca
           <CollapsiblePanel className="mt-4">
             <form
               action={createAction}
-              className="flex flex-col gap-6 border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111] md:p-6"
+              className="flex flex-col gap-6 border-2 border-ink bg-surface p-5 shadow-hard md:p-6"
               noValidate
+              onSubmit={() => setCreated(true)}
             >
               <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
                 {"Paket baru"}
@@ -296,6 +298,15 @@ export function PackagesTable({ packages, templateCount, outlets, photoboxes, ca
             </form>
           </CollapsiblePanel>
         </Collapsible>
+      )}
+
+      {created && !creating && !createState.error && (
+        <p
+          role="status"
+          className="border-2 border-ink bg-accent-3 px-3 py-2 font-mono text-xs uppercase tracking-[0.05em] shadow-hard"
+        >
+          {"[ OK ]"} Paket tersimpan.
+        </p>
       )}
 
       {packages.length === 0 ? (

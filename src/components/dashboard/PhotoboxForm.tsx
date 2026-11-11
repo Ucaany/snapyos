@@ -61,7 +61,7 @@ export function PhotoboxForm({ outlets, photobox, onDone }: Props) {
   return (
     <form
       action={formAction}
-      className="flex flex-col gap-4 border-2 border-ink bg-surface p-4 shadow-[4px_4px_0_0_#111111]"
+      className="flex flex-col gap-4 border-2 border-ink bg-surface p-4 shadow-hard"
       noValidate
     >
       {isEdit && photobox && <input type="hidden" name="id" value={photobox.id} />}
@@ -289,7 +289,7 @@ export function PhotoboxForm({ outlets, photobox, onDone }: Props) {
           <button
             type="button"
             onClick={() => void turnstileRef.current?.reset()}
-            className="min-h-11 w-full border-2 border-ink bg-surface px-3 font-mono text-xs font-bold uppercase tracking-[0.05em] text-ink shadow-[2px_2px_0_0_#111111] transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+            className="min-h-11 w-full border-2 border-ink bg-surface px-3 font-mono text-xs font-bold uppercase tracking-[0.05em] text-ink shadow-hard-sm transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
           >
             Coba verifikasi lagi
           </button>

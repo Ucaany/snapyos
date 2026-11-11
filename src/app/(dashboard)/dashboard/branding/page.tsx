@@ -1,3 +1,5 @@
+import { PageShell } from "@/components/layout/PageShell";
+
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Palette } from "lucide-react";
@@ -56,7 +58,7 @@ export default async function DesignBuilderPage({
   }
 
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
+    <PageShell>
       <PageHeader
         eyebrow="DESIGN BUILDER · PHOTOBOX"
         title="Design Builder"
@@ -78,6 +80,6 @@ export default async function DesignBuilderPage({
         canBooth={can(active.role, "photobox:write")}
         canGlobal={can(active.role, "business:update")}
       />
-    </div>
+    </PageShell>
   );
 }
