@@ -92,7 +92,7 @@ test("PhotoboxesTable menautkan halaman hardware per booth", async () => {
 
 test("panel PIN booth tetap boleh menulis grup printer yang sama (override lokal)", async () => {
   const payload = await readFile("src/lib/booth-settings-payload.ts", "utf8");
-  assert.match(payload, /photo: draft\.print\.photo/);
+  assert.match(payload, /photo: mirrorPhotoGroup\(draft\.print\.photo, draft\.print\)/);
   assert.match(payload, /thermal: draft\.print\.thermal/);
   assert.match(payload, /receipt: draft\.print\.receipt/);
   const contract = await readFile("src/lib/device-settings-contract.ts", "utf8");

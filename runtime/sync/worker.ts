@@ -19,7 +19,7 @@
  */
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import type { RuntimeConfig } from "../config.ts";
 import { activeSettings, cloudSyncedSettings, type SettingsShape } from "../settings/index.ts";
@@ -204,6 +204,7 @@ async function createCloudSession(ctx: SyncContext, session: SyncSessionRow): Pr
         client_created_at: session.client_created_at,
         device_token: ctx.config.deviceToken,
       }),
+      signal: AbortSignal.timeout(15_000),
     }
   );
   return readAnswer(response);
@@ -237,6 +238,7 @@ async function finalizeCloudSession(
     {
       method: "POST",
       body: form,
+      signal: AbortSignal.timeout(15_000),
     }
   );
   return readAnswer(response);
@@ -254,7 +256,7 @@ function quarantineSession(ctx: SyncContext, session: SyncSessionRow, payloadPat
 
   const files = [...(payload?.photos ?? []), ...(payload?.gif_photos ?? [])];
   for (const file of files) {
-    const target = join(dir, file.slice(file.lastIndexOf("/") + 1));
+    const target = join(dir, basename(file));
     writeFileSync(target, readFileSync(file));
   }
   // Payload finalize ikut disimpan: tanpa itu isi karantina tidak bisa
@@ -360,6 +362,7 @@ export async function pushSettings(
       device_token: ctx.config.deviceToken,
       settings,
     }),
+    signal: AbortSignal.timeout(15_000),
   }).catch(() => null);
 
   if (!response) return "failed";
@@ -381,6 +384,7 @@ async function sendHeartbeat(ctx: SyncContext): Promise<SyncReport["heartbeat"]>
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ device_token: ctx.config.deviceToken, ...snapshot }),
+    signal: AbortSignal.timeout(15_000),
   }).catch(() => null);
   if (!response) return "failed";
   const answer = await readAnswer(response);

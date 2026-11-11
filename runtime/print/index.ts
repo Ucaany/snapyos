@@ -81,12 +81,16 @@ function createCupsPrinter(config: RuntimeConfig): PrinterAdapter {
     },
 
     async health(printerName) {
-      const args = ["-p"];
+      // `-l` wajib: CUPS hanya menulis "The printer is offline." di mode long.
+      const args = ["-p", "-l"];
       if (printerName) args.push(printerName);
       const result = await runCommand(config.lpstatBin, args, 10_000);
       const output = result.stdout.toString("utf8").trim();
       if (/\bdisabled\b/i.test(output)) {
         throw new Error(`Printer ${printerName || "default"} sedang disabled di CUPS.`);
+      }
+      if (/\boffline\b/i.test(output)) {
+        throw new Error(`Printer ${printerName || "default"} offline di CUPS.`);
       }
       let defaultOutput = "";
       if (!printerName) {
@@ -96,9 +100,10 @@ function createCupsPrinter(config: RuntimeConfig): PrinterAdapter {
           throw new Error("Printer default CUPS belum diatur. Jalankan lpoptions -d <printer>.");
         }
       }
+      const defaultName = /system default destination:\s*(\S+)/i.exec(defaultOutput)?.[1] ?? null;
       return {
         ok: true,
-        printer: printerName || null,
+        printer: printerName || defaultName,
         output: [output, defaultOutput].filter(Boolean).join("\n"),
       };
     },

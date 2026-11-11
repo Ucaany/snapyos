@@ -11,7 +11,7 @@
 
 import { join } from "node:path";
 import { mkdirSync } from "node:fs";
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, unlink, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { createCameraRoles } from "./camera/index.ts";
@@ -148,7 +148,16 @@ async function main(): Promise<void> {
    * mencetaknya, dan mengirim ulang berarti cetak ganda.
    */
   function drainQueuedJobs(): void {
-    const pending = listPrintJobs(db, 100).filter((job) => job.status === "queued");
+    // Job `printing` yang tertinggal = runtime mati di tengah cetak. Tandai
+    // gagal supaya operator melihatnya; jangan kirim ulang otomatis (kertas
+    // mungkin sudah keluar).
+    db.prepare(
+      "update print_jobs set status='failed', error=?, updated_at=? where status='printing'"
+    ).run(
+      "Runtime berhenti saat mencetak; periksa kertas sebelum mencetak ulang.",
+      new Date().toISOString()
+    );
+    const pending = listPrintJobs(db, 100_000).filter((job) => job.status === "queued");
     for (const job of pending) {
       void runSerial(() => processJob(job)).catch(() => undefined);
     }
@@ -174,6 +183,7 @@ async function main(): Promise<void> {
         job.media_name || undefined
       );
       markSubmitted(db, job.id, result.job_id);
+      await unlink(job.pdf_path).catch(() => undefined);
     } catch (error) {
       markFailed(db, job.id, error instanceof Error ? error.message : "Cetak gagal.");
     }
@@ -246,7 +256,12 @@ async function main(): Promise<void> {
       return json(res, 403, { message: "Origin tidak diizinkan." }, null);
     }
 
-    const url = new URL(req.url || "/", `http://${config.host}:${config.port}`);
+    let url: URL;
+    try {
+      url = new URL(req.url || "/", `http://${config.host}:${config.port}`);
+    } catch {
+      return json(res, 400, { message: "URL tidak valid." }, origin);
+    }
 
     // /health terbuka: Setup Perangkat memanggilnya sebelum token diisi.
     if (
@@ -263,7 +278,7 @@ async function main(): Promise<void> {
 
       if (req.method === "GET" && url.pathname === "/v1/status") {
         const cameraStatus = await camera.status().catch((error: unknown) => ({
-          adapter: config.camera,
+          adapter: camera.kind,
           connected: false,
           mock: camera.mock,
           last_error: error instanceof Error ? error.message : "Adapter kamera error",
@@ -271,14 +286,14 @@ async function main(): Promise<void> {
         const printerStatus = await printer
           .health()
           .then((result) => ({
-            adapter: config.printer,
+            adapter: printer.kind,
             ok: result.ok,
             mock: printer.mock,
             mode: "cups" as const,
             job: printJobStats(db),
           }))
           .catch((error: unknown) => ({
-            adapter: config.printer,
+            adapter: printer.kind,
             ok: false,
             mock: printer.mock,
             mode: "cups" as const,
@@ -289,7 +304,7 @@ async function main(): Promise<void> {
           streamCamera === camera
             ? null
             : await streamCamera.status().catch((error: unknown) => ({
-                adapter: config.cameraStream ?? config.camera,
+                adapter: streamCamera.kind,
                 connected: false,
                 mock: streamCamera.mock,
                 last_error: error instanceof Error ? error.message : "Adapter preview error",
@@ -319,7 +334,7 @@ async function main(): Promise<void> {
         (url.pathname === "/v1/diagnostics" || url.pathname === "/v1/diagnostics/export")
       ) {
         const cameraStatus = await camera.status().catch((error: unknown) => ({
-          adapter: config.camera,
+          adapter: camera.kind,
           connected: false,
           mock: camera.mock,
           last_error: error instanceof Error ? error.message : "Adapter kamera error",
@@ -327,7 +342,7 @@ async function main(): Promise<void> {
         const printerStatus = await printer
           .health()
           .then((value) => ({
-            adapter: config.printer,
+            adapter: printer.kind,
             ok: value.ok,
             printer: value.printer,
             mock: printer.mock,
@@ -336,7 +351,7 @@ async function main(): Promise<void> {
             job: printJobStats(db),
           }))
           .catch((error: unknown) => ({
-            adapter: config.printer,
+            adapter: printer.kind,
             ok: false,
             printer: null,
             mock: printer.mock,
@@ -475,7 +490,8 @@ async function main(): Promise<void> {
       if (req.method === "POST" && url.pathname === "/print") {
         const input = (await readJson(req, config.maxBodyBytes)) as PrintInput;
         const result = await submitPrint(input, false);
-        return json(res, 200, { ok: true, ...result }, origin);
+        const failed = "status" in result && result.status === "failed";
+        return json(res, 200, { ok: !failed, ...result }, origin);
       }
 
       if (req.method === "GET" && url.pathname === "/print/jobs") {
@@ -494,6 +510,8 @@ async function main(): Promise<void> {
       if (req.method === "POST" && retryMatch) {
         const queued = requeuePrintJob(db, decodeURIComponent(retryMatch[1]!));
         if (!queued) return json(res, 404, { message: "Job cetak tidak ditemukan." }, origin);
+        if (queued.status !== "queued")
+          return json(res, 409, { message: "Job sedang diproses." }, origin);
         if (!queued.pdf_path)
           return json(res, 400, { message: "Job tidak punya berkas PDF." }, origin);
         const processed = await runSerial(() => processJob(queued));
@@ -510,7 +528,8 @@ async function main(): Promise<void> {
       if (req.method === "POST" && url.pathname === "/printer/test") {
         const input = (await readJson(req, config.maxBodyBytes)) as PrintInput;
         const result = await submitPrint(input, true);
-        return json(res, 200, { ok: true, ...result }, origin);
+        const failed = "status" in result && result.status === "failed";
+        return json(res, 200, { ok: !failed, ...result }, origin);
       }
 
       return json(res, 404, { message: "Endpoint tidak ditemukan." }, origin);
@@ -531,6 +550,14 @@ async function main(): Promise<void> {
 
   drainQueuedJobs();
 
+  server.once("error", (error) => {
+    console.error(
+      `[snapyos-runtime] Gagal listen di ${config.host}:${config.port}: ` +
+        (error instanceof Error ? error.message : String(error))
+    );
+    process.exit(1);
+  });
+
   server.listen(config.port, config.host, () => {
     console.log(
       `[snapyos-runtime] http://${config.host}:${config.port} ` +
@@ -546,7 +573,7 @@ async function main(): Promise<void> {
     heartbeat: async () => {
       const cameraStatus = await camera
         .status()
-        .catch(() => ({ adapter: config.camera, connected: false, mock: camera.mock }));
+        .catch(() => ({ adapter: camera.kind, connected: false, mock: camera.mock }));
       const printerStatus = await printer
         .health()
         .catch(() => ({ ok: false, printer: null, output: "" }));
@@ -556,7 +583,7 @@ async function main(): Promise<void> {
         camera: cameraStatus,
         cameraStream: null,
         printer: {
-          adapter: config.printer,
+          adapter: printer.kind,
           ...printerStatus,
           mock: printer.mock,
           mode: "cups",
@@ -568,8 +595,12 @@ async function main(): Promise<void> {
   });
 
   const shutdown = () => {
+    setTimeout(() => process.exit(0), 5_000).unref();
     stopSync();
-    server.close(() => process.exit(0));
+    server.close(() => {
+      db.close();
+      process.exit(0);
+    });
   };
   process.once("SIGTERM", shutdown);
   process.once("SIGINT", shutdown);

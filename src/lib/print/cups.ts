@@ -1,5 +1,6 @@
 // Relatif (bukan `@/`) agar tes `node --experimental-strip-types` bisa impor modul ini.
 import { bridgeHeaders } from "../bridge-token.ts";
+import { resolveBridgeUrl } from "../bridge-url.ts";
 import type { PrintSettingsInput } from "@/lib/print-layout";
 
 export type CupsTestInput = { title: string; lines: string[] };
@@ -17,7 +18,7 @@ export type CupsPrintResult = {
 };
 
 export function cupsBridgeUrl(settings?: PrintSettingsInput | null): string {
-  return (settings?.bridge_url?.trim() || "http://127.0.0.1:17777").replace(/\/$/, "");
+  return resolveBridgeUrl(settings);
 }
 
 function blobBase64(blob: Blob): Promise<string> {
@@ -39,12 +40,23 @@ async function postBridge(
   pathname: string,
   body: Record<string, unknown>
 ): Promise<Record<string, unknown>> {
-  const response = await fetch(`${cupsBridgeUrl(settings)}${pathname}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...bridgeHeaders() },
-    cache: "no-store",
-    body: JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${cupsBridgeUrl(settings)}${pathname}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...bridgeHeaders() },
+      cache: "no-store",
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(60_000),
+    });
+  } catch (error) {
+    if (error instanceof Error && (error.name === "AbortError" || error.name === "TimeoutError")) {
+      throw new Error("Bridge CUPS tidak menjawab. Periksa runtime lokal di komputer booth.");
+    }
+    throw new Error(
+      "Bridge CUPS tidak aktif. Jalankan runtime lokal di komputer booth, lalu coba lagi."
+    );
+  }
   const result = (await response.json().catch(() => null)) as Record<string, unknown> | null;
   if (!response.ok) {
     if (response.status === 401) throw new Error("Token bridge belum diisi atau salah.");
@@ -60,7 +72,13 @@ async function postBridge(
 export async function submitCupsPrint(
   settings: PrintSettingsInput | null | undefined,
   sheets: Blob[][],
-  options: { sessionId?: string; framed?: boolean; canvasAspect?: number | null } = {}
+  options: {
+    sessionId?: string;
+    framed?: boolean;
+    canvasAspect?: number | null;
+    dedupeKey?: string;
+    reprint?: boolean;
+  } = {}
 ): Promise<CupsPrintResult> {
   const result = await postBridge(settings, "/print", {
     paper_size: settings?.paper_size,
@@ -73,6 +91,8 @@ export async function submitCupsPrint(
     framed: options.framed,
     canvas_aspect: options.canvasAspect ?? undefined,
     ...(options.sessionId ? { session_id: options.sessionId } : {}),
+    ...(options.dedupeKey ? { dedupe_key: options.dedupeKey } : {}),
+    ...(options.reprint ? { reprint: true } : {}),
     sheets: await Promise.all(sheets.map((sheet) => Promise.all(sheet.map(blobBase64)))),
   });
   return {

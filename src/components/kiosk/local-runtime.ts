@@ -31,7 +31,11 @@ type StatusResponse = {
 /** POST ke runtime lokal; melempar `KioskError` supaya UI bisa membedakan sebab. */
 async function bridgePost<T>(path: string, body: unknown, bridgeUrl?: string | null): Promise<T> {
   const token = getBridgeToken();
-  if (!token) throw new KioskError("NO_BRIDGE", "Runtime lokal booth tidak aktif.");
+  if (!token)
+    throw new KioskError(
+      "NO_BRIDGE",
+      "Token bridge belum diisi. Buka Setup Perangkat dan simpan token bridge."
+    );
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -52,6 +56,9 @@ async function bridgePost<T>(path: string, body: unknown, bridgeUrl?: string | n
       [key: string]: unknown;
     } | null;
     if (!response.ok) {
+      if (response.status === 401) {
+        throw new KioskError("NO_BRIDGE", "Token bridge belum diisi atau salah.");
+      }
       throw new KioskError(
         response.status === 429 ? "PIN_LOCKED" : (payload?.error ?? "PIN_EMERGENCY_REJECTED"),
         payload?.message ?? "Runtime lokal menolak permintaan."
@@ -119,7 +126,10 @@ export async function saveDeviceSettings(
 ): Promise<DeviceSettings> {
   const token = getBridgeToken();
   if (!token) {
-    throw new KioskError("NO_BRIDGE", "Runtime lokal booth tidak aktif. Setelan tidak disimpan.");
+    throw new KioskError(
+      "NO_BRIDGE",
+      "Token bridge belum diisi. Buka Setup Perangkat dan simpan token bridge."
+    );
   }
 
   const controller = new AbortController();
@@ -282,7 +292,11 @@ export async function finalizeLocalSession(
   bridgeUrl?: string | null
 ): Promise<void> {
   const token = getBridgeToken();
-  if (!token) throw new KioskError("NO_BRIDGE", "Runtime lokal booth tidak aktif.");
+  if (!token)
+    throw new KioskError(
+      "NO_BRIDGE",
+      "Token bridge belum diisi. Buka Setup Perangkat dan simpan token bridge."
+    );
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15_000);
   try {

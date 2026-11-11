@@ -171,6 +171,10 @@ export function loadConfig(env: EnvLike): RuntimeConfig {
     .map((value) => value.trim())
     .filter(Boolean);
 
+  if (env.GPHOTO2_TIMEOUT_MS && !Number.isFinite(Number(env.GPHOTO2_TIMEOUT_MS))) {
+    throw new ConfigError("GPHOTO2_TIMEOUT_MS harus angka (milidetik).");
+  }
+
   const timeoutRaw = Number(env.GPHOTO2_TIMEOUT_MS);
   const timeoutMs = Number.isFinite(timeoutRaw)
     ? Math.min(120_000, Math.max(5_000, timeoutRaw))

@@ -92,6 +92,52 @@ export type BoothSettingsPayload = {
 };
 
 /**
+ * Salin nilai datar panel ke grup `photo` yang sudah ada.
+ *
+ * Resolusi jalur cetak memakai grup bersarang lebih dulu
+ * (`resolvePurposeSettings`), jadi nilai datar yang diubah operator harus ikut
+ * masuk ke grup. Hanya kunci yang sudah ada di grup yang ditimpa: kunci yang
+ * tidak ada sudah jatuh ke nilai datar lewat `??`, dan menambah kunci baru
+ * berarti mengarang grup.
+ */
+function mirrorPhotoGroup(photo: PrintPhotoSettings, print: BoothPrintDraft): PrintPhotoSettings {
+  const next: PrintPhotoSettings = { ...photo };
+  if (photo.mode != null && photo.mode !== print.mode) next.mode = print.mode;
+  if (photo.paper_size != null && photo.paper_size !== print.paper_size) {
+    next.paper_size = print.paper_size;
+  }
+  if (photo.orientation != null && photo.orientation !== print.orientation) {
+    next.orientation = print.orientation;
+  }
+  if (photo.fit != null && print.fit !== undefined && photo.fit !== print.fit) next.fit = print.fit;
+  if (
+    photo.strip_2up != null &&
+    print.strip_2up !== undefined &&
+    photo.strip_2up !== print.strip_2up
+  ) {
+    next.strip_2up = print.strip_2up;
+  }
+  if (photo.margins_mm != null && photo.margins_mm !== print.margins_mm) {
+    next.margins_mm = print.margins_mm;
+  }
+  if (photo.auto_print != null && photo.auto_print !== print.auto_print) {
+    next.auto_print = print.auto_print;
+  }
+  if (
+    photo.printer_name != null &&
+    print.printer_name &&
+    photo.printer_name !== print.printer_name
+  ) {
+    next.printer_name = print.printer_name;
+  }
+  const bridgeUrl = print.bridge_url?.trim();
+  if (photo.bridge_url != null && bridgeUrl && photo.bridge_url !== bridgeUrl) {
+    next.bridge_url = bridgeUrl;
+  }
+  return next;
+}
+
+/**
  * Draft form → payload `PUT /v1/settings`.
  *
  * `copies` dan `layout` sengaja tidak ada di tipe draft, jadi tidak mungkin
@@ -149,7 +195,7 @@ export function boothDraftToSettings(draft: BoothDraft): BoothSettingsPayload {
         ? { bluetooth_device_name: draft.print.bluetooth_device_name.trim() }
         : {}),
       ...(draft.print.bridge_url?.trim() ? { bridge_url: draft.print.bridge_url.trim() } : {}),
-      ...(draft.print.photo ? { photo: draft.print.photo } : {}),
+      ...(draft.print.photo ? { photo: mirrorPhotoGroup(draft.print.photo, draft.print) } : {}),
       ...(draft.print.thermal ? { thermal: draft.print.thermal } : {}),
       ...(draft.print.receipt ? { receipt: draft.print.receipt } : {}),
     },

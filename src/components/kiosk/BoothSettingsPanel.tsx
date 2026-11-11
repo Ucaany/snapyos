@@ -76,6 +76,7 @@ const DEFAULT_DRAFT: Draft = {
     auto_print: true,
     margins_mm: 0,
     printer_name: "",
+    bridge_url: "",
   },
   session: {
     timer_seconds: 300,
@@ -144,6 +145,7 @@ function toDraft(settings: DeviceSettings | null): Draft {
       auto_print: bool(print.auto_print, DEFAULT_DRAFT.print.auto_print),
       margins_mm: num(print.margins_mm, DEFAULT_DRAFT.print.margins_mm),
       printer_name: str(print.printer_name, DEFAULT_DRAFT.print.printer_name),
+      bridge_url: str(print.bridge_url, ""),
     },
     session: {
       timer_seconds: num(session.timer_seconds, DEFAULT_DRAFT.session.timer_seconds),
@@ -454,6 +456,17 @@ export function BoothSettingsPanel({ initial, bridgeUrl, photoboxName, onSaved, 
                 placeholder="mis. DNP DS620"
                 value={draft.print.printer_name}
                 onChange={(e) => update("print", { printer_name: e.target.value })}
+              />
+            </label>
+            <label className="flex flex-col gap-1 sm:col-span-2">
+              <span className={labelClass}>URL bridge lokal (kosong = 127.0.0.1:17777)</span>
+              <input
+                type="text"
+                maxLength={300}
+                className={inputClass}
+                placeholder="http://127.0.0.1:17777"
+                value={draft.print.bridge_url ?? ""}
+                onChange={(e) => update("print", { bridge_url: e.target.value })}
               />
             </label>
             <label className="flex min-h-11 items-center gap-3 border-2 border-ink bg-bg px-3">

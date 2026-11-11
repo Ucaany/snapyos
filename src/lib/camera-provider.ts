@@ -6,6 +6,7 @@
 
 // Relatif (bukan `@/`) agar tes `node --experimental-strip-types` bisa impor modul ini.
 import { bridgeHeaders } from "./bridge-token.ts";
+import { resolveBridgeUrl } from "./bridge-url.ts";
 
 export type FacingMode = "user" | "environment";
 
@@ -41,8 +42,7 @@ export function resolveCameraProvider(settings?: CameraProviderSettings | null):
 }
 
 export function cameraBridgeUrl(settings?: CameraProviderSettings | null): string {
-  const configured = settings?.bridge_url?.trim();
-  return configured || "http://127.0.0.1:17777";
+  return resolveBridgeUrl(settings);
 }
 
 async function fetchBridge(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
@@ -65,20 +65,29 @@ export async function checkCameraBridge(
   settings?: CameraProviderSettings | null,
   signal?: AbortSignal
 ): Promise<{ ok: boolean; camera: boolean; message?: string }> {
-  const response = await fetchBridge(
-    `${cameraBridgeUrl(settings)}/health`,
-    {
-      method: "GET",
-      signal,
-      cache: "no-store",
-      headers: bridgeHeaders(),
-    },
-    10_000
-  );
+  let response: Response;
+  try {
+    response = await fetchBridge(
+      `${cameraBridgeUrl(settings)}/health`,
+      {
+        method: "GET",
+        signal,
+        cache: "no-store",
+      },
+      10_000
+    );
+  } catch {
+    throw new Error("Bridge kamera tidak aktif. Jalankan runtime lokal di komputer booth.");
+  }
   if (!response.ok) {
     // 401 = token bridge belum diisi/salah; pesannya harus spesifik karena
     // operator yang memperbaikinya ada di depan layar kiosk.
     if (response.status === 401) throw new Error("Token bridge belum diisi atau salah.");
+    if (response.status === 403) {
+      throw new Error(
+        "Bridge menolak origin kiosk ini. Tambahkan domain booth ke PHOTOBOOTH_BRIDGE_ORIGINS."
+      );
+    }
     throw new Error("Bridge kamera tidak merespons.");
   }
   return (await response.json()) as { ok: boolean; camera: boolean; message?: string };

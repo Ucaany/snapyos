@@ -131,7 +131,10 @@ export function HardwareDetectButton({
     let reachable = false;
 
     try {
-      const health = await fetch(`${base}/health`, { cache: "no-store" });
+      const health = await fetch(`${base}/health`, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(5_000),
+      });
       if (health.ok) {
         reachable = true;
         const body = (await health.json().catch(() => null)) as {
@@ -149,6 +152,7 @@ export function HardwareDetectButton({
         const response = await fetch(`${base}/printer/health`, {
           cache: "no-store",
           headers: bridgeHeaders(),
+          signal: AbortSignal.timeout(5_000),
         });
         const body = (await response.json().catch(() => null)) as {
           printer?: string | null;
@@ -163,6 +167,7 @@ export function HardwareDetectButton({
         const response = await fetch(`${base}/v1/camera/status`, {
           cache: "no-store",
           headers: bridgeHeaders(),
+          signal: AbortSignal.timeout(5_000),
         });
         const body = (await response.json().catch(() => null)) as {
           model?: string;

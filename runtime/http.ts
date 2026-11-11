@@ -139,6 +139,7 @@ export function runCommand(
     const stderr: Buffer[] = [];
     const timer = setTimeout(() => {
       child.kill("SIGTERM");
+      setTimeout(() => child.kill("SIGKILL"), 2_000).unref();
       reject(new Error(`${binary} timeout. Periksa perangkat, kabel, dan mode operasi.`));
     }, timeoutMs);
     child.stdout.on("data", (chunk: Buffer) => stdout.push(chunk));

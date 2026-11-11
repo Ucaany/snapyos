@@ -105,6 +105,8 @@ export function CupsPrintScreen({
         sessionId: jobId,
         framed,
         canvasAspect,
+        reprint,
+        ...(reprint ? { dedupeKey: `${jobId}:reprint:${Date.now()}` } : {}),
       });
       serverJobRef.current = result.job_id;
       if (result.status === "failed") {
@@ -119,7 +121,7 @@ export function CupsPrintScreen({
       setError(cause instanceof Error ? cause.message : "CUPS gagal mencetak.");
       setState("error");
     }
-  }, [canvasAspect, finish, framed, jobId, photos, printSettings, sheetIndexes]);
+  }, [canvasAspect, finish, framed, jobId, photos, printSettings, reprint, sheetIndexes]);
 
   useEffect(() => {
     if (plan.kind === "digital") {
@@ -128,6 +130,7 @@ export function CupsPrintScreen({
     }
     let cancelled = false;
     const prepare = async () => {
+      if (printingRef.current || doneRef.current) return;
       await Promise.resolve();
       if (cancelled) return;
       setState("ready");
