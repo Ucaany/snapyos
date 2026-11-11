@@ -13,11 +13,6 @@ node_modules/
 out/
 build/
 dist-release/
-# Binaries untuk payload installer Windows dibuat ulang, bukan disimpan di Git.
-windows/deploy/payload/
-windows/**/bin/
-windows/**/obj/
-
 # --- Secrets ---
 # Semua file .env diabaikan; hanya template yang boleh masuk Git.
 .env
@@ -35,8 +30,6 @@ yarn-error.log*
 # --- Test & tooling ---
 coverage/
 .turbo/
-test-results/
-playwright-report/
 .vercel/
 
 # --- OS / editor ---
@@ -60,16 +53,7 @@ anti-slop/
 /supabase/
 SnapyOS Saas/
 hardware-agent/target/
-# Screenshot e2e — dibuat ulang tiap run; bukti terkurasi disimpan manual.
-/tests/e2e/*.png
-
-# Manifest hasil paket ditulis ulang oleh Package-SnapyOS-Kiosk.ps1.
-windows/deploy/snapyos-install-manifest.json
-
-# Bukti screenshot dashboard (dibuat ulang tiap audit)
-/tests/e2e/artifacts/
 
 # Artefak audit & rilis
 .audit-out/
 .audit-security/
-windows/*.zip
