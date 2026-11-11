@@ -27,6 +27,12 @@ import { useCallback, useState } from "react";
 import { Save, SlidersHorizontal, TriangleAlert } from "lucide-react";
 import { KioskError } from "@/components/kiosk/api";
 import { saveDeviceSettings } from "@/components/kiosk/local-runtime";
+import {
+  enableCupsPrinter,
+  fetchPrinterStatus,
+  listCupsPrinters,
+  type PrinterStatusResult,
+} from "@/lib/print/cups";
 import { KIOSK_FIELD } from "@/components/kiosk/ui";
 import type { DeviceSettings } from "@/lib/settings-merge";
 import { APPEARANCE_PAGES, type AppearanceSettings } from "@/lib/appearance-merge";
@@ -181,6 +187,9 @@ export function BoothSettingsPanel({ initial, bridgeUrl, photoboxName, onSaved, 
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [printerStatus, setPrinterStatus] = useState<PrinterStatusResult | null>(null);
+  const [printerBusy, setPrinterBusy] = useState(false);
+  const [printerList, setPrinterList] = useState<string[]>([]);
 
   // Tidak ada sinkronisasi efek dari props: panel di-mount ulang setiap kali
   // dibuka (induk merender kondisional), jadi `initial` hanya dibaca sekali
@@ -213,6 +222,44 @@ export function BoothSettingsPanel({ initial, bridgeUrl, photoboxName, onSaved, 
     } finally {
       setBusy(false);
     }
+  }
+
+  async function refreshPrinterStatus() {
+    setPrinterBusy(true);
+    const status = await fetchPrinterStatus(
+      { ...draft.print, bridge_url: draft.print.bridge_url ?? bridgeUrl ?? undefined },
+      draft.print.printer_name || undefined
+    );
+    setPrinterStatus(status);
+    setPrinterBusy(false);
+  }
+
+  async function detectPrinterList() {
+    setPrinterBusy(true);
+    const result = await listCupsPrinters({
+      ...draft.print,
+      bridge_url: draft.print.bridge_url ?? bridgeUrl ?? undefined,
+    });
+    setPrinterBusy(false);
+    if (!result.ok) {
+      setError(result.reason);
+      return;
+    }
+    setPrinterList(result.printers.map((printer) => printer.name));
+    if (!draft.print.printer_name) {
+      const preferred = result.printers.find((printer) => printer.default) ?? result.printers[0];
+      if (preferred) update("print", { printer_name: preferred.name });
+    }
+  }
+
+  async function activatePrinter() {
+    setPrinterBusy(true);
+    const result = await enableCupsPrinter(
+      { ...draft.print, bridge_url: draft.print.bridge_url ?? bridgeUrl ?? undefined },
+      draft.print.printer_name || undefined
+    );
+    setPrinterBusy(false);
+    if (result) setPrinterStatus(result);
   }
 
   return (
@@ -458,6 +505,55 @@ export function BoothSettingsPanel({ initial, bridgeUrl, photoboxName, onSaved, 
                 onChange={(e) => update("print", { printer_name: e.target.value })}
               />
             </label>
+            <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
+              <button
+                type="button"
+                disabled={printerBusy}
+                onClick={() => void detectPrinterList()}
+                className="min-h-11 border-2 border-ink bg-bg px-3 font-mono text-[10px] font-bold uppercase tracking-[0.12em] disabled:opacity-50"
+              >
+                Deteksi printer
+              </button>
+              <button
+                type="button"
+                disabled={printerBusy}
+                onClick={() => void refreshPrinterStatus()}
+                className="min-h-11 border-2 border-ink bg-bg px-3 font-mono text-[10px] font-bold uppercase tracking-[0.12em] disabled:opacity-50"
+              >
+                Refresh status
+              </button>
+              {printerStatus?.state === "disabled" && (
+                <button
+                  type="button"
+                  disabled={printerBusy}
+                  onClick={() => void activatePrinter()}
+                  className="min-h-11 border-2 border-ink bg-accent px-3 font-mono text-[10px] font-bold uppercase tracking-[0.12em] disabled:opacity-50"
+                >
+                  Aktifkan printer
+                </button>
+              )}
+            </div>
+            {printerList.length > 0 && (
+              <div className="flex flex-wrap gap-2 sm:col-span-2">
+                {printerList.map((name) => (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => update("print", { printer_name: name })}
+                    className={`min-h-11 border-2 border-ink px-3 font-mono text-[10px] font-bold uppercase tracking-[0.12em] ${
+                      draft.print.printer_name === name ? "bg-ink text-bg" : "bg-bg"
+                    }`}
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
+            )}
+            {printerStatus && (
+              <p className="font-mono text-xs uppercase tracking-[0.08em] sm:col-span-2">
+                {`Status printer: ${printerStatus.state}${printerStatus.media ? ` · media ${printerStatus.media}` : ""}${printerStatus.queue ? ` · antrean ${printerStatus.queue}` : ""}`}
+              </p>
+            )}
             <label className="flex flex-col gap-1 sm:col-span-2">
               <span className={labelClass}>URL bridge lokal (kosong = 127.0.0.1:17777)</span>
               <input

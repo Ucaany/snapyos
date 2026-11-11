@@ -41,7 +41,13 @@ export type HardwareDraft = {
   };
 };
 
-export type DetectedHardware = { printers: string[]; cameras: string[] };
+export type DetectedHardware = {
+  printers: string[];
+  cameras: string[];
+  printerState?: string;
+  printerMedia?: string | null;
+  printerQueue?: number;
+};
 
 type DetectState = "idle" | "busy" | "ok" | "unreachable";
 
@@ -129,6 +135,9 @@ export function HardwareDetectButton({
     const printers: string[] = [];
     const cameras: string[] = [];
     let reachable = false;
+    let printerState: string | undefined;
+    let printerMedia: string | null = null;
+    let printerQueue: number | undefined;
 
     try {
       const health = await fetch(`${base}/health`, {
@@ -157,9 +166,15 @@ export function HardwareDetectButton({
         const body = (await response.json().catch(() => null)) as {
           printer?: string | null;
           ok?: boolean;
+          state?: string;
+          media?: string | null;
+          queue?: number;
         } | null;
         if (body?.printer) printers.push(body.printer);
         else if (body?.ok) printers.push("Printer default OS");
+        if (typeof body?.state === "string") printerState = body.state;
+        if (typeof body?.media === "string") printerMedia = body.media;
+        if (typeof body?.queue === "number") printerQueue = body.queue;
       } catch {
         /* token belum diisi: tetap boleh isi manual */
       }
@@ -182,9 +197,16 @@ export function HardwareDetectButton({
 
     if (reachable) {
       setState("ok");
+      const printerDetail = [
+        printerState ? `status ${printerState}` : null,
+        printerMedia ? `media ${printerMedia}` : null,
+        printerQueue ? `antrean ${printerQueue}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
       setMessage(
         printers.length + cameras.length > 0
-          ? `Bridge menjawab · ${printers.length} printer · ${cameras.length} kamera`
+          ? `Bridge menjawab · ${printers.length} printer · ${cameras.length} kamera${printerDetail ? ` · ${printerDetail}` : ""}`
           : "Bridge menjawab, tidak ada perangkat terdaftar. Isi nama manual."
       );
     } else {
@@ -193,7 +215,7 @@ export function HardwareDetectButton({
         "Bridge lokal tidak menjawab. Isi nama perangkat manual, atau nyalakan bridge di komputer booth."
       );
     }
-    onDetected({ printers, cameras });
+    onDetected({ printers, cameras, printerState, printerMedia, printerQueue });
   }, [bridgeUrl, onDetected]);
 
   return (

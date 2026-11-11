@@ -23,7 +23,9 @@ import {
   fetchDeviceSettings,
   fetchRuntimeStatus,
   finalizeLocalSession,
+  saveDeviceSettings,
 } from "@/components/kiosk/local-runtime";
+import { listCupsPrinters } from "@/lib/print/cups";
 import { canBootOffline, isNetworkFailure } from "@/components/kiosk/boot-offline";
 import { useConfigSync } from "@/components/kiosk/use-config-sync";
 import { useKioskLock, useHoldExit } from "@/components/kiosk/use-kiosk-lock";
@@ -153,6 +155,48 @@ export function KioskApp({
       alive = false;
     };
   }, [config.photobox.camera_settings.bridge_url]);
+
+  // Auto-connect printer: hanya mengisi `printer_name` yang KOSONG. Nilai yang
+  // sudah diisi operator tidak pernah ditimpa, dan bridge mati tidak menyimpan apa pun.
+  useEffect(() => {
+    if (!deviceSettings) return;
+    const print = (deviceSettings.print_settings ?? {}) as Record<string, unknown>;
+    if (print.mode !== "cups") return;
+    const existing = typeof print.printer_name === "string" ? print.printer_name.trim() : "";
+    if (existing) return;
+    let alive = true;
+    void (async () => {
+      const settings = {
+        ...print,
+        bridge_url: deviceSettings.camera_settings?.bridge_url,
+      } as Parameters<typeof listCupsPrinters>[0];
+      const result = await listCupsPrinters(settings);
+      if (!alive || !result.ok) return;
+      const preferred = result.printers.find((p) => p.default) ?? result.printers[0];
+      if (!preferred) return;
+      try {
+        const saved = await saveDeviceSettings({
+          print_settings: {
+            ...print,
+            mode: "cups",
+            printer_name: preferred.name,
+            photo: {
+              ...(typeof print.photo === "object" && print.photo
+                ? (print.photo as Record<string, unknown>)
+                : {}),
+              printer_name: preferred.name,
+            },
+          },
+        });
+        if (alive) setDeviceSettings(saved);
+      } catch {
+        // Best-effort: jangan blokir flow pelanggan karena setelan printer.
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [deviceSettings]);
   // Derive (bukan sync-effect): idle = config live; sesi = snapshot state.
   // useMemo: mergeSettings mengembalikan objek baru, dan CameraCapture memo
   // akan re-render tiap KioskApp render tanpa identitas yang stabil.

@@ -196,6 +196,143 @@ export async function listCupsPrinters(
   return { ok: true, printers };
 }
 
+export type PrinterState = "ok" | "busy" | "disabled" | "offline" | "unknown";
+
+export type PrinterStatusResult = {
+  ok: boolean;
+  state: PrinterState;
+  printer: string | null;
+  media: string | null;
+  queue: number;
+  reason?: string;
+};
+
+export type CupsJobSnapshot = {
+  id: string;
+  status: CupsPrintResult["status"];
+  attempts: number;
+  next_retry_at: string | null;
+  failure_kind: string | null;
+  error: string | null;
+};
+
+function asPrinterState(value: unknown): PrinterState {
+  return value === "ok" ||
+    value === "busy" ||
+    value === "disabled" ||
+    value === "offline" ||
+    value === "unknown"
+    ? value
+    : "unknown";
+}
+
+/**
+ * Status printer lewat bridge. Bridge mati bukan error: pemanggil hanya perlu
+ * tahu "tidak bisa dipastikan" dan tetap boleh menampilkan setelan.
+ */
+export async function fetchPrinterStatus(
+  settings: PrintSettingsInput | null | undefined,
+  printerName?: string
+): Promise<PrinterStatusResult | null> {
+  const query = printerName ? `?printer=${encodeURIComponent(printerName)}` : "";
+  let response: Response;
+  try {
+    response = await fetch(`${cupsBridgeUrl(settings)}/v1/printer/status${query}`, {
+      method: "GET",
+      headers: bridgeHeaders(),
+      cache: "no-store",
+      signal: AbortSignal.timeout(5_000),
+    });
+  } catch {
+    return null;
+  }
+  if (!response.ok) return null;
+  const body = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+  if (!body) return null;
+  return {
+    ok: body.ok === true,
+    state: asPrinterState(body.state),
+    printer: typeof body.printer === "string" ? body.printer : null,
+    media: typeof body.media === "string" ? body.media : null,
+    queue: typeof body.queue === "number" ? body.queue : 0,
+    reason:
+      typeof body.reason === "string"
+        ? body.reason
+        : typeof body.message === "string"
+          ? body.message
+          : undefined,
+  };
+}
+
+/** Aktifkan printer `disabled` (bukan `offline`/paper-out). */
+export async function enableCupsPrinter(
+  settings: PrintSettingsInput | null | undefined,
+  printerName?: string
+): Promise<PrinterStatusResult | null> {
+  let response: Response;
+  try {
+    response = await fetch(`${cupsBridgeUrl(settings)}/v1/printer/enable`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...bridgeHeaders() },
+      cache: "no-store",
+      body: JSON.stringify(printerName ? { printer: printerName } : {}),
+      signal: AbortSignal.timeout(8_000),
+    });
+  } catch {
+    return null;
+  }
+  if (!response.ok) return null;
+  const body = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+  if (!body) return null;
+  return {
+    ok: body.ok === true,
+    state: asPrinterState(body.state),
+    printer: typeof body.printer === "string" ? body.printer : null,
+    media: null,
+    queue: 0,
+  };
+}
+
+/** Status job antrean runtime; `null` = bridge tidak menjawab. */
+export async function fetchPrintJob(
+  settings: PrintSettingsInput | null | undefined,
+  jobId: string
+): Promise<CupsJobSnapshot | null> {
+  let response: Response;
+  try {
+    response = await fetch(
+      `${cupsBridgeUrl(settings)}/print/jobs/${encodeURIComponent(jobId)}`,
+      {
+        method: "GET",
+        headers: bridgeHeaders(),
+        cache: "no-store",
+        signal: AbortSignal.timeout(5_000),
+      }
+    );
+  } catch {
+    return null;
+  }
+  if (!response.ok) return null;
+  const body = (await response.json().catch(() => null)) as { job?: Record<string, unknown> } | null;
+  const job = body?.job;
+  if (!job || typeof job.id !== "string") return null;
+  return {
+    id: job.id,
+    status:
+      job.status === "queued" ||
+      job.status === "printing" ||
+      job.status === "submitted" ||
+      job.status === "done" ||
+      job.status === "failed"
+        ? job.status
+        : "submitted",
+    attempts: typeof job.attempts === "number" ? job.attempts : 0,
+    next_retry_at: typeof job.next_retry_at === "string" ? job.next_retry_at : null,
+    failure_kind: typeof job.failure_kind === "string" ? job.failure_kind : null,
+    error: typeof job.error === "string" ? job.error : null,
+  };
+}
+
 /**
  * Struk teks ke CUPS. Memakai rute `/printer/test` yang memang mencetak teks
  * ke printer (bridge belum punya rute struk khusus); `paper_width_mm` membuat

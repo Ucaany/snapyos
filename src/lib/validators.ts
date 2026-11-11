@@ -1256,6 +1256,9 @@ const heartbeatPrinterJobSchema = z
 
 const heartbeatPrinterSchema = heartbeatHardwareSchema.extend({
   mode: z.enum(["browser", "bluetooth", "cups"]).optional(),
+  state: z.enum(["ok", "busy", "disabled", "offline", "unknown"]).optional(),
+  media: z.string().trim().max(120).nullable().optional(),
+  queue: z.number().int().min(0).max(1_000_000).optional(),
   job: heartbeatPrinterJobSchema.nullable().optional(),
 });
 

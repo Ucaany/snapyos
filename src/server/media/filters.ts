@@ -6,9 +6,8 @@ import type { Sharp } from "sharp";
  * (photobooth-app) tanpa library tambahan.
  *
  * Satu sumber kebenaran ID filter: daftar di sini HARUS sama dengan
- * `FILTER_PRESETS` di `src/lib/kiosk-types.ts`. `tests/media-filters.test.ts`
- * menegakkan kesamaan itu, jadi filter yang ditambah di klien tidak bisa
- * diam-diam tidak dikenal server (dan sebaliknya).
+ * `FILTER_PRESETS` di `src/lib/kiosk-types.ts`, jadi filter yang ditambah di
+ * klien tidak bisa diam-diam tidak dikenal server (dan sebaliknya).
  *
  * `filterPlan()` murni (tanpa sharp) supaya bisa diuji tanpa native binding;
  * `applyFilter()` yang menyentuh sharp.

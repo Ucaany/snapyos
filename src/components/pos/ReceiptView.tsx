@@ -14,7 +14,7 @@ import {
 } from "@/lib/print/auto-print";
 import { encodeReceipt, receiptLines } from "@/lib/print/receipt";
 import { BluetoothPrintError, connectEscPos, requestEscPosDevice } from "@/lib/print/bluetooth";
-import { submitCupsReceipt } from "@/lib/print/cups";
+import { enableCupsPrinter, fetchPrinterStatus, submitCupsReceipt } from "@/lib/print/cups";
 import { SerialPrintError, writeEscPosSerial, writeEscPosSerialGranted } from "@/lib/print/serial";
 import { usePrintTransport } from "@/hooks/use-print-transport";
 import type { PosOrderDetail } from "@/server/pos-orders";
@@ -105,8 +105,21 @@ export function ReceiptView({
     setBtMessage(null);
     setLastTransport("cups");
     try {
+      const settings = { printer_name: order.printer_name_setting, bridge_url: order.bridge_url };
+      const status = await fetchPrinterStatus(settings, order.printer_name_setting || undefined);
+      if (status?.state === "offline") {
+        throw new Error(
+          `Printer ${status.printer || "default"} offline. Periksa kabel dan kertas struk.`
+        );
+      }
+      if (status?.state === "disabled") {
+        const enabled = await enableCupsPrinter(settings, order.printer_name_setting || undefined);
+        if (!enabled?.ok) {
+          throw new Error(`Printer ${status.printer || "default"} disabled dan gagal diaktifkan.`);
+        }
+      }
       await submitCupsReceipt(
-        { printer_name: order.printer_name_setting, bridge_url: order.bridge_url },
+        settings,
         {
           title: `STRUK ${order.number}`,
           lines: receiptLines(receiptData(), paperWidthMm),

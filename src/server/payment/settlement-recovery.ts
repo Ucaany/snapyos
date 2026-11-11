@@ -3,7 +3,7 @@
  * Penentu apakah runPaidSideEffects perlu (di)jalankan ulang untuk payment
  * ber-status paid: side effects dianggap lengkap hanya bila transaksi sudah
  * tercatat (transaction_id terisi) DAN checkout sudah paid.
- * Pure — dipakai tests/settlement-recovery.test.ts.
+ * Pure — dipakai jalur settlement produksi.
  * Dipindah dari `src/lib/settlement-recovery.ts` (Fase 5).
  */
 

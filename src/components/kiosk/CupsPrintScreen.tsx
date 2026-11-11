@@ -12,7 +12,15 @@ import {
   shouldAutoPrint,
 } from "@/lib/print-layout";
 import { useAutoPrintJob } from "@/hooks/use-auto-print-job";
-import { confirmCupsJob, retryCupsJob, submitCupsPrint } from "@/lib/print/cups";
+import {
+  confirmCupsJob,
+  enableCupsPrinter,
+  fetchPrintJob,
+  fetchPrinterStatus,
+  retryCupsJob,
+  submitCupsPrint,
+  type CupsJobSnapshot,
+} from "@/lib/print/cups";
 
 type Props = {
   photos: { blob: Blob }[];
@@ -50,6 +58,8 @@ export function CupsPrintScreen({
   const [confirming, setConfirming] = useState(false);
   // Job antrean runtime — retry memakai endpoint, bukan kirim ulang buta.
   const serverJobRef = useRef<string | null>(null);
+  const [pollJobId, setPollJobId] = useState<string | null>(null);
+  const [jobState, setJobState] = useState<CupsJobSnapshot["status"] | null>(null);
   const auto = shouldAutoPrint(printSettings);
   // Destructure: objek hook dibuat ulang tiap render, `claim` stabil via useCallback.
   const { claim: claimAutoPrint } = useAutoPrintJob({
@@ -101,6 +111,22 @@ export function CupsPrintScreen({
       const sheets = sheetIndexes.map((indexes) =>
         indexes.map((index) => photos[index]?.blob).filter((blob): blob is Blob => Boolean(blob))
       );
+      // Preflight: jangan kirim job yang pasti gagal. `offline` (kabel/paper-out)
+      // tidak di-enable otomatis; `disabled` boleh dibuka sekali.
+      const status = await fetchPrinterStatus(printSettings, printSettings?.printer_name ?? undefined);
+      if (status?.state === "offline") {
+        throw new Error(
+          `Printer ${status.printer || "default"} offline. Periksa kabel dan kertas, lalu coba lagi.`
+        );
+      }
+      if (status?.state === "disabled") {
+        const enabled = await enableCupsPrinter(printSettings, printSettings?.printer_name ?? undefined);
+        if (!enabled?.ok) {
+          throw new Error(
+            `Printer ${status.printer || "default"} disabled dan gagal diaktifkan. Periksa CUPS.`
+          );
+        }
+      }
       const result = await submitCupsPrint(printSettings, sheets, {
         sessionId: jobId,
         framed,
@@ -115,6 +141,8 @@ export function CupsPrintScreen({
         setState("error");
         return;
       }
+      setJobState(result.status);
+      if (result.job_id) setPollJobId(result.job_id);
       finish(true);
     } catch (cause) {
       printingRef.current = false;
@@ -149,6 +177,43 @@ export function CupsPrintScreen({
       printingRef.current = false;
     };
   }, [auto, claimAutoPrint, finish, jobId, plan.kind, print, reprint, retryKey]);
+
+  // Polling status job: 1,5 detik, maksimum 30 detik. Tidak pernah
+  // mengonfirmasi sendiri — `done` tetap milik operator.
+  useEffect(() => {
+    if (!pollJobId || state !== "done") return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const startedAt = Date.now();
+    const tick = async () => {
+      if (cancelled) return;
+      const job = await fetchPrintJob(printSettings, pollJobId);
+      if (cancelled) return;
+      if (job) {
+        setJobState(job.status);
+        if (job.status === "failed") {
+          setPollJobId(null);
+          setError(job.error || "CUPS gagal mencetak.");
+          setState("error");
+          return;
+        }
+        if (job.status === "done") {
+          setPollJobId(null);
+          return;
+        }
+      }
+      if (Date.now() - startedAt >= 30_000) {
+        setPollJobId(null);
+        return;
+      }
+      timer = setTimeout(() => void tick(), 1_500);
+    };
+    timer = setTimeout(() => void tick(), 1_500);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [pollJobId, printSettings, state]);
 
   /** Operator memastikan kertas keluar → job ditutup sebagai `done`. */
   const confirmPaperOut = async () => {
@@ -222,7 +287,11 @@ export function CupsPrintScreen({
               {`${totalSheets} LEMBAR · ${page.widthMm} × ${page.heightMm} MM · ${fit.toUpperCase()}`}
             </p>
             <p className="max-w-[44ch] text-[10px] uppercase leading-relaxed tracking-[0.1em] text-muted-foreground">
-              Spooler menerima job. Konfirmasi setelah kertas benar-benar keluar.
+              {jobState === "queued"
+                ? "Menunggu antrean printer."
+                : jobState === "printing"
+                  ? "Mencetak."
+                  : "Menunggu kertas keluar. Konfirmasi setelah kertas benar-benar keluar."}
             </p>
             <div className="flex flex-wrap justify-center gap-2.5">
               <Button

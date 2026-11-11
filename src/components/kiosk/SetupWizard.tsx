@@ -17,10 +17,19 @@ import {
   cameraBridgeUrl,
   captureFromBridge,
   checkCameraBridge,
+  fetchBridgeCameraStatus,
   resolveCameraProvider,
 } from "@/lib/camera-provider";
 import { apiPost, KioskError } from "@/components/kiosk/api";
 import { BridgeTokenField } from "@/components/kiosk/BridgeTokenField";
+import { saveDeviceSettings } from "@/components/kiosk/local-runtime";
+import {
+  enableCupsPrinter,
+  fetchPrinterStatus,
+  listCupsPrinters,
+  type PrinterListItem,
+  type PrinterStatusResult,
+} from "@/lib/print/cups";
 
 type Props = {
   deviceToken: string;
@@ -63,6 +72,14 @@ export function SetupWizard({
 
   // print state
   const [printConfirmed, setPrintConfirmed] = useState(false);
+  const [printers, setPrinters] = useState<PrinterListItem[]>([]);
+  const [selectedPrinter, setSelectedPrinter] = useState<string>(
+    printSettings.printer_name ?? ""
+  );
+  const [printerStatus, setPrinterStatus] = useState<PrinterStatusResult | null>(null);
+  const [printerBusy, setPrinterBusy] = useState(false);
+  const [printerError, setPrinterError] = useState<string | null>(null);
+  const [cameraModel, setCameraModel] = useState<string | null>(null);
 
   const profile = getDeviceProfile();
   const cameraProvider = resolveCameraProvider(cameraSettings);
@@ -177,6 +194,8 @@ export function SetupWizard({
         throw new Error(result.message || "Kamera bridge tidak terdeteksi.");
       setResLabel("BRIDGE");
       setCameraLive(true);
+      const status = await fetchBridgeCameraStatus(cameraSettings);
+      setCameraModel(status?.model ?? null);
       await report({
         camera: { provider: "bridge", status: "ok", bridge_url: cameraBridgeUrl(cameraSettings) },
       });
@@ -255,6 +274,69 @@ export function SetupWizard({
     setStage("print");
   }
 
+  async function detectPrinters() {
+    setPrinterBusy(true);
+    setPrinterError(null);
+    const result = await listCupsPrinters(printSettings);
+    setPrinterBusy(false);
+    if (!result.ok) {
+      setPrinterError(result.reason);
+      return;
+    }
+    setPrinters(result.printers);
+    const current = result.printers.some((p) => p.name === selectedPrinter);
+    if (!current) {
+      const preferred = result.printers.find((p) => p.default) ?? result.printers[0];
+      if (preferred) setSelectedPrinter(preferred.name);
+    }
+  }
+
+  async function savePrinter(name: string) {
+    if (!name) return;
+    setPrinterBusy(true);
+    setPrinterError(null);
+    try {
+      await saveDeviceSettings({
+        print_settings: {
+          ...printSettings,
+          mode: "cups",
+          printer_name: name,
+          photo: {
+            ...(typeof printSettings.photo === "object" && printSettings.photo
+              ? printSettings.photo
+              : {}),
+            printer_name: name,
+          },
+        },
+      });
+      setSelectedPrinter(name);
+      setPrinterStatus(await fetchPrinterStatus(printSettings, name));
+    } catch (error) {
+      setPrinterError(
+        error instanceof Error ? error.message : "Gagal menyimpan printer ke runtime lokal."
+      );
+    } finally {
+      setPrinterBusy(false);
+    }
+  }
+
+  async function activatePrinter() {
+    setPrinterBusy(true);
+    setPrinterError(null);
+    const result = await enableCupsPrinter(printSettings, selectedPrinter || undefined);
+    setPrinterBusy(false);
+    if (!result) {
+      setPrinterError("Bridge printer tidak menjawab. Pastikan runtime lokal berjalan.");
+      return;
+    }
+    setPrinterStatus(result);
+  }
+
+  const wizardPrintSettings: PrintSettings = {
+    ...printSettings,
+    ...(selectedPrinter ? { printer_name: selectedPrinter } : {}),
+  };
+
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center gap-7 overflow-y-auto bg-bg px-5 py-8 md:px-8 md:py-10">
       <header className="flex w-full max-w-[760px] flex-col items-start gap-2 border-b-2 border-ink/15 pb-5">
@@ -299,6 +381,19 @@ export function SetupWizard({
               {cameraCaptureTested && (
                 <p role="status" className="font-mono text-xs font-bold uppercase">
                   Kamera bridge siap · capture berhasil
+                </p>
+              )}
+              {cameraModel && (
+                <p className="font-mono text-xs uppercase tracking-[0.08em]">
+                  {`Model: ${cameraModel} · `}
+                  <a
+                    className="underline underline-offset-4"
+                    href={`/kamera?q=${encodeURIComponent(cameraModel)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Lihat kompatibilitas
+                  </a>
                 </p>
               )}
               {cameraError && (
@@ -428,15 +523,78 @@ export function SetupWizard({
           ) : (
             <>
               {resolvePrintMode(printSettings) === "cups" && (
-                <div className="border-2 border-ink bg-surface p-5 shadow-hard md:p-6">
+                <div className="flex flex-col gap-4 border-2 border-ink bg-surface p-5 shadow-hard md:p-6">
                   <BridgeTokenField />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      variant="outline"
+                      disabled={printerBusy}
+                      onClick={() => void detectPrinters()}
+                    >
+                      Deteksi printer
+                    </Button>
+                    {selectedPrinter && (
+                      <Button
+                        className="bg-accent"
+                        disabled={printerBusy}
+                        onClick={() => void savePrinter(selectedPrinter)}
+                      >
+                        Simpan printer
+                      </Button>
+                    )}
+                  </div>
+                  {printers.length > 0 && (
+                    <ul className="flex flex-col gap-2">
+                      {printers.map((printer) => (
+                        <li key={printer.name}>
+                          <label className="flex min-h-11 cursor-pointer items-center gap-3 border-2 border-ink/20 px-3 py-2">
+                            <input
+                              type="radio"
+                              name="cups-printer"
+                              value={printer.name}
+                              checked={selectedPrinter === printer.name}
+                              onChange={() => setSelectedPrinter(printer.name)}
+                            />
+                            <span className="font-mono text-xs uppercase tracking-[0.08em]">
+                              {printer.name}
+                            </span>
+                            {printer.default && (
+                              <span className="border border-ink px-1.5 py-0.5 font-mono text-[10px] uppercase">
+                                default
+                              </span>
+                            )}
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {printerStatus && (
+                    <p role="status" className="font-mono text-xs uppercase tracking-[0.08em]">
+                      {`Status: ${printerStatus.state}${printerStatus.media ? ` · media ${printerStatus.media}` : ""}${printerStatus.queue ? ` · antrean ${printerStatus.queue}` : ""}`}
+                    </p>
+                  )}
+                  {printerStatus?.state === "disabled" && (
+                    <Button
+                      variant="outline"
+                      className="w-fit"
+                      disabled={printerBusy}
+                      onClick={() => void activatePrinter()}
+                    >
+                      Aktifkan printer
+                    </Button>
+                  )}
+                  {printerError && (
+                    <p role="alert" className="border-2 border-destructive bg-destructive/10 p-3 text-sm">
+                      {printerError}
+                    </p>
+                  )}
                 </div>
               )}
               <PrintTestPanel
                 mode={resolvePrintMode(printSettings)}
                 paperWidthMm={printSettings.bluetooth_paper_width_mm === 58 ? 58 : 80}
                 sample={{ title: "UJI CETAK", lines: ["SETUP BOOTH", "SNAP YOS"] }}
-                printSettings={printSettings}
+                printSettings={wizardPrintSettings}
                 onReport={async (result) => {
                   setPrintConfirmed(result.confirmed);
                   await report({

@@ -14,6 +14,9 @@ export type PrinterDiagnostics = Pick<PrinterHealth, "ok" | "printer"> & {
   adapter: string;
   mock: boolean;
   output?: string;
+  state?: PrinterHealth["state"];
+  media?: string | null;
+  queue?: number;
   last_error?: string;
   mode?: PrinterMode;
   job?: PrintJobStats | null;
@@ -50,6 +53,9 @@ export type LocalDiagnosticsReport = {
     printer: Pick<PrinterHealth, "ok" | "printer"> & {
       adapter: string;
       mock: boolean;
+      state?: PrinterHealth["state"];
+      media?: string | null;
+      queue?: number;
       last_error?: string;
       mode?: PrinterMode;
       job?: PrintJobStats | null;
@@ -80,6 +86,9 @@ export type CloudHeartbeatSummary = {
   printer: {
     adapter: string;
     ok: boolean;
+    state?: PrinterHealth["state"];
+    media?: string | null;
+    queue?: number;
     mode?: PrinterMode;
     job?: PrintJobStats | null;
   };
@@ -208,6 +217,13 @@ export function buildCloudHeartbeat(report: LocalDiagnosticsReport): CloudHeartb
     printer: {
       adapter: report.hardware.printer.adapter,
       ok: report.hardware.printer.ok,
+      ...(report.hardware.printer.state ? { state: report.hardware.printer.state } : {}),
+      ...(report.hardware.printer.media !== undefined
+        ? { media: report.hardware.printer.media }
+        : {}),
+      ...(report.hardware.printer.queue !== undefined
+        ? { queue: report.hardware.printer.queue }
+        : {}),
       ...(report.hardware.printer.mode ? { mode: report.hardware.printer.mode } : {}),
       ...(report.hardware.printer.job !== undefined ? { job: report.hardware.printer.job } : {}),
     },
@@ -237,6 +253,7 @@ export function buildManualDiagnosticsExport(report: LocalDiagnosticsReport): st
         connected: report.hardware.camera.connected,
         mock: report.hardware.camera.mock,
         model: report.hardware.camera.model,
+        port: report.hardware.camera.port,
       },
       camera_stream: report.hardware.camera_stream
         ? {
@@ -244,12 +261,16 @@ export function buildManualDiagnosticsExport(report: LocalDiagnosticsReport): st
             connected: report.hardware.camera_stream.connected,
             mock: report.hardware.camera_stream.mock,
             model: report.hardware.camera_stream.model,
+            port: report.hardware.camera_stream.port,
           }
         : null,
       printer: {
         adapter: report.hardware.printer.adapter,
         ok: report.hardware.printer.ok,
         mock: report.hardware.printer.mock,
+        state: report.hardware.printer.state,
+        media: report.hardware.printer.media,
+        queue: report.hardware.printer.queue,
       },
     },
     last_errors: safeErrors(report.last_errors),

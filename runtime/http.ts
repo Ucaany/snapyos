@@ -131,10 +131,14 @@ export type CommandResult = { stdout: Buffer; stderr: string };
 export function runCommand(
   binary: string,
   args: string[],
-  timeoutMs: number
+  timeoutMs: number,
+  env?: Record<string, string>
 ): Promise<CommandResult> {
   return new Promise((resolve, reject) => {
-    const child = spawn(binary, args, { stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(binary, args, {
+      stdio: ["ignore", "pipe", "pipe"],
+      ...(env ? { env: { ...process.env, ...env } } : {}),
+    });
     const stdout: Buffer[] = [];
     const stderr: Buffer[] = [];
     const timer = setTimeout(() => {

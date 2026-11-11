@@ -24,7 +24,7 @@
 -- migrasi asal fungsi. Idempotent — aman diulang.
 --
 -- STATUS: ditulis + divalidasi statis (tests/rpc-search-path.test.ts), BELUM
--- di-apply ke Supabase. Lihat docs/18-audit-report.md §"prepared, not executed".
+-- di-apply ke Supabase (status: prepared, not executed).
 --
 -- Rollback: 0071_rpc_search_path_hardening_rollback.sql.
 

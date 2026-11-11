@@ -93,6 +93,33 @@ export async function checkCameraBridge(
   return (await response.json()) as { ok: boolean; camera: boolean; message?: string };
 }
 
+/** Model/port kamera yang benar-benar terpasang (`GET /v1/camera/status`). */
+export async function fetchBridgeCameraStatus(
+  settings?: CameraProviderSettings | null
+): Promise<{ connected: boolean; model?: string; port?: string } | null> {
+  try {
+    const response = await fetchBridge(
+      `${cameraBridgeUrl(settings)}/v1/camera/status`,
+      { method: "GET", headers: bridgeHeaders(), cache: "no-store" },
+      5_000
+    );
+    if (!response.ok) return null;
+    const body = (await response.json().catch(() => null)) as {
+      connected?: unknown;
+      model?: unknown;
+      port?: unknown;
+    } | null;
+    if (!body) return null;
+    return {
+      connected: body.connected === true,
+      model: typeof body.model === "string" ? body.model : undefined,
+      port: typeof body.port === "string" ? body.port : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function captureFromBridge(
   settings?: CameraProviderSettings | null,
   signal?: AbortSignal

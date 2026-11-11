@@ -394,23 +394,6 @@ create index idx_templates_category_id on templates (category_id, is_active);
 create trigger trg_templates_updated_at before update on templates
   for each row execute function set_updated_at();
 
-create table stickers (
-  id uuid primary key default gen_random_uuid(),
-  business_id uuid not null references businesses (id) on delete cascade,
-  name text not null,
-  category text not null default 'text'
-    check (category in ('hearts', 'stars', 'sparkles', 'emoji', 'doodles', 'event', 'text')),
-  file_url text not null,
-  is_active boolean not null default true
-);
-create index idx_stickers_business on stickers (business_id, is_active);
-
-create table package_templates (
-  package_id uuid not null references packages (id) on delete cascade,
-  template_id uuid not null references templates (id) on delete cascade,
-  primary key (package_id, template_id)
-);
-
 create table package_outlets (
   package_id uuid not null references packages (id) on delete cascade,
   outlet_id uuid not null references outlets (id) on delete cascade,
@@ -965,39 +948,6 @@ create index idx_customers_business on customers (business_id);
 create trigger trg_customers_updated_at before update on customers
   for each row execute function set_updated_at();
 
-create table bookings (
-  id uuid primary key default gen_random_uuid(),
-  business_id uuid not null references businesses (id) on delete cascade,
-  customer_name text not null,
-  customer_contact text,
-  -- docs/07 §7.6: interval timestamptz, `date`+`time` DILARANG. Simpan UTC,
-  -- tampilkan sesuai businesses.timezone.
-  starts_at timestamptz not null,
-  ends_at timestamptz not null,
-  package_id uuid references packages (id) on delete set null,
-  outlet_id uuid references outlets (id) on delete set null,
-  photobox_id uuid references photoboxes (id) on delete set null,
-  status text not null default 'pending'
-    check (status in ('pending', 'confirmed', 'completed', 'cancelled')),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  constraint bookings_interval_valid check (ends_at > starts_at),
-  constraint bookings_resource_required check (photobox_id is not null or outlet_id is not null)
-);
-create index idx_bookings_business_date on bookings (business_id, starts_at);
--- Anti-overlap per resource (docs/07 §7.6): level photobox & level outlet
--- (outlet-level = photobox_id null). Konflik lintas level (booking outlet vs
--- booking photobox di outlet itu) dicek server-side — BOOKING_SLOT_CONFLICT.
-create extension if not exists btree_gist;
-alter table bookings add constraint bookings_no_overlap_photobox
-  exclude using gist (photobox_id with =, tstzrange(starts_at, ends_at) with &&)
-  where (photobox_id is not null and status in ('pending', 'confirmed', 'completed'));
-alter table bookings add constraint bookings_no_overlap_outlet
-  exclude using gist (outlet_id with =, tstzrange(starts_at, ends_at) with &&)
-  where (photobox_id is null and status in ('pending', 'confirmed', 'completed'));
-create trigger trg_bookings_updated_at before update on bookings
-  for each row execute function set_updated_at();
-
 create table expenses (
   id uuid primary key default gen_random_uuid(),
   business_id uuid not null references businesses (id) on delete cascade,
@@ -1087,12 +1037,6 @@ create table events (
 create index idx_events_business on events (business_id);
 create trigger trg_events_updated_at before update on events
   for each row execute function set_updated_at();
-
-create table event_templates (
-  event_id uuid not null references events (id) on delete cascade,
-  template_id uuid not null references templates (id) on delete cascade,
-  primary key (event_id, template_id)
-);
 
 -- ============================================================================
 -- 7.9 Admin / Platform
@@ -1372,18 +1316,6 @@ alter table invoice_payments
 -- ============================================================================
 -- Device logs — riwayat per device, auto-cleanup 30d via cron (0027)
 -- ============================================================================
-
-create table device_logs (
-  id uuid primary key default gen_random_uuid(),
-  device_id uuid not null references devices (id) on delete cascade,
-  level text not null default 'info'
-    check (level in ('debug', 'info', 'warn', 'error')),
-  category text not null default 'system',
-  message text not null,
-  metadata jsonb,
-  created_at timestamptz not null default now()
-);
-create index idx_device_logs_device_time on device_logs (device_id, created_at desc);
 
 -- ============================================================================
 -- Storage buckets (docs/09 §9.7)
@@ -2105,8 +2037,6 @@ alter table if exists activation_codes enable row level security;
 alter table if exists packages enable row level security;
 alter table if exists template_categories enable row level security;
 alter table if exists templates enable row level security;
-alter table if exists stickers enable row level security;
-alter table if exists package_templates enable row level security;
 alter table if exists package_outlets enable row level security;
 alter table if exists package_photoboxes enable row level security;
 alter table if exists business_template_purchases enable row level security;
@@ -2121,14 +2051,12 @@ alter table if exists payments enable row level security;
 alter table if exists invoice_payments enable row level security;
 alter table if exists payment_webhooks enable row level security;
 alter table if exists customers enable row level security;
-alter table if exists bookings enable row level security;
 alter table if exists expenses enable row level security;
 alter table if exists vouchers enable row level security;
 alter table if exists voucher_packages enable row level security;
 alter table if exists voucher_outlets enable row level security;
 alter table if exists voucher_usages enable row level security;
 alter table if exists events enable row level security;
-alter table if exists event_templates enable row level security;
 alter table if exists platform_settings enable row level security;
 alter table if exists audit_logs enable row level security;
 alter table if exists support_tickets enable row level security;
@@ -2138,7 +2066,6 @@ alter table if exists broadcast_recipients enable row level security;
 alter table if exists lifecycle_emails enable row level security;
 alter table if exists subscription_promos enable row level security;
 alter table if exists payment_credentials enable row level security;
-alter table if exists device_logs enable row level security;
 alter table if exists storage_objects enable row level security;
 alter table if exists storage_usage enable row level security;
 alter table if exists installer_catalog enable row level security;
@@ -2146,28 +2073,28 @@ alter table if exists installer_catalog enable row level security;
 revoke all on users, auth_sessions, businesses, business_members, business_settings, plans,
   subscriptions, invoices, add_ons, subscription_add_ons, outlets, photoboxes,
   member_photoboxes, devices, activation_codes, packages, template_categories,
-  templates, stickers, package_templates, package_outlets, package_photoboxes,
+  templates, package_outlets, package_photoboxes,
   business_template_purchases, sessions, photos, pos_products, pos_orders,
   pos_order_items, transactions, checkout_sessions, payments, invoice_payments,
-  payment_webhooks, customers, bookings, expenses, vouchers, voucher_packages,
-  voucher_outlets, voucher_usages, events, event_templates, platform_settings,
+  payment_webhooks, customers, expenses, vouchers, voucher_packages,
+  voucher_outlets, voucher_usages, events, platform_settings,
   audit_logs, support_tickets, support_ticket_replies, broadcast_campaigns,
   broadcast_recipients, lifecycle_emails, subscription_promos,
-  payment_credentials, device_logs, storage_objects, storage_usage,
+  payment_credentials, storage_objects, storage_usage,
   installer_catalog, subscription_intent_failures
   from anon, authenticated;
 
 grant all on users, auth_sessions, businesses, business_members, business_settings, plans,
   subscriptions, invoices, add_ons, subscription_add_ons, outlets, photoboxes,
   member_photoboxes, devices, activation_codes, packages, template_categories,
-  templates, stickers, package_templates, package_outlets, package_photoboxes,
+  templates, package_outlets, package_photoboxes,
   business_template_purchases, sessions, photos, pos_products, pos_orders,
   pos_order_items, transactions, checkout_sessions, payments, invoice_payments,
-  payment_webhooks, customers, bookings, expenses, vouchers, voucher_packages,
-  voucher_outlets, voucher_usages, events, event_templates, platform_settings,
+  payment_webhooks, customers, expenses, vouchers, voucher_packages,
+  voucher_outlets, voucher_usages, events, platform_settings,
   audit_logs, support_tickets, support_ticket_replies, broadcast_campaigns,
   broadcast_recipients, lifecycle_emails, subscription_promos,
-  payment_credentials, device_logs, storage_objects, storage_usage,
+  payment_credentials, storage_objects, storage_usage,
   installer_catalog, subscription_intent_failures
   to service_role;
 
@@ -2207,10 +2134,6 @@ drop policy if exists svc_all on template_categories;
 create policy svc_all on template_categories for all to service_role using (true) with check (true);
 drop policy if exists svc_all on templates;
 create policy svc_all on templates for all to service_role using (true) with check (true);
-drop policy if exists svc_all on stickers;
-create policy svc_all on stickers for all to service_role using (true) with check (true);
-drop policy if exists svc_all on package_templates;
-create policy svc_all on package_templates for all to service_role using (true) with check (true);
 drop policy if exists svc_all on package_outlets;
 create policy svc_all on package_outlets for all to service_role using (true) with check (true);
 drop policy if exists svc_all on package_photoboxes;
@@ -2239,8 +2162,6 @@ drop policy if exists svc_all on payment_webhooks;
 create policy svc_all on payment_webhooks for all to service_role using (true) with check (true);
 drop policy if exists svc_all on customers;
 create policy svc_all on customers for all to service_role using (true) with check (true);
-drop policy if exists svc_all on bookings;
-create policy svc_all on bookings for all to service_role using (true) with check (true);
 drop policy if exists svc_all on expenses;
 create policy svc_all on expenses for all to service_role using (true) with check (true);
 drop policy if exists svc_all on vouchers;
@@ -2253,8 +2174,6 @@ drop policy if exists svc_all on voucher_usages;
 create policy svc_all on voucher_usages for all to service_role using (true) with check (true);
 drop policy if exists svc_all on events;
 create policy svc_all on events for all to service_role using (true) with check (true);
-drop policy if exists svc_all on event_templates;
-create policy svc_all on event_templates for all to service_role using (true) with check (true);
 drop policy if exists svc_all on platform_settings;
 create policy svc_all on platform_settings for all to service_role using (true) with check (true);
 drop policy if exists svc_all on audit_logs;
@@ -2273,8 +2192,6 @@ drop policy if exists svc_all on subscription_promos;
 create policy svc_all on subscription_promos for all to service_role using (true) with check (true);
 drop policy if exists svc_all on payment_credentials;
 create policy svc_all on payment_credentials for all to service_role using (true) with check (true);
-drop policy if exists svc_all on device_logs;
-create policy svc_all on device_logs for all to service_role using (true) with check (true);
 drop policy if exists svc_all on storage_objects;
 create policy svc_all on storage_objects for all to service_role using (true) with check (true);
 drop policy if exists svc_all on storage_usage;
