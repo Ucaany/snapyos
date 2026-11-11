@@ -1,23 +1,34 @@
 name: Booth Windows
 
-# Build + test aplikasi booth di runner Windows, lalu:
-#   - push/PR        → artefak build (14 hari)
-#   - tag v*         → GitHub Release berisi ZIP siap pakai (tanpa .NET SDK di mesin operator)
+# Build + test aplikasi booth Windows (WPF) di runner Windows.
 #
-# MSIX + code signing ditambahkan pada fase 5 (booth/plan.md).
+# STATUS: FROZEN. Windows native ditahan; target aktif = PWA kiosk Android/web
+# (lihat windows/README.md). Karena itu workflow ini TIDAK berjalan otomatis
+# pada push/PR — hanya manual lewat "Run workflow", supaya tidak memboroskan
+# menit CI untuk kode yang sedang tidak dikembangkan.
+#
+# Struktur nyata yang dibangun:
+#   - solusi   : windows/SnapyOS.sln (15 project, target net10.0-windows)
+#   - paket    : windows/deploy/Package-SnapyOS-Kiosk.ps1
+#   - gate     : windows/deploy/Test-SnapyOS-Readiness.ps1
+#   - keluaran : windows/SnapyOS-Kiosk-win-x64-v<versi>.zip
+#
+# Catatan: workflow lama menunjuk folder `booth/` dan project `SnapyOS.Booth.*`
+# yang tidak pernah ada di repo ini, sehingga selalu gagal bila dijalankan.
 
 on:
-  push:
-    branches: [main]
-    tags: ["v*"]
-    paths:
-      - "booth/**"
-      - ".github/workflows/booth-windows.yml"
-  pull_request:
-    paths:
-      - "booth/**"
-      - ".github/workflows/booth-windows.yml"
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Versi rilis (mis. 0.1.6). Kosong = 0.0.0-dev"
+        required: false
+        default: "0.0.0-dev"
+      self_contained:
+        description: "Bundle .NET runtime (wajib untuk mesin tanpa .NET 10)"
+        type: boolean
+        default: true
+  push:
+    tags: ["v*"]
 
 concurrency:
   group: booth-windows-${{ github.ref }}
@@ -30,134 +41,83 @@ jobs:
   build:
     runs-on: windows-latest
     timeout-minutes: 40
-    defaults:
-      run:
-        shell: pwsh
-        working-directory: booth
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: "8.0.x"
+          dotnet-version: "10.0.x"
           cache: true
-          cache-dependency-path: booth/**/*.csproj
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: booth/ui/package-lock.json
+          cache-dependency-path: windows/**/*.csproj
 
       - name: Versi toolchain
         run: |
           "dotnet SDK : " + (dotnet --version)
-          "node       : " + (node --version)
-          "npm        : " + (npm --version)
-          $edge = "HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
-          $wv2 = if (Test-Path $edge) { (Get-ItemProperty $edge).pv } else { "tidak terdeteksi" }
-          "WebView2   : $wv2"
+          "runner OS  : " + $env:RUNNER_OS
 
-      - name: Regenerasi kontrak setelan
-        working-directory: .
-        run: node booth/contracts/generate.mjs
-
-      - name: Kontrak tidak basi
-        working-directory: .
-        run: git diff --exit-code src/lib/generated/device-settings.gen.ts booth/src/SnapyOS.Booth.Contracts/DeviceSettings.g.cs
-
-      - name: Build UI React
-        working-directory: booth/ui
+      # Skrip paket melakukan restore → build Release → dotnet test sendiri,
+      # jadi tidak ada langkah restore/build terpisah di sini (hindari dobel).
+      - name: Tentukan versi
+        id: ver
+        shell: pwsh
         run: |
-          npm ci
-          npm run build
+          $v = "${{ github.event.inputs.version }}"
+          if ([string]::IsNullOrWhiteSpace($v)) { $v = "0.0.0-dev" }
+          if ("${{ github.ref_type }}" -eq "tag") { $v = "${{ github.ref_name }}".TrimStart("v") }
+          "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "Versi: $v"
 
-      - name: Build solusi
-        run: dotnet build SnapyOS.Booth.sln -c Debug -p:SkipUiBuild=true
-
-      - name: Tes xUnit
-        run: dotnet test tests/SnapyOS.Booth.Tests/SnapyOS.Booth.Tests.csproj -c Debug --no-build --logger "console;verbosity=normal"
-
-      - name: Publish (self-contained win-x64)
-        run: dotnet publish src/SnapyOS.Booth.Shell/SnapyOS.Booth.Shell.csproj -c Release -r win-x64 --self-contained true -p:SkipUiBuild=true -o dist/booth
-
-      - name: Verifikasi keluaran
+      # Satu build saja: skrip gate memanggil Package-SnapyOS-Kiosk.ps1
+      # (restore → build Release → dotnet test → publish → manifest → ZIP),
+      # lalu memverifikasi isi manifest, checksum, dan rencana installer.
+      - name: Paket + gate kesiapan
+        shell: pwsh
         run: |
-          $exe = "dist/booth/SnapyOS.Booth.Shell.exe"
-          $ui = "dist/booth/Assets/ui/index.html"
-          if (-not (Test-Path $exe)) { throw "EXE tidak ada: $exe" }
-          if (-not (Test-Path $ui)) { throw "UI tidak ikut publish: $ui" }
-          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
-          $count = (Get-ChildItem dist/booth -Recurse -File).Count
-          $lines = @(
-            "versi: ${{ github.sha }}",
-            "exe sha256: $hash",
-            "berkas di dist/booth: $count"
-          )
-          $lines | Tee-Object -FilePath dist/booth/SHA256SUMS.txt
-          $lines | ForEach-Object { $_ }
+          # $args adalah automatic variable PowerShell — jangan dipakai sebagai nama.
+          $sc = "${{ github.event.inputs.self_contained }}"
+          $gateArgs = @("-Version", "${{ steps.ver.outputs.version }}")
+          if ($sc -ne "false") { $gateArgs += "-SelfContained" }
+          & .\windows\deploy\Test-SnapyOS-Readiness.ps1 @gateArgs
 
       - name: Unggah artefak
         uses: actions/upload-artifact@v4
         with:
-          name: snapyos-booth-win-x64-${{ github.sha }}
-          path: booth/dist/booth
+          name: snapyos-kiosk-win-x64-${{ steps.ver.outputs.version }}
+          path: windows/SnapyOS-Kiosk-win-x64-v${{ steps.ver.outputs.version }}.zip
           if-no-files-found: error
           retention-days: 14
 
-      - name: Kemas ZIP rilis
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          $tag = "${{ github.ref_name }}"
-          $zip = "dist/snapyos-booth-$tag-win-x64.zip"
-          Compress-Archive -Path dist/booth/* -DestinationPath $zip -CompressionLevel Optimal
-          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
-          "$hash  snapyos-booth-$tag-win-x64.zip" | Set-Content "dist/$zip.sha256" -Encoding ascii
-          "ZIP: $zip"
-          "SHA-256: $hash"
-
       - name: Terbitkan GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            booth/dist/snapyos-booth-${{ github.ref_name }}-win-x64.zip
-            booth/dist/snapyos-booth-${{ github.ref_name }}-win-x64.zip.sha256
+          files: windows/SnapyOS-Kiosk-win-x64-v${{ steps.ver.outputs.version }}.zip
           body: |
             Rilis aplikasi booth SNAPY OS ${{ github.ref_name }} (Windows x64).
 
             ## Cara pakai (tanpa .NET SDK)
 
-            1. Unduh `snapyos-booth-${{ github.ref_name }}-win-x64.zip`.
-            2. Ekstrak ke folder permanen, mis. `C:\SNAPYOS\booth`.
-            3. Jalankan `Jalankan-Booth.cmd`.
-
-            Tidak perlu memasang .NET 8 SDK — runtime sudah dibundel (self-contained).
+            1. Unduh `SnapyOS-Kiosk-win-x64-v${{ steps.ver.outputs.version }}.zip`.
+            2. Ekstrak ke folder permanen, mis. `C:\SNAPYOS\kiosk`.
+            3. Jalankan `Install-SnapyOS-Kiosk.ps1 -Action Detect` lebih dulu,
+               lalu `-Action Install` di PowerShell elevated.
 
             ## Prasyarat mesin
 
             - Windows 10 1809+ / Windows 11, x64.
-            - WebView2 Runtime. Sudah ada di Windows 11 dan Windows 10 yang
-              terbarui. Bila aplikasi menolak start, pasang "Evergreen Runtime"
-              dari Microsoft.
-
-            ## Mode uji (mock)
-
-            `Jalankan-Booth.cmd` memakai adapter mock bila dipanggil dengan `-Mock`.
-            Mock **wajib** `SNAPYOS_ALLOW_MOCK=1` dan dilabeli di UI; jangan dipakai
-            untuk melayani pelanggan.
+            - WebView2 Runtime (sudah ada di Windows 11 dan Windows 10 terbarui).
 
             ## Verifikasi unduhan
 
-            Cocokkan SHA-256 ZIP dengan berkas `.sha256` di rilis ini:
+            Cocokkan SHA-256 ZIP dengan baris `SHA256:` yang dicetak skrip paket:
 
             ```powershell
-            Get-FileHash .\snapyos-booth-${{ github.ref_name }}-win-x64.zip -Algorithm SHA256
+            Get-FileHash .\SnapyOS-Kiosk-win-x64-v${{ steps.ver.outputs.version }}.zip -Algorithm SHA256
             ```
           fail_on_unmatched_files: true
 
-      - name: Catat hasil verifikasi
+      - name: Catat hasil
         if: always()
         run: |
           @(
