@@ -956,7 +956,6 @@ export function KioskApp({
       {step === "template" && selectedPackage && (
         <KioskScreenRenderer {...screenConfig("template")}>
           <TemplatePicker
-            packageId={selectedPackage.id}
             packagePhotoCount={selectedPackage.photo_count}
             packagePrintCount={selectedPackage.print_count}
             businessSlug={businessSlug}

@@ -186,15 +186,15 @@ Konfigurasi kiosk (`branding.kiosk`) mencakup:
 
 ## 5.4 Choose Template
 
-**Purpose:** Customer memilih frame/template sesuai package.
+**Purpose:** Customer memilih frame/template. Semua template aktif berlaku untuk semua paket.
 
 > v2: tahap ini terjadi **setelah pembayaran sukses (paid)** — bagian dari sesi foto yang sudah dibayar.
 
 **UI:** grid preview template — thumbnail = **preview frame dengan slot terisi foto sample** (render engine composite, `15-template-builder.md`). Semua template aktif tampil untuk paket mana pun. Bila template memiliki slot, jumlah capture mengikuti `template.slot_count`; template legacy tanpa slot memakai `package.photo_count`. Slot yang perlu mengulang foto diisi bergiliran (`src/lib/template-fit.ts`).
 
-**Data:** `templates` (+ `layout` slot) via `package_templates` join.
+**Data:** `templates` (+ `layout` slot). Tidak ada lagi join `package_templates` — tabel dorman sejak 2026-11-11.
 
-**API:** `GET /api/v1/public/:businessSlug/templates` (kiosk memanggil tanpa `?package` lalu memfilter di klien; `?package` tetap didukung).
+**API:** `GET /api/v1/public/:businessSlug/templates` (kiosk memanggil tanpa `?package`; `?package` tetap diterima tetapi diabaikan, tidak memfilter).
 
 **Cache & offline (2026-11-08, PWA Android/web):**
 

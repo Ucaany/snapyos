@@ -12,14 +12,14 @@ const initial: FormState = {};
 
 type Props = {
   pkg: PackageRow;
-  templates: PackageRef[];
+  templateCount: number;
   outlets: PackageRef[];
   photoboxes: PackageRef[];
   onDone: () => void;
 };
 
 /** PackageEditForm — per-row useActionState scope. */
-export function PackageEditForm({ pkg, templates, outlets, photoboxes, onDone }: Props) {
+export function PackageEditForm({ pkg, templateCount, outlets, photoboxes, onDone }: Props) {
   const [state, action, pending] = useActionState(updatePackageAction, initial);
   const wasPending = useRef(false);
 
@@ -41,7 +41,7 @@ export function PackageEditForm({ pkg, templates, outlets, photoboxes, onDone }:
         {`Ubah: ${pkg.name.toUpperCase()}`}
       </p>
       <PackageFields
-        templates={templates}
+        templateCount={templateCount}
         outlets={outlets}
         photoboxes={photoboxes}
         pkg={pkg}

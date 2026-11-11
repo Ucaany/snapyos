@@ -83,7 +83,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       {
         heading: "3. Foto dan bawa pulang hasil",
         paragraphs: [
-          "Pilih frame dari grid preview. Thumbnail menampilkan gambar frame yang diunggah apa adanya, bukan contoh foto yang terpasang di slot. Semua template yang tersedia untuk paket ditampilkan; frame yang memiliki slot menentukan jumlah foto yang diambil.",
+          "Pilih frame dari grid preview. Thumbnail menampilkan gambar frame yang diunggah apa adanya, bukan contoh foto yang terpasang di slot. Semua template aktif tampil untuk paket mana pun; frame yang memiliki slot menentukan jumlah foto yang diambil.",
           "Ikuti hitungan mundur 3, 2, 1 di layar. Posisikan wajah di dalam preview dan tunggu efek flash putih sebagai tanda foto diambil. Timer sesi default 5 menit, retake bebas selama timer berjalan.",
         ],
         steps: [
@@ -258,7 +258,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       {
         title: "Owner: Template dan Frame",
         slug: "panduan-template",
-        desc: "Slot builder dan assign paket.",
+        desc: "Slot builder dan default booth.",
       },
     ],
   },
@@ -316,7 +316,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       {
         heading: "Layar 3: pilih frame dan sesi foto",
         paragraphs: [
-          "Grid preview menampilkan thumbnail frame yang diunggah apa adanya, bukan composite slot. Template aktif dapat dipakai lintas paket; frame ber-slot menentukan jumlah capture dan template legacy memakai photo_count package.",
+          "Grid preview menampilkan thumbnail frame yang diunggah apa adanya, bukan composite slot. Semua template aktif tampil di setiap paket; frame ber-slot menentukan jumlah capture dan template legacy memakai photo_count package.",
           "Jumlah foto mengikuti template terpilih. Photos order index mengikuti urutan slot z. Retake unlimited selama timer sesi berjalan, max retakes opsional via session settings.",
         ],
         steps: [
@@ -343,7 +343,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       {
         gejala: "Frame yang dicari tidak muncul",
         penyebab:
-          "Frame tidak aktif/ter-assign, URL frame gagal, atau respons public template error",
+          "Frame nonaktif, URL frame gagal, atau respons public template error",
         solusi: "Pilih frame yang tampil, atau tanya operator.",
       },
       {
@@ -539,7 +539,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       {
         title: "Owner: Template dan Frame",
         slug: "panduan-template",
-        desc: "Slot builder dan assign.",
+        desc: "Slot builder dan default booth.",
       },
       {
         title: "Kamera dan Printer Kompatibel",
@@ -554,7 +554,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     title: "Owner: Template dan Frame",
     category: "Owner",
     summary:
-      "Upload frame sendiri, atur slot di builder, pakai undo/redo, duplikat, snap, dan layer teks, lalu assign ke paket atau jadikan default booth.",
+      "Upload frame sendiri, atur slot di builder, pakai undo/redo, duplikat, snap, dan layer teks. Template aktif langsung tampil di semua paket; template default booth dipilih dari photobox.",
     audience: "Owner dan manager",
     estimate: "10 menit",
     prerequisites: [
@@ -567,7 +567,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         heading: "Ringkasan",
         paragraphs: [
           "Template adalah frame yang menampung foto customer. Dua tipe: template legacy (layout kosong, overlay full canvas, backward compatible) dan template slot (layout canvas plus slots array, foto masuk pas per slot).",
-          "Customer melihat template aktif yang tersedia untuk paketnya. Frame ber-slot menentukan jumlah capture; template legacy tanpa slot memakai photo_count package. composeFrame dipakai bersama oleh builder preview dan editor kiosk; JPEG final dirender di editor kiosk, lalu print dan result online memakai JPEG itu.",
+          "Customer melihat semua template aktif, untuk paket mana pun. Frame ber-slot menentukan jumlah capture; template legacy tanpa slot memakai photo_count package. composeFrame dipakai bersama oleh builder preview dan editor kiosk; JPEG final dirender di editor kiosk, lalu print dan result online memakai JPEG itu.",
         ],
       },
       {
@@ -606,27 +606,15 @@ export const HELP_ARTICLES: HelpArticle[] = [
         note: "Validasi server: id slot unik; z unik dan berurutan 0..n-1; preset cocok dengan dimensi canvas; posisi dan ukuran slot (rotation-aware) di dalam batas canvas; radius maksimal setengah sisi terpendek; circle wajib berbentuk persegi; nilai crop 0..1.",
       },
       {
-        heading: "Assign ke package",
+        heading: "Template otomatis tersedia di semua paket",
         paragraphs: [
-          "Edit package lalu multi select template. Template milik sendiri yang aktif selalu bisa di-assign; template global platform hanya bisa di-assign jika aktif dan (gratis atau sudah dibeli). Jumlah slot tidak lagi membatasi assign. Simpan menghapus relasi lama lalu insert bulk yang baru.",
+          "Tidak ada lagi langkah assign template ke paket. Setiap template yang aktif langsung tampil di semua paket dan semua booth, sehingga customer selalu bisa memilih frame yang Anda publish.",
+          "Jumlah foto tetap mengikuti frame: frame ber-slot menentukan berapa foto diambil, dan slot yang lebih banyak dari isi paket diisi bergiliran. Kolom Jumlah foto cadangan di form paket hanya dipakai frame lama tanpa slot atau pilihan Tanpa frame.",
         ],
         steps: [
-          "Edit package, pilih template yang berlaku.",
-          "Simpan relasi package templates.",
-          "Uji dari kiosk: pilih paket, bayar, pastikan frame muncul di layar pilih template.",
-        ],
-      },
-      {
-        heading: "Assign otomatis di form paket",
-        paragraphs: [
-          "Tombol Assign otomatis memilih template yang paling cocok dengan paket, supaya Anda tidak perlu mencocokkan slot satu per satu.",
-          "Urutan pemilihannya: template yang jumlah slotnya sama dengan jumlah foto paket, lalu template yang cocok dengan mode capture (photostrip butuh minimal dua slot, single butuh satu slot), lalu slot yang paling dekat. Tombol ini hanya mengisi pilihan di form; simpan paket tetap lewat tombol simpan.",
-        ],
-        steps: [
-          "Edit package, atur jumlah foto dan mode capture lebih dulu.",
-          "Tekan Assign otomatis.",
-          "Periksa daftar template terpilih, sesuaikan manual bila perlu.",
-          "Simpan paket.",
+          "Buka Templates, upload atau aktifkan frame yang ingin dipakai.",
+          "Buka Packages, isi harga dan jumlah cetak. Biarkan Jumlah foto cadangan apa adanya bila semua frame Anda ber-slot.",
+          "Uji dari kiosk: pilih paket, bayar, pastikan frame muncul di layar pilih frame.",
         ],
       },
       {
@@ -730,7 +718,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       {
         gejala: "Template default tidak terpilih di kiosk",
         penyebab: "Template tidak ditawarkan untuk paket itu, atau sudah nonaktif",
-        solusi: "Pastikan template aktif dan ter-assign ke paket, atau biarkan tamu memilih.",
+        solusi: "Pastikan template aktif. Semua template aktif tampil di semua paket, jadi tidak ada assignment yang perlu diatur.",
       },
     ],
     nextSteps: [

@@ -115,9 +115,6 @@ function normalizeTemplates(data: unknown): PublicTemplate[] {
       layout: t.layout ?? null,
       slot_count: typeof t.slot_count === "number" ? t.slot_count : 0,
       version: typeof t.version === "number" && Number.isFinite(t.version) ? t.version : 0,
-      package_ids: Array.isArray(t.package_ids)
-        ? t.package_ids.filter((id): id is string => typeof id === "string")
-        : [],
     });
   }
   return out;

@@ -167,12 +167,6 @@ export function TemplatesGrid({ templates, canWrite }: Props) {
               <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
                 {tpl.slot_count > 0 ? `${tpl.slot_count} slot foto` : "Tanpa slot (frame penuh)"}
               </p>
-              {tpl.is_active && tpl.assigned === false && (
-                <p className="border-2 border-destructive bg-destructive/10 px-2 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.08em]">
-                  Belum di-assign ke paket mana pun — tampil sebagai fallback untuk paket yang belum
-                  punya assignment.
-                </p>
-              )}
               {tpl.is_active && (
                 <p className="border-2 border-ink/20 bg-muted px-2 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
                   {tpl.slot_count > 0
@@ -316,14 +310,14 @@ export function TemplatesGrid({ templates, canWrite }: Props) {
             icon={ImageIcon}
             eyebrow="BELUM ADA TEMPLATE"
             title="Desain frame di Canva/Figma/Photoshop, ekspor PNG transparan, lalu unggah di sini."
-            body="Assign ke paket agar bisa dipilih customer."
+            body="Template aktif langsung tampil di semua paket tanpa perlu di-assign."
           />
         ) : (
           <EmptyState
             icon={ImageIcon}
             eyebrow="BELUM ADA TEMPLATE"
             title="Belum ada frame yang tersedia untuk Anda."
-            body="Minta owner mengunggah frame dan meng-assign-nya ke paket booth Anda, lalu muat ulang halaman."
+            body="Minta owner mengunggah frame di dashboard, lalu muat ulang halaman."
           />
         )
       ) : (

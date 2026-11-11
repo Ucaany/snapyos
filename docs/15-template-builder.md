@@ -128,7 +128,7 @@ ALTER TABLE templates ADD COLUMN layout jsonb NOT NULL DEFAULT '{}';
 - Max slot per template: **8**.
 - `slot_count = layout.slots.length` (layout kosong = 0).
 - `layout.slots[].properties` dipertahankan di schema untuk kompatibilitas mundur, tetapi **tidak** dirender `composeFrame` dan tidak diekspos builder.
-- **Assign template → package tidak dibatasi jumlah slot (2026-10-19).** Paket 3 foto boleh memakai frame 6 slot; runtime mengambil 6 foto untuk mengisi frame 6 slot. `packages.photo_count` menjadi fallback untuk template legacy tanpa slot, sedangkan `print_count` menentukan jumlah lembar.
+- **Template tidak lagi di-assign ke paket (2026-11-11).** Semua template aktif tampil untuk semua paket. Paket 3 foto boleh memakai frame 6 slot; runtime mengambil 6 foto untuk mengisi frame 6 slot. `packages.photo_count` menjadi fallback untuk template legacy tanpa slot, sedangkan `print_count` menentukan jumlah lembar.
 - Upload PNG: validasi tipe & max size mengikuti §4.10 `04-owner-dashboard.md`. Warning "PNG tanpa alpha channel" **belum diimplementasikan**; kandidat, bukan perilaku saat ini.
 
 ### Deliberate simplifications (ponytail)
@@ -208,7 +208,7 @@ Output = full resolusi design canvas. Render final dijalankan di browser (editor
 
 | Tahap                | Perubahan                                                                                                                                            |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| §5.4 Choose Template | Thumbnail = frame WebP 480px (bukan composite slot); semua template aktif yang assignable tampil; tanpa assignment = semua template aktif            |
+| §5.4 Choose Template | Thumbnail = frame WebP 480px (bukan composite slot); semua template aktif tampil untuk semua paket (tanpa filter assignment)                        |
 | §5.6 Capture         | Frame ber-slot: jumlah capture = `template.slot_count`; legacy: `package.photo_count`; slot yang perlu mengulang foto diisi bergiliran (`fillSlots`) |
 | §5.9 Editor          | Zoom/pan menyesuaikan foto **di dalam slot** (bukan full canvas); zoom minimal = cover-fit; filter/adjust/sticker/text tetap di atas composite       |
 | §5.15 Print          | `PrintLayoutRenderer` mencetak JPEG final hasil render klien (yang diunggah) — tidak ada render ulang di server                                      |
@@ -249,12 +249,12 @@ Endpoint publik (tetap aktif):
 
 1. Owner upload PNG + tambah ≥1 slot + simpan draft/publish tanpa training (< 2 menit).
 2. Customer memilih frame → foto hasil capture muncul pas di setiap slot (cover-fit, rasio tidak terdistorsi).
-3. Assignment: template milik sendiri ATAU global yang `is_active` dan (gratis ATAU sudah dibeli) dapat di-assign ke package; global nonaktif/belum dibeli ditolak saat create **dan** update package.
-4. Package tanpa assignment menampilkan semua template aktif (`selectVisibleTemplates` fallback) — bukan kosong.
+3. Semua template aktif tampil untuk semua paket; tidak ada langkah assign. Template milik sendiri ATAU global yang `is_active` dan (gratis ATAU sudah dibeli) dapat dipakai/diedit.
+4. Kiosk tidak pernah kosong karena assignment: daftar template tidak difilter per paket.
 5. Hasil print & result online identik dengan preview builder (JPEG final dari `composeFrame` klien; tanpa render ulang server).
 6. Template legacy (layout kosong) tetap berfungsi — backward compatible.
 7. Layout invalid (id ganda, z tidak kontigu, preset tidak cocok, keluar bounds rotation-aware, radius terlalu besar, circle tidak persegi) ditolak server-side 4xx.
-8. Template global tampil read-only di list owner (label `TEMPLATE PLATFORM`); global gratis aktif dan yang sudah dibeli bisa di-assign; global yang dibeli membuka builder read-only ("Template platform — read-only").
+8. Template global tampil read-only di list owner (label `TEMPLATE PLATFORM`); global gratis aktif dan yang sudah dibeli bisa dipakai; global yang dibeli membuka builder read-only ("Template platform — read-only").
 9. Perubahan template terlihat di kiosk ≤30 detik tanpa reload manual (invalidasi `public-config` + TTL 30s).
 10. Marketplace: harga integer IDR, pembelian membuat invoice pending (`template_purchase`), kepemilikan tertulis idempoten saat paid; template nonaktif tidak bisa dibeli.
 
@@ -272,13 +272,13 @@ Template **global** platform dapat dijual sebagai template premium per business.
 
 1. `purchaseTemplate` membuat invoice **pending** dengan intent `{ type: "template_purchase", items: [{ type, template_id, name, amount, qty }] }`; `amount` = `templates.price`.
 2. Setelah invoice dibayar, `applyInvoiceIntent` menulis kepemilikan ke `business_template_purchases` (`business_id`, `template_id`) secara idempoten.
-3. Assign ke package baru boleh setelah baris kepemilikan ada. Pembelian sendiri tidak mengubah assignment.
+3. Template yang dibeli langsung bisa dipakai setelah baris kepemilikan ada; tidak ada assignment paket yang perlu diubah.
 
-**Assignability (`assertTemplatesAssignable`):**
+**Ketersediaan template (2026-11-11):**
 
-- Template milik business sendiri, ATAU
-- global dengan `is_active=true` DAN (gratis ATAU sudah dibeli).
-- Global nonaktif / belum dibeli → ditolak pada create dan update package.
+- Semua template aktif tampil di kiosk untuk semua paket; `assertTemplatesAssignable` dihapus.
+- Template milik business sendiri, ATAU global dengan `is_active=true` DAN (gratis ATAU sudah dibeli) tetap menjadi batas untuk dipakai/diedit.
+- Global nonaktif / belum dibeli tidak tampil di kiosk.
 
 **Builder & list owner:**
 
@@ -328,9 +328,9 @@ Template **global** platform dapat dijual sebagai template premium per business.
 
 | Fitur                  | Implementasi                                                                                                                                                                                                                            | Perilaku                                                                                                                                                                                                                                                                                                    |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Template default booth | `photoboxes.default_template_id` (FK `on delete set null`, migrasi `0075`); disimpan lewat `savePhotoboxHardwareAction`, divalidasi `assertTemplateAssignable` (nonaktif/belum dibeli → `VALIDATION_ERROR` field `default_template_id`) | Kiosk memakai `selectAutoTemplate(templates, defaultTemplateId)`: default booth menang **bila masih eligible** untuk paket itu; kalau tidak, hanya satu template eligible → auto-pilih; lebih dari satu → customer memilih                                                                                  |
-| Assign otomatis paket  | Tombol "Assign otomatis" di `PackageFields` → `autoAssignTemplateIds` (`src/lib/template-select.ts`)                                                                                                                                    | Urutan: (1) semua template dengan `slot_count == photo_count`, (2) cocok `capture_mode` (`photostrip` → slot ≥ max(2, photoCount), `burst` → slot ≥ 2, `single` → slot 1), (3) slot terdekat supaya tombol tidak pernah no-op. Hasilnya hanya mengisi pilihan di form; simpan paket tetap lewat aksi normal |
+| Template default booth | `photoboxes.default_template_id` (FK `on delete set null`, migrasi `0075`); disimpan lewat `savePhotoboxHardwareAction`, divalidasi `assertTemplateAssignable` (nonaktif/belum dibeli → `VALIDATION_ERROR` field `default_template_id`) | Kiosk memakai `selectAutoTemplate(templates, defaultTemplateId)`: default booth menang bila ada di daftar; kalau tidak, hanya satu template → auto-pilih; lebih dari satu → customer memilih                                                                                  |
+| ~~Assign otomatis paket~~ | **Dihapus 2026-11-11** bersama assignment template ke paket (`autoAssignTemplateIds` dihapus)                                                                                                                                            | Tidak ada lagi pilihan template di form paket; semua template aktif otomatis tersedia.                                                                                                                                                                                                                      |
 
-Catatan batas: template default **tidak** memaksa customer memakai template itu — ia hanya menang saat eligible, jadi menghapus assignment paket tidak membuat booth menunjuk template yang tidak ditawarkan.
+Catatan batas: template default **tidak** memaksa customer memakai template itu — ia hanya menang bila ada di daftar template aktif.
 
 **Tes:** `useTemplateHistory` belum punya tes unit sendiri (riwayat diverifikasi manual di builder). Yang tertutup tes: `tests/template-text-render.test.ts` (teks di atas frame), `tests/template-auto-pick.test.ts` (`selectAutoTemplate`), `tests/template-assignment.test.ts` (assignability), `tests/template-layout.test.ts` (validasi `layoutSchema`). Klaim di atas berasal dari kode, bukan asumsi.

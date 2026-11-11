@@ -12,7 +12,6 @@ import {
   writeTemplateSnapshot,
 } from "@/components/kiosk/template-cache";
 import { type Snapshot } from "@/lib/template-cache";
-import { selectVisibleTemplates } from "@/lib/template-visibility";
 import { selectAutoTemplate } from "@/lib/template-select";
 import {
   KioskAction,
@@ -23,7 +22,6 @@ import {
 } from "@/components/kiosk/ui";
 
 type Props = {
-  packageId: string;
   packagePhotoCount?: number;
   packagePrintCount?: number;
   businessSlug: string;
@@ -38,7 +36,6 @@ type Props = {
 
 /** Choose Template/Frame — docs/05 §5.4 + docs/15 §5.5 (post-paid). */
 export function TemplatePicker({
-  packageId,
   packagePhotoCount = 1,
   packagePrintCount = 0,
   businessSlug,
@@ -66,7 +63,7 @@ export function TemplatePicker({
     readTemplateSnapshot(businessSlug)
   );
   const [templates, setTemplates] = useState<PublicTemplate[]>(() =>
-    snapshot ? selectVisibleTemplates(snapshot.templates, { packageId }) : []
+    snapshot ? snapshot.templates : []
   );
   const [selected, setSelected] = useState<PublicTemplate | null | undefined>(undefined);
   const [loading, setLoading] = useState(templates.length === 0);
@@ -81,11 +78,11 @@ export function TemplatePicker({
     (force = false) => {
       const snap = snapshot;
       const fresh = snap !== null && Date.now() - snap.fetchedAt < SNAPSHOT_FRESH_MS;
-      if (!force && fresh) {
+      if (!force && fresh && snap) {
         // Snapshot masih segar: tidak ada request daftar tambahan.
         setLoading(false);
         setError(false);
-        setTemplates(selectVisibleTemplates(snap.templates, { packageId }));
+        setTemplates(snapshot.templates);
         return;
       }
 
@@ -97,10 +94,10 @@ export function TemplatePicker({
       apiGet<PublicTemplate[]>(`/api/v1/public/${businessSlug}/templates`, ac.signal)
         .then((data) => {
           if (ac.signal.aborted) return;
-          // Simpan daftar LENGKAP; filter paket hanya untuk tampilan.
+          // Simpan daftar LENGKAP; semua template aktif tampil untuk semua paket.
           writeTemplateSnapshot(businessSlug, data);
           setSnapshot({ schema: 1, fetchedAt: Date.now(), templates: data });
-          setTemplates(selectVisibleTemplates(data, { packageId }));
+          setTemplates(data);
           setFromCache(false);
         })
         .catch(() => {
@@ -108,7 +105,7 @@ export function TemplatePicker({
           const cached = snapshot;
           if (cached) {
             // Offline/limit: tampilkan cache, bukan kartu error.
-            setTemplates(selectVisibleTemplates(cached.templates, { packageId }));
+            setTemplates(cached.templates);
             setFromCache(true);
             setError(false);
           } else {
@@ -119,7 +116,7 @@ export function TemplatePicker({
           if (!ac.signal.aborted) setLoading(false);
         });
     },
-    [packageId, businessSlug, snapshot]
+    [businessSlug, snapshot]
   );
 
   useEffect(() => {
@@ -250,7 +247,7 @@ export function TemplatePicker({
                 style={{ borderRadius: ks?.radius ?? 0 }}
               >
                 <KioskEyebrow className="text-ink">
-                  {"BELUM ADA FRAME UNTUK PAKET INI"}
+                  {"BELUM ADA FRAME AKTIF"}
                 </KioskEyebrow>
                 <p className="max-w-[54ch] text-sm leading-relaxed text-muted-foreground">
                   Owner perlu mengaktifkan minimal satu template di dashboard. Tanpa frame, hasil

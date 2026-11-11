@@ -334,7 +334,7 @@ tidak di-enforce.
 | Snap tepi/tengah kanvas & slot lain (hanya geser satu slot) | Aktif                     | `src/lib/template-snap.ts:snapRect`                                        |
 | Layer teks di atas frame                                    | Aktif                     | `TemplateTextPanel`, `composeFrame` (`drawSlotText`)                       |
 | Template default booth + auto-pilih kiosk                   | Aktif                     | `photoboxes.default_template_id`, `selectAutoTemplate`                     |
-| Assign otomatis paket                                       | Aktif                     | `autoAssignTemplateIds`                                                    |
+| ~~Assign otomatis paket~~                                   | **Dihapus 2026-11-11**    | `autoAssignTemplateIds` dihapus; semua template aktif tampil di semua paket |
 | Komposit frame di server                                    | **Tidak ada** (by design) | render final di editor kiosk, diunggah sebagai JPEG                        |
 
 Batasan: `useTemplateHistory` belum punya tes unit; `sessions.template_id` belum dipersist.

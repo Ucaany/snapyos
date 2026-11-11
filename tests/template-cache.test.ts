@@ -40,7 +40,6 @@ function template(overrides: Partial<PublicTemplate> = {}): PublicTemplate {
     layout: null,
     slot_count: 3,
     version: 1000,
-    package_ids: [],
     ...overrides,
   };
 }

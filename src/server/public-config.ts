@@ -11,7 +11,6 @@ import { ApiError } from "@/lib/api-errors";
 import { brandingSchema } from "@/lib/validators";
 import { mergeBranding } from "@/lib/branding-merge";
 import { slotCount, type TemplateLayout } from "@/lib/template-layout";
-import { selectVisibleTemplates } from "@/lib/template-visibility";
 import {
   PUBLIC_CONFIG_GLOBAL_TAG,
   publicConfigCacheTags,
@@ -316,9 +315,11 @@ export async function listPublicPackages(
  * Template aktif milik business/global untuk kiosk (docs/05 §5.4,
  * docs/15 §15.6).
  *
- * Aturan pilih: assignment package mempersempit daftar, tapi tidak pernah
- * mengosongkannya. Semua slot template valid untuk package; template legacy
- * tanpa slot memakai `package.photo_count` sebagai fallback capture.
+ * Semua template aktif tampil untuk SEMUA paket. Assignment package tidak lagi
+ * menyaring daftar (dihapus 2026-11-11): filter ganda server+klien membuat
+ * owner melihat frame "hilang" di kiosk tanpa sebab yang jelas. Tabel relasi lama
+ * dibiarkan dorman di DB; frame ber-slot menentukan capture, sedangkan
+ * `package.photo_count` hanya fallback template legacy tanpa slot.
  */
 /**
  * `cache` = basis key aset stabil (`templateId:version`). Server hanya
@@ -332,10 +333,7 @@ function frameProxyUrl(url: string, cacheKey: string, width?: number): string {
   return `/api/v1/public/frame?${params.toString()}`;
 }
 
-export async function listPublicTemplates(
-  businessId: string,
-  packageId?: string
-): Promise<PublicTemplate[]> {
+export async function listPublicTemplates(businessId: string): Promise<PublicTemplate[]> {
   const supabase = createServerClient();
   const query = supabase
     .from("templates")
@@ -379,44 +377,10 @@ export async function listPublicTemplates(
     return (t.is_active && free) || ownedIds.has(t.id);
   });
 
-  // Satu query assignment untuk semua template tampil — dipakai klien untuk
-  // memfilter per paket tanpa request per paket. Lewati query saat kosong:
-  // `.in('col', [])` tidak perlu dan hanya menambah round-trip.
-  const linkRows: { template_id: string; package_id: string }[] = [];
-  if (visible.length > 0) {
-    const { data: links } = await supabase
-      .from("package_templates")
-      .select("template_id, package_id")
-      .in(
-        "template_id",
-        visible.map((t) => t.id)
-      );
-    linkRows.push(...((links ?? []) as { template_id: string; package_id: string }[]));
-  }
-  const packageIdsByTemplate = new Map<string, string[]>();
-  for (const link of linkRows) {
-    const list = packageIdsByTemplate.get(link.template_id) ?? [];
-    list.push(link.package_id);
-    packageIdsByTemplate.set(link.template_id, list);
-  }
-
-  let allowed: Set<string> | null = null;
-  if (packageId) {
-    allowed = new Set(
-      [...packageIdsByTemplate.entries()]
-        .filter(([, ids]) => ids.includes(packageId))
-        .map(([templateId]) => templateId)
-    );
-  }
-
-  // Semua frame aktif tampil untuk paket mana pun. Runtime menentukan jumlah
-  // capture dari slot frame; `photo_count` hanya fallback untuk legacy.
-  const filtered = selectVisibleTemplates(visible, { assignedIds: allowed });
-
   // Batch signed URL — satu request storage untuk seluruh daftar (bukan N+1).
   const keys = Array.from(
     new Set(
-      filtered.flatMap((t) => {
+      visible.flatMap((t) => {
         const ks = [t.file_url];
         if (t.thumbnail_url) ks.push(t.thumbnail_url);
         return ks;
@@ -427,7 +391,7 @@ export async function listPublicTemplates(
 
   // Template tanpa frame yang bisa dimuat tidak boleh ditawarkan: Editor
   // memblokir finish saat frame gagal dimuat, jadi sesi customer berakhir buntu.
-  return filtered.flatMap((t) => {
+  return visible.flatMap((t) => {
     const fileUrl = /^https?:\/\//i.test(t.file_url) ? t.file_url : urlByKey.get(t.file_url);
     if (!fileUrl) return [];
     // `version` = waktu ubah template → key cache aset berubah saat file diganti.
@@ -450,7 +414,6 @@ export async function listPublicTemplates(
         layout: (slotCount(t.layout) > 0 ? t.layout : null) as TemplateLayout | null,
         slot_count: slotCount(t.layout),
         version,
-        package_ids: packageIdsByTemplate.get(t.id) ?? [],
       },
     ];
   });
