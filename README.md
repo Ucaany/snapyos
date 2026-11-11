@@ -78,6 +78,9 @@ npm run start            # jalankan hasil build (standalone; memuat .env.local b
 npm run lint             # eslint
 npm run typecheck        # tsc --noEmit
 npm run verify           # lint + typecheck + build (gate rilis)
+npm test                 # node:test (parser printer, geometri, katalog kamera)
+npm run sync:cameras     # perbarui snapshot katalog kamera gphoto2
+npm run sync:cameras -- --check  # gagal bila snapshot hilang/basi/rusak
 npm run format           # prettier --write
 npm run format:check     # prettier --check (gate rilis)
 npm run bridge:local     # runtime booth lokal di 127.0.0.1:17777 (butuh PHOTOBOOTH_BRIDGE_TOKEN)

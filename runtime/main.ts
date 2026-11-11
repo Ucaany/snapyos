@@ -218,10 +218,17 @@ async function main(): Promise<void> {
   }
 
   /** Job `failed` yang `next_retry_at`-nya sudah lewat (retry transien). */
+  let retryDraining = false;
   async function drainRetryJobs(): Promise<void> {
-    const due = dueRetryJobs(db, new Date().toISOString(), 10);
-    for (const job of due) {
-      await runSerial(() => processJob(job)).catch(() => undefined);
+    if (retryDraining) return;
+    retryDraining = true;
+    try {
+      const due = dueRetryJobs(db, new Date().toISOString(), 10);
+      for (const job of due) {
+        await runSerial(() => processJob(job)).catch(() => undefined);
+      }
+    } finally {
+      retryDraining = false;
     }
   }
 

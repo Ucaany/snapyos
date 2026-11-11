@@ -624,6 +624,15 @@ Pendukung: `PrintTestPanel` (setup wizard & dashboard owner), `HardwareDetectBut
 
 **Acceptance:** (AC 60) finalize memicu auto-print pada jalur aktif; dua jalur aktif memunculkan pilihan eksplisit; print test tersedia di setup wizard & dashboard; tidak ada jalur aktif berarti pesan, bukan cetak diam-diam.
 
+### 5.15.7 Status printer, auto-connect, retry, dan polling (implementasi)
+
+- **Status**: `GET /v1/printer/status` mengembalikan `state` (`ok|busy|disabled|offline|unknown`), `media`, `queue`, dan ringkasan `job`. `GET /v1/printer/jobs` membaca antrean spooler. `POST /v1/printer/enable` membuka printer `disabled` (bukan `offline`/paper-out).
+- **Auto-connect**: saat boot, kiosk hanya mengisi `print_settings.printer_name` yang **kosong** dari printer default CUPS. Nilai yang sudah diisi operator tidak pernah ditimpa; bridge mati tidak menyimpan apa pun.
+- **Auto-enable**: runtime membuka printer `disabled` sekali sebelum submit (`SNAPYOS_PRINTER_AUTO_ENABLE`, default `1`). `offline` tidak di-enable — job gagal dengan pesan yang bisa dibaca operator.
+- **Retry transien**: kegagalan `disabled/offline/busy/timeout` dijadwalkan ulang maksimal `SNAPYOS_PRINT_RETRY_MAX` (default 3) dengan backoff `min(2^n × 5 s, 2 m)` ± jitter. Job `submitted`/`done` tidak pernah dikirim ulang. Kegagalan permanen (PDF hilang, printer tidak ditemukan, media invalid) langsung `failed`.
+- **Polling kiosk**: setelah submit, `CupsPrintScreen` memantau `GET /print/jobs/:id` tiap 1,5 detik (maks 30 detik) dan menampilkan `queued`/`printing`/`submitted`/`failed`. Konfirmasi "Kertas keluar" tetap manual; polling tidak pernah auto-`confirm`.
+- **Preflight**: sebelum submit, kiosk memeriksa status printer; `offline` ditolak dengan pesan, `disabled` dicoba diaktifkan sekali.
+
 ---
 
 ## 5.16 Customer UI Character

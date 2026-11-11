@@ -34,6 +34,7 @@ SnapyOS Photobox Business Operating System.
 | Admin platform           | [`10-admin-platform.md`](./10-admin-platform.md)               |
 | Design system            | [`11-design-system.md`](./11-design-system.md)                 |
 | Template builder         | [`15-template-builder.md`](./15-template-builder.md)           |
+| Kamera didukung          | [`17-supported-cameras.md`](./17-supported-cameras.md)         |
 
 ## Integrasi
 

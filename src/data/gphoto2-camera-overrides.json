@@ -1,0 +1,12 @@
+{
+  "brand": {
+    "exact": {},
+    "prefix": {
+      "OM Digital Solutions": "OM"
+    }
+  },
+  "type": {
+    "exact": {},
+    "prefix": {}
+  }
+}

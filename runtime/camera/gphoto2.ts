@@ -22,14 +22,6 @@ import {
   type CameraStatus,
 } from "./types.ts";
 
-function hasDetectedCamera(output: string): boolean {
-  return output.split(/\r?\n/).some((line) => {
-    const value = line.trim();
-    if (!value || /^[-\s]+$/.test(value) || /^model\s+port$/i.test(value)) return false;
-    return /\b(?:usb|serial):/i.test(value);
-  });
-}
-
 /** `--auto-detect`: `Model ... Port` per baris; port jadi `id` stabil. */
 export function parseGphoto2Cameras(output: string): CameraInfo[] {
   const cameras: CameraInfo[] = [];
@@ -187,7 +179,7 @@ export function createGphoto2Camera(config: RuntimeConfig): CameraAdapter {
         const now = Date.now();
         if (!summaryCache || now - summaryCache.at > 5_000) {
           try {
-            const summary = await lock(() => run(["--summary"], 10_000));
+            const summary = await lock(() => run(["--summary"], 5_000));
             summaryCache = { at: now, model: parseGphoto2Model(summary.stdout.toString("utf8")) };
           } catch {
             summaryCache = { at: now, model };
