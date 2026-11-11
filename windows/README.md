@@ -3,14 +3,19 @@
 > **FROZEN (2026-11-08):** Windows native ditahan. Target aktif = PWA kiosk Android/web.
 > Kode dan dokumen dipertahankan untuk referensi; tidak ada pekerjaan baru di folder ini.
 
-## CI (manual, tidak otomatis)
+## CI (aktif, berjalan di cloud GitHub)
 
-`.github/workflows/booth-windows.yml` hanya berjalan lewat **Run workflow**
-(`workflow_dispatch`) atau saat tag `v*` dibuat — tidak pada push/PR, supaya
-kode yang sedang dibekukan tidak memakai menit CI. Alurnya: build
-`windows/SnapyOS.sln` (Release) → `dotnet test` → paket
+`.github/workflows/booth-windows.yml` berjalan otomatis di runner Windows milik
+GitHub setiap ada perubahan di `windows/**` — jadi kode yang dibekukan tidak
+diam-diam rusak. Bisa juga dipicu manual lewat **Run workflow**, atau otomatis
+saat tag `v*` dibuat (menghasilkan GitHub Release berisi ZIP).
+
+Alurnya: build `windows/SnapyOS.sln` (Release) → `dotnet test` → paket
 `windows/deploy/Package-SnapyOS-Kiosk.ps1` → gate
 `windows/deploy/Test-SnapyOS-Readiness.ps1` → artefak ZIP.
+
+Tidak perlu mesin Windows untuk mem-build: cukup push, runner cloud yang
+mengerjakan. Mesin Windows hanya dibutuhkan untuk memasang dan menguji ZIP-nya.
 
 Workflow versi sebelumnya menunjuk folder `booth/` dan project
 `SnapyOS.Booth.*` yang tidak pernah ada di repo ini, sehingga selalu gagal.

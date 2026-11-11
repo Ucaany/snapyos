@@ -1,11 +1,13 @@
 name: Booth Windows
 
-# Build + test aplikasi booth Windows (WPF) di runner Windows.
+# Build + test aplikasi booth Windows (WPF) di runner Windows milik GitHub
+# (cloud, bukan mesin lokal).
 #
-# STATUS: FROZEN. Windows native ditahan; target aktif = PWA kiosk Android/web
-# (lihat windows/README.md). Karena itu workflow ini TIDAK berjalan otomatis
-# pada push/PR — hanya manual lewat "Run workflow", supaya tidak memboroskan
-# menit CI untuk kode yang sedang tidak dikembangkan.
+# STATUS: FROZEN untuk pengembangan fitur — Windows native ditahan, target
+# aktif = PWA kiosk Android/web. Workflow TETAP AKTIF dan berjalan otomatis
+# setiap ada perubahan di `windows/**`, supaya kode yang dibekukan tidak
+# diam-diam rusak. Jalankan juga manual lewat "Run workflow", atau otomatis
+# saat tag `v*` dibuat (menghasilkan GitHub Release).
 #
 # Struktur nyata yang dibangun:
 #   - solusi   : windows/SnapyOS.sln (15 project, target net10.0-windows)
@@ -28,7 +30,15 @@ on:
         type: boolean
         default: true
   push:
+    branches: [main]
     tags: ["v*"]
+    paths:
+      - "windows/**"
+      - ".github/workflows/booth-windows.yml"
+  pull_request:
+    paths:
+      - "windows/**"
+      - ".github/workflows/booth-windows.yml"
 
 concurrency:
   group: booth-windows-${{ github.ref }}
