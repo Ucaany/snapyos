@@ -70,7 +70,7 @@ Smoke produksi (tenant pilot, checklist tertulis):
 6. Tenant lain (tanpa add-on): menu POS tidak tampil; akses langsung → redirect aktivasi; action → 403.
 7. Kiosk regresi: satu sesi kiosk end-to-end (checkout → QRIS → paid) normal; `\d payments` di produksi identik (POS tidak menyentuhnya).
 8. Admin: revenue POS muncul di summary per tenant.
-9. Jalankan `node tests/e2e/pos-receipt-serial.spec.mjs` terhadap DB target; 58mm dan 80mm harus lulus.
+9. Verifikasi cetak 58/80mm manual di booth.
 
 ---
 

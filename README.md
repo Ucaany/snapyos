@@ -77,12 +77,7 @@ npm run start            # jalankan hasil build (standalone; memuat .env.local b
 # `build` otomatis menyiapkan `.next/standalone` beserta asset static/public
 npm run lint             # eslint
 npm run typecheck        # tsc --noEmit
-npm run test             # unit tests (node:test)
-npm run verify           # lint + typecheck + test + build (gate rilis)
-npm run test:e2e         # seluruh suite E2E Playwright
-npm run test:e2e:kiosk   # E2E kiosk (aktivasi, kamera, bayar, hasil, responsif)
-npm run test:e2e:bluetooth  # E2E printer Bluetooth
-npm run test:e2e:print   # E2E cetak standalone
+npm run verify           # lint + typecheck + build (gate rilis)
 npm run format           # prettier --write
 npm run format:check     # prettier --check (gate rilis)
 npm run bridge:local     # runtime booth lokal di 127.0.0.1:17777 (butuh PHOTOBOOTH_BRIDGE_TOKEN)
@@ -96,25 +91,9 @@ Gate yang diverifikasi di mesin pengembang sebelum deploy:
 ```bash
 npm run typecheck        # PASS (exit 0)
 npm run lint             # PASS, 0 error, 12 warning <img> yang disengaja
-npm test                 # PASS 1154/1154
 npm run build            # PASS (Next.js 16, 93 static pages + standalone)
-npm run test:e2e:print   # PASS 4/4
-npm run test:e2e:bluetooth # PASS 2/2 suite (12 assertion: BLE 2, SPP/foto 10)
-node tests/e2e/pos-receipt-serial.spec.mjs # PASS 16/16 (58mm + 80mm)
 node scripts/probe-migration-status.mjs    # PASS 13/13 applied, exit 0
 ```
-
-> **Dua suite E2E gagal karena sebab yang SUDAH ADA sebelum pekerjaan migrasi
-> 2026-10-27** (dibuktikan dengan `git stash` pada perubahan yang sama):
->
-> - `kiosk-print-serial.spec.mjs` — test menunggu heading "Test printer" di
->   `/dashboard/photoboxes/[id]/camera`, rute yang **dihapus sengaja** di Phase 8.
->   Test-nya
->   kedaluwarsa, bukan regresi.
-> - `kiosk-full-frame-flow.spec.mjs` — timeout menunggu heading "Pilih frame".
->   Gagal juga tanpa perubahan ini.
->
-> Keduanya perlu diperbarui/dipindahkan ke alur baru; tidak terkait migrasi.
 
 > **Pembaruan 2026-10-28 — audit template & chroma.** Empat jalur render
 > (builder preview, editor kiosk, cetak, GIF) dirapikan agar satu kontrak:
@@ -142,10 +121,8 @@ node scripts/probe-migration-status.mjs    # PASS 13/13 applied, exit 0
 >   `x=0.5,w=1199.5` bisa jadi `1+1200 > 1200` dan ditolak server); editor
 >   memetakan slot aktif ke indeks foto lewat `fillSlots`.
 >
-> Gate setelah perubahan: `typecheck` PASS, `lint` PASS (0 error), `test`
-> PASS 1154/1154, `build` PASS. Test regresi baru ada di
-> `tests/template-layout.test.ts` (warna dasar + validasi hex).
-> Risiko residual (jujur): `sessions` belum menyimpan `template_id` — lihat
+> Gate setelah perubahan: `typecheck` PASS, `lint` PASS (0 error), `build`
+> PASS. Risiko residual (jujur): `sessions` belum menyimpan `template_id` — lihat
 > `docs/15-template-builder.md` §15.10.
 >
 > Audit Cloudflare/R2 (checklist cloud & deployment): bucket privat dengan
@@ -154,15 +131,6 @@ node scripts/probe-migration-status.mjs    # PASS 13/13 applied, exit 0
 > (`scripts/configure-r2-cors.mjs`), kredensial `server-only` tanpa prefix
 > `NEXT_PUBLIC_` (`src/lib/r2/config.ts`). Tidak ada temuan baru; eksposur
 > bucket/CORS live tetap `needs_validation` karena itu keputusan akun.
-
-> **Pembaruan 2026-10-27:** E2E struk POS kini **16/16 PASS**. Sebelumnya BLOCKED
-> karena `0076` belum diterapkan; setelah `0076` masuk, suite berjalan dan
-> menyingkap satu bug nyata yang sudah diperbaiki: dua jalur cetak (auto-print
-> dan tombol manual) menulis ke port serial yang sama tanpa antrean, sehingga
-> chunk 256-byte saling menyisip dan struk keluar rusak (teks tergabung
-> `WaktKLIK FOTO DEV`, baris melewati lebar kolom). Perbaikan: antrean tulis
-> per-port di `src/lib/print/serial.ts`, dijaga `tests/print-serial.test.ts`
-> ("dua job bersamaan ke port yang sama tidak bercampur").
 
 ### Cetak thermal Bluetooth (2026-10-20)
 
@@ -179,25 +147,14 @@ node scripts/probe-migration-status.mjs    # PASS 13/13 applied, exit 0
 - Status "terkirim" berarti byte ESC/POS sudah ditulis ke port, bukan konfirmasi
   kertas. Hasil fisik tetap harus diperiksa petugas.
 
-E2E kiosk dijalankan headed satu suite pada satu waktu:
-
-```bash
-E2E_HEADED=1 node tests/e2e/kiosk-smoke.spec.mjs       # 6/6
-E2E_HEADED=1 node tests/e2e/kiosk-lock.spec.mjs        # 7/7
-E2E_HEADED=1 node tests/e2e/kiosk-frames.spec.mjs      # 5/5
-E2E_HEADED=1 node tests/e2e/kiosk-responsive.spec.mjs  # 15/15
-```
-
 Audit fitur juga mencakup CRUD owner (outlet, paket, photobox, tiket bantuan),
 staff (invite/role), payment credential (enkripsi secret, toggle), dan aksi admin
 (plan, promo, user, settings) — semuanya diverifikasi ke database dan dibersihkan
-setelah tes. Ringkasan temuan ada di `docs/18-audit-report.md`.
+setelah tes.
 
 Catatan environment: `AUTH_URL` di `.env.local` harus sama dengan origin dev
 (`http://localhost:3000`); jika tidak, login berhasil tetapi redirect kembali ke
 halaman login. `DEV_SKIP_PAYMENT=true` hanya untuk jalur E2E kiosk lokal.
-
-E2E memerlukan dev server berjalan dan data seed booth; lihat `tests/e2e/README.md`.
 
 ## Cron retention (verifikasi dev)
 
@@ -216,7 +173,6 @@ curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/rete
 
 - **Phase 0–12: SELESAI.** Auth + multi-tenant, dashboard, photobox builder, kiosk pay-first, checkout + voucher, Pakasir QRIS (webhook + polling + recovery), transactions/finance, reports/analytics, staff multi-outlet, subscription (+ promos), polish/security (audit log, retention cron, e2e script ringan), Template & Frame Builder (`composeFrame`, layout slot).
 - **POS add-on: SELESAI** (`docs/pos/`) — kasir offline-only (cash/bank_transfer/other) per booth (`photoboxes.pos_enabled`), dipakai staff tanpa role baru; tanpa QRIS; migration `0019`.
-- **Test:** jalankan `npm test` untuk hasil current; angka historis bukan status current.
 - **Sisa backlog (jujur):** bookings UI, event mode, refund state machine, e2e Playwright formal, load test, REST subscription/addons.
 
 ## Decisions (Phase 0)

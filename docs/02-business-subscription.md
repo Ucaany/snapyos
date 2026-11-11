@@ -209,7 +209,6 @@ baris pending invoice tersebut otomatis di-`dismissed`
 - Data layer admin: `src/server/admin/subscription-failures.ts`
   (`listIntentFailures`, `activateManually`, `markRefunded`, `dismissFailure`).
 - UI: `src/app/(admin)/admin/subscriptions/pending-review/page.tsx`.
-- Regresi test: `tests/subscription-intent-failure.test.ts`.
 
 ## 2.5 Owner Subscription View
 

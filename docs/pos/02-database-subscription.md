@@ -15,7 +15,7 @@ Dieksekusi 2026-08-28. Yang jadi, sesuai DDL §2:
 - Entitlement gate: `src/server/pos-entitlement.ts` (`hasPosEntitlement`, `requirePosAccess`) + evaluator pure `src/lib/pos-entitlement.ts` (`evaluatePosEntitlement`) — diekstrak ke lib agar unit-testable tanpa DB (deviasi kecil dari §4, tanpa ubah kontrak).
 - RBAC: `pos:manage/sell/read` untuk manager + `pos:sell/read` untuk staff di `src/lib/rbac.ts` — tanpa role baru, tanpa perubahan DB role.
 - Validator POS di `src/lib/validators.ts` (posProduct/posOrderCreate/posManualPay/posBoothToggle); error POS di `src/lib/api-errors.ts`.
-- Test: `tests/pos-entitlement.test.ts`, `tests/pos-validators.test.ts`, extend `tests/rbac.test.ts`.
+- Verifikasi: `src/lib/pos-entitlement.ts`, `src/lib/validators.ts`, `src/lib/rbac.ts`.
 - `db/schema.sql` baseline disinkronkan (49 tabel).
 - Terverifikasi: nol diff di `payments`/`business_members`/`checkout_sessions` (S11 — docs/pos/07 §4).
 
@@ -233,13 +233,13 @@ Tambah: `POS_NOT_SUBSCRIBED: 403`, `INSUFFICIENT_STOCK: 409`, `POS_ORDER_NOT_PAY
 
 ## 8. Testing
 
-| Test             | File                                                               | Kasus                                                                                                                                               |
-| ---------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| RBAC matrix baru | `tests/rbac.test.ts` (extend)                                      | staff: pos:sell/pos:read ✅, pos:manage ❌; manager + pos:*; owner wildcard                                                                         |
-| Entitlement      | `tests/pos-entitlement.test.ts` (mock supabase pola test existing) | trial+active-addon ✅; active+cancelled-addon ❌; past_due ✅; tanpa subscription ❌; add_ons inactive ❌                                           |
-| Migration        | manual di DB dev                                                   | `up` bersih; jalankan 2× (idempotent seed); `rollback` (§10) bersih; `db/schema.sql` diff = hanya §3; `\d payments` + `\d business_members` identik |
+| Test             | Kasus                                                                                                                                               |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RBAC matrix baru | staff: pos:sell/pos:read ✅, pos:manage ❌; manager + pos:*; owner wildcard                                                                         |
+| Entitlement      | trial+active-addon ✅; active+cancelled-addon ❌; past_due ✅; tanpa subscription ❌; add_ons inactive ❌                                           |
+| Migration        | manual di DB dev: `up` bersih; jalankan 2× (idempotent seed); `rollback` (§10) bersih; `db/schema.sql` diff = hanya §3; `\d payments` + `\d business_members` identik |
 
-Perintah: `npm run test && npm run typecheck && npm run lint` (semua hijau).
+Perintah: `npm run typecheck && npm run lint` (semua hijau).
 
 ---
 

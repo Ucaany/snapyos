@@ -1,3 +1,6 @@
+> **Catatan 2026-11-11:** `tests/`, `windows/`, `AUDIT-REPORT.md`, dan `docs/windows-kiosk/`
+> sudah dihapus dari repo. Rujukan ke artefak tersebut di bawah dibiarkan sebagai catatan sejarah.
+
 # SnapyOS — Peta Fitur Menyeluruh (Audit Kode 2026-10-11, angka disegarkan 2026-10-21)
 
 > **Status**: audit berbasis kode berjalan (`src/`, `db/schema.sql`, `tests/`) + knowledge graph

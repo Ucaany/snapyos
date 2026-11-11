@@ -78,7 +78,7 @@ Avg Transaction Rp21.612
 - Empty: "Belum ada transaksi" + CTA "Launch Photobox".
 - Error: `Alert` dengan retry.
 
-**Permission:** OWNER, MANAGER. STAFF hanya subset (lihat RBAC `09-security-storage.md`).
+**Permission:** OWNER, MANAGER. STAFF hanya subset (lihat RBAC `docs/03-architecture.md` §3.6).
 
 **Security:** semua aggregate di-scope `business_id` dari sesi; tidak boleh query lintas tenant.
 

@@ -262,7 +262,7 @@ Sebelumnya endpoint ini **statis** (selalu `200` walau Supabase/R2 mati), sehing
 tidak berguna untuk Nginx, systemd, atau uptime monitor. Sekarang ia menjalankan
 dua probe paralel dan mengembalikan **503** bila salah satu gagal.
 
-Logika probe ada di `src/lib/health.ts` (pure, teruji di `tests/health.test.ts`);
+Logika probe ada di `src/lib/health.ts` (pure);
 route `src/app/api/health/route.ts` hanya menyuplai closure probe.
 
 **Probe:**

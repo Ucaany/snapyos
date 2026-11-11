@@ -1,3 +1,6 @@
+> **Catatan 2026-11-11:** `tests/` dan `AUDIT-REPORT.md` sudah dihapus dari repo.
+> Rujukan ke artefak tersebut di bawah dibiarkan sebagai catatan sejarah.
+
 # 12. Roadmap, Scope & Definition of Done
 
 ## 12.1 MVP Scope

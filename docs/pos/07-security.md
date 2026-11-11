@@ -19,7 +19,7 @@
 
 ## 1. Objective & Metode
 
-Audit menyeluruh hasil implementasi POS terhadap tabel ancaman `docs/pos/00-audit.md` §8 (dengan catatan revisi v2) + `docs/09-security-storage.md`. Metode: review kode jalur-demi-jalur, unit test negatif, manual probe di dev (dua tenant, tiga role).
+Audit menyeluruh hasil implementasi POS terhadap tabel ancaman POS + RBAC/storage di `docs/03-architecture.md`. Metode: review kode jalur-demi-jalur, unit test negatif, manual probe di dev (dua tenant, tiga role).
 
 ---
 
@@ -68,7 +68,7 @@ Verifikasi kode S1–S11 dieksekusi 2026-08-30 (review jalur-demi-jalur + grep �
 
 - ✅ **S1** — composite `.eq(id).eq(business_id)` di semua fetch order/produk/booth: `src/server/pos-orders.ts:124-125,172,187,314-315,327,364,388-390`; `src/server/pos-products.ts:179,245,262,300` ( komentar eksplisit "cross-tenant = 0 rows = 404"); `src/server/pos-reports.ts` semua query `.eq("business_id", ...)` (8 titik).
 - ✅ **S2** — `requirePosAccess` baris pertama SEMUA export server: `pos-orders.ts:159,305,352,473,488`; `pos-products.ts:81,111,158,209,236,253,290`; `pos-reports.ts:38,74,139`. `pos-actions.ts` = binding tipis yang selalu delegate ke fungsi ter-gate tsb (businessId dari cookie, bukan param client — A8 terjaga).
-- ✅ **S3** — role dibaca dari DB via `requirePosAccess`→`getMembership`; permission matrix `src/lib/rbac.ts:33-35` (manager `pos:manage/sell/read`), `44-45` (staff `pos:sell/read`); test matrix penuh `tests/rbac.test.ts:7-19`.
+- ✅ **S3** — role dibaca dari DB via `requirePosAccess`→`getMembership`; permission matrix `src/lib/rbac.ts:33-35` (manager `pos:manage/sell/read`), `44-45` (staff `pos:sell/read`).
 - ✅ **S4** — total server-computed: produk di-fetch ulang dari DB (`pos-orders.ts:184-194`), `computePosTotals` dari harga DB (`pos-orders.ts:222-227`); schema `posOrderCreateSchema` (`src/lib/validators.ts:470-476`) TIDAK punya field harga/total → payload `total` dari client di-reject zod.
 - ✅ **S5** — qty zod 1..999 integer (`validators.ts:461-468`); stock pre-check `pos-orders.ts:207-220` (`INSUFFICIENT_STOCK` dengan detail).
 - ✅ **S6** — booth scoped + `pos_enabled=true` server-side: `pos-orders.ts:167-180` ( cross-tenant → `NOT_FOUND`; milik tenant tapi off → `POS_BOOTH_DISABLED`).
@@ -86,13 +86,13 @@ Temuan terbuka (bukan kegagalan kontrol, dicatat jujur):
 | Tanggal    | Temuan                                                                                                                                                                                                                                                       | Severity | Perbaikan                                                      | Status                    |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- | -------------------------------------------------------------- | ------------------------- |
 | 2026-08-30 | S12–S16 (XSS nama produk, CSRF, session revoke, upload, info-leak 404) diverifikasi hanya via review kode (React escaping default; server actions + Auth.js CSRF; upload via `upload-validation.ts`), TANPA probe manual dua-tenant tiga-role terdokumentasi | Rendah   | Jalankan checklist probe manual saat deployment dev berikutnya | TERBUKA                   |
-| 2026-08-30 | `tests/pos-orders.test.ts` (action negative: scoping 404/403/409, pay 2×) belum ada saat audit; unit murni (schema/math/entitlement) sudah tercakup file test lain                                                                                           | Rendah   | Dibuat pada eksekusi docs-sync ini                             | SELESAI saat eksekusi ini |
+| 2026-08-30 | Action negative (scoping 404/403/409, pay 2×) belum tercakup saat audit; unit murni (schema/math/entitlement) tercakup                                                                                           | Rendah   | Ditutup pada eksekusi docs-sync ini                             | SELESAI saat eksekusi ini |
 
 ---
 
 ## 5. Testing
 
-- Semua test negatif §2 masuk suite (`tests/pos-*.test.ts` — daftar final di `docs/pos/08-testing.md`).
+- Semua test negatif §2 tercakup di suite (lihat riwayat git).
 - Skenario manual dua-tenant + tiga-role dieksekusi dengan checklist tertulis (hasil dicatat di §4).
 - Regression kiosk: suite payment/checkout existing hijau tanpa modifikasi (POS tak menyentuhnya — S11 membuktikan).
 

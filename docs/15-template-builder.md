@@ -235,7 +235,7 @@ Endpoint publik (tetap aktif):
 ## 15.7 Security & Storage
 
 - Tenant scoping: `templates.business_id`; `saveTemplateLayout` hanya meng-update baris dengan `business_id` yang cocok. Template global (`business_id NULL`) **tidak bisa** ditulis dari sisi owner.
-- Builder hanya untuk member dengan permission `template:write` (RBAC matrix `09-security-storage.md`).
+- Builder hanya untuk member dengan permission `template:write` (RBAC matrix `docs/03-architecture.md`).
 - Upload divalidasi (tipe/size); preview pakai signed URL jika private (§4.10).
 - `layout` divalidasi server-side — frontend builder tidak dipercaya (prinsip backend = source of truth).
 - Mutasi template memanggil `invalidatePublicConfig(businessId)` / `invalidateAllPublicConfig()`; tag `public-config` per business + `public-config:global`, TTL 30 detik.
@@ -333,4 +333,4 @@ Template **global** platform dapat dijual sebagai template premium per business.
 
 Catatan batas: template default **tidak** memaksa customer memakai template itu — ia hanya menang bila ada di daftar template aktif.
 
-**Tes:** `useTemplateHistory` belum punya tes unit sendiri (riwayat diverifikasi manual di builder). Yang tertutup tes: `tests/template-text-render.test.ts` (teks di atas frame), `tests/template-auto-pick.test.ts` (`selectAutoTemplate`), `tests/template-assignment.test.ts` (assignability), `tests/template-layout.test.ts` (validasi `layoutSchema`). Klaim di atas berasal dari kode, bukan asumsi.
+**Verifikasi:** `useTemplateHistory` diverifikasi manual di builder. Klaim di atas berasal dari kode, bukan asumsi.

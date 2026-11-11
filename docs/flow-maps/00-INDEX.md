@@ -32,9 +32,7 @@ Dokumen ini adalah hasil audit lengkap struktur routing, API, server actions, da
 > diperlakukan sebagai dokumen yang bisa dirujuk. Angka pada baris `09`/`10` adalah target isi bila
 > dokumen itu ditulis, bukan klaim bahwa dokumennya ada.
 >
-> Peta fitur terkini ada di [`../16-feature-map-audit.md`](../16-feature-map-audit.md) (per dashboard:
-> admin, owner, staff, kiosk, POS, result, marketing/auth, API, cron, DB). Inventaris migrasi ada di
-> [`../../db/README.md`](../../db/README.md).
+> Inventaris migrasi ada di [`../../db/README.md`](../../db/README.md).
 
 ---
 
@@ -90,12 +88,11 @@ Dokumen ini adalah hasil audit lengkap struktur routing, API, server actions, da
 
 ## Source of Truth Hierarchy
 
-1. **Kode berjalan** (`src/`, `db/schema.sql`, `tests/`) = realita aktual
+1. **Kode berjalan** (`src/`, `db/schema.sql`) = realita aktual
 2. **`db/schema.sql`** = kontrak database
 3. **`docs/07-database-schema.md` + `docs/08-api-spec.md`** = kontrak entity/enum/endpoint
 4. **PRD fitur** (`docs/01`–`docs/06`, `docs/09`, `docs/10`, `docs/14`, `docs/15`) = aturan bisnis
 5. **Design system** (`docs/11`, `docs/13`, `DESIGN.md`) = gaya visual
-6. **`docs/pos/00-audit.md`** = inventaris POS
 
 Konflik? Lihat `AGENTS.md` §Resolusi Konflik.
 

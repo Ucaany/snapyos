@@ -111,7 +111,7 @@ Aturan:
 
 - **Prefix `p/`, `r/`, `dashboard`, `admin`, `pos`, `staff`, `api` saling eksklusif** — tidak ada yang tumpang tindih. `dashboard`/`admin`/`api`/`pos`/`staff` tidak pernah dipakai sebagai `businessSlug`.
 - `(marketing)`, `(auth)`, `(dashboard)`, `(admin)`, `(pos)` adalah **route group tanpa segment URL** (hanya layout); `p/[businessSlug]/`, `r/[token]/`, `api/` adalah **segment nyata** di URL.
-- Owner Platform & Admin Platform **wajib login** + guard server-side (RBAC, lihat `09-security-storage.md`); `p/` & `r/` **tanpa login** (validasi `device_token` / `result_token`).
+- Owner Platform & Admin Platform **wajib login** + guard server-side (RBAC, lihat §3.6); `p/` & `r/` **tanpa login** (validasi `device_token` / `result_token`).
 - Akses lintas area dicegah: `admin` hanya untuk `role=admin`; `dashboard` hanya untuk member business; `p/` & `r/` hanya valid bila token/slug terdaftar di DB (404 jika tidak).
 
 ## 3.4 User Flows
@@ -156,10 +156,10 @@ Business
 
 - Auth.js v5 menerbitkan **JWT + DB revocation**: session token = JWT cookie; tabel `auth_sessions` menyimpan baris sesi yang dicek pada setiap refresh (fail-closed) dan dihapus saat signOut — bukan database session penuh.
 - Server-side menggunakan **service-role key** hanya di `server` (tidak pernah diekspos ke client). Karena service-role bypass RLS, **tenant scoping wajib di-enforce di kode** via helper query builder.
-- **RLS sebagai jaring PostgREST (C1, migrasi 0064):** SELURUH tabel `public.*` RLS ON + policy `svc_all` hanya untuk `service_role`; `anon`/`authenticated` di-revoke (anon key tidak dipakai client). Aplikasi tetap scoped di kode (service_role bypass), RLS menutup akses langsung PostgREST bila key bocor. RPC aplikasi juga di-lock `service_role`-only (H1, migrasi 0065) — lihat `09-security-storage.md` §9.9b.
+- **RLS sebagai jaring PostgREST (C1, migrasi 0064):** SELURUH tabel `public.*` RLS ON + policy `svc_all` hanya untuk `service_role`; `anon`/`authenticated` di-revoke (anon key tidak dipakai client). Aplikasi tetap scoped di kode (service_role bypass), RLS menutup akses langsung PostgREST bila key bocor. RPC aplikasi juga di-lock `service_role`-only (H1, migrasi 0065).
 - Status payment di UI checkout kiosk di-update via **polling 3 detik** (`useQrisPolling` — `src/hooks/use-qris-polling.ts`) + self-heal `src/server/payment/settlement-recovery.ts`; Supabase Realtime **tidak dipakai**.
-- Supabase **Storage** untuk logo, template, sticker, asset event, dan hasil foto (dengan retention — lihat `09-security-storage.md`).
-- **Proxy ≠ RBAC:** `src/proxy.ts` (Next 16 rename dari `middleware`) hanya meng-enforce maintenance mode global (`platform_settings.maintenance_mode`, dibaca fresh per request via `getMaintenanceState()`; DB error fail-closed 503); TIDAK menggantikan RBAC route/action. Guard auth/kepemilikan tetap via layout server component + `getMembership()`/`can()`/`requireAdmin()` per action/route — lihat `09-security-storage.md` §9.1 & `10-admin-platform.md` §10.4.
+- Supabase **Storage** untuk logo, template, sticker, asset event, dan hasil foto (dengan retention — lihat §3.9).
+- **Proxy ≠ RBAC:** `src/proxy.ts` (Next 16 rename dari `middleware`) hanya meng-enforce maintenance mode global (`platform_settings.maintenance_mode`, dibaca fresh per request via `getMaintenanceState()`; DB error fail-closed 503); TIDAK menggantikan RBAC route/action. Guard auth/kepemilikan tetap via layout server component + `getMembership()`/`can()`/`requireAdmin()` per action/route — lihat `10-admin-platform.md` §10.4.
 
 > Catatan: Jika di masa depan migrasi ke Supabase Auth penuh untuk memanfaatkan RLS native, sesi bisa dipetakan via `supabase_jwt` claims. MVP tetap Auth.js v5.
 
@@ -229,9 +229,9 @@ Setiap halaman/section di `04`/`05`/`10`/`11.5–11.8` wajib dijabarkan menjadi 
 
 ## 3.9 Storage Lifecycle (R2 + Supabase, retention, orphan sweep, reconcile)
 
-> Catatan: `docs/09-security-storage.md` belum ada di repo meski dirujuk beberapa dokumen
-> (lihat `docs/README.md`). Bagian ini adalah padanan storage yang berlaku; sumber
-> kebenaran tetap kode (`src/server/storage/`, `src/lib/r2/`, `src/app/api/cron/`).
+> Catatan: dokumen security-storage terpisah tidak ada di repo. Bagian ini adalah
+> padanan storage yang berlaku; sumber kebenaran tetap kode (`src/server/storage/`,
+> `src/lib/r2/`, `src/app/api/cron/`). RBAC/tenant ada di §3.6.
 
 ### 3.9.1 Dua bucket, dua umur
 

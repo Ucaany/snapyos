@@ -1,3 +1,6 @@
+> **Catatan 2026-11-11:** `tests/`, `windows/`, `AUDIT-REPORT.md`, dan `docs/windows-kiosk/`
+> sudah dihapus dari repo. Rujukan ke artefak tersebut di bawah dibiarkan sebagai catatan sejarah.
+
 # 18. Laporan Audit & Status Rilis
 
 > **Status**: laporan akhir audit menyeluruh + status kesiapan rilis.

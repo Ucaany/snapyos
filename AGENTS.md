@@ -1,6 +1,6 @@
 # AGENTS.md — SnapyOS Project Instructions
 
-Repositori ini berisi PRD (`docs/*.md` = source of truth keputusan produk) **dan** implementasi Next.js yang sudah berjalan (`src/`, `db/`, `tests/`). Docs-only hanyalah sejarah awal; kode sekarang adalah kenyataan yang harus diaudit sebelum diubah (lihat `docs/pos/00-audit.md`).
+Repositori ini berisi PRD (`docs/*.md` = source of truth keputusan produk) **dan** implementasi Next.js yang sudah berjalan (`src/`, `db/`). Docs-only hanyalah sejarah awal; kode sekarang adalah kenyataan yang harus diaudit sebelum diubah.
 
 ## Skill Wajib (load SEBELUM menulis kode frontend/UI apa pun)
 
@@ -24,19 +24,17 @@ Detail & resolusi konflik: `docs/13-skill-anti-slop.md` (skill mapping §13.1, p
 
 1. `docs/11-design-system.md` + `docs/13-skill-anti-slop.md` — design system & aturan anti-slop (sumber kebenaran gaya brutalist).
 2. `DESIGN.md` — semantic design system (tokens, typography, components, motion, bans).
-3. `docs/pos/00-audit.md` — ruang lingkup & status POS add-on.
-4. `docs/07-database-schema.md` + `docs/08-api-spec.md` — nama entity, enum, endpoint.
+3. `docs/07-database-schema.md` + `docs/08-api-spec.md` — nama entity, enum, endpoint.
 
 ## Resolusi Konflik (Conflict Resolution)
 
 Hierarki deterministik saat sumber berbeda:
 
-1. **Kode berjalan** (`src/`, `db/schema.sql`, `tests/`) = kenyataan aktual. Audit dulu, baru ubah kode ATAU perbarui docs jika kode ternyata benar.
+1. **Kode berjalan** (`src/`, `db/schema.sql`) = kenyataan aktual. Audit dulu, baru ubah kode ATAU perbarui docs jika kode ternyata benar.
 2. **`db/schema.sql`** = kontrak database. Kode aplikasi harus konsisten dengan schema; jika berbeda, schema menang.
 3. **`docs/07-database-schema.md` + `docs/08-api-spec.md`** = kontrak nama entity, enum, endpoint. Harus cerminkan schema.sql; jika drift, perbarui docs.
 4. **PRD fitur** (`docs/01`–`docs/06`, `docs/09`, `docs/10`, `docs/14`, `docs/15`) = aturan bisnis. File bernomor lebih rendah menang **kecuali** ada override eksplisit di changelog `docs/README.md` (contoh: v1.1 pay-first override).
 5. **Design system** (`docs/11`, `docs/13`, `DESIGN.md`) = gaya visual & anti-slop.
-6. **`docs/pos/00-audit.md`** = inventaris historis POS; sudah terimplementasi, bersifat referensi.
 
 Aturan resolusi:
 
