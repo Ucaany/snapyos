@@ -4,6 +4,7 @@ import { test } from "node:test";
 import {
   classifyPosManualPay,
   computePosTotals,
+  posCashChange,
   posDayRange,
   posOrderNumber,
 } from "../src/lib/pos-math.ts";
@@ -208,7 +209,14 @@ test("struk: setting tidak dikenal tetap fail-safe ke browser 80mm", () => {
     bluetooth_paper_width_mm: 57,
     auto_print: false,
   });
-  assert.deepEqual(s, { paperWidthMm: 80, printMode: "browser", autoPrint: false });
+  assert.deepEqual(s, {
+    paperWidthMm: 80,
+    printMode: "browser",
+    autoPrint: false,
+    printerName: null,
+    bridgeUrl: null,
+  });
+  assert.equal(s.printMode !== "cups", true);
 });
 
 test("struk: 80mm default, auto_print default aktif, mode browser", () => {
@@ -232,6 +240,26 @@ test("struk: tanpa booth → paper_width null dan mode browser", () => {
   const s = resolvePosReceiptSettings(null, false);
   assert.equal(s.paperWidthMm, null);
   assert.equal(s.printMode, "browser");
+});
+
+test("struk: sumber utama print_settings.receipt (menang atas field datar)", () => {
+  const s = resolvePosReceiptSettings({
+    enabled: true,
+    mode: "browser",
+    bluetooth_paper_width_mm: 80,
+    auto_print: true,
+    receipt: { mode: "bluetooth", paper_width_mm: 58, auto_print: false },
+  });
+  assert.equal(s.paperWidthMm, 58);
+  assert.equal(s.printMode, "bluetooth");
+  assert.equal(s.autoPrint, false);
+});
+
+test("struk: mode cups dikenali (tidak lagi turun diam-diam ke browser)", () => {
+  const s = resolvePosReceiptSettings({ receipt: { mode: "cups" } });
+  assert.equal(s.printMode, "cups");
+  // Auto-print hanya jalur thermal; CUPS dikirim lewat tombol struk.
+  assert.equal(shouldAutoPrintReceipt({ print_mode: s.printMode, auto_print: true }), false);
 });
 
 test("struk: auto-print hanya untuk jalur bluetooth", () => {
@@ -300,4 +328,46 @@ test("manual pay: order pending tanpa transaksi → settle", () => {
     classifyPosManualPay({ status: "pending", hasExistingTransaction: false }),
     "settle"
   );
+});
+
+// --- uang kembali tunai (0083) -----------------------------------------------
+
+test("posCashChange: kembalian = uang diterima - total; null tanpa uang diterima", () => {
+  assert.equal(posCashChange(20_000, 50_000), 30_000);
+  assert.equal(posCashChange(20_000, 20_000), 0);
+  assert.equal(posCashChange(20_000, 10_000), -10_000);
+  assert.equal(posCashChange(20_000, null), null);
+  assert.equal(posCashChange(20_000, undefined), null);
+});
+
+test("manual pay schema: amount_received opsional hanya untuk cash", () => {
+  assert.ok(posManualPaySchema.safeParse({ orderId: UUID, method: "cash" }).success);
+  assert.ok(
+    posManualPaySchema.safeParse({ orderId: UUID, method: "cash", amount_received: 50_000 }).success
+  );
+  // Non-tunai tidak boleh membawa uang diterima.
+  assert.ok(
+    !posManualPaySchema.safeParse({
+      orderId: UUID,
+      method: "bank_transfer",
+      amount_received: 50_000,
+    }).success
+  );
+  for (const bad of [1.5, -1, "50000", 1_000_000_001]) {
+    assert.ok(
+      !posManualPaySchema.safeParse({ orderId: UUID, method: "cash", amount_received: bad })
+        .success,
+      `amount_received ${JSON.stringify(bad)} harus ditolak`
+    );
+  }
+});
+
+test("manual pay server: menolak uang diterima < final_amount dan menyimpan kembalian", async () => {
+  const source = await (
+    await import("node:fs/promises")
+  ).readFile(new URL("../src/server/pos-orders.ts", import.meta.url), "utf8");
+  assert.match(source, /amountReceived < order\.final_amount/);
+  assert.match(source, /const changeAmount = posCashChange\(order\.final_amount, amountReceived\)/);
+  assert.match(source, /p_amount_received: amountReceived/);
+  assert.match(source, /p_change_amount: changeAmount/);
 });

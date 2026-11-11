@@ -16,7 +16,11 @@ import { effectiveConfig } from "../runtime/settings/index.ts";
 const TOKEN = "test-bridge-token-0123456789";
 
 test("tanpa SNAPYOS_CAMERA_STREAM, preview memakai instance stills yang sama", () => {
-  const config = loadConfig({ PHOTOBOOTH_BRIDGE_TOKEN: TOKEN, SNAPYOS_CAMERA: "mock", SNAPYOS_ALLOW_MOCK: "1" });
+  const config = loadConfig({
+    PHOTOBOOTH_BRIDGE_TOKEN: TOKEN,
+    SNAPYOS_CAMERA: "mock",
+    SNAPYOS_ALLOW_MOCK: "1",
+  });
   const roles = createCameraRoles(config);
   assert.equal(roles.stream, roles.stills, "satu kamera tidak boleh membuat dua adapter");
 });

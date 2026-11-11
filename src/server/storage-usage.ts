@@ -22,6 +22,7 @@ import { isFeatureEnabled } from "@/lib/feature-gate";
 import { activeStorageProviders } from "@/server/storage";
 import type { StorageBucket, StorageProvider } from "@/server/storage/types";
 import { bytesToMb, mbToBytes, sumStorageAddOnMb } from "@/lib/storage-units";
+import { planIsEmpty, planStorageReconcile, type ReconcileEntry } from "@/lib/storage-reconcile";
 
 const BUCKETS: StorageBucket[] = ["business-assets", "generated-photos"];
 
@@ -426,9 +427,89 @@ export async function assertStorageAvailable(
 
 /**
  * Rekonsiliasi storage business — cron scheduled (Bug #12).
- * Listing bucket lalu seed/update ledger + counter via RPC idempotent.
- * Aman dipanggil ulang: accountStorageAdd per key idempotent.
+ * Bandingkan listing bucket dengan ledger `storage_objects`, lalu koreksi
+ * counter: objek hantu (ledger tanpa objek) di-sub, objek belum tercatat /
+ * berubah ukuran di-add ulang. Aman dipanggil ulang (RPC idempotent).
+ *
+ * Listing gagal untuk satu bucket → koreksi bucket itu DILEWATI; menghapus
+ * entri ledger berdasarkan listing parsial akan under-count permanen.
  */
 export async function reconcileBusinessStorage(businessId: string): Promise<number> {
-  return reconcileUsedBytes(businessId);
+  const providers = activeStorageProviders();
+  const listing: ReconcileEntry[] = [];
+  const failedBuckets = new Set<StorageBucket>();
+
+  for (const bucket of BUCKETS) {
+    let bucketFailed = false;
+    for (const provider of providers) {
+      try {
+        const objects = await collectFolderObjects(provider, bucket, businessId);
+        for (const obj of objects) {
+          listing.push({ key: obj.key, bytes: obj.bytes, bucket });
+        }
+      } catch (error) {
+        bucketFailed = true;
+        console.error(
+          `[storage-usage] reconcile list gagal business=${businessId} bucket=${bucket} provider=${provider.name}:`,
+          error instanceof Error ? error.message : error
+        );
+      }
+    }
+    // Dua provider berisi key identik-tak-mungkin (resolusi per-key), tapi
+    // bila write & fallback sama (single-provider) loop di atas hanya 1.
+    if (bucketFailed) failedBuckets.add(bucket);
+  }
+
+  const ledger = await readLedgerEntries(businessId);
+  const plan = planStorageReconcile(ledger, listing);
+  if (planIsEmpty(plan)) return getBusinessUsedBytes(businessId);
+
+  // Koreksi hanya melibatkan bucket yang listingnya utuh.
+  const removable: string[] = [];
+  for (const key of plan.remove) {
+    const bucket = ledgerBucket(ledger, key);
+    if (bucket && failedBuckets.has(bucket as StorageBucket)) continue;
+    removable.push(key);
+  }
+  if (removable.length > 0) await accountStorageSub(businessId, removable);
+
+  const toAdd = [...plan.add, ...plan.resize];
+  for (const entry of toAdd) {
+    if (failedBuckets.has(entry.bucket as StorageBucket)) continue;
+    // resize: key sudah ada di ledger → sub dulu agar byte lama tidak tersisa.
+    if (plan.resize.some((r) => r.key === entry.key)) {
+      await accountStorageSub(businessId, [entry.key]);
+    }
+    await accountStorageAdd(businessId, entry.bucket as StorageBucket, entry.key, entry.bytes);
+  }
+
+  return getBusinessUsedBytes(businessId);
+}
+
+/** Baca seluruh ledger `storage_objects` business (paginated, anti N+1). */
+async function readLedgerEntries(businessId: string): Promise<ReconcileEntry[]> {
+  const supabase = createServerClient();
+  const out: ReconcileEntry[] = [];
+  const pageSize = 1000;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await supabase
+      .from("storage_objects")
+      .select("object_key, bucket, bytes")
+      .eq("business_id", businessId)
+      .order("object_key")
+      .range(offset, offset + pageSize - 1);
+    if (error) {
+      throw new Error(`[storage-usage] baca ledger gagal: ${error.message}`);
+    }
+    const rows = (data ?? []) as { object_key: string; bucket: string; bytes: number }[];
+    for (const row of rows) {
+      out.push({ key: row.object_key, bytes: row.bytes ?? 0, bucket: row.bucket });
+    }
+    if (rows.length < pageSize) break;
+  }
+  return out;
+}
+
+function ledgerBucket(ledger: ReconcileEntry[], key: string): string | null {
+  return ledger.find((e) => e.key === key)?.bucket ?? null;
 }

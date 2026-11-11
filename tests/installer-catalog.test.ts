@@ -9,25 +9,85 @@ const bytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04]);
 const file = { name: "snapyos.zip", type: "application/zip", size: bytes.byteLength };
 
 test("installer metadata validates channel, Windows, architecture", () => {
-  assert.equal(installerMetadataSchema.safeParse({ version: "1.2.3", channel: "stable", min_windows_version: "10", architecture: "x64" }).success, true);
-  assert.equal(installerMetadataSchema.safeParse({ version: "1.2", channel: "stable", min_windows_version: "10", architecture: "x64" }).success, false);
+  assert.equal(
+    installerMetadataSchema.safeParse({
+      version: "1.2.3",
+      channel: "stable",
+      min_windows_version: "10",
+      architecture: "x64",
+    }).success,
+    true
+  );
+  assert.equal(
+    installerMetadataSchema.safeParse({
+      version: "1.2",
+      channel: "stable",
+      min_windows_version: "10",
+      architecture: "x64",
+    }).success,
+    false
+  );
 });
 
 test("installer upload validates extension and magic bytes", () => {
   assert.deepEqual(validateInstallerFile(file, bytes), { ok: true, ext: "zip" });
-  assert.equal(validateInstallerFile({ ...file, name: "snapyos.msi", type: "application/x-msi" }, bytes).ok, false);
+  assert.equal(
+    validateInstallerFile({ ...file, name: "snapyos.msi", type: "application/x-msi" }, bytes).ok,
+    false
+  );
 });
 
 test("compatibility accepts Windows upgrades and universal artifacts", () => {
-  assert.equal(isInstallerCompatible({ min_windows_version: "10", architecture: "x64", windows: "11", requestedArchitecture: "x64" }), true);
-  assert.equal(isInstallerCompatible({ min_windows_version: "11", architecture: "x64", windows: "10", requestedArchitecture: "x64" }), false);
-  assert.equal(isInstallerCompatible({ min_windows_version: "10", architecture: "universal", windows: "10", requestedArchitecture: "arm64" }), true);
+  assert.equal(
+    isInstallerCompatible({
+      min_windows_version: "10",
+      architecture: "x64",
+      windows: "11",
+      requestedArchitecture: "x64",
+    }),
+    true
+  );
+  assert.equal(
+    isInstallerCompatible({
+      min_windows_version: "11",
+      architecture: "x64",
+      windows: "10",
+      requestedArchitecture: "x64",
+    }),
+    false
+  );
+  assert.equal(
+    isInstallerCompatible({
+      min_windows_version: "10",
+      architecture: "universal",
+      windows: "10",
+      requestedArchitecture: "arm64",
+    }),
+    true
+  );
 });
 
 test("published owner predicate excludes draft, inactive, deprecated", () => {
-  assert.equal(isPublishedInstaller({ is_active: true, is_deprecated: false, published_at: "2026-11-05T00:00:00Z" }), true);
-  assert.equal(isPublishedInstaller({ is_active: true, is_deprecated: true, published_at: "2026-11-05T00:00:00Z" }), false);
-  assert.equal(isPublishedInstaller({ is_active: true, is_deprecated: false, published_at: null }), false);
+  assert.equal(
+    isPublishedInstaller({
+      is_active: true,
+      is_deprecated: false,
+      published_at: "2026-11-05T00:00:00Z",
+    }),
+    true
+  );
+  assert.equal(
+    isPublishedInstaller({
+      is_active: true,
+      is_deprecated: true,
+      published_at: "2026-11-05T00:00:00Z",
+    }),
+    false
+  );
+  assert.equal(
+    isPublishedInstaller({ is_active: true, is_deprecated: false, published_at: null }),
+    false
+  );
 });
 
 test("routes keep authorization wrappers and tenant predicates", async () => {

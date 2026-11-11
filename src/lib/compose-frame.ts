@@ -12,9 +12,11 @@ import {
   canvasBackground,
   effectiveSlots,
   slotPlacement,
+  slotsByZ,
   type LayoutSlot,
   type TemplateLayout,
 } from "@/lib/template-layout";
+import { drawSlotText } from "./slot-text.ts";
 import { defaultBrandColors } from "./brand-defaults";
 
 /** Sumber gambar engine ini: foto jadi, offscreen canvas, atau frame <video>
@@ -53,12 +55,7 @@ export function slotClipPath(ctx: CanvasRenderingContext2D, slot: LayoutSlot, sc
 }
 
 /** Satu overlay teks/stiker pada koordinat ternormalisasi 0..1. */
-function drawOverlay(
-  ctx: CanvasRenderingContext2D,
-  o: KioskOverlay,
-  w: number,
-  h: number
-): void {
+function drawOverlay(ctx: CanvasRenderingContext2D, o: KioskOverlay, w: number, h: number): void {
   const sizePx = o.size * h;
   ctx.save();
   ctx.translate(o.x * w, o.y * h);
@@ -162,5 +159,9 @@ export function composeFrame(
   if (frameImg) {
     ctx.drawImage(frameImg, 0, 0, canvas.width, canvas.height);
   }
+  // Teks template di atas frame: teks final harus terlihat di JPEG, bukan
+  // tertutup PNG frame. Layout tanpa `properties.text` tidak menggambar apa pun.
+  for (const slot of slotsByZ(layout)) drawSlotText(ctx, slot, scale);
+
   drawOverlays(ctx, options.overlays, canvas.width, canvas.height);
 }

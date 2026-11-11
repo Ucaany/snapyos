@@ -50,9 +50,12 @@ export async function POST(request: Request, { params }: Params) {
       );
     }
 
-    return NextResponse.json(dataEnvelope(await createSession(businessSlug, input, idempotencyKey)), {
-      status: 201,
-    });
+    return NextResponse.json(
+      dataEnvelope(await createSession(businessSlug, input, idempotencyKey)),
+      {
+        status: 201,
+      }
+    );
   } catch (error) {
     return toErrorResponse(error);
   }

@@ -247,7 +247,6 @@ export function DeviceDialog({
             size="icon-compact"
             aria-label={`Perangkat ${photobox.name}`}
             title={`Perangkat ${photobox.name}`}
-            className="relative after:absolute after:-inset-1"
           >
             <MonitorSmartphone className="size-4" aria-hidden />
           </Button>

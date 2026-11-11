@@ -237,7 +237,10 @@ export function Pricing({ plans, addOns }: { plans: PublicPlan[]; addOns: Public
               </p>
             </div>
 
-            <a href={subscribeHref} className={fancyButtonVariants({ size: "lg", className: "w-full" })}>
+            <a
+              href={subscribeHref}
+              className={fancyButtonVariants({ size: "lg", className: "w-full" })}
+            >
               <span className="flex items-center justify-center gap-2">
                 Lanjut konsultasi
                 <ArrowUpRightIcon className="size-4" aria-hidden />
@@ -245,9 +248,7 @@ export function Pricing({ plans, addOns }: { plans: PublicPlan[]; addOns: Public
             </a>
 
             {(() => {
-              const enabled = Object.entries(selectedPlan?.features ?? {}).filter(
-                ([, on]) => on
-              );
+              const enabled = Object.entries(selectedPlan?.features ?? {}).filter(([, on]) => on);
               if (enabled.length === 0) return null;
               return (
                 <div className="flex flex-col gap-2">
@@ -256,7 +257,10 @@ export function Pricing({ plans, addOns }: { plans: PublicPlan[]; addOns: Public
                   </p>
                   <ul className="flex flex-col gap-1.5">
                     {enabled.slice(0, 6).map(([key]) => (
-                      <li key={key} className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <li
+                        key={key}
+                        className="flex items-center gap-2 text-xs text-muted-foreground"
+                      >
                         <CheckIcon className="size-3.5 text-foreground" aria-hidden />
                         {featureLabel(key)}
                       </li>

@@ -43,10 +43,22 @@ test("greenMask: hanya piksel hijau opaque ditandai", () => {
   const w = 4;
   const h = 1;
   const rgba = new Uint8ClampedArray([
-    0, 200, 0, 255, // hijau
-    255, 255, 255, 255, // putih
-    0, 200, 0, 0, // hijau transparan → bukan
-    0, 0, 200, 255, // biru → bukan
+    0,
+    200,
+    0,
+    255, // hijau
+    255,
+    255,
+    255,
+    255, // putih
+    0,
+    200,
+    0,
+    0, // hijau transparan → bukan
+    0,
+    0,
+    200,
+    255, // biru → bukan
   ]);
   const mask = greenMask(rgba, w, h);
   assert.deepEqual([...mask], [1, 0, 0, 0]);
@@ -97,7 +109,12 @@ test("detectGreenSlots: dua lubang persegi → 2 poligon bbox benar, z atas→ba
   const bbox = (points: { x: number; y: number }[]) => {
     const xs = points.map((p) => p.x);
     const ys = points.map((p) => p.y);
-    return { left: Math.min(...xs), top: Math.min(...ys), right: Math.max(...xs), bottom: Math.max(...ys) };
+    return {
+      left: Math.min(...xs),
+      top: Math.min(...ys),
+      right: Math.max(...xs),
+      bottom: Math.max(...ys),
+    };
   };
 
   const [first, second] = result.polygons;

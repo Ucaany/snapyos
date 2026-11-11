@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { BusinessProfileEditor } from "@/components/dashboard/BusinessProfileEditor";
 import { CheckoutSettingsEditor } from "@/components/dashboard/CheckoutSettingsEditor";
+import { OutputSettingsEditor } from "@/components/dashboard/OutputSettingsEditor";
 import { RetentionSettingsEditor } from "@/components/dashboard/RetentionSettingsEditor";
 import { StorageUsageCard } from "@/components/dashboard/StorageUsageCard";
 import { PageHeader } from "@/components/ui/page-header";
@@ -31,10 +32,16 @@ export default async function SettingsPage() {
 
   let qrisExpiryMinutes: number | null = null;
   let retentionDays: number | null = null;
+  let gifEnabled = true;
+  let gifFrameDelayMs: number | null = null;
+  let gifMaxWidth: number | null = null;
   try {
     const settings = await getSettings(user.id, active.business.id);
     qrisExpiryMinutes = settings.checkout?.qris_expiry_minutes ?? null;
     retentionDays = settings.retention_days ?? null;
+    gifEnabled = settings.output?.gif?.enabled !== false;
+    gifFrameDelayMs = settings.output?.gif?.frame_delay_ms ?? null;
+    gifMaxWidth = settings.output?.gif?.max_width ?? null;
   } catch {
     qrisExpiryMinutes = null;
     retentionDays = null;
@@ -82,6 +89,12 @@ export default async function SettingsPage() {
         <StorageUsageCard usage={storage} />
         <CheckoutSettingsEditor qrisExpiryMinutes={qrisExpiryMinutes} canWrite={canWrite} />
         <RetentionSettingsEditor retentionDays={retentionDays} canWrite={canWrite} />
+        <OutputSettingsEditor
+          gifEnabled={gifEnabled}
+          frameDelayMs={gifFrameDelayMs}
+          maxWidth={gifMaxWidth}
+          canWrite={canWrite}
+        />
       </div>
     </div>
   );

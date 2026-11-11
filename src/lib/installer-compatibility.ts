@@ -1,6 +1,9 @@
 import type { InstallerMetadataInput } from "./validators";
 
-export type InstallerCompatibilityInput = Pick<InstallerMetadataInput, "min_windows_version" | "architecture"> & {
+export type InstallerCompatibilityInput = Pick<
+  InstallerMetadataInput,
+  "min_windows_version" | "architecture"
+> & {
   windows: "10" | "11";
   requestedArchitecture: "x64" | "x86" | "arm64" | "universal";
 };
@@ -16,12 +19,18 @@ export function compareVersions(left: string, right: string): number {
 }
 
 export function isInstallerCompatible(input: InstallerCompatibilityInput): boolean {
-  const windowsOk = input.windows === input.min_windows_version ||
+  const windowsOk =
+    input.windows === input.min_windows_version ||
     (input.windows === "11" && input.min_windows_version === "10");
-  const architectureOk = input.architecture === "universal" || input.architecture === input.requestedArchitecture;
+  const architectureOk =
+    input.architecture === "universal" || input.architecture === input.requestedArchitecture;
   return windowsOk && architectureOk;
 }
 
-export function isPublishedInstaller(row: { is_active: boolean; is_deprecated: boolean; published_at: string | null }) {
+export function isPublishedInstaller(row: {
+  is_active: boolean;
+  is_deprecated: boolean;
+  published_at: string | null;
+}) {
   return row.is_active && !row.is_deprecated && row.published_at !== null;
 }

@@ -157,11 +157,9 @@ async function runPool<T>(
 }
 
 function isQuotaError(error: unknown): boolean {
-  return (
-    error instanceof DOMException
-      ? error.name === "QuotaExceededError"
-      : (error as { name?: string } | null)?.name === "QuotaExceededError"
-  );
+  return error instanceof DOMException
+    ? error.name === "QuotaExceededError"
+    : (error as { name?: string } | null)?.name === "QuotaExceededError";
 }
 
 /**
@@ -248,8 +246,7 @@ export async function warmTemplateCache(
     // Clone SEBELUM body dibaca: clone setelah body terpakai akan melempar.
     const copy = response.clone();
     const blob = await response.blob();
-    const size =
-      blob.size > 0 ? blob.size : Number(copy.headers.get("content-length") ?? 0) || 0;
+    const size = blob.size > 0 ? blob.size : Number(copy.headers.get("content-length") ?? 0) || 0;
     await cache.put(new Request(frameCacheUrl(origin, key)), copy);
     index.entries.push({ key, bytes: size, lastUsed: Date.now() });
     return size;
@@ -279,7 +276,8 @@ export async function warmTemplateCache(
 
   // 2) Frame penuh — saveData cukup thumbnail; sisanya unduh berurutan.
   const saveData =
-    (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
+    (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData ===
+    true;
   if (!saveData) {
     let budgetSkips = 0;
     let rateLimited = 0;
@@ -343,7 +341,7 @@ export async function warmTemplateCache(
           stored = true;
         } catch (error) {
           if (!isQuotaError(error)) break;
-          const need = (summarizeIndex(index).totalBytes + size) - budget;
+          const need = summarizeIndex(index).totalBytes + size - budget;
           const evict = pickEvictions(index, Math.max(need, size), ["thumb"]);
           if (evict.length === 0) break;
           for (const key of evict) await dropKey(cache, index, origin, key);

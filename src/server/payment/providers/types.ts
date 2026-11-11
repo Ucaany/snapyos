@@ -53,6 +53,13 @@ export interface PaymentGateway {
    */
   getStatus(orderId: string, amount?: number, providerRef?: string | null): Promise<GatewayStatus>;
 
+  /**
+   * Probe kredensial non-destruktif untuk tombol "Tes koneksi". WAJIB throw saat
+   * provider menolak auth (401/403) — `getStatus` mengembalikan "pending" untuk
+   * respons non-OK sehingga tidak bisa membedakan key salah dari order tak dikenal.
+   */
+  probeCredential?(): Promise<void>;
+
   /** Verifikasi webhook signature. */
   verifyWebhook(payload: unknown, signature: string): boolean;
 

@@ -86,7 +86,7 @@ async function resolvePhotoboxBySlug(businessId: string, slug: string) {
   const { data } = await supabase
     .from("photoboxes")
     .select(
-      "id, slug, name, status, outlet_id, camera_settings, print_settings, session_settings, device_status, branding"
+      "id, slug, name, status, outlet_id, camera_settings, print_settings, session_settings, device_status, branding, default_template_id"
     )
     .eq("business_id", businessId)
     .eq("slug", slug)
@@ -159,11 +159,7 @@ async function buildPublicConfig(
   const pageVideoKeys = Object.values(merged.kiosk?.pages ?? {})
     .map((p) => p?.video_key)
     .filter((k): k is string => Boolean(k));
-  const videoKeys = [
-    merged.logo_key,
-    merged.kiosk?.video_key,
-    ...pageVideoKeys,
-  ].filter(
+  const videoKeys = [merged.logo_key, merged.kiosk?.video_key, ...pageVideoKeys].filter(
     // Hanya key di folder tenant ini yang boleh di-sign — baris lama bisa
     // menunjuk objek tenant lain (lihat isBrandingStorageKey).
     (k): k is string =>
@@ -252,6 +248,10 @@ async function buildPublicConfig(
       session_settings:
         (photobox.session_settings as PublicConfig["photobox"]["session_settings"]) ?? {},
       device_status: (photobox.device_status as Record<string, unknown>) ?? null,
+      // Tanpa ini kiosk tidak tahu template default booth dan selalu memaksa
+      // customer memilih frame (auto-pick di TemplatePicker butuh id ini).
+      default_template_id:
+        (photobox as { default_template_id?: string | null }).default_template_id ?? null,
     },
     packages,
   };

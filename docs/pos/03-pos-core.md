@@ -283,3 +283,45 @@ Binding tipis (pola `*-actions.ts` existing): setiap action = auth → baca cook
 8. Semua test + lint + typecheck hijau; pre-flight 13.6 lulus; **grep membuktikan nol diff** di `src/server/payment/*`.
 
 **STATUS: PHASE 3 — SELESAI. Dieksekusi 2026-08-28 (lihat Status Eksekusi di atas).**
+
+---
+
+## 12. Cetak Struk: CUPS, 58/80 mm, Uang Kembali (implementasi 2026-11-09)
+
+### 12.1 Tiga jalur cetak struk
+
+`pos_orders.print_mode` (snapshot saat order dibuat, migrasi `0082` memperluas CHECK menjadi `browser` | `bluetooth` | `cups`) menentukan jalur. `ReceiptView` membaca snapshot itu, bukan setelan booth terkini — struk lama tidak berubah ketika printer booth diganti.
+
+| `print_mode` | Transport                                                                             | Catatan                                                                                                   |
+| ------------ | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `browser`    | `window.print()` di `/pos/receipt/[orderId]`                                          | Default. Butuh printer default OS; dialog selalu muncul di tablet                                         |
+| `bluetooth`  | ESC/POS via Web Bluetooth, fallback Web Serial (printer Classic SPP)                  | `paper_width_mm` menentukan lebar bit raster                                                              |
+| `cups`       | `submitCupsReceipt` → `POST /printer/test` ke bridge lokal (`http://127.0.0.1:17777`) | Struk dikirim sebagai teks + `paper_width_mm`; bridge memakai geometri gulungan, bukan preset kertas foto |
+
+### 12.2 CUPS via bridge — bukan SDK printer
+
+- Bridge lokal memegang CUPS; tidak ada printer SDK di browser. `submitCupsReceipt` mengirim `{ printer_name, paper_width_mm, title, lines }`; `printer_name` kosong = printer default OS.
+- Bridge wajib header `X-Bridge-Token`; `401` dipetakan menjadi pesan "Token bridge belum diisi atau salah."
+- Daftar printer: `listCupsPrinters` → `GET /printer/list` (timeout 8 detik) mengembalikan `{ name, default }[]`; bridge mati = `{ ok: false, reason }`, bukan error halaman.
+- Jalur `cups` untuk struk masih memakai rute `/printer/test` karena bridge belum punya rute struk khusus (batasan yang disengaja; lihat komentar `src/lib/print/cups.ts`).
+- Struk **tidak** memakai antrean `print_jobs` runtime: `submitted` = bridge/spooler menerima, bukan bukti kertas keluar. Kasir tetap menyerahkan struk secara fisik.
+
+### 12.3 Lebar kertas 58 / 80 mm
+
+- Hanya dua nilai sah (`paper_width_mm in (58, 80)`, default order `80`). Input lain ditolak CHECK, dan `normalizeWidth` di `src/lib/print/print-mode.ts` memetakan nilai asing menjadi `null` = default 80.
+- Lebar dot pada 203 dpi (8 dot/mm): **58 mm = 384 dot**, **80 mm = 576 dot** (`THERMAL_WIDTH_DOTS`, `bluetoothWidthDots`). Raster foto 1-bit diskalakan ke lebar ini.
+- Enkoder struk teks: `receiptColumns` = **32 kolom** (58 mm) / **48 kolom** (80 mm) font A, `receiptDoubleColumns` = separuhnya untuk judul 2x. `fitText` memotong dengan elipsis ASCII (`...`) alih-alih membungkus, dan `receiptLine` menurunkan nilai ke baris berikutnya bila kiri+kanan tidak muat.
+- Jalur CUPS memakai `receiptLines` yang diturunkan dari blok ESC/POS yang sama (judul 2x diganti versi lebar penuh karena PDF tidak punya font 2x), jadi lebar kolom kedua jalur konsisten.
+- Setelan default per jalur berbeda: `thermal.paper_width_mm` default **80**, `receipt.paper_width_mm` default **58** (struk kasir umumnya 58 mm). Keduanya bisa diubah owner di `/dashboard/photoboxes/[id]/hardware`.
+- Bukti uji: `tests/print-receipt.test.ts` (encoder 58/80), `tests/e2e/pos-receipt-serial.spec.mjs` — **16/16 PASS** untuk kedua lebar.
+
+### 12.4 Uang kembali (cash change)
+
+Kolom `pos_orders.amount_received` + `change_amount` (migrasi `0083`) menyimpan uang tunai nyata, **bukan** menumpang `payment_reference`.
+
+- Kasir mengisi "uang diterima" di `PayMethodDialog`; nilai dikirim sebagai `amount_received` ke `payPosOrderManually`.
+- Server (bukan klien) yang menghitung: `amount_received < final_amount` → `VALIDATION_ERROR` "Uang diterima kurang dari total" beserta `final_amount`/`amount_received` di details; `change_amount = posCashChange(final_amount, amount_received)`.
+- Constraint DB menjaga invarian: `amount_received >= final_amount` **dan** `change_amount = amount_received - final_amount`, atau keduanya `NULL`.
+- Tunai `NULL` (kasir tidak mengisi) tetap sah untuk non-tunai (`bank_transfer`, `other`); `change_amount` lalu `NULL`.
+- `ReceiptView` menampilkan baris tunai/kembalian; nilai `change_amount` yang hilang di baris lama dihitung ulang sebagai `amount_received - final_amount`.
+- Pembayaran tetap idempotent: exists-check `transactions.pos_order_id` dijalankan **sebelum** cek status, jadi retry setelah timeout jaringan mengembalikan sukses yang sama, bukan `409`.

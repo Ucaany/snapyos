@@ -7,10 +7,7 @@ import { z } from "zod";
 import { layoutSchema } from "./template-layout.ts";
 import { MAX_RANGE_DAYS, rangeDays } from "./dashboard-math.ts";
 import { RETENTION_MAX_DAYS, RETENTION_MIN_DAYS } from "./retention.ts";
-import {
-  isLoopbackBridgeUrl,
-  LOOPBACK_BRIDGE_URL_MESSAGE,
-} from "./bridge-url.ts";
+import { isLoopbackBridgeUrl, LOOPBACK_BRIDGE_URL_MESSAGE } from "./bridge-url.ts";
 import {
   CLOUD_OWNED_SETTING_FIELDS,
   CLOUD_SYNCED_DEVICE_GROUPS,
@@ -18,6 +15,7 @@ import {
   DEVICE_SETTING_GROUPS,
   LOCAL_ONLY_DEVICE_GROUPS,
   SETTING_INVARIANTS,
+  mergeDeviceGroup,
 } from "./device-settings-contract.ts";
 
 /** UUID PostgreSQL canonical: shape hex, tanpa pembatasan version/variant RFC. */
@@ -31,7 +29,10 @@ const uuid = z.string().guid();
 export const PAYMENT_PROVIDER_CODES = ["midtrans", "tripay", "pakasir"] as const;
 export const PAYMENT_ENVIRONMENTS = ["sandbox", "production"] as const;
 
-const paymentMethodCodes = z.array(z.string().trim().min(1).max(40)).max(12);
+const paymentMethodCodes = z
+  .array(z.string().trim().min(1).max(40))
+  .min(1, "Pilih minimal satu metode pembayaran")
+  .max(12);
 const paymentCredentialBaseSchema = z.object({
   provider: z.enum(PAYMENT_PROVIDER_CODES),
   label: z.string().trim().min(1).max(80).nullable().optional(),
@@ -370,11 +371,23 @@ export const checkoutSettingsSchema = z.object({
   offline_enabled: z.boolean().optional(),
 });
 
+/** Output digital bisnis: GIF hasil sesi. */
+export const gifOutputSettingsSchema = z.object({
+  enabled: z.boolean().optional(),
+  frame_delay_ms: z.number().int().min(100).max(3000).optional(),
+  max_width: z.number().int().min(240).max(1080).optional(),
+});
+
+export const outputSettingsSchema = z.object({
+  gif: gifOutputSettingsSchema.optional(),
+});
+
 export const businessSettingsUpdateSchema = z.object({
   branding: brandingSchema.optional(),
   /** Retensi hasil foto 1–3 hari (kebijakan privasi ketat). */
   retention_days: z.number().int().min(RETENTION_MIN_DAYS).max(RETENTION_MAX_DAYS).optional(),
   checkout: checkoutSettingsSchema.optional(),
+  output: outputSettingsSchema.optional(),
 });
 
 const photoboxStatus = z.enum(["online", "offline", "maintenance"]);
@@ -401,6 +414,46 @@ export const cameraSettingsSchema = z.object({
   rotation_degrees: z.number().int().min(0).max(270).optional(),
   zoom: z.number().min(1).max(5).optional(),
   screen_orientation: z.enum(["landscape", "portrait"]).optional(),
+});
+
+const printPathMode = z.enum(["browser", "bluetooth", "cups"]);
+const thermalPaperWidth = z.union([z.literal(58), z.literal(80)]);
+
+/**
+ * Printer foto (CUPS / dialog OS / Bluetooth): jalur cetak hasil foto.
+ * `copies` dan `layout` SENGAJA tidak ada di sini — keduanya tetap field datar
+ * milik cloud supaya aturan kepemilikan tidak bercabang dua.
+ */
+export const printPhotoSettingsSchema = z.object({
+  enabled: z.boolean().optional(),
+  mode: printPathMode.optional(),
+  printer_name: z.string().trim().max(128).optional(),
+  paper_size: z.enum(["4x6", "2x6", "5x7", "6x8", "A6"]).optional(),
+  orientation: z.enum(["portrait", "landscape", "auto"]).optional(),
+  fit: z.enum(["auto", "contain", "cover"]).optional(),
+  margins_mm: z.number().int().min(0).max(20).optional(),
+  media_name: z.string().trim().max(120).optional(),
+  strip_2up: z.boolean().optional(),
+  auto_print: z.boolean().optional(),
+  bridge_url: z.string().trim().url().max(300).optional(),
+});
+
+/** Foto 1-bit ke printer thermal (ESC/POS raster). */
+export const printThermalSettingsSchema = z.object({
+  enabled: z.boolean().optional(),
+  paper_width_mm: thermalPaperWidth.optional(),
+  printer_name: z.string().trim().max(128).optional(),
+  bluetooth_device_name: z.string().trim().max(60).optional(),
+  auto_print: z.boolean().optional(),
+});
+
+/** Struk teks POS. */
+export const printReceiptSettingsSchema = z.object({
+  enabled: z.boolean().optional(),
+  mode: printPathMode.optional(),
+  paper_width_mm: thermalPaperWidth.optional(),
+  printer_name: z.string().trim().max(128).optional(),
+  auto_print: z.boolean().optional(),
 });
 
 export const printSettingsSchema = z.object({
@@ -430,6 +483,9 @@ export const printSettingsSchema = z.object({
     .refine(isLoopbackBridgeUrl, LOOPBACK_BRIDGE_URL_MESSAGE)
     .optional(),
   printer_name: z.string().trim().max(128).optional(),
+  photo: printPhotoSettingsSchema.optional(),
+  thermal: printThermalSettingsSchema.optional(),
+  receipt: printReceiptSettingsSchema.optional(),
 });
 
 /**
@@ -657,17 +713,7 @@ export function mergeDeviceSettings<T extends object>(
   for (const group of DEVICE_SETTING_GROUPS) {
     const incoming = device[group];
     if (!incoming) continue;
-    const base = out[group];
-    const merged: Record<string, unknown> =
-      base && typeof base === "object" && !Array.isArray(base)
-        ? { ...(base as Record<string, unknown>) }
-        : {};
-    for (const [key, value] of Object.entries(incoming)) {
-      if (value === undefined) continue;
-      if (CLOUD_OWNED_SETTING_FIELDS[group].includes(key)) continue;
-      merged[key] = value;
-    }
-    out[group] = merged;
+    out[group] = mergeDeviceGroup(group, out[group], incoming);
   }
   return out as T;
 }
@@ -752,13 +798,45 @@ export const photoboxUpdateSchema = z.object({
   payment_mode: photoboxPaymentMode.nullable().optional(),
 });
 
+/** Simpan jalur cetak (foto/thermal/struk) + kamera + template default satu booth. */
+export const photoboxHardwareSchema = z.object({
+  photobox_id: uuid,
+  print_settings: z
+    .object({
+      photo: printPhotoSettingsSchema.optional(),
+      thermal: printThermalSettingsSchema.optional(),
+      receipt: printReceiptSettingsSchema.optional(),
+    })
+    .optional(),
+  camera_settings: cameraSettingsSchema.optional(),
+  /** null = lepas template default (kiosk memakai template paket). */
+  default_template_id: uuid.nullable().optional(),
+});
+
+export type PhotoboxHardwareInput = z.infer<typeof photoboxHardwareSchema>;
+
+/** Laporan konfirmasi uji cetak dari dashboard owner (bukan device token). */
+export const printTestReportSchema = z.object({
+  photobox_id: uuid,
+  confirmed: z.boolean(),
+  mode: z.enum(["browser", "bluetooth", "cups"]),
+  device_name: z.string().trim().max(60).optional(),
+});
+
+export type PrintTestReportInput = z.infer<typeof printTestReportSchema>;
+
 // --- Owner Platform — docs/04 §4.2–4.13, schema contract docs/08 §8.19 ---
 
 const idArray = z.array(uuid).max(200);
 
 export const packageCreateSchema = z.object({
   name: z.string().trim().min(1, "Nama package wajib diisi").max(80, "Nama maksimal 80 karakter"),
-  price: z.number().int("Harga harus integer").positive("Harga harus > 0"),
+  // Lantai harga = lantai produk POS (src/lib/form-ui.ts IDR_PRICE_FLOOR).
+  price: z
+    .number()
+    .int("Harga harus integer IDR")
+    .min(1000, "Harga minimal Rp 1.000")
+    .max(2_000_000_000, "Harga terlalu besar"),
   photo_count: z.number().int().min(1, "Jumlah foto ≥ 1").max(50),
   print_count: z.number().int().min(0, "Jumlah cetak ≥ 0").max(50),
   digital_output: z.boolean().optional().default(false),
@@ -772,7 +850,12 @@ export const packageCreateSchema = z.object({
 
 export const packageUpdateSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
-  price: z.number().int().positive().optional(),
+  price: z
+    .number()
+    .int("Harga harus integer IDR")
+    .min(1000, "Harga minimal Rp 1.000")
+    .max(2_000_000_000, "Harga terlalu besar")
+    .optional(),
   photo_count: z.number().int().min(1).max(50).optional(),
   print_count: z.number().int().min(0).max(50).optional(),
   digital_output: z.boolean().optional(),
@@ -1056,10 +1139,25 @@ export const posOrderCreateSchema = z.object({
     .max(50, "Maksimal 50 item per order"),
 });
 
-export const posManualPaySchema = z.object({
-  orderId: uuid,
-  method: z.enum(["cash", "bank_transfer", "other"]),
-});
+export const posManualPaySchema = z
+  .object({
+    orderId: uuid,
+    method: z.enum(["cash", "bank_transfer", "other"]),
+    /**
+     * Uang tunai yang diterima. Hanya untuk `cash`; batas bawah sebenarnya
+     * (`>= final_amount`) dicek server karena skema tidak tahu total order.
+     */
+    amount_received: z
+      .number()
+      .int("Uang diterima harus integer")
+      .min(0, "Uang diterima tidak boleh negatif")
+      .max(1_000_000_000, "Uang diterima terlalu besar")
+      .optional(),
+  })
+  .refine((v) => v.amount_received === undefined || v.method === "cash", {
+    message: "Uang diterima hanya untuk pembayaran tunai",
+    path: ["amount_received"],
+  });
 
 export const staffUpdateSchema = z.object({
   role: z.enum(["owner", "manager", "staff"]),
@@ -1162,42 +1260,59 @@ export const deviceExitSchema = z.object({
 });
 
 /** Heartbeat operasional cloud, metadata minimum tanpa media/log/secret. */
-const heartbeatHardwareSchema = z.object({
-  adapter: z.string().trim().min(1).max(40),
-  connected: z.boolean().optional(),
-  ok: z.boolean().optional(),
-}).strict();
+const heartbeatHardwareSchema = z
+  .object({
+    adapter: z.string().trim().min(1).max(40),
+    connected: z.boolean().optional(),
+    ok: z.boolean().optional(),
+  })
+  .strict();
 
 /**
  * Status antrean cetak runtime (aditif + opsional). Runtime lama tidak
  * mengirimnya, jadi bentuk lama tetap lolos `.strict()` di atas.
  */
-const heartbeatPrinterJobSchema = z.object({
-  status: z.string().trim().max(40).optional(),
-  last_error: z.string().trim().max(300).nullable().optional(),
-  queue_pending: z.number().int().min(0).max(1_000_000).optional(),
-  queue_retrying: z.number().int().min(0).max(1_000_000).optional(),
-  last_job_at: z.string().trim().max(40).nullable().optional(),
-}).strict();
+const heartbeatPrinterJobSchema = z
+  .object({
+    status: z.string().trim().max(40).optional(),
+    last_error: z.string().trim().max(300).nullable().optional(),
+    queue_pending: z.number().int().min(0).max(1_000_000).optional(),
+    queue_retrying: z.number().int().min(0).max(1_000_000).optional(),
+    last_job_at: z.string().trim().max(40).nullable().optional(),
+  })
+  .strict();
 
 const heartbeatPrinterSchema = heartbeatHardwareSchema.extend({
   mode: z.enum(["browser", "bluetooth", "cups"]).optional(),
   job: heartbeatPrinterJobSchema.nullable().optional(),
 });
 
-export const deviceHeartbeatSchema = z.object({
-  device_token: z.string().trim().min(32).max(128),
-  runtime_version: z.string().trim().regex(/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/).max(64),
-  db_version: z.number().int().min(1).max(100),
-  camera: heartbeatHardwareSchema,
-  printer: heartbeatPrinterSchema,
-  queue: z.object({ pending: z.number().int().min(0).max(1_000_000), retrying: z.number().int().min(0).max(1_000_000) }).strict(),
-  lockdown: z.object({
-    local_pin_configured: z.boolean(),
-    local_pin_locked: z.boolean(),
-    cloud_kiosk_locked: z.boolean().nullable(),
-  }).strict(),
-}).strict();
+export const deviceHeartbeatSchema = z
+  .object({
+    device_token: z.string().trim().min(32).max(128),
+    runtime_version: z
+      .string()
+      .trim()
+      .regex(/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/)
+      .max(64),
+    db_version: z.number().int().min(1).max(100),
+    camera: heartbeatHardwareSchema,
+    printer: heartbeatPrinterSchema,
+    queue: z
+      .object({
+        pending: z.number().int().min(0).max(1_000_000),
+        retrying: z.number().int().min(0).max(1_000_000),
+      })
+      .strict(),
+    lockdown: z
+      .object({
+        local_pin_configured: z.boolean(),
+        local_pin_locked: z.boolean(),
+        cloud_kiosk_locked: z.boolean().nullable(),
+      })
+      .strict(),
+  })
+  .strict();
 
 export type DeviceHeartbeatInput = z.infer<typeof deviceHeartbeatSchema>;
 

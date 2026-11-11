@@ -162,10 +162,7 @@ export function jpegPixelCount(bytes: Uint8Array): { width: number; height: numb
 /** Batas per-foto (20 MP) — dipakai validatePhotoPayload. */
 export const PHOTO_MAX_PIXELS = 20_000_000;
 
-export function validateJpegDimensions(
-  bytes: Uint8Array,
-  maxPixels = PHOTO_MAX_PIXELS
-): boolean {
+export function validateJpegDimensions(bytes: Uint8Array, maxPixels = PHOTO_MAX_PIXELS): boolean {
   const dims = jpegPixelCount(bytes);
   // Header tanpa SOF (jarang) diperlakukan sebagai valid per-foto agar tidak
   // menolak JPEG eksotis; budget agregat tetap membatasi dampaknya.
@@ -244,8 +241,7 @@ export type AssetRole = "logo" | "photo" | "video" | "fallback";
 export type VideoValidation = { ok: true; ext: string } | { ok: false; error: string };
 
 export type AssetValidation =
-  | { ok: true; ext: string; role: AssetRole; contentType: string }
-  | { ok: false; error: string };
+  { ok: true; ext: string; role: AssetRole; contentType: string } | { ok: false; error: string };
 
 export const INSTALLER_MAX_BYTES = 2 * 1024 * 1024 * 1024;
 export const INSTALLER_ALLOWED_TYPES: Record<string, string> = {
@@ -265,7 +261,9 @@ export const ASSET_MAX_BYTES: Record<AssetRole, number> = {
 /** SHA-256 metadata is computed from validated bytes before storage. */
 export async function sha256Hex(bytes: Uint8Array): Promise<string> {
   const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes as BufferSource);
-  return Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, "0")).join("");
+  return Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, "0")).join(
+    ""
+  );
 }
 
 export function validateAssetFile(
@@ -321,18 +319,29 @@ export function validateInstallerFile(
   const type = (file.type ?? "").toLowerCase();
   const name = (file.name ?? "").toLowerCase();
   const ext = INSTALLER_ALLOWED_TYPES[type];
-  if (!file.name || /[\\/\0]/.test(file.name) || !/^[a-z0-9][a-z0-9._ -]{0,180}\.[a-z0-9]+$/i.test(file.name)) {
+  if (
+    !file.name ||
+    /[\\/\0]/.test(file.name) ||
+    !/^[a-z0-9][a-z0-9._ -]{0,180}\.[a-z0-9]+$/i.test(file.name)
+  ) {
     return { ok: false, error: "Nama file installer tidak valid" };
   }
   if (!ext) return { ok: false, error: "Installer harus MSI, MSIX, atau ZIP" };
   if (!name.endsWith(`.${ext}`)) return { ok: false, error: "Ekstensi installer tidak cocok" };
   const size = file.size ?? 0;
-  if (!Number.isSafeInteger(size) || size <= 0) return { ok: false, error: "File installer kosong" };
+  if (!Number.isSafeInteger(size) || size <= 0)
+    return { ok: false, error: "File installer kosong" };
   if (size > INSTALLER_MAX_BYTES) return { ok: false, error: "Ukuran installer maksimal 2 GB" };
   if (bytes) {
     const validZip = bytes.length >= 4 && bytes[0] === 0x50 && bytes[1] === 0x4b;
-    const validMsi = bytes.length >= 8 && bytes[0] === 0xd0 && bytes[1] === 0xcf && bytes[2] === 0x11 && bytes[3] === 0xe0;
-    if ((ext === "zip" || ext === "msix") && !validZip) return { ok: false, error: "Konten installer tidak valid" };
+    const validMsi =
+      bytes.length >= 8 &&
+      bytes[0] === 0xd0 &&
+      bytes[1] === 0xcf &&
+      bytes[2] === 0x11 &&
+      bytes[3] === 0xe0;
+    if ((ext === "zip" || ext === "msix") && !validZip)
+      return { ok: false, error: "Konten installer tidak valid" };
     if (ext === "msi" && !validMsi) return { ok: false, error: "Konten installer tidak valid" };
   }
   return { ok: true, ext };

@@ -11,7 +11,9 @@ import {
   readTemplateSnapshot,
   writeTemplateSnapshot,
 } from "@/components/kiosk/template-cache";
-import { filterTemplatesForPackage, type Snapshot } from "@/lib/template-cache";
+import { type Snapshot } from "@/lib/template-cache";
+import { selectVisibleTemplates } from "@/lib/template-visibility";
+import { selectAutoTemplate } from "@/lib/template-select";
 import {
   KioskAction,
   KioskChip,
@@ -30,6 +32,8 @@ type Props = {
   kioskStyle?: KioskVisualStyle;
   titleText?: string;
   videoUrl?: string | null;
+  /** Template default booth (`photoboxes.default_template_id`) — auto-pilih. */
+  defaultTemplateId?: string | null;
 };
 
 /** Choose Template/Frame — docs/05 §5.4 + docs/15 §5.5 (post-paid). */
@@ -42,6 +46,7 @@ export function TemplatePicker({
   kioskStyle,
   titleText,
   videoUrl = null,
+  defaultTemplateId = null,
 }: Props) {
   const ks = kioskStyle;
   const align = ks?.align ?? "left";
@@ -61,7 +66,7 @@ export function TemplatePicker({
     readTemplateSnapshot(businessSlug)
   );
   const [templates, setTemplates] = useState<PublicTemplate[]>(() =>
-    snapshot ? filterTemplatesForPackage(snapshot.templates, packageId) : []
+    snapshot ? selectVisibleTemplates(snapshot.templates, { packageId }) : []
   );
   const [selected, setSelected] = useState<PublicTemplate | null | undefined>(undefined);
   const [loading, setLoading] = useState(templates.length === 0);
@@ -80,7 +85,7 @@ export function TemplatePicker({
         // Snapshot masih segar: tidak ada request daftar tambahan.
         setLoading(false);
         setError(false);
-        setTemplates(filterTemplatesForPackage(snap.templates, packageId));
+        setTemplates(selectVisibleTemplates(snap.templates, { packageId }));
         return;
       }
 
@@ -95,7 +100,7 @@ export function TemplatePicker({
           // Simpan daftar LENGKAP; filter paket hanya untuk tampilan.
           writeTemplateSnapshot(businessSlug, data);
           setSnapshot({ schema: 1, fetchedAt: Date.now(), templates: data });
-          setTemplates(filterTemplatesForPackage(data, packageId));
+          setTemplates(selectVisibleTemplates(data, { packageId }));
           setFromCache(false);
         })
         .catch(() => {
@@ -103,7 +108,7 @@ export function TemplatePicker({
           const cached = snapshot;
           if (cached) {
             // Offline/limit: tampilkan cache, bukan kartu error.
-            setTemplates(filterTemplatesForPackage(cached.templates, packageId));
+            setTemplates(selectVisibleTemplates(cached.templates, { packageId }));
             setFromCache(true);
             setError(false);
           } else {
@@ -127,6 +132,18 @@ export function TemplatePicker({
 
   // Setelah grid tampil, preload frame penuh di waktu idle: editor tidak perlu
   // render PNG dingin saat customer menekan "Gunakan frame".
+  // Auto-pilih (docs/05 §5.4): template default booth bila masih eligible,
+  // atau satu-satunya template eligible. Customer tidak perlu menekan apa pun —
+  // layar pilih frame hanya muncul saat memang ada pilihan nyata.
+  const autoPickedRef = useRef(false);
+  useEffect(() => {
+    if (loading || autoPickedRef.current) return;
+    const auto = selectAutoTemplate(templates, defaultTemplateId);
+    if (!auto) return;
+    autoPickedRef.current = true;
+    onSelect(auto);
+  }, [loading, templates, defaultTemplateId, onSelect]);
+
   useEffect(() => {
     if (templates.length === 0) return;
     const controller = new AbortController();
@@ -232,7 +249,9 @@ export function TemplatePicker({
                 className="col-span-full flex flex-col items-start gap-2 border-2 border-dashed border-ink/40 bg-muted p-5"
                 style={{ borderRadius: ks?.radius ?? 0 }}
               >
-                <KioskEyebrow className="text-ink">{"BELUM ADA FRAME UNTUK PAKET INI"}</KioskEyebrow>
+                <KioskEyebrow className="text-ink">
+                  {"BELUM ADA FRAME UNTUK PAKET INI"}
+                </KioskEyebrow>
                 <p className="max-w-[54ch] text-sm leading-relaxed text-muted-foreground">
                   Owner perlu mengaktifkan minimal satu template di dashboard. Tanpa frame, hasil
                   tetap bisa diambil dengan kartu Tanpa frame.

@@ -2,7 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
-import { Check, Copy, Download, MessageCircle, Printer, RefreshCcw, TriangleAlert } from "lucide-react";
+import {
+  Check,
+  Copy,
+  Download,
+  MessageCircle,
+  Printer,
+  RefreshCcw,
+  TriangleAlert,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { defaultBrandColors } from "@/lib/brand-defaults";
 import { kioskThemeVars, type KioskVisualStyle } from "@/lib/kiosk-types";
@@ -234,10 +242,7 @@ export function ResultScreen({
                 : "Unduh foto"}
           </Button>
           {photoUrls.length > 1 && iosDevice && (
-            <p
-              role="status"
-              className="text-[11px] leading-relaxed text-muted-foreground"
-            >
+            <p role="status" className="text-[11px] leading-relaxed text-muted-foreground">
               Safari hanya menyimpan file pertama. Untuk semua foto, pindai QR di ponsel.
             </p>
           )}
@@ -258,7 +263,11 @@ export function ResultScreen({
               className="min-h-11 flex-1"
               style={ks ? { borderRadius: radius } : undefined}
             >
-              {copied ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />}
+              {copied ? (
+                <Check className="size-4" aria-hidden />
+              ) : (
+                <Copy className="size-4" aria-hidden />
+              )}
               {copied ? "Tersalin" : "Salin link"}
             </Button>
           )}
@@ -323,22 +332,26 @@ export function ResultScreen({
         className={`relative z-10 flex flex-1 flex-col items-center justify-center gap-4 py-5 lg:min-h-0 lg:overflow-y-auto lg:py-6 ${
           videoUrl ? "bg-transparent" : "bg-surface"
         } ${
-          isBelow ? "border-b-2 border-ink/15" : "border-b-2 border-ink/15 lg:border-b-0 lg:border-r-2"
+          isBelow
+            ? "border-b-2 border-ink/15"
+            : "border-b-2 border-ink/15 lg:border-b-0 lg:border-r-2"
         } ${qrFirst && !isBelow ? "lg:order-2 lg:border-r-0 lg:border-l-2" : ""}`}
         style={{ paddingLeft: gutter, paddingRight: gutter }}
       >
         <KioskEyebrow>{businessName}</KioskEyebrow>
         {previewPhoto ? (
           <div className="grid max-h-[46vh] w-full max-w-[560px] grid-cols-2 gap-2 lg:max-h-[62vh]">
-            {photoUrls.filter((u): u is string => Boolean(u)).map((url, i) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={url}
-                src={url}
-                alt={`Hasil foto ${i + 1}`}
-                className="h-full w-full border-2 border-ink object-contain shadow-hard"
-              />
-            ))}
+            {photoUrls
+              .filter((u): u is string => Boolean(u))
+              .map((url, i) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={url}
+                  src={url}
+                  alt={`Hasil foto ${i + 1}`}
+                  className="h-full w-full border-2 border-ink object-contain shadow-hard"
+                />
+              ))}
           </div>
         ) : (
           <div
@@ -346,7 +359,10 @@ export function ResultScreen({
             aria-label="Memuat foto"
             className="flex h-[38vh] w-[min(46vh,78vw)] items-center justify-center border-2 border-dashed border-ink/30 bg-muted p-6"
           >
-            <span className="h-3/4 w-3/4 animate-pulse border-2 border-ink/15 bg-ink/10" aria-hidden />
+            <span
+              className="h-3/4 w-3/4 animate-pulse border-2 border-ink/15 bg-ink/10"
+              aria-hidden
+            />
           </div>
         )}
 
@@ -375,9 +391,21 @@ export function ResultScreen({
             </div>
           </div>
         ) : (
-          <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-            GIF belum tersedia
-          </p>
+          // GIF gagal dimuat / dimatikan owner: hasil foto tetap lengkap di
+          // atas. Panel ini menjelaskan kenapa tidak ada GIF, bukan spinner
+          // abadi atau ruang kosong yang terlihat seperti error kiosk.
+          <div
+            role="status"
+            className="flex max-w-[320px] flex-col items-center gap-1 border-2 border-dashed border-ink/30 bg-muted px-4 py-3 text-center"
+            style={ks ? { borderRadius: radius } : undefined}
+          >
+            <KioskEyebrow>GIF slideshow</KioskEyebrow>
+            <p className="text-[10px] font-bold uppercase leading-snug tracking-[0.08em] text-muted-foreground">
+              {gifError
+                ? "GIF tidak bisa dimuat. Foto berframe tetap bisa diunduh di atas."
+                : "GIF belum tersedia. Foto hasil sesi ini tetap bisa diunduh di atas."}
+            </p>
+          </div>
         )}
       </div>
 
@@ -437,7 +465,10 @@ export function ResultScreen({
               aria-label="Memuat QR"
               className="flex h-[clamp(140px,22vh,220px)] w-[clamp(140px,22vh,220px)] items-center justify-center border-2 border-ink bg-muted p-4"
             >
-              <span className="size-3/4 animate-pulse border-2 border-ink/15 bg-ink/10" aria-hidden />
+              <span
+                className="size-3/4 animate-pulse border-2 border-ink/15 bg-ink/10"
+                aria-hidden
+              />
             </div>
           ) : qrForToken ? (
             // eslint-disable-next-line @next/next/no-img-element

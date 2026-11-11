@@ -76,9 +76,7 @@ export default async function ResultPage({ params }: Props) {
           <ResultShareActions
             sharePath={`/r/${token}`}
             zipHref={
-              photos.length > 0
-                ? `/api/v1/public/results/${encodeURIComponent(token)}/zip`
-                : null
+              photos.length > 0 ? `/api/v1/public/results/${encodeURIComponent(token)}/zip` : null
             }
           />
         </div>

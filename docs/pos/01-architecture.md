@@ -137,7 +137,7 @@ src/app/(dashboard)/dashboard/pos/page.tsx
 | `src/lib/api-errors.ts`                                    | 2     | `POS_NOT_SUBSCRIBED`, `INSUFFICIENT_STOCK`, `POS_ORDER_NOT_PAYABLE`, `POS_PRODUCT_INACTIVE`, `POS_BOOTH_DISABLED` |
 | `src/lib/pos-math.ts`                                      | 3     | `computePosTotals` (integer, discount hook = 0), `posOrderNumber` (WIB, retry 3×)                                 |
 | `src/server/pos-products.ts`                               | 3     | CRUD produk (scoped `.eq(business_id)`)                                                                           |
-| `src/server/pos-orders.ts`                                 | 3     | createPosOrder, cancelPosOrder, payPosOrderManually, getPosOrder (transactions insert + stock)                   |
+| `src/server/pos-orders.ts`                                 | 3     | createPosOrder, cancelPosOrder, payPosOrderManually, getPosOrder (transactions insert + stock)                    |
 | `src/server/pos-actions.ts`                                | 3     | server actions terminal + manajemen (binding tipis)                                                               |
 | `src/components/pos/*`                                     | 3     | ProductGrid, CartPanel, ProductForm, ProductsTable, BoothPicker, PayMethodDialog, ReceiptView                     |
 | `src/server/pos-reports.ts`                                | 5     | agregasi by product/cashier/outlet/booth/status/tanggal                                                           |
@@ -173,11 +173,11 @@ src/app/(dashboard)/dashboard/pos/page.tsx
 
 ## 6. Matriks Role × Endpoint
 
-| Action                                                                                         | owner | manager | staff |
-| ---------------------------------------------------------------------------------------------- | ----- | ------- | ----- |
-| posListBooths / posListProducts / posListCategories / posGetOrder / posReports             | ✅    | ✅      | ✅    |
-| posCreateProduct / posUpdateProduct / posDeleteProduct / posSetBoothEnabled                    | ✅    | ✅      | ❌    |
-| posCreateOrder / posCancelOrder / posPayManually                                               | ✅    | ✅      | ✅    |
+| Action                                                                         | owner | manager | staff |
+| ------------------------------------------------------------------------------ | ----- | ------- | ----- |
+| posListBooths / posListProducts / posListCategories / posGetOrder / posReports | ✅    | ✅      | ✅    |
+| posCreateProduct / posUpdateProduct / posDeleteProduct / posSetBoothEnabled    | ✅    | ✅      | ❌    |
+| posCreateOrder / posCancelOrder / posPayManually                               | ✅    | ✅      | ✅    |
 
 Permission mapping (`src/lib/rbac.ts`) — tanpa perubahan DB role:
 

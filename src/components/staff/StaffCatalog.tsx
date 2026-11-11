@@ -1,10 +1,5 @@
 import Image from "next/image";
-import {
-  Camera,
-  ImageIcon,
-  Package,
-  Store,
-} from "lucide-react";
+import { Camera, ImageIcon, Package, Store } from "lucide-react";
 
 import {
   StaffMeta,
@@ -53,10 +48,7 @@ export function StaffBoothsBoard({
       {photoboxes.map((booth) => {
         const devices = [booth.camera, booth.printer, booth.display].filter(Boolean);
         return (
-          <li
-            key={booth.id}
-            className={cn("flex flex-col", STAFF_CARD_SURFACE)}
-          >
+          <li key={booth.id} className={cn("flex flex-col", STAFF_CARD_SURFACE)}>
             <div className="flex flex-wrap items-start justify-between gap-2 border-b-2 border-ink bg-bg px-4 py-3">
               <div className="min-w-0">
                 <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
@@ -74,7 +66,9 @@ export function StaffBoothsBoard({
 
             <dl className="grid gap-3 px-4 py-3 md:grid-cols-2">
               <StaffMeta label="URL PERANGKAT">
-                <span className="break-all">/p/{businessSlug}/{booth.slug}</span>
+                <span className="break-all">
+                  /p/{businessSlug}/{booth.slug}
+                </span>
               </StaffMeta>
               <StaffMeta label="OUTLET">{booth.outlet_name ?? "-"}</StaffMeta>
               <StaffMeta label="TERDAFTAR">{formatDate(booth.created_at, timeZone)}</StaffMeta>
@@ -140,10 +134,7 @@ export function StaffOutletsBoard({ outlets }: { outlets: OutletRow[] }) {
   return (
     <ul className="grid gap-3 lg:grid-cols-2" aria-label="Daftar outlet">
       {outlets.map((outlet, index) => (
-        <li
-          key={outlet.id}
-          className={cn("flex flex-col", STAFF_CARD_SURFACE)}
-        >
+        <li key={outlet.id} className={cn("flex flex-col", STAFF_CARD_SURFACE)}>
           <div className="flex flex-wrap items-start justify-between gap-2 border-b-2 border-ink bg-bg px-4 py-3">
             <div className="flex min-w-0 items-start gap-3">
               <span className="flex size-8 shrink-0 items-center justify-center border-2 border-ink bg-accent font-mono text-[11px] font-bold">
@@ -158,7 +149,10 @@ export function StaffOutletsBoard({ outlets }: { outlets: OutletRow[] }) {
                 </h3>
               </div>
             </div>
-            <StatusBadge status={outlet.status} label={outlet.status === "active" ? "Aktif" : "Nonaktif"} />
+            <StatusBadge
+              status={outlet.status}
+              label={outlet.status === "active" ? "Aktif" : "Nonaktif"}
+            />
           </div>
           <dl className="grid gap-3 px-4 py-3 md:grid-cols-2">
             <StaffMeta label="WILAYAH">
@@ -197,10 +191,7 @@ export function StaffPackagesBoard({
   return (
     <ul className="grid gap-3 lg:grid-cols-2" aria-label="Daftar package">
       {packages.map((pkg) => (
-        <li
-          key={pkg.id}
-          className={cn("flex flex-col", STAFF_CARD_SURFACE)}
-        >
+        <li key={pkg.id} className={cn("flex flex-col", STAFF_CARD_SURFACE)}>
           <div className="flex flex-wrap items-start justify-between gap-3 border-b-2 border-ink bg-bg px-4 py-3">
             <div className="min-w-0">
               <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
@@ -215,7 +206,10 @@ export function StaffPackagesBoard({
                 </p>
               ) : null}
             </div>
-            <StatusBadge status={pkg.is_active ? "active" : "inactive"} label={pkg.is_active ? "Aktif" : "Nonaktif"} />
+            <StatusBadge
+              status={pkg.is_active ? "active" : "inactive"}
+              label={pkg.is_active ? "Aktif" : "Nonaktif"}
+            />
           </div>
 
           <div className="flex flex-wrap items-end justify-between gap-3 px-4 py-3">
@@ -262,10 +256,7 @@ export function StaffTemplatesBoard({ templates }: { templates: TemplateRow[] })
       {templates.map((template) => {
         const previewSrc = template.thumbnail_preview_url ?? template.preview_url;
         return (
-          <li
-            key={template.id}
-            className={cn("flex flex-col", STAFF_CARD_SURFACE)}
-          >
+          <li key={template.id} className={cn("flex flex-col", STAFF_CARD_SURFACE)}>
             <div
               className={cn(
                 "relative flex aspect-[4/3] items-center justify-center overflow-hidden border-b-2 border-ink",
@@ -298,7 +289,10 @@ export function StaffTemplatesBoard({ templates }: { templates: TemplateRow[] })
                 <h3 className="min-w-0 font-display text-base uppercase leading-tight tracking-tight">
                   {template.name}
                 </h3>
-                <StatusBadge status={template.is_active ? "active" : "inactive"} label={template.is_active ? "Aktif" : "Nonaktif"} />
+                <StatusBadge
+                  status={template.is_active ? "active" : "inactive"}
+                  label={template.is_active ? "Aktif" : "Nonaktif"}
+                />
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {template.is_global ? (

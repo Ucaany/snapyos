@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { FILTER_PRESETS, filterCss, type EditorAdjust, type PhotoEdit } from "../src/lib/kiosk-types.ts";
+import {
+  FILTER_PRESETS,
+  filterCss,
+  type EditorAdjust,
+  type PhotoEdit,
+} from "../src/lib/kiosk-types.ts";
 
 test("FILTER_PRESETS: id unik + css non-kosong + Original = none", () => {
   const ids = FILTER_PRESETS.map((f) => f.id);

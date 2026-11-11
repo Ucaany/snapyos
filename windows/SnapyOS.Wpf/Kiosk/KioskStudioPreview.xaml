@@ -1,0 +1,42 @@
+<UserControl x:Class="SnapyOS.Wpf.Kiosk.KioskStudioPreview"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinHeight="360"
+             AutomationProperties.Name="Pratinjau Kiosk Studio">
+  <Grid Margin="12">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+    <Grid Margin="0,0,0,12">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+      <StackPanel>
+        <TextBlock Text="PRATINJAU RUNTIME" FontFamily="{DynamicResource MetaFont}" FontSize="11" FontWeight="Bold" />
+        <TextBlock Text="Renderer dan contract yang sama dengan kiosk customer." Margin="0,4,0,0" Foreground="#5C5C5C" TextWrapping="Wrap" />
+      </StackPanel>
+      <StackPanel Grid.Column="1" Orientation="Horizontal">
+        <Button Content="Portrait" Click="Portrait_OnClick" Margin="0,0,8,0" AutomationProperties.Name="Pilih orientasi portrait" />
+        <Button Content="Landscape" Click="Landscape_OnClick" AutomationProperties.Name="Pilih orientasi landscape" Margin="0,0,8,0" />
+        <ComboBox x:Name="StateSelector" Width="110" SelectionChanged="StateSelector_OnSelectionChanged" AutomationProperties.Name="Pilih state pratinjau" />
+      </StackPanel>
+    </Grid>
+    <Grid Grid.Row="1">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="210" />
+        <ColumnDefinition Width="16" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+      <ListBox x:Name="ScreenList" SelectionChanged="ScreenList_OnSelectionChanged" DisplayMemberPath="Label" AutomationProperties.Name="Daftar layar kiosk" />
+      <Border Grid.Column="2" BorderBrush="#111111" BorderThickness="2" Background="#FFFDF5" Padding="8">
+        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+          <Viewbox Stretch="Uniform" MinWidth="320" MinHeight="240">
+            <ContentControl x:Name="PreviewHost" />
+          </Viewbox>
+        </ScrollViewer>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

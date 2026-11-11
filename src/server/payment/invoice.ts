@@ -103,10 +103,7 @@ async function loadInvoice(businessId: string, invoiceId: string): Promise<Invoi
  * credential tenant — kalau fallback, tenant bisa menyelesaikan tagihannya
  * sendiri di akun merchant-nya dan platform tidak menerima dana.
  */
-async function resolvePaymentGateway(payment: {
-  provider: string;
-  credential_id: string | null;
-}) {
+async function resolvePaymentGateway(payment: { provider: string; credential_id: string | null }) {
   if (!payment.credential_id) {
     const aggregator = resolveGatewayFromCredential(null);
     if (aggregator.provider !== payment.provider) {

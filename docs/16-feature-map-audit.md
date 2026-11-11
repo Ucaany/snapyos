@@ -286,3 +286,82 @@
 - **Merge**: `src/lib/branding-merge.ts` (`mergeBranding`, `brandingHasOverride`, `resolveBoothOverride`) dipakai `buildPublicConfig` + builder + kontras efektif.
 - **UI primitives**: `src/components/ui/neo/{tabs,slider,alert}.tsx` (adaptasi neobrutalism.dev ke token SnapyOS; tanpa dependency baru).
 - **Tes**: `tests/design-builder.test.ts` (merge/pages/replace/contrast), `tests/dashboard-device-management.test.ts` (nav + route + aksi).
+
+---
+
+## 17. Status per Area (penyegaran 2026-11-09)
+
+Bagian ini menutup drift terakhir: yang di bawah **diverifikasi dari kode**, bukan dari PRD.
+Baris "catatan" menyebut bukti (`path:fungsi`) supaya klaim bisa diuji ulang.
+
+### 17.1 Cetak hasil foto (kiosk)
+
+| Butir                                                            | Status               | Bukti                                                                                                                    |
+| ---------------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Dua jalur hasil foto: `photo` + `thermal`                        | Aktif                | `src/lib/print/print-mode.ts:availablePrintPaths`                                                                        |
+| Pemilihan otomatis / pilihan eksplisit / pesan                   | Aktif                | `src/components/kiosk/PrintFlow.tsx` (`PrintChoice`, `PrintUnavailable`)                                                 |
+| Transport: dialog OS, CUPS bridge, ESC/POS (BLE + Serial)        | Aktif                | `PrintLayoutRenderer`, `CupsPrintScreen`, `BluetoothPrintScreen`                                                         |
+| Grup setelan `photo`/`thermal`/`receipt` + mirror ke field datar | Aktif                | `printPhotoSettingsSchema` (`src/lib/validators.ts`), `src/server/hardware-actions.ts`                                   |
+| Deteksi printer/kamera via bridge                                | Aktif                | `HardwareDetectButton` (`GET /health`, `/printer/health`, `/v1/camera/status`), `listCupsPrinters` (`GET /printer/list`) |
+| Antrean cetak lokal + konfirmasi fisik (`print_jobs`)            | Jalur CUPS foto saja | `scripts/photobooth-bridge.mjs`; struk POS **tidak** memakai antrean ini                                                 |
+
+Batasan jujur: deteksi kertas habis tidak mungkin via web; `submitted` ≠ kertas keluar;
+Bootstrapping dua jalur hanya untuk baris yang sudah punya grup — baris lama tetap satu jalur
+(fallback field datar di `resolvePrintMode`/`isPrintPathEnabled`).
+
+### 17.2 Pembayaran langsung (direct merchant)
+
+| Butir                                                                                 | Status | Bukti                                                                     |
+| ------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------- |
+| Wizard credential per provider (field dinamis, secret tidak pernah ditampilkan ulang) | Aktif  | `PaymentCredentialForm`, `PAYMENT_FIELD_LABELS`                           |
+| Tes koneksi; Midtrans hanya sandbox                                                   | Aktif  | `canTestCredentialInEnvironment`                                          |
+| Maksimum 2 credential aktif per business                                              | Aktif  | `MAX_ACTIVE_PAYMENT_CREDENTIALS`, `assertActiveCredentialLimit`           |
+| Normalisasi metode (kanonik + buang yang tak dikenal di kiosk)                        | Aktif  | `assertEnabledPaymentMethods`, `normalizePaymentMethod`, `kioskSupported` |
+| Webhook URL dihitung dari `SnapyOS_PUBLIC_BASE_URL` (HTTPS wajib)                     | Aktif  | `paymentWebhookStatus`                                                    |
+| Kiosk menyembunyikan metode online provider non-Pakasir bila URL webhook mati         | Aktif  | `listKioskCredentials`                                                    |
+| Tiga route webhook (pakasir/midtrans/tripay)                                          | Aktif  | `src/app/api/webhooks/payment/*`                                          |
+
+Batasan: transisi `refund`/`failed`/`cancelled` masih backlog; `usage_per_customer` voucher
+tidak di-enforce.
+
+### 17.3 Template builder
+
+| Butir                                                       | Status                    | Bukti                                                                      |
+| ----------------------------------------------------------- | ------------------------- | -------------------------------------------------------------------------- |
+| Undo/redo (100 langkah, satu drag = satu langkah)           | Aktif                     | `useTemplateHistory`                                                       |
+| Duplikat slot                                               | Aktif                     | `TemplateBuilderCanvas:duplicateSlot`                                      |
+| Duplikat template (baris + layout + key storage)            | Aktif                     | `duplicateTemplate` (`src/server/templates.ts`), `duplicateTemplateAction` |
+| Snap tepi/tengah kanvas & slot lain (hanya geser satu slot) | Aktif                     | `src/lib/template-snap.ts:snapRect`                                        |
+| Layer teks di atas frame                                    | Aktif                     | `TemplateTextPanel`, `composeFrame` (`drawSlotText`)                       |
+| Template default booth + auto-pilih kiosk                   | Aktif                     | `photoboxes.default_template_id`, `selectAutoTemplate`                     |
+| Assign otomatis paket                                       | Aktif                     | `autoAssignTemplateIds`                                                    |
+| Komposit frame di server                                    | **Tidak ada** (by design) | render final di editor kiosk, diunggah sebagai JPEG                        |
+
+Batasan: `useTemplateHistory` belum punya tes unit; `sessions.template_id` belum dipersist.
+
+### 17.4 POS
+
+| Butir                                                                           | Status | Bukti                                              |
+| ------------------------------------------------------------------------------- | ------ | -------------------------------------------------- |
+| Offline-only (cash/bank_transfer/other), insert `transactions` non-withdrawable | Aktif  | `payPosOrderManually` (`src/server/pos-orders.ts`) |
+| Struk 3 jalur (`browser`/`bluetooth`/`cups`), snapshot per order                | Aktif  | `pos_orders.print_mode`, `ReceiptView`             |
+| Lebar 58/80 mm (32/48 kolom, 384/576 dot)                                       | Aktif  | `receiptColumns`, `THERMAL_WIDTH_DOTS`             |
+| Uang diterima + kembalian dihitung server, dijaga CHECK                         | Aktif  | `amount_received`/`change_amount`, `posCashChange` |
+| Idempotensi bayar (exists-check sebelum cek status)                             | Aktif  | `payPosOrderManually`                              |
+
+### 17.5 Storage
+
+| Butir                                                                    | Status | Bukti                                                         |
+| ------------------------------------------------------------------------ | ------ | ------------------------------------------------------------- |
+| Dua area R2 + fallback `R2_BUCKET` legacy                                | Aktif  | `src/lib/r2/areas.ts`                                         |
+| Tulis R2, baca/hapus lintas provider                                     | Aktif  | `getWriteStorage`, `resolveStorage`, `activeStorageProviders` |
+| Retention media 1–3 hari (baris finansial dipertahankan)                 | Aktif  | `src/lib/retention.ts`, `GET /api/cron/retention`             |
+| Orphan sweep `generated-photos` (>24 jam, 2000 scan / 500 hapus per run) | Aktif  | `GET /api/cron/orphan-sweep`                                  |
+| Reconcile `storage_usage` vs listing bucket                              | Aktif  | `planStorageReconcile`, `GET /api/cron/reconcile-storage`     |
+
+### 17.6 Dokumentasi
+
+| Butir                                                                    | Status                                                                                                     |
+| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| `docs/09-security-storage.md` (dirujuk README + beberapa dokumen)        | **Tidak ada di repo** — padanan storage ada di `docs/03` §3.9; RBAC/tenant ada di `docs/03` §3.6           |
+| `docs/16` §3–§15 (TOC menyebut O/S/K/P/M, API routes, cron, DB, storage) | **Belum ditulis** — hanya §0–§2 dan §16–§17 yang ada. TOC belum disunting karena isinya kontrak audit lama |

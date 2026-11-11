@@ -38,9 +38,7 @@ test("setiap route cron ada di deploy/cron/snapyos.cron", () => {
 });
 
 test("kedua konfigurasi menjadwalkan set yang sama", () => {
-  const inVercel = new Set(
-    (vercel.crons ?? []).map((c) => c.path.replace(/^\/api\/cron\//, ""))
-  );
+  const inVercel = new Set((vercel.crons ?? []).map((c) => c.path.replace(/^\/api\/cron\//, "")));
   const inCron = new Set(
     [...crontab.matchAll(/\/api\/cron\/([a-z0-9-]+)/g)].map((m) => m[1] as string)
   );

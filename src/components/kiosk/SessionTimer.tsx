@@ -44,9 +44,7 @@ export function SessionTimer({ expiresAt, warningSeconds, onExpired }: Props) {
       role="timer"
       aria-live={warning ? "polite" : "off"}
     >
-      <span className="text-[10px] uppercase tracking-[0.18em]">
-        {warning ? "Segera" : "Sisa"}
-      </span>
+      <span className="text-[10px] uppercase tracking-[0.18em]">{warning ? "Segera" : "Sisa"}</span>
       <span className="tabular-nums">{fmt(left)}</span>
     </div>
   );

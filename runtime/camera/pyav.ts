@@ -13,7 +13,7 @@
 import { access } from "node:fs/promises";
 import { createLock, runCommand } from "../http.ts";
 import type { CameraRole, RuntimeConfig } from "../config.ts";
-import { isJpeg, type CameraAdapter, type CameraStatus } from "./types.ts";
+import { isJpeg, type CameraAdapter, type CameraInfo, type CameraStatus } from "./types.ts";
 
 /** Skrip konstan milik kita sendiri — tidak ada input pengguna yang disisipkan. */
 const GRAB_FRAME = [
@@ -45,6 +45,10 @@ export function createPyavCamera(
   return {
     kind: "pyav",
     mock: false,
+
+    async list(): Promise<CameraInfo[]> {
+      return [];
+    },
 
     async status(): Promise<CameraStatus> {
       try {

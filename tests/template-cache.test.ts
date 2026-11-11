@@ -13,7 +13,6 @@ import { test } from "node:test";
 
 import {
   assetKey,
-  filterTemplatesForPackage,
   frameCacheUrl,
   parseAssetKey,
   parseIndex,
@@ -91,27 +90,9 @@ test("frameCacheUrl: identik dengan key yang dibentuk SW", () => {
   );
 });
 
-test("filterTemplatesForPackage: assignment menyempit, kosong -> semua", () => {
-  const a = template({ id: T1, package_ids: ["p1"] });
-  const b = template({ id: T2, package_ids: ["p2"] });
-  assert.deepEqual(
-    filterTemplatesForPackage([a, b], "p1").map((t) => t.id),
-    [T1]
-  );
-  assert.deepEqual(
-    filterTemplatesForPackage([a, b], "p3").map((t) => t.id),
-    [T1, T2]
-  );
-  assert.deepEqual(filterTemplatesForPackage([], "p1"), []);
-});
-
 test("removedKeys: template hilang + key asing dipangkas", () => {
   const fresh = [template({ id: T1 })];
-  const index = indexOf(
-    [`${T1}:1000@480`, 10, 1],
-    [`${T2}:1000@full`, 20, 2],
-    ["rusak", 5, 3]
-  );
+  const index = indexOf([`${T1}:1000@480`, 10, 1], [`${T2}:1000@full`, 20, 2], ["rusak", 5, 3]);
   assert.deepEqual(removedKeys(fresh, index).sort(), ["rusak", `${T2}:1000@full`].sort());
 });
 
@@ -130,9 +111,7 @@ test("parseSnapshot: rusak / schema asing -> null", () => {
   assert.equal(parseSnapshot("{"), null);
   assert.equal(parseSnapshot(JSON.stringify({ schema: 2, fetchedAt: 1, templates: [] })), null);
   assert.equal(parseSnapshot(JSON.stringify({ schema: 1 })), null);
-  const ok = parseSnapshot(
-    JSON.stringify({ schema: 1, fetchedAt: 123, templates: [template()] })
-  );
+  const ok = parseSnapshot(JSON.stringify({ schema: 1, fetchedAt: 123, templates: [template()] }));
   assert.equal(ok?.templates.length, 1);
   assert.equal(ok?.fetchedAt, 123);
 });
@@ -158,9 +137,7 @@ test("planWarm: idempoten, melanjutkan aset yang belum ada, prune template hilan
   assert.deepEqual(first.thumbs, [
     { key: `${T1}:1000@480`, url: "/api/v1/public/frame?url=b&w=480" },
   ]);
-  assert.deepEqual(first.frames, [
-    { key: `${T1}:1000@full`, url: "/api/v1/public/frame?url=a" },
-  ]);
+  assert.deepEqual(first.frames, [{ key: `${T1}:1000@full`, url: "/api/v1/public/frame?url=a" }]);
   assert.deepEqual(first.prune, [`${T2}:900@full`]);
   assert.deepEqual(first.stale, {});
   // Input sama -> output sama (tanpa mutasi index).

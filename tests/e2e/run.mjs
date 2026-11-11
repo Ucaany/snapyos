@@ -17,7 +17,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const group = process.argv[2] ?? "all";
 
 const SUITES = {
-  standalone: ["kiosk-print-browser.spec.mjs"],
+  standalone: ["kiosk-print-browser.spec.mjs", "kiosk-print-cups.spec.mjs"],
   kiosk: [
     "kiosk-smoke.spec.mjs",
     "kiosk-lock.spec.mjs",
@@ -27,7 +27,6 @@ const SUITES = {
     "kiosk-responsive.spec.mjs",
   ],
   bluetooth: ["kiosk-print-bluetooth.spec.mjs", "kiosk-print-serial.spec.mjs"],
-  builder: ["kiosk-builder-chroma.spec.mjs"],
 };
 
 const selected =

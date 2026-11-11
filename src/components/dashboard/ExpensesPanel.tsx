@@ -6,10 +6,7 @@ import { Plus, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { RecordCard } from "@/components/ui/record-card";
-import {
-  RecordCollection,
-  RecordEditButton,
-} from "@/components/ui/record-collection";
+import { RecordCollection, RecordEditButton } from "@/components/ui/record-collection";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DeleteConfirmForm } from "@/components/dashboard/DeleteConfirmForm";
 import { ExpenseFields, type ExpenseRef } from "@/components/dashboard/ExpenseFields";
@@ -64,9 +61,7 @@ export function ExpensesPanel({
             <Fragment key={exp.id}>
               <tr className="border-b-2 border-ink/10 transition-colors hover:bg-muted/60">
                 <td className="px-4 py-3 font-mono text-xs">{exp.expense_date}</td>
-                <td className="px-4 py-3 font-mono text-xs font-bold uppercase">
-                  {exp.category}
-                </td>
+                <td className="px-4 py-3 font-mono text-xs font-bold uppercase">{exp.category}</td>
                 <td className="hidden px-4 py-3 font-mono text-xs text-muted-foreground md:table-cell">
                   {exp.note ?? "-"}
                 </td>
@@ -156,11 +151,7 @@ export function ExpensesPanel({
             <p className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
               {`PENGELUARAN ${String(expenses.length).padStart(2, "0")} / PERIODE`}
             </p>
-            <CollapsibleTrigger
-              className="px-3"
-              aria-label="Buka form pengeluaran baru"
-              title="Pengeluaran baru"
-            >
+            <CollapsibleTrigger aria-label="Buka form pengeluaran baru" title="Pengeluaran baru">
               <Plus aria-hidden />
               <span className="sr-only">Pengeluaran baru</span>
             </CollapsibleTrigger>

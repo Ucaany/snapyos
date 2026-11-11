@@ -61,9 +61,7 @@ export function TransactionsView({
   const [state, action, pending] = useActionState(createManualTxAction, initial);
   const [outletId, setOutletId] = useState("");
   const [photoboxId, setPhotoboxId] = useState("");
-  const boothOptions = outletId
-    ? photoboxes.filter((b) => b.outlet_id === outletId)
-    : photoboxes;
+  const boothOptions = outletId ? photoboxes.filter((b) => b.outlet_id === outletId) : photoboxes;
 
   const table = (
     <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
@@ -189,7 +187,10 @@ export function TransactionsView({
               },
               { label: "Metode", value: METHOD_LABEL[tx.payment_method] ?? tx.payment_method },
               { label: "Kotor", value: formatIDR(tx.gross_amount) },
-              { label: "Diskon", value: tx.discount_amount > 0 ? formatIDR(tx.discount_amount) : "-" },
+              {
+                label: "Diskon",
+                value: tx.discount_amount > 0 ? formatIDR(tx.discount_amount) : "-",
+              },
               { label: "Akhir", value: formatIDR(tx.final_amount) },
               {
                 label: "Saldo",
@@ -215,7 +216,6 @@ export function TransactionsView({
               CATAT MANUAL
             </p>
             <CollapsibleTrigger
-              className="px-3"
               aria-label="Buka form transaksi manual"
               title="Catat transaksi manual"
             >

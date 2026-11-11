@@ -114,12 +114,16 @@ export function PosTerminal({
     }
   };
 
-  const pay = async (method: "cash" | "bank_transfer" | "other") => {
+  const pay = async (method: "cash" | "bank_transfer" | "other", amountReceived?: number) => {
     if (!pendingOrder || busy) return;
     setBusy(true);
     setError(null);
     try {
-      await posPayOrderAction({ orderId: pendingOrder.orderId, method });
+      await posPayOrderAction(
+        method === "cash" && amountReceived !== undefined
+          ? { orderId: pendingOrder.orderId, method, amount_received: amountReceived }
+          : { orderId: pendingOrder.orderId, method }
+      );
       router.push(`/pos/receipt/${pendingOrder.orderId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal mencatat pembayaran");

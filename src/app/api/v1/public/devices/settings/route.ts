@@ -4,7 +4,11 @@ import { toErrorResponse } from "@/lib/api-route";
 import { rateLimit, rateLimitByDevice } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/request-ip";
 import { updateDeviceSettings } from "@/server/devices";
-import { deviceSettingsPatchSchema, foreignSettingKeys, localOnlySettingKeys } from "@/lib/validators";
+import {
+  deviceSettingsPatchSchema,
+  foreignSettingKeys,
+  localOnlySettingKeys,
+} from "@/lib/validators";
 
 /**
  * PATCH /api/v1/public/devices/settings — booth menulis balik setelan miliknya

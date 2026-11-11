@@ -614,7 +614,9 @@ export function SubscriptionPanel({
                     <RecordCard
                       title={inv.number}
                       subtitle={inv.intent?.name ?? "-"}
-                      badge={<StatusBadge status={inv.status} label={invoiceStatusLabel(inv.status)} />}
+                      badge={
+                        <StatusBadge status={inv.status} label={invoiceStatusLabel(inv.status)} />
+                      }
                       meta={[
                         { label: "Jumlah", value: formatIDR(inv.amount) },
                         { label: "Dibayar", value: fmtDate(inv.paidAt) },

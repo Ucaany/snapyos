@@ -170,11 +170,7 @@ export function mergeAppearance(
 
   const next: BrandingConfig = { ...base };
   // Field tingkat atas `BrandingConfig` yang boleh ditimpa booth.
-  for (const key of [
-    "welcome_title",
-    "welcome_tagline",
-    "welcome_button",
-  ] as const) {
+  for (const key of ["welcome_title", "welcome_tagline", "welcome_button"] as const) {
     const value = appearance[key];
     if (value !== undefined) next[key] = value;
   }

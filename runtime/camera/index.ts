@@ -7,7 +7,7 @@ import { createPyavCamera } from "./pyav.ts";
 import { createV4l2Camera } from "./v4l2.ts";
 import type { CameraAdapter } from "./types.ts";
 
-export type { CameraAdapter, CameraStatus } from "./types.ts";
+export type { CameraAdapter, CameraInfo, CameraStatus } from "./types.ts";
 
 /** Satu adapter untuk peran tertentu. Adapter yang sama boleh dipakai dua peran. */
 export function createCameraFor(
@@ -46,9 +46,7 @@ export function createCameraRoles(config: RuntimeConfig): {
 
   const sameDevice =
     kind === config.camera &&
-    (kind !== "v4l2" && kind !== "pyav"
-      ? true
-      : config.v4l2Device === config.v4l2DeviceStream);
+    (kind !== "v4l2" && kind !== "pyav" ? true : config.v4l2Device === config.v4l2DeviceStream);
   if (sameDevice) return { stills, stream: stills };
 
   return { stills, stream: createCameraFor(config, kind, "stream") };

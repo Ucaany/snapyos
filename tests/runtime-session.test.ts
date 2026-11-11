@@ -115,7 +115,7 @@ test("/v1/status memuat slug dari meta", async () => {
   const body = (await res.json()) as Record<string, unknown>;
   assert.equal(body.business_slug, "snapy-demo");
   assert.equal(body.photobox_slug, "booth-01");
-  assert.equal(body.db_version, 2);
+  assert.equal(body.db_version, 3);
 });
 
 test("POST /v1/sessions menolak tanpa package_snapshot", async () => {

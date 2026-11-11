@@ -747,3 +747,90 @@ test("PAYMENT_PROVIDER_CODES", () => {
 test("PAYMENT_ENVIRONMENTS", () => {
   assert.deepEqual([...PAYMENT_ENVIRONMENTS], ["sandbox", "production"]);
 });
+
+test("Pakasir: probeCredential throws when the API key is rejected (401/403)", async () => {
+  const gw = createPakasirGateway({
+    id: "c3",
+    provider: "pakasir",
+    merchantId: "owner-project",
+    serverKey: "wrong-key",
+    clientKey: null,
+    environment: "sandbox",
+    metadata: {},
+  });
+  const orig = globalThis.fetch;
+  try {
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 })) as typeof fetch;
+    await assert.rejects(() => gw.probeCredential!(), /401\/403/);
+
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ error: "forbidden" }), { status: 403 })) as typeof fetch;
+    await assert.rejects(() => gw.probeCredential!(), /401\/403/);
+
+    // 404 = key valid, txn dummy tidak ada — probe sukses (bukan error).
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ message: "not found" }), { status: 404 })) as typeof fetch;
+    await gw.probeCredential!();
+
+    // 200 = ada transaksi / apa pun: auth lolos.
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ transaction: null }), { status: 200 })) as typeof fetch;
+    await gw.probeCredential!();
+  } finally {
+    globalThis.fetch = orig;
+  }
+});
+
+test("Pakasir: getStatus still swallows non-OK responses as pending (settlement fail-closed)", async () => {
+  const gw = createPakasirGateway({
+    id: "c3",
+    provider: "pakasir",
+    merchantId: "owner-project",
+    serverKey: "wrong-key",
+    clientKey: null,
+    environment: "sandbox",
+    metadata: {},
+  });
+  const orig = globalThis.fetch;
+  try {
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 })) as typeof fetch;
+    assert.equal(await gw.getStatus("SnapyOS-X1", 1000), "pending");
+  } finally {
+    globalThis.fetch = orig;
+  }
+});
+
+test("Tripay: probeCredential throws on 401/403 but accepts a 200 success:false body", async () => {
+  const gw = createTripayGateway({
+    id: "c4",
+    provider: "tripay",
+    merchantId: "T001",
+    serverKey: "wrong-key",
+    clientKey: null,
+    environment: "sandbox",
+    metadata: { private_key: "p" },
+  });
+  const orig = globalThis.fetch;
+  try {
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ success: false, message: "Unauthorized" }), {
+        status: 401,
+      })) as typeof fetch;
+    await assert.rejects(() => gw.probeCredential!(), /401\/403/);
+
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ success: false, message: "Transaction not found" }), {
+        status: 200,
+      })) as typeof fetch;
+    await gw.probeCredential!();
+
+    // Body bukan JSON → tidak bisa membuktikan auth, harus gagal.
+    globalThis.fetch = (async () =>
+      new Response("<html>gateway</html>", { status: 502 })) as typeof fetch;
+    await assert.rejects(() => gw.probeCredential!(), /gagal/);
+  } finally {
+    globalThis.fetch = orig;
+  }
+});

@@ -97,9 +97,7 @@ function brandingKeys(input: BrandingInput): { path: string[]; key: string }[] {
  * di-sign dan — saat upload berikutnya — dihapus dengan service role.
  */
 function assertBrandingKeys(businessId: string, input: BrandingInput) {
-  const invalid = brandingKeys(input).filter(
-    ({ key }) => !isBrandingStorageKey(businessId, key)
-  );
+  const invalid = brandingKeys(input).filter(({ key }) => !isBrandingStorageKey(businessId, key));
   if (invalid.length === 0) return;
   const message = "File branding harus berada di folder bisnis ini";
   const details: Record<string, string[]> = {};

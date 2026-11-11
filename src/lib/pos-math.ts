@@ -59,3 +59,15 @@ export function classifyPosManualPay(input: {
   if (input.status !== "pending") return "not-payable";
   return "settle";
 }
+
+/**
+ * Kembalian tunai = uang diterima − total. `null` bila kasir tidak mengisi
+ * uang diterima (non-tunai / baris lama). Server memakai ini, bukan klien.
+ */
+export function posCashChange(
+  finalAmount: number,
+  amountReceived: number | null | undefined
+): number | null {
+  if (amountReceived === null || amountReceived === undefined) return null;
+  return Math.trunc(amountReceived) - Math.trunc(finalAmount);
+}

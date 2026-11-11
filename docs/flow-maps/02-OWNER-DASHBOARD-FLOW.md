@@ -432,7 +432,6 @@ Delete photobox → deletePhotobox(businessId, photoboxId)
 
 ---
 
-
 (runtime lokal), bukan dari browser owner. Tidak ada tombol uji kamera jarak jauh: hardware
 hanya bisa diuji di lokasi, dan halaman yang mencoba melakukannya sudah dihapus.
 
@@ -1399,7 +1398,6 @@ Delete credential → deletePaymentCredential(businessId, credentialId)
 
 **Utama**: Dashboard (overview) · Analytics (revenue charts) · Metrics (business metrics)
 
-
 **Keuangan**: Transactions · Finance (expenses, profit) · Payment Gateway · Reports (export)
 
 **Pelanggan & Tim**: Customers · Staff
@@ -1410,7 +1408,6 @@ Delete credential → deletePaymentCredential(businessId, credentialId)
 
 - POS (hanya render jika `hasPosEntitlement()` — lihat `05-POS-TERMINAL-FLOW.md`)
 - Unduh PWA (hanya render jika `hasFeature('pwa_kiosk')`)
-
 
 **Active State**: `src/lib/nav-active.ts` shared helper.
 

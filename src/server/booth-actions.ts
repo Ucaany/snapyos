@@ -13,11 +13,7 @@ import { getClientIp } from "@/lib/request-ip";
 import { requireActiveBusiness } from "@/server/action-utils";
 import { requireEffectiveSubscription } from "@/server/require-subscription";
 import { createOutlet, deleteOutlet, updateOutlet } from "@/server/outlets";
-import {
-  createPhotobox,
-  deletePhotobox,
-  updatePhotobox,
-} from "@/server/photoboxes";
+import { createPhotobox, deletePhotobox, updatePhotobox } from "@/server/photoboxes";
 import { forbiddenPhotoboxFields } from "@/lib/photobox-form-fields";
 import type { FormState } from "@/server/auth-actions";
 

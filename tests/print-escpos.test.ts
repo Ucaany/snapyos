@@ -18,7 +18,13 @@ import {
   sanitizeText,
 } from "../src/lib/print/escpos.ts";
 import { floydSteinberg, packMono, rgbaToGray, thresholdBitmap } from "../src/lib/print/dither.ts";
-import { bluetoothWidthDots, resolvePrintMode } from "../src/lib/print/print-mode.ts";
+import {
+  availablePrintPaths,
+  bluetoothWidthDots,
+  isPrintPathEnabled,
+  resolvePrintMode,
+  resolvePurposeSettings,
+} from "../src/lib/print/print-mode.ts";
 import { qrBitmap } from "../src/lib/print/qr.ts";
 import { printPageSize, printSheets, printPlan } from "../src/lib/print-layout.ts";
 
@@ -134,6 +140,69 @@ test("mode cetak default browser untuk baris lama", () => {
   assert.equal(resolvePrintMode({ mode: "bluetooth" }), "bluetooth");
   assert.equal(bluetoothWidthDots(null), 576);
   assert.equal(bluetoothWidthDots({ bluetooth_paper_width_mm: 58 }), 384);
+});
+
+test("mode per purpose: grup menang, field datar jadi fallback", () => {
+  const settings = {
+    mode: "cups" as const,
+    photo: { mode: "cups" as const },
+    receipt: { mode: "bluetooth" as const },
+    thermal: { enabled: true, paper_width_mm: 58 as const },
+  };
+  assert.equal(resolvePrintMode(settings, "photo"), "cups");
+  assert.equal(resolvePrintMode(settings, "receipt"), "bluetooth");
+  // Foto thermal selalu ESC/POS, bukan dialog OS.
+  assert.equal(resolvePrintMode(settings, "thermal"), "bluetooth");
+  // Baris lama tanpa grup tetap terbaca dari field datar.
+  assert.equal(resolvePrintMode({ mode: "bluetooth" }, "receipt"), "bluetooth");
+  assert.equal(bluetoothWidthDots(settings), 384);
+});
+
+test("gerbang enabled ditegakkan per jalur", () => {
+  assert.equal(isPrintPathEnabled(null, "photo"), true);
+  assert.equal(isPrintPathEnabled({ enabled: false }, "photo"), false);
+  assert.equal(isPrintPathEnabled({ enabled: false, photo: { enabled: true } }, "photo"), false);
+  assert.equal(isPrintPathEnabled({ photo: { enabled: false } }, "photo"), false);
+  assert.equal(isPrintPathEnabled({ photo: { enabled: true } }, "photo"), true);
+  // Thermal tanpa grup = jalur lama (mode datar), bukan default aktif.
+  assert.equal(isPrintPathEnabled({ mode: "cups" }, "thermal"), false);
+  assert.equal(isPrintPathEnabled({ mode: "bluetooth" }, "thermal"), true);
+  assert.equal(isPrintPathEnabled({ thermal: { enabled: false } }, "thermal"), false);
+  assert.equal(isPrintPathEnabled({ receipt: { enabled: false } }, "receipt"), false);
+});
+
+test("availablePrintPaths: dua jalur aktif bersamaan, urutan foto dulu", () => {
+  const both = {
+    photo: { enabled: true, mode: "cups" as const },
+    thermal: { enabled: true, paper_width_mm: 58 as const },
+  };
+  assert.deepEqual(availablePrintPaths(both), ["photo", "thermal"]);
+  assert.deepEqual(availablePrintPaths({ photo: { enabled: true }, thermal: { enabled: false } }), [
+    "photo",
+  ]);
+  // Baris lama tanpa grup: hanya jalur datar yang dianggap tersedia.
+  assert.deepEqual(availablePrintPaths({ mode: "cups" }), ["photo"]);
+  assert.deepEqual(availablePrintPaths({ mode: "bluetooth" }), ["thermal"]);
+  assert.deepEqual(availablePrintPaths({ enabled: false }), []);
+});
+
+test("resolvePurposeSettings: grup menimpa datar, sisanya tetap", () => {
+  const settings = {
+    paper_size: "4x6" as const,
+    copies: 2,
+    bluetooth_paper_width_mm: 80 as const,
+    photo: { printer_name: "Kodak", margins_mm: 3 },
+    receipt: { mode: "cups" as const, paper_width_mm: 58 as const },
+  };
+  const photo = resolvePurposeSettings(settings, "photo");
+  assert.equal(photo.printer_name, "Kodak");
+  assert.equal(photo.margins_mm, 3);
+  assert.equal(photo.paper_size, "4x6");
+  assert.equal(photo.copies, 2);
+  const receipt = resolvePurposeSettings(settings, "receipt");
+  assert.equal(receipt.mode, "cups");
+  assert.equal(receipt.bluetooth_paper_width_mm, 58);
+  assert.deepEqual(resolvePurposeSettings(null, "photo"), {});
 });
 
 test("printSheets: single menggilir foto, copies menggandakan lembar", () => {

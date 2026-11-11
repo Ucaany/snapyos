@@ -5,7 +5,7 @@
  */
 
 import { revalidatePath } from "next/cache";
-import { buildCheckoutPayload, str, toFormState } from "@/lib/form-state";
+import { buildCheckoutPayload, bool, num, str, toFormState } from "@/lib/form-state";
 import { requireEffectiveSubscription } from "@/server/require-subscription";
 import { getActiveBusiness, requireUser } from "@/lib/tenant";
 import { updateSettings } from "@/server/business";
@@ -60,6 +60,48 @@ export async function updateCheckoutSettingsAction(
     await updateSettings(user.id, active.business.id, { checkout });
   } catch (error) {
     return toFormState(error, "Gagal menyimpan pengaturan checkout. Coba lagi.");
+  }
+
+  revalidatePath("/dashboard/settings");
+  return { error: undefined };
+}
+
+/**
+ * Output digital (business_settings.output.gif): GIF on/off, delay frame
+ * 100–3000 ms, lebar maksimum 240–1080 px. Rentang ditegakkan zod lewat
+ * `updateSettings`; UI memberi pesan per-field.
+ */
+export async function updateOutputSettingsAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const user = await requireUser();
+  if (!user) return { error: "Sesi berakhir. Silakan login ulang." };
+  const active = await getActiveBusiness(user.id);
+  if (!active) return { error: "Business tidak ditemukan" };
+  await requireEffectiveSubscription(active.business.id, "write");
+
+  const frameDelayMs = num(formData, "frame_delay_ms");
+  const maxWidth = num(formData, "max_width");
+  if (!Number.isInteger(frameDelayMs) || frameDelayMs < 100 || frameDelayMs > 3000) {
+    return { fieldErrors: { frame_delay_ms: ["Isi 100–3000 ms"] } };
+  }
+  if (!Number.isInteger(maxWidth) || maxWidth < 240 || maxWidth > 1080) {
+    return { fieldErrors: { max_width: ["Isi 240–1080 px"] } };
+  }
+
+  try {
+    await updateSettings(user.id, active.business.id, {
+      output: {
+        gif: {
+          enabled: bool(formData, "gif_enabled"),
+          frame_delay_ms: frameDelayMs,
+          max_width: maxWidth,
+        },
+      },
+    });
+  } catch (error) {
+    return toFormState(error, "Gagal menyimpan setelan output. Coba lagi.");
   }
 
   revalidatePath("/dashboard/settings");

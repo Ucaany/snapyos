@@ -64,7 +64,8 @@ export default async function DesignBuilderPage({
         description="Pilih booth, ubah merek, sambutan, dan tampilan layar kiosk, lalu lihat pratinjau langsung. Booth tanpa kustomisasi mewarisi branding global."
         meta={
           <>
-            {photoboxes.length} booth · {can(active.role, "business:update") ? "global" : "global read-only"}
+            {photoboxes.length} booth ·{" "}
+            {can(active.role, "business:update") ? "global" : "global read-only"}
           </>
         }
       />

@@ -458,3 +458,58 @@ tunai = payment `pending` menunggu operator (server-gated, non-withdrawable).
 URL webhook yang dikirim ke provider dibangun dari `SnapyOS_PUBLIC_BASE_URL`
 (`paymentWebhookUrl()`), bukan env terpisah. Credential
 direct merchant disimpan per business, bukan env.
+
+---
+
+## 6.14 Wizard Kredensial Gateway (dashboard owner)
+
+Halaman `/dashboard/payment` (`PaymentGatewaySettings` → `PaymentCredentialCard` → `PaymentCredentialForm`). Hanya **owner** (`assertPaymentCredentialOwner`); manager/staff ditolak `FORBIDDEN`.
+
+**Langkah wizard (satu form, field dinamis per provider):**
+
+1. **Provider** — `pakasir` | `midtrans` | `tripay`. Tidak bisa diubah saat mengedit (credential = satu provider).
+2. **Environment** — `sandbox` | `production`. Credential dipakai kiosk hanya bila `environment` = `gatewayEnvironment()` (`PAYMENT_GATEWAY_ENV`, else `NODE_ENV`).
+3. **Label** (opsional, ≤80) — nama tampilan, mis. "Gateway utama".
+4. **Field rahasia** per provider (`PAYMENT_FIELD_LABELS`) — label mengikuti provider, bukan generik:
+
+   | Provider | `merchant_id` | `server_key` | `client_key` | `private_key` | `webhook_secret` |
+   | -------- | ------------- | ------------ | ------------ | ------------- | ---------------- |
+   | Pakasir  | Project Slug  | API Key      | —            | —             | Webhook Secret   |
+   | Midtrans | Merchant ID   | Server Key   | Client Key   | —             | —                |
+   | Tripay   | Merchant Code | API Key      | —            | Private Key   | —                |
+
+   Kewajiban saat **create** (`REQUIRED_ON_CREATE`): Pakasir `server_key` + `webhook_secret`; Midtrans `server_key`; Tripay `server_key` + `private_key`. Saat **edit**, field rahasia kosong berarti **nilai lama dipertahankan** (tidak pernah ditampilkan kembali).
+
+5. **Metode pembayaran** (`PaymentMethodSelector`) — checkbox dari `PAYMENT_METHODS`, **minimal satu**:
+
+   | Provider | Metode                                                                               |
+   | -------- | ------------------------------------------------------------------------------------ |
+   | Pakasir  | `qris`                                                                               |
+   | Midtrans | `qris`, `gopay`, `shopeepay`, `bca`, `bni`, `bri`, `permata`                         |
+   | Tripay   | `QRIS`, `BCAVA`, `BNIVA`, `BRIVA`, `MANDIRIVA`, `PERMATAVA`, `ALFAMART`, `INDOMARET` |
+
+6. **Aktifkan** (`is_active`) — maksimum **2 credential aktif** per business (`MAX_ACTIVE_PAYMENT_CREDENTIALS`); melebihi batas ditolak `VALIDATION_ERROR`.
+7. **Simpan** → `createCredentialAction` / `updateCredentialAction`. Secret dienkripsi AES-256-GCM di app layer; projection publik hanya mengembalikan `merchant_id`, `client_key`, `enabled_methods`, `webhook_url`/`webhook_reason`.
+
+**Tes koneksi** (`testCredentialAction` → `canTestCredentialInEnvironment`):
+
+- Midtrans: membuat transaksi uji lalu membatalkannya — **hanya sandbox**, tombol nonaktif di production dengan alasan eksplisit.
+- Pakasir & Tripay: probe status non-destruktif (tidak membuat transaksi yatim), aman di environment apa pun.
+
+**Normalisasi metode (backend sumber kebenaran):**
+
+- Tulis: `assertEnabledPaymentMethods(provider, methods)` menolak metode asing (**bukan** dibuang diam-diam) dengan pesan berisi daftar valid; minimal satu setelah dedup.
+- Baca publik: `allowedPaymentMethods` menyaring ulang terhadap daftar yang didukung. `normalizePaymentMethod(provider, method)` memetakan ejaan ke bentuk kanonik via `trim().toUpperCase()` (mis. `qris` → `QRIS` untuk Tripay), dan metode tak dikenal dibuang oleh `kioskSupported` — tidak pernah dipaksa menjadi `qris`.
+- ID metode yang dikirim kiosk: `<provider>:<canonicalMethod>` (`paymentMethodId`). Kiosk **tidak** memilih credential dari payload; server me-resolve credential dari `payments.credential_id`.
+
+**Syarat webhook URL** (`paymentWebhookStatus` di `src/lib/payment-credentials.ts`):
+
+Webhook URL **tidak disimpan** di DB (`payment_credentials.webhook_url` dihapus migrasi `0042`); nilainya dihitung dari `SnapyOS_PUBLIC_BASE_URL` + `/api/webhooks/payment/<provider>`. URL hanya valid bila:
+
+1. `SnapyOS_PUBLIC_BASE_URL` **terisi** — kosong → `webhook_url = null`, alasan "SnapyOS_PUBLIC_BASE_URL kosong".
+2. Nilainya **URL valid** — gagal parse → `null`, alasan "bukan URL valid".
+3. Protokolnya **HTTPS** — `http://` ditolak, alasan "webhook wajib HTTPS".
+
+Selama salah satu gagal, dashboard menampilkan `webhook_reason` dan tombol **Salin webhook URL** disembunyikan. Untuk provider selain Pakasir, kiosk juga tidak menawarkan metode online selama webhook belum aktif (`listKioskCredentials` menyaring `!paymentWebhookUrl(provider)`); Pakasir tetap ditawarkan karena verifikasinya server-to-server, bukan lewat URL callback tampilan.
+
+**Registrasi di sisi provider:** salin URL hasil hitung ke dashboard provider (Pakasir: Detail Proyek + isi Webhook Secret v2; Midtrans: Settings → Payment Notification URL; Tripay: Callback URL). Secret/signature yang dipakai verifikasi adalah nilai yang tersimpan pada credential, bukan env platform.

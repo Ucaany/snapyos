@@ -32,7 +32,10 @@ export async function GET(request: Request) {
     );
   }
   if (!authorized(request)) {
-    return Response.json({ error: { code: "UNAUTHORIZED", message: "Unauthorized" } }, { status: 401 });
+    return Response.json(
+      { error: { code: "UNAUTHORIZED", message: "Unauthorized" } },
+      { status: 401 }
+    );
   }
 
   const supabase = createServerClient();

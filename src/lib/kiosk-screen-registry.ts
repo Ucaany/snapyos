@@ -25,7 +25,8 @@ export const KIOSK_SCREEN_IDS = [
 
 export type KioskScreenId = (typeof KIOSK_SCREEN_IDS)[number];
 export type KioskOrientation = "portrait" | "landscape";
-export type KioskScreenState = "ready" | "loading" | "empty" | "error" | "offline" | "maintenance" | "fallback";
+export type KioskScreenState =
+  "ready" | "loading" | "empty" | "error" | "offline" | "maintenance" | "fallback";
 
 export type KioskSafeArea = {
   top: string;
@@ -40,7 +41,17 @@ export type KioskScreenDefinition = {
   customerVisible: true;
   page: KioskPageId | null;
   fallback: KioskScreenId;
-  layout: "welcome" | "guide" | "selection" | "payment" | "capture" | "review" | "editor" | "printing" | "result" | "state";
+  layout:
+    | "welcome"
+    | "guide"
+    | "selection"
+    | "payment"
+    | "capture"
+    | "review"
+    | "editor"
+    | "printing"
+    | "result"
+    | "state";
 };
 
 export type KioskScreenConfig = KioskVisualStyle & {
@@ -75,23 +86,116 @@ const PAGE_FOR_SCREEN: Record<KioskScreenId, KioskPageId | null> = {
 };
 
 const REGISTRY: Record<KioskScreenId, KioskScreenDefinition> = {
-  welcome: { id: "welcome", label: "Beranda", customerVisible: true, page: "welcome", fallback: "error", layout: "welcome" },
+  welcome: {
+    id: "welcome",
+    label: "Beranda",
+    customerVisible: true,
+    page: "welcome",
+    fallback: "error",
+    layout: "welcome",
+  },
 
-  guide: { id: "guide", label: "Petunjuk", customerVisible: true, page: "guide", fallback: "error", layout: "guide" },
-  package: { id: "package", label: "Paket", customerVisible: true, page: "package", fallback: "error", layout: "selection" },
-  payment: { id: "payment", label: "Pembayaran", customerVisible: true, page: "payment", fallback: "offline", layout: "payment" },
-  template: { id: "template", label: "Frame", customerVisible: true, page: "template", fallback: "error", layout: "selection" },
-  capture: { id: "capture", label: "Ambil foto", customerVisible: true, page: "capture", fallback: "error", layout: "capture" },
-  review: { id: "review", label: "Cek foto", customerVisible: true, page: "capture", fallback: "capture", layout: "review" },
-  editor: { id: "editor", label: "Edit foto", customerVisible: true, page: "edit", fallback: "error", layout: "editor" },
-  printing: { id: "printing", label: "Mencetak", customerVisible: true, page: "result", fallback: "error", layout: "printing" },
-  result: { id: "result", label: "Hasil", customerVisible: true, page: "result", fallback: "error", layout: "result" },
-  offline: { id: "offline", label: "Offline", customerVisible: true, page: null, fallback: "offline", layout: "state" },
-  error: { id: "error", label: "Gangguan", customerVisible: true, page: null, fallback: "error", layout: "state" },
-  maintenance: { id: "maintenance", label: "Perawatan", customerVisible: true, page: null, fallback: "maintenance", layout: "state" },
+  guide: {
+    id: "guide",
+    label: "Petunjuk",
+    customerVisible: true,
+    page: "guide",
+    fallback: "error",
+    layout: "guide",
+  },
+  package: {
+    id: "package",
+    label: "Paket",
+    customerVisible: true,
+    page: "package",
+    fallback: "error",
+    layout: "selection",
+  },
+  payment: {
+    id: "payment",
+    label: "Pembayaran",
+    customerVisible: true,
+    page: "payment",
+    fallback: "offline",
+    layout: "payment",
+  },
+  template: {
+    id: "template",
+    label: "Frame",
+    customerVisible: true,
+    page: "template",
+    fallback: "error",
+    layout: "selection",
+  },
+  capture: {
+    id: "capture",
+    label: "Ambil foto",
+    customerVisible: true,
+    page: "capture",
+    fallback: "error",
+    layout: "capture",
+  },
+  review: {
+    id: "review",
+    label: "Cek foto",
+    customerVisible: true,
+    page: "capture",
+    fallback: "capture",
+    layout: "review",
+  },
+  editor: {
+    id: "editor",
+    label: "Edit foto",
+    customerVisible: true,
+    page: "edit",
+    fallback: "error",
+    layout: "editor",
+  },
+  printing: {
+    id: "printing",
+    label: "Mencetak",
+    customerVisible: true,
+    page: "result",
+    fallback: "error",
+    layout: "printing",
+  },
+  result: {
+    id: "result",
+    label: "Hasil",
+    customerVisible: true,
+    page: "result",
+    fallback: "error",
+    layout: "result",
+  },
+  offline: {
+    id: "offline",
+    label: "Offline",
+    customerVisible: true,
+    page: null,
+    fallback: "offline",
+    layout: "state",
+  },
+  error: {
+    id: "error",
+    label: "Gangguan",
+    customerVisible: true,
+    page: null,
+    fallback: "error",
+    layout: "state",
+  },
+  maintenance: {
+    id: "maintenance",
+    label: "Perawatan",
+    customerVisible: true,
+    page: null,
+    fallback: "maintenance",
+    layout: "state",
+  },
 };
 
-export const KIOSK_SCREEN_REGISTRY: readonly KioskScreenDefinition[] = KIOSK_SCREEN_IDS.map((id) => REGISTRY[id]);
+export const KIOSK_SCREEN_REGISTRY: readonly KioskScreenDefinition[] = KIOSK_SCREEN_IDS.map(
+  (id) => REGISTRY[id]
+);
 
 export function getKioskScreenDefinition(screen: KioskScreenId): KioskScreenDefinition {
   return REGISTRY[screen];
@@ -114,7 +218,9 @@ export function resolveKioskOrientation(
   return viewport && viewport.height > viewport.width ? "portrait" : "landscape";
 }
 
-export function normalizeCameraCalibration(camera?: CameraSettings | null): KioskScreenConfig["cameraCalibration"] {
+export function normalizeCameraCalibration(
+  camera?: CameraSettings | null
+): KioskScreenConfig["cameraCalibration"] {
   return {
     rotationDegrees: normalizeRotation(camera?.rotation_degrees),
     zoom: normalizeZoom(camera?.zoom),

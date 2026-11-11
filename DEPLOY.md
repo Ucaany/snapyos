@@ -102,6 +102,36 @@ Jadwal mengikuti `vercel.json` dan berjalan dalam UTC. Set zona sistem VPS ke UT
 sudo timedatectl set-timezone UTC
 ```
 
+## Lifecycle R2 (retensi & hemat biaya)
+
+Cloudflare R2 menyimpan objek sampai ada yang menghapusnya. Cron aplikasi
+(`retention`, `orphan-sweep`) adalah jalur utama; lifecycle rule adalah jaring
+pengaman bila cron mati atau backlog.
+
+Pasang sekali per bucket (idempotent — aman diulang setelah deploy):
+
+```bash
+node scripts/r2-lifecycle.mjs --dry-run   # lihat rencana
+node scripts/r2-lifecycle.mjs             # pasang + verifikasi
+```
+
+Aturan yang dipasang:
+
+| Bucket                                            | Aturan                                                                                                     |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `generated-photos` (`R2_BUCKET_GENERATED_PHOTOS`) | `Expiration.Days = 3`, `AbortIncompleteMultipartUpload.DaysAfterInitiation = 1`                            |
+| `business-assets` (`R2_BUCKET_BUSINESS_ASSETS`)   | TANPA expire (logo/template aset jangka panjang), `AbortIncompleteMultipartUpload.DaysAfterInitiation = 1` |
+
+Script membaca ulang konfigurasi setelah PUT dan gagal (exit 1) bila aturan
+tidak sesuai. Pada deploy legacy satu bucket (`R2_BUCKET` saja untuk kedua
+area), expire 3 hari **tidak** dipasang karena akan menghapus aset bisnis.
+
+`node scripts/r2-lifecycle.mjs --delete` menghapus konfigurasi lifecycle.
+
+Env terkait cron sweep: `ORPHAN_SWEEP_DRY_RUN=1` (mode lapor-saja) dan
+`ORPHAN_SWEEP_CRON_OPEN=1` (dev tanpa `CRON_SECRET`). Di production keduanya
+harus kosong. Sweep juga menerima `?dry_run=1` untuk satu kali jalan.
+
 ## Deploy
 
 ```bash

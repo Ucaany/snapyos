@@ -82,6 +82,7 @@ type PhotoboxJoined = {
   print_settings: Record<string, unknown> | null;
   session_settings: Record<string, unknown> | null;
   device_status: Record<string, unknown> | null;
+  default_template_id?: string | null;
   exit_pin_hash: string | null;
   exit_pin_failed_count: number | null;
   exit_pin_locked_until: string | null;
@@ -104,7 +105,7 @@ export async function resolveActiveDevice(token: string) {
   const { data } = await supabase
     .from("devices")
     .select(
-      "id, business_id, photobox_id, status, last_seen_at, last_heartbeat_at, photoboxes ( id, business_id, slug, outlet_id, camera_settings, print_settings, session_settings, device_status, exit_pin_hash, exit_pin_failed_count, exit_pin_locked_until ), businesses ( slug, status )"
+      "id, business_id, photobox_id, status, last_seen_at, last_heartbeat_at, photoboxes ( id, business_id, slug, outlet_id, camera_settings, print_settings, session_settings, device_status, default_template_id, exit_pin_hash, exit_pin_failed_count, exit_pin_locked_until ), businesses ( slug, status )"
     )
     .eq("device_token_hash", hashDeviceToken(token))
     .maybeSingle();
@@ -195,7 +196,9 @@ export async function listDevices(userId: string, businessId: string): Promise<D
 
   const { data, error } = await supabase
     .from("devices")
-    .select("id, photobox_id, name, status, last_seen_at, last_heartbeat_at, diagnostics, camera_config, printer_config, created_at, photoboxes ( name )")
+    .select(
+      "id, photobox_id, name, status, last_seen_at, last_heartbeat_at, diagnostics, camera_config, printer_config, created_at, photoboxes ( name )"
+    )
     .eq("business_id", businessId)
     .eq("status", "active")
     .order("created_at", { ascending: false });
@@ -370,6 +373,9 @@ export async function verifyDevice(input: DeviceVerifyInput) {
       print_settings: photobox.print_settings ?? {},
       session_settings: photobox.session_settings ?? {},
       device_status: photobox.device_status,
+      // Kiosk memakai ini untuk auto-pilih frame setelah resume/boot.
+      default_template_id:
+        (photobox as { default_template_id?: string | null }).default_template_id ?? null,
     },
     active_session: active
       ? {
@@ -537,8 +543,15 @@ export async function updateDeviceSettings(input: DeviceSettingsPatchInput) {
 export async function heartbeatDevice(input: DeviceHeartbeatInput) {
   const { deviceId, photobox } = await resolveActiveDevice(input.device_token);
   const supabase = createServerClient();
-  const { data: existing } = await supabase.from("devices").select("diagnostics, kiosk_locked").eq("id", deviceId).maybeSingle();
-  const current = (existing ?? {}) as { diagnostics?: Record<string, unknown>; kiosk_locked?: boolean };
+  const { data: existing } = await supabase
+    .from("devices")
+    .select("diagnostics, kiosk_locked")
+    .eq("id", deviceId)
+    .maybeSingle();
+  const current = (existing ?? {}) as {
+    diagnostics?: Record<string, unknown>;
+    kiosk_locked?: boolean;
+  };
   const printerMirror = {
     adapter: input.printer.adapter,
     ok: input.printer.ok ?? false,
@@ -555,13 +568,19 @@ export async function heartbeatDevice(input: DeviceHeartbeatInput) {
     lockdown: input.lockdown,
     reported_at: new Date().toISOString(),
   };
-  const { error } = await supabase.from("devices").update({ diagnostics: { ...(current.diagnostics ?? {}), runtime } }).eq("id", deviceId);
+  const { error } = await supabase
+    .from("devices")
+    .update({ diagnostics: { ...(current.diagnostics ?? {}), runtime } })
+    .eq("id", deviceId);
   if (error) throw new ApiError("INTERNAL", "Gagal menyimpan heartbeat device");
   // Mirror ke device_status.printer agar dashboard membaca status antrean
   // cetak terbaru (mode + job), bukan hanya hasil setup wizard.
   const deviceStatus = {
     ...((photobox.device_status as Record<string, unknown>) ?? {}),
-    printer: { ...((photobox.device_status as { printer?: object } | null)?.printer ?? {}), ...printerMirror },
+    printer: {
+      ...((photobox.device_status as { printer?: object } | null)?.printer ?? {}),
+      ...printerMirror,
+    },
   };
   await supabase.from("photoboxes").update({ device_status: deviceStatus }).eq("id", photobox.id);
   return { ok: true, kiosk_locked: Boolean(current.kiosk_locked) };

@@ -13,13 +13,13 @@
 
 ## Ringkas
 
-| | Brutalis (default) | Modern |
-|---|---|---|
-| Shell | `Topbar` + `CollapsibleShell` + `Sidebar` | `EfferdShell` (`@efferd/app-shell-3`) |
-| Token | `src/styles/tokens.css` (Neo-Brutalism) | `src/styles/theme-modern.css` (shadcn neutral, oklch) |
+|          | Brutalis (default)                               | Modern                                                        |
+| -------- | ------------------------------------------------ | ------------------------------------------------------------- |
+| Shell    | `Topbar` + `CollapsibleShell` + `Sidebar`        | `EfferdShell` (`@efferd/app-shell-3`)                         |
+| Token    | `src/styles/tokens.css` (Neo-Brutalism)          | `src/styles/theme-modern.css` (shadcn neutral, oklch)         |
 | Primitif | `src/components/ui/*` (border 2px, shadow keras) | kelas default shadcn di `src/components/ui/modern-classes.ts` |
-| Chart | garis hitam 2px, bar kotak, font mono | grid `--border`, bar radius 4, font sans |
-| Cakupan | seluruh app | shell owner/admin/staff (`/dashboard`, `/admin`, `/staff`) |
+| Chart    | garis hitam 2px, bar kotak, font mono            | grid `--border`, bar radius 4, font sans                      |
+| Cakupan  | seluruh app                                      | shell owner/admin/staff (`/dashboard`, `/admin`, `/staff`)    |
 
 Marketing, auth, kiosk, POS, dan result page tetap **brutalis saja**.
 

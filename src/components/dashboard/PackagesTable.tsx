@@ -6,10 +6,7 @@ import { Package, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { RecordCard } from "@/components/ui/record-card";
-import {
-  RecordCollection,
-  RecordEditButton,
-} from "@/components/ui/record-collection";
+import { RecordCollection, RecordEditButton } from "@/components/ui/record-collection";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { DeleteConfirmForm } from "@/components/dashboard/DeleteConfirmForm";
@@ -200,11 +197,7 @@ export function PackagesTable({ packages, templates, outlets, photoboxes, canWri
             <p className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
               {`PAKET ${String(packages.length).padStart(2, "0")}`}
             </p>
-            <CollapsibleTrigger
-              className="px-3"
-              aria-label="Buka form paket baru"
-              title="Paket baru"
-            >
+            <CollapsibleTrigger aria-label="Buka form paket baru" title="Paket baru">
               <Plus aria-hidden />
               <span className="sr-only">Paket baru</span>
             </CollapsibleTrigger>

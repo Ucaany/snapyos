@@ -95,8 +95,7 @@ export function MobileNav({
                   <div className="mt-2 grid grid-cols-1 gap-1 sm:grid-cols-2">
                     {group.items.map((item) => {
                       const crossShell = item.href === "/docs";
-                      const active =
-                        !crossShell && isNavActive(pathname, item.href, "/dashboard");
+                      const active = !crossShell && isNavActive(pathname, item.href, "/dashboard");
                       return (
                         <Link
                           key={item.label}

@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { AlertStrip } from "@/components/dashboard/AlertStrip";
+import { BoothStatusGrid } from "@/components/dashboard/BoothStatusGrid";
+import { BreakdownPanel } from "@/components/dashboard/BreakdownPanel";
 import { DateRangeFilter } from "@/components/dashboard/DateRangeFilter";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { StatStrip } from "@/components/dashboard/StatStrip";
@@ -16,7 +19,15 @@ import { can } from "@/lib/rbac";
 import { formatDate, formatIDR } from "@/lib/dashboard-math";
 import { getActiveBusiness, getUserMemberships, requireUser } from "@/lib/tenant";
 
-import { getDashboardSummary, getOperationalMetrics, getRevenueSeries } from "@/server/dashboard";
+import {
+  getBoothHealth,
+  getDashboardAlerts,
+  getDashboardBreakdowns,
+  getDashboardSummary,
+  getOperationalMetrics,
+  getRevenueDelta,
+  getRevenueSeries,
+} from "@/server/dashboard";
 import { getTxInsights } from "@/server/analytics";
 import { getActiveSubscription } from "@/server/business";
 
@@ -27,12 +38,22 @@ export const metadata: Metadata = {
 const STATUS_LABEL: Record<string, string> = {
   active: "Aktif",
   trialing: "Uji coba",
+  trial: "Uji coba",
   past_due: "Tertunggak",
   cancelled: "Dibatalkan",
   canceled: "Dibatalkan",
   expired: "Kedaluwarsa",
   pending: "Menunggu",
 };
+
+function SectionHeading({ id, label }: { id: string; label: string }) {
+  return (
+    <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+      <h2 id={id}>{label}</h2>
+      <span aria-hidden className="h-px flex-1 bg-ink/30" />
+    </div>
+  );
+}
 
 export default async function DashboardPage({
   searchParams,
@@ -58,22 +79,31 @@ export default async function DashboardPage({
   const range = { from: query.from, to: query.to };
   const businessId = active.business.id;
 
-  const subscription = await getActiveSubscription(businessId);
-  let summary: Awaited<ReturnType<typeof getDashboardSummary>> | null = null;
-  let series: Awaited<ReturnType<typeof getRevenueSeries>> | null = null;
-  let txInsights: Awaited<ReturnType<typeof getTxInsights>> | null = null;
-  let metrics: Awaited<ReturnType<typeof getOperationalMetrics>>;
+  // Blok operasional dihitung untuk SEMUA role dashboard: status booth, alert,
+  // dan metrik operasional tidak bergantung pada akses finansial (docs/04 §4.1).
+  const [subscription, boothHealth, metrics] = await Promise.all([
+    getActiveSubscription(businessId),
+    getBoothHealth(user.id, businessId),
+    getOperationalMetrics(user.id, businessId, range),
+  ]);
+  const alerts = await getDashboardAlerts(user.id, businessId, { boothHealth, subscription });
 
-  if (financialAccess) {
-    [summary, series, metrics, txInsights] = await Promise.all([
-      getDashboardSummary(user.id, businessId, range),
-      getRevenueSeries(user.id, businessId, range),
-      getOperationalMetrics(user.id, businessId, range),
-      getTxInsights(user.id, businessId, range),
-    ]);
-  } else {
-    metrics = await getOperationalMetrics(user.id, businessId, range);
-  }
+  const financial = financialAccess
+    ? await Promise.all([
+        getDashboardSummary(user.id, businessId, range),
+        getRevenueSeries(user.id, businessId, range),
+        getRevenueDelta(user.id, businessId, range),
+        getDashboardBreakdowns(user.id, businessId, range),
+        getTxInsights(user.id, businessId, range),
+      ])
+    : null;
+  const [summary, series, delta, breakdowns, txInsights] = financial ?? [
+    null,
+    null,
+    null,
+    null,
+    null,
+  ];
 
   const fromDate = summary?.range.from ?? metrics.range.from;
   const toDate = summary?.range.to ?? metrics.range.to;
@@ -106,13 +136,42 @@ export default async function DashboardPage({
         }
       />
 
-      {!financialAccess || !summary || !series ? (
+      <AlertStrip alerts={alerts} />
+
+      {/* Operasional: terlihat semua role dashboard. */}
+      <section aria-labelledby="booth-status" className="flex flex-col gap-3">
+        <SectionHeading
+          id="booth-status"
+          label={`STATUS BOOTH ${String(boothHealth.online).padStart(2, "0")}/${String(
+            boothHealth.total
+          ).padStart(2, "0")} ONLINE`}
+        />
+        <StatStrip
+          label="Ringkasan operasional"
+          columns={6}
+          items={[
+            {
+              label: "Booth Online",
+              value: String(boothHealth.online),
+              tone: "text-accent-3-strong",
+            },
+            { label: "Booth Offline", value: String(boothHealth.offline) },
+            { label: "Perawatan", value: String(boothHealth.maintenance) },
+            { label: "Sesi Foto", value: String(metrics.sessions) },
+            { label: "Pelanggan", value: String(metrics.customers) },
+            { label: "Outlet Aktif", value: String(metrics.activeOutlets) },
+          ]}
+        />
+        <BoothStatusGrid items={boothHealth.items} />
+      </section>
+
+      {!financialAccess || !summary || !series || !delta || !breakdowns ? (
         <Card className="border-destructive bg-surface">
           <CardHeader>
             <CardTitle>Akses finansial terbatas</CardTitle>
             <CardDescription>
-              Role {active.role.toUpperCase()} tidak melihat data revenue. Hubungi owner untuk akses
-              penuh dashboard.
+              Role {active.role.toUpperCase()} tidak melihat data revenue. Blok operasional di atas
+              tetap lengkap; hubungi owner untuk akses finansial penuh.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -125,6 +184,8 @@ export default async function DashboardPage({
               label="Pendapatan Bersih: Periode"
               value={formatIDR(summary.net)}
               sub={`${summary.paidTx} transaksi berhasil · ${periodLabel}`}
+              deltaBp={delta.deltaBp}
+              deltaLabel={`vs ${formatIDR(delta.previous)} periode lalu`}
               className="md:col-span-8"
             />
             <div className="grid grid-cols-1 gap-6 md:col-span-4 sm:grid-cols-2 md:grid-cols-1">
@@ -151,10 +212,12 @@ export default async function DashboardPage({
               { label: "Rata-rata / Transaksi", value: formatIDR(summary.avgTransaction) },
               { label: "Sesi Foto", value: String(metrics.sessions) },
               { label: "Pelanggan", value: String(metrics.customers) },
-              { label: "Booth Terhubung", value: String(metrics.activePhotoboxes) },
+              { label: "Booth Online", value: String(boothHealth.online) },
               { label: "Outlet Aktif", value: String(metrics.activeOutlets) },
             ]}
           />
+
+          <BreakdownPanel breakdowns={breakdowns} />
 
           {txInsights && (
             <TxInsightsPanel

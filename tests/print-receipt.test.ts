@@ -13,6 +13,7 @@ import {
   receiptColumns,
   receiptDoubleColumns,
   receiptLine,
+  receiptLines,
   type ReceiptData,
 } from "../src/lib/print/receipt.ts";
 
@@ -164,4 +165,54 @@ test("nominal besar tetap muat satu baris 32 kolom", () => {
   assert.ok(total);
   assert.ok(total!.length <= 32);
   assert.ok(total!.includes("Rp 999.999.999"));
+});
+
+test("baris Tunai/Kembali hanya muncul bila amountReceived diisi", () => {
+  const withoutCash = buildReceiptBlocks(data, 58)
+    .filter((b) => b.kind === "text")
+    .map((b) => b.text);
+  assert.ok(!withoutCash.some((t) => t.startsWith("TUNAI")));
+  assert.ok(!withoutCash.some((t) => t.startsWith("KEMBALI")));
+
+  for (const widthMm of [58, 80] as const) {
+    const columns = receiptColumns(widthMm);
+    const blocks = buildReceiptBlocks(
+      { ...data, amountReceived: 50_000, changeAmount: 30_000 },
+      widthMm
+    );
+    const texts = blocks.filter((b) => b.kind === "text").map((b) => b.text);
+    const cash = texts.find((t) => t.startsWith("TUNAI"));
+    const change = texts.find((t) => t.startsWith("KEMBALI"));
+    assert.ok(cash, `${widthMm}mm: baris TUNAI hilang`);
+    assert.ok(change, `${widthMm}mm: baris KEMBALI hilang`);
+    assert.equal(cash!.length, columns);
+    assert.equal(change!.length, columns);
+    assert.ok(cash!.endsWith("Rp 50.000"));
+    assert.ok(change!.endsWith("Rp 30.000"));
+  }
+});
+
+test("kembalian dihitung dari amountReceived - finalAmount bila changeAmount absen", () => {
+  const texts = buildReceiptBlocks({ ...data, amountReceived: 25_000 }, 58)
+    .filter((b) => b.kind === "text")
+    .map((b) => b.text);
+  const change = texts.find((t) => t.startsWith("KEMBALI"));
+  assert.ok(change);
+  assert.ok(change!.endsWith("Rp 5.000"));
+});
+
+test("receiptLines untuk CUPS: 58mm tepat 32 kolom, 80mm tepat 48", () => {
+  for (const widthMm of [58, 80] as const) {
+    const columns = receiptColumns(widthMm);
+    const lines = receiptLines({ ...data, amountReceived: 50_000, changeAmount: 30_000 }, widthMm);
+    assert.ok(lines.length > 0);
+    for (const line of lines) {
+      assert.ok(line.length <= columns, `${widthMm}mm: "${line}" (${line.length}) > ${columns}`);
+    }
+    assert.ok(lines.some((line) => line.startsWith("TOTAL")));
+    assert.ok(lines.some((line) => line.startsWith("TUNAI")));
+    assert.ok(lines.some((line) => line.startsWith("KEMBALI")));
+  }
+  assert.equal(receiptColumns(58), 32);
+  assert.equal(receiptColumns(80), 48);
 });

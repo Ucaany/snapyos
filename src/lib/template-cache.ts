@@ -93,15 +93,6 @@ export function frameCacheUrl(origin: string, key: string): string {
   return `${origin}/__frame/${encodeURIComponent(base)}@${suffix}`;
 }
 
-/** Assignment package mempersempit, tapi tidak pernah mengosongkan daftar. */
-export function filterTemplatesForPackage(
-  templates: readonly PublicTemplate[],
-  packageId: string
-): PublicTemplate[] {
-  const matched = templates.filter((t) => (t.package_ids ?? []).includes(packageId));
-  return matched.length > 0 ? matched : [...templates];
-}
-
 /** Key index milik template yang tidak ada lagi di daftar segar. */
 export function removedKeys(fresh: readonly PublicTemplate[], index: AssetIndex): string[] {
   const live = new Set(fresh.map((t) => t.id));

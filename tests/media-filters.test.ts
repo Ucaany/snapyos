@@ -15,7 +15,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { FILTER_PRESETS } from "../src/lib/kiosk-types.ts";
 
 register(
-  pathToFileURL(join(dirname(fileURLToPath(import.meta.url)), "helpers", "resolve-loader.mjs")).href,
+  pathToFileURL(join(dirname(fileURLToPath(import.meta.url)), "helpers", "resolve-loader.mjs"))
+    .href,
   import.meta.url
 );
 

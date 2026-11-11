@@ -37,7 +37,11 @@ export function BreakdownChartInner({ data }: { data: { label: string; amount: n
         layout="vertical"
         margin={{ top: 8, right: 16, left: 8, bottom: 0 }}
       >
-        <CartesianGrid horizontal={false} stroke={chart.gridStroke} strokeOpacity={chart.gridOpacity} />
+        <CartesianGrid
+          horizontal={false}
+          stroke={chart.gridStroke}
+          strokeOpacity={chart.gridOpacity}
+        />
         <XAxis
           type="number"
           tickLine={false}

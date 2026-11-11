@@ -145,3 +145,54 @@ export function resolveFacingMode(
 ): FacingMode {
   return setting === "user" || setting === "environment" ? setting : fallback;
 }
+
+export type BridgeCamera = { id: string; label: string };
+
+export type BridgeCameraList =
+  { ok: true; cameras: BridgeCamera[] } | { ok: false; reason: string };
+
+/**
+ * Deteksi kamera fisik lewat bridge. Bridge mati bukan error: pemilihan
+ * perangkat tetap bisa dibuka, dan kiosk boleh jatuh ke kamera browser.
+ */
+export async function listBridgeCameras(
+  settings?: CameraProviderSettings | null,
+  signal?: AbortSignal
+): Promise<BridgeCameraList> {
+  let response: Response;
+  try {
+    response = await fetchBridge(
+      `${cameraBridgeUrl(settings)}/camera/list`,
+      { method: "GET", signal, cache: "no-store", headers: bridgeHeaders() },
+      8_000
+    );
+  } catch {
+    return { ok: false, reason: "Bridge kamera tidak aktif. Jalankan runtime lokal." };
+  }
+  if (response.status === 401) {
+    return { ok: false, reason: "Token bridge belum diisi atau salah." };
+  }
+  const body = (await response.json().catch(() => null)) as {
+    ok?: unknown;
+    cameras?: unknown;
+    reason?: unknown;
+  } | null;
+  if (!response.ok || body?.ok !== true) {
+    return {
+      ok: false,
+      reason: typeof body?.reason === "string" ? body.reason : "Bridge gagal mendeteksi kamera.",
+    };
+  }
+  const cameras = Array.isArray(body.cameras)
+    ? body.cameras
+        .filter(
+          (item): item is { id: string; label?: unknown } =>
+            typeof (item as { id?: unknown } | null)?.id === "string"
+        )
+        .map((item) => ({
+          id: item.id,
+          label: typeof item.label === "string" && item.label.trim() ? item.label : item.id,
+        }))
+    : [];
+  return { ok: true, cameras };
+}

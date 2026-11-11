@@ -118,13 +118,13 @@ Package menentukan harga dan jumlah pekerjaan customer.
 
 Field penting:
 
-| Field         | Aturan                                  |
-| ------------- | --------------------------------------- |
-| `name`        | Wajib, jelas untuk customer             |
-| `price`       | Integer IDR, tidak boleh floating-point |
+| Field         | Aturan                                                   |
+| ------------- | -------------------------------------------------------- |
+| `name`        | Wajib, jelas untuk customer                              |
+| `price`       | Integer IDR, tidak boleh floating-point                  |
 | `photo_count` | Fallback jumlah capture untuk template legacy tanpa slot |
-| `print_count` | Jumlah hasil cetak                      |
-| `is_active`   | Hanya package aktif tampil di kiosk     |
+| `print_count` | Jumlah hasil cetak                                       |
+| `is_active`   | Hanya package aktif tampil di kiosk                      |
 
 Server menghitung final amount. Frontend tidak dipercaya untuk harga, diskon, atau voucher.
 

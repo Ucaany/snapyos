@@ -57,14 +57,14 @@ test("schema.sql: setiap fungsi aplikasi punya grant to service_role", () => {
 });
 
 test("schema.sql: signature lock lengkap (tipe argumen persis, bukan nama saja)", () => {
-  // pos_complete_payment punya 10 argumen — pastikan tipe persis tertulis.
+  // pos_complete_payment punya 12 argumen (0083 + tunai/kembalian) — tipe persis tertulis.
   assert.match(
     schema,
-    /revoke execute on function pos_complete_payment\(uuid, uuid, text, uuid, text, uuid, uuid, integer, integer, integer\)/i
+    /revoke execute on function pos_complete_payment\(uuid, uuid, text, uuid, text, uuid, uuid, integer, integer, integer, integer, integer\)/i
   );
   assert.match(
     schema,
-    /grant execute on function pos_complete_payment\(uuid, uuid, text, uuid, text, uuid, uuid, integer, integer, integer\) to service_role/i
+    /grant execute on function pos_complete_payment\(uuid, uuid, text, uuid, text, uuid, uuid, integer, integer, integer, integer, integer\) to service_role/i
   );
   assert.match(schema, /revoke execute on function storage_account_sub\(uuid, text\[\]\)/i);
 });

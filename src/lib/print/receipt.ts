@@ -26,6 +26,10 @@ export type ReceiptData = {
   grossAmount: number;
   discountAmount: number;
   finalAmount: number;
+  /** Uang tunai diterima; null/absen = tidak mencetak baris Tunai/Kembali. */
+  amountReceived?: number | null;
+  /** Kembalian yang dihitung server. */
+  changeAmount?: number | null;
 };
 
 /** Lebar kolom karakter: 32 untuk 58mm, 48 untuk 80mm (font A). */
@@ -112,6 +116,16 @@ export function buildReceiptBlocks(data: ReceiptData, paperWidthMm: 58 | 80): Es
   for (const line of receiptLine("TOTAL", formatReceiptMoney(data.finalAmount), width)) {
     blocks.push({ kind: "text", text: line, emphasis: true });
   }
+  // Tunai/kembali hanya bila kasir mengisi uang diterima (0083).
+  if (typeof data.amountReceived === "number") {
+    for (const line of receiptLine("TUNAI", formatReceiptMoney(data.amountReceived), width)) {
+      blocks.push({ kind: "text", text: line });
+    }
+    const change = data.changeAmount ?? data.amountReceived - data.finalAmount;
+    for (const line of receiptLine("KEMBALI", formatReceiptMoney(change), width)) {
+      blocks.push({ kind: "text", text: line });
+    }
+  }
   blocks.push({ kind: "text", text: divider });
   blocks.push({ kind: "text", text: "TERIMA KASIH. SNAPYOS POS", align: "center" });
   blocks.push({ kind: "feed", lines: 2 });
@@ -121,4 +135,24 @@ export function buildReceiptBlocks(data: ReceiptData, paperWidthMm: 58 | 80): Es
 
 export function encodeReceipt(data: ReceiptData, paperWidthMm: 58 | 80): Uint8Array {
   return encodeEscPos(buildReceiptBlocks(data, paperWidthMm));
+}
+
+/**
+ * Baris teks struk untuk jalur CUPS (PDF teks lewat bridge lokal).
+ *
+ * Diturunkan dari blok ESC/POS yang sama, jadi lebar kolom konsisten:
+ * 58mm = 32 kolom, 80mm = 48 kolom. Judul 2x diganti versi lebar penuh karena
+ * PDF tidak punya font 2x.
+ */
+export function receiptLines(data: ReceiptData, paperWidthMm: 58 | 80): string[] {
+  const width = receiptColumns(paperWidthMm);
+  const blocks = buildReceiptBlocks(data, paperWidthMm);
+  const lines = [
+    fitText(data.businessName.toUpperCase(), width),
+    ...blocks
+      .filter((block): block is Extract<EscPosBlock, { kind: "text" }> => block.kind === "text")
+      .filter((block) => block.size === undefined)
+      .map((block) => block.text),
+  ];
+  return lines;
 }

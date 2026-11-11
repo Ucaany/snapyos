@@ -20,7 +20,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { RuntimeConfig } from "../config.ts";
 import { createLock, runCommand } from "../http.ts";
-import { isJpeg, type CameraAdapter, type CameraStatus } from "./types.ts";
+import { isJpeg, type CameraAdapter, type CameraInfo, type CameraStatus } from "./types.ts";
 
 const PROBE_MS = 1_500;
 
@@ -84,6 +84,10 @@ export function createDigicamControlCamera(config: RuntimeConfig): CameraAdapter
   return {
     kind: "digicamcontrol",
     mock: false,
+
+    async list(): Promise<CameraInfo[]> {
+      return [];
+    },
 
     async status(): Promise<CameraStatus> {
       if (await httpAlive()) {

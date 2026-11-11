@@ -107,11 +107,7 @@ export function RecordCollection({
           <span className="font-mono text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
             Tampilan
           </span>
-          <div
-            role="group"
-            aria-label="Pilih tampilan data"
-            className="flex border-2 border-ink"
-          >
+          <div role="group" aria-label="Pilih tampilan data" className="flex border-2 border-ink">
             <IconButton
               label="Tampilan daftar"
               icon={List}

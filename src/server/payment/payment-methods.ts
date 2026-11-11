@@ -1,15 +1,11 @@
 import "server-only";
 
-import {
-  allowedPaymentMethods,
-  gatewayEnvironment,
-  paymentWebhookUrl,
-} from "@/lib/payment-credentials";
+import { gatewayEnvironment, paymentWebhookUrl } from "@/lib/payment-credentials";
 import {
   buildKioskPaymentMethods,
   ensureFreeSettlementMethod,
   filterKioskPaymentMethods,
-  paymentMethodId,
+  normalizePaymentMethod,
   type KioskPaymentMethod,
   type PhotoboxPaymentMode,
 } from "@/server/payment/kiosk-payment";
@@ -22,26 +18,18 @@ export type KioskCredential = {
   enabledMethods: string[];
 };
 
+/** Ejaan kanonik saja; metode tak dikenal dibuang (bukan dipaksa jadi qris). */
 function kioskSupported(
   provider: "midtrans" | "tripay" | "pakasir",
   methods: readonly string[]
 ): string[] {
-  const supported =
-    provider === "midtrans"
-      ? new Set(["qris", "gopay", "shopeepay", "bca", "bni", "bri", "permata"])
-      : provider === "pakasir"
-        ? new Set(["qris"])
-        : new Set([
-            "QRIS",
-            "BCAVA",
-            "BNIVA",
-            "BRIVA",
-            "MANDIRIVA",
-            "PERMATAVA",
-            "ALFAMART",
-            "INDOMARET",
-          ]);
-  return methods.filter((method) => supported.has(method));
+  return methods.flatMap((method) => {
+    try {
+      return [normalizePaymentMethod(provider, method)];
+    } catch {
+      return [];
+    }
+  });
 }
 
 export async function listKioskCredentials(businessId: string): Promise<KioskCredential[]> {
@@ -61,10 +49,7 @@ export async function listKioskCredentials(businessId: string): Promise<KioskCre
     const enabled = Array.isArray(raw)
       ? raw.filter((value): value is string => typeof value === "string")
       : [];
-    const enabledMethods = kioskSupported(
-      row.provider,
-      allowedPaymentMethods(row.provider, enabled)
-    );
+    const enabledMethods = kioskSupported(row.provider, enabled);
     return enabledMethods.length > 0
       ? [{ id: row.id, provider: row.provider, enabledMethods }]
       : [];
@@ -119,8 +104,9 @@ export async function resolveKioskPaymentMethod(
   const credentials = await listKioskCredentials(businessId);
   const credential = credentials.find(
     (candidate) =>
-      method.provider === candidate.provider &&
-      paymentMethodId(candidate.provider, method.method ?? "") === method.id
+      candidate.provider === method.provider &&
+      method.method !== null &&
+      candidate.enabledMethods.includes(method.method)
   );
   if (!credential) throw new Error("Credential payment tidak tersedia");
   return { method, credentialId: credential.id };

@@ -20,10 +20,7 @@ import { STORED_BRIDGE_KINDS } from "../runtime/settings/index.ts";
 test("daftar provider bridge klien = {bridge} ∪ adapter tersimpan runtime", () => {
   // "bridge" bukan adapter konkret (artinya "ikuti env"), jadi ia hanya ada di
   // daftar klien. Adapter konkretnya harus sama persis di kedua sisi.
-  assert.deepEqual(
-    [...BRIDGE_PROVIDERS].sort(),
-    ["bridge", ...STORED_BRIDGE_KINDS].sort()
-  );
+  assert.deepEqual([...BRIDGE_PROVIDERS].sort(), ["bridge", ...STORED_BRIDGE_KINDS].sort());
 });
 
 test("kontrak input setelan menerima SEMUA adapter yang dikenal", () => {

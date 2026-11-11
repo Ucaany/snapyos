@@ -121,8 +121,8 @@ async function toTemplateRow(row: TemplateDbRow): Promise<TemplateRow> {
   const thumbnailUrl = row.thumbnail_url
     ? isHttpUrl(row.thumbnail_url)
       ? row.thumbnail_url
-      : (await signedUrlMap(BUCKET, [row.thumbnail_url], SIGNED_URL_TTL)).get(row.thumbnail_url) ??
-        null
+      : ((await signedUrlMap(BUCKET, [row.thumbnail_url], SIGNED_URL_TTL)).get(row.thumbnail_url) ??
+        null)
     : null;
   return {
     id: row.id,
@@ -175,7 +175,8 @@ export async function listTemplates(
     .is("business_id", null)
     .eq("is_active", true);
   for (const row of (freeGlobals ?? []) as TemplateDbRow[]) {
-    const free = row.is_premium === false || row.price === null || row.price === undefined || row.price === 0;
+    const free =
+      row.is_premium === false || row.price === null || row.price === undefined || row.price === 0;
     if (free) globalRows.push(row);
   }
   if (ownedIds.length > 0) {
@@ -263,7 +264,8 @@ export async function listTemplates(
     assigned_packages: packagesByTemplate.get(row.id) ?? [],
     is_global: globalIds.has(row.id),
     thumbnail_preview_url: row.thumbnail_url
-      ? urlByKey.get(row.thumbnail_url) ?? (isHttpUrl(row.thumbnail_url) ? row.thumbnail_url : null)
+      ? (urlByKey.get(row.thumbnail_url) ??
+        (isHttpUrl(row.thumbnail_url) ? row.thumbnail_url : null))
       : null,
   }));
 }
@@ -303,7 +305,8 @@ export async function getTemplateForBuilder(
     .eq("template_id", templateId)
     .maybeSingle();
   const purchased = Boolean(purchase);
-  const free = row.is_premium === false || row.price === null || row.price === undefined || row.price === 0;
+  const free =
+    row.is_premium === false || row.price === null || row.price === undefined || row.price === 0;
   if (!purchased && !(row.is_active && free)) {
     throw new ApiError("NOT_FOUND", "Template tidak ditemukan");
   }
@@ -467,8 +470,7 @@ export async function deleteTemplate(userId: string, businessId: string, templat
 }
 
 /** Simpan layout builder owner (draft/publish). Hanya template milik business —
- *  template global read-only dari sisi owner (docs/15 §15.3). */
-export async function saveTemplateLayout(
+ *  template global read-only dari sisi owner (docs/15 §15.3). */ export async function saveTemplateLayout(
   userId: string,
   businessId: string,
   templateId: string,
@@ -504,4 +506,107 @@ export async function saveTemplateLayout(
   });
   invalidatePublicConfig(businessId);
   return { id: templateId };
+}
+
+/**
+ * Duplikat template menjadi template BARU milik business ini — frame (bytes)
+ * disalin lewat storage, layout/draft ikut. Dipakai builder: owner menduplikasi
+ * template platform read-only (atau template sendiri) lalu mengedit salinannya
+ * tanpa menyentuh aslinya. Template tujuan selalu nonaktif (draft) supaya
+ * kiosk tidak tiba-tiba menampilkan frame duplikat.
+ */
+export async function duplicateTemplate(
+  userId: string,
+  businessId: string,
+  templateId: string
+): Promise<{ id: string }> {
+  await requireMembership(userId, businessId, "template:write");
+
+  const supabase = createServerClient();
+  const { data: own, error: ownError } = await supabase
+    .from("templates")
+    .select("id, name, category, file_url, thumbnail_url, layout, business_id")
+    .eq("id", templateId)
+    .maybeSingle();
+  if (ownError) throw new ApiError("INTERNAL", "Gagal memuat template");
+  const source = own as TemplateDbRow | null;
+  if (!source) throw new ApiError("NOT_FOUND", "Template tidak ditemukan");
+  // Template business lain tidak pernah boleh disalin.
+  if (source.business_id !== null && source.business_id !== businessId) {
+    throw new ApiError("NOT_FOUND", "Template tidak ditemukan");
+  }
+
+  const [limits, { count }] = await Promise.all([
+    requirePlanLimits(businessId),
+    supabase
+      .from("templates")
+      .select("id", { count: "exact", head: true })
+      .eq("business_id", businessId),
+  ]);
+  if (planLimitError(count ?? 0, limits.max_templates)) {
+    throw new ApiError(
+      "PLAN_LIMIT_REACHED",
+      `Plan Anda dibatasi ${limits.max_templates} template. Upgrade untuk menambah.`
+    );
+  }
+
+  // Frame disalin byte-per-byte: URL eksternal tidak bisa dipindah ke storage
+  // kita, jadi hanya key storage yang diduplikasi (URL disimpan apa adanya).
+  let newFileKey = source.file_url;
+  if (!isHttpUrl(source.file_url)) {
+    const provider = await resolveStorage(BUCKET, source.file_url);
+    const { data: signed, error: signError } = await provider.createSignedUrl(
+      BUCKET,
+      source.file_url,
+      SIGNED_URL_TTL
+    );
+    if (signError || !signed?.signedUrl) {
+      throw new ApiError("INTERNAL", "Gagal membaca frame sumber");
+    }
+    const response = await fetch(signed.signedUrl, { cache: "no-store" });
+    if (!response.ok) throw new ApiError("INTERNAL", "Gagal mengunduh frame sumber");
+    const bytes = Buffer.from(await response.arrayBuffer());
+    if (bytes.length > TEMPLATE_MAX_BYTES) {
+      throw new ApiError("VALIDATION_ERROR", "Frame sumber melebihi 5 MB");
+    }
+    await assertStorageAvailable(businessId, bytes.length);
+
+    const ext = source.file_url.split(".").pop()?.toLowerCase() ?? "png";
+    const baseName = `${businessId}/templates/${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    newFileKey = `${baseName}.${ext}`;
+    const { error: uploadError } = await getStorage().upload(BUCKET, newFileKey, bytes, {
+      contentType:
+        ext === "jpg" || ext === "jpeg" ? "image/jpeg" : `image/${ext === "webp" ? "webp" : "png"}`,
+      upsert: false,
+    });
+    if (uploadError) throw new ApiError("INTERNAL", "Gagal menyalin frame");
+    await accountStorageAdd(businessId, BUCKET, newFileKey, bytes.length);
+  }
+
+  const { data, error } = await supabase
+    .from("templates")
+    .insert({
+      business_id: businessId,
+      name: `${source.name} (salinan)`.slice(0, 120),
+      category: source.category,
+      file_url: newFileKey,
+      // Thumbnail tidak disalin: frame penuh aman sebagai sumber thumbnail
+      // (proxy frame membuat versi 480px), dan key lama bisa dimiliki tenant lain.
+      thumbnail_url: newFileKey,
+      layout: source.layout ?? {},
+      is_active: false,
+    })
+    .select("id")
+    .single();
+  if (error) throw new ApiError("INTERNAL", "Gagal menyimpan salinan template");
+
+  await insertAudit({
+    actorId: userId,
+    businessId,
+    action: "template.duplicate",
+    target: templateId,
+    meta: { copy_id: (data as { id: string }).id },
+  });
+  invalidatePublicConfig(businessId);
+  return { id: (data as { id: string }).id };
 }

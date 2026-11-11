@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>SnapyOS.Core</AssemblyName>
+    <RootNamespace>SnapyOS.Core</RootNamespace>
+    <NoWarn>$(NoWarn);CA1822</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../SnapyOS.Contracts/SnapyOS.Contracts.csproj" />
+  </ItemGroup>
+</Project>

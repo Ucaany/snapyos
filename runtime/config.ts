@@ -60,6 +60,8 @@ export type RuntimeConfig = {
   v4l2DeviceStream: string;
   v4l2Size: string;
   v4l2SizeStream: string;
+  /** `v4l2-ctl` dipakai hanya untuk deteksi read-only (`--list-devices`). */
+  v4l2CtlBin: string;
   /** Interpreter python3 untuk adapter PyAV (butuh paket `av` + Pillow). */
   pyavPython: string;
   timeoutMs: number;
@@ -78,6 +80,8 @@ export type RuntimeConfig = {
   cloudUrl: string;
   /** Token device dari aktivasi; dipakai sync sesi + tulis balik setelan. */
   deviceToken: string;
+  /** Versi runtime yang aman ditampilkan di diagnostics, bukan secret. */
+  runtimeVersion: string;
 };
 
 export class ConfigError extends Error {
@@ -194,6 +198,7 @@ export function loadConfig(env: EnvLike): RuntimeConfig {
     v4l2DeviceStream: env.V4L2_DEVICE_STREAM?.trim() || env.V4L2_DEVICE?.trim() || "/dev/video0",
     v4l2Size: env.V4L2_SIZE?.trim() || "1280x720",
     v4l2SizeStream: env.V4L2_SIZE_STREAM?.trim() || "640x480",
+    v4l2CtlBin: env.V4L2_CTL_BIN?.trim() || "v4l2-ctl",
     pyavPython: env.PYAV_PYTHON?.trim() || "python3",
     timeoutMs,
     digicamPort: readPort(env.DIGICAMCONTROL_PORT, "DIGICAMCONTROL_PORT", 5513),
@@ -207,5 +212,6 @@ export function loadConfig(env: EnvLike): RuntimeConfig {
     maxBodyBytes: 60 * 1024 * 1024,
     cloudUrl: (env.SNAPYOS_CLOUD_URL?.trim() || "").replace(/\/+$/, ""),
     deviceToken: env.SNAPYOS_DEVICE_TOKEN?.trim() || "",
+    runtimeVersion: env.SNAPYOS_RUNTIME_VERSION?.trim() || "0.1.0",
   };
 }

@@ -905,7 +905,14 @@ test("reason berbeda pada invoice sama: tiket terpisah (bukan merge)", async () 
   seedPaidPlanInvoice(db);
   db.invoices.get("inv-1")!.intent = {
     items: [
-      { type: "plan_change", plan_id: "plan-growth", code: "growth", name: "G", amount: 249000, qty: 1 },
+      {
+        type: "plan_change",
+        plan_id: "plan-growth",
+        code: "growth",
+        name: "G",
+        amount: 249000,
+        qty: 1,
+      },
     ],
   };
   db.subscriptions.set("sub-1", {
@@ -961,7 +968,9 @@ test("tiket review gagal ditulis: audit tetap ada + console.error mencatat invoi
     "audit tetap ditulis walau tiket gagal"
   );
   assert.ok(
-    logged.some((l) => l.includes("inv-1") && l.includes(INTENT_FAILURE_REASON.SUBSCRIPTION_NOT_ACTIVE)),
+    logged.some(
+      (l) => l.includes("inv-1") && l.includes(INTENT_FAILURE_REASON.SUBSCRIPTION_NOT_ACTIVE)
+    ),
     "console.error harus mencatat invoice id + reason"
   );
 });

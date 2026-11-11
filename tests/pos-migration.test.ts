@@ -76,3 +76,53 @@ test("rollback 0074 mempertahankan transaksi POS non-withdrawable", async () => 
   assert.match(rollback, /status, number, pos_order_id, cashier_user_id, paid_at, withdrawable/i);
   assert.match(rollback, /'paid', p_tx_number, p_order_id, p_cashier, now\(\), false/i);
 });
+
+test("migration 0082 membuka print_mode cups dan rollback menguncinya lagi", async () => {
+  const schema = await readFile(new URL("db/schema.sql", root), "utf8");
+  const migration = await readFile(
+    new URL("db/migrations/0087_print_paths_and_output_settings.sql", root),
+    "utf8"
+  );
+  const rollback = await readFile(
+    new URL("db/migrations/0087_print_paths_and_output_settings_rollback.sql", root),
+    "utf8"
+  );
+  for (const sql of [schema, migration]) {
+    assert.match(sql, /print_mode in \('browser', 'bluetooth', 'cups'\)/i);
+  }
+  assert.match(migration, /drop constraint if exists pos_orders_print_mode_check/i);
+  assert.match(rollback, /print_mode in \('browser', 'bluetooth'\)/i);
+});
+
+test("migration 0083 memasang kolom tunai/kembalian + check turunan, rollback membuangnya", async () => {
+  const schema = await readFile(new URL("db/schema.sql", root), "utf8");
+  const migration = await readFile(
+    new URL("db/migrations/0088_pos_receipt_cups_and_cash_change.sql", root),
+    "utf8"
+  );
+  const rollback = await readFile(
+    new URL("db/migrations/0088_pos_receipt_cups_and_cash_change_rollback.sql", root),
+    "utf8"
+  );
+
+  for (const sql of [schema, migration]) {
+    assert.match(sql, /amount_received integer/i);
+    assert.match(sql, /change_amount integer/i);
+    assert.match(sql, /amount_received >= final_amount/i);
+    assert.match(sql, /change_amount = amount_received - final_amount/i);
+  }
+  assert.match(migration, /add column if not exists amount_received integer/i);
+  assert.match(migration, /add column if not exists change_amount integer/i);
+  for (const sql of [schema, migration]) {
+    assert.match(sql, /print_mode in \('browser', 'bluetooth', 'cups'\)/i);
+  }
+  // Uang tunai TIDAK menumpang payment_reference.
+  assert.match(migration, /BUKAN menumpang `payment_reference`/i);
+  assert.match(migration, /amount_received = p_amount_received/i);
+  assert.match(migration, /change_amount = p_change_amount/i);
+
+  assert.match(rollback, /drop constraint if exists pos_orders_cash_change_valid/i);
+  assert.match(rollback, /drop column if exists change_amount/i);
+  assert.match(rollback, /drop column if exists amount_received/i);
+  assert.match(rollback, /print_mode in \('browser', 'bluetooth'\)/i);
+});

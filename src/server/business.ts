@@ -28,10 +28,20 @@ export type CheckoutSettings = {
   [key: string]: unknown;
 };
 
+export type OutputSettings = {
+  gif?: {
+    enabled?: boolean;
+    frame_delay_ms?: number;
+    max_width?: number;
+  };
+  [key: string]: unknown;
+};
+
 export type BusinessSettingsRow = {
   branding: Record<string, unknown> | null;
   camera: Record<string, unknown> | null;
   checkout: CheckoutSettings | null;
+  output: OutputSettings | null;
   retention_days: number | null;
 };
 
@@ -42,7 +52,7 @@ function loadSettingsRow(businessId: string): Promise<BusinessSettingsRow | null
       const supabase = createServerClient();
       const { data } = await supabase
         .from("business_settings")
-        .select("branding, camera, checkout, retention_days")
+        .select("branding, camera, checkout, output, retention_days")
         .eq("business_id", businessId)
         .maybeSingle();
       return (data as BusinessSettingsRow | null) ?? null;
@@ -360,6 +370,20 @@ export async function updateSettings(
   // sehingga update parsial (mis. hanya qris_expiry_minutes) akan wipe key lain
   // seperti offline_enabled. Merge field-level dulu (pola sama dengan updateBranding).
   const patch: Record<string, unknown> = { ...parsed };
+  if (parsed.output !== undefined) {
+    const { data: existing } = await supabase
+      .from("business_settings")
+      .select("output")
+      .eq("business_id", businessId)
+      .maybeSingle();
+    const current = (existing as { output?: Record<string, unknown> } | null)?.output ?? {};
+    const currentGif = (current.gif ?? {}) as Record<string, unknown>;
+    patch.output = {
+      ...current,
+      ...parsed.output,
+      gif: { ...currentGif, ...(parsed.output.gif ?? {}) },
+    };
+  }
   if (parsed.checkout !== undefined) {
     const { data: existing } = await supabase
       .from("business_settings")
@@ -374,7 +398,7 @@ export async function updateSettings(
     .from("business_settings")
     .update(patch)
     .eq("business_id", businessId)
-    .select("branding, camera, checkout, retention_days")
+    .select("branding, camera, checkout, output, retention_days")
     .single();
   if (error || !data) throw new ApiError("INTERNAL", "Gagal memperbarui settings");
 

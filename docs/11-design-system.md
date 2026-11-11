@@ -69,7 +69,7 @@ Font: display bold (misal "Space Grotesk"/"Archivo Black" untuk heading), body r
 | Tabs                              | Breakdown analytics, settings                                                 |
 | Badge                             | Status (paid/pending/expired, photobox online/offline)                        |
 | Table / DataTable                 | Transactions, customers, vouchers                                             |
-| RecordCollection / RecordCard     | Daftar owner: toggle list (tabel) / grid (kartu); default mobile = kartu       |
+| RecordCollection / RecordCard     | Daftar owner: toggle list (tabel) / grid (kartu); default mobile = kartu      |
 | IconButton / IconLink             | Aksi berulang: ikon 36px visual, hit area 44px, tooltip + aria-label          |
 | Form + zod                        | Semua form                                                                    |
 | Calendar / Popover                | Date range filter                                                             |

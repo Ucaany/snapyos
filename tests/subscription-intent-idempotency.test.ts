@@ -122,9 +122,7 @@ class FakeDb {
   execFailures(op: Op) {
     if (op.kind === "select") {
       const invoiceId = op.filters.find(([c]) => c === "invoice_id")?.[1];
-      const found = this.failures.find(
-        (f) => f.invoice_id === invoiceId && f.status === "pending"
-      );
+      const found = this.failures.find((f) => f.invoice_id === invoiceId && f.status === "pending");
       return { data: found ? { id: found.id } : null, error: null };
     }
     if (op.kind === "insert") {

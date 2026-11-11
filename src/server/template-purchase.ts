@@ -102,14 +102,16 @@ export async function listPremiumTemplates(
   // marketplace membagikan aset berbayar (frame resolusi penuh) ke setiap
   // tenant sebelum ada pembayaran. Thumbnail tetap di-sign untuk semua baris
   // karena itulah yang ditampilkan grid.
-  const thumbKeys = rows
-    .map((t) => t.thumbnail_url)
-    .filter((k): k is string => !!k);
+  const thumbKeys = rows.map((t) => t.thumbnail_url).filter((k): k is string => !!k);
   const frameKeys = rows
     .filter((t) => ownedIds.has(t.id))
     .map((t) => t.file_url)
     .filter((k): k is string => !!k);
-  const urlByKey = await signedUrlMap(BUCKET, Array.from(new Set([...thumbKeys, ...frameKeys])), SIGNED_URL_TTL);
+  const urlByKey = await signedUrlMap(
+    BUCKET,
+    Array.from(new Set([...thumbKeys, ...frameKeys])),
+    SIGNED_URL_TTL
+  );
   return rows.map((t) => {
     const purchased = ownedIds.has(t.id);
     return {

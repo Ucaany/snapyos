@@ -10,7 +10,9 @@
 
 export type AutoPrintStore = Pick<Storage, "getItem" | "setItem">;
 
-export function autoPrintStorageKey(scope: "kiosk" | "pos", id: string): string {
+export type AutoPrintScope = "kiosk" | "pos";
+
+export function autoPrintStorageKey(scope: AutoPrintScope, id: string): string {
   return `snapyos:${scope}:autoprint:${id}`;
 }
 

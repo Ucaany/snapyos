@@ -270,8 +270,8 @@ export default async function AdminSubscriptionsPage({
                       />
                     </div>
                     <p className="w-full max-w-[42ch] font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
-                      Angka ini mengatur jumlah unit add-on (bukan menambah). Isi angka lebih
-                      rendah dari jumlah aktif untuk mengurangi.
+                      Angka ini mengatur jumlah unit add-on (bukan menambah). Isi angka lebih rendah
+                      dari jumlah aktif untuk mengurangi.
                     </p>
                   </AdminActionForm>
                 ) : null}

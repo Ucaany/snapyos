@@ -12,8 +12,9 @@ import {
   claimAutoPrintAttempt,
   getAutoPrintStore,
 } from "@/lib/print/auto-print";
-import { encodeReceipt } from "@/lib/print/receipt";
+import { encodeReceipt, receiptLines } from "@/lib/print/receipt";
 import { BluetoothPrintError, connectEscPos, requestEscPosDevice } from "@/lib/print/bluetooth";
+import { submitCupsReceipt } from "@/lib/print/cups";
 import { SerialPrintError, writeEscPosSerial, writeEscPosSerialGranted } from "@/lib/print/serial";
 import { usePrintTransport } from "@/hooks/use-print-transport";
 import type { PosOrderDetail } from "@/server/pos-orders";
@@ -42,7 +43,7 @@ export function ReceiptView({
   const { order, items } = detail;
   const [btState, setBtState] = useState<"idle" | "printing" | "sent" | "error">("idle");
   const [btMessage, setBtMessage] = useState<string | null>(null);
-  const [lastTransport, setLastTransport] = useState<"bluetooth" | "serial" | null>(null);
+  const [lastTransport, setLastTransport] = useState<"bluetooth" | "serial" | "cups" | null>(null);
   const [autoPrintPending, setAutoPrintPending] = useState(false);
   const autoPrintRan = useRef(false);
   // Strict Mode me-mount effect dua kali: cleanup run pertama menandai job
@@ -65,29 +66,58 @@ export function ReceiptView({
     timeStyle: "short",
   });
   const paperWidthMm = order.paper_width_mm ?? 80;
+  // Owner mematikan jalur struk → tombol cetak disembunyikan, bukan error.
+  const canPrint = order.receipt_enabled;
+  // `cups` = bridge lokal memegang printer; struk dikirim sebagai teks PDF
+  // gulungan 58/80mm lewat rute teks bridge.
+  const cupsMode = order.print_mode === "cups";
+
+  function receiptData() {
+    return {
+      businessName,
+      orderNumber: order.number,
+      methodLabel: METHOD_LABEL[order.payment_method] ?? order.payment_method.toUpperCase(),
+      boothName: order.photobox_name,
+      outletName: order.outlet_name,
+      cashierName: order.cashier_name,
+      paidAt,
+      items: items.map((item) => ({
+        name: item.name_snapshot,
+        quantity: item.quantity,
+        unitPrice: item.unit_price_snapshot,
+        subtotal: item.subtotal,
+      })),
+      grossAmount: order.gross_amount,
+      discountAmount: order.discount_amount,
+      finalAmount: order.final_amount,
+      amountReceived: order.amount_received,
+      changeAmount: order.change_amount,
+    };
+  }
 
   function receiptBytes() {
-    return encodeReceipt(
-      {
-        businessName,
-        orderNumber: order.number,
-        methodLabel: METHOD_LABEL[order.payment_method] ?? order.payment_method.toUpperCase(),
-        boothName: order.photobox_name,
-        outletName: order.outlet_name,
-        cashierName: order.cashier_name,
-        paidAt,
-        items: items.map((item) => ({
-          name: item.name_snapshot,
-          quantity: item.quantity,
-          unitPrice: item.unit_price_snapshot,
-          subtotal: item.subtotal,
-        })),
-        grossAmount: order.gross_amount,
-        discountAmount: order.discount_amount,
-        finalAmount: order.final_amount,
-      },
-      paperWidthMm
-    );
+    return encodeReceipt(receiptData(), paperWidthMm);
+  }
+
+  /** Jalur CUPS: teks struk yang sama, bukan jalur dialog sekunder. */
+  async function printCups() {
+    setBtState("printing");
+    setBtMessage(null);
+    setLastTransport("cups");
+    try {
+      await submitCupsReceipt(
+        { printer_name: order.printer_name_setting, bridge_url: order.bridge_url },
+        {
+          title: `STRUK ${order.number}`,
+          lines: receiptLines(receiptData(), paperWidthMm),
+          paperWidthMm,
+        }
+      );
+      setBtState("sent");
+    } catch (error) {
+      setBtMessage(error instanceof Error ? error.message : "Gagal mengirim struk ke CUPS.");
+      setBtState("error");
+    }
   }
 
   async function printBluetooth() {
@@ -142,7 +172,7 @@ export function ReceiptView({
   // tanpa izin, tombol manual tetap jadi jalur pairing pertama.
   useEffect(() => {
     if (autoPrintRan.current) return;
-    if (!shouldAutoPrintReceipt(order)) return;
+    if (!canPrint || !shouldAutoPrintReceipt(order)) return;
     autoPrintRan.current = true;
     // Claim SEBELUM mengirim. Reload setelah job terkirim tidak boleh mencetak
     // ulang otomatis (struk ganda); tombol manual tetap tersedia.
@@ -196,11 +226,11 @@ export function ReceiptView({
     })();
     // Sekali saat struk dibuka; receiptBytes mengikuti detail order.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [order.id]);
+  }, [canPrint, order.id]);
 
   return (
     <div className="print-root mx-auto flex min-h-[100dvh] w-full max-w-md flex-col gap-6 p-4 md:p-8 print:mx-0 print:min-h-0 print:w-full print:max-w-none print:p-0">
-      <div className="flex flex-col gap-3 print:hidden">
+      <div className={canPrint ? "flex flex-col gap-3 print:hidden" : "hidden print:hidden"}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Button variant="outline" size="sm" onClick={() => router.push("/pos")}>
             <RotateCcw aria-hidden />
@@ -240,6 +270,16 @@ export function ReceiptView({
                 Cetak SPP
               </Button>
             )}
+            {cupsMode && (
+              <Button size="sm" onClick={() => void printCups()} disabled={btState === "printing"}>
+                {btState === "printing" && lastTransport === "cups" ? (
+                  <Loader2 className="animate-spin" aria-hidden />
+                ) : (
+                  <Printer aria-hidden />
+                )}
+                Cetak CUPS
+              </Button>
+            )}
           </div>
         </div>
         {btState === "sent" && (
@@ -274,7 +314,13 @@ export function ReceiptView({
             <p>{btMessage ?? "Printer Bluetooth gagal."}</p>
             <button
               type="button"
-              onClick={() => void (lastTransport === "serial" ? printSerial() : printBluetooth())}
+              onClick={() =>
+                void (lastTransport === "cups"
+                  ? printCups()
+                  : lastTransport === "serial"
+                    ? printSerial()
+                    : printBluetooth())
+              }
               className="min-h-11 w-full border-2 border-ink bg-surface px-3 font-mono text-xs font-bold uppercase tracking-[0.05em] text-ink shadow-[2px_2px_0_0_#111111] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
             >
               Coba lagi
@@ -363,6 +409,24 @@ export function ReceiptView({
             <dt className="text-[10px] font-bold uppercase tracking-[0.15em]">Total</dt>
             <dd className="text-lg font-bold">{formatIDR(order.final_amount)}</dd>
           </div>
+          {order.amount_received !== null && (
+            <>
+              <div className="flex items-center justify-between">
+                <dt className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+                  Tunai
+                </dt>
+                <dd>{formatIDR(order.amount_received)}</dd>
+              </div>
+              <div className="flex items-center justify-between">
+                <dt className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+                  Kembali
+                </dt>
+                <dd className="font-bold">
+                  {formatIDR(order.change_amount ?? order.amount_received - order.final_amount)}
+                </dd>
+              </div>
+            </>
+          )}
         </dl>
 
         <footer className="border-t-2 border-dashed border-ink/30 pt-3 text-center">

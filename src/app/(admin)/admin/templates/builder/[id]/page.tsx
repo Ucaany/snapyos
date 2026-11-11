@@ -8,7 +8,10 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { ApiError } from "@/lib/api-errors";
 import { slotCount, type TemplateLayout } from "@/lib/template-layout";
 import { getGlobalTemplate } from "@/server/admin";
-import { detectGlobalTemplateChromaSlotsAction, saveGlobalTemplateLayoutAction } from "@/server/admin-actions";
+import {
+  detectGlobalTemplateChromaSlotsAction,
+  saveGlobalTemplateLayoutAction,
+} from "@/server/admin-actions";
 
 /** /admin/templates/builder/[id] — builder slot template global (docs/10 §10.2). */
 export default async function AdminTemplateBuilderPage({

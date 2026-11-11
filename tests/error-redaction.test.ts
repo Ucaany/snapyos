@@ -46,7 +46,13 @@ test("redactSensitive: Error diubah menjadi objek aman tanpa kehilangan pesan", 
 });
 
 test("redactSensitive: PIN, payment, card, dan device token ikut tersembunyi", () => {
-  const out = redactSensitive({ pin: "1234", payment_secret: "pay", card_number: "4111", cvv: "123", device_token: "device-secret" }) as Record<string, unknown>;
+  const out = redactSensitive({
+    pin: "1234",
+    payment_secret: "pay",
+    card_number: "4111",
+    cvv: "123",
+    device_token: "device-secret",
+  }) as Record<string, unknown>;
   assert.equal(out.pin, "[REDACTED]");
   assert.equal(out.payment_secret, "[REDACTED]");
   assert.equal(out.card_number, "[REDACTED]");

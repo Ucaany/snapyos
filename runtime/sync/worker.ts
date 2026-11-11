@@ -23,7 +23,7 @@ import { join } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import type { RuntimeConfig } from "../config.ts";
 import { activeSettings, cloudSyncedSettings, type SettingsShape } from "../settings/index.ts";
-import { insertEvent } from "../db/index.ts";
+import { insertEvent, setMeta } from "../db/index.ts";
 export const MAX_BACKOFF_MS = 5 * 60_000;
 export const BASE_BACKOFF_MS = 1_000;
 export const DEFAULT_SYNC_INTERVAL_MS = 15_000;
@@ -37,6 +37,21 @@ export type SyncContext = {
   /** `Math.random` yang bisa diganti supaya jitter deterministik di tes. */
   random?: () => number;
   log?: (message: string) => void;
+  /** Optional heartbeat snapshot provider; absent keeps legacy sync-only behavior. */
+  heartbeat?: () => Promise<HeartbeatSnapshot>;
+};
+
+export type HeartbeatSnapshot = {
+  runtime_version: string;
+  db_version: number;
+  camera: { adapter: string; connected: boolean };
+  printer: { adapter: string; ok: boolean };
+  queue: { pending: number; retrying: number };
+  lockdown: {
+    local_pin_configured: boolean;
+    local_pin_locked: boolean;
+    cloud_kiosk_locked: boolean | null;
+  };
 };
 
 type SyncSessionRow = {
@@ -73,6 +88,7 @@ export type SyncReport = {
   retrying: number;
   quarantined: number;
   settings: "pushed" | "unchanged" | "skipped" | "failed";
+  heartbeat: "sent" | "skipped" | "failed";
 };
 
 /** `min(2^n × 1 s, 5 m)` ± 20 %. `n` = jumlah percobaan yang sudah gagal. */
@@ -367,11 +383,40 @@ export async function pushSettings(
 }
 
 /** Satu putaran: sesi yang jatuh tempo, lalu setelan. */
+async function sendHeartbeat(ctx: SyncContext): Promise<SyncReport["heartbeat"]> {
+  if (!canSync(ctx) || !ctx.heartbeat) return "skipped";
+  const snapshot = await ctx.heartbeat().catch(() => null);
+  if (!snapshot) return "failed";
+  const response = await getFetch(ctx)(`${cloudBase(ctx)}/api/v1/public/devices/heartbeat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ device_token: ctx.config.deviceToken, ...snapshot }),
+  }).catch(() => null);
+  if (!response) return "failed";
+  const answer = await readAnswer(response);
+  if (!answer.ok) return "failed";
+  if (answer.data && typeof answer.data === "object" && "kiosk_locked" in answer.data) {
+    setMeta(
+      ctx.db,
+      "cloud_kiosk_locked",
+      String(Boolean((answer.data as { kiosk_locked?: unknown }).kiosk_locked))
+    );
+    setMeta(ctx.db, "cloud_paired", "true");
+  }
+  return "sent";
+}
+
 export async function runSyncOnce(
   ctx: SyncContext,
   state: { lastPushed: string | null } = { lastPushed: null }
 ): Promise<SyncReport> {
-  const report: SyncReport = { synced: 0, retrying: 0, quarantined: 0, settings: "skipped" };
+  const report: SyncReport = {
+    synced: 0,
+    retrying: 0,
+    quarantined: 0,
+    settings: "skipped",
+    heartbeat: "skipped",
+  };
   if (!canSync(ctx)) return report;
 
   for (const queue of dueSessions(ctx)) {
@@ -391,6 +436,11 @@ export async function runSyncOnce(
   const pushed = { value: state.lastPushed };
   report.settings = await pushSettings(ctx, pushed);
   state.lastPushed = pushed.value;
+  try {
+    report.heartbeat = await sendHeartbeat(ctx);
+  } catch {
+    report.heartbeat = "failed";
+  }
   return report;
 }
 

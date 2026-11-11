@@ -1,4 +1,7 @@
+import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
+
 import { cn } from "@/lib/utils";
+import { formatBp } from "@/lib/dashboard-math";
 
 /**
  * MetricCard — kartu metrik dashboard (docs/04 §4.1, docs/11).
@@ -6,12 +9,15 @@ import { cn } from "@/lib/utils";
  *
  * Hierarki: `size="hero"` = angka terbesar, padding lebih lega, accent
  * opsional, supaya metrik utama tidak terlihat identik dengan pendukung.
+ * `deltaBp` (basis point) menampilkan perubahan vs periode sebelumnya.
  */
 
 export function MetricCard({
   label,
   value,
   sub,
+  deltaBp,
+  deltaLabel,
   accent = false,
   size = "sm",
   className,
@@ -19,10 +25,30 @@ export function MetricCard({
   label: string;
   value: string;
   sub?: string;
+  /** Pertumbuhan basis point vs periode sebelumnya (1% = 100 bp). */
+  deltaBp?: number;
+  /** Konteks delta, default "vs periode sebelumnya". */
+  deltaLabel?: string;
   accent?: boolean;
   size?: "sm" | "hero";
   className?: string;
 }) {
+  const hasDelta = typeof deltaBp === "number" && Number.isFinite(deltaBp);
+  const DeltaIcon = !hasDelta
+    ? null
+    : deltaBp! > 0
+      ? ArrowUpRight
+      : deltaBp! < 0
+        ? ArrowDownRight
+        : Minus;
+  const deltaTone = !hasDelta
+    ? ""
+    : deltaBp! > 0
+      ? "border-ink bg-accent-3"
+      : deltaBp! < 0
+        ? "border-ink bg-accent-2"
+        : "border-ink/25 bg-muted text-muted-foreground";
+
   // Hard offset shadow marks metric hierarchy without adding soft elevation to every surface.
   return (
     <div
@@ -51,6 +77,24 @@ export function MetricCard({
       >
         {value}
       </p>
+      {hasDelta ? (
+        <p className="flex flex-wrap items-center gap-2">
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 border-2 px-1.5 py-0.5 font-mono text-[11px] font-bold tabular-nums",
+              deltaTone
+            )}
+            title={deltaLabel ?? "vs periode sebelumnya"}
+          >
+            {DeltaIcon ? <DeltaIcon className="size-3.5" aria-hidden /> : null}
+            {deltaBp! > 0 ? "+" : ""}
+            {formatBp(deltaBp!)}
+          </span>
+          <span className="font-mono text-[10px] uppercase tracking-[0.06em] text-muted-foreground">
+            {deltaLabel ?? "vs periode sebelumnya"}
+          </span>
+        </p>
+      ) : null}
       {sub ? (
         <p
           className={cn(

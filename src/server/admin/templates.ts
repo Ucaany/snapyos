@@ -14,11 +14,7 @@ import { validateFrameFile } from "@/server/templates";
 import { LOGO_ALLOWED_TYPES } from "@/lib/upload-validation";
 import { SIGNED_URL_TTL_SECONDS } from "@/lib/constants";
 import { getStorage, resolveStorage, removeResolved } from "@/server/storage";
-import {
-  staleTemplateKeys,
-  staleThumbnailKeys,
-  storageKeysOnly,
-} from "@/lib/template-cleanup";
+import { staleTemplateKeys, staleThumbnailKeys, storageKeysOnly } from "@/lib/template-cleanup";
 import { layoutSchema } from "@/lib/template-layout";
 import { invalidateAllPublicConfig } from "@/server/public-config";
 

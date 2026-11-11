@@ -221,14 +221,7 @@ export type CameraSettings = {
    * berarti kamera fisik lewat runtime lokal — adapter konkretnya ditentukan
    * env runtime booth, bukan nilai ini.
    */
-  provider?:
-    | "browser"
-    | "bridge"
-    | "gphoto2"
-    | "digicamcontrol"
-    | "libcamera"
-    | "v4l2"
-    | "pyav";
+  provider?: "browser" | "bridge" | "gphoto2" | "digicamcontrol" | "libcamera" | "v4l2" | "pyav";
   /** URL bridge lokal, default http://127.0.0.1:17777. */
   bridge_url?: string;
   countdown_seconds?: number;
@@ -271,6 +264,45 @@ export type PrintSettings = {
   bridge_url?: string;
   /** Nama printer CUPS; kosong memakai default printer OS. */
   printer_name?: string;
+  /** Jalur cetak foto (printer foto). Bila kosong, field datar di atas dipakai. */
+  photo?: PrintPhotoSettings;
+  /** Foto 1-bit ke printer thermal (ESC/POS raster). */
+  thermal?: PrintThermalSettings;
+  /** Struk teks POS. */
+  receipt?: PrintReceiptSettings;
+};
+
+/** Printer foto (CUPS / dialog OS / Bluetooth). */
+export type PrintPhotoSettings = {
+  enabled?: boolean;
+  mode?: "browser" | "bluetooth" | "cups";
+  printer_name?: string;
+  paper_size?: "4x6" | "2x6" | "5x7" | "6x8" | "A6";
+  orientation?: "portrait" | "landscape" | "auto";
+  fit?: "auto" | "contain" | "cover";
+  margins_mm?: number;
+  media_name?: string;
+  strip_2up?: boolean;
+  auto_print?: boolean;
+  bridge_url?: string;
+};
+
+/** Foto 1-bit ke printer thermal. */
+export type PrintThermalSettings = {
+  enabled?: boolean;
+  paper_width_mm?: 58 | 80;
+  printer_name?: string;
+  bluetooth_device_name?: string;
+  auto_print?: boolean;
+};
+
+/** Struk teks POS. */
+export type PrintReceiptSettings = {
+  enabled?: boolean;
+  mode?: "browser" | "bluetooth" | "cups";
+  paper_width_mm?: 58 | 80;
+  printer_name?: string;
+  auto_print?: boolean;
 };
 
 export type SessionSettings = {
@@ -316,6 +348,11 @@ export type PhotoboxConfig = {
   print_settings: PrintSettings;
   session_settings: SessionSettings;
   device_status: Record<string, unknown> | null;
+  /**
+   * Template default booth (keduanya opsional agar payload lama tetap sah).
+   * Kiosk memakainya untuk auto-pilih frame; `null` = ikut template paket.
+   */
+  default_template_id?: string | null;
 };
 
 export type PublicConfig = {

@@ -1,6 +1,5 @@
 # 7. Database Schema
 
->
 > **RLS (C1, migrasi 0064):** setiap tabel `public.*` punya `alter table ... enable row level security` + policy `svc_all` (`for all to service_role using (true) with check (true)`); `anon`/`authenticated` di-revoke, `service_role` di-grant. Tidak ada policy `to public/anon/authenticated`.
 >
 > **RPC privilege (H1, migrasi 0065):** setiap fungsi aplikasi di `db/schema.sql` di-lock `revoke execute from public, anon, authenticated` + `grant execute to service_role` (fungsi trigger `set_updated_at`/`tg_*` dikecualikan).
@@ -219,27 +218,27 @@ Tidak dipakai (JWT strategy + `auth_sessions` di atas); `users` tetap source of 
 
 ### photoboxes
 
-| kolom                   | tipe                       | ket                                                                                                                                              |
-| ----------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| id                      | uuid PK                    |                                                                                                                                                  |
-| business_id             | uuid → businesses.id       |                                                                                                                                                  |
-| outlet_id               | uuid → outlets.id          |                                                                                                                                                  |
-| slug                    | text                       | unique per business, untuk URL `/p/[businessSlug]/[photoboxSlug]`                                                                                |
-| name                    | text                       | "Booth 01"                                                                                                                                       |
-| status                  | text                       | `online`/`offline`/`maintenance`                                                                                                                 |
-| camera                  | text                       | nullable                                                                                                                                         |
-| printer                 | text                       | nullable                                                                                                                                         |
-| display                 | text                       | nullable                                                                                                                                         |
-| default_template_id     | uuid → templates.id        | nullable                                                                                                                                         |
-| camera_settings         | jsonb                      | nullable (`{ countdown_seconds, mirror_preview, fullscreen, facingMode, capture_width, capture_height, jpeg_quality }`)                          |
-| print_settings          | jsonb                      | nullable (`{ enabled, paper_size, layout, orientation, auto_print, copies }`)                                                                    |
-| session_settings        | jsonb                      | nullable (v2: `{ timer_seconds: 300, warning_seconds: 60, max_retakes: null }`)                                                                  |
-| exit_pin_hash           | text                       | nullable — PIN keluar kiosk, verifikasi server-side (hash)                                                                                       |
-| exit_pin_failed_count   | integer not null default 0 | migrasi 0034 — throttle brute-force PIN exit kiosk (counter percobaan gagal beruntun)                                                            |
-| exit_pin_locked_until   | timestamptz nullable       | migrasi 0034 — 5 gagal beruntun → lock 5 menit (server-side, tidak dapat di-bypass client)                                                       |
-| pos_enabled             | boolean                    | not null default false — toggle POS add-on per booth (0019)                                                                                      |
-| branding                | jsonb                      | nullable (0045) — override branding kiosk per-booth; null = inherit `business_settings.branding`. Deep-merge di app layer saat render.           |
-| created_at / updated_at | timestamptz                |                                                                                                                                                  |
+| kolom                   | tipe                       | ket                                                                                                                                    |
+| ----------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| id                      | uuid PK                    |                                                                                                                                        |
+| business_id             | uuid → businesses.id       |                                                                                                                                        |
+| outlet_id               | uuid → outlets.id          |                                                                                                                                        |
+| slug                    | text                       | unique per business, untuk URL `/p/[businessSlug]/[photoboxSlug]`                                                                      |
+| name                    | text                       | "Booth 01"                                                                                                                             |
+| status                  | text                       | `online`/`offline`/`maintenance`                                                                                                       |
+| camera                  | text                       | nullable                                                                                                                               |
+| printer                 | text                       | nullable                                                                                                                               |
+| display                 | text                       | nullable                                                                                                                               |
+| default_template_id     | uuid → templates.id        | nullable                                                                                                                               |
+| camera_settings         | jsonb                      | nullable (`{ countdown_seconds, mirror_preview, fullscreen, facingMode, capture_width, capture_height, jpeg_quality }`)                |
+| print_settings          | jsonb                      | nullable (`{ enabled, paper_size, layout, orientation, auto_print, copies }`)                                                          |
+| session_settings        | jsonb                      | nullable (v2: `{ timer_seconds: 300, warning_seconds: 60, max_retakes: null }`)                                                        |
+| exit_pin_hash           | text                       | nullable — PIN keluar kiosk, verifikasi server-side (hash)                                                                             |
+| exit_pin_failed_count   | integer not null default 0 | migrasi 0034 — throttle brute-force PIN exit kiosk (counter percobaan gagal beruntun)                                                  |
+| exit_pin_locked_until   | timestamptz nullable       | migrasi 0034 — 5 gagal beruntun → lock 5 menit (server-side, tidak dapat di-bypass client)                                             |
+| pos_enabled             | boolean                    | not null default false — toggle POS add-on per booth (0019)                                                                            |
+| branding                | jsonb                      | nullable (0045) — override branding kiosk per-booth; null = inherit `business_settings.branding`. Deep-merge di app layer saat render. |
+| created_at / updated_at | timestamptz                |                                                                                                                                        |
 
 ### member_photoboxes (akses booth per member — 0018)
 
@@ -336,7 +335,7 @@ Owner mengatur booth mana yang bisa diakses staff; PK `(user_id, photobox_id)`.
 | category                | text                                              | **DEPRECATED (migration 0039)** — display fallback bebas, tidak lagi CHECK enum. Konsumer baru pakai `category_id`.                                                                                                                 |
 | category_id             | uuid → template_categories(id) ON DELETE RESTRICT | **BARU (migration 0039)** — FK canonical ke kategori. Backfill dari `category` text saat migrasi.                                                                                                                                   |
 | file_url                | text                                              | storage key (PNG frame, alpha = lubang slot)                                                                                                                                                                                        |
-| thumbnail_url           | text                                              | thumbnail WebP dari frame yang diunggah (fallback: frame)                                                                                                                                                                            |
+| thumbnail_url           | text                                              | thumbnail WebP dari frame yang diunggah (fallback: frame)                                                                                                                                                                           |
 | layout                  | jsonb                                             | NOT NULL default `'{}'` — canvas size + array slot foto; kosong = template legacy full-canvas. Contract & validasi: `15-template-builder.md` §15.2 (slot max 8, dalam batas canvas; assign lintas paket tidak dibatasi jumlah slot) |
 | video_url               | text                                              | nullable — video frame (0020)                                                                                                                                                                                                       |
 | is_active               | boolean                                           |                                                                                                                                                                                                                                     |
@@ -755,24 +754,23 @@ Tabel `reports` dihapus karena 0 caller di kode aplikasi. Fitur export report (C
 | meta        | jsonb                |                                                 |
 | created_at  | timestamptz          |                                                 |
 
-
 ### installer_catalog (0081 — katalog installer Windows)
 
-| kolom | tipe | ket |
-| --- | --- | --- |
-| id | uuid PK | |
-| version | text | versi rilis, uniqueness bersama channel + architecture |
-| channel | text | `stable` / `beta` / `internal` |
-| min_windows_version | text | `10` / `11` |
-| architecture | text | `x64` / `x86` / `arm64` / `universal` |
-| file_name / content_type | text | metadata artifact |
-| object_key | text UNIQUE | key private `business-assets`, bukan URL publik |
-| file_size_bytes | bigint | dihitung server, > 0 |
-| sha256 | text | dihitung server, 64 hex lowercase |
-| changelog / compatibility_notes | text | catatan rilis dan kompatibilitas |
-| is_active / is_deprecated | boolean | publik hanya bila aktif, tidak deprecated, dan published_at terisi |
-| published_at | timestamptz | null = draft |
-| created_by / timestamps | uuid / timestamptz | |
+| kolom                           | tipe               | ket                                                                |
+| ------------------------------- | ------------------ | ------------------------------------------------------------------ |
+| id                              | uuid PK            |                                                                    |
+| version                         | text               | versi rilis, uniqueness bersama channel + architecture             |
+| channel                         | text               | `stable` / `beta` / `internal`                                     |
+| min_windows_version             | text               | `10` / `11`                                                        |
+| architecture                    | text               | `x64` / `x86` / `arm64` / `universal`                              |
+| file_name / content_type        | text               | metadata artifact                                                  |
+| object_key                      | text UNIQUE        | key private `business-assets`, bukan URL publik                    |
+| file_size_bytes                 | bigint             | dihitung server, > 0                                               |
+| sha256                          | text               | dihitung server, 64 hex lowercase                                  |
+| changelog / compatibility_notes | text               | catatan rilis dan kompatibilitas                                   |
+| is_active / is_deprecated       | boolean            | publik hanya bila aktif, tidak deprecated, dan published_at terisi |
+| published_at                    | timestamptz        | null = draft                                                       |
+| created_by / timestamps         | uuid / timestamptz |                                                                    |
 
 Artifact installer diunggah admin ke private storage. URL unduhan dibuat sebagai signed URL
 berumur pendek, sehingga tidak ada URL eksternal atau fetch server-side. Instalasi tetap manual,
@@ -901,25 +899,25 @@ CREATE INDEX idx_vu_business ON voucher_usages(business_id);
 
 Runtime photobooth menyimpan state mesin di `<dataDir>/snapyos.db` (`runtime/db/schema.ts`, `PRAGMA user_version`). **Tidak** pernah dimigrasikan ke cloud.
 
-| Tabel | Isi |
-| --- | --- |
-| `device_settings` | setelan kamera/printer/sesi/tampilan milik satu booth |
-| `sessions` / `captures` / `finalize_queue` / `events` | sesi offline-first + antrean sync |
-| `print_jobs` | antrean cetak lokal (skema v3) |
+| Tabel                                                 | Isi                                                   |
+| ----------------------------------------------------- | ----------------------------------------------------- |
+| `device_settings`                                     | setelan kamera/printer/sesi/tampilan milik satu booth |
+| `sessions` / `captures` / `finalize_queue` / `events` | sesi offline-first + antrean sync                     |
+| `print_jobs`                                          | antrean cetak lokal (skema v3)                        |
 
 `print_jobs` — sumber kebenaran antrean cetak (offline-first); cloud hanya menerima mirror status lewat heartbeat ke `photoboxes.device_status.printer.job`:
 
-| Kolom | Tipe | Catatan |
-| --- | --- | --- |
-| `id` | text PK | UUID job |
-| `dedupe_key` | text UNIQUE | default `session_id + sheet_hash` |
-| `session_id` / `mode` / `printer_name` / `media_name` | text | konteks pekerjaan |
-| `paper_size` / `orientation` | text | snapshot setelan saat submit |
-| `copies` / `sheets` / `attempts` | integer | jumlah salinan/lembar/percobaan |
-| `pdf_path` | text | PDF sementara di `<dataDir>/print-jobs/` |
-| `spool_job_id` | text | ID dari spooler (`lp`), null untuk driver tanpa ID |
-| `status` | text | `queued` → `printing` → `submitted` → `done` \| `failed` |
-| `error` | text | stderr `lp` + saran `lpstat -p` / `lpoptions -d` |
-| `created_at` / `updated_at` | text | ISO 8601 |
+| Kolom                                                 | Tipe        | Catatan                                                  |
+| ----------------------------------------------------- | ----------- | -------------------------------------------------------- |
+| `id`                                                  | text PK     | UUID job                                                 |
+| `dedupe_key`                                          | text UNIQUE | default `session_id + sheet_hash`                        |
+| `session_id` / `mode` / `printer_name` / `media_name` | text        | konteks pekerjaan                                        |
+| `paper_size` / `orientation`                          | text        | snapshot setelan saat submit                             |
+| `copies` / `sheets` / `attempts`                      | integer     | jumlah salinan/lembar/percobaan                          |
+| `pdf_path`                                            | text        | PDF sementara di `<dataDir>/print-jobs/`                 |
+| `spool_job_id`                                        | text        | ID dari spooler (`lp`), null untuk driver tanpa ID       |
+| `status`                                              | text        | `queued` → `printing` → `submitted` → `done` \| `failed` |
+| `error`                                               | text        | stderr `lp` + saran `lpstat -p` / `lpoptions -d`         |
+| `created_at` / `updated_at`                           | text        | ISO 8601                                                 |
 
 **Aturan status:** `submitted` = spooler menerima, **bukan** kertas keluar. `done` hanya dari konfirmasi operator (`POST /print/jobs/:id/confirm`). Retry eksplisit (`POST /print/jobs/:id/retry`) memakai ulang PDF tersimpan, bukan kirim ulang buta. Jika migrasi tabel gagal, runtime jatuh ke submit langsung tanpa antrean dan heartbeat mengirim `job: null`.

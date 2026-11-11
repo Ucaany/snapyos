@@ -17,10 +17,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
 import { RecordCard } from "@/components/ui/record-card";
-import {
-  RecordCollection,
-  RecordEditButton,
-} from "@/components/ui/record-collection";
+import { RecordCollection, RecordEditButton } from "@/components/ui/record-collection";
 import { Select } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { LABEL_CLASS as labelClass, fieldError } from "@/lib/form-ui";
@@ -112,7 +109,7 @@ function RoleForm({ member, currentUserId }: { member: StaffDirectoryRow; curren
           <option value="manager">MANAGER</option>
           <option value="staff">STAFF</option>
         </select>
-<IconButton
+        <IconButton
           type="submit"
           variant="outline"
           label={`Simpan role ${member.name ?? member.email}`}
@@ -405,7 +402,7 @@ export function StaffPanel({
               {ROLE_DESC.manager}
             </p>
           </div>
-<div className="flex items-end">
+          <div className="flex items-end">
             <IconButton
               type="submit"
               variant="default"
@@ -443,120 +440,122 @@ export function StaffPanel({
           list={
             <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
               <table className="w-full border-collapse text-left lg:min-w-[960px]">
-            <caption className="sr-only">
-              Daftar staff, role, akses booth, dan transaksi hari ini
-            </caption>
-            <thead>
-              <tr className="border-b-2 border-ink bg-ink font-mono text-[11px] uppercase tracking-[0.12em] text-bg">
-                <th scope="col" className="px-4 py-3.5">
-                  Anggota
-                </th>
-                <th scope="col" className="px-4 py-3.5">
-                  Peran
-                </th>
-                <th scope="col" className="hidden px-4 py-3.5 md:table-cell">
-                  Akses booth
-                </th>
-                <th scope="col" className="hidden px-4 py-3.5 md:table-cell">
-                  Transaksi Hari Ini
-                </th>
-                <th scope="col" className="px-4 py-3.5 text-right">
-                  Aksi
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {staff.map((member) => (
-                <Fragment key={member.userId}>
-                  <tr className="border-b-2 border-ink/10 transition-colors hover:bg-muted/60">
-                    <td className="px-4 py-3">
-                      <p className="font-mono text-sm font-bold uppercase tracking-[0.05em]">
-                        {member.name ?? "-"}
-                        {member.userId === currentUserId && (
-                          <span className="ml-2 border-2 border-ink bg-accent px-1.5 py-0.5 text-[10px]">
-                            ANDA
-                          </span>
-                        )}
-                      </p>
-                      <p className="mt-1 font-mono text-xs text-muted-foreground">{member.email}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <RoleForm member={member} currentUserId={currentUserId} />
-                    </td>
-                    <td className="hidden px-4 py-3 md:table-cell">
-                      {member.role === "owner" ? (
-                        <p className="font-mono text-xs font-bold uppercase tracking-[0.05em]">
-                          Semua booth
-                        </p>
-                      ) : member.booths.length === 0 ? (
-                        <span className="inline-block border-2 border-dashed border-ink/40 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.05em] text-muted-foreground">
-                          Belum diatur
-                        </span>
-                      ) : (
-                        <div className="flex max-w-[280px] flex-wrap items-center gap-1.5">
-                          {member.booths.slice(0, 3).map((booth) => (
-                            <span
-                              key={booth.id}
-                              className="border-2 border-ink bg-muted px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase"
-                            >
-                              {booth.name}
-                            </span>
-                          ))}
-                          {member.booths.length > 3 && (
-                            <span className="border-2 border-ink bg-accent px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase">
-                              +{member.booths.length - 3}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </td>
-                    <td className="hidden px-4 py-3 md:table-cell">
-                      <p className="font-mono text-sm font-bold">{member.todayCount}</p>
-                      <p className="mt-1 font-mono text-xs text-muted-foreground">
-                        {formatIDR(member.todayRevenue)}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-start justify-end gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon-compact"
-                          aria-label={`Atur akses booth ${member.name ?? member.email ?? ""}`}
-                          title={
-                            member.role === "owner"
-                              ? "Owner otomatis akses semua booth"
-                              : "Atur booth yang bisa diakses"
-                          }
-                          disabled={member.role === "owner"}
-                          className="relative after:absolute after:-inset-1"
-                          onClick={() =>
-                            setEditingBooths((prev) =>
-                              prev === member.userId ? null : member.userId
-                            )
-                          }
-                        >
-                          <DoorOpen aria-hidden />
-                        </Button>
-                        <RemoveForm member={member} currentUserId={currentUserId} />
-                      </div>
-                    </td>
+                <caption className="sr-only">
+                  Daftar staff, role, akses booth, dan transaksi hari ini
+                </caption>
+                <thead>
+                  <tr className="border-b-2 border-ink bg-ink font-mono text-[11px] uppercase tracking-[0.12em] text-bg">
+                    <th scope="col" className="px-4 py-3.5">
+                      Anggota
+                    </th>
+                    <th scope="col" className="px-4 py-3.5">
+                      Peran
+                    </th>
+                    <th scope="col" className="hidden px-4 py-3.5 md:table-cell">
+                      Akses booth
+                    </th>
+                    <th scope="col" className="hidden px-4 py-3.5 md:table-cell">
+                      Transaksi Hari Ini
+                    </th>
+                    <th scope="col" className="px-4 py-3.5 text-right">
+                      Aksi
+                    </th>
                   </tr>
-                  {editingBooths === member.userId && (
-                    <tr className="border-b-2 border-ink/10 bg-muted/40">
-                      <td colSpan={5} className="px-4 py-5">
-                        <BoothsEditor
-                          member={member}
-                          photoboxes={photoboxes}
-                          onClose={() => setEditingBooths(null)}
-                        />
-                      </td>
-                    </tr>
-                  )}
-                </Fragment>
-              ))}
-            </tbody>
-          </table>
+                </thead>
+                <tbody>
+                  {staff.map((member) => (
+                    <Fragment key={member.userId}>
+                      <tr className="border-b-2 border-ink/10 transition-colors hover:bg-muted/60">
+                        <td className="px-4 py-3">
+                          <p className="font-mono text-sm font-bold uppercase tracking-[0.05em]">
+                            {member.name ?? "-"}
+                            {member.userId === currentUserId && (
+                              <span className="ml-2 border-2 border-ink bg-accent px-1.5 py-0.5 text-[10px]">
+                                ANDA
+                              </span>
+                            )}
+                          </p>
+                          <p className="mt-1 font-mono text-xs text-muted-foreground">
+                            {member.email}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <RoleForm member={member} currentUserId={currentUserId} />
+                        </td>
+                        <td className="hidden px-4 py-3 md:table-cell">
+                          {member.role === "owner" ? (
+                            <p className="font-mono text-xs font-bold uppercase tracking-[0.05em]">
+                              Semua booth
+                            </p>
+                          ) : member.booths.length === 0 ? (
+                            <span className="inline-block border-2 border-dashed border-ink/40 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.05em] text-muted-foreground">
+                              Belum diatur
+                            </span>
+                          ) : (
+                            <div className="flex max-w-[280px] flex-wrap items-center gap-1.5">
+                              {member.booths.slice(0, 3).map((booth) => (
+                                <span
+                                  key={booth.id}
+                                  className="border-2 border-ink bg-muted px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase"
+                                >
+                                  {booth.name}
+                                </span>
+                              ))}
+                              {member.booths.length > 3 && (
+                                <span className="border-2 border-ink bg-accent px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase">
+                                  +{member.booths.length - 3}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                        <td className="hidden px-4 py-3 md:table-cell">
+                          <p className="font-mono text-sm font-bold">{member.todayCount}</p>
+                          <p className="mt-1 font-mono text-xs text-muted-foreground">
+                            {formatIDR(member.todayRevenue)}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-start justify-end gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon-compact"
+                              aria-label={`Atur akses booth ${member.name ?? member.email ?? ""}`}
+                              title={
+                                member.role === "owner"
+                                  ? "Owner otomatis akses semua booth"
+                                  : "Atur booth yang bisa diakses"
+                              }
+                              disabled={member.role === "owner"}
+                              className="relative after:absolute after:-inset-1"
+                              onClick={() =>
+                                setEditingBooths((prev) =>
+                                  prev === member.userId ? null : member.userId
+                                )
+                              }
+                            >
+                              <DoorOpen aria-hidden />
+                            </Button>
+                            <RemoveForm member={member} currentUserId={currentUserId} />
+                          </div>
+                        </td>
+                      </tr>
+                      {editingBooths === member.userId && (
+                        <tr className="border-b-2 border-ink/10 bg-muted/40">
+                          <td colSpan={5} className="px-4 py-5">
+                            <BoothsEditor
+                              member={member}
+                              photoboxes={photoboxes}
+                              onClose={() => setEditingBooths(null)}
+                            />
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
             </div>
           }
           grid={
@@ -595,9 +594,7 @@ export function StaffPanel({
                                   .slice(0, 3)
                                   .map((b) => b.name)
                                   .join(" · ")}${
-                                  member.booths.length > 3
-                                    ? ` +${member.booths.length - 3}`
-                                    : ""
+                                  member.booths.length > 3 ? ` +${member.booths.length - 3}` : ""
                                 }`,
                       },
                       {

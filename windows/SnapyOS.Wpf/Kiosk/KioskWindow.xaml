@@ -1,0 +1,39 @@
+<Window x:Class="SnapyOS.Wpf.Kiosk.KioskWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        WindowState="Maximized"
+        ResizeMode="NoResize"
+        Topmost="True"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterScreen"
+        Background="#FFFDF5"
+        Foreground="#111111"
+        Title="SnapyOS Kiosk">
+  <Grid Margin="40">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <ContentControl x:Name="RuntimeHost" />
+    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,24,0,0">
+      <Button Content="Mulai" Command="{Binding StartCommand}" MinWidth="160" MinHeight="52" Margin="0,0,12,0" />
+      <Button Content="Lanjutkan" Command="{Binding ContinueCommand}" MinWidth="160" MinHeight="52" Margin="0,0,12,0" />
+      <Button Content="Ambil foto" Command="{Binding CaptureCommand}" MinWidth="160" MinHeight="52" Margin="0,0,12,0" />
+      <Button Content="Coba lagi" Command="{Binding RetryCommand}" MinWidth="160" MinHeight="52" Margin="0,0,12,0" />
+      <Button Content="Petugas" Click="Operator_OnClick" MinWidth="120" MinHeight="52" />
+    </StackPanel>
+    <Border x:Name="OperatorPrompt" Visibility="Collapsed" Background="#FFD400" BorderBrush="#111111" BorderThickness="3" Padding="24" Width="360" HorizontalAlignment="Center" VerticalAlignment="Center">
+      <StackPanel>
+        <TextBlock Text="AKSES PETUGAS" FontWeight="Black" FontSize="22" />
+        <TextBlock Text="Masukkan PIN untuk keluar dari kiosk." Margin="0,8,0,12" TextWrapping="Wrap" />
+        <PasswordBox x:Name="OperatorPin" MinHeight="44" AutomationProperties.Name="PIN petugas" />
+        <TextBlock x:Name="OperatorError" Margin="0,8,0,0" TextWrapping="Wrap" />
+        <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+          <Button Content="Verifikasi" Click="VerifyOperator_OnClick" MinHeight="44" Margin="0,0,8,0" />
+          <Button Content="Batal" Click="CancelOperator_OnClick" MinHeight="44" />
+        </StackPanel>
+      </StackPanel>
+    </Border>
+  </Grid>
+</Window>

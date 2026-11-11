@@ -22,15 +22,12 @@ export const buttonVariants = cva(
       },
       size: {
         default: "h-11 min-h-11 gap-1.5 px-3",
-        xs: "h-11 min-h-11 gap-1 px-2 text-xs",
         sm: "h-11 min-h-11 gap-1 px-2.5 text-[0.8rem]",
         lg: "h-12 min-h-12 gap-1.5 px-4 text-base",
         icon: "size-11 min-h-11 min-w-11",
         "icon-compact":
           "relative size-9 min-h-9! min-w-9! after:absolute after:-inset-1 after:content-['']",
-        "icon-xs": "size-11 min-h-11 min-w-11",
         "icon-sm": "size-11 min-h-11 min-w-11",
-        "icon-lg": "size-11 min-h-11 min-w-11",
       },
     },
     defaultVariants: { variant: "default", size: "default" },

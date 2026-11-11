@@ -9,7 +9,11 @@ import { ApiError } from "@/lib/api-errors";
 import { can } from "@/lib/rbac";
 import { getActiveBusiness, requireUser } from "@/lib/tenant";
 import type { TemplateLayout } from "@/lib/template-layout";
-import { detectTemplateChromaSlotsAction, saveTemplateLayoutAction } from "@/server/catalog-actions";
+import {
+  detectTemplateChromaSlotsAction,
+  duplicateTemplateAction,
+  saveTemplateLayoutAction,
+} from "@/server/catalog-actions";
 import { getTemplateForBuilder } from "@/server/templates";
 
 /** /dashboard/templates/builder/[id] — builder slot frame milik owner (docs/15 §15.3). */
@@ -33,8 +37,7 @@ export default async function TemplateBuilderPage({ params }: { params: Promise<
   }
 
   const { template, is_global } = data;
-  const initialLayout =
-    template.slot_count > 0 ? (template.layout as TemplateLayout) : null;
+  const initialLayout = template.slot_count > 0 ? (template.layout as TemplateLayout) : null;
 
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
@@ -66,6 +69,9 @@ export default async function TemplateBuilderPage({ params }: { params: Promise<
           is_global || !canWrite
             ? undefined
             : detectTemplateChromaSlotsAction.bind(null, template.id)
+        }
+        onDuplicateTemplate={
+          !canWrite ? undefined : duplicateTemplateAction.bind(null, template.id)
         }
       />
     </div>

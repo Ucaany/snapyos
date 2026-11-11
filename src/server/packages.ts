@@ -102,11 +102,7 @@ async function requireMembership(userId: string, businessId: string, permission:
   return membership;
 }
 
-async function assertIdsOwned(
-  businessId: string,
-  table: "outlets" | "photoboxes",
-  ids: string[]
-) {
+async function assertIdsOwned(businessId: string, table: "outlets" | "photoboxes", ids: string[]) {
   if (ids.length === 0) return;
   const supabase = createServerClient();
   const { data } = await supabase

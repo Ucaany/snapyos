@@ -5,6 +5,7 @@
 > rujukan status. Laporan kanonis: `docs/18-audit-report.md`.
 
 # DATABASE & API AUDIT REPORT
+
 **Project**: PT SNAPY OS  
 **Date**: 2026-10-22  
 **Scope**: Schema, Queries, API Consistency
@@ -20,6 +21,7 @@
 **Low**: 2 (nice to have)
 
 ### Critical Issues Requiring Immediate Action:
+
 1. Circular reference transactions ↔ payments (data loss risk)
 2. Missing FK constraint on photoboxes.default_template_id
 3. Missing business_id filter in webhook handlers (4 locations) - **SECURITY**
@@ -32,6 +34,7 @@
 ### CRITICAL
 
 #### 1.1 Circular Reference (Data Loss Risk)
+
 **Severity**: 🔴 CRITICAL  
 **Location**: `db/schema.sql` lines 804, 837
 
@@ -39,22 +42,25 @@
 -- payments table
 transaction_id uuid references transactions (id) on delete set null,
 
--- transactions table  
-alter table transactions add column payment_id uuid 
+-- transactions table
+alter table transactions add column payment_id uuid
   references payments (id) on delete set null;
 ```
 
 **Problem**: Bidirectional nullable references create data loss risk
+
 - If payment deleted → transaction loses payment_id (NULL)
 - If transaction deleted → payment loses transaction_id (NULL)
 - Reconciliation impossible, revenue tracking broken
 
-**Impact**: 
+**Impact**:
+
 - Financial data integrity compromised
 - Audit trail broken
 - Cannot trace payment to transaction
 
 **Fix**:
+
 ```sql
 -- Remove circular reference
 ALTER TABLE transactions DROP COLUMN payment_id;
@@ -66,6 +72,7 @@ ALTER TABLE transactions DROP COLUMN payment_id;
 ---
 
 #### 1.2 Missing Foreign Key Constraint
+
 **Severity**: 🔴 CRITICAL  
 **Location**: `db/schema.sql` line 220
 
@@ -78,20 +85,22 @@ create table photoboxes (
 ```
 
 **Problem**: Field exists without FK to templates table  
-**Impact**: 
+**Impact**:
+
 - Dangling references when template deleted
 - Booth breaks when trying to load deleted template
 - No referential integrity
 
 **Fix**:
+
 ```sql
-ALTER TABLE photoboxes 
-ADD CONSTRAINT fk_photoboxes_default_template 
-FOREIGN KEY (default_template_id) 
+ALTER TABLE photoboxes
+ADD CONSTRAINT fk_photoboxes_default_template
+FOREIGN KEY (default_template_id)
 REFERENCES templates(id) ON DELETE SET NULL;
 
-CREATE INDEX idx_photoboxes_default_template 
-ON photoboxes(default_template_id) 
+CREATE INDEX idx_photoboxes_default_template
+ON photoboxes(default_template_id)
 WHERE default_template_id IS NOT NULL;
 ```
 
@@ -100,6 +109,7 @@ WHERE default_template_id IS NOT NULL;
 ### HIGH
 
 #### 1.3 Orphaned Customer Data
+
 **Severity**: 🟠 HIGH  
 **Location**: `db/schema.sql` lines 449, 739
 
@@ -113,18 +123,20 @@ customer_id uuid references customers (id) on delete set null,
 
 **Problem**: Customer deletion orphans sessions and transactions  
 **Impact**:
+
 - `metrics_returning_customers()` returns incomplete data
 - `customer_spending()` RPC broken for deleted customers
 - Analytics lose customer attribution
 - Revenue tracking incomplete
 
 **Fix**:
+
 ```sql
 -- Prevent customer deletion if they have transactions/sessions
-ALTER TABLE sessions 
+ALTER TABLE sessions
 DROP CONSTRAINT sessions_customer_id_fkey,
-ADD CONSTRAINT sessions_customer_id_fkey 
-FOREIGN KEY (customer_id) 
+ADD CONSTRAINT sessions_customer_id_fkey
+FOREIGN KEY (customer_id)
 REFERENCES customers(id) ON DELETE RESTRICT;
 
 ALTER TABLE transactions
@@ -137,6 +149,7 @@ REFERENCES customers(id) ON DELETE RESTRICT;
 ---
 
 #### 1.4 Event Tracking Loss
+
 **Severity**: 🟠 HIGH  
 **Location**: `db/schema.sql` lines 447, 738
 
@@ -148,6 +161,7 @@ event_id uuid references events (id) on delete set null,
 **Impact**: Event revenue reporting broken, tracking lost
 
 **Options**:
+
 1. Change to `ON DELETE RESTRICT` (recommended)
 2. Keep `SET NULL` but add app-level checks before deletion
 3. Soft-delete events instead
@@ -155,22 +169,25 @@ event_id uuid references events (id) on delete set null,
 ---
 
 #### 1.5 Missing Index on payments.credential_id
+
 **Severity**: 🟠 HIGH  
 **Location**: `db/schema.sql` line 824
 
 **Problem**: Direct merchant payment filtering lacks index  
 **Query Pattern**:
+
 ```sql
-SELECT * FROM payments 
+SELECT * FROM payments
 WHERE business_id = ? AND credential_id = ? AND status = 'pending';
 ```
 
 **Impact**: Slow queries when filtering by payment credential
 
 **Fix**:
+
 ```sql
-CREATE INDEX idx_payments_credential 
-ON payments (business_id, credential_id, status) 
+CREATE INDEX idx_payments_credential
+ON payments (business_id, credential_id, status)
 WHERE credential_id IS NOT NULL;
 ```
 
@@ -179,21 +196,24 @@ WHERE credential_id IS NOT NULL;
 ### MEDIUM
 
 #### 1.6 Payment Method Enum Drift
+
 **Severity**: 🟡 MEDIUM  
 **Location**: `db/schema.sql` line 741-745
 
 ```sql
-check (payment_method in ('qris', 'cash', 'bank_transfer', 'other', 
+check (payment_method in ('qris', 'cash', 'bank_transfer', 'other',
                           'offline', 'manual', 'voucher'))
 ```
 
 **Problem**: 7 different values with semantic overlap  
-**Impact**: 
+**Impact**:
+
 - Reporting inconsistency
 - Hard to maintain
 - 'offline' vs 'cash' vs 'manual' overlap
 
 **Recommendation**: Consolidate to core types:
+
 ```sql
 -- Suggested: ('qris', 'cash', 'transfer', 'voucher', 'other')
 -- Use transactions.withdrawable to distinguish manual entries
@@ -202,6 +222,7 @@ check (payment_method in ('qris', 'cash', 'bank_transfer', 'other',
 ---
 
 #### 1.7 Weak Amount Validation
+
 **Severity**: 🟡 MEDIUM  
 **Location**: Multiple tables
 
@@ -209,9 +230,10 @@ check (payment_method in ('qris', 'cash', 'bank_transfer', 'other',
 **Problem**: Business logic requires price > 0 for packages
 
 **Fix**:
+
 ```sql
 ALTER TABLE packages DROP CONSTRAINT packages_price_check;
-ALTER TABLE packages ADD CONSTRAINT packages_price_check 
+ALTER TABLE packages ADD CONSTRAINT packages_price_check
 CHECK (price > 0);
 ```
 
@@ -222,6 +244,7 @@ CHECK (price > 0);
 ### CRITICAL
 
 #### 2.1 Missing business_id in Webhook Payment Lookup
+
 **Severity**: 🔴 CRITICAL SECURITY  
 **File**: `src/server/payment/webhook-handler.ts:294-298`
 
@@ -229,23 +252,26 @@ CHECK (price > 0);
 const { data: paymentRow } = await supabase
   .from("payments")
   .select("*")
-  .eq("order_id", event.order_id)  // ⚠️ NO business_id scope
+  .eq("order_id", event.order_id) // ⚠️ NO business_id scope
   .maybeSingle();
 ```
 
 **Problem**: Cross-tenant webhook could settle wrong business payment  
-**Impact**: 
+**Impact**:
+
 - **SECURITY BREACH**: Tenant isolation broken
 - If order_id collides across businesses, wrong payment settled
 - Financial data corruption
 
 **Affected Locations**:
+
 - Line 51: `findPayment(orderId)` helper
 - Line 125-129: Midtrans kiosk payment
 - Line 188-192: Tripay kiosk payment
 - Line 246-258: Invoice payment webhook
 
 **Fix**:
+
 ```typescript
 const { data: paymentRow } = await supabase
   .from("payments")
@@ -258,6 +284,7 @@ const { data: paymentRow } = await supabase
 ---
 
 #### 2.2 N+1 Query: POS Stock Decrement
+
 **Severity**: 🔴 CRITICAL  
 **File**: `src/server/pos-orders.ts:545-582`
 
@@ -274,12 +301,14 @@ await Promise.all(
 ```
 
 **Problem**: N+1 queries on POS checkout hot path  
-**Impact**: 
+**Impact**:
+
 - 10-item order = 10 separate RPC calls
 - Slow checkout experience
 - Database connection exhaustion under load
 
 **Fix**: Create batch RPC
+
 ```sql
 CREATE OR REPLACE FUNCTION pos_decrement_stock_batch(
   p_business uuid,
@@ -297,13 +326,13 @@ BEGIN
     WHERE id = (v_item->>'product_id')::uuid
       AND business_id = p_business
       AND (stock IS NULL OR stock >= (v_item->>'qty')::integer);
-    
-    IF NOT FOUND AND (SELECT stock FROM pos_products 
+
+    IF NOT FOUND AND (SELECT stock FROM pos_products
                        WHERE id = (v_item->>'product_id')::uuid) IS NOT NULL THEN
       v_failed := array_append(v_failed, v_item);
     END IF;
   END LOOP;
-  
+
   RETURN jsonb_build_object('failed', to_jsonb(v_failed));
 END;
 $$;
@@ -314,35 +343,36 @@ $$;
 ### HIGH
 
 #### 2.3 Missing Indexes on Hot Query Paths
+
 **Severity**: 🟠 HIGH
 
 Based on query analysis, these indexes are likely missing:
 
 ```sql
 -- 1. Webhook payment lookup (CRITICAL HOT PATH)
-CREATE INDEX idx_payments_order_business 
+CREATE INDEX idx_payments_order_business
 ON payments (order_id, business_id);
 
 -- 2. POS transaction lookup
-CREATE INDEX idx_transactions_pos_order 
-ON transactions (business_id, pos_order_id) 
+CREATE INDEX idx_transactions_pos_order
+ON transactions (business_id, pos_order_id)
 WHERE pos_order_id IS NOT NULL;
 
 -- 3. Staff overview active sessions per booth
-CREATE INDEX idx_sessions_photobox_status_business 
+CREATE INDEX idx_sessions_photobox_status_business
 ON sessions (photobox_id, status, business_id);
 
 -- 4. Dashboard today transactions with date range
-CREATE INDEX idx_transactions_business_created_status 
+CREATE INDEX idx_transactions_business_created_status
 ON transactions (business_id, created_at, status);
 
 -- 5. Expire stale checkouts
-CREATE INDEX idx_checkout_sessions_expires 
-ON checkout_sessions (expires_at, status) 
+CREATE INDEX idx_checkout_sessions_expires
+ON checkout_sessions (expires_at, status)
 WHERE status = 'open';
 
 -- 6. Payment status checks per checkout
-CREATE INDEX idx_payments_checkout_status 
+CREATE INDEX idx_payments_checkout_status
 ON payments (checkout_session_id, status);
 
 -- 7. Customer search by name (already exists: idx_customers_name_trgm ✓)
@@ -355,19 +385,23 @@ ON payments (checkout_session_id, status);
 ### MEDIUM
 
 #### 2.4 SELECT * Over-fetching
+
 **Severity**: 🟡 MEDIUM  
 **Locations**:
+
 - `pos-orders.ts:183` - sessions
 - `kiosk-sessions.ts:135` - sessions
 - `payment-create.ts:51` - payments
 - `webhook-handler.ts` - multiple locations
 
-**Impact**: 
+**Impact**:
+
 - Increased network transfer
 - Slower queries
 - Higher memory usage
 
 **Fix**: Specify only needed columns
+
 ```typescript
 // Instead of:
 .select("*")
@@ -379,6 +413,7 @@ ON payments (checkout_session_id, status);
 ---
 
 #### 2.5 Transaction Customer Search Inefficiency
+
 **Severity**: 🟡 MEDIUM  
 **File**: `src/server/transactions.ts:162-172`
 
@@ -395,7 +430,8 @@ const ids = (matched ?? []).map((c) => c.id);
 req = req.or(`number.ilike.${like},customer_id.in.(${ids.join(",")})`);
 ```
 
-**Problem**: 
+**Problem**:
+
 - Two queries for text search
 - `.in()` limited to 100 IDs
 - Could miss results if >100 matching customers
@@ -405,6 +441,7 @@ req = req.or(`number.ilike.${like},customer_id.in.(${ids.join(",")})`);
 ---
 
 #### 2.6 Staff Overview Multiple Head Counts
+
 **Severity**: 🟡 MEDIUM  
 **File**: `src/server/staff-overview.ts:82-136`
 
@@ -412,6 +449,7 @@ req = req.or(`number.ilike.${like},customer_id.in.(${ids.join(",")})`);
 **Impact**: 6 database roundtrips for simple counts
 
 **Fix**: Single RPC returning all counts
+
 ```sql
 CREATE FUNCTION staff_overview_counts(
   p_business uuid, p_photobox uuid
@@ -430,9 +468,11 @@ $$ LANGUAGE sql STABLE;
 ## 3. SCHEMA VALIDATION (GOOD PRACTICES) ✅
 
 ### Race Condition Protection
+
 **Status**: ✅ EXCELLENT
 
 All critical mutations use proper locking:
+
 - `activate_device_atomically()` - FOR UPDATE lock
 - `pos_complete_payment()` - Conditional UPDATE + INSERT
 - `exit_pin_register_failure()` - Atomic counter
@@ -442,9 +482,11 @@ All critical mutations use proper locking:
 - `add_business_member_with_quota()` - Advisory lock
 
 ### Unique Constraints
+
 **Status**: ✅ EXCELLENT
 
 Anti-race unique constraints properly implemented:
+
 - `uq_sessions_active_per_photobox` - ONE active session per booth
 - `uq_checkout_open_per_photobox` - ONE open checkout per booth
 - `uq_pay_active_per_checkout` - ONE active payment per checkout
@@ -452,8 +494,10 @@ Anti-race unique constraints properly implemented:
 - `idx_photoboxes_one_pos_active` - ONE POS booth per business
 
 ### Proper Indexes
+
 **Count**: 96 indexes total  
 **Good patterns found**:
+
 - Partial indexes with WHERE clauses (efficient)
 - Composite indexes for hot queries
 - Trigram indexes for text search (pg_trgm)
@@ -465,6 +509,7 @@ Anti-race unique constraints properly implemented:
 **Status**: 🟡 PENDING (Agent a9c74c68f15eb7ba9 still analyzing)
 
 Will include:
+
 - Response format consistency
 - HTTP status code usage
 - Error handling patterns
@@ -521,27 +566,27 @@ Before deploying fixes:
 BEGIN;
 
 -- 1. Add missing FK constraint
-ALTER TABLE photoboxes 
-ADD CONSTRAINT fk_photoboxes_default_template 
-FOREIGN KEY (default_template_id) 
+ALTER TABLE photoboxes
+ADD CONSTRAINT fk_photoboxes_default_template
+FOREIGN KEY (default_template_id)
 REFERENCES templates(id) ON DELETE SET NULL;
 
 -- 2. Add critical indexes
-CREATE INDEX CONCURRENTLY idx_payments_order_business 
+CREATE INDEX CONCURRENTLY idx_payments_order_business
 ON payments (order_id, business_id);
 
-CREATE INDEX CONCURRENTLY idx_payments_credential 
-ON payments (business_id, credential_id, status) 
+CREATE INDEX CONCURRENTLY idx_payments_credential
+ON payments (business_id, credential_id, status)
 WHERE credential_id IS NOT NULL;
 
-CREATE INDEX CONCURRENTLY idx_transactions_pos_order 
-ON transactions (business_id, pos_order_id) 
+CREATE INDEX CONCURRENTLY idx_transactions_pos_order
+ON transactions (business_id, pos_order_id)
 WHERE pos_order_id IS NOT NULL;
 
 -- 3. Strengthen customer constraints (after data audit)
--- ALTER TABLE sessions 
+-- ALTER TABLE sessions
 -- DROP CONSTRAINT sessions_customer_id_fkey,
--- ADD CONSTRAINT sessions_customer_id_fkey 
+-- ADD CONSTRAINT sessions_customer_id_fkey
 -- FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE RESTRICT;
 
 -- ALTER TABLE transactions

@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { Input } from "@/components/ui/input";
-import { LABEL_CLASS as labelClass, fieldError } from "@/lib/form-ui";
+import { LABEL_CLASS as labelClass, fieldError, IDR_PRICE_FLOOR } from "@/lib/form-ui";
 import type { PosProductRow } from "@/server/pos-products";
 import type { FormState } from "@/server/auth-actions";
 
@@ -126,7 +126,7 @@ export function PosProductFields({
           id={`pos-product-price-${id}`}
           name="price"
           type="number"
-          min={1000}
+          min={IDR_PRICE_FLOOR}
           step={1000}
           required
           inputMode="numeric"

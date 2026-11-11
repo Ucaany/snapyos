@@ -17,8 +17,7 @@ export async function GET(request: Request, { params }: Params) {
     // untuk kiosk versi lama.
     const { device_token } = paymentStatusQuerySchema.parse({
       device_token:
-        request.headers.get("x-device-token")?.trim() ||
-        searchParamsToObject(request).device_token,
+        request.headers.get("x-device-token")?.trim() || searchParamsToObject(request).device_token,
     });
     const ip = getClientIp(request.headers);
     // Kiosk poll 3 detik = 20 req/menit/booth. Batas IP harus longgar supaya

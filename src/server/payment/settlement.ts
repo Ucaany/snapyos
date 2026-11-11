@@ -66,10 +66,7 @@ export async function transitionPaymentToExpired(paymentId: string): Promise<boo
 export async function runPaidSideEffects(payment: PaymentRow, checkout: CheckoutRow) {
   const resultToken = checkout.result_token ?? generateResultToken();
   const tz = await getBusinessTimezone(payment.business_id);
-  const txNumber = formatTxNumber(
-    todayISO(tz),
-    randomUUID().replace(/-/g, "").slice(0, 6)
-  );
+  const txNumber = formatTxNumber(todayISO(tz), randomUUID().replace(/-/g, "").slice(0, 6));
   const { data, error } = await createServerClient().rpc("settle_paid_payment_atomically", {
     p_payment_id: payment.id,
     p_transaction_number: txNumber,
