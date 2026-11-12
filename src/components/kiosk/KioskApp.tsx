@@ -39,7 +39,7 @@ import {
   purgeOrphaned,
 } from "@/components/kiosk/offline-queue";
 import { purgeOtherBusinesses, warmTemplateCache } from "@/components/kiosk/template-cache";
-import { resolveGifFrames } from "@/components/kiosk/photo-render";
+import { resolveGifProcessFrames } from "@/components/kiosk/photo-render";
 import { ActivationScreen } from "@/components/kiosk/ActivationScreen";
 import { SetupWizard } from "@/components/kiosk/SetupWizard";
 import { WelcomeScreen } from "@/components/kiosk/WelcomeScreen";
@@ -106,6 +106,8 @@ type VerifyData = {
 type FinalizeResult = {
   result_token: string | null;
   gif_url: string | null;
+  /** GIF slideshow semua capture mentah (tanpa frame). */
+  photos_gif_url?: string | null;
   expires_at?: string | null;
 };
 /** pendingSync = menunggu sinkron antrian offline; syncFailed = terminal (grace habis). */
@@ -212,6 +214,21 @@ export function KioskApp({
   const [retakeCount, setRetakeCount] = useState(0);
   // Filter live dipilih di kamera dan menjadi nilai awal editor (per foto).
   const [filterId, setFilterId] = useState("original");
+  // Mirror dipegang di induk agar ReviewScreen memakai state yang sama dengan
+  // CameraCapture (preview & hasil capture identik). Nilai awal dari config.
+  const [mirrorPreview, setMirrorPreview] = useState(
+    currentPhotobox.camera_settings.mirror_preview !== false
+  );
+  // Sinkron live: config berubah (poll) → ikuti, tapi jangan reset toggle lokal
+  // pengguna tiap render. Hanya nilai config yang BERUBAH yang memicu set.
+  const configMirror = currentPhotobox.camera_settings.mirror_preview !== false;
+  const lastConfigMirror = useRef(configMirror);
+  useEffect(() => {
+    if (lastConfigMirror.current !== configMirror) {
+      lastConfigMirror.current = configMirror;
+      setMirrorPreview(configMirror);
+    }
+  }, [configMirror]);
   const [finalPhotos, setFinalPhotos] = useState<FinalPhoto[]>([]);
   const [result, setResult] = useState<ResultState | null>(null);
   const [printed, setPrinted] = useState(false);
@@ -632,14 +649,19 @@ export function KioskApp({
       // mengulang pemeriksaan itu agar renderer tunggal pun aman.
       const shouldPrint = hasEnabledPrintPath && (selectedPackage?.print_count ?? 0) > 0;
 
-      // GIF slideshow: template ber-slot → satu JPEG berframe per foto
-      // (composeFrame, slot terisi foto itu). Template legacy → foto final.
-      // Gagal render frame → balik ke foto mentah (GIF tetap ada).
-      const gifSource = await resolveGifFrames(
-        selectedTemplate?.layout ? photos.map((p) => p.blob) : final.map((p) => p.blob),
-        selectedTemplate?.layout ?? null,
-        selectedTemplate?.file_url ?? null
-      );
+      // GIF hanya relevan untuk template ber-slot: kolase progresif (slot terisi
+      // satu per satu) dari capture mentah. Template legacy tanpa slot → kirim
+      // set kosong; server/runtime jatuh ke `bodies` (foto final berframe) untuk
+      // menghasilkan kedua GIF, jadi tidak ada render GIF sia-sia di kiosk.
+      const hasSlots = Boolean(selectedTemplate?.layout && selectedTemplate.layout.slots.length > 0);
+      const gifSource = hasSlots
+        ? await resolveGifProcessFrames(
+            photos.map((p) => p.blob),
+            selectedTemplate!.layout,
+            selectedTemplate!.file_url ?? null
+          )
+        : [];
+      const allPhotosGifSource = hasSlots ? photos.map((p) => p.blob) : [];
 
       // Sesi `local_*` hanya dikenal runtime lokal. Cloud tidak punya barisnya,
       // jadi finalize HARUS ke runtime walau internet sudah hidup lagi — sync
@@ -652,6 +674,7 @@ export function KioskApp({
             retakeCount,
             photos: final.map((p) => p.blob),
             gifPhotos: gifSource,
+            gifAllPhotos: allPhotosGifSource,
           });
           await finalizeLocalSession(
             session.session_id,
@@ -690,6 +713,7 @@ export function KioskApp({
             photos: final.map((p) => p.blob),
             // Capture mentah tanpa frame → GIF slideshow (bukan hasil komposit).
             gifPhotos: gifSource,
+            gifAllPhotos: allPhotosGifSource,
             queuedAt: Date.now(),
           });
           setFinalPhotos(final);
@@ -716,6 +740,7 @@ export function KioskApp({
           photos: final.map((p) => p.blob),
           // Capture mentah tanpa frame → GIF slideshow (bukan hasil komposit).
           gifPhotos: gifSource,
+          gifAllPhotos: allPhotosGifSource,
         });
 
         const data = await apiForm<FinalizeResult>(
@@ -950,6 +975,7 @@ export function KioskApp({
           <WelcomeScreen
             business={liveConfig.business}
             branding={effectiveBranding}
+            elements={kioskBranding?.pages?.welcome?.elements}
             onStart={() => {
               // Gesture customer = kesempatan sah untuk fullscreen. Kunci ulang
               // di awal setiap sesi, termasuk setelah petugas keluar kiosk.
@@ -964,6 +990,7 @@ export function KioskApp({
           <GuideScreen
             steps={guideSteps}
             kioskStyle={pageStyle("guide")}
+            elements={kioskBranding?.pages?.guide?.elements}
             titleText={kioskBranding?.guide_title}
             buttonLabel={kioskBranding?.guide_button}
             videoUrl={kioskBranding?.pages?.guide?.video_url ?? null}
@@ -977,6 +1004,7 @@ export function KioskApp({
           <PackagePicker
             packages={liveConfig.packages}
             kioskStyle={pageStyle("package")}
+            elements={kioskBranding?.pages?.package?.elements}
             titleText={kioskBranding?.package_title}
             primaryColor={effectiveBranding.primary_color}
             secondaryColor={effectiveBranding.secondary_color}
@@ -997,6 +1025,7 @@ export function KioskApp({
             paymentTitle={kioskBranding?.payment_title}
             paymentHint={kioskBranding?.payment_hint}
             kioskStyle={pageStyle("payment")}
+            elements={kioskBranding?.pages?.payment?.elements}
             videoUrl={kioskBranding?.pages?.payment?.video_url ?? null}
             onOffline={() => void startDirectSession(selectedPackage)}
             onPaid={(checkoutId) => handleCheckoutPaid(checkoutId)}
@@ -1011,6 +1040,7 @@ export function KioskApp({
             packagePrintCount={selectedPackage.print_count}
             businessSlug={businessSlug}
             kioskStyle={pageStyle("template")}
+            elements={kioskBranding?.pages?.template?.elements}
             titleText={kioskBranding?.template_title}
             videoUrl={kioskBranding?.pages?.template?.video_url ?? null}
             defaultTemplateId={currentPhotobox.default_template_id ?? null}
@@ -1027,11 +1057,14 @@ export function KioskApp({
             titleText={kioskBranding?.capture_title}
             hintText={kioskBranding?.capture_hint}
             kioskStyle={pageStyle("capture")}
+            elements={kioskBranding?.pages?.capture?.elements}
             showMirrorToggle={kioskBranding?.show_mirror_toggle !== false}
+            onMirrorChange={setMirrorPreview}
             videoUrl={kioskBranding?.pages?.capture?.video_url ?? null}
             layout={selectedTemplate?.layout ?? null}
             frameUrl={selectedTemplate?.file_url ?? null}
             captureMode={selectedPackage.capture_mode}
+            autoCapture={sessionSettings?.auto_capture === true}
             filterId={filterId}
             onFilterChange={setFilterId}
             onProgress={onProgressCapture}
@@ -1048,8 +1081,10 @@ export function KioskApp({
             retakeCount={retakeCount}
             cameraSettings={currentPhotobox.camera_settings}
             kioskStyle={pageStyle("capture")}
+            elements={kioskBranding?.pages?.capture?.elements}
             titleText={kioskBranding?.capture_title}
             filterId={filterId}
+            mirrorPreview={mirrorPreview}
             onContinue={handleReviewContinue}
           />
         </KioskScreenRenderer>
@@ -1066,6 +1101,7 @@ export function KioskApp({
             titleText={kioskBranding?.editor_title}
             hintText={kioskBranding?.editor_hint}
             kioskStyle={pageStyle("edit")}
+            elements={kioskBranding?.pages?.edit?.elements}
             videoUrl={kioskBranding?.pages?.edit?.video_url ?? null}
             allowZoomPan={kioskBranding?.allow_zoom_pan !== false}
             finishRequested={finishRequested}
@@ -1100,12 +1136,14 @@ export function KioskApp({
           <ResultScreen
             resultToken={result.result_token}
             gifUrl={result.gif_url ?? null}
+            photosGifUrl={result.photos_gif_url ?? null}
             finalPhotos={finalPhotos}
             businessName={liveConfig.business.name}
             resultTitle={kioskBranding?.result_title}
             resultHint={kioskBranding?.result_hint}
             resultLayout={kioskBranding?.result_layout}
             kioskStyle={pageStyle("result")}
+            elements={kioskBranding?.pages?.result?.elements}
             videoUrl={kioskBranding?.pages?.result?.video_url ?? null}
             printed={printed}
             canPrint={hasEnabledPrintPath && (selectedPackage?.print_count ?? 0) > 0}

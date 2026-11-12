@@ -36,6 +36,8 @@ export type QueuedFinalize = {
   /** Capture mentah (tanpa frame) untuk GIF slideshow. Item antrian lama
    *  tidak punya field ini — server lalu memakai `photos` sebagai fallback. */
   gifPhotos?: Blob[];
+  /** Semua capture mentah untuk GIF "semua foto" (tanpa frame). */
+  gifAllPhotos?: Blob[];
   queuedAt: number;
 };
 
@@ -164,6 +166,8 @@ export function buildFinalizeForm(input: {
   photos: Blob[];
   /** Capture mentah tanpa frame — sumber GIF slideshow. */
   gifPhotos?: Blob[];
+  /** Semua capture mentah untuk GIF "semua foto" (tanpa frame). */
+  gifAllPhotos?: Blob[];
 }): FormData {
   const form = new FormData();
   form.append("device_token", input.deviceToken);
@@ -171,6 +175,9 @@ export function buildFinalizeForm(input: {
   if (input.templateId) form.append("template_id", input.templateId);
   for (const p of input.photos) form.append("photos", p, "photo.jpg");
   for (const p of input.gifPhotos ?? []) form.append("gif_photos", p, "gif-photo.jpg");
+  for (const p of input.gifAllPhotos ?? []) {
+    form.append("gif_all_photos", p, "gif-all-photo.jpg");
+  }
   return form;
 }
 
@@ -198,6 +205,7 @@ export async function syncOne(item: QueuedFinalize, deviceToken: string | null):
           retakeCount: item.retakeCount,
           photos: item.photos,
           gifPhotos: item.gifPhotos,
+          gifAllPhotos: item.gifAllPhotos,
         }),
       }
     );

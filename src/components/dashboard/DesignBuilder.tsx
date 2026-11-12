@@ -21,6 +21,12 @@ import { LABEL_CLASS } from "@/lib/form-ui";
 import { mergeBranding, brandingHasOverride } from "@/lib/branding-merge";
 import { contrastRatio } from "@/lib/color";
 import { KIOSK_PAGE_OPTIONS } from "@/lib/kiosk-pages";
+import {
+  KIOSK_ELEMENTS,
+  kioskElementDefs,
+  type KioskElementConfig,
+  type KioskElementsConfig,
+} from "@/lib/kiosk-elements";
 import type {
   BrandingConfig,
   KioskBrandingConfig,
@@ -34,9 +40,10 @@ import {
   uploadBrandAssetAction,
 } from "@/server/design-builder-actions";
 
-const PAGES: { id: KioskPageId; label: string }[] = KIOSK_PAGE_OPTIONS.map(
-  ({ id, label }) => ({ id, label })
-);
+const PAGES: { id: KioskPageId; label: string }[] = KIOSK_PAGE_OPTIONS.map(({ id, label }) => ({
+  id,
+  label,
+}));
 
 const PAGE_COPY: Record<
   Exclude<KioskPageId, "welcome">,
@@ -91,14 +98,32 @@ type Props = {
   canGlobal: boolean;
 };
 
-type PendingNav =
-  | { kind: "scope"; value: "global" | "booth" }
-  | { kind: "booth"; value: string };
+type PendingNav = { kind: "scope"; value: "global" | "booth" } | { kind: "booth"; value: string };
 
 type UploadStatus = "idle" | "uploading" | "success" | "error";
 type UploadState = Record<string, { status: UploadStatus; message?: string }>;
 
 const HEX_RE = /^#[0-9a-f]{6}$/i;
+const TEXT_OVERRIDE_IDS = new Set([
+  "eyebrow",
+  "title",
+  "hint",
+  "tagline",
+  "business",
+  "cta",
+  "back",
+  "footer",
+]);
+const ELEMENT_TEXT_DEFAULT: Record<string, string> = {
+  eyebrow: "Label kecil",
+  title: "Judul layar",
+  hint: "Teks bantuan",
+  tagline: "Abadikan momenmu.",
+  business: "Nama bisnis",
+  cta: "Lanjut",
+  back: "Kembali",
+  footer: "Catatan bawah",
+};
 const LOGO_TYPES = "image/png,image/jpeg,image/webp";
 const VIDEO_TYPES = "video/mp4,video/webm";
 
@@ -171,6 +196,7 @@ function fieldIdForError(key: string): string {
   }
   if (key.startsWith("kiosk.pages.")) {
     const parts = key.split(".");
+    if (parts.includes("elements")) return "elements-section";
     const field = parts[parts.length - 1] ?? "";
     const pageMap: Record<string, string> = {
       bg_color: "page-bg",
@@ -267,7 +293,11 @@ function Field({
       </label>
       {children}
       {error ? (
-        <p id={`${id}-error`} role="alert" className="font-mono text-[11px] leading-snug text-destructive">
+        <p
+          id={`${id}-error`}
+          role="alert"
+          className="font-mono text-[11px] leading-snug text-destructive"
+        >
           {error}
         </p>
       ) : hint ? (
@@ -348,9 +378,7 @@ function ColorField({
 }) {
   const swatch = resolveColor(value, placeholder) || "#111111";
   const ratio =
-    contrast &&
-    HEX_RE.test(contrast.foreground) &&
-    HEX_RE.test(contrast.background)
+    contrast && HEX_RE.test(contrast.foreground) && HEX_RE.test(contrast.background)
       ? contrastRatio(contrast.foreground, contrast.background)
       : null;
 
@@ -436,7 +464,9 @@ function RangeField({
   const current = clamp(value ?? fallback);
   const display = formatNumber(current, step, unit);
   const hint =
-    value === undefined ? `${inheritedHint}: ${formatNumber(clamp(fallback), step, unit)}` : undefined;
+    value === undefined
+      ? `${inheritedHint}: ${formatNumber(clamp(fallback), step, unit)}`
+      : undefined;
 
   return (
     <Field id={id} label={label} hint={hint}>
@@ -620,12 +650,20 @@ function UploadField({
           Langsung aktif di kiosk setelah unggah.
         </p>
         {busy ? (
-          <p role="status" aria-live="polite" className="font-mono text-[10px] uppercase text-muted-foreground">
+          <p
+            role="status"
+            aria-live="polite"
+            className="font-mono text-[10px] uppercase text-muted-foreground"
+          >
             Mengunggah...
           </p>
         ) : null}
         {status === "success" ? (
-          <p role="status" aria-live="polite" className="font-mono text-[10px] uppercase text-accent-3-strong">
+          <p
+            role="status"
+            aria-live="polite"
+            className="font-mono text-[10px] uppercase text-accent-3-strong"
+          >
             Aktif di kiosk
           </p>
         ) : null}
@@ -669,6 +707,7 @@ export function DesignBuilder({
   const [activeTab, setActiveTab] = useState("merek");
   const [pendingNav, setPendingNav] = useState<PendingNav | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
+  const [dragId, setDragId] = useState<string | null>(null);
 
   const urls = useMemo(() => ({ ...signedUrls, ...extraUrls }), [signedUrls, extraUrls]);
   const canWrite = scope === "booth" ? canBooth : canGlobal;
@@ -678,8 +717,7 @@ export function DesignBuilder({
   );
   const inherited = scope === "booth" && !brandingHasOverride(boothOverrides[boothId]);
   const dirty = useMemo(
-    () =>
-      stableStringify(draft) !== stableStringify(scopeBaseline) || resetKeys.length > 0,
+    () => stableStringify(draft) !== stableStringify(scopeBaseline) || resetKeys.length > 0,
     [draft, scopeBaseline, resetKeys]
   );
   const uploading = Object.values(uploadState).some((entry) => entry.status === "uploading");
@@ -738,7 +776,7 @@ export function DesignBuilder({
   const setPageField = <K extends keyof KioskPageConfig>(
     pageId: KioskPageId,
     key: K,
-    value: KioskPageConfig[K] | ""
+    value: KioskPageConfig[K] | "" | undefined
   ) => {
     const cleared =
       value === null || value === undefined || (typeof value === "string" && value.trim() === "");
@@ -755,6 +793,58 @@ export function DesignBuilder({
         kiosk: { ...(current.kiosk ?? {}), pages } as KioskBrandingConfig,
       };
     });
+  };
+
+  const pageElements = useMemo<KioskElementsConfig>(
+    () => draft.kiosk?.pages?.[page]?.elements ?? {},
+    [draft, page]
+  );
+
+  const orderedElementIds = useMemo(() => {
+    return (KIOSK_ELEMENTS[page] ?? [])
+      .map((def, index) => ({
+        id: def.id,
+        index,
+        order: pageElements[def.id]?.order ?? index,
+      }))
+      .sort((a, b) => a.order - b.order || a.index - b.index)
+      .map((item) => item.id);
+  }, [page, pageElements]);
+
+  const setElement = (id: string, patch: Partial<KioskElementConfig> | null) => {
+    const next: KioskElementConfig = { ...(pageElements[id] ?? {}) };
+    if (patch === null) {
+      for (const key of Object.keys(next) as (keyof KioskElementConfig)[]) delete next[key];
+    } else {
+      for (const [key, value] of Object.entries(patch) as [keyof KioskElementConfig, unknown][]) {
+        if (value === undefined || value === null || value === "") delete next[key];
+        else (next as Record<string, unknown>)[key] = value;
+      }
+    }
+    const elements: KioskElementsConfig = { ...pageElements };
+    if (Object.keys(next).length === 0) delete elements[id];
+    else elements[id] = next;
+    if (Object.keys(elements).length === 0) setPageField(page, "elements", undefined);
+    else setPageField(page, "elements", elements);
+  };
+
+  const reorderElements = (fromId: string, toId: string) => {
+    if (fromId === toId) return;
+    const ids = [...orderedElementIds];
+    const from = ids.indexOf(fromId);
+    const to = ids.indexOf(toId);
+    if (from < 0 || to < 0) return;
+    ids.splice(from, 1);
+    ids.splice(to, 0, fromId);
+    const elements: KioskElementsConfig = { ...pageElements };
+    ids.forEach((id, index) => {
+      elements[id] = { ...(elements[id] ?? {}), order: index };
+    });
+    setPageField(page, "elements", elements);
+  };
+
+  const resetElements = () => {
+    setPageField(page, "elements", undefined);
   };
 
   const applyScope = (next: "global" | "booth") => {
@@ -867,11 +957,7 @@ export function DesignBuilder({
     setUploadState((current) => ({ ...current, [key]: { status, message } }));
   };
 
-  const uploadAsset = (
-    kind: "logo" | "video" | "page-video",
-    file: File,
-    pageId?: KioskPageId
-  ) => {
+  const uploadAsset = (kind: "logo" | "video" | "page-video", file: File, pageId?: KioskPageId) => {
     const key = kind === "logo" ? "logo" : kind === "video" ? "video" : `page-${pageId ?? page}`;
     void (async () => {
       const validationError = await validateFile(file, kind);
@@ -1004,10 +1090,7 @@ export function DesignBuilder({
     typeof draft.kiosk?.text_color === "string" ? draft.kiosk.text_color : "",
     globalKiosk.text_color || "#111111"
   );
-  const pageBg = resolveColor(
-    pageText("bg_color"),
-    globalPageText("bg_color") || kioskBg
-  );
+  const pageBg = resolveColor(pageText("bg_color"), globalPageText("bg_color") || kioskBg);
   const pageTextColor = resolveColor(
     pageText("text_color"),
     globalPageText("text_color") || kioskTextColor
@@ -1017,6 +1100,9 @@ export function DesignBuilder({
     ([key]) => fieldIdForError(key) !== "design-form"
   );
   const firstErrorId = errorEntries.length > 0 ? fieldIdForError(errorEntries[0]![0]) : null;
+  const elementErrorEntry = Object.entries(saveState.fieldErrors ?? {}).find(([key]) =>
+    key.startsWith(`kiosk.pages.${page}.elements`)
+  );
   const statusText = dirty
     ? "Belum disimpan"
     : savedAt
@@ -1053,15 +1139,6 @@ export function DesignBuilder({
                   {scope === "booth" ? (currentBooth?.name ?? "Photobox ini") : "Branding global"}
                 </h2>
               </div>
-              <span
-                role="status"
-                aria-live="polite"
-                className={`font-mono text-[10px] uppercase tracking-[0.1em] ${
-                  dirty ? "text-muted-foreground" : "text-accent-3-strong"
-                }`}
-              >
-                {saving ? "Menyimpan..." : statusText}
-              </span>
             </div>
 
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -1118,7 +1195,9 @@ export function DesignBuilder({
               </Alert>
             ) : null}
             {!canWrite ? (
-              <Alert tone="warning">Anda hanya dapat melihat. Perubahan memerlukan izin tulis.</Alert>
+              <Alert tone="warning">
+                Anda hanya dapat melihat. Perubahan memerlukan izin tulis.
+              </Alert>
             ) : null}
 
             <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -1177,7 +1256,11 @@ export function DesignBuilder({
                       label="Warna aksen"
                       value={topValue("primary_color")}
                       placeholder={globalTopValue("primary_color") || "#FFD400"}
-                      hint={scope === "booth" ? `Global: ${globalTopValue("primary_color") || "bawaan"}` : undefined}
+                      hint={
+                        scope === "booth"
+                          ? `Global: ${globalTopValue("primary_color") || "bawaan"}`
+                          : undefined
+                      }
                       error={errorFor("primary_color")}
                       disabled={!canWrite}
                       contrast={{
@@ -1200,7 +1283,11 @@ export function DesignBuilder({
                       label="Warna teks merek"
                       value={topValue("secondary_color")}
                       placeholder={globalTopValue("secondary_color") || "#111111"}
-                      hint={scope === "booth" ? `Global: ${globalTopValue("secondary_color") || "bawaan"}` : undefined}
+                      hint={
+                        scope === "booth"
+                          ? `Global: ${globalTopValue("secondary_color") || "bawaan"}`
+                          : undefined
+                      }
                       error={errorFor("secondary_color")}
                       disabled={!canWrite}
                       contrast={{
@@ -1272,12 +1359,22 @@ export function DesignBuilder({
                       <ColorField
                         id="kiosk-bg"
                         label="Latar kiosk"
-                        value={typeof draft.kiosk?.bg_color === "string" ? draft.kiosk.bg_color : ""}
+                        value={
+                          typeof draft.kiosk?.bg_color === "string" ? draft.kiosk.bg_color : ""
+                        }
                         placeholder={globalKiosk.bg_color || "#FFFDF5"}
-                        hint={scope === "booth" ? `Global: ${globalKiosk.bg_color || "bawaan"}` : undefined}
+                        hint={
+                          scope === "booth"
+                            ? `Global: ${globalKiosk.bg_color || "bawaan"}`
+                            : undefined
+                        }
                         error={errorFor("kiosk.bg_color")}
                         disabled={!canWrite}
-                        contrast={{ foreground: kioskTextColor, background: kioskBg, label: "Teks kiosk" }}
+                        contrast={{
+                          foreground: kioskTextColor,
+                          background: kioskBg,
+                          label: "Teks kiosk",
+                        }}
                         resetLabel={resetLabel}
                         onChange={(value) => setKiosk("bg_color", value)}
                         onReset={() => setKiosk("bg_color", null)}
@@ -1285,12 +1382,22 @@ export function DesignBuilder({
                       <ColorField
                         id="kiosk-text"
                         label="Teks kiosk"
-                        value={typeof draft.kiosk?.text_color === "string" ? draft.kiosk.text_color : ""}
+                        value={
+                          typeof draft.kiosk?.text_color === "string" ? draft.kiosk.text_color : ""
+                        }
                         placeholder={globalKiosk.text_color || "#111111"}
-                        hint={scope === "booth" ? `Global: ${globalKiosk.text_color || "bawaan"}` : undefined}
+                        hint={
+                          scope === "booth"
+                            ? `Global: ${globalKiosk.text_color || "bawaan"}`
+                            : undefined
+                        }
                         error={errorFor("kiosk.text_color")}
                         disabled={!canWrite}
-                        contrast={{ foreground: kioskTextColor, background: kioskBg, label: "Teks di latar" }}
+                        contrast={{
+                          foreground: kioskTextColor,
+                          background: kioskBg,
+                          label: "Teks di latar",
+                        }}
                         resetLabel={resetLabel}
                         onChange={(value) => setKiosk("text_color", value)}
                         onReset={() => setKiosk("text_color", null)}
@@ -1306,7 +1413,11 @@ export function DesignBuilder({
                         { value: "sans", label: "Sans" },
                         { value: "mono", label: "Mono" },
                       ]}
-                      hint={scope === "booth" ? `Global: ${globalKiosk.font_family ?? "display"}` : undefined}
+                      hint={
+                        scope === "booth"
+                          ? `Global: ${globalKiosk.font_family ?? "display"}`
+                          : undefined
+                      }
                       error={errorFor("kiosk.font_family")}
                       disabled={!canWrite}
                       onChange={(value) => setKiosk("font_family", value)}
@@ -1373,7 +1484,11 @@ export function DesignBuilder({
                         { value: "center", label: "Tengah" },
                         { value: "right", label: "Kanan" },
                       ]}
-                      hint={scope === "booth" ? `Global: ${globalKiosk.align ?? "bawaan layar"}` : undefined}
+                      hint={
+                        scope === "booth"
+                          ? `Global: ${globalKiosk.align ?? "bawaan layar"}`
+                          : undefined
+                      }
                       error={errorFor("kiosk.align")}
                       disabled={!canWrite}
                       onChange={(value) => setKiosk("align", value)}
@@ -1415,7 +1530,9 @@ export function DesignBuilder({
                   <div className="mt-3">
                     <UploadField
                       id="kiosk-video"
-                      label={effective.kiosk?.video_url ? "Ganti video latar" : "Unggah video latar"}
+                      label={
+                        effective.kiosk?.video_url ? "Ganti video latar" : "Unggah video latar"
+                      }
                       accept={VIDEO_TYPES}
                       hint="MP4 atau WebM. Maksimal 15 MB dan 5 detik."
                       status={videoUpload?.status ?? "idle"}
@@ -1473,7 +1590,11 @@ export function DesignBuilder({
                         hint={scope === "booth" ? "Kosongkan untuk mengikuti global" : undefined}
                         error={errorFor(`kiosk.pages.${page}.bg_color`)}
                         disabled={!canWrite}
-                        contrast={{ foreground: pageTextColor, background: pageBg, label: "Teks layar" }}
+                        contrast={{
+                          foreground: pageTextColor,
+                          background: pageBg,
+                          label: "Teks layar",
+                        }}
                         resetLabel={resetLabel}
                         onChange={(value) => setPageField(page, "bg_color", value)}
                         onReset={() => setPageField(page, "bg_color", "")}
@@ -1486,7 +1607,11 @@ export function DesignBuilder({
                         hint={scope === "booth" ? "Kosongkan untuk mengikuti global" : undefined}
                         error={errorFor(`kiosk.pages.${page}.text_color`)}
                         disabled={!canWrite}
-                        contrast={{ foreground: pageTextColor, background: pageBg, label: "Teks di latar" }}
+                        contrast={{
+                          foreground: pageTextColor,
+                          background: pageBg,
+                          label: "Teks di latar",
+                        }}
                         resetLabel={resetLabel}
                         onChange={(value) => setPageField(page, "text_color", value)}
                         onReset={() => setPageField(page, "text_color", "")}
@@ -1526,7 +1651,9 @@ export function DesignBuilder({
                         id="page-radius"
                         label="Sudut tombol layar"
                         value={pageNumber("button_radius")}
-                        fallback={globalPageNumber("button_radius") ?? globalKiosk.button_radius ?? 0}
+                        fallback={
+                          globalPageNumber("button_radius") ?? globalKiosk.button_radius ?? 0
+                        }
                         min={0}
                         max={4}
                         step={1}
@@ -1559,6 +1686,183 @@ export function DesignBuilder({
                   </div>
                 </fieldset>
 
+                <fieldset id="elements-section" className="min-w-0 border-t-2 border-ink pt-4">
+                  <legend className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]">
+                    Elemen &amp; urutan
+                  </legend>
+                  <p className="mt-2 font-mono text-[10px] leading-snug text-muted-foreground">
+                    Seret untuk mengubah urutan. Sembunyikan, geser, atau ganti teks elemen.
+                    Pratinjau mengikuti langsung.
+                  </p>
+                  {elementErrorEntry ? (
+                    <div className="mt-2">
+                      <Alert tone="danger">{elementErrorEntry[1][0]}</Alert>
+                    </div>
+                  ) : null}
+                  <ul className="mt-3 flex flex-col gap-2">
+                    {orderedElementIds.map((id, index) => {
+                      const def = kioskElementDefs(page).find((item) => item.id === id);
+                      if (!def) return null;
+                      const cfg = pageElements[id] ?? {};
+                      const canText = TEXT_OVERRIDE_IDS.has(id);
+                      const visibility =
+                        cfg.visible === undefined ? "" : cfg.visible ? "true" : "false";
+                      return (
+                        <li
+                          key={id}
+                          onDragOver={(event) => {
+                            if (dragId) event.preventDefault();
+                          }}
+                          onDrop={(event) => {
+                            event.preventDefault();
+                            if (dragId) reorderElements(dragId, id);
+                            setDragId(null);
+                          }}
+                          className={`flex flex-col gap-2 border-2 border-ink bg-surface p-2 ${
+                            dragId === id ? "opacity-50" : ""
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              draggable
+                              onDragStart={(event) => {
+                                setDragId(id);
+                                event.dataTransfer.effectAllowed = "move";
+                                event.dataTransfer.setData("text/plain", id);
+                              }}
+                              onDragEnd={() => setDragId(null)}
+                              aria-label={`Seret ${def.label} untuk mengubah urutan`}
+                              className="flex size-11 shrink-0 cursor-grab items-center justify-center border-2 border-ink bg-muted font-mono text-sm leading-none active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+                            >
+                              <span aria-hidden>⋮⋮</span>
+                            </button>
+                            <span className="min-w-0 flex-1 font-mono text-[10px] font-bold uppercase tracking-[0.1em]">
+                              {def.label}
+                            </span>
+                            <div className="flex gap-1">
+                              <button
+                                type="button"
+                                disabled={index === 0 || !canWrite}
+                                onClick={() => reorderElements(id, orderedElementIds[index - 1]!)}
+                                className="min-h-11 border-2 border-ink bg-surface px-2 font-mono text-[10px] uppercase tracking-[0.06em] hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-50"
+                              >
+                                Naik
+                              </button>
+                              <button
+                                type="button"
+                                disabled={index === orderedElementIds.length - 1 || !canWrite}
+                                onClick={() => reorderElements(id, orderedElementIds[index + 1]!)}
+                                className="min-h-11 border-2 border-ink bg-surface px-2 font-mono text-[10px] uppercase tracking-[0.06em] hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-50"
+                              >
+                                Turun
+                              </button>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                            <label className="flex min-w-0 flex-col gap-1">
+                              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+                                Tampil
+                              </span>
+                              <Select
+                                value={visibility}
+                                disabled={!canWrite}
+                                onChange={(event) => {
+                                  const value = event.target.value;
+                                  setElement(id, {
+                                    visible: value === "" ? undefined : value === "true",
+                                  });
+                                }}
+                              >
+                                <option value="">Ikuti bawaan</option>
+                                <option value="true">Tampil</option>
+                                <option value="false">Sembunyi</option>
+                              </Select>
+                            </label>
+                            <label className="flex min-w-0 flex-col gap-1">
+                              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+                                Geser X
+                              </span>
+                              <Input
+                                type="number"
+                                inputMode="numeric"
+                                min={-400}
+                                max={400}
+                                step={4}
+                                value={cfg.offset_x ?? ""}
+                                disabled={!canWrite}
+                                onChange={(event) => {
+                                  const raw = event.target.value;
+                                  if (raw === "") {
+                                    setElement(id, { offset_x: undefined });
+                                    return;
+                                  }
+                                  const parsed = Number(raw);
+                                  if (!Number.isFinite(parsed)) return;
+                                  setElement(id, {
+                                    offset_x: Math.min(400, Math.max(-400, Math.round(parsed))),
+                                  });
+                                }}
+                                className="min-w-[5.5rem] font-mono"
+                              />
+                            </label>
+                            <label className="flex min-w-0 flex-col gap-1">
+                              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+                                Geser Y
+                              </span>
+                              <Input
+                                type="number"
+                                inputMode="numeric"
+                                min={-400}
+                                max={400}
+                                step={4}
+                                value={cfg.offset_y ?? ""}
+                                disabled={!canWrite}
+                                onChange={(event) => {
+                                  const raw = event.target.value;
+                                  if (raw === "") {
+                                    setElement(id, { offset_y: undefined });
+                                    return;
+                                  }
+                                  const parsed = Number(raw);
+                                  if (!Number.isFinite(parsed)) return;
+                                  setElement(id, {
+                                    offset_y: Math.min(400, Math.max(-400, Math.round(parsed))),
+                                  });
+                                }}
+                                className="min-w-[5.5rem] font-mono"
+                              />
+                            </label>
+                          </div>
+                          {canText ? (
+                            <TextField
+                              id={`element-text-${id}`}
+                              label="Teks elemen"
+                              value={cfg.text ?? ""}
+                              placeholder={ELEMENT_TEXT_DEFAULT[id] ?? def.label}
+                              maxLength={120}
+                              disabled={!canWrite}
+                              onChange={(value) => setElement(id, { text: value })}
+                            />
+                          ) : (
+                            <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+                              Teks otomatis
+                            </p>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <button
+                    type="button"
+                    onClick={resetElements}
+                    disabled={!canWrite}
+                    className="mt-3 min-h-11 w-fit border-2 border-ink bg-surface px-3 font-mono text-[10px] uppercase tracking-[0.08em] hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-50"
+                  >
+                    Atur ulang elemen layar
+                  </button>
+                </fieldset>
+
                 <fieldset className="min-w-0 border-t-2 border-ink pt-4">
                   <legend className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]">
                     Teks layar
@@ -1586,7 +1890,9 @@ export function DesignBuilder({
                             label="Teks bantuan"
                             value={kioskText(PAGE_COPY[page].hint!)}
                             placeholder={globalKioskText(PAGE_COPY[page].hint!)}
-                            hint={scope === "booth" ? "Kosongkan untuk mengikuti global" : undefined}
+                            hint={
+                              scope === "booth" ? "Kosongkan untuk mengikuti global" : undefined
+                            }
                             maxLength={160}
                             disabled={!canWrite}
                             onChange={(value) => setKiosk(PAGE_COPY[page].hint!, value)}
@@ -1753,7 +2059,6 @@ export function DesignBuilder({
           businessName={businessName}
           branding={effective}
           page={page}
-          onPageChange={setPage}
           initialOrientation={previewOrientation}
         />
       </div>
@@ -1778,7 +2083,12 @@ export function DesignBuilder({
             <Button type="button" variant="outline" size="sm" onClick={applyPending}>
               Buang
             </Button>
-            <Button type="button" size="sm" onClick={() => void saveThenNavigate()} disabled={saving}>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => void saveThenNavigate()}
+              disabled={saving}
+            >
               {saving ? "Menyimpan..." : "Simpan"}
             </Button>
           </DialogFooter>

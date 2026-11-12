@@ -342,8 +342,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     troubleshooting: [
       {
         gejala: "Frame yang dicari tidak muncul",
-        penyebab:
-          "Frame nonaktif, URL frame gagal, atau respons public template error",
+        penyebab: "Frame nonaktif, URL frame gagal, atau respons public template error",
         solusi: "Pilih frame yang tampil, atau tanya operator.",
       },
       {
@@ -384,7 +383,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         heading: "Buka dan unduh hasil",
         paragraphs: [
           "Halaman menampilkan header branding owner (logo dan nama business), judul foto siap, preview GIF animasi slideshow yang autoplay loop, dan grid thumbnail foto berframe.",
-          "Tersedia unduh GIF animasi (semua foto berframe bergantian, digenerate server saat finalize, key di sessions.result_gif_key) dan unduh foto berframe per file. Tidak ada aplikasi tambahan yang perlu diinstall.",
+          "Tersedia unduh dua GIF (proses kolase slot demi slot di sessions.result_gif_key dan slideshow semua foto mentah di sessions.result_photos_gif_key, keduanya digenerate server saat finalize) serta unduh foto berframe per file. Tidak ada aplikasi tambahan yang perlu diinstall.",
         ],
         steps: [
           "Scan QR di layar kiosk memakai kamera HP.",
@@ -718,7 +717,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
       {
         gejala: "Template default tidak terpilih di kiosk",
         penyebab: "Template tidak ditawarkan untuk paket itu, atau sudah nonaktif",
-        solusi: "Pastikan template aktif. Semua template aktif tampil di semua paket, jadi tidak ada assignment yang perlu diatur.",
+        solusi:
+          "Pastikan template aktif. Semua template aktif tampil di semua paket, jadi tidak ada assignment yang perlu diatur.",
       },
     ],
     nextSteps: [
@@ -1949,7 +1949,11 @@ export const HELP_ARTICLES: HelpArticle[] = [
         table: {
           head: ["Status heartbeat", "Arti", "Aksi"],
           rows: [
-            ["Aktif", "Perangkat mengirim heartbeat dalam periode terakhir", "Tidak perlu tindakan"],
+            [
+              "Aktif",
+              "Perangkat mengirim heartbeat dalam periode terakhir",
+              "Tidak perlu tindakan",
+            ],
             [
               "Tertunda",
               "Belum ada heartbeat baru, koneksi atau proses kiosk terhenti sementara",

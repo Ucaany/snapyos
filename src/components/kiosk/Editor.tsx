@@ -13,6 +13,8 @@ import {
   type KioskVisualStyle,
   type PhotoEdit,
 } from "@/lib/kiosk-types";
+import type { KioskElementsConfig } from "@/lib/kiosk-elements";
+import { kioskElementText } from "@/lib/kiosk-elements";
 import { effectiveSlots, type TemplateLayout } from "@/lib/template-layout";
 import { fillSlots } from "@/lib/template-fit";
 import { composeFrame } from "@/lib/compose-frame";
@@ -27,6 +29,7 @@ import {
 import { StickerPicker } from "@/components/kiosk/StickerPicker";
 import { KioskVideoBackground } from "@/components/kiosk/KioskVideoBackground";
 import { KIOSK_FIELD, KioskAction, KioskHeading } from "@/components/kiosk/ui";
+import { KioskElement } from "@/components/kiosk/KioskElement";
 import { useObjectUrls } from "@/components/kiosk/use-object-url";
 
 const TEXT_COLORS = [
@@ -62,6 +65,8 @@ type Props = {
   /** Video promo layar edit (pages.edit.video_url). */
   videoUrl?: string | null;
   finishRequested?: boolean;
+  /** Kustomisasi elemen layar (Branding & Kiosk). */
+  elements?: KioskElementsConfig;
 };
 
 let idSeq = 0;
@@ -113,6 +118,7 @@ function EditorInner({
   allowZoomPan = true,
   videoUrl = null,
   finishRequested = false,
+  elements,
 }: Props) {
   const [edits, setEdits] = useState<PhotoEdit[]>(() =>
     photos.map(() => {
@@ -536,6 +542,9 @@ function EditorInner({
 
   const panelClass = "flex flex-col gap-3 border-2 border-ink bg-surface p-3.5 md:p-4";
   const sectionLabel = "font-mono text-[10px] font-bold uppercase tracking-[0.18em]";
+  const eyebrowText = kioskElementText(elements, "eyebrow", "LANGKAH 03 · EDIT FOTO");
+  const titleLabel = kioskElementText(elements, "title", titleText || "Edit foto");
+  const hintLabel = kioskElementText(elements, "hint", hintText ?? "");
 
   return (
     <div
@@ -566,52 +575,66 @@ function EditorInner({
         }
       >
         <div className="flex min-w-0 flex-col gap-1">
-          <p className={sectionLabel} style={{ opacity: 0.6 }}>
-            {"LANGKAH 03 · EDIT FOTO"}
-          </p>
-          <KioskHeading
-            as="h1"
-            size="sm"
-            scale={kioskStyle?.fontScale ?? 1}
-            style={{ fontFamily: kioskStyle?.fontFamily }}
-          >
-            {titleText || "Edit foto"}
-          </KioskHeading>
-          {hintText && (
-            <p
-              className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.1em]"
-              style={{ opacity: 0.6 }}
-            >
-              {hintText}
+          <KioskElement id="eyebrow" defaultOrder={0} elements={elements}>
+            <p className={sectionLabel} style={{ opacity: 0.6 }}>
+              {eyebrowText}
             </p>
+          </KioskElement>
+          <KioskElement id="title" defaultOrder={1} elements={elements}>
+            <KioskHeading
+              as="h1"
+              size="sm"
+              scale={kioskStyle?.fontScale ?? 1}
+              style={{ fontFamily: kioskStyle?.fontFamily }}
+            >
+              {titleLabel}
+            </KioskHeading>
+          </KioskElement>
+          {hintText && (
+            <KioskElement id="hint" defaultOrder={2} elements={elements}>
+              <p
+                className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.1em]"
+                style={{ opacity: 0.6 }}
+              >
+                {hintLabel}
+              </p>
+            </KioskElement>
           )}
         </div>
         {photos.length > 1 && (
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Pilih foto">
-            {photos.map((_, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => setActive(i)}
-                className={`relative size-11 overflow-hidden border-2 border-ink font-mono text-xs font-bold transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${
-                  i === active ? "bg-accent" : "bg-surface"
-                }`}
-                aria-label={`Foto ${i + 1}`}
-                aria-pressed={i === active}
-              >
-                {photoUrls[i] ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={photoUrls[i]!}
-                    alt=""
-                    className="absolute inset-0 size-full object-cover"
-                    style={{ filter: filterCss(edits[i]?.adjust.filter) }}
-                  />
-                ) : null}
-                <span className="relative z-10 bg-bg px-1">{i + 1}</span>
-              </button>
-            ))}
-          </div>
+          <KioskElement
+            id="selector"
+            defaultOrder={3}
+            elements={elements}
+            className="flex flex-wrap gap-2"
+            style={undefined}
+          >
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Pilih foto">
+              {photos.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setActive(i)}
+                  className={`relative size-11 overflow-hidden border-2 border-ink font-mono text-xs font-bold transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${
+                    i === active ? "bg-accent" : "bg-surface"
+                  }`}
+                  aria-label={`Foto ${i + 1}`}
+                  aria-pressed={i === active}
+                >
+                  {photoUrls[i] ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={photoUrls[i]!}
+                      alt=""
+                      className="absolute inset-0 size-full object-cover"
+                      style={{ filter: filterCss(edits[i]?.adjust.filter) }}
+                    />
+                  ) : null}
+                  <span className="relative z-10 bg-bg px-1">{i + 1}</span>
+                </button>
+              ))}
+            </div>
+          </KioskElement>
         )}
       </header>
 
@@ -619,7 +642,12 @@ function EditorInner({
           baris mengikuti tinggi kanvas (mis. strip 1:3 setinggi 2160px) dan
           `max-h-full` tidak punya acuan, jadi frame terpotong di bawah. */}
       <div className="relative z-10 grid flex-1 grid-cols-1 gap-4 p-3 sm:p-4 md:gap-5 md:p-5 lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_360px] lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden">
-        <div className="relative flex min-h-[34vh] items-center justify-center overflow-hidden sm:min-h-[40vh] lg:min-h-0">
+        <KioskElement
+          id="canvas"
+          defaultOrder={4}
+          elements={elements}
+          className="relative flex min-h-[34vh] items-center justify-center overflow-hidden sm:min-h-[40vh] lg:min-h-0"
+        >
           <canvas
             ref={canvasRef}
             onPointerDown={onPointerDown}
@@ -628,11 +656,16 @@ function EditorInner({
             className="relative max-h-[46vh] max-w-full border-2 border-ink bg-ink shadow-hard sm:max-h-[52vh] lg:max-h-full"
             style={{ cursor: edit.adjust.zoom > 1.01 ? "grab" : "default", touchAction: "none" }}
           />
-        </div>
+        </KioskElement>
 
         <div className="flex min-h-0 flex-col gap-3 overflow-y-auto pb-1 pr-1 lg:pb-2">
           {/* Filters per foto: setiap foto punya filter sendiri. */}
-          <div className="flex flex-col gap-2">
+          <KioskElement
+            id="filters"
+            defaultOrder={5}
+            elements={elements}
+            className="flex flex-col gap-2"
+          >
             <div className="flex items-center justify-between gap-2">
               <p
                 className={sectionLabel}
@@ -663,10 +696,15 @@ function EditorInner({
                 </button>
               ))}
             </div>
-          </div>
+          </KioskElement>
 
           {/* Rotasi (tetap per foto) + zoom via drag/pinch di canvas */}
-          <div className="flex items-center gap-2">
+          <KioskElement
+            id="rotate"
+            defaultOrder={6}
+            elements={elements}
+            className="flex items-center gap-2"
+          >
             <span
               className="shrink-0 font-mono text-[10px] uppercase tracking-[0.1em]"
               style={{ color: kioskStyle ? kioskStyle.text : undefined }}
@@ -688,10 +726,10 @@ function EditorInner({
                 </button>
               ))}
             </div>
-          </div>
+          </KioskElement>
 
           {/* Adjustments: exported with the same canvas renderer as preview. */}
-          <div className={panelClass}>
+          <KioskElement id="adjust" defaultOrder={7} elements={elements} className={panelClass}>
             <p className={sectionLabel} style={{ color: kioskStyle ? kioskStyle.text : undefined }}>
               Penyesuaian
             </p>
@@ -739,13 +777,20 @@ function EditorInner({
                 </label>
               ))}
             </div>
-          </div>
+          </KioskElement>
 
           {/* Stickers */}
-          <StickerPicker onPick={(char) => addOverlay("sticker", char)} />
+          <KioskElement id="stickers" defaultOrder={8} elements={elements}>
+            <StickerPicker onPick={(char) => addOverlay("sticker", char)} />
+          </KioskElement>
 
           {/* Text */}
-          <div className="flex flex-col gap-2">
+          <KioskElement
+            id="text"
+            defaultOrder={9}
+            elements={elements}
+            className="flex flex-col gap-2"
+          >
             <p className={sectionLabel} style={{ color: kioskStyle ? kioskStyle.text : undefined }}>
               Teks
             </p>
@@ -770,7 +815,7 @@ function EditorInner({
                 <Plus className="size-4" aria-hidden />
               </KioskAction>
             </div>
-          </div>
+          </KioskElement>
 
           {/* Selected overlay editor */}
           {selectedOverlay && (
@@ -847,11 +892,7 @@ function EditorInner({
                         </button>
                       ))}
                     </div>
-                    <KioskAction
-                      tone="danger"
-                      size="sm"
-                      onClick={() => removeOverlay(o.id)}
-                    >
+                    <KioskAction tone="danger" size="sm" onClick={() => removeOverlay(o.id)}>
                       <Trash2 className="size-4" aria-hidden /> Hapus
                     </KioskAction>
                   </div>
@@ -874,21 +915,28 @@ function EditorInner({
             </KioskAction>
           )}
 
-          <KioskAction
-            tone="primary"
-            size="lg"
-            kioskStyle={kioskStyle}
-            onClick={() => {
-              setFinishError(null);
-              void finish();
-            }}
-            disabled={finishing}
-            className="mt-auto"
-            full
+          <KioskElement
+            id="finish"
+            defaultOrder={10}
+            elements={elements}
+            className="mt-auto w-full"
           >
-            <Check className="size-5" aria-hidden />
-            {finishing ? "Menyimpan..." : "Selesai"}
-          </KioskAction>
+            <KioskAction
+              tone="primary"
+              size="lg"
+              kioskStyle={kioskStyle}
+              onClick={() => {
+                setFinishError(null);
+                void finish();
+              }}
+              disabled={finishing}
+              className="mt-auto"
+              full
+            >
+              <Check className="size-5" aria-hidden />
+              {finishing ? "Menyimpan..." : "Selesai"}
+            </KioskAction>
+          </KioskElement>
         </div>
       </div>
     </div>

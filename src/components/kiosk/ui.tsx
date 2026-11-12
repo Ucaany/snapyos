@@ -3,6 +3,8 @@
 import type { ComponentProps, CSSProperties, ElementType, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { KioskVisualStyle } from "@/lib/kiosk-types";
+import type { KioskElementsConfig } from "@/lib/kiosk-elements";
+import { KioskElement } from "@/components/kiosk/KioskElement";
 
 /**
  * Primitive visual kiosk: satu kontrak spacing, tipografi, border, dan state
@@ -114,6 +116,8 @@ export function KioskHeader({
   scale = 1,
   size = "md",
   className,
+  elements,
+  elementIds,
 }: {
   eyebrow?: ReactNode;
   title: ReactNode;
@@ -123,7 +127,41 @@ export function KioskHeader({
   scale?: number;
   size?: HeadingSize;
   className?: string;
+  /** Konfigurasi elemen kiosk (visibilitas/urutan/geser per bagian). */
+  elements?: KioskElementsConfig;
+  /** Id elemen untuk tiap bagian header — hanya bagian yang diberi id dibungkus. */
+  elementIds?: { eyebrow?: string; title?: string; description?: string; actions?: string };
 }) {
+  // Bungkus hanya saat layar benar-benar memakai konfigurasi elemen; layar lain
+  // tetap mendapat markup header lama tanpa div tambahan.
+  const wrap =
+    elementIds || elements
+      ? (node: ReactNode, fallbackId: string, order: number) => (
+          <KioskElement id={fallbackId} defaultOrder={order} elements={elements}>
+            {node}
+          </KioskElement>
+        )
+      : (_node: ReactNode) => _node;
+  const eyebrowNode = eyebrow
+    ? wrap(<KioskEyebrow>{eyebrow}</KioskEyebrow>, elementIds?.eyebrow ?? "eyebrow", 0)
+    : null;
+  const titleNode = wrap(
+    <KioskHeading size={size} scale={scale}>
+      {title}
+    </KioskHeading>,
+    elementIds?.title ?? "title",
+    1
+  );
+  const descriptionNode = description
+    ? wrap(
+        <p className="max-w-[62ch] text-sm leading-relaxed text-muted-foreground md:text-base">
+          {description}
+        </p>,
+        elementIds?.description ?? "hint",
+        2
+      )
+    : null;
+  const actionsNode = actions ? wrap(actions, elementIds?.actions ?? "actions", 3) : null;
   const alignClass =
     align === "center"
       ? "items-center text-center"
@@ -138,17 +176,11 @@ export function KioskHeader({
       )}
     >
       <div className={cn("flex min-w-0 flex-col gap-2.5", alignClass)}>
-        {eyebrow ? <KioskEyebrow>{eyebrow}</KioskEyebrow> : null}
-        <KioskHeading size={size} scale={scale}>
-          {title}
-        </KioskHeading>
-        {description ? (
-          <p className="max-w-[62ch] text-sm leading-relaxed text-muted-foreground md:text-base">
-            {description}
-          </p>
-        ) : null}
+        {eyebrowNode}
+        {titleNode}
+        {descriptionNode}
       </div>
-      {actions ? (
+      {actionsNode ? (
         <div
           className={cn(
             "flex shrink-0 flex-wrap items-center gap-2",
@@ -159,7 +191,7 @@ export function KioskHeader({
                 : "justify-start"
           )}
         >
-          {actions}
+          {actionsNode}
         </div>
       ) : null}
     </header>

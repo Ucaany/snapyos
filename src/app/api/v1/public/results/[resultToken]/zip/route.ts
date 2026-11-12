@@ -34,10 +34,19 @@ export async function GET(request: Request, { params }: Params) {
 
     const { resultToken } = await params;
     const result = await getResult(resultToken);
+    const processGifUrl = result.gif_download_url ?? result.gif_url;
+    const photosGifUrl = result.photos_gif_download_url ?? result.photos_gif_url;
+    // Bila kedua kolom menunjuk objek yang sama (mis. klien lama), cukup satu
+    // entri — dua nama untuk satu URL akan menggandakan byte di ZIP.
+    const gifSources =
+      processGifUrl && photosGifUrl && processGifUrl === photosGifUrl
+        ? [{ name: "snapyos-proses.gif", url: processGifUrl }]
+        : [
+            ...(processGifUrl ? [{ name: "snapyos-proses.gif", url: processGifUrl }] : []),
+            ...(photosGifUrl ? [{ name: "snapyos-semua-foto.gif", url: photosGifUrl }] : []),
+          ];
     const sources = [
-      ...(result.gif_download_url || result.gif_url
-        ? [{ name: "snapyos-slideshow.gif", url: result.gif_download_url ?? result.gif_url! }]
-        : []),
+      ...gifSources,
       ...result.photos
         .filter((photo) => photo.download_url || photo.url)
         .map((photo, index) => ({

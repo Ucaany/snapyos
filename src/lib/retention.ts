@@ -34,7 +34,7 @@ export type RetentionLogger = (message: string, detail?: unknown) => void;
 /** Satu sesi kandidat + media key-nya (hasil query batch sebelum cleanup). */
 export type SessionMedia = {
   id: string;
-  /** file_key + thumbnail_key tiap photo + result_gif_key (sudah dedup). */
+  /** file_key + thumbnail_key tiap photo + kedua result GIF key (sudah dedup). */
   keys: string[];
 };
 
@@ -57,7 +57,7 @@ export type RetentionDeps = {
    * agar media tetap dibersihkan dan backlog tidak menumpuk selamanya.
    */
   accountSub(keys: string[]): Promise<{ ok: boolean; error?: string; missing?: boolean }>;
-  /** Hapus baris photos + set media_cleaned_at/result_gif_key null untuk sesi sukses. */
+  /** Hapus baris photos + set media_cleaned_at dan null-kan kedua result GIF key. */
   finalize(sessionIds: string[], cleanedAt: string): Promise<void>;
   log?: RetentionLogger;
 };

@@ -9,7 +9,8 @@ import type { StorageBucket, StorageProvider } from "@/server/storage/types";
 /**
  * Cron orphan sweep `generated-photos` — hemat biaya R2.
  *
- * Objek yang tidak direferensikan `sessions.result_gif_key` / `photos.file_key`
+ * Objek yang tidak direferensikan `sessions.result_gif_key` /
+ * `sessions.result_photos_gif_key` / `photos.file_key`
  * (mis. finalize gagal setelah upload) tetap menagih storage selamanya. Sweep
  * menghapusnya, tetapi HANYA yang umurnya > 24 jam agar upload yang sedang
  * berjalan tidak ikut tersapu.
@@ -114,9 +115,10 @@ async function referencedKeys(candidates: string[]): Promise<Set<string>> {
   const referenced = new Set<string>();
   for (let i = 0; i < candidates.length; i += DB_KEY_CHUNK) {
     const chunk = candidates.slice(i, i + DB_KEY_CHUNK);
-    const [photos, sessions] = await Promise.all([
+    const [photos, sessions, photosGifSessions] = await Promise.all([
       supabase.from("photos").select("file_key").in("file_key", chunk),
       supabase.from("sessions").select("result_gif_key").in("result_gif_key", chunk),
+      supabase.from("sessions").select("result_photos_gif_key").in("result_photos_gif_key", chunk),
     ]);
     if (photos.error) {
       // Fail-closed: error kueri berarti kita TIDAK tahu apa yang direferensikan.
@@ -125,11 +127,21 @@ async function referencedKeys(candidates: string[]): Promise<Set<string>> {
     if (sessions.error) {
       throw new Error(`gagal memuat sessions.result_gif_key: ${sessions.error.message}`);
     }
+    if (photosGifSessions.error) {
+      throw new Error(
+        `gagal memuat sessions.result_photos_gif_key: ${photosGifSessions.error.message}`
+      );
+    }
     for (const row of (photos.data ?? []) as { file_key: string }[]) {
       if (row.file_key) referenced.add(row.file_key);
     }
     for (const row of (sessions.data ?? []) as { result_gif_key: string | null }[]) {
       if (row.result_gif_key) referenced.add(row.result_gif_key);
+    }
+    for (const row of (photosGifSessions.data ?? []) as {
+      result_photos_gif_key: string | null;
+    }[]) {
+      if (row.result_photos_gif_key) referenced.add(row.result_photos_gif_key);
     }
   }
   return referenced;

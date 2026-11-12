@@ -126,7 +126,7 @@ export async function savePhotoboxHardwareAction(input: PhotoboxHardwareInput): 
     const supabase = createServerClient();
     const { data: current, error: readError } = await supabase
       .from("photoboxes")
-      .select("id, camera_settings, print_settings")
+      .select("id, camera_settings, print_settings, session_settings")
       .eq("id", parsed.photobox_id)
       .eq("business_id", ctx.businessId)
       .maybeSingle();
@@ -139,6 +139,7 @@ export async function savePhotoboxHardwareAction(input: PhotoboxHardwareInput): 
     const row = current as {
       camera_settings: Record<string, unknown> | null;
       print_settings: Record<string, unknown> | null;
+      session_settings: Record<string, unknown> | null;
     };
     const patch: Record<string, unknown> = {};
 
@@ -190,6 +191,12 @@ export async function savePhotoboxHardwareAction(input: PhotoboxHardwareInput): 
       patch.camera_settings = {
         ...((row.camera_settings ?? {}) as Record<string, unknown>),
         ...parsed.camera_settings,
+      };
+    }
+    if (parsed.session_settings) {
+      patch.session_settings = {
+        ...((row.session_settings ?? {}) as Record<string, unknown>),
+        ...parsed.session_settings,
       };
     }
     if (parsed.default_template_id !== undefined) {

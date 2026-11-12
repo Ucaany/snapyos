@@ -342,18 +342,21 @@ export function finalizeSession(
   const fields: Record<string, string> = {};
   const photos: string[] = [];
   const gifPhotos: string[] = [];
+  const gifAllPhotos: string[] = [];
 
   // Batas SEBELUM writeFileSync: satu request tanpa batas bisa membuat >1 juta
   // file (satu per part) dan menghabiskan volume booth sampai SQLite gagal baca.
-  const MAX_MEDIA_PARTS = 32;
+  // 64 = foto final + dua set GIF (proses & semua capture), masing-masing <= 8.
+  const MAX_MEDIA_PARTS = 64;
   const MAX_PART_BYTES = 12 * 1024 * 1024;
   const MAX_TOTAL_MEDIA_BYTES = 60 * 1024 * 1024;
   let mediaBytes = 0;
 
   for (const part of parts) {
-    if (part.name === "photos" || part.name === "gif_photos") {
-      const target = part.name === "photos" ? photos : gifPhotos;
-      if (photos.length + gifPhotos.length >= MAX_MEDIA_PARTS) {
+    if (part.name === "photos" || part.name === "gif_photos" || part.name === "gif_all_photos") {
+      const target =
+        part.name === "photos" ? photos : part.name === "gif_photos" ? gifPhotos : gifAllPhotos;
+      if (photos.length + gifPhotos.length + gifAllPhotos.length >= MAX_MEDIA_PARTS) {
         throw new HttpError("Jumlah foto melebihi batas.", 400);
       }
       if (part.data.length > MAX_PART_BYTES) {
@@ -365,7 +368,8 @@ export function finalizeSession(
       }
       // Namespace terpisah: dulu keduanya memakai `final-<n>.jpg`, sehingga
       // gif_photos menimpa photos pada indeks yang sama.
-      const prefix = part.name === "photos" ? "final" : "gif";
+      const prefix =
+        part.name === "photos" ? "final" : part.name === "gif_photos" ? "gif" : "gif-all";
       const file = join(dir, `${prefix}-${target.length}.jpg`);
       writeFileSync(file, part.data);
       target.push(file);
@@ -384,6 +388,7 @@ export function finalizeSession(
     template_id: fields.template_id ?? null,
     photos,
     gif_photos: gifPhotos,
+    gif_all_photos: gifAllPhotos,
     finalized_at: at,
   };
   writeFileSync(payloadPath, JSON.stringify(payload, null, 2));

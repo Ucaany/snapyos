@@ -8,6 +8,8 @@ import {
   type KioskVisualStyle,
   type PublicPackage,
 } from "@/lib/kiosk-types";
+import type { KioskElementsConfig } from "@/lib/kiosk-elements";
+import { kioskElementText } from "@/lib/kiosk-elements";
 import { formatIDR } from "@/lib/dashboard-math";
 import { apiGetWithDeviceToken, apiPost, KioskError } from "@/components/kiosk/api";
 import { useQrisPolling } from "@/hooks/use-qris-polling";
@@ -26,6 +28,7 @@ import {
   KioskLoading,
   kioskGutter,
 } from "@/components/kiosk/ui";
+import { KioskElement } from "@/components/kiosk/KioskElement";
 
 type Amounts = {
   checkout_session_id: string;
@@ -62,6 +65,8 @@ type Props = {
   /** Membuka sesi dari checkout paid. false = gagal; layar menawarkan ulang. */
   onPaid(checkoutId: string): Promise<boolean>;
   onBack(): void;
+  /** Kustomisasi elemen layar (Branding & Kiosk). */
+  elements?: KioskElementsConfig;
 };
 
 export function CheckoutScreen({
@@ -76,6 +81,7 @@ export function CheckoutScreen({
   onOffline,
   onPaid,
   onBack,
+  elements,
 }: Props) {
   const [amounts, setAmounts] = useState<Amounts | null>(null);
   const [phase, setPhase] = useState<Phase>("loading");
@@ -290,6 +296,14 @@ export function CheckoutScreen({
     : undefined;
 
   const inner = "mx-auto flex w-full max-w-[980px] flex-1 flex-col gap-5";
+  const eyebrowText = kioskElementText(elements, "eyebrow", "CHECKOUT");
+  const titleLabel = kioskElementText(elements, "title", paymentTitle || "Bayar sebelum foto");
+  const hintText = kioskElementText(
+    elements,
+    "hint",
+    paymentHint || "Sesi foto terbuka otomatis setelah pembayaran terverifikasi."
+  );
+  const backLabel = kioskElementText(elements, "back", "Kembali");
 
   return (
     <div
@@ -299,13 +313,13 @@ export function CheckoutScreen({
       <KioskVideoBackground videoUrl={videoUrl} />
       <div className={`relative z-10 ${inner}`}>
         <KioskHeader
-          eyebrow="CHECKOUT"
-          title={paymentTitle || "Bayar sebelum foto"}
-          description={
-            paymentHint || "Sesi foto terbuka otomatis setelah pembayaran terverifikasi."
-          }
+          eyebrow={eyebrowText}
+          title={titleLabel}
+          description={hintText}
           align={align}
           scale={kioskStyle?.fontScale ?? 1}
+          elements={elements}
+          elementIds={{ eyebrow: "eyebrow", title: "title", description: "hint", actions: "back" }}
           actions={
             <KioskAction
               tone="secondary"
@@ -315,7 +329,7 @@ export function CheckoutScreen({
               className="font-mono tracking-[0.1em]"
             >
               <ArrowLeft className="size-4" aria-hidden />
-              Kembali
+              {backLabel}
             </KioskAction>
           }
         />
@@ -355,79 +369,83 @@ export function CheckoutScreen({
         )}
 
         {phase === "summary" && amounts && (
-          <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
-            <KioskCard elevated className="flex flex-col gap-4 p-5 md:p-6">
-              <KioskEyebrow>{"RINGKASAN PESANAN"}</KioskEyebrow>
-              <KioskHeading as="h2" size="sm" scale={kioskStyle?.fontScale ?? 1}>
-                {pkg.name}
-              </KioskHeading>
-              <dl className="divide-y-2 divide-ink/10 border-y-2 border-ink/15 font-mono text-sm">
-                <div className="flex items-baseline justify-between gap-4 py-3">
-                  <dt className="text-muted-foreground">Subtotal</dt>
-                  <dd className="font-bold">{formatIDR(amounts.gross_amount)}</dd>
-                </div>
-                <div className="flex items-baseline justify-between gap-4 py-3">
-                  <dt className="text-muted-foreground">Diskon</dt>
-                  <dd className="font-bold">-{formatIDR(amounts.discount_amount)}</dd>
-                </div>
-                <div className="flex items-baseline justify-between gap-4 py-3">
-                  <dt className="font-display text-base uppercase tracking-[-0.01em]">Total</dt>
-                  <dd className="font-display text-xl font-bold tracking-[-0.02em] md:text-2xl">
-                    {formatIDR(amounts.final_amount)}
-                  </dd>
-                </div>
-              </dl>
-            </KioskCard>
+          <KioskElement id="summary" defaultOrder={4} elements={elements} className="w-full">
+            <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+              <KioskCard elevated className="flex flex-col gap-4 p-5 md:p-6">
+                <KioskEyebrow>{"RINGKASAN PESANAN"}</KioskEyebrow>
+                <KioskHeading as="h2" size="sm" scale={kioskStyle?.fontScale ?? 1}>
+                  {pkg.name}
+                </KioskHeading>
+                <dl className="divide-y-2 divide-ink/10 border-y-2 border-ink/15 font-mono text-sm">
+                  <div className="flex items-baseline justify-between gap-4 py-3">
+                    <dt className="text-muted-foreground">Subtotal</dt>
+                    <dd className="font-bold">{formatIDR(amounts.gross_amount)}</dd>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-4 py-3">
+                    <dt className="text-muted-foreground">Diskon</dt>
+                    <dd className="font-bold">-{formatIDR(amounts.discount_amount)}</dd>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-4 py-3">
+                    <dt className="font-display text-base uppercase tracking-[-0.01em]">Total</dt>
+                    <dd className="font-display text-xl font-bold tracking-[-0.02em] md:text-2xl">
+                      {formatIDR(amounts.final_amount)}
+                    </dd>
+                  </div>
+                </dl>
+              </KioskCard>
 
-            <div className="flex flex-col gap-3">
-              <KioskAction
-                tone="primary"
-                size="xl"
-                onClick={() => setPhase("method-picker")}
-                full
-                kioskStyle={kioskStyle}
-              >
-                Pilih pembayaran
-              </KioskAction>
-              {offlineEnabled && onOffline && (
+              <div className="flex flex-col gap-3">
                 <KioskAction
-                  tone="secondary"
-                  size="md"
-                  onClick={onOffline}
+                  tone="primary"
+                  size="xl"
+                  onClick={() => setPhase("method-picker")}
                   full
                   kioskStyle={kioskStyle}
                 >
-                  Lanjut offline
+                  Pilih pembayaran
                 </KioskAction>
-              )}
-              <p className="text-center text-xs leading-relaxed text-muted-foreground">
-                Metode pembayaran mengikuti yang diaktifkan owner booth.
-              </p>
-            </div>
-          </section>
+                {offlineEnabled && onOffline && (
+                  <KioskAction
+                    tone="secondary"
+                    size="md"
+                    onClick={onOffline}
+                    full
+                    kioskStyle={kioskStyle}
+                  >
+                    Lanjut offline
+                  </KioskAction>
+                )}
+                <p className="text-center text-xs leading-relaxed text-muted-foreground">
+                  Metode pembayaran mengikuti yang diaktifkan owner booth.
+                </p>
+              </div>
+            </section>
+          </KioskElement>
         )}
 
         {phase === "method-picker" && amounts && (
-          <PaymentMethodPicker
-            methods={amounts.payment_methods}
-            disabled={busy || lockLeft > 0}
-            lockLeft={lockLeft}
-            error={error}
-            onSelect={(method) => {
-              setError(null);
-              // Kartu voucher → layar input kode; metode lain → buat payment.
-              if (method.kind === "voucher") {
-                setPhase("voucher");
-                return;
-              }
-              void create(method);
-            }}
-            onBack={() => {
-              setError(null);
-              setPhase("summary");
-            }}
-            kioskStyle={kioskStyle}
-          />
+          <KioskElement id="methods" defaultOrder={5} elements={elements} className="w-full">
+            <PaymentMethodPicker
+              methods={amounts.payment_methods}
+              disabled={busy || lockLeft > 0}
+              lockLeft={lockLeft}
+              error={error}
+              onSelect={(method) => {
+                setError(null);
+                // Kartu voucher → layar input kode; metode lain → buat payment.
+                if (method.kind === "voucher") {
+                  setPhase("voucher");
+                  return;
+                }
+                void create(method);
+              }}
+              onBack={() => {
+                setError(null);
+                setPhase("summary");
+              }}
+              kioskStyle={kioskStyle}
+            />
+          </KioskElement>
         )}
 
         {phase === "voucher" && (

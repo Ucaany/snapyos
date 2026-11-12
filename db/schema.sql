@@ -439,6 +439,7 @@ create table sessions (
   expires_at timestamptz,
   finalized_at timestamptz,
   result_gif_key text,
+  result_photos_gif_key text,
   -- Marker retention cron (0009) — null = media hasil belum dibersihkan.
   media_cleaned_at timestamptz,
   created_at timestamptz not null default now()

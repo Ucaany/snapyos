@@ -235,6 +235,15 @@ export const KIOSK_PAGE_IDS = [
 /** Id layar kiosk — hanya allowlist (dipakai upload per-layar agar `page` aman jadi segmen key R2). */
 export const kioskPageIdSchema = z.enum(KIOSK_PAGE_IDS);
 
+/** Satu elemen kiosk: sembunyi, urutan, geser, dan teks override. */
+export const kioskElementSchema = z.object({
+  visible: z.boolean().optional(),
+  order: z.number().int().min(0).max(50).optional(),
+  offset_x: z.number().int().min(-400).max(400).optional(),
+  offset_y: z.number().int().min(-400).max(400).optional(),
+  text: z.string().trim().max(120).optional(),
+});
+
 /** Override visual per layar kiosk (semua opsional — fallback ke global). */
 export const kioskPageSchema = z.object({
   bg_color: hexColor.optional(),
@@ -246,6 +255,11 @@ export const kioskPageSchema = z.object({
   align: z.enum(PAGE_ALIGNS).optional(),
   /** Storage key video promo layar ini (bucket business-assets). */
   video_key: z.string().trim().max(300).nullable().optional(),
+  /** Kustomisasi elemen layar ini (id stabil dari KIOSK_ELEMENTS). */
+  elements: z
+    .record(z.string().regex(/^[a-z_]{1,32}$/), kioskElementSchema)
+    .refine((v) => Object.keys(v).length <= 32)
+    .optional(),
 });
 
 /** Kiosk customization jsonb — Branding & Kiosk page (single source of truth kiosk). */
@@ -563,6 +577,8 @@ export const sessionSettingsSchema = withInvariants(
     warning_seconds: z.number().int().min(10).max(600).optional(),
     max_retakes: z.number().int().min(0).max(50).nullable().optional(),
     kiosk_review_grid: z.boolean().optional(),
+    /** Foto otomatis berurutan tanpa tombol per foto (default OFF). */
+    auto_capture: z.boolean().optional(),
   })
 );
 
@@ -844,6 +860,8 @@ export const photoboxHardwareSchema = z.object({
     })
     .optional(),
   camera_settings: cameraSettingsSchema.optional(),
+  /** Setelan sesi booth dari dashboard owner (mis. foto otomatis). */
+  session_settings: sessionSettingsSchema.optional(),
   /** null = lepas template default (kiosk memakai template paket). */
   default_template_id: uuid.nullable().optional(),
 });

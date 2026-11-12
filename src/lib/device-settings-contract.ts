@@ -58,7 +58,7 @@ export const DEVICE_SETTING_FIELDS: Record<DeviceSettingGroupName, readonly stri
     "thermal",
     "receipt",
   ],
-  session_settings: ["timer_seconds", "warning_seconds", "max_retakes"],
+  session_settings: ["timer_seconds", "warning_seconds", "max_retakes", "auto_capture"],
   appearance_settings: [
     "bg_color",
     "text_color",
@@ -207,6 +207,7 @@ export interface SessionSettings {
   warning_seconds?: number;
   max_retakes?: number | null;
   kiosk_review_grid?: boolean;
+  auto_capture?: boolean;
 }
 
 export interface AppearanceSettings {

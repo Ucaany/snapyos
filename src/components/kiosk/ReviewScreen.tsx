@@ -11,8 +11,11 @@ import {
   type CapturePhoto,
   type KioskVisualStyle,
 } from "@/lib/kiosk-types";
+import type { KioskElementsConfig } from "@/lib/kiosk-elements";
+import { kioskElementText } from "@/lib/kiosk-elements";
 import { useObjectUrls } from "@/components/kiosk/use-object-url";
 import { KioskAction, KioskHeader, kioskGutter } from "@/components/kiosk/ui";
+import { KioskElement } from "@/components/kiosk/KioskElement";
 
 type Props = {
   photos: CapturePhoto[];
@@ -23,7 +26,11 @@ type Props = {
   kioskStyle?: KioskVisualStyle;
   titleText?: string;
   filterId?: string;
+  /** State mirror dari CameraCapture — preview & hasil retake identik. */
+  mirrorPreview?: boolean;
   onContinue: (photos: CapturePhoto[], retakeCount: number) => void;
+  /** Kustomisasi elemen layar (memakai konfigurasi halaman capture). */
+  elements?: KioskElementsConfig;
 };
 
 /**
@@ -40,7 +47,9 @@ export function ReviewScreen({
   kioskStyle,
   titleText,
   filterId = "original",
+  mirrorPreview = true,
   onContinue,
+  elements,
 }: Props) {
   const [currentPhotos, setCurrentPhotos] = useState<CapturePhoto[]>(photos);
   const [retakes, setRetakes] = useState(retakeCount);
@@ -168,7 +177,7 @@ export function ReviewScreen({
           : await captureFrame(
               videoRef.current!,
               cameraSettings.jpeg_quality || 0.92,
-              false,
+              mirrorPreview,
               normalizeRotation(cameraSettings.rotation_degrees),
               normalizeZoom(cameraSettings.zoom)
             );
@@ -183,7 +192,8 @@ export function ReviewScreen({
     }
   }
 
-  const heading = titleText || "Cek foto";
+  const heading = kioskElementText(elements, "title", titleText || "Cek foto");
+  const eyebrowText = kioskElementText(elements, "eyebrow", "CEK HASIL");
   const gutter = kioskGutter(kioskStyle?.padding);
   const alignClass =
     kioskStyle?.align === "left"
@@ -210,8 +220,10 @@ export function ReviewScreen({
         style={{ paddingLeft: gutter, paddingRight: gutter }}
       >
         <KioskHeader
-          eyebrow="CEK HASIL"
+          eyebrow={eyebrowText}
           title={heading}
+          elements={elements}
+          elementIds={{ eyebrow: "eyebrow", title: "title", description: "hint" }}
           description={
             <span className="font-mono text-[10px] uppercase tracking-[0.12em]">
               {`${currentPhotos.length} dari ${photoCount} foto · ${retakes} ulang${
@@ -223,51 +235,116 @@ export function ReviewScreen({
           scale={kioskStyle?.fontScale ?? 1}
         />
 
-        {retaking !== null ? (
-          <div className="flex w-full flex-col gap-3">
-            <div className="relative flex min-h-[38dvh] items-center justify-center overflow-hidden border-2 border-ink bg-ink">
-              {provider === "bridge" ? (
-                <p className="max-w-[40ch] p-6 text-center font-mono text-xs uppercase leading-relaxed tracking-[0.08em] text-bg">
-                  Kamera bridge siap. Tekan ambil untuk mengganti foto {retaking + 1}.
+        <KioskElement id="review" defaultOrder={3} elements={elements} className="w-full">
+          {retaking !== null ? (
+            <div className="flex w-full flex-col gap-3">
+              <div className="relative flex min-h-[38dvh] items-center justify-center overflow-hidden border-2 border-ink bg-ink">
+                {provider === "bridge" ? (
+                  <p className="max-w-[40ch] p-6 text-center font-mono text-xs uppercase leading-relaxed tracking-[0.08em] text-bg">
+                    Kamera bridge siap. Tekan ambil untuk mengganti foto {retaking + 1}.
+                  </p>
+                ) : (
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="max-h-full max-w-full object-contain"
+                    style={{
+                      filter: filterCss(filterId),
+                      transform: mirrorPreview ? "scaleX(-1)" : undefined,
+                    }}
+                  />
+                )}
+                {countdown !== null && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-ink/60">
+                    <span
+                      className="font-display leading-none text-accent"
+                      style={{ fontSize: "clamp(5rem, 20vw, 10rem)" }}
+                    >
+                      {countdown}
+                    </span>
+                  </div>
+                )}
+              </div>
+              {error && (
+                <p
+                  role="alert"
+                  className="border-2 border-destructive bg-surface px-3 py-2 text-sm"
+                >
+                  {error}
                 </p>
-              ) : (
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="max-h-full max-w-full object-contain"
-                  style={{
-                    filter: filterCss(filterId),
-                    transform: cameraSettings.mirror_preview !== false ? "scaleX(-1)" : undefined,
-                  }}
-                />
               )}
-              {countdown !== null && (
-                <div className="absolute inset-0 flex items-center justify-center bg-ink/60">
-                  <span
-                    className="font-display leading-none text-accent"
-                    style={{ fontSize: "clamp(5rem, 20vw, 10rem)" }}
-                  >
-                    {countdown}
-                  </span>
-                </div>
-              )}
+              <div className="flex flex-wrap gap-2.5">
+                <KioskAction
+                  tone="primary"
+                  size="lg"
+                  onClick={() => void captureRetake()}
+                  disabled={!cameraReady || countdown !== null}
+                  style={
+                    kioskStyle
+                      ? {
+                          borderRadius: kioskStyle.radius,
+                          backgroundColor: kioskStyle.accent,
+                          color: kioskStyle.accentText,
+                        }
+                      : undefined
+                  }
+                >
+                  <Camera className="size-5" aria-hidden /> Ambil foto {retaking + 1}
+                </KioskAction>
+                <KioskAction
+                  tone="secondary"
+                  size="lg"
+                  onClick={cancelRetake}
+                  style={kioskStyle ? { borderRadius: kioskStyle.radius } : undefined}
+                >
+                  Batal
+                </KioskAction>
+              </div>
             </div>
-            {error && (
-              <p
-                role="alert"
-                className="border-2 border-destructive bg-surface px-3 py-2 text-sm"
-              >
-                {error}
-              </p>
-            )}
-            <div className="flex flex-wrap gap-2.5">
+          ) : (
+            <>
+              <div className="grid w-full grid-cols-2 gap-3 md:grid-cols-3">
+                {currentPhotos.map((photo, index) => (
+                  <figure
+                    key={index}
+                    className="flex flex-col gap-2 border-2 border-ink bg-surface p-2"
+                  >
+                    {urls[index] ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={urls[index]!}
+                        alt={`Foto ${index + 1}`}
+                        className="aspect-[3/4] w-full object-cover"
+                      />
+                    ) : (
+                      <div className="aspect-[3/4] w-full bg-muted" aria-hidden />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => startRetake(index)}
+                      disabled={!canRetake}
+                      className="inline-flex min-h-11 items-center justify-center gap-1.5 border-2 border-ink bg-bg px-2 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.04em] text-ink disabled:opacity-40"
+                    >
+                      <RotateCcw className="size-3.5" aria-hidden />
+                      {`Ulang foto ${index + 1}`}
+                    </button>
+                  </figure>
+                ))}
+              </div>
+
+              {!canRetake && (
+                <p className="w-full border-2 border-dashed border-ink/40 bg-muted px-3 py-2 font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-muted-foreground">
+                  Batas retake sudah tercapai.
+                </p>
+              )}
+
               <KioskAction
                 tone="primary"
-                size="lg"
-                onClick={() => void captureRetake()}
-                disabled={!cameraReady || countdown !== null}
+                size="xl"
+                full
+                onClick={() => onContinue(currentPhotos, retakes)}
                 style={
                   kioskStyle
                     ? {
@@ -278,74 +355,11 @@ export function ReviewScreen({
                     : undefined
                 }
               >
-                <Camera className="size-5" aria-hidden /> Ambil foto {retaking + 1}
+                <Check className="size-6" aria-hidden /> Lanjut edit
               </KioskAction>
-              <KioskAction
-                tone="secondary"
-                size="lg"
-                onClick={cancelRetake}
-                style={kioskStyle ? { borderRadius: kioskStyle.radius } : undefined}
-              >
-                Batal
-              </KioskAction>
-            </div>
-          </div>
-        ) : (
-          <>
-            <div className="grid w-full grid-cols-2 gap-3 md:grid-cols-3">
-              {currentPhotos.map((photo, index) => (
-                <figure
-                  key={index}
-                  className="flex flex-col gap-2 border-2 border-ink bg-surface p-2"
-                >
-                  {urls[index] ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={urls[index]!}
-                      alt={`Foto ${index + 1}`}
-                      className="aspect-[3/4] w-full object-cover"
-                    />
-                  ) : (
-                    <div className="aspect-[3/4] w-full bg-muted" aria-hidden />
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => startRetake(index)}
-                    disabled={!canRetake}
-                    className="inline-flex min-h-11 items-center justify-center gap-1.5 border-2 border-ink bg-bg px-2 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.04em] text-ink disabled:opacity-40"
-                  >
-                    <RotateCcw className="size-3.5" aria-hidden />
-                    {`Ulang foto ${index + 1}`}
-                  </button>
-                </figure>
-              ))}
-            </div>
-
-            {!canRetake && (
-              <p className="w-full border-2 border-dashed border-ink/40 bg-muted px-3 py-2 font-mono text-[10px] uppercase leading-relaxed tracking-[0.08em] text-muted-foreground">
-                Batas retake sudah tercapai.
-              </p>
-            )}
-
-            <KioskAction
-              tone="primary"
-              size="xl"
-              full
-              onClick={() => onContinue(currentPhotos, retakes)}
-              style={
-                kioskStyle
-                  ? {
-                      borderRadius: kioskStyle.radius,
-                      backgroundColor: kioskStyle.accent,
-                      color: kioskStyle.accentText,
-                    }
-                  : undefined
-              }
-            >
-              <Check className="size-6" aria-hidden /> Lanjut edit
-            </KioskAction>
-          </>
-        )}
+            </>
+          )}
+        </KioskElement>
       </div>
     </div>
   );

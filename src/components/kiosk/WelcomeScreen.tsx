@@ -3,11 +3,14 @@
 import type { ElementType } from "react";
 
 import type { BrandingConfig, KioskBrandingConfig } from "@/lib/kiosk-types";
+import type { KioskElementsConfig } from "@/lib/kiosk-elements";
+import { kioskElementText } from "@/lib/kiosk-elements";
 import { kioskThemeVars, kioskVisualStyle } from "@/lib/kiosk-types";
 import { defaultBrandColors } from "@/lib/brand-defaults";
 import { hexToRgba } from "@/lib/color";
 import { KioskVideoBackground } from "@/components/kiosk/KioskVideoBackground";
 import { KioskAction, KioskHeading, kioskGutter } from "@/components/kiosk/ui";
+import { KioskElement } from "@/components/kiosk/KioskElement";
 
 type Props = {
   business: { name: string; logo_url: string | null };
@@ -15,6 +18,8 @@ type Props = {
   onStart: () => void;
   /** Level heading untuk konteks pratinjau (kiosk asli tetap h1). */
   headingAs?: ElementType;
+  /** Kustomisasi elemen layar (Branding & Kiosk). */
+  elements?: KioskElementsConfig;
 };
 
 /** Inisial monogram dari nama bisnis (maks 2 huruf) — bukan aset rekaan. */
@@ -30,11 +35,17 @@ function initials(name: string): string {
  * di layar pendek konten tetap bisa digulir. Branding owner (warna, font scale,
  * radius, padding, visibilitas, video background looping ≤5s) dihormati.
  */
-export function WelcomeScreen({ business, branding, onStart, headingAs = "h1" }: Props) {
+export function WelcomeScreen({ business, branding, onStart, headingAs = "h1", elements }: Props) {
   const k: KioskBrandingConfig = branding.kiosk ?? {};
-  const title = branding.welcome_title || business.name;
-  const tagline = branding.welcome_tagline || "Abadikan momenmu.";
-  const button = branding.welcome_button || "Mulai";
+  const title = kioskElementText(elements, "title", branding.welcome_title || business.name);
+  const tagline = kioskElementText(
+    elements,
+    "tagline",
+    branding.welcome_tagline || "Abadikan momenmu."
+  );
+  const button = kioskElementText(elements, "cta", branding.welcome_button || "Mulai");
+  const eyebrowText = kioskElementText(elements, "eyebrow", business.name.toUpperCase());
+  const businessLabel = kioskElementText(elements, "business", business.name.toUpperCase());
   const showLogo = k.show_logo !== false;
   const showTagline = k.show_tagline !== false;
   const vs = kioskVisualStyle(k, "welcome");
@@ -54,28 +65,32 @@ export function WelcomeScreen({ business, branding, onStart, headingAs = "h1" }:
 
   const brandCol = (
     <div className="flex w-full flex-col items-center justify-center gap-5 text-center">
+      <KioskElement id="logo" defaultOrder={0} elements={elements}>
+        {showLogo && business.logo_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={business.logo_url}
+            alt={`Logo ${business.name}`}
+            className="max-h-24 w-auto max-w-[260px] object-contain md:max-h-32"
+          />
+        ) : (
+          // Tanpa logo: monogram inisial dari nama bisnis sendiri (bukan aset
+          // rekaan) supaya kolom brand punya jangkar visual, bukan ruang kosong.
+          <span
+            aria-hidden
+            className="flex size-24 items-center justify-center border-2 border-ink font-display text-3xl font-bold uppercase leading-none tracking-[-0.04em] shadow-hard md:size-32 md:text-4xl"
+            style={{ backgroundColor: primary, color: secondary, borderRadius: vs.radius }}
+          >
+            {initials(business.name)}
+          </span>
+        )}
+      </KioskElement>
       {showLogo && business.logo_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={business.logo_url}
-          alt={`Logo ${business.name}`}
-          className="max-h-24 w-auto max-w-[260px] object-contain md:max-h-32"
-        />
-      ) : (
-        // Tanpa logo: monogram inisial dari nama bisnis sendiri (bukan aset
-        // rekaan) supaya kolom brand punya jangkar visual, bukan ruang kosong.
-        <span
-          aria-hidden
-          className="flex size-24 items-center justify-center border-2 border-ink font-display text-3xl font-bold uppercase leading-none tracking-[-0.04em] shadow-hard md:size-32 md:text-4xl"
-          style={{ backgroundColor: primary, color: secondary, borderRadius: vs.radius }}
-        >
-          {initials(business.name)}
-        </span>
-      )}
-      {showLogo && business.logo_url ? (
-        <p className="font-mono text-[10px] font-bold uppercase leading-none tracking-[0.3em] opacity-70">
-          {business.name.toUpperCase()}
-        </p>
+        <KioskElement id="business" defaultOrder={1} elements={elements}>
+          <p className="font-mono text-[10px] font-bold uppercase leading-none tracking-[0.3em] opacity-70">
+            {businessLabel}
+          </p>
+        </KioskElement>
       ) : null}
     </div>
   );
@@ -87,38 +102,51 @@ export function WelcomeScreen({ business, branding, onStart, headingAs = "h1" }:
   const contentCol = (
     <div className={`flex min-w-0 flex-col justify-center gap-5 md:gap-6 ${alignClass}`}>
       {titleIsBusiness ? null : (
-        <p className="font-mono text-[10px] font-bold uppercase leading-none tracking-[0.28em] opacity-60">
-          {business.name.toUpperCase()}
-        </p>
+        <KioskElement id="eyebrow" defaultOrder={2} elements={elements}>
+          <p className="font-mono text-[10px] font-bold uppercase leading-none tracking-[0.28em] opacity-60">
+            {eyebrowText}
+          </p>
+        </KioskElement>
       )}
-      <KioskHeading
-        as={headingAs}
-        size="lg"
-        scale={fontScale}
-        className="max-w-[16ch]"
-        style={{ color: secondary, fontFamily: vs.fontFamily }}
-      >
-        {title}
-      </KioskHeading>
+      <KioskElement id="title" defaultOrder={3} elements={elements}>
+        <KioskHeading
+          as={headingAs}
+          size="lg"
+          scale={fontScale}
+          className="max-w-[16ch]"
+          style={{ color: secondary, fontFamily: vs.fontFamily }}
+        >
+          {title}
+        </KioskHeading>
+      </KioskElement>
       {showTagline && (
-        <p className="max-w-[40ch] text-base leading-relaxed opacity-80 md:text-lg">{tagline}</p>
+        <KioskElement id="tagline" defaultOrder={4} elements={elements}>
+          <p className="max-w-[40ch] text-base leading-relaxed opacity-80 md:text-lg">{tagline}</p>
+        </KioskElement>
       )}
-      <KioskAction
-        tone="primary"
-        size="xl"
-        onClick={onStart}
-        className="mt-1 w-full max-w-[280px] tracking-[-0.02em] sm:w-auto sm:min-w-[220px]"
-        style={{
-          backgroundColor: primary,
-          borderColor: secondary,
-          color: secondary,
-          borderRadius: vs.radius,
-          fontFamily: vs.fontFamily,
-          boxShadow: `var(--shadow-hard)`,
-        }}
+      <KioskElement
+        id="cta"
+        defaultOrder={5}
+        elements={elements}
+        className="w-full max-w-[280px] sm:w-auto"
       >
-        {button}
-      </KioskAction>
+        <KioskAction
+          tone="primary"
+          size="xl"
+          onClick={onStart}
+          className="mt-1 w-full tracking-[-0.02em] sm:w-auto sm:min-w-[220px]"
+          style={{
+            backgroundColor: primary,
+            borderColor: secondary,
+            color: secondary,
+            borderRadius: vs.radius,
+            fontFamily: vs.fontFamily,
+            boxShadow: `var(--shadow-hard)`,
+          }}
+        >
+          {button}
+        </KioskAction>
+      </KioskElement>
     </div>
   );
 

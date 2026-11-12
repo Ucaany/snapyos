@@ -3,6 +3,7 @@
  * Murni tipe — tanpa "server-only" agar bisa diimpor komponen client.
  */
 
+import type { KioskElementsConfig } from "./kiosk-elements.ts";
 import type { TemplateLayout } from "@/lib/template-layout";
 import { defaultBrandColors } from "./brand-defaults.ts";
 import { cardSurface, mutedSurface, mutedText, readableText, safeBrandColor } from "./color.ts";
@@ -95,6 +96,8 @@ export type KioskPageConfig = {
   video_key?: string | null;
   /** Signed URL video promo layar ini (diisi server saat render). */
   video_url?: string | null;
+  /** Kustomisasi elemen layar ini (urut, geser, sembunyi, teks). */
+  elements?: KioskElementsConfig;
 };
 
 /** Gaya visual kiosk turunan branding.kiosk — dipakai lintas screen. */
@@ -311,6 +314,11 @@ export type SessionSettings = {
   max_retakes?: number | null;
   /** Layar review grid setelah capture (default ON; bisa dimatikan per booth). */
   kiosk_review_grid?: boolean;
+  /**
+   * Foto otomatis: setelah kamera siap, semua slot diambil berurutan tanpa
+   * menekan tombol per foto. Default OFF agar perilaku lama tidak berubah.
+   */
+  auto_capture?: boolean;
 };
 
 export type PublicPackage = {

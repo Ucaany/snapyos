@@ -130,6 +130,11 @@ function parseGifPhotos(form: FormData): PhotoFile[] {
   return form.getAll("gif_photos").filter((value): value is File => value instanceof File);
 }
 
+/** Semua capture mentah untuk GIF kedua; klien lama tidak mengirimnya. */
+function parseGifAllPhotos(form: FormData): PhotoFile[] {
+  return form.getAll("gif_all_photos").filter((value): value is File => value instanceof File);
+}
+
 function parseMetadata(form: FormData) {
   const deviceToken = String(form.get("device_token") ?? "");
   const retakeRaw = String(form.get("retake_count") ?? "");
@@ -180,23 +185,42 @@ export async function POST(request: Request, { params }: Params) {
 
     const photos = parsePhotos(form);
     const gifPhotos = parseGifPhotos(form);
-    if (gifPhotos.length > FINALIZE_MAX_PHOTOS) return uploadInvalid("Jumlah foto tidak valid");
+    const gifAllPhotos = parseGifAllPhotos(form);
+    // Batas jumlah per set: tiap set (foto final, GIF proses, GIF semua capture)
+    // punya plafon sendiri, bukan gabungan.
+    if (
+      photos.length > FINALIZE_MAX_PHOTOS ||
+      gifPhotos.length > FINALIZE_MAX_PHOTOS ||
+      gifAllPhotos.length > FINALIZE_MAX_PHOTOS
+    ) {
+      return uploadInvalid("Jumlah foto tidak valid");
+    }
 
-    const filesError = validateFiles(photos, sumFileBytes(gifPhotos));
+    const filesError = validateFiles([...photos, ...gifPhotos, ...gifAllPhotos]);
     if (!filesError.ok) return filesInvalid(filesError);
     let validatedPhotos: PhotoFile[];
     let validatedGifPhotos: PhotoFile[];
+    let validatedGifAllPhotos: PhotoFile[];
     try {
+      // Budget piksel dihitung per set agar satu set besar tidak memakan jatah
+      // set lain; tiap set tetap dibatasi FINALIZE_MAX_TOTAL_PIXELS.
       validatedPhotos = await readValidatedPhotos(photos, FINALIZE_MAX_TOTAL_PIXELS);
-      validatedGifPhotos =
-        gifPhotos.length > 0 ? await readValidatedPhotos(gifPhotos, FINALIZE_MAX_TOTAL_PIXELS) : [];
+      validatedGifPhotos = await readValidatedPhotos(gifPhotos, FINALIZE_MAX_TOTAL_PIXELS);
+      validatedGifAllPhotos = await readValidatedPhotos(gifAllPhotos, FINALIZE_MAX_TOTAL_PIXELS);
     } catch (error) {
       return uploadInvalid(error instanceof Error ? error.message : "Foto tidak valid");
     }
 
     return NextResponse.json(
       dataEnvelope(
-        await finalizeSession(businessSlug, id, input, validatedPhotos, validatedGifPhotos)
+        await finalizeSession(
+          businessSlug,
+          id,
+          input,
+          validatedPhotos,
+          validatedGifPhotos,
+          validatedGifAllPhotos
+        )
       )
     );
   } catch (error) {

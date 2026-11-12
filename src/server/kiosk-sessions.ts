@@ -79,6 +79,7 @@ type SessionRow = {
   expires_at: string | null;
   finalized_at: string | null;
   result_gif_key: string | null;
+  result_photos_gif_key: string | null;
   created_at: string;
 };
 
@@ -528,20 +529,24 @@ async function discardSessionMedia(businessId: string, session: SessionRow): Pro
       (_, i) => `${uploadKey}/photo-${String(i).padStart(2, "0")}.jpg`
     ),
     `${uploadKey}/result.gif`,
+    `${uploadKey}/result-photos.gif`,
   ];
   await discardUploadedObjects(businessId, keys);
 }
 
 /**
- * @param gifPhotos Capture mentah TANPA frame untuk GIF slideshow. Kosong
+ * @param gifPhotos Frame GIF proses (kolase progresif / final berframe). Kosong
  *   (klien lama) → fallback ke `photos` seperti perilaku sebelumnya.
+ * @param gifAllPhotos Capture mentah untuk GIF "semua foto". Kosong → fallback
+ *   ke `photos` (tetap menghasilkan GIF kedua).
  */
 export async function finalizeSession(
   businessSlug: string,
   sessionId: string,
   input: SessionFinalizeInput,
   photos: PhotoFile[],
-  gifPhotos: PhotoFile[] = []
+  gifPhotos: PhotoFile[] = [],
+  gifAllPhotos: PhotoFile[] = []
 ) {
   const parsed = sessionFinalizeSchema.parse(input);
   const device = await resolveActiveDevice(parsed.device_token);
@@ -693,7 +698,8 @@ export async function finalizeSession(
     (_, i) => `${uploadKey}/photo-${String(i).padStart(2, "0")}.jpg`
   );
   const gifKey = `${uploadKey}/result.gif`;
-  await accountStorageSub(device.businessId, [...photoKeys, gifKey]);
+  const photosGifKey = `${uploadKey}/result-photos.gif`;
+  await accountStorageSub(device.businessId, [...photoKeys, gifKey, photosGifKey]);
 
   // Baca + validasi semua buffer sekali. Validasi SEBELUM upload apa pun agar
   // body invalid tidak meninggalkan objek parsial.
@@ -713,6 +719,14 @@ export async function finalizeSession(
     const check = validatePhotoFile(file, body);
     if (!check.ok) throw new ApiError("VALIDATION_ERROR", check.error);
     gifBodies.push(body);
+  }
+
+  const allGifBodies: Buffer[] = [];
+  for (const file of gifAllPhotos) {
+    const body = Buffer.from(await file.arrayBuffer());
+    const check = validatePhotoFile(file, body);
+    if (!check.ok) throw new ApiError("VALIDATION_ERROR", check.error);
+    allGifBodies.push(body);
   }
 
   // Tandai sesi sedang difinalisasi SEBELUM byte pertama ditulis, supaya abort
@@ -742,7 +756,9 @@ export async function finalizeSession(
     // GIF, bukan GIF gagal ditampilkan).
     const gifEnabled = gifOutput.enabled !== false;
     let gifResultKey: string | null = null;
+    let photosGifResultKey: string | null = null;
     if (gifEnabled) {
+      // GIF #1: proses (kolase progresif bila klien mengirimnya; fallback foto).
       const gif = generateSlideshowGif(gifBodies.length > 0 ? gifBodies : bodies, gifOptions);
       const { error: gifErr } = await getStorage().upload(GENERATED_BUCKET, gifKey, gif, {
         contentType: "image/gif",
@@ -751,6 +767,22 @@ export async function finalizeSession(
       if (gifErr) throw new ApiError("INTERNAL", "Gagal mengunggah GIF");
       await accountStorageAdd(device.businessId, GENERATED_BUCKET, gifKey, gif.length);
       gifResultKey = gifKey;
+
+      // GIF #2: semua capture mentah. Klien lama tanpa `gif_all_photos` tetap
+      // mendapat GIF ini dari `bodies` (bukan dimatikan diam-diam).
+      const photosGif = generateSlideshowGif(
+        allGifBodies.length > 0 ? allGifBodies : bodies,
+        gifOptions
+      );
+      const { error: photosGifErr } = await getStorage().upload(
+        GENERATED_BUCKET,
+        photosGifKey,
+        photosGif,
+        { contentType: "image/gif", upsert: true }
+      );
+      if (photosGifErr) throw new ApiError("INTERNAL", "Gagal mengunggah GIF");
+      await accountStorageAdd(device.businessId, GENERATED_BUCKET, photosGifKey, photosGif.length);
+      photosGifResultKey = photosGifKey;
     }
 
     // KLAIM EKSKLUSIF sebelum menyentuh tabel `photos`. Dulu rows di-insert lebih
@@ -769,6 +801,7 @@ export async function finalizeSession(
         completed_at: completedAt,
         finalized_at: completedAt,
         result_gif_key: gifResultKey,
+        result_photos_gif_key: photosGifResultKey,
         retake_count: parsed.retake_count ?? session.retake_count,
       })
       .eq("id", session.id)
@@ -785,7 +818,7 @@ export async function finalizeSession(
       // saja kita tulis tidak akan pernah dirujuk baris `photos`, jadi hapus dan
       // kembalikan meterannya — dulu objek ini tertinggal permanen (foto customer
       // tanpa referensi, tenant tetap ditagih byte-nya).
-      await discardUploadedObjects(device.businessId, [...photoKeys, gifKey]);
+      await discardUploadedObjects(device.businessId, [...photoKeys, gifKey, photosGifKey]);
       throw new ApiError("SESSION_EXPIRED", "Sesi sudah dibatalkan");
     }
 
@@ -811,6 +844,7 @@ export async function finalizeSession(
         await discardUploadedObjects(device.businessId, [
           ...photoKeys.slice(0, bodies.length),
           gifKey,
+          photosGifKey,
         ]);
         throw new ApiError("INTERNAL", "Gagal menyimpan foto");
       }
@@ -832,7 +866,13 @@ async function releaseFinalizeClaim(businessId: string, sessionId: string): Prom
   const supabase = createServerClient();
   const { error } = await supabase
     .from("sessions")
-    .update({ status: "active", completed_at: null, finalized_at: null, result_gif_key: null })
+    .update({
+      status: "active",
+      completed_at: null,
+      finalized_at: null,
+      result_gif_key: null,
+      result_photos_gif_key: null,
+    })
     .eq("id", sessionId)
     .eq("business_id", businessId)
     .eq("status", "completed");
@@ -855,7 +895,9 @@ async function discardUploadedObjects(businessId: string, keys: string[]): Promi
 
 async function buildResult(
   businessId: string,
-  session: Pick<SessionRow, "id" | "result_gif_key"> & { finalized_at?: string | null }
+  session: Pick<SessionRow, "id" | "result_gif_key" | "result_photos_gif_key"> & {
+    finalized_at?: string | null;
+  }
 ) {
   const supabase = createServerClient();
   const { data: checkout } = await supabase
@@ -873,10 +915,14 @@ async function buildResult(
   const photoRows = photos ?? [];
   const keys = [
     ...(session.result_gif_key ? [session.result_gif_key] : []),
+    ...(session.result_photos_gif_key ? [session.result_photos_gif_key] : []),
     ...photoRows.map((p) => p.file_key),
   ];
   const urlMap = await signedUrls(keys);
   const gifUrl = session.result_gif_key ? (urlMap.get(session.result_gif_key) ?? null) : null;
+  const photosGifUrl = session.result_photos_gif_key
+    ? (urlMap.get(session.result_photos_gif_key) ?? null)
+    : null;
   const photoItems = photoRows.map((p) => ({
     id: p.id,
     url: urlMap.get(p.file_key) ?? null,
@@ -896,6 +942,7 @@ async function buildResult(
     status: "completed",
     result_token: checkout?.result_token ?? null,
     gif_url: gifUrl,
+    photos_gif_url: photosGifUrl,
     photos: photoItems,
     expires_at: new Date(finalizedAt + retentionDays * 24 * 60 * 60 * 1000).toISOString(),
   };
@@ -906,7 +953,7 @@ async function loadResult(resultToken: string) {
   const { data: checkout } = await supabase
     .from("checkout_sessions")
     .select(
-      "result_token, session_id, business_id, sessions ( id, business_id, status, result_gif_key, finalized_at )"
+      "result_token, session_id, business_id, sessions ( id, business_id, status, result_gif_key, result_photos_gif_key, finalized_at )"
     )
     .eq("result_token", resultToken)
     .maybeSingle();
@@ -970,12 +1017,19 @@ async function loadResult(resultToken: string) {
   const photoRows = photos ?? [];
   const keys = [
     ...(session.result_gif_key ? [session.result_gif_key] : []),
+    ...(session.result_photos_gif_key ? [session.result_photos_gif_key] : []),
     ...photoRows.map((p) => p.file_key),
   ];
   const [urlMap, dlMap] = await Promise.all([signedUrls(keys), downloadUrls(keys)]);
   const gifUrl = session.result_gif_key ? (urlMap.get(session.result_gif_key) ?? null) : null;
   const gifDownloadUrl = session.result_gif_key
     ? (dlMap.get(session.result_gif_key) ?? null)
+    : null;
+  const photosGifUrl = session.result_photos_gif_key
+    ? (urlMap.get(session.result_photos_gif_key) ?? null)
+    : null;
+  const photosGifDownloadUrl = session.result_photos_gif_key
+    ? (dlMap.get(session.result_photos_gif_key) ?? null)
     : null;
   const photoItems = photoRows.map((p) => ({
     id: p.id,
@@ -989,6 +1043,8 @@ async function loadResult(resultToken: string) {
     status: session.status,
     gif_url: gifUrl,
     gif_download_url: gifDownloadUrl,
+    photos_gif_url: photosGifUrl,
+    photos_gif_download_url: photosGifDownloadUrl,
     photos: photoItems,
     retention_days: retentionDays,
     /** Link kedaluwarsa = finalized_at + retention_days. */

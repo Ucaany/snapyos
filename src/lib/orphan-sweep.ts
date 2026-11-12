@@ -2,8 +2,8 @@
  * Pemilihan objek yatim `generated-photos` — PURE (tanpa `server-only`) agar
  * dapat diuji via node:test. Dipakai cron `/api/cron/orphan-sweep`.
  *
- * Objek yatim = objek yang TIDAK direferensikan `sessions.result_gif_key`
- * maupun `photos.file_key`, dan umurnya melewati ambang minimum (default 24
+ * Objek yatim = objek yang TIDAK direferensikan `sessions.result_gif_key`,
+ * `sessions.result_photos_gif_key`, maupun `photos.file_key`, dan umurnya melewati ambang minimum (default 24
  * jam) sehingga upload yang sedang berjalan tidak ikut tersapu.
  *
  * Modul ini hanya memilih; penghapusan + akuntansi dilakukan route.

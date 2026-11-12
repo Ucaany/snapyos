@@ -37,6 +37,26 @@ export default async function ResultPage({ params }: Props) {
   // `<img>` langsung, idiom yang sama dengan ResultScreen kiosk.
   const photos = result.photos.filter((p) => p.url);
   const expiry = formatExpiry(result.expires_at);
+  const gifs = [
+    result.gif_url
+      ? {
+          label: "GIF proses",
+          url: result.gif_url,
+          downloadUrl: result.gif_download_url ?? result.gif_url,
+          filename: "snapyos-proses.gif",
+          alt: "GIF proses pembentukan kolase",
+        }
+      : null,
+    result.photos_gif_url
+      ? {
+          label: "GIF semua foto",
+          url: result.photos_gif_url,
+          downloadUrl: result.photos_gif_download_url ?? result.photos_gif_url,
+          filename: "snapyos-semua-foto.gif",
+          alt: "GIF semua foto sesi",
+        }
+      : null,
+  ].filter((gif): gif is NonNullable<typeof gif> => gif !== null);
 
   const cardShadow = "shadow-hard";
   const actionShadow =
@@ -81,26 +101,32 @@ export default async function ResultPage({ params }: Props) {
           />
         </div>
 
-        {result.gif_url ? (
-          <section className="flex flex-col gap-3">
-            <p className="font-mono text-xs font-bold uppercase tracking-[0.2em]">GIF Slideshow</p>
-            <div className={`border-2 border-ink bg-surface p-3 ${cardShadow}`}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={result.gif_url}
-                alt="GIF slideshow hasil foto"
-                width={480}
-                height={480}
-                className="h-auto w-full"
-              />
-            </div>
-            <a
-              href={result.gif_download_url ?? result.gif_url}
-              download="snapyos-slideshow.gif"
-              className={`inline-flex w-fit items-center justify-center border-2 border-ink bg-accent px-5 py-3 font-mono text-sm font-bold uppercase tracking-tight ${actionShadow}`}
-            >
-              Unduh GIF
-            </a>
+        {gifs.length > 0 ? (
+          <section className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            {gifs.map((gif) => (
+              <div key={gif.label} className="flex flex-col gap-3">
+                <p className="font-mono text-xs font-bold uppercase tracking-[0.2em]">
+                  {gif.label}
+                </p>
+                <div className={`border-2 border-ink bg-surface p-3 ${cardShadow}`}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={gif.url}
+                    alt={gif.alt}
+                    width={480}
+                    height={480}
+                    className="h-auto w-full"
+                  />
+                </div>
+                <a
+                  href={gif.downloadUrl}
+                  download={gif.filename}
+                  className={`inline-flex w-fit items-center justify-center border-2 border-ink bg-accent px-5 py-3 font-mono text-sm font-bold uppercase tracking-tight ${actionShadow}`}
+                >
+                  Unduh {gif.label}
+                </a>
+              </div>
+            ))}
           </section>
         ) : (
           <p className="border-2 border-dashed border-ink/40 bg-muted px-4 py-3 font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">

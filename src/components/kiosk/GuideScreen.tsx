@@ -1,8 +1,11 @@
 "use client";
 
 import { kioskThemeVars, type KioskVisualStyle } from "@/lib/kiosk-types";
+import type { KioskElementsConfig } from "@/lib/kiosk-elements";
+import { kioskElementText } from "@/lib/kiosk-elements";
 import { KioskVideoBackground } from "@/components/kiosk/KioskVideoBackground";
 import { KioskAction, KioskCard, KioskHeader, kioskFont, kioskGutter } from "@/components/kiosk/ui";
+import { KioskElement } from "@/components/kiosk/KioskElement";
 
 type Props = {
   steps: string[];
@@ -12,6 +15,8 @@ type Props = {
   videoUrl?: string | null;
   onStart: () => void;
   onBack: () => void;
+  /** Kustomisasi elemen layar (Branding & Kiosk). */
+  elements?: KioskElementsConfig;
 };
 
 /** Guide Screen — docs/05 §5.1a (panduan cara foto, opsional per branding). */
@@ -23,8 +28,18 @@ export function GuideScreen({
   videoUrl = null,
   onStart,
   onBack,
+  elements,
 }: Props) {
   const align = kioskStyle.align ?? "left";
+  const eyebrowText = kioskElementText(elements, "eyebrow", "PETUNJUK");
+  const titleLabel = kioskElementText(elements, "title", titleText || "Cara foto");
+  const hintText = kioskElementText(
+    elements,
+    "hint",
+    "Ikuti urutan ini supaya hasil foto rapi dan tidak perlu diulang."
+  );
+  const backLabel = kioskElementText(elements, "back", "Kembali");
+  const ctaLabel = kioskElementText(elements, "cta", buttonLabel || "Mulai");
   const gutter = kioskGutter(kioskStyle.padding);
   return (
     <main
@@ -42,11 +57,13 @@ export function GuideScreen({
         style={{ paddingLeft: gutter, paddingRight: gutter }}
       >
         <KioskHeader
-          eyebrow="PETUNJUK"
-          title={titleText || "Cara foto"}
-          description="Ikuti urutan ini supaya hasil foto rapi dan tidak perlu diulang."
+          eyebrow={eyebrowText}
+          title={titleLabel}
+          description={hintText}
           align={align}
           scale={kioskStyle.fontScale}
+          elements={elements}
+          elementIds={{ eyebrow: "eyebrow", title: "title", description: "hint", actions: "back" }}
           actions={
             <KioskAction
               tone="secondary"
@@ -55,39 +72,46 @@ export function GuideScreen({
               kioskStyle={kioskStyle}
               className="font-mono tracking-[0.1em]"
             >
-              Kembali
+              {backLabel}
             </KioskAction>
           }
         />
 
-        <ol className="grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {steps.map((step, index) => (
-            <li key={`${index}-${step}`}>
-              <KioskCard
-                className="flex h-full flex-col gap-3 p-4 md:p-5"
-                style={{ borderRadius: kioskStyle.radius }}
-              >
-                <span
-                  className="font-display leading-none tracking-[-0.03em]"
-                  style={{
-                    fontSize: kioskFont(1.4, 2.1, kioskStyle.fontScale, 2.2),
-                    opacity: 0.35,
-                  }}
+        <KioskElement id="steps" defaultOrder={4} elements={elements} className="w-full">
+          <ol className="grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {steps.map((step, index) => (
+              <li key={`${index}-${step}`}>
+                <KioskCard
+                  className="flex h-full flex-col gap-3 p-4 md:p-5"
+                  style={{ borderRadius: kioskStyle.radius }}
                 >
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-                <span
-                  className="text-sm leading-relaxed md:text-base"
-                  style={{ fontSize: `${1 * kioskStyle.fontScale}rem` }}
-                >
-                  {step}
-                </span>
-              </KioskCard>
-            </li>
-          ))}
-        </ol>
+                  <span
+                    className="font-display leading-none tracking-[-0.03em]"
+                    style={{
+                      fontSize: kioskFont(1.4, 2.1, kioskStyle.fontScale, 2.2),
+                      opacity: 0.35,
+                    }}
+                  >
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <span
+                    className="text-sm leading-relaxed md:text-base"
+                    style={{ fontSize: `${1 * kioskStyle.fontScale}rem` }}
+                  >
+                    {step}
+                  </span>
+                </KioskCard>
+              </li>
+            ))}
+          </ol>
+        </KioskElement>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <KioskElement
+          id="cta"
+          defaultOrder={5}
+          elements={elements}
+          className="flex flex-col gap-3 sm:flex-row sm:items-center"
+        >
           <KioskAction
             tone="primary"
             size="lg"
@@ -95,12 +119,9 @@ export function GuideScreen({
             kioskStyle={kioskStyle}
             className="sm:min-w-[220px]"
           >
-            {buttonLabel || "Mulai"}
+            {ctaLabel}
           </KioskAction>
-          <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em] text-muted-foreground">
-            Kamera siap di langkah berikutnya
-          </p>
-        </div>
+        </KioskElement>
       </div>
     </main>
   );

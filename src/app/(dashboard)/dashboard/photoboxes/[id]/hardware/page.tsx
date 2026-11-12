@@ -96,6 +96,9 @@ export default async function PhotoboxHardwarePage({
       mirror_preview: camera.mirror_preview !== false,
       screen_orientation: camera.screen_orientation === "portrait" ? "portrait" : "landscape",
     },
+    session: {
+      auto_capture: photobox.session_settings.auto_capture === true,
+    },
   };
 
   const lastTest =
@@ -118,8 +121,8 @@ export default async function PhotoboxHardwarePage({
       </Link>
       <PageHeader
         eyebrow={`HARDWARE · ${photobox.name.toUpperCase()}`}
-        title="Printer & Kamera"
-        description={`Setelan mesin booth ${str(photobox.name, "ini")}. Nilai di sini menimpa setelan booth secara global; panel PIN di booth tetap bisa mengubah setelan yang sama secara lokal.`}
+        title="Printer, Kamera & Sesi"
+        description={`Setelan mesin dan sesi booth ${str(photobox.name, "ini")}. Nilai di sini menimpa setelan booth secara global; panel PIN di booth tetap bisa mengubah setelan yang sama secara lokal.`}
         meta={`/p/${active.business.slug}/${photobox.slug} · ${photobox.status.toUpperCase()}`}
       />
       <PhotoboxHardwarePanel

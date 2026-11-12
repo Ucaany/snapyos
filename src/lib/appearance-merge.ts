@@ -61,6 +61,11 @@ export type AppearancePageSettings = {
   button_radius?: number;
   padding?: number;
   align?: "left" | "center" | "right";
+  /** Kustomisasi elemen layar ini — urut, geser, sembunyi, teks. */
+  elements?: Record<
+    string,
+    { visible?: boolean; order?: number; offset_x?: number; offset_y?: number; text?: string }
+  >;
 };
 
 /**
@@ -138,6 +143,7 @@ export function pickAppearance(input: unknown): AppearanceSettings {
           "button_radius",
           "padding",
           "align",
+          "elements",
         ]) {
           if (row[field] !== undefined) clean[field] = row[field];
         }

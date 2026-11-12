@@ -22,9 +22,12 @@ import {
   type KioskVisualStyle,
 } from "@/lib/kiosk-types";
 import type { TemplateLayout } from "@/lib/template-layout";
+import type { KioskElementsConfig } from "@/lib/kiosk-elements";
+import { kioskElementText, resolveKioskElement } from "@/lib/kiosk-elements";
 import { useObjectUrl } from "@/components/kiosk/use-object-url";
 import { FramePreviewPanel } from "@/components/kiosk/FramePreviewPanel";
 import { KioskAction, kioskGutter } from "@/components/kiosk/ui";
+import { KioskElement } from "@/components/kiosk/KioskElement";
 
 type Props = {
   cameraSettings: CameraSettings;
@@ -37,6 +40,8 @@ type Props = {
   kioskStyle?: KioskVisualStyle;
   /** Tampilkan tombol mirror di layar customer (default true). */
   showMirrorToggle?: boolean;
+  /** Dipanggil saat state mirror berubah — induk menyimpan agar review ikut. */
+  onMirrorChange?: (mirror: boolean) => void;
   /** Video promo background layar kamera (loop, muted) — null = tanpa video. */
   videoUrl?: string | null;
   /** Layout slot template terpilih — null = tanpa frame (tanpa preview frame). */
@@ -45,11 +50,18 @@ type Props = {
   frameUrl?: string | null;
   /** Mode capture package — `burst` melewati layar review antar shot. */
   captureMode?: "single" | "burst" | "photostrip";
+  /**
+   * Foto otomatis: mulai hitung mundur sendiri setelah kamera siap dan lanjut
+   * ke slot berikutnya tanpa tombol per foto. Bisa dijeda operator.
+   */
+  autoCapture?: boolean;
   /** Filter live (CSS) di preview; nilai awal editor. */
   filterId?: string;
   onFilterChange?: (filterId: string) => void;
   onProgress?: (photos: CapturePhoto[], retakeCount: number) => void;
   onComplete: (photos: CapturePhoto[], retakeCount: number) => void;
+  /** Kustomisasi elemen layar (Branding & Kiosk). */
+  elements?: KioskElementsConfig;
 };
 
 type Stage = "preview" | "countdown" | "review";
@@ -64,14 +76,17 @@ function CameraCaptureInner({
   hintText,
   kioskStyle,
   showMirrorToggle = true,
+  onMirrorChange,
   videoUrl = null,
   layout = null,
   frameUrl = null,
   captureMode = "single",
+  autoCapture = false,
   filterId = "original",
   onFilterChange,
   onProgress,
   onComplete,
+  elements,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -93,6 +108,10 @@ function CameraCaptureInner({
   // masih "preview" — closure `stage` basi, guard selalu early-return.
   const stageRef = useRef<Stage>("preview");
   const [mirror, setMirror] = useState(cameraSettings.mirror_preview !== false);
+  // Operator bisa menghentikan rangkaian otomatis tanpa keluar dari sesi.
+  const [autoPaused, setAutoPaused] = useState(false);
+  // Timer jeda singkat antar shot otomatis — dibatalkan saat stage berubah.
+  const autoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Kalibrasi studio: rotasi & zoom kamera yang dipasang miring/terlalu lebar.
   const rotation = normalizeRotation(cameraSettings.rotation_degrees);
   const calibrationZoom = normalizeZoom(cameraSettings.zoom);
@@ -120,6 +139,12 @@ function CameraCaptureInner({
   useEffect(() => {
     stageRef.current = stage;
   }, [stage]);
+
+  // Teruskan state mirror ke induk — ReviewScreen memakainya untuk retake
+  // supaya preview dan hasil capture identik.
+  useEffect(() => {
+    onMirrorChange?.(mirror);
+  }, [mirror, onMirrorChange]);
 
   /**
    * Callback ref video. Elemen <video> di-unmount saat stage="review"
@@ -331,6 +356,12 @@ function CameraCaptureInner({
 
   function startCountdown() {
     if (!cameraReady) return;
+    // Tombol manual / auto-start bisa bertemu timer jeda yang sama: hanya satu
+    // rangkaian hitung mundur yang boleh berjalan.
+    if (autoTimerRef.current !== null) {
+      clearTimeout(autoTimerRef.current);
+      autoTimerRef.current = null;
+    }
     const seconds = Math.max(1, cameraSettings.countdown_seconds || 3);
     let remaining = seconds;
     stageRef.current = "countdown";
@@ -348,6 +379,30 @@ function CameraCaptureInner({
     }, 1000);
   }
 
+  // Ref agar effect auto tidak bergantung pada identitas fungsi startCountdown
+  // yang berubah tiap render (effect cukup dipicu perubahan stage/data).
+  const startCountdownRef = useRef(startCountdown);
+  startCountdownRef.current = startCountdown;
+
+  // Foto otomatis: mulai sendiri saat kamera siap dan setelah setiap shot.
+  // Jeda 900ms memberi waktu preview frame memperbarui slot sebelum hitung
+  // mundur berikutnya. Error menghentikan rangkaian agar tidak retry tanpa henti.
+  useEffect(() => {
+    if (!autoCapture || autoPaused || !cameraReady || error) return;
+    if (stage !== "preview" || photos.length >= photoCount) return;
+    if (autoTimerRef.current !== null) return;
+    autoTimerRef.current = setTimeout(() => {
+      autoTimerRef.current = null;
+      startCountdownRef.current();
+    }, 900);
+    return () => {
+      if (autoTimerRef.current !== null) {
+        clearTimeout(autoTimerRef.current);
+        autoTimerRef.current = null;
+      }
+    };
+  }, [autoCapture, autoPaused, cameraReady, error, stage, photos.length, photoCount, slot]);
+
   async function doCapture() {
     // Guard: countdown terhenti (kamera reconnect di tengah hitung) → jangan
     // ambil frame dari stream yang baru/baru tersambung.
@@ -359,14 +414,28 @@ function CameraCaptureInner({
           : await captureFrame(
               videoRef.current!,
               cameraSettings.jpeg_quality || 0.92,
-              // Mirror hanya untuk preview (teks pada frame tidak terbalik).
-              false,
+              // WYSIWYG: piksel capture mengikuti state mirror preview.
+              mirror,
               normalizeRotation(cameraSettings.rotation_degrees),
               normalizeZoom(cameraSettings.zoom)
             );
       setFlash(true);
       if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
       flashTimerRef.current = setTimeout(() => setFlash(false), 180);
+      if (autoCapture) {
+        // Foto otomatis: tanpa layar review antar shot. Shot terakhir menutup
+        // capture; effect di atas menjadwalkan hitung mundur berikutnya.
+        const next = [...photos, photo];
+        setPhotos(next);
+        onProgress?.(next, retakeCount);
+        if (slot + 1 >= photoCount) {
+          onComplete(next, retakeCount);
+        } else {
+          setSlot(slot + 1);
+          setStage("preview");
+        }
+        return;
+      }
       if (captureMode === "burst") {
         // Burst: tanpa layar review — shot langsung masuk slot berikutnya supaya
         // rangkaian cepat tidak terpotong konfirmasi per foto.
@@ -424,6 +493,44 @@ function CameraCaptureInner({
       setStage("preview");
     }
   }
+
+  const eyebrowLabel = kioskElementText(
+    elements,
+    "eyebrow",
+    stage === "review" ? "CEK HASIL" : "AMBIL FOTO"
+  );
+  const titleLabel = kioskElementText(
+    elements,
+    "title",
+    titleText || `Foto ${slot + 1} / ${photoCount}`
+  );
+  const hintLabel = kioskElementText(
+    elements,
+    "hint",
+    hintText || `${photos.length} terambil${retakeCount > 0 ? `, ${retakeCount} ulang` : ""}`
+  );
+  const ctaLabel = kioskElementText(
+    elements,
+    "cta",
+    cameraReady ? `Ambil foto ${slot + 1}/${photoCount}` : "Menyiapkan kamera"
+  );
+  const mirrorLabel = kioskElementText(
+    elements,
+    "mirror",
+    `Mirror ${mirror ? "aktif" : "nonaktif"}`
+  );
+  const reviewLabel = kioskElementText(
+    elements,
+    "review",
+    slot + 1 >= photoCount ? "Lanjut edit" : "Lanjut"
+  );
+  // Overlay progres absolut: gaya resolusi diterapkan langsung (tanpa pembungkus
+  // div baru) agar posisi absolute bottom-center tidak rusak; transform offset
+  // digabung dengan translate(-50%) milik posisi tengah.
+  const progress = resolveKioskElement(elements, "progress", 7);
+  const progressTransform = progress.style.transform
+    ? `translate(-50%, 0) ${progress.style.transform}`
+    : undefined;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-ink lg:flex-row lg:overflow-hidden">
@@ -532,8 +639,11 @@ function CameraCaptureInner({
 
         {/* Progress dots overlay (bottom of preview) */}
         <div
+          data-kiosk-element="progress"
+          hidden={progress.hidden}
           className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-2"
           role="status"
+          style={{ order: progress.order, transform: progressTransform }}
           aria-label={`Foto ${photos.length} dari ${photoCount} terambil`}
         >
           {Array.from({ length: photoCount }).map((_, i) => (
@@ -550,7 +660,7 @@ function CameraCaptureInner({
           gelap agar kontras preview/retake. bg-ink fallback dipakai saat
           kioskStyle tidak ada (inline style menang bila ada). */}
       <div
-        className={`flex shrink-0 flex-col gap-5 border-t-2 border-bg/20 bg-ink p-5 lg:w-[38%] lg:border-l-2 lg:border-t-0 lg:justify-center lg:overflow-y-auto lg:p-6 ${
+        className={`flex shrink-0 flex-col gap-5 overflow-y-auto border-t-2 border-bg/20 bg-ink p-5 lg:min-h-0 lg:w-[38%] lg:shrink lg:border-l-2 lg:border-t-0 lg:justify-start lg:p-6 ${
           kioskStyle
             ? kioskStyle.align === "left"
               ? "items-start text-left"
@@ -572,87 +682,119 @@ function CameraCaptureInner({
         }
       >
         <div className="flex w-full flex-col gap-1.5">
-          <p
-            className="font-mono text-[10px] font-bold uppercase leading-none tracking-[0.24em]"
-            style={{ opacity: 0.6, color: kioskStyle ? kioskStyle.text : undefined }}
-          >
-            {stage === "review" ? "CEK HASIL" : "AMBIL FOTO"}
-          </p>
-          <p
-            className="font-display uppercase leading-[0.95] tracking-[-0.02em]"
-            style={{
-              fontSize: `calc(clamp(1.35rem, 2.6vw, 1.9rem) * ${kioskStyle?.fontScale ?? 1})`,
-              color: kioskStyle ? kioskStyle.text : undefined,
-              fontFamily: kioskStyle?.fontFamily,
-            }}
-          >
-            {titleText || `Foto ${slot + 1} / ${photoCount}`}
-          </p>
-          <p
-            className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em]"
-            style={{ opacity: 0.55, color: kioskStyle ? kioskStyle.text : undefined }}
-          >
-            {hintText ||
-              `${photos.length} terambil${retakeCount > 0 ? `, ${retakeCount} ulang` : ""}`}
-          </p>
+          <KioskElement id="eyebrow" defaultOrder={0} elements={elements}>
+            <p
+              className="font-mono text-[10px] font-bold uppercase leading-none tracking-[0.24em]"
+              style={{ opacity: 0.6, color: kioskStyle ? kioskStyle.text : undefined }}
+            >
+              {eyebrowLabel}
+            </p>
+          </KioskElement>
+          <KioskElement id="title" defaultOrder={1} elements={elements}>
+            <p
+              className="font-display uppercase leading-[0.95] tracking-[-0.02em]"
+              style={{
+                fontSize: `calc(clamp(1.35rem, 2.6vw, 1.9rem) * ${kioskStyle?.fontScale ?? 1})`,
+                color: kioskStyle ? kioskStyle.text : undefined,
+                fontFamily: kioskStyle?.fontFamily,
+              }}
+            >
+              {titleLabel}
+            </p>
+          </KioskElement>
+          <KioskElement id="hint" defaultOrder={2} elements={elements}>
+            <p
+              className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em]"
+              style={{ opacity: 0.55, color: kioskStyle ? kioskStyle.text : undefined }}
+            >
+              {hintLabel}
+            </p>
+          </KioskElement>
         </div>
 
         {/* Preview frame langsung: slot terisi = hasil foto, slot aktif = kamera.
             Template legacy tanpa slot tetap tampil (frame jadi kanvas preview). */}
         {(layout || frameUrl) && (
-          <FramePreviewPanel
-            layout={layout}
-            frameUrl={frameUrl}
-            captured={capturedBlobs}
-            activeSlot={slot}
-            videoEl={stage === "review" ? null : videoEl}
-            liveImageUrl={
-              stage === "review" || cameraProvider !== "bridge" ? null : bridgePreviewUrl
-            }
-            activeOverride={stage === "review" && current ? current.blob : null}
-            mirror={mirror}
-            kioskStyle={kioskStyle}
-          />
+          <KioskElement id="frame" defaultOrder={3} elements={elements} className="w-full">
+            <FramePreviewPanel
+              layout={layout}
+              frameUrl={frameUrl}
+              captured={capturedBlobs}
+              activeSlot={slot}
+              videoEl={stage === "review" ? null : videoEl}
+              liveImageUrl={
+                stage === "review" || cameraProvider !== "bridge" ? null : bridgePreviewUrl
+              }
+              activeOverride={stage === "review" && current ? current.blob : null}
+              mirror={mirror}
+              kioskStyle={kioskStyle}
+            />
+          </KioskElement>
         )}
 
         {stage === "preview" && !error && (
           <div className="flex w-full flex-col gap-2.5">
-            <KioskAction
-              tone="primary"
-              size="xl"
-              onClick={startCountdown}
-              disabled={!cameraReady}
-              full
-              className="text-xl"
-              style={
-                kioskStyle
-                  ? {
-                      borderRadius: kioskStyle.radius,
-                      backgroundColor: kioskStyle.accent,
-                      color: kioskStyle.accentText,
-                    }
-                  : undefined
-              }
-            >
-              <Camera className="size-7" aria-hidden />
-              {cameraReady ? `Ambil foto ${slot + 1}/${photoCount}` : "Menyiapkan kamera"}
-            </KioskAction>
-            {showMirrorToggle && (
+            <KioskElement id="cta" defaultOrder={4} elements={elements} className="w-full">
               <KioskAction
-                tone="secondary"
-                size="md"
-                type="button"
-                aria-pressed={mirror}
-                onClick={() => setMirror((value) => !value)}
-                className="min-h-12"
-                style={kioskStyle ? { borderRadius: kioskStyle.radius } : undefined}
+                tone="primary"
+                size="xl"
+                onClick={startCountdown}
+                disabled={!cameraReady}
+                full
+                className="text-xl"
+                style={
+                  kioskStyle
+                    ? {
+                        borderRadius: kioskStyle.radius,
+                        backgroundColor: kioskStyle.accent,
+                        color: kioskStyle.accentText,
+                      }
+                    : undefined
+                }
               >
-                <FlipHorizontal2 className="size-5" aria-hidden /> Mirror{" "}
-                {mirror ? "aktif" : "nonaktif"}
+                <Camera className="size-7" aria-hidden />
+                {ctaLabel}
               </KioskAction>
+            </KioskElement>
+            {showMirrorToggle && (
+              <KioskElement id="mirror" defaultOrder={5} elements={elements} className="w-full">
+                <KioskAction
+                  tone="secondary"
+                  size="md"
+                  type="button"
+                  aria-pressed={mirror}
+                  onClick={() => setMirror((value) => !value)}
+                  full
+                  className="min-h-12"
+                  style={kioskStyle ? { borderRadius: kioskStyle.radius } : undefined}
+                >
+                  <FlipHorizontal2 className="size-5" aria-hidden /> {mirrorLabel}
+                </KioskAction>
+              </KioskElement>
+            )}
+            {autoCapture && (
+              <KioskElement id="auto" defaultOrder={6} elements={elements} className="w-full">
+                <KioskAction
+                  tone="secondary"
+                  size="md"
+                  type="button"
+                  aria-pressed={autoPaused}
+                  onClick={() => setAutoPaused((value) => !value)}
+                  full
+                  className="min-h-12"
+                  style={kioskStyle ? { borderRadius: kioskStyle.radius } : undefined}
+                >
+                  {autoPaused ? "Lanjutkan otomatis" : "Jeda otomatis"}
+                </KioskAction>
+              </KioskElement>
             )}
             {onFilterChange && (
-              <div className="flex w-full flex-col gap-1.5">
+              <KioskElement
+                id="filters"
+                defaultOrder={7}
+                elements={elements}
+                className="flex w-full flex-col gap-1.5"
+              >
                 <p
                   className="font-mono text-[10px] uppercase tracking-[0.14em]"
                   style={{ opacity: 0.65, color: kioskStyle ? kioskStyle.text : undefined }}
@@ -675,12 +817,17 @@ function CameraCaptureInner({
                     </button>
                   ))}
                 </div>
-              </div>
+              </KioskElement>
             )}
           </div>
         )}
         {stage === "review" && current && (
-          <div className="flex w-full flex-col gap-2.5">
+          <KioskElement
+            id="review"
+            defaultOrder={8}
+            elements={elements}
+            className="flex w-full flex-col gap-2.5"
+          >
             <p
               className="font-mono text-[10px] uppercase tracking-[0.14em]"
               style={{ opacity: 0.7, color: kioskStyle ? kioskStyle.text : undefined }}
@@ -712,50 +859,11 @@ function CameraCaptureInner({
                     : undefined
                 }
               >
-                {slot + 1 >= photoCount ? "Lanjut edit" : "Lanjut"}
+                {reviewLabel}
               </KioskAction>
             </div>
-          </div>
+          </KioskElement>
         )}
-
-        <div
-          className="flex w-full flex-col gap-1.5 border-t-2 pt-4"
-          style={{
-            borderColor: kioskStyle
-              ? "color-mix(in srgb, currentColor 20%, transparent)"
-              : undefined,
-          }}
-        >
-          {Array.from({ length: photoCount }).map((_, i) => (
-            <div key={i} className="flex items-center gap-2.5">
-              <span
-                className={`inline-flex size-6 shrink-0 items-center justify-center border-2 text-[10px] font-bold ${
-                  i < photos.length ? "border-accent bg-accent text-ink" : "border-bg/40 text-bg/40"
-                }`}
-                style={
-                  kioskStyle && i >= photos.length
-                    ? {
-                        borderColor: `color-mix(in srgb, ${kioskStyle.text} 40%, transparent)`,
-                        color: `color-mix(in srgb, ${kioskStyle.text} 40%, transparent)`,
-                      }
-                    : undefined
-                }
-              >
-                {i + 1}
-              </span>
-              <span
-                className="font-mono text-[10px] uppercase leading-none tracking-[0.1em]"
-                style={{ opacity: 0.6, color: kioskStyle ? kioskStyle.text : undefined }}
-              >
-                {i < photos.length
-                  ? "Terambil"
-                  : i === slot && stage !== "review"
-                    ? "Aktif"
-                    : "Menunggu"}
-              </span>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );

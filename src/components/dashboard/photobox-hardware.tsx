@@ -39,6 +39,9 @@ export type HardwareDraft = {
     mirror_preview: boolean;
     screen_orientation: "landscape" | "portrait";
   };
+  session: {
+    auto_capture: boolean;
+  };
 };
 
 export type DetectedHardware = {
@@ -753,7 +756,9 @@ export function PhotoboxHardwarePanel({
     []
   );
 
-  async function save(group: "photo" | "thermal" | "receipt" | "camera" | "template") {
+  async function save(
+    group: "photo" | "thermal" | "receipt" | "camera" | "session" | "template"
+  ) {
     if (!canWrite) return;
     setSavingGroup(group);
     setStatus(null);
@@ -772,9 +777,11 @@ export function PhotoboxHardwarePanel({
                 screen_orientation: draft.camera.screen_orientation,
               },
             }
-          : group === "template"
-            ? { default_template_id: templateId || null }
-            : { print_settings: { [group]: draft[group] } }),
+          : group === "session"
+            ? { session_settings: { auto_capture: draft.session.auto_capture } }
+            : group === "template"
+              ? { default_template_id: templateId || null }
+              : { print_settings: { [group]: draft[group] } }),
       });
       const fieldMessage = result.fieldErrors
         ? Object.values(result.fieldErrors).flat()[0]
@@ -900,8 +907,33 @@ export function PhotoboxHardwarePanel({
       </Section>
 
       <Section
-        id="default-template-heading"
+        id="session-setup-heading"
         index="05"
+        title="Sesi"
+        description="Perilaku sesi foto booth ini. Foto otomatis mengambil semua slot berurutan tanpa menekan tombol tiap foto; panel PIN booth tetap bisa menimpa nilai ini secara lokal."
+        onSave={() => void save("session")}
+        saving={savingGroup === "session"}
+        disabled={disabled}
+      >
+        <label className="flex min-h-11 items-center gap-3 border-2 border-ink bg-bg px-3">
+          <input
+            type="checkbox"
+            checked={draft.session.auto_capture}
+            disabled={disabled}
+            onChange={(event) => update("session", { auto_capture: event.target.checked })}
+            className="size-5 accent-ink"
+          />
+          <span className={LABEL}>Foto otomatis</span>
+        </label>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Saat aktif, hitung mundur mulai sendiri setelah kamera siap dan semua foto diambil
+          berurutan. Operator tetap bisa menjeda dari layar kamera.
+        </p>
+      </Section>
+
+      <Section
+        id="default-template-heading"
+        index="06"
         title="Template default"
         description="Template yang otomatis dipakai kiosk setelah pembayaran. Kosong = kiosk memilih otomatis bila hanya ada satu template, selain itu customer memilih sendiri."
         onSave={() => void save("template")}

@@ -89,6 +89,7 @@ const DEFAULT_DRAFT: Draft = {
     warning_seconds: 60,
     max_retakes: 2,
     kiosk_review_grid: true,
+    auto_capture: false,
   },
   appearance: {
     bg_color: "#fffdf5",
@@ -161,6 +162,7 @@ function toDraft(settings: DeviceSettings | null): Draft {
           ? null
           : num(session.max_retakes, DEFAULT_DRAFT.session.max_retakes ?? 0),
       kiosk_review_grid: bool(session.kiosk_review_grid, true),
+      auto_capture: bool(session.auto_capture, false),
     },
     appearance: {
       bg_color: str(appearance.bg_color, DEFAULT_DRAFT.appearance.bg_color),
@@ -644,9 +646,20 @@ export function BoothSettingsPanel({ initial, bridgeUrl, photoboxName, onSaved, 
             />
             <span className={labelClass}>Layar cek foto (review grid)</span>
           </label>
+          <label className="flex min-h-11 items-center gap-3 border-2 border-ink bg-bg px-3">
+            <input
+              type="checkbox"
+              checked={draft.session.auto_capture}
+              onChange={(e) => update("session", { auto_capture: e.target.checked })}
+              className="size-5"
+            />
+            <span className={labelClass}>Foto otomatis</span>
+          </label>
           <p className="text-xs leading-relaxed text-muted-foreground">
             Peringatan harus lebih singkat dari durasi sesi — runtime menolak kombinasi sebaliknya.
-            Matikan review grid untuk kembali langsung ke editor setelah capture.
+            Matikan review grid untuk kembali langsung ke editor setelah capture. Foto otomatis
+            mengambil semua slot berurutan tanpa menekan tombol tiap foto; operator tetap bisa
+            menjeda dari layar kamera.
           </p>
         </section>
 

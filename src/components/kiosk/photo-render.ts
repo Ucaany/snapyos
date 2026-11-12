@@ -1,6 +1,5 @@
 import { FILTER_PRESETS, type KioskOverlay, type PhotoEdit } from "@/lib/kiosk-types";
 import { drawOverlays, composeFrame } from "@/lib/compose-frame";
-import { framePerPhoto } from "@/lib/template-fit";
 import type { TemplateLayout } from "@/lib/template-layout";
 
 function loadImage(url: string): Promise<HTMLImageElement> {
@@ -146,37 +145,6 @@ export async function renderFramedPhotoBlob(
   }
 }
 
-/**
- * Sumber frame GIF siap kirim untuk sesi ini.
- *
- * Template ber-slot → satu JPEG berframe per foto (`renderFramePerPhotoBlobs`),
- * jadi GIF memperlihatkan template ber-slot bergantian. Template legacy →
- * foto final apa adanya. Gagal memuat frame / render → balik ke foto mentah:
- * GIF kurang ideal masih lebih baik daripada tidak ada hasil digital.
- */
-export async function resolveGifFrames(
-  photos: Blob[],
-  layout: TemplateLayout | null,
-  frameUrl: string | null,
-  maxW = 1080
-): Promise<Blob[]> {
-  if (!layout || layout.slots.length === 0 || !frameUrl) return photos;
-  try {
-    const frame = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const img = new Image();
-      // Tanpa crossOrigin, kanvas jadi tainted → toBlob gagal.
-      img.crossOrigin = "anonymous";
-      img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error("Gagal memuat frame"));
-      img.src = frameUrl;
-    });
-    const blobs = await renderFramePerPhotoBlobs(photos, layout, frame, maxW);
-    return blobs.length > 0 ? blobs : photos;
-  } catch {
-    return photos;
-  }
-}
-
 /** Canvas → Blob JPEG. */
 export function canvasToBlob(canvas: HTMLCanvasElement, quality = 0.92): Promise<Blob> {
   return new Promise((resolve, reject) => {
@@ -186,43 +154,6 @@ export function canvasToBlob(canvas: HTMLCanvasElement, quality = 0.92): Promise
       quality
     );
   });
-}
-
-/**
- * JPEG berframe per foto capture untuk GIF template ber-slot (docs/05 §5.13).
- *
- * Tiap foto menghasilkan SATU composite lewat `composeFrame`: slot milik foto
- * itu terisi, slot lain kosong, kanvas + frame = template. Jadi GIF
- * memperlihatkan hasil berframe bergantian, bukan potret mentah.
- *
- * Satu kanvas dipakai ulang dan satu blob per iterasi — puncak memori
- * O(satu frame), aman untuk 8 slot di tablet kiosk.
- */
-export async function renderFramePerPhotoBlobs(
-  photos: Blob[],
-  layout: TemplateLayout,
-  frame: HTMLImageElement | null,
-  maxW = 1080
-): Promise<Blob[]> {
-  const slotTotal = layout.slots.length;
-  const count = Math.min(photos.length, slotTotal);
-  if (count === 0) return [];
-  const canvas = document.createElement("canvas");
-  const out: Blob[] = [];
-  for (let i = 0; i < count; i += 1) {
-    const url = URL.createObjectURL(photos[i]!);
-    try {
-      const img = await loadImage(url);
-      const sources = framePerPhoto(slotTotal, i).map((slotIndex) =>
-        slotIndex === null ? null : img
-      );
-      composeFrame(canvas, layout, frame, sources, [], maxW, { emptySlot: "blank" });
-      out.push(await canvasToBlob(canvas));
-    } finally {
-      URL.revokeObjectURL(url);
-    }
-  }
-  return out;
 }
 
 export function defaultEdit(): PhotoEdit {
@@ -242,4 +173,64 @@ export function defaultEdit(): PhotoEdit {
     },
     overlays: [],
   };
+}
+
+/**
+ * GIF proses: template ber-slot terisi slot demi slot sampai kolase lengkap.
+ *
+ * Langkah i = 0..min(jumlah foto, jumlah slot)-1; slot j terisi `photos[j % n]`
+ * bila j <= i, sisanya kosong. Satu kanvas dipakai ulang + satu blob per
+ * langkah, jadi puncak memori tetap O(satu frame). Template legacy / frame
+ * tidak tersedia → kembalikan `photos` (pemanggil mengirim foto final berframe
+ * agar GIF tetap berupa slideshow hasil akhir).
+ */
+export async function resolveGifProcessFrames(
+  photos: Blob[],
+  layout: TemplateLayout | null,
+  frameUrl: string | null,
+  maxW = 1080
+): Promise<Blob[]> {
+  if (!layout || layout.slots.length === 0 || !frameUrl) return photos;
+  try {
+    const frame = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      // Tanpa crossOrigin, kanvas jadi tainted → toBlob gagal.
+      img.crossOrigin = "anonymous";
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("Gagal memuat frame"));
+      img.src = frameUrl;
+    });
+    const slotTotal = layout.slots.length;
+    const count = Math.min(photos.length, slotTotal);
+    if (count === 0) return photos;
+    const canvas = document.createElement("canvas");
+    // Cache hanya per indeks slot (maks 8), bukan per foto: puncak memori
+    // O(jumlah slot), bukan O(semua foto).
+    const images: (HTMLImageElement | null)[] = new Array(slotTotal).fill(null);
+    const out: Blob[] = [];
+    for (let step = 0; step < count; step += 1) {
+      const sources: (HTMLImageElement | null)[] = [];
+      for (let slot = 0; slot < slotTotal; slot += 1) {
+        if (slot > step) {
+          sources.push(null);
+          continue;
+        }
+        const index = slot % photos.length;
+        if (!images[index]) {
+          const url = URL.createObjectURL(photos[index]!);
+          try {
+            images[index] = await loadImage(url);
+          } finally {
+            URL.revokeObjectURL(url);
+          }
+        }
+        sources.push(images[index]!);
+      }
+      composeFrame(canvas, layout, frame, sources, [], maxW, { emptySlot: "blank" });
+      out.push(await canvasToBlob(canvas));
+    }
+    return out.length > 0 ? out : photos;
+  } catch {
+    return photos;
+  }
 }

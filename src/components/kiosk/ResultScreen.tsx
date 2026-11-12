@@ -13,15 +13,20 @@ import {
 } from "lucide-react";
 import { defaultBrandColors } from "@/lib/brand-defaults";
 import { kioskThemeVars, type KioskVisualStyle } from "@/lib/kiosk-types";
+import type { KioskElementsConfig } from "@/lib/kiosk-elements";
+import { kioskElementText } from "@/lib/kiosk-elements";
 import { useObjectUrls } from "@/components/kiosk/use-object-url";
 import { KioskVideoBackground } from "@/components/kiosk/KioskVideoBackground";
 import { KioskAction, KioskEyebrow, KioskHeading, kioskGutter } from "@/components/kiosk/ui";
+import { KioskElement } from "@/components/kiosk/KioskElement";
 
 type FinalPhoto = { blob: Blob };
 
 type Props = {
   resultToken: string | null;
   gifUrl: string | null;
+  /** GIF slideshow semua capture mentah (GIF kedua). */
+  photosGifUrl?: string | null;
   finalPhotos: FinalPhoto[];
   businessName: string;
   printed: boolean;
@@ -43,12 +48,15 @@ type Props = {
   videoUrl?: string | null;
   onPrint: () => void;
   onReset: () => void;
+  /** Kustomisasi elemen layar (Branding & Kiosk). */
+  elements?: KioskElementsConfig;
 };
 
 /** Kiosk Result — docs/05 §5.13 (QR ke halaman result online). */
 export function ResultScreen({
   resultToken,
   gifUrl,
+  photosGifUrl = null,
   finalPhotos,
   businessName,
   printed,
@@ -63,12 +71,14 @@ export function ResultScreen({
   videoUrl = null,
   onPrint,
   onReset,
+  elements,
 }: Props) {
   // QR disimpan bersama token yang menghasilkannya. Tanpa pasangan itu, QR milik
   // sesi sebelumnya sempat tampil di layar sesi baru; dan menandai "sedang dimuat"
   // lewat state terpisah memaksa setState di badan efek (render berantai).
   const [qr, setQr] = useState<{ token: string; url?: string } | null>(null);
   const [gifError, setGifError] = useState(false);
+  const [photosGifError, setPhotosGifError] = useState(false);
   const [downloading, setDownloading] = useState(false);
   // iOS/Safari menyimpan hanya file pertama dari beberapa unduhan sekaligus.
   // Dibaca saat interaksi unduh (bukan saat render/effect) — userAgent tidak
@@ -111,6 +121,7 @@ export function ResultScreen({
   const photoUrls = useObjectUrls(finalPhotos.map((p) => p.blob));
   const previewPhoto = photoUrls[0] ?? null;
   const hasGif = Boolean(gifUrl) && !gifError;
+  const hasPhotosGif = Boolean(photosGifUrl) && !photosGifError;
   const canShare = qrUsable && Boolean(resultToken);
   const zipHref =
     qrUsable && resultToken
@@ -199,6 +210,13 @@ export function ResultScreen({
       : ks?.align === "right"
         ? "items-end text-right"
         : "items-center text-center";
+  const eyebrowText = kioskElementText(elements, "eyebrow", businessName);
+  const titleLabel = kioskElementText(elements, "title", resultTitle || "Foto kamu jadi!");
+  const hintText = kioskElementText(
+    elements,
+    "hint",
+    resultHint || "Pindai QR untuk mengunduh GIF animasi dan foto berframe di ponsel Anda."
+  );
 
   const actionButtons = (
     <div className="flex w-full max-w-[320px] flex-col gap-2.5">
@@ -217,32 +235,25 @@ export function ResultScreen({
         </KioskAction>
       )}
       {photoUrls.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <KioskAction
-            tone="secondary"
-            size="lg"
-            kioskStyle={ks}
-            onClick={downloadAll}
-            disabled={downloading}
-            full
-          >
-            <Download className="size-5" aria-hidden />
-            {downloading
-              ? "Mengunduh..."
-              : photoUrls.length > 1
-                ? `Unduh ${photoUrls.length} foto`
-                : "Unduh foto"}
-          </KioskAction>
-          {photoUrls.length > 1 && iosDevice && (
-            <p role="status" className="text-[11px] leading-relaxed text-muted-foreground">
-              Safari hanya menyimpan file pertama. Untuk semua foto, pindai QR di ponsel.
-            </p>
-          )}
-        </div>
+        <KioskAction
+          tone="secondary"
+          size="lg"
+          kioskStyle={ks}
+          onClick={downloadAll}
+          disabled={downloading}
+          full
+        >
+          <Download className="size-5" aria-hidden />
+          {downloading
+            ? "Mengunduh..."
+            : photoUrls.length > 1
+              ? `Unduh ${photoUrls.length} foto`
+              : "Unduh foto"}
+        </KioskAction>
       )}
-      {expiryLabel && (
-        <p className="text-[10px] uppercase leading-snug tracking-[0.1em] text-muted-foreground">
-          {`Link berlaku sampai ${expiryLabel}`}
+      {photoUrls.length > 1 && iosDevice && (
+        <p role="status" className="text-[11px] leading-relaxed text-muted-foreground">
+          Safari hanya menyimpan file pertama. Untuk semua foto, pindai QR di ponsel.
         </p>
       )}
       {(canShare || zipHref) && (
@@ -288,6 +299,11 @@ export function ResultScreen({
       <KioskAction tone="primary" size="lg" kioskStyle={ks} onClick={onReset} full>
         <Check className="size-5" aria-hidden /> Selesai
       </KioskAction>
+      {expiryLabel && (
+        <p className="text-center text-[10px] uppercase leading-snug tracking-[0.1em] text-muted-foreground">
+          {`Link berlaku sampai ${expiryLabel}`}
+        </p>
+      )}
     </div>
   );
 
@@ -317,75 +333,109 @@ export function ResultScreen({
         } ${qrFirst && !isBelow ? "lg:order-2 lg:border-r-0 lg:border-l-2" : ""}`}
         style={{ paddingLeft: gutter, paddingRight: gutter }}
       >
-        <KioskEyebrow>{businessName}</KioskEyebrow>
-        {previewPhoto ? (
-          <div className="grid max-h-[46vh] w-full max-w-[560px] grid-cols-2 gap-2 lg:max-h-[62vh]">
-            {photoUrls
-              .filter((u): u is string => Boolean(u))
-              .map((url, i) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  key={url}
-                  src={url}
-                  alt={`Hasil foto ${i + 1}`}
-                  className="h-full w-full border-2 border-ink object-contain shadow-hard"
-                />
-              ))}
-          </div>
-        ) : (
-          <div
-            role="status"
-            aria-label="Memuat foto"
-            className="flex h-[38vh] w-[min(46vh,78vw)] items-center justify-center border-2 border-dashed border-ink/30 bg-muted p-6"
-          >
-            <span
-              className="h-3/4 w-3/4 animate-pulse border-2 border-ink/15 bg-ink/10"
-              aria-hidden
-            />
-          </div>
-        )}
-
-        {hasGif ? (
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            {/* GIF ditampilkan seukuran potret hasil capture: thumbnail 48px
-                tidak membuktikan GIF-nya bergerak. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={gifUrl ?? undefined}
-              alt="Preview GIF"
-              className="h-[clamp(120px,18vh,180px)] w-auto border-2 border-ink object-contain"
-              style={ks ? { borderRadius: radius } : undefined}
-              onError={() => setGifError(true)}
-            />
-            <div className="flex flex-col gap-1.5">
-              <KioskEyebrow>GIF slideshow</KioskEyebrow>
-              <a
-                href={gifUrl ?? "#"}
-                download="snapyos-slideshow.gif"
-                className="inline-flex min-h-11 items-center gap-1.5 border-2 border-ink bg-bg px-3 py-2 text-[11px] font-bold uppercase tracking-[0.06em] hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
-                style={ks ? { borderRadius: radius } : undefined}
-              >
-                <Download className="size-3.5" aria-hidden /> Unduh GIF
-              </a>
+        <KioskElement id="eyebrow" defaultOrder={0} elements={elements}>
+          <KioskEyebrow>{eyebrowText}</KioskEyebrow>
+        </KioskElement>
+        <KioskElement
+          id="photos"
+          defaultOrder={3}
+          elements={elements}
+          className="flex w-full justify-center"
+        >
+          {previewPhoto ? (
+            <div className="grid max-h-[46vh] w-full max-w-[560px] grid-cols-2 gap-2 lg:max-h-[62vh]">
+              {photoUrls
+                .filter((u): u is string => Boolean(u))
+                .map((url, i) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    key={url}
+                    src={url}
+                    alt={`Hasil foto ${i + 1}`}
+                    className="h-full w-full border-2 border-ink object-contain shadow-hard"
+                  />
+                ))}
             </div>
-          </div>
-        ) : (
-          // GIF gagal dimuat / dimatikan owner: hasil foto tetap lengkap di
-          // atas. Panel ini menjelaskan kenapa tidak ada GIF, bukan spinner
-          // abadi atau ruang kosong yang terlihat seperti error kiosk.
-          <div
-            role="status"
-            className="flex max-w-[320px] flex-col items-center gap-1 border-2 border-dashed border-ink/30 bg-muted px-4 py-3 text-center"
-            style={ks ? { borderRadius: radius } : undefined}
-          >
-            <KioskEyebrow>GIF slideshow</KioskEyebrow>
-            <p className="text-[10px] font-bold uppercase leading-snug tracking-[0.08em] text-muted-foreground">
-              {gifError
-                ? "GIF tidak bisa dimuat. Foto berframe tetap bisa diunduh di atas."
-                : "GIF belum tersedia. Foto hasil sesi ini tetap bisa diunduh di atas."}
-            </p>
-          </div>
-        )}
+          ) : (
+            <div
+              role="status"
+              aria-label="Memuat foto"
+              className="flex h-[38vh] w-[min(46vh,78vw)] items-center justify-center border-2 border-dashed border-ink/30 bg-muted p-6"
+            >
+              <span
+                className="h-3/4 w-3/4 animate-pulse border-2 border-ink/15 bg-ink/10"
+                aria-hidden
+              />
+            </div>
+          )}
+        </KioskElement>
+
+        <KioskElement id="gif" defaultOrder={4} elements={elements}>
+          {hasGif || hasPhotosGif ? (
+            <div className="flex flex-wrap items-start justify-center gap-3">
+              {/* GIF ditampilkan seukuran potret hasil capture: thumbnail 48px
+                tidak membuktikan GIF-nya bergerak. */}
+              {hasGif && (
+                <figure className="flex flex-col items-center gap-1.5">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={gifUrl ?? undefined}
+                    alt="Preview GIF proses"
+                    className="h-[clamp(96px,14vh,150px)] w-auto border-2 border-ink object-contain"
+                    style={ks ? { borderRadius: radius } : undefined}
+                    onError={() => setGifError(true)}
+                  />
+                  <KioskEyebrow>GIF proses</KioskEyebrow>
+                  <a
+                    href={gifUrl ?? "#"}
+                    download="snapyos-proses.gif"
+                    className="inline-flex min-h-11 items-center gap-1.5 border-2 border-ink bg-bg px-3 py-2 text-[11px] font-bold uppercase tracking-[0.06em] hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+                    style={ks ? { borderRadius: radius } : undefined}
+                  >
+                    <Download className="size-3.5" aria-hidden /> Unduh
+                  </a>
+                </figure>
+              )}
+              {hasPhotosGif && (
+                <figure className="flex flex-col items-center gap-1.5">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={photosGifUrl ?? undefined}
+                    alt="Preview GIF semua foto"
+                    className="h-[clamp(96px,14vh,150px)] w-auto border-2 border-ink object-contain"
+                    style={ks ? { borderRadius: radius } : undefined}
+                    onError={() => setPhotosGifError(true)}
+                  />
+                  <KioskEyebrow>GIF semua foto</KioskEyebrow>
+                  <a
+                    href={photosGifUrl ?? "#"}
+                    download="snapyos-semua-foto.gif"
+                    className="inline-flex min-h-11 items-center gap-1.5 border-2 border-ink bg-bg px-3 py-2 text-[11px] font-bold uppercase tracking-[0.06em] hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+                    style={ks ? { borderRadius: radius } : undefined}
+                  >
+                    <Download className="size-3.5" aria-hidden /> Unduh
+                  </a>
+                </figure>
+              )}
+            </div>
+          ) : (
+            // GIF gagal dimuat / dimatikan owner: hasil foto tetap lengkap di
+            // atas. Panel ini menjelaskan kenapa tidak ada GIF, bukan spinner
+            // abadi atau ruang kosong yang terlihat seperti error kiosk.
+            <div
+              role="status"
+              className="flex max-w-[320px] flex-col items-center gap-1 border-2 border-dashed border-ink/30 bg-muted px-4 py-3 text-center"
+              style={ks ? { borderRadius: radius } : undefined}
+            >
+              <KioskEyebrow>GIF proses</KioskEyebrow>
+              <p className="text-[10px] font-bold uppercase leading-snug tracking-[0.08em] text-muted-foreground">
+                {gifError
+                  ? "GIF tidak bisa dimuat. Foto berframe tetap bisa diunduh di atas."
+                  : "GIF belum tersedia. Foto hasil sesi ini tetap bisa diunduh di atas."}
+              </p>
+            </div>
+          )}
+        </KioskElement>
       </div>
 
       {/* Panel QR: status + CTA (posisi via result_layout, perataan via align) */}
@@ -396,16 +446,26 @@ export function ResultScreen({
         style={{ paddingLeft: gutter, paddingRight: gutter }}
       >
         <div className="flex flex-col gap-2">
-          <KioskHeading size="md" scale={ks?.fontScale ?? 1} style={{ fontFamily: ks?.fontFamily }}>
-            {resultTitle || "Foto kamu jadi!"}
-          </KioskHeading>
-          <p className="max-w-[38ch] text-sm leading-relaxed text-muted-foreground md:text-base">
-            {resultHint ||
-              "Pindai QR untuk mengunduh GIF animasi dan foto berframe di ponsel Anda."}
-          </p>
+          <KioskElement id="title" defaultOrder={1} elements={elements}>
+            <KioskHeading
+              size="md"
+              scale={ks?.fontScale ?? 1}
+              style={{ fontFamily: ks?.fontFamily }}
+            >
+              {titleLabel}
+            </KioskHeading>
+          </KioskElement>
+          <KioskElement id="hint" defaultOrder={2} elements={elements}>
+            <p className="max-w-[38ch] text-sm leading-relaxed text-muted-foreground md:text-base">
+              {hintText}
+            </p>
+          </KioskElement>
         </div>
 
-        <div
+        <KioskElement
+          id="status"
+          defaultOrder={5}
+          elements={elements}
           className="flex flex-col items-center gap-3 border-2 border-ink bg-surface p-4 shadow-hard md:p-5"
           style={ks ? { borderRadius: radius } : undefined}
         >
@@ -417,12 +477,6 @@ export function ResultScreen({
             <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase leading-snug tracking-[0.08em] text-muted-foreground">
               <RefreshCcw className="size-4 shrink-0 motion-safe:animate-spin" aria-hidden />
               Menunggu sinkronisasi. Hasil online aktif setelah koneksi kembali
-            </p>
-          )}
-          {syncFailed && (
-            <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase leading-snug tracking-[0.08em]">
-              <TriangleAlert className="size-4 shrink-0 text-destructive" aria-hidden />
-              Sesi berakhir sebelum sinkron. Hubungi petugas untuk hasil foto
             </p>
           )}
 
@@ -455,9 +509,11 @@ export function ResultScreen({
               <TriangleAlert className="size-8 text-destructive" aria-hidden />
             </div>
           )}
-        </div>
+        </KioskElement>
 
-        {actionButtons}
+        <KioskElement id="actions" defaultOrder={6} elements={elements} className="w-full">
+          {actionButtons}
+        </KioskElement>
       </div>
     </div>
   );

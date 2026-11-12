@@ -10,6 +10,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
 import { brandingSchema, isTenantBrandAssetKey } from "@/lib/validators";
 import { mergeBranding } from "@/lib/branding-merge";
+import { normalizeKioskElements } from "@/lib/kiosk-elements";
 import { slotCount, type TemplateLayout } from "@/lib/template-layout";
 import {
   PUBLIC_CONFIG_GLOBAL_TAG,
@@ -184,6 +185,7 @@ async function buildPublicConfig(
       padding: page?.padding,
       align: page?.align,
       video_url: signed,
+      elements: normalizeKioskElements(page?.elements),
     };
   }
 

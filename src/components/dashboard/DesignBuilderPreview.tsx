@@ -4,11 +4,17 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { KioskScreenRenderer } from "@/components/kiosk/KioskScreenRenderer";
 import { KioskVideoBackground } from "@/components/kiosk/KioskVideoBackground";
-import { KioskAction, KioskCard, KioskEyebrow, KioskHeading, kioskGutter } from "@/components/kiosk/ui";
+import {
+  KioskAction,
+  KioskCard,
+  KioskEyebrow,
+  KioskHeading,
+  kioskGutter,
+} from "@/components/kiosk/ui";
 import { WelcomeScreen } from "@/components/kiosk/WelcomeScreen";
-import { Select } from "@/components/ui/select";
 import { kioskVisualStyle, type BrandingConfig, type KioskPageId } from "@/lib/kiosk-types";
 import { KIOSK_PAGE_OPTIONS } from "@/lib/kiosk-pages";
+import { kioskElementDefs, kioskElementText, resolveKioskElement } from "@/lib/kiosk-elements";
 import type { KioskOrientation } from "@/lib/kiosk-screen-registry";
 
 const FALLBACK_COPY: Record<KioskPageId, { title: string; body: string }> = {
@@ -45,15 +51,7 @@ function pageCopy(branding: BrandingConfig, page: KioskPageId) {
   }
 }
 
-function NeutralScreen({
-  page,
-  branding,
-  businessName,
-}: {
-  page: KioskPageId;
-  branding: BrandingConfig;
-  businessName: string;
-}) {
+function NeutralScreen({ page, branding }: { page: KioskPageId; branding: BrandingConfig }) {
   const entry = KIOSK_PAGE_OPTIONS.find((item) => item.id === page) ?? KIOSK_PAGE_OPTIONS[0]!;
   const copy = pageCopy(branding, page);
   const vs = kioskVisualStyle(branding.kiosk, page, {
@@ -65,33 +63,82 @@ function NeutralScreen({
   const alignItems =
     align === "left" ? "items-start" : align === "right" ? "items-end" : "items-center";
   const gutter = kioskGutter(vs.padding);
+  const elements = branding.kiosk?.pages?.[page]?.elements;
+
+  const ordered = kioskElementDefs(page)
+    .map((def, index) => ({
+      def,
+      index,
+      resolved: resolveKioskElement(elements, def.id, index),
+    }))
+    .filter((item) => !item.resolved.hidden)
+    .sort((a, b) => a.resolved.order - b.resolved.order || a.index - b.index);
 
   return (
     <div
       className={`mx-auto flex w-full max-w-[900px] flex-1 flex-col justify-center gap-5 ${alignItems}`}
       style={{ padding: gutter, textAlign }}
     >
-      <KioskEyebrow>PRATINJAU · {entry.label.toUpperCase()}</KioskEyebrow>
-      <KioskHeading
-        as="h2"
-        size="md"
-        scale={vs.fontScale}
-        style={{ fontFamily: vs.fontFamily, color: vs.primary }}
-      >
-        {copy.title}
-      </KioskHeading>
-      <p className="max-w-[52ch] text-base leading-relaxed opacity-80 md:text-lg">{copy.body}</p>
-      <KioskCard className="w-full max-w-[560px] p-5" style={{ borderRadius: vs.radius }}>
-        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] opacity-60">
-          {businessName || "Photobox"}
-        </p>
-        <p className="mt-2 text-sm leading-relaxed opacity-80">
-          Konten layar ini terisi otomatis dari data photobox saat kiosk berjalan.
-        </p>
-      </KioskCard>
-      <KioskAction tone="primary" size="lg" kioskStyle={vs} className="w-full max-w-[280px]">
-        Lanjut
-      </KioskAction>
+      {ordered.map(({ def, resolved }) => {
+        const style = resolved.style;
+        switch (def.id) {
+          case "eyebrow":
+            return (
+              <div key={def.id} style={style}>
+                <KioskEyebrow>
+                  {kioskElementText(elements, "eyebrow", entry.label.toUpperCase())}
+                </KioskEyebrow>
+              </div>
+            );
+          case "title":
+            return (
+              <div key={def.id} style={style}>
+                <KioskHeading
+                  as="h2"
+                  size="md"
+                  scale={vs.fontScale}
+                  style={{ fontFamily: vs.fontFamily, color: vs.primary }}
+                >
+                  {kioskElementText(elements, "title", copy.title)}
+                </KioskHeading>
+              </div>
+            );
+          case "hint":
+            return (
+              <div key={def.id} style={style}>
+                <p className="max-w-[52ch] text-base leading-relaxed opacity-80 md:text-lg">
+                  {kioskElementText(elements, "hint", copy.body)}
+                </p>
+              </div>
+            );
+          case "cta":
+            return (
+              <div key={def.id} style={style}>
+                <KioskAction
+                  tone="primary"
+                  size="lg"
+                  kioskStyle={vs}
+                  className="w-full max-w-[280px]"
+                >
+                  {kioskElementText(elements, "cta", "Lanjut")}
+                </KioskAction>
+              </div>
+            );
+          default:
+            return (
+              <div key={def.id} style={style}>
+                <KioskCard className="w-full max-w-[560px] p-3" style={{ borderRadius: vs.radius }}>
+                  <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] opacity-60">
+                    {def.label}
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed opacity-70">
+                    Konten {def.label.toLowerCase()} terisi otomatis saat kiosk berjalan.
+                  </p>
+                </KioskCard>
+              </div>
+            );
+        }
+      })}
     </div>
   );
 }
@@ -146,18 +193,11 @@ type Props = {
   businessName: string;
   branding: BrandingConfig;
   page: KioskPageId;
-  onPageChange: (page: KioskPageId) => void;
   initialOrientation: KioskOrientation;
 };
 
 /** Pratinjau in-page memakai komponen kiosk asli (bukan iframe). */
-export function DesignBuilderPreview({
-  businessName,
-  branding,
-  page,
-  onPageChange,
-  initialOrientation,
-}: Props) {
+export function DesignBuilderPreview({ businessName, branding, page, initialOrientation }: Props) {
   const [orientation, setOrientation] = useState<KioskOrientation>(initialOrientation);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -194,23 +234,7 @@ export function DesignBuilderPreview({
       </div>
 
       <div className={mobileOpen ? "flex flex-col gap-3" : "hidden lg:flex lg:flex-col lg:gap-3"}>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <label className="flex min-w-0 flex-col gap-1">
-            <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-              Layar
-            </span>
-            <Select
-              value={page}
-              onChange={(event) => onPageChange(event.target.value as KioskPageId)}
-              className="min-h-11 text-xs"
-            >
-              {KIOSK_PAGE_OPTIONS.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.label}
-                </option>
-              ))}
-            </Select>
-          </label>
+        <div className="grid grid-cols-1 gap-2">
           <div className="flex min-w-0 flex-col gap-1">
             <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
               Orientasi · pratinjau saja
@@ -246,6 +270,7 @@ export function DesignBuilderPreview({
                 branding={branding}
                 onStart={() => undefined}
                 headingAs="h2"
+                elements={branding.kiosk?.pages?.[page]?.elements}
               />
             ) : (
               <KioskScreenRenderer
@@ -262,7 +287,7 @@ export function DesignBuilderPreview({
                 <div className="relative flex min-h-0 flex-1 flex-col">
                   <KioskVideoBackground videoUrl={videoUrl} />
                   <div className="relative z-10 flex min-h-0 flex-1 flex-col">
-                    <NeutralScreen page={page} branding={branding} businessName={businessName} />
+                    <NeutralScreen page={page} branding={branding} />
                   </div>
                 </div>
               </KioskScreenRenderer>

@@ -77,6 +77,7 @@ type QueueRow = {
 type FinalizePayload = {
   photos?: string[];
   gif_photos?: string[];
+  gif_all_photos?: string[];
   retake_count?: number;
   template_id?: string | null;
 };
@@ -242,6 +243,13 @@ async function finalizeCloudSession(
       "gif-photo.jpg"
     );
   }
+  for (const file of payload.gif_all_photos ?? []) {
+    form.append(
+      "gif_all_photos",
+      new Blob([readFileSync(file)], { type: "image/jpeg" }),
+      "gif-all-photo.jpg"
+    );
+  }
 
   const response = await getFetch(ctx)(
     `${cloudBase(ctx)}/api/v1/public/${session.business_slug}/sessions/${cloudId}/finalize`,
@@ -264,7 +272,11 @@ function quarantineSession(ctx: SyncContext, session: SyncSessionRow, payloadPat
   const dir = join(ctx.config.dataDir, "quarantine", session.id);
   mkdirSync(dir, { recursive: true });
 
-  const files = [...(payload?.photos ?? []), ...(payload?.gif_photos ?? [])];
+  const files = [
+    ...(payload?.photos ?? []),
+    ...(payload?.gif_photos ?? []),
+    ...(payload?.gif_all_photos ?? []),
+  ];
   for (const file of files) {
     const target = join(dir, basename(file));
     writeFileSync(target, readFileSync(file));

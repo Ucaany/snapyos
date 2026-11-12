@@ -93,7 +93,7 @@ export async function GET(request: Request) {
 
     const { data: sessions, error: sessionsError } = await supabase
       .from("sessions")
-      .select("id, result_gif_key")
+      .select("id, result_gif_key, result_photos_gif_key")
       .eq("business_id", setting.business_id)
       .in("status", ["completed", "expired"])
       .lt("finalized_at", cutoff)
@@ -106,7 +106,11 @@ export async function GET(request: Request) {
       continue;
     }
 
-    const rows = (sessions ?? []) as { id: string; result_gif_key: string | null }[];
+    const rows = (sessions ?? []) as {
+      id: string;
+      result_gif_key: string | null;
+      result_photos_gif_key: string | null;
+    }[];
     if (rows.length === 0) continue;
     const ids = rows.map((s) => s.id);
 
@@ -127,7 +131,11 @@ export async function GET(request: Request) {
     }
     const batchSessions: SessionMedia[] = rows.map((s) => {
       const keys = photosBySession.get(s.id) ?? [];
-      const all = s.result_gif_key ? [...keys, s.result_gif_key] : keys;
+      const all = [
+        ...keys,
+        ...(s.result_gif_key ? [s.result_gif_key] : []),
+        ...(s.result_photos_gif_key ? [s.result_photos_gif_key] : []),
+      ];
       return { id: s.id, keys: Array.from(new Set(all)) };
     });
 
@@ -147,7 +155,11 @@ export async function GET(request: Request) {
         await supabase.from("photos").delete().in("session_id", sessionIds);
         await supabase
           .from("sessions")
-          .update({ media_cleaned_at: at, result_gif_key: null })
+          .update({
+            media_cleaned_at: at,
+            result_gif_key: null,
+            result_photos_gif_key: null,
+          })
           .in("id", sessionIds);
       },
       log,

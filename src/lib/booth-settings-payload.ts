@@ -63,6 +63,8 @@ export type BoothSessionDraft = {
   max_retakes: number | null;
   /** Layar review grid setelah capture (default ON). */
   kiosk_review_grid?: boolean;
+  /** Foto otomatis berurutan tanpa tombol per foto (default OFF). */
+  auto_capture: boolean;
 };
 
 export type BoothAppearanceDraft = {
@@ -203,6 +205,7 @@ export function boothDraftToSettings(draft: BoothDraft): BoothSettingsPayload {
       timer_seconds: draft.session.timer_seconds,
       warning_seconds: draft.session.warning_seconds,
       max_retakes: draft.session.max_retakes,
+      auto_capture: draft.session.auto_capture,
       ...(draft.session.kiosk_review_grid === undefined
         ? {}
         : { kiosk_review_grid: draft.session.kiosk_review_grid }),
