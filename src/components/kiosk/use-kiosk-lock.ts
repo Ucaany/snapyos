@@ -44,6 +44,14 @@ function markUnlocked(): void {
   }
 }
 
+function clearUnlocked(): void {
+  try {
+    sessionStorage.removeItem(UNLOCKED_SESSION_KEY);
+  } catch {
+    /* private mode / storage penuh: state memori tetap jadi sumber kebenaran */
+  }
+}
+
 export function useKioskLock(
   active: boolean,
   orientation: "landscape" | "portrait" | undefined,
@@ -52,6 +60,9 @@ export function useKioskLock(
   fullscreenEnabled = true
 ) {
   const [reengage, setReengage] = useState(false);
+  // Naik saat relock: memaksa effect memasang ulang penjaga bila sebelumnya
+  // dilewati karena sesi ini sudah pernah di-unlock.
+  const [lockEpoch, setLockEpoch] = useState(0);
   const unlockedRef = useRef(false);
   const holdStartRef = useRef<number | null>(null);
   const holdTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -114,6 +125,20 @@ export function useKioskLock(
     void lockOrientation("any").catch(() => undefined);
   }, [clearHold, lockOrientation]);
 
+  /**
+   * Kunci ulang di awal sesi customer. Dipanggil dari handler klik (gesture
+   * nyata) supaya `requestFullscreen` tidak ditolak browser. Menghapus flag
+   * unlock supaya reload berikutnya juga kembali terkunci.
+   */
+  const relock = useCallback(() => {
+    clearHold();
+    unlockedRef.current = false;
+    clearUnlocked();
+    setReengage(false);
+    setLockEpoch((n) => n + 1);
+    requestFullscreen();
+  }, [clearHold, requestFullscreen]);
+
   // Aktifkan lock + pasang semua penjaga.
   useEffect(() => {
     if (!active || unlockedRef.current || alreadyUnlocked()) return;
@@ -136,6 +161,15 @@ export function useKioskLock(
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (unlockedRef.current) return;
+      // Keyboard fisik (mini PC) juga gestur sah: pulihkan fullscreen sebelum
+      // shortcut diproses, supaya PIN/setelan tidak pernah tampil jendela.
+      if (
+        !requestingRef.current &&
+        !document.fullscreenElement &&
+        getDeviceProfile().supportsFullscreen
+      ) {
+        requestFullscreen();
+      }
       // Shortcut keluar diperiksa SEBELUM blokir — Ctrl+Alt+X juga cocok
       // dengan aturan "altKey" dan dulu tertelan oleh cabang blokir.
       if (isExitShortcut(e)) {
@@ -218,9 +252,10 @@ export function useKioskLock(
     lockOrientation,
     onExitRequest,
     fullscreenEnabled,
+    lockEpoch,
   ]);
 
-  return { reengage, requestFullscreen, unlock };
+  return { reengage, requestFullscreen, unlock, relock };
 }
 
 // Tombol petugas — tahan 3 detik via pointer events (mouse + sentuh; touch

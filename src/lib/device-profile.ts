@@ -101,8 +101,9 @@ export function getDeviceProfile(): DeviceProfile {
     isIos: isIosDevice,
     isAndroid: isAndroidDevice,
     isPwaInstalled: isPwaInstalled(),
-    // iOS Safari tidak dukung requestFullscreen; Android Chrome dukung.
-    supportsFullscreen: isAndroidDevice,
+    // iOS Safari tidak dukung requestFullscreen; Android Chrome dan Chrome
+    // desktop mendukung (mini PC kiosk memakai desktop).
+    supportsFullscreen: isAndroidDevice || kind === "desktop",
     defaultOrientation: isPhone ? "portrait" : "landscape",
     // Kiosk tablet = kamera belakang (kualitas); phone selfie = kamera depan.
     defaultFacingMode: isPhone ? "user" : "environment",

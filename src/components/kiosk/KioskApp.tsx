@@ -237,11 +237,13 @@ export function KioskApp({
   const [settingsPrompt, setSettingsPrompt] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const requestExit = useCallback(() => setExitPrompt(true), []);
-  const { reengage, requestFullscreen, unlock } = useKioskLock(
-    step !== "activation",
+  const { reengage, requestFullscreen, unlock, relock } = useKioskLock(
+    // Kiosk dipaksa fullscreen di SEMUA layar, termasuk aktivasi, setup,
+    // PIN petugas, dan panel setelan. Tidak ada opt-out dari setelan booth.
+    true,
     currentPhotobox.camera_settings.screen_orientation,
     requestExit,
-    currentPhotobox.camera_settings.fullscreen !== false
+    true
   );
   const touchExit = useHoldExit(requestExit);
 
@@ -948,7 +950,12 @@ export function KioskApp({
           <WelcomeScreen
             business={liveConfig.business}
             branding={effectiveBranding}
-            onStart={() => setStep(hasGuide ? "guide" : "package")}
+            onStart={() => {
+              // Gesture customer = kesempatan sah untuk fullscreen. Kunci ulang
+              // di awal setiap sesi, termasuk setelah petugas keluar kiosk.
+              relock();
+              setStep(hasGuide ? "guide" : "package");
+            }}
           />
         </KioskScreenRenderer>
       )}
@@ -1157,7 +1164,10 @@ export function KioskApp({
           type="button"
           aria-label="Petugas: buka setelan booth"
           title="Petugas: setelan booth"
-          onClick={() => setSettingsPrompt(true)}
+          onClick={() => {
+            requestFullscreen();
+            setSettingsPrompt(true);
+          }}
           className="fixed left-3 z-40 flex size-12 items-center justify-center border-2 border-ink/40 bg-surface text-ink transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink lg:left-4"
           style={{
             marginLeft: "env(safe-area-inset-left)",
@@ -1172,7 +1182,7 @@ export function KioskApp({
 
       {/* Overlay re-engage fullscreen. Customer hanya bisa kembali ke mode
           penuh; keluar kiosk butuh PIN petugas (server-verified). */}
-      {reengage && step !== "activation" && (
+      {reengage && (
         <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center gap-5 border-4 border-ink bg-bg p-6 text-center">
           <Maximize2 className="size-10" aria-hidden />
           <h2 className="font-display text-2xl uppercase leading-none tracking-[-0.02em] md:text-3xl">
