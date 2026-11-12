@@ -1131,7 +1131,7 @@ export function KioskApp({
           // editor memindahkannya ke kanan-atas dan bertabrakan dengan header
           // foto + timer sesi; sudut kiri-bawah tidak dipakai kontrol mana pun.
           aria-describedby="kiosk-exit-help"
-          className="fixed left-3 z-40 flex size-12 items-center justify-center border-2 border-ink/20 bg-surface/60 text-muted-foreground opacity-40 transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink lg:left-4"
+          className="fixed left-3 z-40 flex size-12 items-center justify-center border-2 border-ink/40 bg-surface text-ink transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink lg:left-4"
           style={{
             marginLeft: "env(safe-area-inset-left)",
             bottom: online
@@ -1158,7 +1158,7 @@ export function KioskApp({
           aria-label="Petugas: buka setelan booth"
           title="Petugas: setelan booth"
           onClick={() => setSettingsPrompt(true)}
-          className="fixed left-3 z-40 flex size-12 items-center justify-center border-2 border-ink/20 bg-surface/60 text-muted-foreground opacity-40 transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink lg:left-4"
+          className="fixed left-3 z-40 flex size-12 items-center justify-center border-2 border-ink/40 bg-surface text-ink transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink lg:left-4"
           style={{
             marginLeft: "env(safe-area-inset-left)",
             bottom: online

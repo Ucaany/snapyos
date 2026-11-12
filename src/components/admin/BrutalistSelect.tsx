@@ -40,7 +40,7 @@ export function BrutalistSelect({
         id={selectId}
         name={name}
         className={cn(
-          "h-11 w-full min-w-[10rem] rounded-none border-2 border-ink bg-surface px-3 font-mono text-sm shadow-[2px_2px_0_0_#111111] outline-none focus-visible:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink md:w-auto",
+          "h-11 w-full rounded-none border-2 border-ink bg-surface px-3 font-mono text-sm shadow-hard-sm outline-none focus-visible:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink md:w-auto",
           className
         )}
         {...rest}

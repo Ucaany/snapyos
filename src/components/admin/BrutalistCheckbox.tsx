@@ -38,7 +38,7 @@ export function BrutalistCheckbox({
     <label
       htmlFor={cbId}
       className={cn(
-        "flex min-h-11 items-start gap-2 border-2 border-ink/20 bg-muted/40 p-3 font-mono text-xs uppercase tracking-[0.1em]",
+        "flex min-h-11 items-start gap-2 border-2 border-ink/40 bg-muted p-3 font-mono text-xs uppercase tracking-[0.1em]",
         wrapperClassName
       )}
     >
@@ -50,7 +50,7 @@ export function BrutalistCheckbox({
         name={name}
         value={onValue}
         defaultChecked={defaultChecked}
-        className={cn("mt-0.5 h-4 w-4 accent-[#ffd400]", className)}
+        className={cn("mt-0.5 h-4 w-4 accent-accent", className)}
         {...rest}
       />
       <span className="flex flex-col gap-0.5">

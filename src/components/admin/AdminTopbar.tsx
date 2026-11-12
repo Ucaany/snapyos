@@ -1,3 +1,5 @@
+import Image from "next/image";
+import Link from "next/link";
 import { LogOut } from "lucide-react";
 
 import { logoutAction } from "@/server/auth-actions";
@@ -22,19 +24,19 @@ export function AdminTopbar({
   return (
     <header className="sticky top-0 z-10 border-b-2 border-ink bg-bg">
       <div className="flex h-16 w-full items-center gap-2 px-4 md:gap-4 md:px-6">
-        <a
+        <Link
           href="/admin"
           className="flex min-h-11 shrink-0 items-center gap-2 font-display text-base font-bold uppercase tracking-tight md:text-lg"
         >
-          <img
+          <Image
             src="/snapyos-mark.png"
             alt="Logo SnapyOS"
             width={32}
             height={32}
             className="h-8 w-8 shrink-0"
           />
-          SnapyOS<span className="text-accent">®</span>
-        </a>
+          SnapyOS<span className="text-ink">®</span>
+        </Link>
 
         <span className="hidden h-9 min-w-0 items-center border-2 border-ink bg-surface px-3 font-mono text-xs uppercase tracking-[0.05em] text-ink sm:flex">
           Platform · Admin

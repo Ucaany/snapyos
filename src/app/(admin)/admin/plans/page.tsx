@@ -108,7 +108,7 @@ export default async function AdminPlansPage() {
   return (
     <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       <PageHeader
-        eyebrow="ADMIN - PLANS"
+        eyebrow="ADMIN / PAKET"
         icon={CreditCard}
         title="Manajemen Paket"
         meta="HARGA · LIMIT SESI KONKUREN · FEATURE FLAGS · PLATFORM FEE"
@@ -253,7 +253,7 @@ export default async function AdminPlansPage() {
         {plans.map((p) => (
           <details
             key={p.id}
-            className="border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]"
+            className="border-2 border-ink bg-surface shadow-hard"
           >
             <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-3 p-4">
               <span className="flex items-center gap-3">
@@ -270,7 +270,7 @@ export default async function AdminPlansPage() {
               <ChevronDown className="summary-chevron size-4 shrink-0" aria-hidden="true" />
             </summary>
             <div className="border-t-2 border-ink/10 p-4">
-              <dl className="mb-4 grid grid-cols-2 gap-[2px] border-2 border-ink/20 bg-ink/20 md:grid-cols-4">
+              <dl className="mb-4 grid grid-cols-2 gap-[2px] border-2 border-ink bg-ink md:grid-cols-4">
                 {[
                   {
                     label: "Harga tahunan",

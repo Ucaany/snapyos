@@ -32,12 +32,12 @@ const dateFmt = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyl
 
 function MoneyCell({ amount, status }: { amount: number; status: string }) {
   return (
-    <td className="px-4 py-3 font-mono text-xs tabular-nums">
+    <TableCell className="tabular-nums">
       {formatIDR(amount)}
       {/* Satu sumber warna status: StatusBadge. Map duplikat di sini pernah
           drift (refunded text-ink di atas accent-4 = 3.2:1, gagal AA). */}
       <StatusBadge status={status} className="ml-2 px-1.5" />
-    </td>
+    </TableCell>
   );
 }
 
@@ -56,7 +56,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
   return (
     <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       <PageHeader
-        eyebrow="ADMIN - USERS / DETAIL"
+        eyebrow="ADMIN / PENGGUNA / DETAIL"
         icon={Users}
         title={user.name ?? user.email}
         meta={`${user.email} · ${user.role.toUpperCase()} · TERDAFTAR ${dateFmt.format(new Date(user.created_at))}`}

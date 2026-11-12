@@ -131,7 +131,7 @@ export function PaidNotice({
   const radius = kioskStyle?.radius ?? 0;
   return (
     <div
-      className="flex min-h-[46dvh] flex-col items-center justify-center gap-4 border-2 border-ink bg-accent p-6 text-center shadow-hard"
+      className="flex flex-col items-center justify-center gap-4 border-2 border-ink bg-accent p-6 text-center shadow-hard"
       style={
         kioskStyle
           ? {

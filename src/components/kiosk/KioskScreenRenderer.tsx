@@ -73,7 +73,7 @@ function StateView({
   if (state === "loading") {
     return (
       <div
-        className="mx-auto flex w-full max-w-[640px] flex-col justify-center gap-6 p-6"
+        className="mx-auto flex w-full max-w-[640px] flex-col justify-center gap-6 p-6 md:p-10"
         aria-busy="true"
       >
         <KioskEyebrow>{copy.eyebrow}</KioskEyebrow>
@@ -84,7 +84,7 @@ function StateView({
   }
   return (
     <div
-      className="mx-auto flex w-full max-w-[640px] flex-col items-start justify-center gap-5 p-6"
+      className="mx-auto flex w-full max-w-[640px] flex-col items-start justify-center gap-5 p-6 md:p-10"
       role={state === "error" ? "alert" : "status"}
       aria-live="polite"
     >

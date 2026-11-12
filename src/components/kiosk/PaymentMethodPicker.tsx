@@ -1,7 +1,7 @@
 "use client";
 import { ArrowLeft, Banknote, QrCode, Tag } from "lucide-react";
 import type { KioskPaymentMethod, KioskVisualStyle } from "@/lib/kiosk-types";
-import { KioskAction, KioskEyebrow } from "@/components/kiosk/ui";
+import { KioskAction, KioskEyebrow, KioskHeading } from "@/components/kiosk/ui";
 
 const icon = { qris: QrCode, va: Banknote, redirect: QrCode, voucher: Tag, cash: Banknote };
 
@@ -30,15 +30,15 @@ export function PaymentMethodPicker({
     <section className="flex w-full flex-col gap-4">
       <div className="flex flex-col gap-1.5">
         <KioskEyebrow>{"METODE PEMBAYARAN"}</KioskEyebrow>
-        <h2 className="font-display text-xl uppercase leading-none tracking-[-0.02em] md:text-2xl">
+        <KioskHeading as="h2" size="sm" scale={ks?.fontScale ?? 1}>
           Pilih cara bayar
-        </h2>
+        </KioskHeading>
       </div>
 
       {error && (
         <p
           role="alert"
-          className="border-2 border-destructive bg-destructive/10 px-3 py-2 text-xs font-bold uppercase leading-relaxed tracking-[0.04em]"
+          className="border-2 border-destructive bg-surface px-3 py-2 text-xs font-bold uppercase leading-relaxed tracking-[0.04em]"
           style={{ borderRadius: radius }}
         >
           {error}
@@ -55,7 +55,7 @@ export function PaymentMethodPicker({
         // menatap layar buntu tanpa tahu harus apa.
         <p
           role="status"
-          className="border-2 border-ink bg-accent-2/20 px-4 py-3 text-sm leading-relaxed"
+          className="border-2 border-ink bg-accent-2 px-4 py-3 text-sm leading-relaxed"
           style={{ borderRadius: radius }}
         >
           Belum ada metode pembayaran aktif di booth ini. Hubungi petugas.
@@ -72,7 +72,7 @@ export function PaymentMethodPicker({
               type="button"
               disabled={disabled}
               onClick={() => onSelect(method)}
-              className={`flex min-h-[132px] flex-col items-start justify-between gap-4 border-2 border-ink p-4 text-left shadow-hard transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink active:translate-y-[2px] active:shadow-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none ${
+              className={`flex min-h-[132px] flex-col items-start justify-between gap-4 border-2 border-ink p-4 text-left shadow-hard transition-transform duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink active:translate-y-[2px] active:shadow-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none ${
                 featured ? "bg-accent" : "bg-surface"
               }`}
               style={

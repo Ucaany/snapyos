@@ -40,11 +40,11 @@ export default async function ResultPage({ params }: Props) {
 
   const cardShadow = "shadow-hard";
   const actionShadow =
-    "shadow-hard outline-none transition-transform hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-hard-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink active:translate-x-[4px] active:translate-y-[4px] active:shadow-none";
+    "shadow-hard outline-none transition-transform focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink active:translate-x-[2px] active:translate-y-[2px] active:shadow-none";
 
   return (
     <div className="min-h-[100dvh] bg-bg text-ink">
-      <header className="sticky top-0 z-20 border-b-2 border-ink bg-surface/95 backdrop-blur">
+      <header className="sticky top-0 z-20 border-b-2 border-ink bg-surface">
         <div className="mx-auto flex max-w-[900px] items-center justify-between gap-4 px-5 py-3 md:px-6">
           <div className="flex items-center gap-3">
             {result.business.logo_url ? (

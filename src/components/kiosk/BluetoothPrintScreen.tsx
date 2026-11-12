@@ -409,7 +409,7 @@ export function BluetoothPrintScreen({
               ? `Printer terakhir: ${printerName}. Nyalakan printer lalu hubungkan.`
               : "Nyalakan printer thermal, aktifkan Bluetooth, lalu hubungkan."}
           </p>
-          <p className="max-w-[46ch] border-2 border-ink bg-accent-2/15 px-3 py-2 text-[10px] font-bold uppercase leading-relaxed tracking-[0.08em]">
+          <p className="max-w-[46ch] border-2 border-ink bg-accent-2 px-3 py-2 text-[10px] font-bold uppercase leading-relaxed tracking-[0.08em]">
             Thermal 1-bit (384/576 dot) — bukan cetak foto. Untuk hasil foto gunakan CUPS atau
             dialog OS.
           </p>
@@ -437,7 +437,7 @@ export function BluetoothPrintScreen({
             <button
               type="button"
               onClick={() => void connectAndPrintSerial()}
-              className="min-h-11 border-2 border-ink bg-surface px-3 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-ink shadow-hard-sm transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+              className="min-h-11 border-2 border-ink bg-surface px-3 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-ink shadow-hard-sm transition-transform focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
             >
               Printer Classic (SPP) · Web Serial
             </button>

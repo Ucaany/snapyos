@@ -91,7 +91,7 @@ const DEFAULT_DRAFT: Draft = {
     kiosk_review_grid: true,
   },
   appearance: {
-    bg_color: "#f5f1e8",
+    bg_color: "#fffdf5",
     text_color: "#111111",
     font_scale: 1,
     button_radius: 0,

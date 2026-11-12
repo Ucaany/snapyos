@@ -9,6 +9,7 @@ import {
   KioskAction,
   KioskChip,
   KioskEyebrow,
+  KioskHeader,
   KioskHeading,
   kioskFont,
   kioskGutter,
@@ -46,14 +47,6 @@ export function PackagePicker({
   const primary = primaryColor || defaultBrandColors.accent;
   const secondary = secondaryColor || defaultBrandColors.ink;
   const contentAlign = ks?.align ?? "center";
-  const alignClass =
-    contentAlign === "left" ? "text-left" : contentAlign === "right" ? "text-right" : "text-center";
-  const itemsClass =
-    contentAlign === "left"
-      ? "items-start"
-      : contentAlign === "right"
-        ? "items-end"
-        : "items-center";
   const gutter = kioskGutter(ks?.padding);
   const radius = ks?.radius ?? 0;
   const scale = ks?.fontScale ?? 1;
@@ -77,31 +70,26 @@ export function PackagePicker({
         className="relative z-10 mx-auto flex w-full max-w-[1120px] flex-1 flex-col gap-6 py-6 md:gap-7 md:py-8"
         style={{ paddingLeft: gutter, paddingRight: gutter }}
       >
-        <header
-          className={`flex w-full flex-col gap-4 border-b-2 border-ink/15 pb-5 md:flex-row md:items-end md:justify-between md:gap-6 ${alignClass}`}
-        >
-          <div className={`flex min-w-0 flex-col gap-2.5 ${itemsClass}`}>
-            <KioskEyebrow>{"LANGKAH 01 · PILIH PAKET"}</KioskEyebrow>
-            <KioskHeading size="md" scale={scale}>
-              {titleText || "Pilih paket kamu"}
-            </KioskHeading>
-            <p className="max-w-[54ch] text-sm leading-relaxed text-muted-foreground md:text-base">
-              Harga sudah termasuk sesi foto, frame, dan hasil digital. Jumlah foto mengikuti slot
-              frame yang dipilih; jumlah cetak mengikuti paket.
-            </p>
-          </div>
-          {onBack ? (
-            <KioskAction
-              tone="secondary"
-              size="md"
-              onClick={onBack}
-              kioskStyle={ks}
-              className="font-mono tracking-[0.1em]"
-            >
-              Kembali
-            </KioskAction>
-          ) : null}
-        </header>
+        <KioskHeader
+          eyebrow="LANGKAH 01 · PILIH PAKET"
+          title={titleText || "Pilih paket kamu"}
+          description="Harga sudah termasuk sesi foto, frame, dan hasil digital. Jumlah foto mengikuti slot frame yang dipilih; jumlah cetak mengikuti paket."
+          align={contentAlign}
+          scale={scale}
+          actions={
+            onBack ? (
+              <KioskAction
+                tone="secondary"
+                size="md"
+                onClick={onBack}
+                kioskStyle={ks}
+                className="font-mono tracking-[0.1em]"
+              >
+                Kembali
+              </KioskAction>
+            ) : null
+          }
+        />
 
         {packages.length === 0 ? (
           <div
@@ -131,7 +119,7 @@ export function PackagePicker({
                   type="button"
                   onClick={() => onSelect(pkg)}
                   disabled={busy}
-                  className="group flex h-full flex-col gap-3 border-2 border-ink p-4 text-left shadow-hard transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink active:translate-y-[2px] active:shadow-none disabled:pointer-events-none disabled:opacity-60 md:p-5"
+                  className="group flex h-full flex-col gap-3 border-2 border-ink p-4 text-left shadow-hard transition-transform duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink active:translate-x-[2px] active:translate-y-[2px] active:shadow-none disabled:pointer-events-none disabled:opacity-60 md:p-5"
                   style={{
                     borderRadius: radius,
                     backgroundColor: featured ? primary : undefined,
@@ -143,19 +131,16 @@ export function PackagePicker({
                       {`PAKET ${String(i + 1).padStart(2, "0")}`}
                     </KioskEyebrow>
                     <KioskChip
-                      className="border-ink bg-bg/70 text-ink"
+                      className="border-ink bg-bg text-ink"
                       style={{ borderRadius: radius }}
                     >
                       {`${pkg.print_count} CETAK`}
                     </KioskChip>
                   </div>
 
-                  <h2
-                    className="font-display uppercase leading-[0.95] tracking-[-0.02em] text-ink"
-                    style={{ fontSize: kioskFont(1.25, 1.75, scale, 2.4) }}
-                  >
+                  <KioskHeading as="h2" size="sm" scale={scale}>
                     {pkg.name}
-                  </h2>
+                  </KioskHeading>
 
                   {pkg.description && (
                     <p className="text-xs leading-relaxed text-ink/70 md:text-sm">

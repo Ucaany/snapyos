@@ -19,7 +19,7 @@ export function AdminEmptyState({
   icon?: EmptyStateIcon;
 }) {
   return (
-    <div className="flex flex-col items-start gap-2 border-2 border-dashed border-ink/40 bg-muted p-6 md:p-8">
+    <div className="flex flex-col items-start gap-2 border-2 border-dashed border-ink/40 bg-muted p-4 md:p-5">
       <div className="flex items-center gap-2">
         {Icon ? (
           <span className="flex size-8 shrink-0 items-center justify-center border-2 border-ink/40 bg-surface">

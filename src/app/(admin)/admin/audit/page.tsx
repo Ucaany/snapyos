@@ -5,7 +5,7 @@ import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminPaginator } from "@/components/admin/AdminPaginator";
 import { RecordCard } from "@/components/ui/record-card";
 import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
-import { RecordCollection } from "@/components/admin/RecordCollection";
+import { RecordCollection } from "@/components/ui/record-collection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
@@ -56,13 +56,13 @@ export default async function AdminAuditPage({
   return (
     <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       <PageHeader
-        eyebrow="ADMIN - AUDIT LOG"
+        eyebrow="ADMIN / LOG AUDIT"
         title="Log Audit"
         icon={ScrollText}
         meta={`${total} ENTRY · SEMUA AKSI ADMIN & FINANSIAL TERCATAT`}
       />
 
-      <section className="border-2 border-ink bg-muted p-4 shadow-[4px_4px_0_0_#111111]">
+      <section className="border-2 border-ink bg-muted p-4 shadow-hard">
         <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
           {"HAPUS RIWAYAT (RETENSI)"}
         </p>

@@ -505,7 +505,7 @@ function CameraCaptureInner({
           </div>
         )}
 
-        {flash && <div className="pointer-events-none absolute inset-0 bg-white" />}
+        {flash && <div className="pointer-events-none absolute inset-0 bg-surface" />}
 
         {error && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-bg p-6 text-center">

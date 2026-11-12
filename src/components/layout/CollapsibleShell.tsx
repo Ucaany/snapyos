@@ -61,7 +61,7 @@ export function CollapsibleShell({
             aria-label={collapsed ? "Perluas sidebar" : "Ciutkan sidebar"}
             aria-expanded={!collapsed}
             title={collapsed ? "Perluas sidebar" : "Ciutkan sidebar"}
-            className="relative flex size-8 items-center justify-center border-2 border-ink bg-surface text-ink transition-colors after:absolute after:-inset-1.5 hover:bg-accent active:translate-y-[2px]"
+            className="relative flex size-8 items-center justify-center border-2 border-ink bg-surface text-ink transition-colors after:absolute after:-inset-1.5 hover:bg-accent active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
           >
             {collapsed ? <ChevronRight className="size-4" /> : <ChevronLeft className="size-4" />}
           </button>

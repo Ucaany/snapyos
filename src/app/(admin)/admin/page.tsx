@@ -7,7 +7,6 @@ import { RevenueChart } from "@/components/dashboard/RevenueChart";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
-import { buttonVariants } from "@/components/ui/button-variants";
 import { formatIDR } from "@/lib/dashboard-math";
 import {
   getAdminAnalytics,
@@ -60,7 +59,7 @@ export default async function AdminOverviewPage() {
       <PageHeader
         size="hero"
         icon={Gauge}
-        eyebrow="ADMIN - PLATFORM CONTROL"
+        eyebrow="ADMIN / OPERASI PLATFORM"
         title="Operasi SnapyOS"
         meta={`SEMUA TENANT · AGREGAT PLATFORM · ${payments.webhookIntegrity.total} WEBHOOK TEREKAM`}
       />
@@ -68,7 +67,7 @@ export default async function AdminOverviewPage() {
       {settings.maintenance_mode ? (
         <div
           role="alert"
-          className="border-2 border-ink bg-accent-2 px-4 py-3 font-mono text-xs font-bold uppercase tracking-[0.1em] text-ink"
+          className="border-2 border-ink bg-accent px-4 py-3 font-mono text-xs font-bold uppercase tracking-[0.1em] text-ink"
         >
           MAINTENANCE MODE AKTIF · PLATFORM SETTING GLOBAL
         </div>
@@ -88,7 +87,7 @@ export default async function AdminOverviewPage() {
               href={item.href}
               className={
                 "flex min-h-11 flex-col justify-between gap-2 p-3 hover:bg-muted " +
-                (item.value > 0 ? "bg-accent-2" : "bg-surface")
+                (item.value > 0 ? "bg-accent" : "bg-surface")
               }
             >
               <span className="font-mono text-[11px] uppercase tracking-[0.12em]">
@@ -126,7 +125,7 @@ export default async function AdminOverviewPage() {
       </div>
 
       <dl
-        className="grid grid-cols-2 gap-[2px] border-2 border-ink bg-ink shadow-[4px_4px_0_0_#111111] md:grid-cols-4"
+        className="grid grid-cols-2 gap-[2px] border-2 border-ink bg-ink shadow-hard md:grid-cols-4"
         aria-label="Metrik platform"
       >
         {[
@@ -251,18 +250,10 @@ export default async function AdminOverviewPage() {
               </div>
             ))}
           </dl>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Link
-              href="/admin/subscriptions/pending-review"
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              Antrian Aktivasi Manual ({health.pendingReview})
-            </Link>
-          </div>
         </CardContent>
       </Card>
 
-      <details className="border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
+      <details className="border-2 border-ink bg-surface shadow-hard">
         <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 px-5 font-mono text-[11px] font-bold uppercase tracking-[0.12em]">
           Rincian user seluruh platform
           <ChevronDown className="summary-chevron size-4" aria-hidden="true" />

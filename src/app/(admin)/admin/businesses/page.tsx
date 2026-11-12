@@ -6,7 +6,7 @@ import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminPaginator } from "@/components/admin/AdminPaginator";
 import { RecordCard } from "@/components/ui/record-card";
 import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
-import { RecordCollection } from "@/components/admin/RecordCollection";
+import { RecordCollection } from "@/components/ui/record-collection";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
@@ -46,7 +46,7 @@ function StorageBadge({
       <span
         className={
           "mt-1 inline-flex h-6 items-center border-2 border-ink px-2 text-[11px] font-bold uppercase tracking-[0.1em] " +
-          (storage.isFull ? "bg-accent-2" : "bg-accent-3")
+          (storage.isFull ? "bg-accent" : "bg-accent-3")
         }
       >
         {storage.isFull ? "PENUH - UPGRADE" : `AKTIF · ${storage.percent}%`}
@@ -110,7 +110,7 @@ export default async function AdminBusinessesPage({
   return (
     <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       <PageHeader
-        eyebrow="ADMIN - BUSINESSES"
+        eyebrow="ADMIN / BISNIS"
         title="Manajemen Bisnis"
         icon={Building2}
         meta={`${total} tenant · suspend memblokir sesi & checkout baru`}

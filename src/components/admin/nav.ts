@@ -18,8 +18,8 @@ import {
 
 /**
  * Nav Admin Platform - docs/10 §10.1–10.4.
- * Modul netral (tanpa "use client") agar bisa dipakai shell tema modern dari
- * server layout; sidebar brutalis mengimpor daftar yang sama.
+ * Modul netral (tanpa "use client") agar bisa dipakai dari server layout;
+ * sidebar brutalis mengimpor daftar yang sama.
  */
 
 export type NavItem = {
@@ -51,7 +51,7 @@ export const NAV_GROUPS: AdminNavGroup[] = [
       { label: "Langganan", href: "/admin/subscriptions", icon: Receipt },
       // Antrian review manual aktivasi post-payment - docs/02 §2.4b.
       {
-        label: "Antrian Aktivasi Manual",
+        label: "Review Aktivasi",
         href: "/admin/subscriptions/pending-review",
         icon: AlertOctagon,
       },

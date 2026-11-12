@@ -2,7 +2,7 @@
 import { ArrowLeft, Banknote } from "lucide-react";
 import { formatIDR } from "@/lib/dashboard-math";
 import type { KioskVisualStyle } from "@/lib/kiosk-types";
-import { KioskAction, KioskCard, KioskEyebrow } from "@/components/kiosk/ui";
+import { KioskAction, KioskCard, KioskEyebrow, KioskHeading } from "@/components/kiosk/ui";
 
 export function CashPayment({
   amount,
@@ -29,9 +29,9 @@ export function CashPayment({
         <Banknote className="size-7 shrink-0" aria-hidden />
         <KioskEyebrow>{"BAYAR DI KASIR"}</KioskEyebrow>
       </div>
-      <h2 className="font-display text-2xl uppercase leading-[0.95] tracking-[-0.02em] md:text-3xl">
+      <KioskHeading as="h2" size="sm" scale={ks?.fontScale ?? 1}>
         Hubungi petugas
-      </h2>
+        </KioskHeading>
       <p className="max-w-[52ch] text-sm leading-relaxed text-muted-foreground md:text-base">
         Bayarkan <strong className="text-ink">{formatIDR(amount)}</strong> kepada petugas. Sesi foto
         dibuka setelah petugas mengonfirmasi pembayaran.

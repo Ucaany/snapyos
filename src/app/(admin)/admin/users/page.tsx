@@ -6,7 +6,7 @@ import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminPaginator } from "@/components/admin/AdminPaginator";
 import { RecordCard } from "@/components/ui/record-card";
 import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
-import { RecordCollection } from "@/components/admin/RecordCollection";
+import { RecordCollection } from "@/components/ui/record-collection";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
@@ -25,29 +25,11 @@ import { getAdminUser, isAdminEmail, listUsers } from "@/server/admin";
 
 type UserRow = Awaited<ReturnType<typeof listUsers>>["items"][number];
 
-function RoleBadge({
-  role,
-  envAdmin,
-  compact = false,
-}: {
-  role: "user" | "admin";
-  envAdmin: boolean;
-  compact?: boolean;
-}) {
+function RoleBadge({ role, envAdmin }: { role: "user" | "admin"; envAdmin: boolean }) {
   if (role === "admin") {
     return (
       <span className="inline-block border-2 border-ink bg-ink px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-bg">
         ADMIN
-      </span>
-    );
-  }
-  if (compact) {
-    return (
-      <span
-        title={envAdmin ? "Akses admin via ADMIN_EMAILS" : undefined}
-        className="inline-block w-fit border-2 border-ink/30 bg-surface px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground"
-      >
-        USER
       </span>
     );
   }
@@ -61,7 +43,7 @@ function RoleBadge({
       </span>
     </span>
   ) : (
-    <span className="inline-block w-fit border-2 border-ink/30 bg-surface px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+    <span className="inline-block w-fit border-2 border-ink/40 bg-surface px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
       USER
     </span>
   );
@@ -106,7 +88,6 @@ function UserRowActions({ u, adminId }: { u: UserRow; adminId?: string }) {
           hidden={{ userId: u.id }}
           submitLabel="Hapus"
           icon="trash"
-          iconOnly
           variant="destructive"
           confirm={`Hapus ${u.email} permanen? Semua sesi dicabut dan data user hilang. Tindakan tidak bisa dibatalkan.`}
           confirmTitle={`Hapus ${u.email}`}
@@ -139,11 +120,11 @@ export default async function AdminUsersPage({
   return (
     <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       <PageHeader
-        eyebrow="ADMIN - USERS"
+        eyebrow="ADMIN / PENGGUNA"
         title="Manajemen User"
         icon={Users}
         meta={`${total} user terdaftar`}
-        description="ADMIN = kelola platform (halaman ini: users, plans, payments). USER = kelola bisnis sendiri (dashboard bisnis, outlet, photobox). Satu akun bisa dua-duanya, admin tinggal buka menu Dashboard Bisnis."
+        description="Buat, suspend, dan ubah role akun platform. Pendaftaran mandiri ditutup."
         right={
           <form
             method="GET"
@@ -180,7 +161,7 @@ export default async function AdminUsersPage({
 
       <section
         aria-labelledby="tambah-user"
-        className="border-2 border-ink bg-muted p-4 shadow-[4px_4px_0_0_#111111]"
+        className="border-2 border-ink bg-muted p-4 shadow-hard"
       >
         <p
           id="tambah-user"
@@ -315,7 +296,7 @@ export default async function AdminUsersPage({
                         {u.email}
                       </Link>
                       {!u.email_verified ? (
-                        <span className="ml-1 inline-block border-2 border-ink/30 px-1 text-[11px] uppercase text-muted-foreground">
+                        <span className="ml-1 inline-block border-2 border-ink/40 px-1 text-[11px] uppercase text-muted-foreground">
                           belum verifikasi
                         </span>
                       ) : null}

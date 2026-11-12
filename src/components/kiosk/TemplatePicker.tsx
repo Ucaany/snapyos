@@ -196,7 +196,7 @@ export function TemplatePicker({
               type="button"
               aria-pressed={selected === null}
               onClick={() => setSelected(null)}
-              className={`flex aspect-[3/4] w-full flex-col items-center justify-center gap-3 border-2 p-3 transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink active:translate-y-[2px] ${
+              className={`flex aspect-[3/4] w-full flex-col items-center justify-center gap-3 border-2 p-3 transition-transform duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink active:translate-y-[2px] ${
                 selected === null
                   ? "border-ink bg-accent shadow-hard"
                   : "border-ink/30 bg-surface shadow-hard"
@@ -225,7 +225,7 @@ export function TemplatePicker({
               </>
             ) : error ? (
               <div
-                className="col-span-full flex flex-col items-start gap-3 border-2 border-destructive bg-destructive/10 p-5"
+                className="col-span-full flex flex-col items-start gap-3 border-2 border-destructive bg-surface p-5"
                 style={{ borderRadius: ks?.radius ?? 0 }}
               >
                 <KioskEyebrow className="text-ink">{"GAGAL MEMUAT FRAME"}</KioskEyebrow>
@@ -268,7 +268,7 @@ export function TemplatePicker({
                     type="button"
                     aria-pressed={active}
                     onClick={() => setSelected(t)}
-                    className={`group relative mx-auto overflow-hidden border-2 bg-muted shadow-hard transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink active:translate-y-[2px] ${
+                    className={`group relative mx-auto overflow-hidden border-2 bg-muted shadow-hard transition-transform duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink active:translate-y-[2px] ${
                       active ? "border-ink" : "border-ink/30 hover:border-ink"
                     }`}
                     // Lebar dibatasi lebar sel DAN tinggi kartu; `aspect-ratio`

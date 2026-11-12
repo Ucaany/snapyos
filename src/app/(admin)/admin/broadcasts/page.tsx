@@ -6,6 +6,7 @@ import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   createBroadcastAction,
   sendBroadcastAction,
@@ -53,10 +54,6 @@ const AUDIENCE_OPTIONS = [
   { value: "owners", label: "Owner bisnis" },
 ] as const;
 
-function statusFor(status: string): string {
-  return status;
-}
-
 export default async function AdminBroadcastsPage() {
   const broadcasts = await listBroadcasts();
   const stats = await getBroadcastStats(broadcasts.map((b) => b.id));
@@ -65,7 +62,7 @@ export default async function AdminBroadcastsPage() {
   return (
     <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       <PageHeader
-        eyebrow="ADMIN - BROADCAST EMAIL"
+        eyebrow="ADMIN / BROADCAST EMAIL"
         icon={Send}
         title="Broadcast Email"
         meta="PENGUMUMAN · MARKETING · RESEND DENGAN LIMIT · RIWAYAT PENGIRIMAN"
@@ -119,12 +116,12 @@ export default async function AdminBroadcastsPage() {
               >
                 Isi pesan
               </label>
-              <textarea
+              <Textarea
                 id="bc-body"
                 name="body"
                 rows={6}
                 placeholder={"Baris ganda = paragraf baru"}
-                className="w-full rounded-none border-2 border-ink bg-surface px-3 py-2 font-mono text-sm shadow-[2px_2px_0_0_#111111] outline-none focus-visible:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+                className="text-sm"
                 required
               />
             </div>
@@ -171,7 +168,7 @@ export default async function AdminBroadcastsPage() {
             return (
               <details
                 key={b.id}
-                className="border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]"
+                className="border-2 border-ink bg-surface shadow-hard"
               >
                 <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-3 p-4">
                   <span className="flex flex-wrap items-center gap-3">
@@ -185,12 +182,12 @@ export default async function AdminBroadcastsPage() {
                       AUDIENS {b.audience.toUpperCase()} · TEMPLATE {b.template_key}
                     </span>
                   </span>
-                  <StatusBadge status={statusFor(b.status)} />
+                  <StatusBadge status={b.status} />
                   <ChevronDown className="summary-chevron size-4 shrink-0" aria-hidden="true" />
                 </summary>
 
                 <div className="border-t-2 border-ink/10 p-4">
-                  <pre className="whitespace-pre-wrap border-2 border-ink/20 bg-bg p-3 font-mono text-xs leading-relaxed">
+                  <pre className="whitespace-pre-wrap border-2 border-ink/40 bg-bg p-3 font-mono text-xs leading-relaxed">
                     {b.body}
                   </pre>
 
@@ -253,7 +250,7 @@ async function RecipientHistory({ campaignId }: { campaignId: string }) {
         Riwayat Pengiriman ({recipients.length})
       </p>
       <div className="max-h-96 overflow-y-auto">
-        <Table containerClassName="border-ink/20 shadow-none">
+        <Table containerClassName="border-ink/40 shadow-none">
           <TableHeader>
             <TableRow>
               <TableHead>Penerima</TableHead>

@@ -399,7 +399,7 @@ export function SetupWizard({
               {cameraError && (
                 <p
                   role="alert"
-                  className="border-2 border-destructive bg-destructive/10 p-3 text-sm"
+                  className="border-2 border-destructive bg-surface p-3 text-sm"
                 >
                   {cameraError.message}
                 </p>
@@ -418,7 +418,7 @@ export function SetupWizard({
             // tidak pernah muncul. Laporkan ke server untuk diagnostik, lalu
             // biarkan lanjut — error kamera yang sesungguhnya tampil di layar
             // capture dengan tombol ulang + ajakan panggil petugas.
-            <div className="flex flex-col gap-4 border-2 border-ink bg-destructive/10 p-5 md:p-6">
+            <div className="flex flex-col gap-4 border-2 border-ink bg-surface p-5 md:p-6">
               <p className="text-sm leading-relaxed">
                 Browser tidak mendukung kamera. Gunakan Chrome terbaru di perangkat kiosk.
               </p>
@@ -584,7 +584,7 @@ export function SetupWizard({
                     </Button>
                   )}
                   {printerError && (
-                    <p role="alert" className="border-2 border-destructive bg-destructive/10 p-3 text-sm">
+                    <p role="alert" className="border-2 border-destructive bg-surface p-3 text-sm">
                       {printerError}
                     </p>
                   )}

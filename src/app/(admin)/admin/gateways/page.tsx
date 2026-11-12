@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { CreditCard, Filter } from "lucide-react";
 import { AdminActionButton } from "@/components/admin/AdminActionForm";
+import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminPaginator } from "@/components/admin/AdminPaginator";
 import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
+import { RecordCard } from "@/components/ui/record-card";
+import { RecordCollection } from "@/components/ui/record-collection";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,7 +42,7 @@ export default async function AdminGatewaysPage({
   return (
     <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       <PageHeader
-        eyebrow="ADMIN - PAYMENT GATEWAYS"
+        eyebrow="ADMIN / GATEWAY"
         icon={CreditCard}
         title="Payment Gateway"
         meta={`${state.total} CREDENTIAL · ENABLE/DISABLE GLOBAL PER PROVIDER`}
@@ -49,9 +52,9 @@ export default async function AdminGatewaysPage({
         <CardHeader>
           <CardTitle>Status Provider Global</CardTitle>
           <CardDescription>
-            Nonaktifkan provider → credential aktif tenant dilewati (checkout fallback aggregator).
-            Dana transaksi tidak pernah disimpan di sini - secret credential hanya di dashboard
-            owner.
+            Nonaktifkan provider → credential aktif tenant dilewati. Tanpa credential aktif, kiosk
+            hanya menerima voucher dan tunai. Dana transaksi tidak pernah disimpan di sini - secret
+            credential hanya di dashboard owner.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -74,7 +77,7 @@ export default async function AdminGatewaysPage({
                     variant={st.enabled ? "outline" : "secondary"}
                     confirm={
                       st.enabled
-                        ? `Nonaktifkan provider ${p.toUpperCase()} global? Checkout tenant yang memakai provider ini akan fallback.`
+                        ? `Nonaktifkan provider ${p.toUpperCase()} global? Checkout tenant yang memakai provider ini ditolak; tanpa credential aktif kiosk hanya menerima voucher dan tunai.`
                         : undefined
                     }
                   />
@@ -107,50 +110,67 @@ export default async function AdminGatewaysPage({
       </form>
 
       {state.credentials.length === 0 ? (
-        <div className="flex flex-col items-start gap-2 border-2 border-dashed border-ink/40 bg-muted p-8">
-          <p className="font-mono text-sm font-bold uppercase tracking-[0.15em]">
-            {"BELUM ADA CREDENTIAL"}
-          </p>
-          <p className="max-w-[55ch] text-sm leading-relaxed text-muted-foreground">
-            Belum ada tenant yang memasang credential direct merchant. Owner mengelola dari{" "}
-            <Link
-              href="/dashboard/payment"
-              className="font-bold underline decoration-ink/40 underline-offset-2 hover:bg-muted"
-            >
-              /dashboard/payment
-            </Link>
-            .
-          </p>
-        </div>
+        <AdminEmptyState heading="Belum ada credential" icon={CreditCard}>
+          Belum ada tenant yang memasang credential direct merchant. Owner mengelola dari{" "}
+          <Link
+            href="/dashboard/payment"
+            className="font-bold underline decoration-ink/40 underline-offset-2 hover:bg-muted"
+          >
+            /dashboard/payment
+          </Link>
+          .
+        </AdminEmptyState>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Bisnis</TableHead>
-              <TableHead>Provider</TableHead>
-              <TableHead className="hidden md:table-cell">Merchant ID</TableHead>
-              <TableHead className="hidden lg:table-cell">Environment</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="hidden lg:table-cell">Dibuat</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {state.credentials.map((c) => (
-              <TableRow key={c.id}>
-                <TableCell className="text-sm font-bold">{c.business_name}</TableCell>
-                <TableCell className="font-bold uppercase">{c.provider}</TableCell>
-                <TableCell className="hidden md:table-cell">{c.merchant_id}</TableCell>
-                <TableCell className="hidden uppercase lg:table-cell">{c.environment}</TableCell>
-                <TableCell>
-                  <StatusBadge status={c.is_active ? "active" : "inactive"} />
-                </TableCell>
-                <TableCell className="hidden text-muted-foreground lg:table-cell">
-                  {dateFmt.format(new Date(c.created_at))}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <RecordCollection
+          storageKey="snapyos.view.admin.gateways"
+          label="Daftar credential gateway"
+          list={
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Bisnis</TableHead>
+                  <TableHead>Provider</TableHead>
+                  <TableHead className="hidden md:table-cell">Merchant ID</TableHead>
+                  <TableHead className="hidden lg:table-cell">Environment</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="hidden lg:table-cell">Dibuat</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {state.credentials.map((c) => (
+                  <TableRow key={c.id}>
+                    <TableCell className="text-sm font-bold">{c.business_name}</TableCell>
+                    <TableCell className="font-bold uppercase">{c.provider}</TableCell>
+                    <TableCell className="hidden md:table-cell">{c.merchant_id}</TableCell>
+                    <TableCell className="hidden uppercase lg:table-cell">{c.environment}</TableCell>
+                    <TableCell>
+                      <StatusBadge status={c.is_active ? "active" : "inactive"} />
+                    </TableCell>
+                    <TableCell className="hidden text-muted-foreground lg:table-cell">
+                      {dateFmt.format(new Date(c.created_at))}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          }
+          grid={
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {state.credentials.map((c) => (
+                <RecordCard
+                  key={c.id}
+                  title={c.business_name}
+                  subtitle={`${c.provider.toUpperCase()} · ${c.environment.toUpperCase()}`}
+                  badge={<StatusBadge status={c.is_active ? "active" : "inactive"} />}
+                  meta={[
+                    { label: "Merchant ID", value: c.merchant_id },
+                    { label: "Dibuat", value: dateFmt.format(new Date(c.created_at)) },
+                  ]}
+                />
+              ))}
+            </div>
+          }
+        />
       )}
 
       {totalPages > 1 ? (

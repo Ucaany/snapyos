@@ -280,7 +280,7 @@ export function FramePreviewPanel({
         {frameError && (
           <p
             className="absolute inset-x-0 bottom-0 border-t-2 border-ink px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em]"
-            style={{ background: defaultBrandColors.destructive, color: "#ffffff" }}
+            style={{ background: defaultBrandColors.destructive, color: "var(--color-surface)" }}
           >
             Frame gagal dimuat
           </p>

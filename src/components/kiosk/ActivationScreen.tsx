@@ -109,7 +109,7 @@ export function ActivationScreen({ initialCode, onActivated }: Props) {
             <p
               id="activation-error"
               role="alert"
-              className="border-2 border-destructive bg-destructive/10 px-3 py-2 text-left text-xs font-bold uppercase leading-relaxed tracking-[0.04em]"
+              className="border-2 border-destructive bg-surface px-3 py-2 text-left text-xs font-bold uppercase leading-relaxed tracking-[0.04em]"
             >
               {error}
             </p>

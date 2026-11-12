@@ -11,12 +11,11 @@ import {
   RefreshCcw,
   TriangleAlert,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { defaultBrandColors } from "@/lib/brand-defaults";
 import { kioskThemeVars, type KioskVisualStyle } from "@/lib/kiosk-types";
 import { useObjectUrls } from "@/components/kiosk/use-object-url";
 import { KioskVideoBackground } from "@/components/kiosk/KioskVideoBackground";
-import { KioskEyebrow, kioskGutter } from "@/components/kiosk/ui";
+import { KioskAction, KioskEyebrow, KioskHeading, kioskGutter } from "@/components/kiosk/ui";
 
 type FinalPhoto = { blob: Blob };
 
@@ -207,32 +206,25 @@ export function ResultScreen({
         // Setelah cetak pertama, tombol tetap ada sebagai cetak ulang
         // (docs/05 §5.15.5) — kertas macet / hasil pudar tidak boleh
         // memaksa customer mengulang seluruh sesi.
-        <Button
+        <KioskAction
+          tone={printed ? "secondary" : "primary"}
           size="lg"
-          variant={printed ? "outline" : "default"}
+          kioskStyle={ks}
           onClick={onPrint}
-          className={printed ? "min-h-14" : "min-h-14 bg-accent"}
-          style={
-            ks
-              ? {
-                  borderRadius: radius,
-                  ...(printed ? {} : { backgroundColor: ks.accent, color: ks.accentText }),
-                }
-              : undefined
-          }
+          full
         >
           <Printer className="size-5" aria-hidden /> {printed ? "Cetak ulang" : "Cetak"}
-        </Button>
+        </KioskAction>
       )}
       {photoUrls.length > 0 && (
         <div className="flex flex-col gap-2">
-          <Button
+          <KioskAction
+            tone="secondary"
             size="lg"
-            variant="outline"
+            kioskStyle={ks}
             onClick={downloadAll}
             disabled={downloading}
-            className="min-h-14"
-            style={ks ? { borderRadius: radius } : undefined}
+            full
           >
             <Download className="size-5" aria-hidden />
             {downloading
@@ -240,7 +232,7 @@ export function ResultScreen({
               : photoUrls.length > 1
                 ? `Unduh ${photoUrls.length} foto`
                 : "Unduh foto"}
-          </Button>
+          </KioskAction>
           {photoUrls.length > 1 && iosDevice && (
             <p role="status" className="text-[11px] leading-relaxed text-muted-foreground">
               Safari hanya menyimpan file pertama. Untuk semua foto, pindai QR di ponsel.
@@ -256,12 +248,12 @@ export function ResultScreen({
       {(canShare || zipHref) && (
         <div className="flex flex-wrap gap-2">
           {canShare && (
-            <Button
+            <KioskAction
+              tone="secondary"
               size="sm"
-              variant="outline"
+              kioskStyle={ks}
               onClick={() => void copyLink()}
-              className="min-h-11 flex-1"
-              style={ks ? { borderRadius: radius } : undefined}
+              className="flex-1"
             >
               {copied ? (
                 <Check className="size-4" aria-hidden />
@@ -269,23 +261,23 @@ export function ResultScreen({
                 <Copy className="size-4" aria-hidden />
               )}
               {copied ? "Tersalin" : "Salin link"}
-            </Button>
+            </KioskAction>
           )}
           {canShare && (
-            <Button
+            <KioskAction
+              tone="secondary"
               size="sm"
-              variant="outline"
+              kioskStyle={ks}
               onClick={shareToWhatsApp}
-              className="min-h-11 flex-1"
-              style={ks ? { borderRadius: radius } : undefined}
+              className="flex-1"
             >
               <MessageCircle className="size-4" aria-hidden /> WhatsApp
-            </Button>
+            </KioskAction>
           )}
           {zipHref && (
             <a
               href={zipHref}
-              className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 border-2 border-ink bg-surface px-3 py-2 text-[11px] font-bold uppercase tracking-[0.06em] text-ink hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+              className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 border-2 border-ink bg-surface px-3 py-2 font-display text-xs font-bold uppercase tracking-[-0.01em] text-ink shadow-hard-sm transition-transform active:translate-x-[2px] active:translate-y-[2px] active:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
               style={ks ? { borderRadius: radius } : undefined}
             >
               <Download className="size-4" aria-hidden /> ZIP
@@ -293,22 +285,9 @@ export function ResultScreen({
           )}
         </div>
       )}
-      <Button
-        size="lg"
-        onClick={onReset}
-        className="min-h-14 bg-accent-3"
-        style={
-          ks
-            ? {
-                borderRadius: radius,
-                backgroundColor: ks.accent,
-                color: ks.accentText,
-              }
-            : undefined
-        }
-      >
+      <KioskAction tone="primary" size="lg" kioskStyle={ks} onClick={onReset} full>
         <Check className="size-5" aria-hidden /> Selesai
-      </Button>
+      </KioskAction>
     </div>
   );
 
@@ -417,15 +396,9 @@ export function ResultScreen({
         style={{ paddingLeft: gutter, paddingRight: gutter }}
       >
         <div className="flex flex-col gap-2">
-          <h1
-            className="font-display uppercase leading-[0.92] tracking-[-0.02em]"
-            style={{
-              fontSize: `calc(clamp(1.6rem, 3.4vw, 2.6rem) * ${ks?.fontScale ?? 1})`,
-              fontFamily: ks?.fontFamily,
-            }}
-          >
+          <KioskHeading size="md" scale={ks?.fontScale ?? 1} style={{ fontFamily: ks?.fontFamily }}>
             {resultTitle || "Foto kamu jadi!"}
-          </h1>
+          </KioskHeading>
           <p className="max-w-[38ch] text-sm leading-relaxed text-muted-foreground md:text-base">
             {resultHint ||
               "Pindai QR untuk mengunduh GIF animasi dan foto berframe di ponsel Anda."}
@@ -454,7 +427,7 @@ export function ResultScreen({
           )}
 
           {!qrUsable ? (
-            <div className="max-w-[30ch] border-2 border-ink bg-accent-2/10 p-4 text-center text-xs font-bold uppercase leading-relaxed tracking-[0.04em]">
+            <div className="max-w-[30ch] border-2 border-ink bg-accent-2 p-4 text-center text-xs font-bold uppercase leading-relaxed tracking-[0.04em]">
               {syncFailed
                 ? "Hasil online tidak tersedia. Hubungi petugas untuk salinan foto."
                 : "Hasil tersimpan di perangkat. QR aktif setelah sinkronisasi selesai."}

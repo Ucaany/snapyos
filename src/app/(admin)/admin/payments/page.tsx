@@ -2,7 +2,10 @@ import Link from "next/link";
 import { ChevronDown, Filter, Landmark } from "lucide-react";
 
 import { AdminPaginator } from "@/components/admin/AdminPaginator";
+import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
+import { RecordCard } from "@/components/ui/record-card";
+import { RecordCollection } from "@/components/ui/record-collection";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -30,7 +33,7 @@ import { getPaymentsSummary, listPayments, adminPosRevenueSummary } from "@/serv
  */
 
 const PAYMENT_STATUSES = ["paid", "pending", "failed", "expired", "cancelled", "refunded"] as const;
-// Direct merchant + aggregator: pakasir, midtrans, tripay (docs/06 §6.7).
+// Direct merchant owner: pakasir, midtrans, tripay (docs/06 §6.7).
 const PAYMENT_PROVIDERS = ["pakasir", "midtrans", "tripay"] as const;
 
 export default async function AdminPaymentsPage({
@@ -70,7 +73,7 @@ export default async function AdminPaymentsPage({
   return (
     <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       <PageHeader
-        eyebrow="ADMIN - PAYMENT MONITORING"
+        eyebrow="ADMIN / PEMBAYARAN"
         icon={Landmark}
         title="Monitoring Pembayaran"
         meta={`SEMUA TENANT · ${total} PAYMENT COCOK FILTER`}
@@ -280,59 +283,88 @@ export default async function AdminPaymentsPage({
       </Card>
 
       {items.length === 0 ? (
-        <div className="flex flex-col items-start gap-2 border-2 border-dashed border-ink/40 bg-muted p-6 md:p-8">
-          <p className="font-mono text-sm font-bold uppercase tracking-[0.15em]">
-            TIDAK ADA PAYMENT
-          </p>
-          <p className="max-w-[55ch] text-sm leading-relaxed text-muted-foreground">
-            Tidak ada payment yang cocok dengan filter saat ini.{" "}
-            {hasFilter ? "Hapus filter untuk melihat seluruh riwayat." : ""}
-          </p>
-          {hasFilter ? (
-            <Link
-              href="/admin/payments"
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              Hapus filter
-            </Link>
-          ) : null}
-        </div>
+        <AdminEmptyState
+          heading="Tidak ada payment"
+          icon={Landmark}
+          action={
+            hasFilter ? (
+              <Link
+                href="/admin/payments"
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+              >
+                Hapus filter
+              </Link>
+            ) : null
+          }
+        >
+          Tidak ada payment yang cocok dengan filter saat ini.
+          {hasFilter ? " Hapus filter untuk melihat seluruh riwayat." : ""}
+        </AdminEmptyState>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Reference</TableHead>
-              <TableHead className="hidden md:table-cell">Bisnis</TableHead>
-              <TableHead>Nilai</TableHead>
-              <TableHead className="hidden lg:table-cell">Provider</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="hidden lg:table-cell">Waktu</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.map((p) => (
-              <TableRow key={p.id}>
-                <TableCell className="font-bold">{p.payment_reference}</TableCell>
-                <TableCell className="hidden text-sm md:table-cell">{p.business_name}</TableCell>
-                <TableCell className="font-bold">
-                  {formatIDR(p.final_amount)}
-                  {p.discount_amount > 0 ? (
-                    <span className="block text-muted-foreground">
-                      diskon {formatIDR(p.discount_amount)}
-                    </span>
-                  ) : null}
-                </TableCell>
-                <TableCell className="hidden uppercase lg:table-cell">{p.provider}</TableCell>
-                <TableCell>
-                  <StatusBadge status={p.status} />
-                </TableCell>
-                <TableCell className="hidden text-muted-foreground lg:table-cell">
-                  {dateTimeFmt.format(new Date(p.paid_at ?? p.created_at))}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <RecordCollection
+          storageKey="snapyos.view.admin.payments"
+          label="Daftar payment"
+          list={
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Reference</TableHead>
+                  <TableHead className="hidden md:table-cell">Bisnis</TableHead>
+                  <TableHead>Nilai</TableHead>
+                  <TableHead className="hidden lg:table-cell">Provider</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="hidden lg:table-cell">Waktu</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell className="font-bold">{p.payment_reference}</TableCell>
+                    <TableCell className="hidden text-sm md:table-cell">{p.business_name}</TableCell>
+                    <TableCell className="font-bold">
+                      {formatIDR(p.final_amount)}
+                      {p.discount_amount > 0 ? (
+                        <span className="block text-muted-foreground">
+                          diskon {formatIDR(p.discount_amount)}
+                        </span>
+                      ) : null}
+                    </TableCell>
+                    <TableCell className="hidden uppercase lg:table-cell">{p.provider}</TableCell>
+                    <TableCell>
+                      <StatusBadge status={p.status} />
+                    </TableCell>
+                    <TableCell className="hidden text-muted-foreground lg:table-cell">
+                      {dateTimeFmt.format(new Date(p.paid_at ?? p.created_at))}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          }
+          grid={
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {items.map((p) => (
+                <RecordCard
+                  key={p.id}
+                  title={p.payment_reference}
+                  subtitle={p.business_name}
+                  badge={<StatusBadge status={p.status} />}
+                  meta={[
+                    { label: "Nilai", value: formatIDR(p.final_amount) },
+                    { label: "Provider", value: p.provider.toUpperCase() },
+                    {
+                      label: "Waktu",
+                      value: dateTimeFmt.format(new Date(p.paid_at ?? p.created_at)),
+                    },
+                    ...(p.discount_amount > 0
+                      ? [{ label: "Diskon", value: formatIDR(p.discount_amount) }]
+                      : []),
+                  ]}
+                />
+              ))}
+            </div>
+          }
+        />
       )}
 
       <AdminPaginator

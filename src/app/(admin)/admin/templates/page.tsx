@@ -7,6 +7,8 @@ import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { RecordCard } from "@/components/ui/record-card";
+import { RecordCollection } from "@/components/ui/record-collection";
 import { formatIDR } from "@/lib/dashboard-math";
 import {
   createCategoryAction,
@@ -49,7 +51,7 @@ export default async function AdminTemplatesPage() {
   return (
     <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       <PageHeader
-        eyebrow="ADMIN - TEMPLATES & CATEGORIES"
+        eyebrow="ADMIN / TEMPLATE"
         icon={ImageIcon}
         title="Template Global"
         meta={`${categories.length} KATEGORI · ${templates.length} TEMPLATE GLOBAL`}
@@ -110,7 +112,7 @@ export default async function AdminTemplatesPage() {
               {categories.map((c) => (
                 <li
                   key={c.id}
-                  className="flex items-center gap-3 border-2 border-ink bg-muted/60 px-3 py-2 font-mono text-xs uppercase"
+                  className="flex items-center gap-3 border-2 border-ink bg-muted px-3 py-2 font-mono text-xs uppercase"
                 >
                   <span>
                     {c.name}
@@ -387,28 +389,49 @@ export default async function AdminTemplatesPage() {
               invoice QRIS lunas.
             </AdminEmptyState>
           ) : (
-            <Table containerClassName="shadow-none">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Business</TableHead>
-                  <TableHead>Template</TableHead>
-                  <TableHead>Harga</TableHead>
-                  <TableHead className="hidden sm:table-cell">Dibeli</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {purchases.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell className="text-sm font-bold">{p.business_name}</TableCell>
-                    <TableCell>{p.template_name}</TableCell>
-                    <TableCell className="font-bold">{formatIDR(p.price)}</TableCell>
-                    <TableCell className="hidden text-muted-foreground sm:table-cell">
-                      {dateFmt.format(new Date(p.created_at))}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <RecordCollection
+              storageKey="snapyos.view.admin.template-purchases"
+              label="Riwayat pembelian template"
+              list={
+                <Table containerClassName="shadow-none">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Business</TableHead>
+                      <TableHead>Template</TableHead>
+                      <TableHead>Harga</TableHead>
+                      <TableHead className="hidden sm:table-cell">Dibeli</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {purchases.map((p) => (
+                      <TableRow key={p.id}>
+                        <TableCell className="text-sm font-bold">{p.business_name}</TableCell>
+                        <TableCell>{p.template_name}</TableCell>
+                        <TableCell className="font-bold">{formatIDR(p.price)}</TableCell>
+                        <TableCell className="hidden text-muted-foreground sm:table-cell">
+                          {dateFmt.format(new Date(p.created_at))}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              }
+              grid={
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {purchases.map((p) => (
+                    <RecordCard
+                      key={p.id}
+                      title={p.template_name}
+                      subtitle={p.business_name}
+                      meta={[
+                        { label: "Harga", value: formatIDR(p.price) },
+                        { label: "Dibeli", value: dateFmt.format(new Date(p.created_at)) },
+                      ]}
+                    />
+                  ))}
+                </div>
+              }
+            />
           )}
         </CardContent>
       </Card>
