@@ -28,6 +28,17 @@ const toNumber = (value: string, fallback: number) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+/**
+ * Jenis slot diturunkan dari data yang ada: schema tidak punya `type` khusus
+ * logo, jadi prefiks id `logo` dipakai sebagai penanda. Slot ber-`properties.text`
+ * adalah TEKS, sisanya FOTO.
+ */
+export function slotKind(slot: LayoutSlot): "LOGO" | "TEKS" | "FOTO" {
+  if (slot.id.startsWith("logo")) return "LOGO";
+  if (slot.properties?.text) return "TEKS";
+  return "FOTO";
+}
+
 /** Panel properti slot terpilih — geometri, bentuk, fit, urutan z. */
 export function SlotInspector({
   uid,
@@ -51,9 +62,34 @@ export function SlotInspector({
         {message}
       </p>
     ) : null;
+  const kind = slotKind(slot);
   return (
     <div className="flex flex-col gap-4 border-2 border-ink bg-surface p-3 shadow-hard">
-      <p className={labelClass}>{`Slot terpilih: #${slotNumber} · ${slot.id}`}</p>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="font-display text-sm font-bold uppercase tracking-[0.06em] text-ink">
+            {`Slot ${slotNumber}`}
+          </p>
+          <p className="truncate font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+            {slot.id}
+          </p>
+        </div>
+        <span className="shrink-0 border-2 border-ink bg-accent px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-ink">
+          {kind}
+        </span>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="border-2 border-ink/15 bg-muted px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-ink">
+          {`${Math.round(slot.width)}x${Math.round(slot.height)} px`}
+        </span>
+        <span className="border-2 border-ink/15 bg-muted px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-ink">
+          {`z ${slot.z}`}
+        </span>
+        <span className="border-2 border-ink/15 bg-muted px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+          {slot.shape}
+        </span>
+      </div>
 
       <div className="flex flex-wrap gap-2">
         <Button
@@ -145,6 +181,7 @@ export function SlotInspector({
         </div>
       </fieldset>
 
+      <p className={`${labelClass} border-t-2 border-ink/10 pt-3`}>Posisi &amp; ukuran</p>
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">
           <label htmlFor={`${uid}-x`} className={labelClass}>

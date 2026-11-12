@@ -132,7 +132,7 @@ export function PackageFields({
           </div>
           <div className="flex flex-col gap-2">
             <label htmlFor={`pkg-photo-${id}`} className={labelClass}>
-              Jumlah foto cadangan *
+              Jumlah foto cadangan (ekstra jika sesi gagal) *
             </label>
             <Input
               id={`pkg-photo-${id}`}
@@ -146,6 +146,10 @@ export function PackageFields({
               disabled={pending}
               {...err("photo_count")}
             />
+            <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.05em] text-muted-foreground">
+              Foto tambahan otomatis dipakai bila proses foto utama gagal, supaya customer tetap
+              dapat hasil.
+            </p>
             <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.05em] text-muted-foreground">
               Dipakai hanya oleh frame lama tanpa slot. Frame ber-slot menentukan jumlah foto
               sendiri.

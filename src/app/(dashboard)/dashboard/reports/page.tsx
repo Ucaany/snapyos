@@ -72,7 +72,7 @@ export default async function ReportsPage() {
             id="report-form"
             method="get"
             action={`/api/v1/business/${active.business.id}/reports`}
-            className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4"
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
             aria-label="Form report"
           >
             <div className="flex flex-col gap-2">
@@ -88,18 +88,6 @@ export default async function ReportsPage() {
               </Select>
             </div>
             <div className="flex flex-col gap-2">
-              <label htmlFor="report-from" className={labelClass}>
-                Dari *
-              </label>
-              <DateInput id="report-from" name="from" required defaultValue={fromDefault} />
-            </div>
-            <div className="flex flex-col gap-2">
-              <label htmlFor="report-to" className={labelClass}>
-                Sampai *
-              </label>
-              <DateInput id="report-to" name="to" required defaultValue={today} />
-            </div>
-            <div className="flex flex-col gap-2">
               <label htmlFor="report-format" className={labelClass}>
                 Format *
               </label>
@@ -108,10 +96,26 @@ export default async function ReportsPage() {
                 <option value="xlsx">XLSX</option>
               </Select>
             </div>
-            <div className="sm:col-span-2 xl:col-span-4">
-              <IconButton type="submit" variant="default" label="Unduh laporan">
-                <Download className="size-4" aria-hidden="true" />
-              </IconButton>
+            <div className="flex flex-col gap-3 sm:col-span-2 sm:flex-row sm:items-end xl:col-span-4">
+              <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="report-from" className={labelClass}>
+                    Dari *
+                  </label>
+                  <DateInput id="report-from" name="from" required defaultValue={fromDefault} />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="report-to" className={labelClass}>
+                    Sampai *
+                  </label>
+                  <DateInput id="report-to" name="to" required defaultValue={today} />
+                </div>
+              </div>
+              <div className="flex flex-col gap-2">
+                <IconButton type="submit" variant="default" label="Unduh laporan">
+                  <Download className="size-4" aria-hidden="true" />
+                </IconButton>
+              </div>
             </div>
           </form>
         </CardContent>

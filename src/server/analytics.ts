@@ -9,7 +9,12 @@ import { ApiError } from "@/lib/api-errors";
 import { resolveRange } from "@/server/dashboard";
 import { can } from "@/lib/rbac";
 import { rangeBoundariesTz, type DateRangeInput } from "@/lib/dashboard-math";
-import { buildTxInsightsFromGroups, type TxInsightGroup, type TxInsights } from "@/lib/tx-insights";
+import {
+  buildTxInsightsFromGroups,
+  type TxInsightGroup,
+  type TxInsights,
+  type TxStatus,
+} from "@/lib/tx-insights";
 
 export type { BreakdownDimension, BreakdownItem, RevenueBreakdown } from "@/server/dashboard";
 export { getRevenueBreakdown } from "@/server/dashboard";
@@ -23,7 +28,8 @@ export { getRevenueBreakdown } from "@/server/dashboard";
 export async function getTxInsights(
   userId: string,
   businessId: string,
-  query: DateRangeInput
+  query: DateRangeInput,
+  statuses?: TxStatus[]
 ): Promise<{ range: { from: string; to: string }; insights: TxInsights }> {
   const { range, role } = await resolveRange(userId, businessId, query);
   if (!can(role as "owner" | "manager" | "staff", "transaction:read")) {
@@ -58,8 +64,25 @@ export async function getTxInsights(
     tx_count: Number(row.tx_count ?? 0),
   }));
 
+  const filtered = statuses
+    ? groups.filter((g) => statuses.includes(g.status as TxStatus))
+    : groups;
+
   return {
     range: { from: range.from, to: range.to },
-    insights: buildTxInsightsFromGroups(groups),
+    insights: buildTxInsightsFromGroups(filtered),
   };
+}
+
+/**
+ * Tx Insights PAID-ONLY — jam ramai & outlet dari transaksi berstatus paid
+ * saja (docs/04 §4.1). Delegasi ke getTxInsights dengan filter status.
+ * Gating transaction:read.
+ */
+export async function getPaidTxInsights(
+  userId: string,
+  businessId: string,
+  query: DateRangeInput
+): Promise<{ range: { from: string; to: string }; insights: TxInsights }> {
+  return getTxInsights(userId, businessId, query, ["paid"]);
 }

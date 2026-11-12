@@ -188,13 +188,12 @@ export function PaymentCredentialCard({ credential, webhookUrls, onChanged }: Pr
         </p>
       )}
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap justify-end gap-3">
         <IconButton
           label={testLabel}
           hint={testDisabledReason ?? undefined}
           icon={PlugZap}
           variant="secondary"
-          compact
           disabled={pending || !testable}
           onClick={() => void run(() => testCredentialAction(credential.id), testSuccess)}
         />
@@ -202,7 +201,6 @@ export function PaymentCredentialCard({ credential, webhookUrls, onChanged }: Pr
           label="Ubah credential"
           icon={Pencil}
           variant="outline"
-          compact
           disabled={pending}
           onClick={() => setEditing(true)}
         />
@@ -210,7 +208,6 @@ export function PaymentCredentialCard({ credential, webhookUrls, onChanged }: Pr
           label={credential.is_active ? "Nonaktifkan credential" : "Aktifkan credential"}
           icon={credential.is_active ? PowerOff : Power}
           variant="outline"
-          compact
           disabled={pending}
           onClick={() =>
             void run(
@@ -225,7 +222,6 @@ export function PaymentCredentialCard({ credential, webhookUrls, onChanged }: Pr
           label="Hapus credential"
           icon={Trash2}
           variant="destructive"
-          compact
           disabled={pending}
           onClick={() => setConfirmOpen(true)}
         />

@@ -2,7 +2,7 @@
 
 import { Fragment, useActionState, useState, useTransition } from "react";
 import Link from "next/link";
-import { Copy, Package, Plus } from "lucide-react";
+import { Copy, LayoutTemplate, Package, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -95,7 +95,7 @@ export function PackagesTable({ packages, templateCount, outlets, photoboxes, ca
               Harga
             </th>
             <th scope="col" className="hidden px-4 py-3.5 text-center md:table-cell">
-              Foto cadangan
+              Foto cadangan (ekstra)
             </th>
             <th scope="col" className="hidden px-4 py-3.5 text-center md:table-cell">
               Cetak
@@ -207,7 +207,7 @@ export function PackagesTable({ packages, templateCount, outlets, photoboxes, ca
             badge={<StatusBadge status={pkg.is_active ? "active" : "inactive"} />}
             meta={[
               { label: "Harga", value: formatIDR(pkg.price) },
-              { label: "Foto cadangan", value: pkg.photo_count },
+              { label: "Foto cadangan (ekstra)", value: pkg.photo_count },
               { label: "Cetak", value: pkg.print_count },
               { label: "Digital", value: pkg.digital_output ? "Ya" : "-" },
               { label: "Mode", value: pkg.capture_mode },
@@ -241,17 +241,21 @@ export function PackagesTable({ packages, templateCount, outlets, photoboxes, ca
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2 border-2 border-ink bg-surface px-4 py-3 shadow-hard sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 border-2 border-ink bg-surface px-4 py-3 shadow-hard sm:flex-row sm:items-center sm:justify-between">
         <p className="font-mono text-xs uppercase tracking-[0.1em]">
           <span className="font-bold">{`${templateCount} TEMPLATE AKTIF`}</span>
           <span className="text-muted-foreground">{" \u00b7 Semua tersedia untuk paket ini"}</span>
         </p>
-        <Link
-          href="/dashboard/templates"
-          className="font-mono text-xs font-bold uppercase tracking-[0.1em] underline decoration-2 underline-offset-4 hover:no-underline"
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          nativeButton={false}
+          render={<Link href="/dashboard/templates" />}
         >
+          <LayoutTemplate className="size-4" aria-hidden />
           Kelola template
-        </Link>
+        </Button>
       </div>
 
       {canWrite && (

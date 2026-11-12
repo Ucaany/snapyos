@@ -2,7 +2,19 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Copy, CopyPlus, Maximize, Plus, Redo2, Undo2, ZoomIn, ZoomOut } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  CopyPlus,
+  Maximize,
+  Plus,
+  Redo2,
+  Trash2,
+  Undo2,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +44,7 @@ import {
   type HandleId,
 } from "@/lib/template-editor";
 import { snapRect, type SnapGuide } from "@/lib/template-snap";
-import { SlotInspector } from "@/components/dashboard/template-builder/SlotInspector";
+import { SlotInspector, slotKind } from "@/components/dashboard/template-builder/SlotInspector";
 import { TemplateTextPanel } from "@/components/dashboard/template-builder/TemplateTextPanel";
 import {
   useCanvasViewport,
@@ -40,6 +52,7 @@ import {
   ZOOM_MIN,
 } from "@/components/dashboard/template-builder/useCanvasViewport";
 import { useTemplateHistory } from "@/components/dashboard/template-builder/useTemplateHistory";
+import { useBuilderPanels } from "@/components/dashboard/template-builder/useBuilderPanels";
 
 export type TemplateLayoutSaveResult = {
   error?: string;
@@ -75,6 +88,27 @@ type Props = {
 
 const PREVIEW_MAX_W = 900;
 const HEX = /^#[0-9a-fA-F]{6}$/;
+const SLOT_MIME = "application/x-snapyos-slot";
+
+type PaletteKind = "foto" | "teks" | "logo";
+
+const PALETTE_ITEMS: { kind: PaletteKind; label: string; hint: string }[] = [
+  { kind: "foto", label: "Slot foto", hint: "Area foto customer" },
+  { kind: "teks", label: "Slot teks", hint: "Teks overlay" },
+  { kind: "logo", label: "Slot logo", hint: "Logo bisnis" },
+];
+
+/**
+ * Kelas grid 3 kolom ditulis literal (bukan dirangkai runtime) supaya Tailwind
+ * tetap menghasilkan utility-nya. Kunci = `${left}-${right}`.
+ */
+const GRID_CLASSES: Record<string, string> = {
+  "true-true":
+    "lg:grid-cols-[minmax(0,260px)_minmax(0,1.6fr)_minmax(0,340px)]",
+  "true-false": "lg:grid-cols-[minmax(0,260px)_minmax(0,1fr)]",
+  "false-true": "lg:grid-cols-[minmax(0,1fr)_minmax(0,340px)]",
+  "false-false": "lg:grid-cols-1",
+};
 
 const PRESET_OPTIONS: { key: CanvasPreset; label: string }[] = [
   { key: "4x6-portrait", label: "4X6 PORTRAIT" },
@@ -229,6 +263,15 @@ export function TemplateBuilderCanvas({
   const history = useTemplateHistory<TemplateLayout>(initial);
   const layout = history.present;
   const viewport = useCanvasViewport();
+  const panels = useBuilderPanels();
+  /** Sorot stage saat ada item palette yang di-drag di atas kanvas. */
+  const [dropActive, setDropActive] = useState(false);
+  /** Id layer yang sedang di-drag (reorder) + posisi sisip target. */
+  const layerDragRef = useRef<string | null>(null);
+  const [layerDragId, setLayerDragId] = useState<string | null>(null);
+  const [layerDrop, setLayerDrop] = useState<{ id: string; position: "before" | "after" } | null>(
+    null
+  );
 
   const [selectedIds, setSelectedIds] = useState<string[]>(() => {
     const first = initial.slots[0];
@@ -469,44 +512,120 @@ export function TemplateBuilderCanvas({
     applyCanvasSize(CANVAS_PRESETS[preset].width, CANVAS_PRESETS[preset].height, preset);
   }
 
-  function addSlot() {
-    if (readOnly || layout.slots.length >= MAX_SLOTS) return;
+  function buildSlot(kind: PaletteKind, centerX: number, centerY: number): LayoutSlot {
     const width = Math.max(1, Math.round(layout.canvas.width * 0.4));
     const height = Math.max(1, Math.round(layout.canvas.height * 0.4));
-    const slot: LayoutSlot = {
-      id: nextSlotId(layout.slots),
+    return {
+      id: kind === "logo" ? nextSlotId(layout.slots, "logo") : nextSlotId(layout.slots),
       shape: "rect",
-      x: Math.round((layout.canvas.width - width) / 2),
-      y: Math.round((layout.canvas.height - height) / 2),
+      x: Math.round(centerX - width / 2),
+      y: Math.round(centerY - height / 2),
       width,
       height,
       rotation: 0,
       radius: 0,
       fit: "cover",
       z: layout.slots.length,
+      ...(kind === "teks" ? { properties: { text: "TEKS" } } : {}),
     };
+  }
+
+  function addSlot(kind: PaletteKind = "foto") {
+    if (readOnly || layout.slots.length >= MAX_SLOTS) return;
+    const slot = clampSlot(
+      buildSlot(kind, layout.canvas.width / 2, layout.canvas.height / 2),
+      layout.canvas
+    );
     history.commit({ ...layout, slots: [...layout.slots, slot] });
     setSelectedIds([slot.id]);
   }
 
-  function duplicateSlot() {
-    if (!selected || readOnly || layout.slots.length >= MAX_SLOTS) return;
+  // ── Tambah slot via drag & drop palette ─────────────────────────────────
+  function handleStageDragOver(event: React.DragEvent<HTMLDivElement>) {
+    if (readOnly || layout.slots.length >= MAX_SLOTS) return;
+    if (!event.dataTransfer.types.includes(SLOT_MIME)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    setDropActive(true);
+  }
+
+  function handleStageDragLeave(event: React.DragEvent<HTMLDivElement>) {
+    // Abaikan leave yang masih di dalam stage (anak elemen).
+    const next = event.relatedTarget as Node | null;
+    if (next && event.currentTarget.contains(next)) return;
+    setDropActive(false);
+  }
+
+  function handleStageDrop(event: React.DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setDropActive(false);
+    if (readOnly) return;
+    const kind = event.dataTransfer.getData(SLOT_MIME) as PaletteKind | "";
+    if (kind !== "foto" && kind !== "teks" && kind !== "logo") return;
+    if (layout.slots.length >= MAX_SLOTS) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+
+    const pointX = ((event.clientX - rect.left) / rect.width) * layout.canvas.width;
+    const pointY = ((event.clientY - rect.top) / rect.height) * layout.canvas.height;
+    const slot = clampSlot(buildSlot(kind, pointX, pointY), layout.canvas);
+    // Satu commit = satu langkah undo. Drop di luar kanvas tidak pernah sampai sini.
+    history.commit({ ...layout, slots: [...layout.slots, slot] });
+    setSelectedIds([slot.id]);
+  }
+
+  // ── Aksi per-baris layer ────────────────────────────────────────────────
+  function deleteSlotById(id: string) {
+    if (readOnly) return;
+    const remaining = renumberZ(layout.slots.filter((slot) => slot.id !== id));
+    history.commit({ ...layout, slots: remaining });
+    setSelectedIds((prev) => {
+      const nextSelection = prev.filter((candidate) => candidate !== id);
+      return nextSelection.length > 0 ? nextSelection : remaining[0] ? [remaining[0].id] : [];
+    });
+  }
+
+  function duplicateSlotById(id: string) {
+    if (readOnly || layout.slots.length >= MAX_SLOTS) return;
+    const source = layout.slots.find((slot) => slot.id === id);
+    if (!source) return;
     const offset = Math.round(Math.min(layout.canvas.width, layout.canvas.height) * 0.04) || 16;
     const copy: LayoutSlot = clampSlot(
       {
-        ...selected,
+        ...source,
         id: nextSlotId(layout.slots),
-        x: selected.x + offset,
-        y: selected.y + offset,
+        x: source.x + offset,
+        y: source.y + offset,
         z: layout.slots.length,
-        // Poligon mask milik slot asal; salinan tetap sah karena lokal ke bbox.
-        points: selected.points ? selected.points.map((pt) => ({ ...pt })) : undefined,
-        properties: selected.properties ? { ...selected.properties } : undefined,
+        points: source.points ? source.points.map((pt) => ({ ...pt })) : undefined,
+        properties: source.properties ? { ...source.properties } : undefined,
       },
       layout.canvas
     );
     history.commit({ ...layout, slots: [...layout.slots, copy] });
     setSelectedIds([copy.id]);
+  }
+
+  // ── Reorder layer (drag & drop) ─────────────────────────────────────────
+  function reorderLayer(fromId: string, targetId: string, position: "before" | "after") {
+    if (!fromId || fromId === targetId || readOnly) return;
+    const ordered = [...layout.slots].sort((a, b) => a.z - b.z);
+    const dragged = ordered.find((slot) => slot.id === fromId);
+    const without = ordered.filter((slot) => slot.id !== fromId);
+    const targetIndex = without.findIndex((slot) => slot.id === targetId);
+    if (!dragged || targetIndex < 0) return;
+    const insertAt = position === "before" ? targetIndex : targetIndex + 1;
+    const next = [...without];
+    next.splice(insertAt, 0, dragged);
+    // z ditulis ulang sesuai urutan array (renumberZ men-sort ulang by z).
+    history.commit({ ...layout, slots: next.map((slot, index) => ({ ...slot, z: index })) });
+  }
+
+  function duplicateSlot() {
+    if (!selected) return;
+    duplicateSlotById(selected.id);
   }
 
   function deleteSelection() {
@@ -964,9 +1083,262 @@ export function TemplateBuilderCanvas({
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+      <div
+        className={`grid grid-cols-1 gap-6 ${GRID_CLASSES[`${panels.left}-${panels.right}`] ?? ""}`}
+      >
+        {panels.left && (
+          <aside
+            id="builder-left-panel"
+            aria-label="Elemen dan layer"
+            className="flex min-w-0 flex-col gap-4"
+          >
+            <div className="flex flex-col gap-2 border-2 border-ink bg-surface p-3 shadow-hard">
+              <p className={labelClass}>Elemen</p>
+              <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.06em] text-muted-foreground">
+                Tarik ke kanvas untuk menambah slot di posisi drop.
+              </p>
+              <div className="flex flex-col gap-2">
+                {PALETTE_ITEMS.map((item) => (
+                  <div
+                    key={item.kind}
+                    role="button"
+                    tabIndex={canEdit ? 0 : -1}
+                    aria-disabled={!canEdit || layout.slots.length >= MAX_SLOTS}
+                    aria-label={`Tarik ${item.label} ke kanvas`}
+                    draggable={canEdit && layout.slots.length < MAX_SLOTS}
+                    onDragStart={(event) => {
+                      event.dataTransfer.setData(SLOT_MIME, item.kind);
+                      event.dataTransfer.effectAllowed = "copy";
+                    }}
+                    onKeyDown={(event) => {
+                      if (!canEdit) return;
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        addSlot(item.kind);
+                      }
+                    }}
+                    className={`flex touch-none items-center justify-between gap-2 border-2 border-ink bg-muted px-3 py-2 font-mono text-xs uppercase tracking-[0.05em] ${
+                      canEdit && layout.slots.length < MAX_SLOTS
+                        ? "cursor-grab active:cursor-grabbing hover:bg-accent"
+                        : "cursor-not-allowed opacity-50"
+                    }`}
+                    style={{ touchAction: "none" }}
+                  >
+                    <span className="font-bold">{item.label}</span>
+                    <span className="text-[10px] tracking-[0.08em] text-muted-foreground">
+                      {item.hint}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              {canEdit && (
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    aria-label="Tambah slot"
+                    onClick={() => addSlot()}
+                    disabled={layout.slots.length >= MAX_SLOTS}
+                  >
+                    <Plus aria-hidden />
+                    Tambah slot
+                  </Button>
+                  {selected && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      aria-label="Duplikat slot terpilih"
+                      onClick={duplicateSlot}
+                      disabled={layout.slots.length >= MAX_SLOTS}
+                    >
+                      <Copy aria-hidden />
+                      Duplikat slot
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <p className={labelClass}>
+                Layer ({layout.slots.length}/{MAX_SLOTS})
+              </p>
+              <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.06em] text-muted-foreground">
+                Tarik baris untuk mengubah urutan tumpukan.
+              </p>
+              {layout.slots.length === 0 ? (
+                <p className="border-2 border-ink/20 bg-muted px-3 py-2 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+                  Belum ada slot. Tarik elemen ke kanvas atau pakai Tambah slot.
+                </p>
+              ) : (
+                <ul
+                  className="flex flex-col divide-y-2 divide-ink/10 border-2 border-ink bg-surface"
+                  onDragLeave={(event) => {
+                    const next = event.relatedTarget as Node | null;
+                    if (next && event.currentTarget.contains(next)) return;
+                    setLayerDrop(null);
+                  }}
+                >
+                  {sortedSlots.map((slot) => {
+                    const kind = slotKind(slot);
+                    const isDropTarget = layerDrop?.id === slot.id;
+                    return (
+                      <li
+                        key={slot.id}
+                        className="relative"
+                        draggable={canEdit}
+                        onDragStart={(event) => {
+                          if (!canEdit) {
+                            event.preventDefault();
+                            return;
+                          }
+                          event.dataTransfer.setData("text/plain", slot.id);
+                          event.dataTransfer.effectAllowed = "move";
+                          layerDragRef.current = slot.id;
+                          setLayerDragId(slot.id);
+                        }}
+                        onDragOver={(event) => {
+                          const dragging = layerDragRef.current ?? layerDragId;
+                          if (!canEdit || !dragging || dragging === slot.id) return;
+                          event.preventDefault();
+                          event.dataTransfer.dropEffect = "move";
+                          const rect = event.currentTarget.getBoundingClientRect();
+                          const position =
+                            event.clientY < rect.top + rect.height / 2 ? "before" : "after";
+                          setLayerDrop((prev) =>
+                            prev?.id === slot.id && prev.position === position
+                              ? prev
+                              : { id: slot.id, position }
+                          );
+                        }}
+                        onDrop={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          if (!canEdit) return;
+                          const position = layerDrop?.position ?? "after";
+                          const fromId =
+                            event.dataTransfer.getData("text/plain") ||
+                            layerDragRef.current ||
+                            layerDragId;
+                          reorderLayer(fromId ?? "", slot.id, position);
+                          layerDragRef.current = null;
+                          setLayerDragId(null);
+                          setLayerDrop(null);
+                        }}
+                        onDragEnd={() => {
+                          layerDragRef.current = null;
+                          setLayerDragId(null);
+                          setLayerDrop(null);
+                        }}
+                        style={{ touchAction: "none" }}
+                      >
+                        {isDropTarget && (
+                          <span
+                            aria-hidden
+                            className={`pointer-events-none absolute inset-x-1 border-t-2 border-accent ${
+                              layerDrop?.position === "before" ? "-top-0.5" : "-bottom-0.5"
+                            }`}
+                          />
+                        )}
+                        <div
+                          className={`flex min-h-11 items-stretch ${
+                            canEdit ? "cursor-grab active:cursor-grabbing" : ""
+                          }`}
+                        >
+                          <button
+                            type="button"
+                            aria-pressed={selectedSet.has(slot.id)}
+                            aria-label={`Pilih slot ${slot.id}, jenis ${kind}, z ${slot.z}`}
+                            onClick={(event) =>
+                              setSelectedIds((prev) => {
+                                if (!event.shiftKey && !event.metaKey && !event.ctrlKey)
+                                  return [slot.id];
+                                return prev.includes(slot.id)
+                                  ? prev.filter((id) => id !== slot.id)
+                                  : [...prev, slot.id];
+                              })
+                            }
+                            className="flex min-w-0 flex-1 flex-col gap-0.5 px-3 py-2 text-left font-mono text-xs uppercase tracking-[0.05em] hover:bg-muted aria-pressed:bg-accent aria-pressed:text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
+                          >
+                            <span className="flex items-center gap-2">
+                              <span className="border-2 border-ink px-1 py-0.5 text-[9px] font-bold tracking-[0.1em]">
+                                {kind}
+                              </span>
+                              <span className="min-w-0 break-words">
+                                {slot.properties?.text
+                                  ? slot.properties.text.slice(0, 18)
+                                  : `Slot ${layout.slots.findIndex((s) => s.id === slot.id) + 1}`}
+                              </span>
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">
+                              {`${Math.round(slot.width)}x${Math.round(slot.height)} px · z${slot.z}`}
+                            </span>
+                          </button>
+                          {canEdit && (
+                            <div className="flex items-center gap-1 px-2">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                aria-label={`Duplikat slot ${slot.id}`}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  duplicateSlotById(slot.id);
+                                }}
+                                disabled={layout.slots.length >= MAX_SLOTS}
+                              >
+                                <Copy aria-hidden />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                aria-label={`Hapus slot ${slot.id}`}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  deleteSlotById(slot.id);
+                                }}
+                              >
+                                <Trash2 aria-hidden />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </aside>
+        )}
+
         <section className="flex flex-col gap-3" aria-label="Preview template">
           <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={panels.toggleLeft}
+              aria-expanded={panels.left}
+              aria-controls="builder-left-panel"
+              aria-label={panels.left ? "Sembunyikan panel elemen" : "Tampilkan panel elemen"}
+            >
+              <ChevronLeft aria-hidden />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={panels.toggleRight}
+              aria-expanded={panels.right}
+              aria-controls="builder-right-panel"
+              aria-label={panels.right ? "Sembunyikan panel properti" : "Tampilkan panel properti"}
+            >
+              <ChevronRight aria-hidden />
+            </Button>
             <Button
               type="button"
               variant="outline"
@@ -1012,7 +1384,14 @@ export function TemplateBuilderCanvas({
           </div>
           <div
             ref={stageRef}
-            className="relative flex max-h-[60vh] items-center justify-center overflow-hidden border-2 border-ink bg-muted p-2"
+            onDragOver={handleStageDragOver}
+            onDragLeave={handleStageDragLeave}
+            onDrop={handleStageDrop}
+            className={`relative flex max-h-[60vh] items-center justify-center overflow-hidden border-2 bg-muted p-2 ${
+              dropActive
+                ? "border-accent outline outline-2 outline-offset-2 outline-accent"
+                : "border-ink"
+            }`}
           >
             <div
               role="application"
@@ -1024,7 +1403,7 @@ export function TemplateBuilderCanvas({
             >
               <canvas
                 ref={canvasRef}
-                className="block h-auto w-auto touch-none border-2 border-ink bg-ink"
+                className="block h-auto w-auto cursor-grab touch-none border-2 border-ink bg-ink"
                 style={{
                   maxWidth: `min(100%, ${PREVIEW_MAX_W * viewport.zoom}px)`,
                   maxHeight: `calc(60vh * ${viewport.zoom})`,
@@ -1049,74 +1428,12 @@ export function TemplateBuilderCanvas({
           </p>
         </section>
 
-        <section className="flex min-w-0 flex-col gap-5" aria-label="Kontrol layout">
-          <div className="flex flex-col gap-2">
-            <p className={labelClass}>
-              Slot ({layout.slots.length}/{MAX_SLOTS})
-            </p>
-            {layout.slots.length === 0 ? (
-              <p className="border-2 border-ink/20 bg-muted px-3 py-2 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                Belum ada slot. Frame tampil penuh (legacy) sampai Anda menambah slot.
-              </p>
-            ) : (
-              <ul className="flex flex-col divide-y-2 divide-ink/10 border-2 border-ink bg-surface">
-                {sortedSlots.map((slot) => (
-                  <li key={slot.id}>
-                    <button
-                      type="button"
-                      aria-pressed={selectedSet.has(slot.id)}
-                      aria-label={`Pilih ${slot.id}, bentuk ${slot.shape}, z ${slot.z}`}
-                      onClick={(event) =>
-                        setSelectedIds((prev) => {
-                          if (!event.shiftKey && !event.metaKey && !event.ctrlKey) return [slot.id];
-                          return prev.includes(slot.id)
-                            ? prev.filter((id) => id !== slot.id)
-                            : [...prev, slot.id];
-                        })
-                      }
-                      className="flex min-h-11 w-full items-center justify-between gap-2 px-3 py-2 text-left font-mono text-xs uppercase tracking-[0.05em] hover:bg-muted aria-pressed:bg-accent aria-pressed:text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
-                    >
-                      <span className="min-w-0 break-words">
-                        {`#${layout.slots.findIndex((s) => s.id === slot.id) + 1} · ${slot.shape} · z${slot.z}`}
-                      </span>
-                      <span className="font-mono text-[10px] text-muted-foreground">
-                        {`${Math.round(slot.width)}x${Math.round(slot.height)}`}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {canEdit && (
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  aria-label="Tambah slot"
-                  onClick={addSlot}
-                  disabled={layout.slots.length >= MAX_SLOTS}
-                >
-                  <Plus aria-hidden />
-                  Tambah slot
-                </Button>
-                {selected && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    aria-label="Duplikat slot terpilih"
-                    onClick={duplicateSlot}
-                    disabled={layout.slots.length >= MAX_SLOTS}
-                  >
-                    <Copy aria-hidden />
-                    Duplikat slot
-                  </Button>
-                )}
-              </div>
-            )}
-          </div>
-
+        {panels.right && (
+          <aside
+            id="builder-right-panel"
+            aria-label="Properti slot dan kanvas"
+            className="flex min-w-0 flex-col gap-5"
+          >
           {canEdit && selected && (
             <>
               <SlotInspector
@@ -1396,7 +1713,8 @@ export function TemplateBuilderCanvas({
               )}
             </div>
           )}
-        </section>
+          </aside>
+        )}
       </div>
     </div>
   );

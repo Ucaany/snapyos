@@ -40,6 +40,10 @@ const REQUIRED_ON_CREATE: Partial<Record<GatewayProvider, readonly SecretField[]
 
 type Props = {
   credential?: PaymentCredentialPublic;
+  /** Provider awal untuk form tambah; default "pakasir". */
+  initialProvider?: GatewayProvider;
+  /** Lingkungan awal untuk form tambah; default "sandbox". */
+  initialEnvironment?: "sandbox" | "production";
   /** Webhook URL/diagnosa per provider (dihitung server dari env). */
   webhookUrls?: Record<GatewayProvider, PaymentWebhookStatus>;
   onCancel?(): void;
@@ -52,11 +56,20 @@ type Props = {
  * platform dihapus 2026-09-18). Secret terenkripsi app-layer; never ditampilkan.
  * Field dinamis per provider + validasi format; minimal satu metode wajib dipilih.
  */
-export function PaymentCredentialForm({ credential, webhookUrls, onCancel, onSaved }: Props) {
+export function PaymentCredentialForm({
+  credential,
+  initialProvider,
+  initialEnvironment,
+  webhookUrls,
+  onCancel,
+  onSaved,
+}: Props) {
   const editing = credential !== undefined;
-  const [provider, setProvider] = useState<GatewayProvider>(credential?.provider ?? "pakasir");
+  const [provider, setProvider] = useState<GatewayProvider>(
+    credential?.provider ?? initialProvider ?? "pakasir"
+  );
   const [environment, setEnvironment] = useState<"sandbox" | "production">(
-    credential?.environment ?? "sandbox"
+    credential?.environment ?? initialEnvironment ?? "sandbox"
   );
   const [methods, setMethods] = useState<string[]>(credential?.enabled_methods ?? []);
   const [pending, setPending] = useState(false);

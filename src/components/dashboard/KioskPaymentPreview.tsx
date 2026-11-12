@@ -1,5 +1,8 @@
-import Link from "next/link";
+"use client";
 
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+
+import { Select } from "@/components/ui/select";
 import type { KioskPaymentMethod } from "@/lib/kiosk-types";
 
 type Props = {
@@ -15,12 +18,26 @@ const KIND_LABEL: Record<KioskPaymentMethod["kind"], string> = {
   cash: "TUNAI",
 };
 
+const MODE_LABEL: Record<"gateway" | "voucher", string> = {
+  gateway: "ONLINE",
+  voucher: "OFFLINE",
+};
+
 /**
  * KioskPaymentPreview — hasil nyata `listKioskPaymentMethods` untuk satu booth.
  * Bukan estimasi: credential aktif + metode tersimpan + filter `payment_mode`
  * booth + feature gate `cash_payment` semuanya sudah diterapkan server.
  */
 export function KioskPaymentPreview({ booths, selectedId, methods, basePath }: Props) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const activeId = selectedId ?? searchParams.get("booth") ?? booths[0]?.id ?? null;
+
+  function selectBooth(id: string) {
+    router.replace(`${basePath || pathname}?booth=${id}`, { scroll: false });
+  }
+
   return (
     <section
       aria-labelledby="kiosk-method-preview"
@@ -39,23 +56,21 @@ export function KioskPaymentPreview({ booths, selectedId, methods, basePath }: P
         </p>
       ) : (
         <>
-          <div className="flex flex-wrap gap-2">
-            {booths.map((booth) => (
-              <Link
-                key={booth.id}
-                href={`${basePath}?booth=${booth.id}`}
-                aria-current={booth.id === selectedId ? "true" : undefined}
-                className={
-                  booth.id === selectedId
-                    ? "border-2 border-ink bg-accent px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.1em]"
-                    : "border-2 border-ink bg-surface px-3 py-2 font-mono text-[10px] uppercase tracking-[0.1em] hover:bg-muted"
-                }
-              >
-                {booth.name}
-                {booth.payment_mode ? ` · ${booth.payment_mode}` : ""}
-              </Link>
-            ))}
-          </div>
+          <label className="grid gap-1 font-mono text-xs uppercase tracking-[0.08em]">
+            Booth
+            <Select
+              value={activeId ?? ""}
+              onChange={(event) => selectBooth(event.target.value)}
+              aria-label="Pilih booth"
+            >
+              {booths.map((booth) => (
+                <option key={booth.id} value={booth.id}>
+                  {booth.name} ·{" "}
+                  {booth.payment_mode ? MODE_LABEL[booth.payment_mode] : "CASH"}
+                </option>
+              ))}
+            </Select>
+          </label>
 
           {methods.length === 0 ? (
             <p className="text-sm leading-relaxed text-muted-foreground">

@@ -5,7 +5,7 @@
  * `RevenueChart.tsx` supaya Recharts tidak masuk bundle first-load.
  */
 
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 
 import {
   ChartContainer,
@@ -42,7 +42,7 @@ export function RevenueChartInner({
 
   return (
     <ChartContainer config={chartConfig} className="aspect-auto h-[280px] w-full">
-      <BarChart accessibilityLayer data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+      <LineChart accessibilityLayer data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
         <CartesianGrid
           vertical={false}
           stroke={chart.gridStroke}
@@ -89,15 +89,14 @@ export function RevenueChartInner({
             />
           }
         />
-        <Bar
+        <Line
           dataKey="amount"
-          fill="var(--color-revenue)"
-          stroke={chart.barStroke}
-          strokeWidth={chart.barStrokeWidth}
-          radius={chart.barRadius}
-          maxBarSize={28}
+          type="monotone"
+          stroke="var(--color-revenue)"
+          strokeWidth={2}
+          dot={false}
         />
-      </BarChart>
+      </LineChart>
     </ChartContainer>
   );
 }

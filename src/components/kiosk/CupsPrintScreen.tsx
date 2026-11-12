@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, Loader2, Printer, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import type { PrintPlan, PrintSettingsInput } from "@/lib/print-layout";
 import {
   printCopies,
@@ -268,7 +270,24 @@ export function CupsPrintScreen({
             <p className="max-w-[48ch] text-sm leading-relaxed text-muted-foreground">
               {error || "Periksa bridge lokal, CUPS, kertas, dan nama printer."}
             </p>
-            <div className="flex flex-wrap justify-center gap-2.5">
+            <div className="flex w-full max-w-[52ch] flex-col gap-3 border-2 border-ink bg-surface px-4 py-3 text-left shadow-hard-sm">
+              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]">
+                Langkah perbaikan
+              </p>
+              <ol className="flex flex-col gap-1 font-mono text-[10px] uppercase leading-relaxed tracking-[0.06em] text-muted-foreground">
+                <li>1. Jalankan runtime bridge di komputer booth.</li>
+                <li>2. Pastikan CUPS/spooler aktif dan printer tidak offline.</li>
+                <li>3. Klik Coba lagi.</li>
+                <li>4. Buka panduan bila masih gagal.</li>
+              </ol>
+              <Link
+                href="/docs/perangkat"
+                className={`${buttonVariants({ variant: "outline", size: "lg" })} w-fit underline decoration-2 underline-offset-4`}
+              >
+                Buka panduan perangkat
+              </Link>
+            </div>
+            <div className="flex flex-wrap justify-center gap-3">
               <Button size="lg" variant="outline" onClick={retry}>
                 Coba lagi
               </Button>

@@ -6,8 +6,8 @@
  * booth tetap jalur tulis mesin yang sah ke kolom yang sama.
  */
 
-import { useCallback, useState } from "react";
-import { Loader2, Radar, Save } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Loader2, Radar, RefreshCw, Save } from "lucide-react";
 
 import { PrintTestPanel, type PrintTestResult } from "@/components/print/PrintTestPanel";
 import { Button } from "@/components/ui/button";
@@ -127,6 +127,14 @@ export function HardwareDetectButton({
 }) {
   const [state, setState] = useState<DetectState>("idle");
   const [message, setMessage] = useState<string | null>(null);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualName, setManualName] = useState("");
+  const manualRef = useRef<HTMLInputElement | null>(null);
+  const bridgeBase = cameraBridgeUrl({ bridge_url: bridgeUrl ?? undefined });
+
+  useEffect(() => {
+    if (manualOpen) manualRef.current?.focus();
+  }, [manualOpen]);
 
   const detect = useCallback(async () => {
     setState("busy");
@@ -235,8 +243,66 @@ export function HardwareDetectButton({
         )}
         Deteksi ulang
       </Button>
-      {message ? (
-        <p role="status" className={state === "unreachable" ? NEUTRAL : `${NEUTRAL} bg-accent-3`}>
+      {state === "unreachable" ? (
+        <div
+          role="alert"
+          className="flex flex-col gap-3 border-2 border-destructive bg-surface px-3 py-3 shadow-hard-sm"
+        >
+          <p className="font-mono text-xs font-bold uppercase tracking-[0.08em] text-destructive">
+            BRIDGE LOKAL TIDAK MENJAWAB
+          </p>
+          <p className="text-sm leading-relaxed">{message}</p>
+          <ol className="flex flex-col gap-1 font-mono text-[10px] uppercase leading-relaxed tracking-[0.06em] text-muted-foreground">
+            <li>1. Jalankan runtime bridge di komputer booth.</li>
+            <li>2. Pastikan port bridge terbuka.</li>
+            <li>3. Klik Deteksi ulang.</li>
+            <li>4. Jika tetap gagal, isi nama perangkat manual.</li>
+          </ol>
+          <p className="font-mono text-[10px] uppercase tracking-[0.06em] text-muted-foreground">
+            URL bridge:{" "}
+            <code className="break-all font-mono text-xs normal-case text-ink">{bridgeBase}</code>
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11"
+              onClick={() => void detect()}
+            >
+              <RefreshCw className="size-4" aria-hidden />
+              Deteksi ulang
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11"
+              aria-expanded={manualOpen}
+              onClick={() => setManualOpen((open) => !open)}
+            >
+              Isi manual
+            </Button>
+          </div>
+          {manualOpen ? (
+            <label className="flex flex-col gap-1">
+              <span className={LABEL}>Nama perangkat manual</span>
+              <Input
+                ref={manualRef}
+                id="manual_device_name"
+                name="manual_device_name"
+                value={manualName}
+                maxLength={128}
+                placeholder="mis. DNP DS620"
+                onChange={(event) => setManualName(event.target.value)}
+              />
+              <span className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.06em] text-muted-foreground">
+                Catatan lokal di halaman ini, tidak disimpan ke server. Nama yang benar-benar dipakai
+                diisi di kolom perangkat di bawah.
+              </span>
+            </label>
+          ) : null}
+        </div>
+      ) : message ? (
+        <p role="status" className={`${NEUTRAL} bg-accent-3`}>
           {message}
         </p>
       ) : null}

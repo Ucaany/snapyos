@@ -13,6 +13,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DEVICE_ONLINE_WINDOW_MS } from "@/lib/device-online";
+import { BOOTH_STALE_MINUTES } from "@/lib/booth-health";
 import type { PhotoboxRow } from "@/server/photoboxes";
 
 const deviceRowSchema = z.object({
@@ -55,6 +57,33 @@ function remainingLabel(expiresAt: string, now: number): string {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 }
 
+function formatHeartbeat(iso: string | null, now: number): string {
+  if (!iso) return "mati";
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "mati";
+  const diff = Math.floor((now - t) / 1000);
+  if (diff < 0) return "baru saja";
+  if (diff < 60) return `${diff} detik lalu`;
+  if (diff < 3600) return `${Math.floor(diff / 60)} menit lalu`;
+  return `${Math.floor(diff / 3600)} jam lalu`;
+}
+
+function heartbeatTone(iso: string | null, now: number): "active" | "delayed" | "dead" {
+  if (!iso) return "dead";
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "dead";
+  const ageMs = now - t;
+  if (ageMs <= DEVICE_ONLINE_WINDOW_MS) return "active";
+  if (ageMs <= BOOTH_STALE_MINUTES * 60_000) return "delayed";
+  return "dead";
+}
+
+function heartbeatBadgeClass(tone: "active" | "delayed" | "dead"): string {
+  if (tone === "active") return "bg-accent-3";
+  if (tone === "delayed") return "bg-accent-1";
+  return "bg-destructive/10 text-destructive";
+}
+
 async function readErrorMessage(res: Response, fallback: string): Promise<string> {
   try {
     const parsed = errorResponse.safeParse(await res.json());
@@ -84,6 +113,7 @@ export function DeviceDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(0);
+  const [heartbeatNow, setHeartbeatNow] = useState(() => Date.now());
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -126,6 +156,18 @@ export function DeviceDialog({
       clearInterval(id);
     };
   }, [open, activation]);
+
+  // Recompute label relatif heartbeat tiap 30 detik selama dialog terbuka.
+  // Tidak memanggil API — hanya menghitung ulang dari timestamp yang ada.
+  useEffect(() => {
+    if (!open) return;
+    const seed = requestAnimationFrame(() => setHeartbeatNow(Date.now()));
+    const id = setInterval(() => setHeartbeatNow(Date.now()), 30_000);
+    return () => {
+      cancelAnimationFrame(seed);
+      clearInterval(id);
+    };
+  }, [open]);
 
   async function generateCode() {
     if (busy) return;
@@ -252,9 +294,12 @@ export function DeviceDialog({
           </Button>
         }
       />
-      <DialogContent className="max-w-[720px]">
+      <DialogContent className="flex max-w-[720px] flex-col gap-4 p-5 sm:p-6 max-h-[85vh] overflow-y-auto">
         <DialogTitle>
-          <span className="block font-mono text-[10px] font-normal uppercase tracking-[0.2em] text-muted-foreground">
+          <span
+            className="block max-w-full truncate font-mono text-[10px] font-normal uppercase tracking-[0.2em] text-muted-foreground"
+            title={photobox.name}
+          >
             {`PERANGKAT: ${photobox.name.toUpperCase()}`}
           </span>
           Pairing perangkat
@@ -279,7 +324,7 @@ export function DeviceDialog({
             </div>
             <Button
               size="sm"
-              className="self-start"
+              className="min-h-11 self-start"
               onClick={() => {
                 const url = `${window.location.origin}/p/${businessSlug}/${photobox.slug}${
                   activation && !expired ? `?code=${activation.code}` : ""
@@ -293,58 +338,81 @@ export function DeviceDialog({
         )}
 
         {/* device_status dari setup wizard */}
-        <div className="grid grid-cols-1 gap-3 border-2 border-ink bg-muted p-4 font-mono text-xs md:grid-cols-2">
-          <div className="flex flex-col gap-1">
-            <p className="font-bold uppercase tracking-[0.12em]">Kamera</p>
-            <p className="text-muted-foreground">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="border-2 border-ink/10 p-3">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+              Kamera
+            </p>
+            <p className="mt-1 break-words font-mono text-xs font-bold">
               {cameraStatus?.resolution
                 ? `${cameraStatus.resolution}${cameraStatus.error ? ` - ${cameraStatus.error}` : ""}`
                 : "Belum ada laporan (setup wizard belum jalan)"}
             </p>
           </div>
-          <div className="flex flex-col gap-1">
-            <p className="font-bold uppercase tracking-[0.12em]">Printer</p>
-            <p className="text-muted-foreground">
+          <div className="border-2 border-ink/10 p-3">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+              Printer
+            </p>
+            <p className="mt-1 break-words font-mono text-xs font-bold">
               {printerStatus?.confirmed === true
                 ? `Test print OK (${printerStatus.last_test_at ?? ""})`
                 : "Belum dikonfirmasi"}
             </p>
           </div>
-          <div className="flex flex-col gap-1">
-            <p className="font-bold uppercase tracking-[0.12em]">Printer aktif</p>
-            <p className="text-muted-foreground">
+          <div className="border-2 border-ink/10 p-3">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+              Printer aktif
+            </p>
+            <p className="mt-1 break-words font-mono text-xs font-bold">
               {photobox.print_settings.printer_name || "Belum dilaporkan booth"}
             </p>
           </div>
-          <div className="flex flex-col gap-1">
-            <p className="font-bold uppercase tracking-[0.12em]">Ukuran kertas</p>
-            <p className="text-muted-foreground">
+          <div className="border-2 border-ink/10 p-3">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+              Ukuran kertas
+            </p>
+            <p className="mt-1 break-words font-mono text-xs font-bold">
               {photobox.print_settings.paper_size ?? "Belum dilaporkan booth"}
             </p>
           </div>
-          <div className="flex flex-col gap-1">
-            <p className="font-bold uppercase tracking-[0.12em]">Jalur cetak</p>
-            <p className="text-muted-foreground">
+          <div className="border-2 border-ink/10 p-3">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+              Jalur cetak
+            </p>
+            <p className="mt-1 break-words font-mono text-xs font-bold">
               {printerStatus?.mode ?? "Belum dilaporkan booth"}
             </p>
           </div>
-          <div className="flex flex-col gap-1 md:col-span-2">
-            <p className="font-bold uppercase tracking-[0.12em]">Antrean cetak</p>
-            <p className="text-muted-foreground">
+          <div className="border-2 border-ink/10 p-3">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+              Antrean cetak
+            </p>
+            <p className="mt-1 break-words font-mono text-xs font-bold">
               {printerStatus?.job
                 ? `${printerStatus.job.status ?? "—"} · menunggu ${printerStatus.job.queue_pending ?? 0} · gagal ${printerStatus.job.queue_retrying ?? 0}${printerStatus.job.last_error ? ` · ${printerStatus.job.last_error}` : ""}`
                 : "Belum ada job cetak"}
             </p>
           </div>
-          <div className="flex flex-col gap-1 md:col-span-2">
-            <p className="font-bold uppercase tracking-[0.12em]">Dilaporkan</p>
-            <p className="text-muted-foreground">
-              {reportedAt
-                ? new Date(reportedAt).toLocaleString("id-ID")
-                : loadingDevices
-                  ? "…"
-                  : "Belum pernah dilaporkan"}
+          <div className="border-2 border-ink/10 p-3 sm:col-span-2">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+              Dilaporkan
             </p>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <p className="break-words font-mono text-xs font-bold">
+                {reportedAt
+                  ? formatHeartbeat(reportedAt, heartbeatNow)
+                  : loadingDevices
+                    ? "…"
+                    : "Belum pernah dilaporkan"}
+              </p>
+              {reportedAt && (
+                <span
+                  className={`inline-block border-2 border-ink px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em] ${heartbeatBadgeClass(heartbeatTone(reportedAt, heartbeatNow))}`}
+                >
+                  {heartbeatTone(reportedAt, heartbeatNow)}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -358,6 +426,7 @@ export function DeviceDialog({
               <Button
                 size="sm"
                 variant="outline"
+                className="min-h-11"
                 onClick={() => void generateCode()}
                 disabled={busy || hasActive}
               >
@@ -409,6 +478,7 @@ export function DeviceDialog({
               <Button
                 size="sm"
                 variant="destructive"
+                className="min-h-11"
                 onClick={() => void revokeAll()}
                 disabled={busy}
               >
@@ -429,19 +499,23 @@ export function DeviceDialog({
                   key={d.id}
                   className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
                 >
-                  <div className="flex flex-col gap-0.5 font-mono text-xs">
-                    <p className="font-bold uppercase tracking-[0.05em]">
+                  <div className="flex min-w-0 flex-col gap-0.5 font-mono text-xs">
+                    <p className="break-words font-bold uppercase tracking-[0.05em]">
                       {`${d.name ?? "Kiosk"}${d.photobox_name ? ` - ${d.photobox_name}` : ""}`}
                     </p>
-                    <p className="text-muted-foreground">
-                      {`Terakhir aktif: ${(d.last_heartbeat_at ?? d.last_seen_at) ? new Date(d.last_heartbeat_at ?? d.last_seen_at ?? "").toLocaleString("id-ID") : "-"}`}
+                    <p className="break-words text-muted-foreground">
+                      {`Terakhir aktif: ${formatHeartbeat(d.last_heartbeat_at ?? d.last_seen_at, heartbeatNow)}`}
                     </p>
                     {d.diagnostics && <p className="text-muted-foreground">Diagnostik tersedia</p>}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center justify-end gap-3">
                     <span
                       className={`inline-block border-2 border-ink px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em] ${
-                        d.status === "active" ? "bg-accent-3" : "bg-muted text-muted-foreground"
+                        d.status === "active" && heartbeatTone(d.last_heartbeat_at ?? d.last_seen_at, heartbeatNow) === "active"
+                          ? "bg-accent-3"
+                          : heartbeatTone(d.last_heartbeat_at ?? d.last_seen_at, heartbeatNow) === "dead"
+                            ? "bg-destructive/10 text-destructive"
+                            : "bg-muted text-muted-foreground"
                       }`}
                     >
                       {d.status}
@@ -450,6 +524,7 @@ export function DeviceDialog({
                       <Button
                         variant="destructive"
                         size="sm"
+                        className="min-h-11"
                         onClick={() => void revoke(d.id)}
                         disabled={busy}
                       >

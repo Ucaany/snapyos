@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { DateRangeFilter } from "@/components/dashboard/DateRangeFilter";
+import { HourlyChart } from "@/components/dashboard/HourlyChart";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { StatStrip } from "@/components/dashboard/StatStrip";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +15,8 @@ import { can } from "@/lib/rbac";
 import { formatBp, formatIDR } from "@/lib/dashboard-math";
 import { getActiveBusiness, requireUser } from "@/lib/tenant";
 import { getBusinessMetrics } from "@/server/metrics";
+import { getPaidTxInsights } from "@/server/analytics";
+import { getRevenueSeries } from "@/server/dashboard";
 
 export const metadata: Metadata = {
   title: "Metrik: SnapyOS",
@@ -40,10 +43,22 @@ export default async function MetricsPage({
   }
 
   const query = await searchParams;
-  const metrics = await getBusinessMetrics(user.id, active.business.id, {
-    from: query.from,
-    to: query.to,
-  });
+  const range = { from: query.from, to: query.to };
+  const timeZone = active.business.timezone || "Asia/Jakarta";
+  const [metrics, paidInsights, series] = await Promise.all([
+    getBusinessMetrics(user.id, active.business.id, range),
+    getPaidTxInsights(user.id, active.business.id, range),
+    getRevenueSeries(user.id, active.business.id, range),
+  ]);
+
+  const bestDay =
+    series.total > 0
+      ? series.series.reduce<{ date: string; amount: number } | null>(
+          (best, day) => (day.amount > (best?.amount ?? 0) ? day : best),
+          null
+        )
+      : null;
+  const avgDuration = metrics.sessions.avgDurationSeconds;
 
   return (
     <PageShell>
@@ -55,7 +70,7 @@ export default async function MetricsPage({
           <DateRangeFilter
             from={metrics.range.from}
             to={metrics.range.to}
-            timeZone={active.business.timezone || "Asia/Jakarta"}
+            timeZone={timeZone}
             basePath="/dashboard/metrics"
           />
         }
@@ -84,6 +99,61 @@ export default async function MetricsPage({
           />
         </div>
       </section>
+
+      <section aria-label="Metrik unggulan" className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+        {paidInsights.insights.peakHour !== null && (
+          <MetricCard
+            label="Jam Ramai"
+            value={`${String(paidInsights.insights.peakHour).padStart(2, "0")}:00–${String(
+              paidInsights.insights.peakHour
+            ).padStart(2, "0")}:59`}
+            sub={`${paidInsights.insights.peakCount} transaksi`}
+          />
+        )}
+        {bestDay && (
+          <MetricCard
+            label="Hari Terbaik"
+            value={formatIDR(bestDay.amount)}
+            sub={new Date(bestDay.date + "T00:00:00Z").toLocaleDateString("id-ID", {
+              timeZone,
+              weekday: "short",
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            })}
+          />
+        )}
+        {metrics.photobox.popularPackage && (
+          <MetricCard
+            label="Paket Terlaris"
+            value={metrics.photobox.popularPackage}
+            sub="Paket paling banyak terjual"
+          />
+        )}
+        {avgDuration > 0 && (
+          <MetricCard
+            label="Rata-rata Durasi Sesi"
+            value={`${Math.floor(avgDuration / 60)}m ${avgDuration % 60}s`}
+            sub="Sesi selesai"
+          />
+        )}
+      </section>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Jam Ramai (Transaksi Paid)</CardTitle>
+          <CardDescription>
+            Distribusi transaksi berhasil per jam lokal ({timeZone}).
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <HourlyChart
+            hourly={paidInsights.insights.hourly}
+            peakHour={paidInsights.insights.peakHour}
+            peakCount={paidInsights.insights.peakCount}
+          />
+        </CardContent>
+      </Card>
 
       <StatStrip
         label="Ringkasan metrik"

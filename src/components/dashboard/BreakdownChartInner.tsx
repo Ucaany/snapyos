@@ -29,6 +29,16 @@ function compactIDR(n: number): string {
 export function BreakdownChartInner({ data }: { data: { label: string; amount: number }[] }) {
   const chart = CHART_STYLE;
 
+  if (data.length === 0) {
+    return (
+      <div className="flex h-[320px] items-center justify-center border-2 border-dashed border-ink/40 bg-muted">
+        <p className="font-mono text-xs font-bold uppercase tracking-[0.1em] text-muted-foreground">
+          BELUM ADA DATA BREAKDOWN
+        </p>
+      </div>
+    );
+  }
+
   return (
     <ChartContainer config={chartConfig} className="aspect-auto h-[320px] w-full">
       <BarChart
@@ -73,7 +83,7 @@ export function BreakdownChartInner({ data }: { data: { label: string; amount: n
           fill="var(--color-amount)"
           stroke={chart.barStroke}
           strokeWidth={chart.barStrokeWidth}
-          radius={chart.barRadius}
+          radius={0}
           maxBarSize={24}
         />
       </BarChart>

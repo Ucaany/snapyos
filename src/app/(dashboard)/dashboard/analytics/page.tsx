@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 
 import { BreakdownChart } from "@/components/dashboard/BreakdownChart";
 import { DateRangeFilter } from "@/components/dashboard/DateRangeFilter";
+import { HourlyChart } from "@/components/dashboard/HourlyChart";
 import { RevenueChart } from "@/components/dashboard/RevenueChart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -17,7 +18,7 @@ import { can } from "@/lib/rbac";
 import { formatIDR } from "@/lib/dashboard-math";
 import { getActiveBusiness, requireUser } from "@/lib/tenant";
 import { getRevenueSeries } from "@/server/dashboard";
-import { getRevenueBreakdown } from "@/server/analytics";
+import { getPaidTxInsights, getRevenueBreakdown } from "@/server/analytics";
 
 export const metadata: Metadata = {
   title: "Analitik: SnapyOS",
@@ -59,8 +60,9 @@ export default async function AnalyticsPage({
   const tab: TabKey = TABS.some((t) => t.key === query.tab) ? (query.tab as TabKey) : "day";
   const businessId = active.business.id;
 
-  const [series, breakdown] = await Promise.all([
+  const [series, paidInsights, breakdown] = await Promise.all([
     getRevenueSeries(user.id, businessId, range),
+    getPaidTxInsights(user.id, businessId, range),
     tab === "outlet"
       ? getRevenueBreakdown(user.id, businessId, range, "outlet")
       : tab === "package"
@@ -71,6 +73,10 @@ export default async function AnalyticsPage({
             ? getRevenueBreakdown(user.id, businessId, range, "payment_method")
             : Promise.resolve(null),
   ]);
+
+  const timeZone = active.business.timezone || "Asia/Jakarta";
+  const breakdownTotal = breakdown?.total ?? 0;
+  const tabLabel = TABS.find((t) => t.key === tab)?.label ?? "Breakdown";
 
   const base = (next: Partial<{ from: string; to: string; tab: string }>) => {
     const params = new URLSearchParams({
@@ -97,7 +103,7 @@ export default async function AnalyticsPage({
           <DateRangeFilter
             from={series.range.from}
             to={series.range.to}
-            timeZone={active.business.timezone || "Asia/Jakarta"}
+            timeZone={timeZone}
             basePath="/dashboard/analytics"
           />
         }
@@ -144,7 +150,7 @@ export default async function AnalyticsPage({
           ) : tab === "day" ? (
             <RevenueChart
               data={series.series}
-              timeZone={active.business.timezone || "Asia/Jakarta"}
+              timeZone={timeZone}
             />
           ) : (
             <BreakdownChart
@@ -154,7 +160,10 @@ export default async function AnalyticsPage({
           {tab !== "day" && (breakdown?.items.length ?? 0) > 0 && (
             <div className="mt-6 overflow-x-auto">
               <table className="w-full md:min-w-[480px] border-collapse text-left">
-                <caption className="sr-only">Rincian breakdown</caption>
+                <caption className="sr-only">
+                  Rincian {tabLabel} per {tab === "method" ? "metode bayar" : tab}, termasuk jumlah
+                  transaksi, share persentase, dan pendapatan net.
+                </caption>
                 <thead>
                   <tr className="border-b-2 border-ink font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
                     <th scope="col" className="py-2 pr-4">
@@ -162,6 +171,9 @@ export default async function AnalyticsPage({
                     </th>
                     <th scope="col" className="py-2 pr-4 text-right">
                       Transaksi
+                    </th>
+                    <th scope="col" className="py-2 pr-4 text-right">
+                      Share
                     </th>
                     <th scope="col" className="py-2 text-right">
                       Pendapatan Net
@@ -173,6 +185,9 @@ export default async function AnalyticsPage({
                     <tr key={item.key} className="border-b-2 border-ink/10 font-mono text-xs">
                       <td className="py-2 pr-4 font-bold uppercase">{item.label}</td>
                       <td className="py-2 pr-4 text-right">{item.count}</td>
+                      <td className="py-2 pr-4 text-right">
+                        {breakdownTotal > 0 ? `${Math.round((item.amount / breakdownTotal) * 100)}%` : "0%"}
+                      </td>
                       <td className="py-2 text-right font-bold">{formatIDR(item.amount)}</td>
                     </tr>
                   ))}
@@ -180,6 +195,22 @@ export default async function AnalyticsPage({
               </table>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Jam Ramai</CardTitle>
+          <CardDescription>
+            Distribusi transaksi berhasil per jam lokal ({timeZone}).
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <HourlyChart
+            hourly={paidInsights.insights.hourly}
+            peakHour={paidInsights.insights.peakHour}
+            peakCount={paidInsights.insights.peakCount}
+          />
         </CardContent>
       </Card>
     </PageShell>

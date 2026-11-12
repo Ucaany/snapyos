@@ -1889,6 +1889,127 @@ export const HELP_ARTICLES: HelpArticle[] = [
       { title: "Dokumentasi", slug: "quick-start", desc: "Kembali ke awal." },
     ],
   },
+  {
+    slug: "panduan-heartbeat-bridge",
+    title: "Heartbeat & Bridge",
+    category: "Perangkat",
+    summary:
+      "Urutan deteksi perangkat, pairing device, heartbeat yang muncul di dashboard, dan cetak uji lewat bridge lokal.",
+    audience: "Owner dan operator booth",
+    estimate: "8 menit",
+    prerequisites: [
+      "Runtime bridge terpasang di komputer booth.",
+      "Perangkat booth tersedia dan tersambung ke jaringan yang sama.",
+    ],
+    sections: [
+      {
+        heading: "Ringkasan",
+        paragraphs: [
+          "Bridge lokal adalah service kecil di komputer booth yang menjembatani kiosk dengan kamera dan printer. Tanpa bridge, kiosk tetap bisa memakai kamera browser dan dialog cetak sistem, tetapi deteksi perangkat dan CUPS tidak tersedia.",
+          "Urutan yang benar selalu sama: deteksi perangkat, pairing device, heartbeat muncul di dashboard, lalu cetak uji. Jangan lompat ke cetak uji sebelum heartbeat terlihat, karena status perangkat belum terbaca server.",
+        ],
+        code: {
+          label: "Pola URL bridge dan kiosk",
+          lang: "text",
+          code: "http://127.0.0.1:17777\n/p/[businessSlug]/[photoboxSlug]",
+        },
+      },
+      {
+        heading: "1. Deteksi perangkat",
+        paragraphs: [
+          "Deteksi membaca daftar kamera dan printer dari bridge. Bila bridge tidak menjawab, halaman hardware menampilkan panel perbaikan berisi langkah dan URL bridge yang dipakai, bukan pesan error mentah.",
+          "Nama perangkat hasil deteksi bisa dipilih dari dropdown, atau diketik manual bila bridge mati. Nama manual adalah catatan operator, bukan bukti perangkat terpasang.",
+        ],
+        steps: [
+          "Buka halaman Hardware booth di dashboard owner.",
+          "Isi URL bridge bila bukan default. Kosong berarti http://127.0.0.1:17777.",
+          "Tekan Deteksi, lalu periksa daftar kamera dan printer yang muncul.",
+          "Bila bridge tidak menjawab, jalankan runtime bridge di komputer booth lalu deteksi ulang.",
+        ],
+      },
+      {
+        heading: "2. Pairing device",
+        paragraphs: [
+          "Pairing mengikat satu perangkat kiosk ke satu photobox. Kode aktivasi sekali pakai dan kedaluwarsa sekitar 5 menit, lalu server menerbitkan device token persisten sampai di revoke.",
+          "Pairing hanya perlu sekali per perangkat. Bila perangkat diganti atau hilang, revoke dulu dari daftar device agar token lama tidak berlaku.",
+        ],
+        steps: [
+          "Di detail photobox, tekan Tampilkan Kode atau QR.",
+          "Di perangkat kiosk buka /p/[businessSlug]/[photoboxSlug].",
+          "Masukkan kode atau scan QR, lalu selesaikan setup wizard.",
+          "Pastikan kiosk masuk welcome screen dengan branding business Anda.",
+        ],
+      },
+      {
+        heading: "3. Heartbeat muncul",
+        paragraphs: [
+          "Setelah pairing, perangkat mengirim heartbeat berkala. Heartbeat adalah tanda perangkat hidup dan terhubung, bukan bukti kamera atau printer bekerja. Status perangkat di dashboard dibaca dari heartbeat terakhir.",
+          "Bila heartbeat tidak muncul, periksa jaringan, jam perangkat, dan status token. Revoke lalu pairing ulang bila token dicurigai tidak valid.",
+        ],
+        table: {
+          head: ["Status heartbeat", "Arti", "Aksi"],
+          rows: [
+            ["Aktif", "Perangkat mengirim heartbeat dalam periode terakhir", "Tidak perlu tindakan"],
+            [
+              "Tertunda",
+              "Belum ada heartbeat baru, koneksi atau proses kiosk terhenti sementara",
+              "Cek jaringan dan pastikan kiosk terbuka, lalu tunggu satu siklus",
+            ],
+            [
+              "Mati",
+              "Tidak ada heartbeat sama sekali, perangkat tidak terhubung",
+              "Nyalakan perangkat, cek jaringan, lalu pairing ulang bila perlu",
+            ],
+          ],
+        },
+      },
+      {
+        heading: "4. Cetak uji",
+        paragraphs: [
+          "Cetak uji membuktikan kertas benar-benar keluar. Job yang diterima spooler bukan bukti cetak berhasil, jadi konfirmasi selalu fisik.",
+          "Untuk jalur CUPS, bridge harus aktif dan printer tidak offline. Bila status printer offline atau disabled, kiosk menolak mengirim job dan menampilkan langkah perbaikan.",
+        ],
+        steps: [
+          "Pastikan heartbeat sudah aktif di dashboard.",
+          "Buka panel uji cetak di halaman hardware atau setup wizard.",
+          "Kirim uji cetak, lalu periksa kertas keluar.",
+          "Tandai berhasil hanya bila kertas benar-benar tercetak.",
+        ],
+      },
+    ],
+    troubleshooting: [
+      {
+        gejala: "Bridge tidak menjawab",
+        penyebab: "Runtime bridge belum jalan atau URL bridge salah",
+        solusi:
+          "Jalankan bridge di komputer booth, samakan URL di halaman hardware, lalu tekan Deteksi ulang.",
+      },
+      {
+        gejala: "Heartbeat tidak muncul",
+        penyebab: "Perangkat belum pairing, token di revoke, atau jaringan terputus",
+        solusi: "Cek jaringan, revoke lalu pairing ulang, dan pastikan kiosk terbuka.",
+      },
+      {
+        gejala: "CUPS tidak aktif",
+        penyebab: "Service CUPS atau spooler berhenti, atau printer offline",
+        solusi:
+          "Aktifkan CUPS/spooler di komputer booth, periksa kabel dan kertas, lalu ulangi cetak uji.",
+      },
+    ],
+    nextSteps: [
+      {
+        title: "Owner: Kelola Outlet dan Booth",
+        slug: "panduan-photobox-owner",
+        desc: "Pairing dan status device.",
+      },
+      {
+        title: "Kamera dan Printer Kompatibel",
+        slug: "perangkat-kompatibel",
+        desc: "Seri perangkat yang didukung.",
+      },
+      { title: "Atasi Masalah Umum", slug: "troubleshooting", desc: "Solusi per gejala." },
+    ],
+  },
 ];
 
 export function listHelpArticles(category?: string | null): HelpArticle[] {
@@ -1977,7 +2098,7 @@ export const DOC_GROUPS: DocGroup[] = [
     slug: "perangkat",
     title: "Perangkat",
     desc: "Kamera dan printer yang didukung, dua jalur cetak, dan cara deteksi perangkat.",
-    slugs: ["perangkat-kompatibel", "panduan-printer-kamera"],
+    slugs: ["perangkat-kompatibel", "panduan-printer-kamera", "panduan-heartbeat-bridge"],
   },
   {
     slug: "bantuan",

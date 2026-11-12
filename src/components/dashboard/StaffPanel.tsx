@@ -379,10 +379,10 @@ export function StaffPanel({
         noValidate
       >
         <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">{"Tambah staff"}</p>
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="flex flex-col gap-2">
             <label htmlFor="staff-email" className={labelClass}>
-              Email akun SnapyOS *
+              Email akun SnapyOS <span className="text-destructive">*</span>
             </label>
             <Input
               id="staff-email"
@@ -394,32 +394,22 @@ export function StaffPanel({
               aria-invalid={Boolean(fieldError(inviteState, "email"))}
             />
             {fieldError(inviteState, "email") && (
-              <p role="alert" className="font-mono text-xs text-destructive">
+              <p role="alert" className="mt-1 font-mono text-xs text-destructive">
                 {fieldError(inviteState, "email")}
               </p>
             )}
           </div>
           <div className="flex flex-col gap-2">
             <label htmlFor="staff-role" className={labelClass}>
-              Role *
+              Role <span className="text-destructive">*</span>
             </label>
             <Select id="staff-role" name="role" defaultValue="staff" disabled={inviting}>
               <option value="manager">MANAGER</option>
               <option value="staff">STAFF</option>
             </Select>
-            <p className="font-mono text-[11px] leading-relaxed text-muted-foreground">
+            <p className="mt-2 font-mono text-xs uppercase tracking-[0.05em] text-muted-foreground">
               {ROLE_DESC.manager}
             </p>
-          </div>
-          <div className="flex items-end">
-            <IconButton
-              type="submit"
-              variant="default"
-              label={inviting ? "Menambahkan staff" : "Tambahkan staff"}
-              icon={UserPlus}
-              compact
-              disabled={inviting}
-            />
           </div>
         </div>
         {inviteState.error && (
@@ -430,10 +420,20 @@ export function StaffPanel({
             {inviteState.error}
           </p>
         )}
+        <div className="border-2 border-ink/15 bg-muted px-3 py-2 font-mono text-[10px] uppercase tracking-[0.05em]">
+          {`Kuota: ${staff.length}/${maxStaff} (termasuk owner)`}
+        </div>
         <p className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
-          Akun harus sudah terdaftar di SnapyOS: hubungi admin platform bila belum ada. Kuota:{" "}
-          {staff.length}/{maxStaff} (termasuk owner).
+          Akun harus sudah terdaftar di SnapyOS: hubungi admin platform bila belum ada.
         </p>
+        <div className="flex flex-wrap justify-end gap-3">
+          <Button type="submit" className="min-h-11 gap-2 px-6" disabled={inviting}>
+            <UserPlus aria-hidden />
+            <span className="whitespace-normal text-left">
+              {inviting ? "Menambahkan staff" : "Tambah staff"}
+            </span>
+          </Button>
+        </div>
       </form>
 
       {staff.length === 0 ? (
