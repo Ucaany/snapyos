@@ -1,5 +1,7 @@
 "use client";
 
+import type { ElementType } from "react";
+
 import type { BrandingConfig, KioskBrandingConfig } from "@/lib/kiosk-types";
 import { kioskThemeVars, kioskVisualStyle } from "@/lib/kiosk-types";
 import { defaultBrandColors } from "@/lib/brand-defaults";
@@ -11,6 +13,8 @@ type Props = {
   business: { name: string; logo_url: string | null };
   branding: BrandingConfig;
   onStart: () => void;
+  /** Level heading untuk konteks pratinjau (kiosk asli tetap h1). */
+  headingAs?: ElementType;
 };
 
 /** Inisial monogram dari nama bisnis (maks 2 huruf) — bukan aset rekaan. */
@@ -26,7 +30,7 @@ function initials(name: string): string {
  * di layar pendek konten tetap bisa digulir. Branding owner (warna, font scale,
  * radius, padding, visibilitas, video background looping ≤5s) dihormati.
  */
-export function WelcomeScreen({ business, branding, onStart }: Props) {
+export function WelcomeScreen({ business, branding, onStart, headingAs = "h1" }: Props) {
   const k: KioskBrandingConfig = branding.kiosk ?? {};
   const title = branding.welcome_title || business.name;
   const tagline = branding.welcome_tagline || "Abadikan momenmu.";
@@ -88,6 +92,7 @@ export function WelcomeScreen({ business, branding, onStart }: Props) {
         </p>
       )}
       <KioskHeading
+        as={headingAs}
         size="lg"
         scale={fontScale}
         className="max-w-[16ch]"

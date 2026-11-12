@@ -236,7 +236,7 @@ export const KIOSK_PAGE_IDS = [
 export const kioskPageIdSchema = z.enum(KIOSK_PAGE_IDS);
 
 /** Override visual per layar kiosk (semua opsional — fallback ke global). */
-const kioskPageSchema = z.object({
+export const kioskPageSchema = z.object({
   bg_color: hexColor.optional(),
   text_color: hexColor.optional(),
   font_scale: z.number().min(0.8).max(1.4).optional(),
@@ -315,7 +315,42 @@ export function isBrandingStorageKey(businessId: string, key: string): boolean {
   const prefix = `${businessId}/branding/`;
   if (!key.startsWith(prefix)) return false;
   const rest = key.slice(prefix.length);
+  return isSafeBrandAssetRest(rest);
+}
+
+/** Sisa path aset branding yang aman: tidak kosong, tanpa traversal, charset ketat. */
+function isSafeBrandAssetRest(rest: string): boolean {
   return rest.length > 0 && !rest.includes("..") && /^[A-Za-z0-9._/-]+$/.test(rest);
+}
+
+/**
+ * Key aset branding milik tenant — dipakai jalur BACA (sign URL kiosk publik).
+ * Menerima aset global (`<businessId>/branding/...`) DAN aset override booth
+ * (`<businessId>/photoboxes/<uuid>/branding/...`, lihat 0045). Tenant lain,
+ * traversal (`..`), backslash, key kosong, dan karakter aneh ditolak.
+ *
+ * Jangan dipakai jalur TULIS global: `isBrandingStorageKey` tetap allowlist
+ * ketat untuk `logo_key`/`video_key` global.
+ */
+export function isTenantBrandAssetKey(businessId: string, key: string): boolean {
+  if (!businessId || !key) return false;
+  if (key.includes("\\") || key.includes("..")) return false;
+
+  const globalPrefix = `${businessId}/branding/`;
+  if (key.startsWith(globalPrefix)) {
+    return isSafeBrandAssetRest(key.slice(globalPrefix.length));
+  }
+
+  const boothPrefix = `${businessId}/photoboxes/`;
+  if (!key.startsWith(boothPrefix)) return false;
+  const rest = key.slice(boothPrefix.length);
+  const slash = rest.indexOf("/");
+  if (slash <= 0) return false;
+  if (!uuid.safeParse(rest.slice(0, slash)).success) return false;
+  const afterId = rest.slice(slash + 1);
+  const brandPrefix = "branding/";
+  if (!afterId.startsWith(brandPrefix)) return false;
+  return isSafeBrandAssetRest(afterId.slice(brandPrefix.length));
 }
 
 /** Branding jsonb — docs/04 §4.8 (Photobox Builder / branding + welcome). */

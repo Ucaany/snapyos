@@ -14,12 +14,18 @@ function isPlainObject(value: unknown): value is Row {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-/** Salin hanya key yang terkirim (undefined = inherit, bukan menimpa). */
+/**
+ * Salin hanya key yang terkirim. `undefined` = inherit; string kosong/spasi
+ * juga diperlakukan "tidak diisi" agar tidak menjadi override kosong yang
+ * memblokir pewarisan global. `null` tetap eksplisit (mis. hapus video).
+ */
 function definedEntries(input: unknown): Row {
   if (!isPlainObject(input)) return {};
   const out: Row = {};
   for (const [key, value] of Object.entries(input)) {
-    if (value !== undefined) out[key] = value;
+    if (value === undefined) continue;
+    if (typeof value === "string" && value.trim() === "") continue;
+    out[key] = value;
   }
   return out;
 }
@@ -68,15 +74,28 @@ export function mergeBranding(
 }
 
 /**
+ * True bila sebuah NILAI field berisi override. `null` di sini adalah nilai
+ * eksplisit (mis. `kiosk.video_key: null` = hapus video), bukan "kosong".
+ */
+function hasOverrideValue(value: unknown): boolean {
+  if (value === undefined) return false;
+  if (value === null) return true;
+  if (typeof value === "string") return value.trim() !== "";
+  if (Array.isArray(value)) return value.some(hasOverrideValue);
+  if (!isPlainObject(value)) return true;
+  return Object.values(value).some(hasOverrideValue);
+}
+
+/**
  * True bila override memang berisi setidaknya satu nilai (rekursif).
- * `null`/`{}`/`{ kiosk: {} }` = tidak ada override → booth mewarisi global.
+ * `null`/`undefined` pada ROOT = tidak ada override; tetapi `null` sebagai
+ * nilai field adalah eksplisit (hapus) → dihitung override. String kosong,
+ * `{}`, dan `{ kiosk: {} }` tetap "tidak ada override" agar booth mewarisi
+ * global dan badge "mewarisi" tidak salah.
  */
 export function brandingHasOverride(input: unknown): boolean {
   if (input === null || input === undefined) return false;
-  if (!isPlainObject(input)) return true;
-  return Object.values(input).some((value) =>
-    isPlainObject(value) ? brandingHasOverride(value) : value !== undefined
-  );
+  return hasOverrideValue(input);
 }
 
 /**

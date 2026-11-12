@@ -45,6 +45,7 @@ export default async function DesignBuilderPage({
     name: booth.name,
     slug: booth.slug,
     override: booth.branding ? brandingSchema.catch({}).parse(booth.branding) : null,
+    orientation: booth.camera_settings?.screen_orientation ?? null,
   }));
 
   // Satu peta signed URL untuk semua key (global + seluruh override booth).
@@ -63,10 +64,10 @@ export default async function DesignBuilderPage({
         eyebrow="DESIGN BUILDER · PHOTOBOX"
         title="Design Builder"
         icon={Palette}
-        description="Pilih booth, ubah merek, sambutan, dan tampilan layar kiosk, lalu lihat pratinjau langsung. Booth tanpa kustomisasi mewarisi branding global."
+        description="Pilih photobox, ubah merek, sambutan, dan tampilan layar kiosk, lalu lihat pratinjau langsung. Photobox tanpa kustomisasi mewarisi branding global."
         meta={
           <>
-            {photoboxes.length} booth ·{" "}
+            {photoboxes.length} photobox ·{" "}
             {can(active.role, "business:update") ? "global" : "global read-only"}
           </>
         }

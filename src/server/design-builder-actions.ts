@@ -10,12 +10,8 @@
 import { revalidatePath } from "next/cache";
 import { toFormState } from "@/lib/form-state";
 import { can } from "@/lib/rbac";
-import {
-  brandingSchema,
-  kioskBrandingSchema,
-  kioskPageIdSchema,
-  type BrandingInput,
-} from "@/lib/validators";
+import { brandingSchema, kioskPageIdSchema, type BrandingInput } from "@/lib/validators";
+import { sanitizeResetKeys } from "@/lib/branding-reset";
 import { getActiveBusiness, requireUser } from "@/lib/tenant";
 import { requireEffectiveSubscription } from "@/server/require-subscription";
 import {
@@ -52,49 +48,6 @@ const REVALIDATE = ["/dashboard/branding", "/dashboard/photoboxes"] as const;
 
 function revalidateBuilder() {
   for (const path of REVALIDATE) revalidatePath(path);
-}
-
-const PAGE_FIELD_KEYS = new Set([
-  "bg_color",
-  "text_color",
-  "font_scale",
-  "button_radius",
-  "padding",
-  "align",
-  "video_key",
-]);
-
-/**
- * Allowlist path reset — mencegah klien menghapus key sembarang. Hanya field
- * branding yang memang punya kontrol hapus di builder.
- */
-function sanitizeResetKeys(paths: unknown): string[] {
-  if (!Array.isArray(paths)) return [];
-  const kioskKeys = new Set(Object.keys(kioskBrandingSchema.shape));
-  return paths.filter((path): path is string => {
-    if (typeof path !== "string") return false;
-    const segments = path.split(".");
-    if (segments.length === 1) return segments[0] === "logo_key";
-    if (segments.length === 2) {
-      return segments[0] === "kiosk" && kioskKeys.has(segments[1]!);
-    }
-    if (segments.length === 3) {
-      return (
-        segments[0] === "kiosk" &&
-        segments[1] === "pages" &&
-        kioskPageIdSchema.safeParse(segments[2]).success
-      );
-    }
-    if (segments.length === 4) {
-      return (
-        segments[0] === "kiosk" &&
-        segments[1] === "pages" &&
-        kioskPageIdSchema.safeParse(segments[2]).success &&
-        PAGE_FIELD_KEYS.has(segments[3]!)
-      );
-    }
-    return false;
-  });
 }
 
 export async function saveBrandingAction(input: SaveBrandingInput): Promise<FormState> {
