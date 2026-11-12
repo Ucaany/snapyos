@@ -1488,42 +1488,6 @@ export type DeviceExitInput = z.infer<typeof deviceExitSchema>;
 export type DeviceReportInput = z.infer<typeof deviceReportSchema>;
 export type SessionCreateInput = z.infer<typeof sessionCreateSchema>;
 
-// Windows installer catalog. Binary metadata is recomputed server-side.
-export const installerChannelSchema = z.enum(["stable", "beta", "internal"]);
-export const installerArchitectureSchema = z.enum(["x64", "x86", "arm64", "universal"]);
-export const installerWindowsSchema = z.enum(["10", "11"]);
-const installerVersionSchema = z
-  .string()
-  .trim()
-  .regex(/^\d+\.\d+\.\d+$/, "Versi harus format 1.2.3");
-const installerText = (max: number) => z.string().trim().max(max).nullable().optional();
-
-export const installerMetadataSchema = z.object({
-  version: installerVersionSchema,
-  channel: installerChannelSchema,
-  min_windows_version: installerWindowsSchema,
-  architecture: installerArchitectureSchema,
-  changelog: installerText(8000),
-  compatibility_notes: installerText(4000),
-});
-
-export const installerUpdateSchema = installerMetadataSchema
-  .partial()
-  .extend({
-    is_active: z.boolean().optional(),
-    is_deprecated: z.boolean().optional(),
-    published: z.boolean().optional(),
-  })
-  .refine((value) => Object.keys(value).length > 0, "Minimal satu field diubah");
-
-export const installerQuerySchema = z.object({
-  windows: installerWindowsSchema,
-  architecture: installerArchitectureSchema,
-});
-
-export type InstallerMetadataInput = z.infer<typeof installerMetadataSchema>;
-export type InstallerUpdateInput = z.infer<typeof installerUpdateSchema>;
-export type InstallerQueryInput = z.infer<typeof installerQuerySchema>;
 export type SessionFinalizeInput = z.infer<typeof sessionFinalizeSchema>;
 export type SessionAbortInput = z.infer<typeof sessionAbortSchema>;
 export type CheckoutCreateInput = z.infer<typeof checkoutCreateSchema>;

@@ -243,14 +243,6 @@ export type VideoValidation = { ok: true; ext: string } | { ok: false; error: st
 export type AssetValidation =
   { ok: true; ext: string; role: AssetRole; contentType: string } | { ok: false; error: string };
 
-export const INSTALLER_MAX_BYTES = 2 * 1024 * 1024 * 1024;
-export const INSTALLER_ALLOWED_TYPES: Record<string, string> = {
-  "application/x-msi": "msi",
-  "application/msix": "msix",
-  "application/zip": "zip",
-  "application/x-zip-compressed": "zip",
-};
-
 export const ASSET_MAX_BYTES: Record<AssetRole, number> = {
   logo: LOGO_MAX_BYTES,
   photo: PHOTO_MAX_BYTES,
@@ -308,43 +300,6 @@ export function sniffVideoType(bytes: Uint8Array): string | null {
     return "video/webm";
   }
   return null;
-}
-
-export type InstallerValidation = { ok: true; ext: string } | { ok: false; error: string };
-
-export function validateInstallerFile(
-  file: { name?: string | null; type?: string | null; size?: number | null },
-  bytes?: Uint8Array | null
-): InstallerValidation {
-  const type = (file.type ?? "").toLowerCase();
-  const name = (file.name ?? "").toLowerCase();
-  const ext = INSTALLER_ALLOWED_TYPES[type];
-  if (
-    !file.name ||
-    /[\\/\0]/.test(file.name) ||
-    !/^[a-z0-9][a-z0-9._ -]{0,180}\.[a-z0-9]+$/i.test(file.name)
-  ) {
-    return { ok: false, error: "Nama file installer tidak valid" };
-  }
-  if (!ext) return { ok: false, error: "Installer harus MSI, MSIX, atau ZIP" };
-  if (!name.endsWith(`.${ext}`)) return { ok: false, error: "Ekstensi installer tidak cocok" };
-  const size = file.size ?? 0;
-  if (!Number.isSafeInteger(size) || size <= 0)
-    return { ok: false, error: "File installer kosong" };
-  if (size > INSTALLER_MAX_BYTES) return { ok: false, error: "Ukuran installer maksimal 2 GB" };
-  if (bytes) {
-    const validZip = bytes.length >= 4 && bytes[0] === 0x50 && bytes[1] === 0x4b;
-    const validMsi =
-      bytes.length >= 8 &&
-      bytes[0] === 0xd0 &&
-      bytes[1] === 0xcf &&
-      bytes[2] === 0x11 &&
-      bytes[3] === 0xe0;
-    if ((ext === "zip" || ext === "msix") && !validZip)
-      return { ok: false, error: "Konten installer tidak valid" };
-    if (ext === "msi" && !validMsi) return { ok: false, error: "Konten installer tidak valid" };
-  }
-  return { ok: true, ext };
 }
 
 export function validateVideoFile(

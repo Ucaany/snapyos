@@ -16,7 +16,7 @@ PRD dan dokumentasi teknis ada di [`docs/`](./docs/README.md). Panduan developme
 - **Auth:** Auth.js v5 (NextAuth) — credential email/password, argon2id, JWT + DB revocation (`auth_sessions`)
 - **Payment:** Pakasir (pakasir.com — QRIS aggregator)
 - **Visual:** Full Neo-Brutalism (single aesthetic lock — satu dashboard brutalist)
-- **Kiosk:** PWA browser untuk tablet/phone; kamera, printer, dan sesi memakai bridge lokal opsional
+- **Kiosk:** PWA browser untuk tablet/phone; kamera, printer, dan sesi memakai bridge lokal opsional (`runtime/`, Node.js, cross-platform). Tidak ada aplikasi Windows native — adapter printer Windows hanya salah satu backend bridge
 
 ## Struktur Kunci
 

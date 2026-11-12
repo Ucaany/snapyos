@@ -67,7 +67,7 @@ Error:
 - `GET /api/v1/me/businesses` — daftar business user (owner-only session).
 - `POST /api/v1/businesses` — create business (onboarding). Daftar business hanya melalui endpoint canonical `GET /api/v1/me/businesses`.
 
-> **REMOVED (Fase 5):** `GET/PATCH /api/v1/business/:businessId`, `GET/PATCH /api/v1/business/:businessId/settings`, `GET/PATCH /api/v1/business/:businessId/settings/branding`, `POST /api/v1/business/:businessId/settings/branding/logo`. Branding lama tetap dibaca oleh public config dan runtime untuk kompatibilitas, tetapi dashboard owner tidak lagi menyediakan mutasi editor. Pairing, status, revoke, versi, installer download, dan diagnostik tersimpan dikelola dari `/dashboard/devices` memakai route device yang ada.
+> **REMOVED (Fase 5):** `GET/PATCH /api/v1/business/:businessId`, `GET/PATCH /api/v1/business/:businessId/settings`, `GET/PATCH /api/v1/business/:businessId/settings/branding`, `POST /api/v1/business/:businessId/settings/branding/logo`. Branding lama tetap dibaca oleh public config dan runtime untuk kompatibilitas, tetapi dashboard owner tidak lagi menyediakan mutasi editor. Pairing, status, revoke, versi, dan diagnostik tersimpan dikelola dari `/dashboard/devices` memakai route device yang ada.
 
 ## 8.5 Dashboard & Analytics
 

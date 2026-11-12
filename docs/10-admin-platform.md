@@ -69,7 +69,6 @@ Admin SnapyOS memiliki dashboard terpisah untuk mengelola platform.
 | Promos                 | create/edit `subscription_promos` (kode diskon plan-level, %/fixed, jadwal, batas pemakaian)                                                                  |
 | Subscriptions          | list (detail periode/trial/invoice), ubah status, perpanjang, cancel, kelola add-on aktif                                                                     |
 | Templates & Categories | kelola template global (`business_id NULL`) + upload URL frame/thumbnail/video + FK `category_id` + **harga/premium (jualan)**                                |
-| Katalog Aplikasi       | daftar rilis installer booth sebagai **tautan** (Google Drive/host lain), ukuran + SHA-256 opsional diisi manual, aktif/nonaktif, hapus baris                 |
 | Payment Gateways       | overview credential seluruh tenant (redacted) + **enable/disable global per provider** (`gateway_*_enabled`)                                                  |
 | Audit Log              | view seluruh `audit_logs` + filter aksi/search + **hapus riwayat (retensi)**                                                                                  |
 | Platform settings      | konfigurasi global (fee, retention default, maintenance_mode + **maintenance_message kustom**, gateway toggle, dll.)                                          |

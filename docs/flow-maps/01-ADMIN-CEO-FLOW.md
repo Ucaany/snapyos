@@ -597,8 +597,6 @@ SUBSCRIPTIONS (status, extend, attach/cancel add-on, intent failures)
   ↓
 TEMPLATES (upload global, categories, toggle active)
   ↓
-KATALOG APLIKASI (daftar rilis installer sebagai tautan Drive)
-  ↓
 PAYMENTS (monitor, filter, summary, POS revenue)
   ↓
 WITHDRAWALS (process, reject, ledger simetris)

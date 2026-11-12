@@ -1,5 +1,9 @@
 > **Catatan 2026-11-11:** `tests/`, `windows/`, `AUDIT-REPORT.md`, dan `docs/windows-kiosk/`
 > sudah dihapus dari repo. Rujukan ke artefak tersebut di bawah dibiarkan sebagai catatan sejarah.
+>
+> **Catatan 2026-11-12:** katalog installer Windows (`installer_catalog`, API `/installers`,
+> UI unduh installer, workflow `booth-windows.yml`) dihapus karena aplikasi Windows native
+> sudah tidak ada. Adapter printer Windows di `runtime/` tetap dipertahankan.
 
 # 18. Laporan Audit & Status Rilis
 

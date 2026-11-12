@@ -764,28 +764,6 @@ Tabel `reports` dihapus karena 0 caller di kode aplikasi. Fitur export report (C
 | meta        | jsonb                |                                                 |
 | created_at  | timestamptz          |                                                 |
 
-### installer_catalog (0081 — katalog installer Windows)
-
-| kolom                           | tipe               | ket                                                                |
-| ------------------------------- | ------------------ | ------------------------------------------------------------------ |
-| id                              | uuid PK            |                                                                    |
-| version                         | text               | versi rilis, uniqueness bersama channel + architecture             |
-| channel                         | text               | `stable` / `beta` / `internal`                                     |
-| min_windows_version             | text               | `10` / `11`                                                        |
-| architecture                    | text               | `x64` / `x86` / `arm64` / `universal`                              |
-| file_name / content_type        | text               | metadata artifact                                                  |
-| object_key                      | text UNIQUE        | key private `business-assets`, bukan URL publik                    |
-| file_size_bytes                 | bigint             | dihitung server, > 0                                               |
-| sha256                          | text               | dihitung server, 64 hex lowercase                                  |
-| changelog / compatibility_notes | text               | catatan rilis dan kompatibilitas                                   |
-| is_active / is_deprecated       | boolean            | publik hanya bila aktif, tidak deprecated, dan published_at terisi |
-| published_at                    | timestamptz        | null = draft                                                       |
-| created_by / timestamps         | uuid / timestamptz |                                                                    |
-
-Artifact installer diunggah admin ke private storage. URL unduhan dibuat sebagai signed URL
-berumur pendek, sehingga tidak ada URL eksternal atau fetch server-side. Instalasi tetap manual,
-tanpa auto-update.
-
 ### support_tickets (0050)
 
 | kolom                   | tipe                 | ket                                                   |

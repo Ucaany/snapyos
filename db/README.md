@@ -79,7 +79,6 @@ psql -f db/migrations/0027_direct_merchant_payment_rollback.sql
 | 0078     | `0078_webhook_hot_path_indexes.sql`                 | Tiga index webhook/payment — **diterapkan** (katalog Postgres)                           |
 | 0079     | `0079_customer_fk_restrict.sql`                     | FK customers → `ON DELETE RESTRICT` — **diterapkan** (katalog Postgres)                  |
 | 0080     | `0080_fix_circular_fk_transactions_payments.sql`    | Hapus FK `transactions.payment_id` — **diterapkan**                                      |
-| 0081     | `0081_installer_catalog.sql`                        | Katalog installer Windows private + metadata kompatibilitas                              |
 
 Status di atas diverifikasi 2026-10-27 dengan dua lapis: probe PostgREST
 (`node scripts/probe-migration-status.mjs`, semua panggilan no-op) untuk objek
