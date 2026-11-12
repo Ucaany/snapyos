@@ -1,3 +1,5 @@
+import { PageShell } from "@/components/layout/PageShell";
+
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -46,7 +48,7 @@ export default async function VouchersPage() {
   );
 
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
+    <PageShell>
       <PageHeader
         eyebrow={`VOUCHER: ${active.role.toUpperCase()}`}
         title="Voucher"
@@ -60,6 +62,6 @@ export default async function VouchersPage() {
         outlets={outlets.map((o) => ({ id: o.id, name: o.name }))}
         canWrite={canWrite}
       />
-    </div>
+    </PageShell>
   );
 }

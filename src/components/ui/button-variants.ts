@@ -11,13 +11,13 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-accent text-ink shadow-[2px_2px_0_0_#111111] hover:bg-accent active:shadow-none",
-        outline: "bg-surface text-ink shadow-[2px_2px_0_0_#111111] hover:bg-bg active:shadow-none",
-        secondary: "bg-ink text-bg hover:bg-ink active:shadow-none",
+          "bg-accent text-ink shadow-hard-sm hover:bg-accent/85 active:shadow-none",
+        outline: "bg-surface text-ink shadow-hard-sm hover:bg-bg active:shadow-none",
+        secondary: "bg-ink text-bg hover:bg-ink/85 active:shadow-none",
         ghost:
           "border-transparent bg-transparent shadow-none hover:bg-muted hover:text-ink aria-expanded:bg-muted aria-expanded:text-ink",
         destructive:
-          "border-destructive bg-destructive text-destructive-foreground hover:bg-destructive active:shadow-none",
+          "border-destructive bg-destructive text-destructive-foreground hover:bg-destructive/90 active:shadow-none",
         link: "border-transparent bg-transparent text-ink underline-offset-4 hover:underline shadow-none",
       },
       size: {

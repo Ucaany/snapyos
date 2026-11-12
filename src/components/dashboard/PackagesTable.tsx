@@ -1,7 +1,8 @@
 "use client";
 
-import { Fragment, useActionState, useState } from "react";
-import { Package, Plus } from "lucide-react";
+import { Fragment, useActionState, useState, useTransition } from "react";
+import Link from "next/link";
+import { Copy, Package, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -15,26 +16,75 @@ import { PackageEditForm } from "@/components/dashboard/PackageEditForm";
 import { formatIDR } from "@/lib/dashboard-math";
 import type { PackageRow } from "@/server/packages";
 import type { FormState } from "@/server/auth-actions";
-import { createPackageAction, deletePackageAction } from "@/server/catalog-actions";
+import {
+  createPackageAction,
+  deletePackageAction,
+  duplicatePackageAction,
+} from "@/server/catalog-actions";
 
 const initial: FormState = {};
 
 type Props = {
   packages: PackageRow[];
-  templates: PackageRef[];
+  templateCount: number;
   outlets: PackageRef[];
   photoboxes: PackageRef[];
   canWrite: boolean;
 };
 
+function availabilityLabel(pkg: PackageRow): string {
+  return `${pkg.outlet_count} outlet \u00b7 ${pkg.photobox_count} booth`;
+}
+
+/** Duplikat sebagai draft nonaktif — server menyalin outlet/booth assignment. */
+function DuplicateButton({ pkg, compact }: { pkg: PackageRow; compact?: boolean }) {
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function duplicate() {
+    const fd = new FormData();
+    fd.set("id", pkg.id);
+    startTransition(async () => {
+      const state = await duplicatePackageAction(fd);
+      setError(state.error ?? null);
+    });
+  }
+
+  return (
+    <div>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={pending}
+        onClick={duplicate}
+        aria-label={`Duplikat paket ${pkg.name}`}
+        title="Duplikat"
+      >
+        <Copy aria-hidden />
+        {compact ? <span className="sr-only">Duplikat</span> : "Duplikat"}
+      </Button>
+      {error && (
+        <p
+          role="alert"
+          className="mt-1 border-2 border-destructive bg-destructive/10 px-2 py-1 font-mono text-[10px] text-ink"
+        >
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 /** PackagesTable - CRUD paket (docs/04 §4.9). */
-export function PackagesTable({ packages, templates, outlets, photoboxes, canWrite }: Props) {
+export function PackagesTable({ packages, templateCount, outlets, photoboxes, canWrite }: Props) {
   const [createState, createAction, creating] = useActionState(createPackageAction, initial);
+  const [created, setCreated] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const table = (
-    <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
-      <table className="w-full border-collapse text-left lg:min-w-[860px]">
+    <div className="overflow-x-auto border-2 border-ink bg-surface shadow-hard">
+      <table className="w-full border-collapse text-left lg:min-w-[900px]">
         <caption className="sr-only">Daftar paket</caption>
         <thead>
           <tr className="border-b-2 border-ink bg-ink font-mono text-[11px] uppercase tracking-[0.12em] text-bg">
@@ -45,7 +95,7 @@ export function PackagesTable({ packages, templates, outlets, photoboxes, canWri
               Harga
             </th>
             <th scope="col" className="hidden px-4 py-3.5 text-center md:table-cell">
-              Foto
+              Foto cadangan
             </th>
             <th scope="col" className="hidden px-4 py-3.5 text-center md:table-cell">
               Cetak
@@ -57,7 +107,7 @@ export function PackagesTable({ packages, templates, outlets, photoboxes, canWri
               Mode
             </th>
             <th scope="col" className="hidden px-4 py-3.5 lg:table-cell">
-              Penugasan
+              Ketersediaan
             </th>
             <th scope="col" className="px-4 py-3.5">
               Status
@@ -99,18 +149,19 @@ export function PackagesTable({ packages, templates, outlets, photoboxes, canWri
                   {pkg.capture_mode}
                 </td>
                 <td className="hidden px-4 py-3 font-mono text-[11px] text-muted-foreground lg:table-cell">
-                  {`${pkg.template_count} template \u00b7 ${pkg.outlet_count} outlet \u00b7 ${pkg.photobox_count} booth`}
+                  {availabilityLabel(pkg)}
                 </td>
                 <td className="px-4 py-3">
                   <StatusBadge status={pkg.is_active ? "active" : "inactive"} />
                 </td>
                 {canWrite && (
                   <td className="px-4 py-3">
-                    <div className="flex justify-end gap-1.5">
+                    <div className="flex flex-wrap justify-end gap-1.5">
                       <RecordEditButton
                         label={`Ubah paket ${pkg.name}`}
                         onEdit={() => setEditingId(pkg.id)}
                       />
+                      <DuplicateButton pkg={pkg} compact />
                       <DeleteConfirmForm
                         action={deletePackageAction}
                         id={pkg.id}
@@ -128,7 +179,7 @@ export function PackagesTable({ packages, templates, outlets, photoboxes, canWri
                   <td colSpan={9} className="px-4 py-3 md:px-6">
                     <PackageEditForm
                       pkg={pkg}
-                      templates={templates}
+                      templateCount={templateCount}
                       outlets={outlets}
                       photoboxes={photoboxes}
                       onDone={() => setEditingId(null)}
@@ -156,14 +207,12 @@ export function PackagesTable({ packages, templates, outlets, photoboxes, canWri
             badge={<StatusBadge status={pkg.is_active ? "active" : "inactive"} />}
             meta={[
               { label: "Harga", value: formatIDR(pkg.price) },
-              { label: "Foto", value: pkg.photo_count },
+              { label: "Foto cadangan", value: pkg.photo_count },
               { label: "Cetak", value: pkg.print_count },
               { label: "Digital", value: pkg.digital_output ? "Ya" : "-" },
               { label: "Mode", value: pkg.capture_mode },
-              {
-                label: "Penugasan",
-                value: `${pkg.template_count} template · ${pkg.outlet_count} outlet · ${pkg.photobox_count} booth`,
-              },
+              { label: "Ketersediaan", value: availabilityLabel(pkg) },
+              { label: "Template", value: `Semua (${templateCount} aktif)` },
             ]}
             actions={
               canWrite ? (
@@ -172,6 +221,7 @@ export function PackagesTable({ packages, templates, outlets, photoboxes, canWri
                     label={`Ubah paket ${pkg.name}`}
                     onEdit={() => setEditingId(pkg.id)}
                   />
+                  <DuplicateButton pkg={pkg} />
                   <DeleteConfirmForm
                     action={deletePackageAction}
                     id={pkg.id}
@@ -191,6 +241,19 @@ export function PackagesTable({ packages, templates, outlets, photoboxes, canWri
 
   return (
     <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-2 border-2 border-ink bg-surface px-4 py-3 shadow-hard sm:flex-row sm:items-center sm:justify-between">
+        <p className="font-mono text-xs uppercase tracking-[0.1em]">
+          <span className="font-bold">{`${templateCount} TEMPLATE AKTIF`}</span>
+          <span className="text-muted-foreground">{" \u00b7 Semua tersedia untuk paket ini"}</span>
+        </p>
+        <Link
+          href="/dashboard/templates"
+          className="font-mono text-xs font-bold uppercase tracking-[0.1em] underline decoration-2 underline-offset-4 hover:no-underline"
+        >
+          Kelola template
+        </Link>
+      </div>
+
       {canWrite && (
         <Collapsible>
           <div className="flex items-center justify-between gap-3">
@@ -205,14 +268,15 @@ export function PackagesTable({ packages, templates, outlets, photoboxes, canWri
           <CollapsiblePanel className="mt-4">
             <form
               action={createAction}
-              className="flex flex-col gap-6 border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111] md:p-6"
+              className="flex flex-col gap-6 border-2 border-ink bg-surface p-5 shadow-hard md:p-6"
               noValidate
+              onSubmit={() => setCreated(true)}
             >
               <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
                 {"Paket baru"}
               </p>
               <PackageFields
-                templates={templates}
+                templateCount={templateCount}
                 outlets={outlets}
                 photoboxes={photoboxes}
                 state={createState}
@@ -234,6 +298,15 @@ export function PackagesTable({ packages, templates, outlets, photoboxes, canWri
             </form>
           </CollapsiblePanel>
         </Collapsible>
+      )}
+
+      {created && !creating && !createState.error && (
+        <p
+          role="status"
+          className="border-2 border-ink bg-accent-3 px-3 py-2 font-mono text-xs uppercase tracking-[0.05em] shadow-hard"
+        >
+          {"[ OK ]"} Paket tersimpan.
+        </p>
       )}
 
       {packages.length === 0 ? (

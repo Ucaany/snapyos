@@ -106,7 +106,7 @@ export function StickerPicker({ onPick }: Props) {
                   key={`${e.char}-${i}`}
                   type="button"
                   onClick={() => onPick(e.char)}
-                  className="flex min-h-11 min-w-11 items-center justify-center border border-transparent text-xl hover:border-ink hover:bg-accent/30 focus-visible:border-ink focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ink active:scale-95"
+                  className="flex min-h-11 min-w-11 items-center justify-center border border-transparent text-xl hover:border-ink hover:bg-accent focus-visible:border-ink focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ink active:scale-95"
                   title={e.name}
                   aria-label={e.name}
                 >
@@ -126,7 +126,7 @@ export function StickerPicker({ onPick }: Props) {
                 key={`${e.char}-${i}`}
                 type="button"
                 onClick={() => onPick(e.char)}
-                className="flex min-h-11 min-w-11 items-center justify-center border border-transparent text-xl hover:border-ink hover:bg-accent/30 focus-visible:border-ink focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ink active:scale-95"
+                className="flex min-h-11 min-w-11 items-center justify-center border border-transparent text-xl hover:border-ink hover:bg-accent focus-visible:border-ink focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ink active:scale-95"
                 title={e.name}
                 aria-label={e.name}
               >

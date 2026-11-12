@@ -1,8 +1,12 @@
+import { AccessDeniedPanel } from "@/components/dashboard/AccessDeniedPanel";
+import { PageShell } from "@/components/layout/PageShell";
+
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { DateRangeFilter } from "@/components/dashboard/DateRangeFilter";
 import { MetricCard } from "@/components/dashboard/MetricCard";
+import { StatStrip } from "@/components/dashboard/StatStrip";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
@@ -29,16 +33,9 @@ export default async function MetricsPage({
 
   if (!can(active.role, "transaction:read")) {
     return (
-      <div className="p-6 md:p-10">
-        <Card className="border-destructive">
-          <CardHeader>
-            <CardTitle>Akses finansial terbatas</CardTitle>
-            <CardDescription>
-              Role {active.role.toUpperCase()} tidak melihat data revenue.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
+      <PageShell>
+        <AccessDeniedPanel resource="revenue" />
+      </PageShell>
     );
   }
 
@@ -49,7 +46,7 @@ export default async function MetricsPage({
   });
 
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
+    <PageShell>
       <PageHeader
         eyebrow={`METRIK: ${active.business.name.toUpperCase()}`}
         title="Metrik Bisnis"
@@ -88,11 +85,10 @@ export default async function MetricsPage({
         </div>
       </section>
 
-      <div
-        className="grid grid-cols-3 gap-[2px] border-2 border-ink bg-ink shadow-[4px_4px_0_0_#111111]"
-        aria-label="Ringkasan metrik"
-      >
-        {[
+      <StatStrip
+        label="Ringkasan metrik"
+        columns={9}
+        items={[
           { label: "Sesi Foto", value: String(metrics.sessions.total) },
           { label: "Sesi Selesai", value: String(metrics.sessions.completed) },
           { label: "Sesi Batal", value: String(metrics.sessions.cancelled) },
@@ -105,15 +101,8 @@ export default async function MetricsPage({
           { label: "Pelanggan Baru", value: String(metrics.customers.new) },
           { label: "Pelanggan Kembali", value: String(metrics.customers.returning) },
           { label: "Tx Gagal", value: String(metrics.transactions.failed) },
-        ].map((cell) => (
-          <div key={cell.label} className="flex flex-col gap-2 bg-surface p-3">
-            <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-              {cell.label}
-            </p>
-            <p className="font-mono text-base font-bold leading-none">{cell.value}</p>
-          </div>
-        ))}
-      </div>
+        ]}
+      />
 
       <Card>
         <CardHeader>
@@ -158,6 +147,6 @@ export default async function MetricsPage({
           )}
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   );
 }

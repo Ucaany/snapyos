@@ -120,7 +120,7 @@ export function WelcomeScreen({ business, branding, onStart }: Props) {
   const body =
     layout === "center" ? (
       <div
-        className="relative z-10 mx-auto flex w-full max-w-[1100px] flex-1 flex-col items-center justify-center gap-8 py-12 text-center md:gap-10 md:py-16"
+        className="relative z-10 mx-auto flex w-full max-w-[1100px] flex-1 flex-col items-center justify-center gap-6 py-6 text-center md:gap-8 md:py-10"
         style={{ paddingLeft: padding, paddingRight: padding }}
       >
         {brandCol}
@@ -128,7 +128,7 @@ export function WelcomeScreen({ business, branding, onStart }: Props) {
       </div>
     ) : (
       <div
-        className="relative z-10 mx-auto grid w-full max-w-[1280px] flex-1 grid-cols-1 content-center items-center gap-8 py-10 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] md:gap-10 md:py-12 lg:gap-16"
+        className="relative z-10 mx-auto grid w-full max-w-[1280px] flex-1 grid-cols-1 content-center items-center gap-6 py-6 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] md:gap-8 md:py-10 lg:gap-12"
         style={{ paddingLeft: padding, paddingRight: padding }}
       >
         <div

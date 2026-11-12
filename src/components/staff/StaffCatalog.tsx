@@ -219,16 +219,16 @@ export function StaffPackagesBoard({
               </p>
               <p className="font-mono text-2xl font-bold leading-none">{formatIDR(pkg.price)}</p>
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              <PackageCount label="FOTO" value={pkg.photo_count} />
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <PackageCount label="FOTO CADANGAN" value={pkg.photo_count} />
               <PackageCount label="CETAK" value={pkg.print_count} />
               <PackageCount label="DIGITAL" value={pkg.digital_output ? "YA" : "-"} />
             </div>
           </div>
 
           <dl className="mt-auto grid gap-3 border-t-2 border-ink/20 px-4 py-3 md:grid-cols-2">
-            <StaffMeta label="ASSIGN">
-              {`${pkg.template_count} template · ${pkg.outlet_count} outlet · ${pkg.photobox_count} booth`}
+            <StaffMeta label="KETERSEDIAAN">
+              {`${pkg.outlet_count} outlet · ${pkg.photobox_count} booth`}
             </StaffMeta>
             <StaffMeta label="DIBUAT">{formatDate(pkg.created_at, timeZone)}</StaffMeta>
           </dl>
@@ -246,7 +246,7 @@ export function StaffTemplatesBoard({ templates }: { templates: TemplateRow[] })
         icon={ImageIcon}
         eyebrow="BELUM ADA TEMPLATE"
         title="Belum ada frame yang tersedia untuk Anda."
-        body="Minta owner mengunggah frame dan meng-assign-nya ke paket booth Anda, lalu muat ulang halaman."
+        body="Minta owner mengunggah frame di dashboard, lalu muat ulang halaman."
       />
     );
   }
@@ -314,18 +314,11 @@ export function StaffTemplatesBoard({ templates }: { templates: TemplateRow[] })
                   {template.file_url.endsWith(".png") ? "PNG" : "FRAME"}
                 </StaffMeta>
               </dl>
-              {template.is_active && template.assigned === false ? (
-                <p className="border-2 border-destructive bg-destructive/10 px-2 py-1.5 font-mono text-[11px] font-bold uppercase leading-snug tracking-[0.06em]">
-                  Belum di-assign ke paket mana pun — tampil sebagai fallback untuk paket yang belum
-                  punya assignment.
-                </p>
-              ) : (
+              {template.is_active ? (
                 <p className="border-2 border-ink/20 bg-muted px-2 py-1.5 font-mono text-[11px] uppercase leading-snug tracking-[0.06em] text-muted-foreground">
-                  {template.assigned_packages && template.assigned_packages.length > 0
-                    ? `Dipakai: ${template.assigned_packages.map((p) => p.name).join(", ")}`
-                    : "Tampil di semua paket booth Anda."}
+                  Tersedia untuk semua paket booth Anda.
                 </p>
-              )}
+              ) : null}
             </div>
           </li>
         );
@@ -353,8 +346,8 @@ export function StaffCatalogShell({
 
 function PackageCount({ label, value }: { label: string; value: number | string }) {
   return (
-    <div className="min-w-[3.5rem] border-2 border-ink bg-bg px-2 py-1 text-center">
-      <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
+    <div className="min-w-0 border-2 border-ink bg-bg px-2 py-1 text-center">
+      <p className="font-mono text-[11px] uppercase leading-tight tracking-[0.1em] text-muted-foreground">
         {label}
       </p>
       <p className="font-mono text-sm font-bold leading-none">{value}</p>

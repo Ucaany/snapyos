@@ -64,7 +64,7 @@ export function DeviceManagement({
             <select
               value={filter}
               onChange={(event) => setFilter(event.target.value)}
-              className="border-2 border-ink bg-bg px-2 py-2 text-xs"
+              className="min-h-11 border-2 border-ink bg-bg px-2 py-2 text-xs"
             >
               <option value="all">Semua</option>
               <option value="online">Online</option>
@@ -142,12 +142,13 @@ export function DeviceManagement({
             Installer dan versi
           </h2>
           <p className="mt-2 max-w-[70ch] text-sm text-muted-foreground">
-            Versi yang terpasang dilaporkan booth lewat `device_status.app_version`. Unduhan tetap
-            manual, dengan checksum untuk verifikasi.
+            Versi yang terpasang dilaporkan booth lewat{" "}
+            <code className="font-mono">device_status.app_version</code>. Unduhan tetap manual,
+            dengan checksum untuk verifikasi.
           </p>
         </div>
         {installers.length === 0 ? (
-          <p className="mt-5 border-2 border-dashed border-ink/40 bg-muted px-4 py-3 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
+          <p className="mt-5 border-2 border-dashed border-ink/40 bg-muted px-4 py-3 text-sm text-muted-foreground">
             Belum ada installer kompatibel untuk perangkat ini.
           </p>
         ) : (

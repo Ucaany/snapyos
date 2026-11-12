@@ -32,12 +32,13 @@ type Props = {
  */
 export function OutletsTable({ outlets, canWrite, maxOutlets }: Props) {
   const [createState, createAction, creating] = useActionState(createOutletAction, initial);
+  const [created, setCreated] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const limitReached = outlets.length >= maxOutlets;
 
   const table = (
-    <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
+    <div className="overflow-x-auto border-2 border-ink bg-surface shadow-hard">
       <table className="w-full border-collapse text-left lg:min-w-[760px]">
         <caption className="sr-only">Daftar outlet</caption>
         <thead>
@@ -208,8 +209,9 @@ export function OutletsTable({ outlets, canWrite, maxOutlets }: Props) {
           <CollapsiblePanel className="mt-4">
             <form
               action={createAction}
-              className="flex flex-col gap-6 border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111] md:p-6"
+              className="flex flex-col gap-6 border-2 border-ink bg-surface p-5 shadow-hard md:p-6"
               noValidate
+              onSubmit={() => setCreated(true)}
             >
               <div className="flex items-center gap-3 border-b-2 border-ink pb-4">
                 <Plus className="size-4" aria-hidden />
@@ -280,6 +282,15 @@ export function OutletsTable({ outlets, canWrite, maxOutlets }: Props) {
             {canWrite ? "Plan limit" : "Akses Anda"}
           </span>
         </div>
+      )}
+
+      {created && !creating && !createState.error && (
+        <p
+          role="status"
+          className="border-2 border-ink bg-accent-3 px-3 py-2 font-mono text-xs uppercase tracking-[0.05em] shadow-hard"
+        >
+          {"[ OK ]"} Outlet tersimpan.
+        </p>
       )}
 
       {limitReached && canWrite && (

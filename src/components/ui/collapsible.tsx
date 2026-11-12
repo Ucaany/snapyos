@@ -24,7 +24,7 @@ function CollapsibleTrigger({ className, children, ...props }: CollapsiblePrimit
     <CollapsiblePrimitive.Trigger
       data-slot="collapsible-trigger"
       className={cn(
-        "inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-none border-2 border-ink bg-surface px-3 font-mono text-xs font-bold uppercase tracking-[0.05em] text-ink shadow-[4px_4px_0_0_#111111] outline-none transition-all duration-100 select-none hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#111111] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4",
+        "inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-none border-2 border-ink bg-surface px-3 font-mono text-xs font-bold uppercase tracking-[0.05em] text-ink shadow-hard outline-none transition-all duration-100 select-none hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-hard-sm active:translate-x-[4px] active:translate-y-[4px] active:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4",
         className
       )}
       {...props}

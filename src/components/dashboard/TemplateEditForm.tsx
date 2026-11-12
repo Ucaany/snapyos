@@ -111,7 +111,7 @@ export function TemplateEditForm({ template, onDone }: Props) {
             checked={isActive}
             onChange={(e) => setIsActive(e.target.checked)}
             disabled={pending}
-            className="size-4 accent-[#111111] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+            className="size-4 accent-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
             aria-invalid={Boolean(activeError)}
             aria-describedby={activeError ? activeErrorId : undefined}
           />

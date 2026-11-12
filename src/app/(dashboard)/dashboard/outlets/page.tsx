@@ -1,3 +1,5 @@
+import { PageShell } from "@/components/layout/PageShell";
+
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -28,7 +30,7 @@ export default async function OutletsPage() {
   ]);
 
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
+    <PageShell>
       <PageHeader
         eyebrow={`OUTLET: ${active.role.toUpperCase()}`}
         title="Outlet"
@@ -36,6 +38,6 @@ export default async function OutletsPage() {
       />
 
       <OutletsTable outlets={outlets} canWrite={canWrite} maxOutlets={limits.max_outlets} />
-    </div>
+    </PageShell>
   );
 }

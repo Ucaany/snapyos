@@ -8,6 +8,10 @@
  *
  * Modul ini sengaja tanpa dependensi agar bisa dipakai validators (server &
  * client) sekaligus cups.ts yang juga dipakai di browser.
+ *
+ * `resolveBridgeUrl` menormalkan nilai tanpa skema (mis. `127.0.0.1:17777`)
+ * menjadi URL absolut, lalu tetap memaksa loopback — menghapus divergensi
+ * lama di mana hanya kamera yang menambah skema.
  */
 
 const LOOPBACK_HOSTS = new Set([
@@ -33,6 +37,19 @@ export function isLoopbackBridgeUrl(value: string | null | undefined): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Resolver bersama kamera + printer. Menambah skema bila hilang, memangkas
+ * slash di ujung, dan menolak target non-loopback (fallback ke DEFAULT).
+ */
+export function resolveBridgeUrl(
+  settings?: { bridge_url?: string | null } | null
+): string {
+  const base = settings?.bridge_url?.trim() || DEFAULT_BRIDGE_URL;
+  const withScheme = /^https?:\/\//i.test(base) ? base : `http://${base}`;
+  const normalized = withScheme.replace(/\/+$/, "");
+  return isLoopbackBridgeUrl(normalized) ? normalized : DEFAULT_BRIDGE_URL;
 }
 
 /** Pesan validasi yang dipakai schema settings (camera & print). */

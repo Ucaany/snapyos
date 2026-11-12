@@ -12,7 +12,7 @@ import { formatStorageMb } from "@/lib/storage-units";
 export function StorageUsageCard({ usage }: { usage: StorageUsage }) {
   return (
     <section
-      className="border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111]"
+      className="border-2 border-ink bg-surface p-6 shadow-hard"
       aria-labelledby="storage-usage-heading"
     >
       <div className="mb-5 flex items-center justify-between gap-4 border-b-2 border-ink pb-4">

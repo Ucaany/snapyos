@@ -269,7 +269,7 @@
 - Attach dropdown: label `REAKTIVASI` jika row cancelled
 - Status badge brutalist
 
-**Logic**: `src/lib/admin-addon-ops.ts` + unit-test `tests/admin-addon-ops.test.ts`.
+**Logic**: `src/lib/admin-addon-ops.ts`.
 
 ---
 
@@ -565,12 +565,12 @@ Total: **28 admin API endpoints**.
 
 ## 18. Testing
 
-**Unit tests** terkait admin:
+**Cakupan kode** terkait admin:
 
-- `tests/admin-addon-ops.test.ts` — attach/cancel add-on logic
-- `tests/rbac.test.ts` — admin permission `["*"]`
-- `tests/subscription-lifecycle.test.ts` — cron transition
-- `tests/transaction-manual.test.ts` — manual tx audit
+- `src/lib/admin-addon-ops.ts` — attach/cancel add-on logic
+- `src/lib/rbac.ts` — admin permission `["*"]`
+- Cron transisi subscription lifecycle
+- Audit transaksi manual
 
 **E2E** (backlog): admin flow end-to-end.
 

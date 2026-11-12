@@ -23,7 +23,7 @@ function Dimension({
   const max = Math.max(1, ...items.map((item) => item.amount));
 
   return (
-    <section className="flex min-w-0 flex-col gap-3 border-2 border-ink bg-surface p-3 shadow-[4px_4px_0_0_#111111]">
+    <section className="flex min-w-0 flex-col gap-3 border-2 border-ink bg-surface p-3 shadow-hard">
       <div className="flex items-baseline justify-between gap-2">
         <h3 className="font-mono text-[10px] font-bold uppercase tracking-[0.18em]">{title}</h3>
         <span className="font-mono text-[11px] font-bold tabular-nums">

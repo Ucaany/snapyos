@@ -1,3 +1,6 @@
+import { AccessDeniedPanel } from "@/components/dashboard/AccessDeniedPanel";
+import { PageShell } from "@/components/layout/PageShell";
+
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Download } from "lucide-react";
@@ -38,16 +41,9 @@ export default async function ReportsPage() {
 
   if (!can(active.role, "report:read")) {
     return (
-      <div className="p-6 md:p-10">
-        <Card className="border-destructive">
-          <CardHeader>
-            <CardTitle>Akses terbatas</CardTitle>
-            <CardDescription>
-              Role {active.role.toUpperCase()} tidak punya akses report.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
+      <PageShell>
+        <AccessDeniedPanel resource="report" />
+      </PageShell>
     );
   }
 
@@ -56,7 +52,7 @@ export default async function ReportsPage() {
   const fromDefault = `${today.slice(0, 8)}01`;
 
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
+    <PageShell>
       <PageHeader
         eyebrow="LAPORAN: EKSPOR DATA"
         title="Laporan"
@@ -120,6 +116,6 @@ export default async function ReportsPage() {
           </form>
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   );
 }

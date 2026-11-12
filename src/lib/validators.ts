@@ -843,7 +843,6 @@ export const packageCreateSchema = z.object({
   capture_mode: z.enum(["single", "burst", "photostrip"]).optional().default("single"),
   description: z.string().trim().max(500).optional(),
   is_active: z.boolean().optional().default(true),
-  template_ids: idArray.optional().default([]),
   outlet_ids: idArray.optional().default([]),
   photobox_ids: idArray.optional().default([]),
 });
@@ -862,7 +861,6 @@ export const packageUpdateSchema = z.object({
   capture_mode: z.enum(["single", "burst", "photostrip"]).optional(),
   description: z.string().trim().max(500).nullable().optional(),
   is_active: z.boolean().optional(),
-  template_ids: idArray.optional(),
   outlet_ids: idArray.optional(),
   photobox_ids: idArray.optional(),
 });
@@ -1284,6 +1282,9 @@ const heartbeatPrinterJobSchema = z
 
 const heartbeatPrinterSchema = heartbeatHardwareSchema.extend({
   mode: z.enum(["browser", "bluetooth", "cups"]).optional(),
+  state: z.enum(["ok", "busy", "disabled", "offline", "unknown"]).optional(),
+  media: z.string().trim().max(120).nullable().optional(),
+  queue: z.number().int().min(0).max(1_000_000).optional(),
   job: heartbeatPrinterJobSchema.nullable().optional(),
 });
 

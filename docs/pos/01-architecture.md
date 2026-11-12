@@ -1,7 +1,6 @@
 # POS Add-on — Phase 1: Architecture (REVISI v2)
 
 > Status: **SELESAI — dieksekusi 2026-08-28.**
-> Input: `docs/pos/00-audit.md` (+ catatan revisi v2 di bagian atas file itu).
 > Revisi v2 (2026-08-27) mengubah arah desain atas arahan owner: **pembayaran POS = offline-only** (tanpa integrasi `payments`/Pakasir/webhook sama sekali), **digunakan staff per booth** (photobox), tanpa role baru.
 > Prinsip: additive-only, reuse maksimal, backend = source of truth, uang integer IDR.
 
@@ -237,7 +236,7 @@ Detail DDL penuh di `docs/pos/02-database-subscription.md`. Ringkas:
 1. Dokumen ini disetujui user — kontrak §3–§8 fix, tidak berubah tanpa amendmen tertulis.
 2. Cross-check: setiap file di §4 muncul di dokumen phase pemiliknya; tidak ada file phase 2/3/5 di luar peta ini.
 3. Matriks §6 konsisten dengan `src/lib/rbac.ts` target (diverifikasi saat Phase 2).
-4. Tidak ada keputusan yang bertentangan dengan `docs/pos/00-audit.md` §10 guardrails + catatan revisi v2.
+4. Tidak ada keputusan yang bertentangan dengan guardrails POS + catatan revisi v2.
 5. **Tidak ada diff** di `src/server/payment/*`, `payments`, `payment_webhooks`, `business_members` (verifikasi grep saat eksekusi).
 
 **STATUS: PHASE 1 — SELESAI. Dieksekusi 2026-08-28 bersama Phase 2/3/5 (lihat Status Eksekusi di atas).**

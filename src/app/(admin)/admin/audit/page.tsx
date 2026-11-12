@@ -3,9 +3,9 @@ import { ChevronDown, ScrollText, Search } from "lucide-react";
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminPaginator } from "@/components/admin/AdminPaginator";
-import { AdminRecordCard } from "@/components/admin/AdminRecordCard";
+import { RecordCard } from "@/components/ui/record-card";
 import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
-import { RecordCollection } from "@/components/admin/RecordCollection";
+import { RecordCollection } from "@/components/ui/record-collection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
@@ -56,13 +56,13 @@ export default async function AdminAuditPage({
   return (
     <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       <PageHeader
-        eyebrow="ADMIN - AUDIT LOG"
+        eyebrow="ADMIN / LOG AUDIT"
         title="Log Audit"
         icon={ScrollText}
         meta={`${total} ENTRY · SEMUA AKSI ADMIN & FINANSIAL TERCATAT`}
       />
 
-      <section className="border-2 border-ink bg-muted p-4 shadow-[4px_4px_0_0_#111111]">
+      <section className="border-2 border-ink bg-muted p-4 shadow-hard">
         <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
           {"HAPUS RIWAYAT (RETENSI)"}
         </p>
@@ -191,7 +191,7 @@ export default async function AdminAuditPage({
           grid={
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
               {items.map((log) => (
-                <AdminRecordCard
+                <RecordCard
                   key={log.id}
                   title={log.action}
                   subtitle={`${log.actor_email ?? "system"} · ${dateTimeFmt.format(new Date(log.created_at))}`}

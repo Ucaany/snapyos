@@ -51,6 +51,22 @@
     background: var(--color-accent);
     color: var(--color-ink);
   }
+  /* Preflight Tailwind v4 tidak menetapkan cursor pada tombol, sehingga
+     kontrol interaktif tampil seperti teks statis. Satu aturan global. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  a[href],
+  summary,
+  select,
+  input[type="checkbox"],
+  input[type="radio"],
+  label[for] {
+    cursor: pointer;
+  }
+  button:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
   /* Satu indikator fokus untuk kontrol yang tidak memakai ring komponen
      (link tabel, paginator, summary, item nav). */
   a:focus-visible,
@@ -69,6 +85,12 @@
   details[open] > summary > .summary-chevron {
     transform: rotate(180deg);
   }
+}
+
+/* Indikator transparansi PNG: pola kotak-kotak di belakang preview template
+   (menampilkan area alpha pada gambar PNG). */
+.bg-checker {
+  background-image: repeating-linear-gradient(45deg, #fffdf5 0 10px, #f4f4f0 10px 20px);
 }
 
 /* Global grain — fixed, pointer-events-none (never on scrolling containers) */

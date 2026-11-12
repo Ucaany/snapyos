@@ -43,7 +43,7 @@ export default async function AdminSubscriptionsPage({
   return (
     <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       <PageHeader
-        eyebrow="ADMIN - SUBSCRIPTIONS"
+        eyebrow="ADMIN / LANGGANAN"
         icon={Receipt}
         title="Manajemen Langganan"
         meta={`${total} langganan${q.status ? ` · filter: ${q.status}` : ""}`}
@@ -87,7 +87,7 @@ export default async function AdminSubscriptionsPage({
           {items.map((s) => (
             <div
               key={s.id}
-              className="border-2 border-ink bg-surface p-4 shadow-[4px_4px_0_0_#111111]"
+              className="border-2 border-ink bg-surface p-4 shadow-hard"
             >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <span>
@@ -105,7 +105,7 @@ export default async function AdminSubscriptionsPage({
                 <StatusBadge status={s.status} />
               </div>
 
-              <dl className="mt-3 grid grid-cols-2 gap-[2px] border-2 border-ink/20 bg-ink/20 md:grid-cols-4">
+              <dl className="mt-3 grid grid-cols-2 gap-[2px] border-2 border-ink bg-ink md:grid-cols-4">
                 {[
                   {
                     label: "Periode mulai",
@@ -144,7 +144,7 @@ export default async function AdminSubscriptionsPage({
                   {s.add_ons.map((link) => (
                     <li
                       key={link.id}
-                      className="flex flex-wrap items-center justify-between gap-3 border-2 border-ink/20 bg-muted/60 px-3 py-2 font-mono text-xs"
+                      className="flex flex-col gap-2 border-2 border-ink/40 bg-muted px-3 py-2 font-mono text-xs sm:flex-row sm:items-center sm:justify-between"
                     >
                       <span className="min-w-0 break-words uppercase">
                         + {link.name} × {link.quantity}
@@ -154,10 +154,9 @@ export default async function AdminSubscriptionsPage({
                         hidden={{ linkId: link.id }}
                         submitLabel="Batalkan add-on"
                         icon="xCircle"
-                        iconOnly
                         variant="outline"
                         confirm={`Batalkan add-on ${link.name} untuk ${s.business_name}? Mode SEGERA memutus fitur pelanggan seketika.`}
-                        className="flex flex-wrap items-end gap-2"
+                        className="flex w-full flex-wrap items-end gap-2 sm:w-auto"
                       >
                         <BrutalistSelect
                           id={`cancel-mode-${link.id}`}
@@ -180,7 +179,7 @@ export default async function AdminSubscriptionsPage({
                             id={`cancel-reason-${link.id}`}
                             name="manual_cancel_reason"
                             placeholder="Darurat/fraud"
-                            className="w-36 text-xs"
+                            className="w-full text-xs sm:w-36"
                           />
                         </div>
                       </AdminActionForm>
@@ -189,14 +188,13 @@ export default async function AdminSubscriptionsPage({
                 </ul>
               ) : null}
 
-              <div className="mt-4 flex flex-wrap items-end gap-4 border-t-2 border-ink/10 pt-4">
+              <div className="mt-4 flex flex-col gap-2 border-t-2 border-ink/10 pt-4 sm:flex-row sm:flex-wrap sm:items-end sm:gap-4">
                 <AdminActionForm
                   action={updateSubscriptionAction}
                   hidden={{ subscriptionId: s.id }}
                   submitLabel="Terapkan status langganan"
                   icon="check"
-                  iconOnly
-                  className="flex flex-wrap items-end gap-2"
+                  className="flex w-full flex-wrap items-end gap-2 sm:w-auto"
                 >
                   <BrutalistSelect
                     id={`status-${s.id}`}
@@ -217,7 +215,7 @@ export default async function AdminSubscriptionsPage({
                       name="extend_days"
                       type="number"
                       placeholder="30"
-                      className="w-28 text-xs"
+                      className="w-full text-xs sm:w-28"
                     />
                   </div>
                 </AdminActionForm>
@@ -228,8 +226,9 @@ export default async function AdminSubscriptionsPage({
                     hidden={{ subscriptionId: s.id, cancel: "true" }}
                     submitLabel="Batalkan di akhir periode"
                     icon="xCircle"
-                    iconOnly
                     variant="outline"
+                    confirm={`Jadwalkan pembatalan ${s.business_name} di akhir periode berjalan? Fitur tetap aktif sampai periode selesai.`}
+                    confirmTitle="Batalkan di akhir periode"
                   />
                 ) : null}
 
@@ -239,7 +238,7 @@ export default async function AdminSubscriptionsPage({
                     hidden={{ subscription_id: s.id }}
                     submitLabel="Set jumlah"
                     icon="plus"
-                    className="flex flex-wrap items-end gap-2"
+                    className="flex w-full flex-wrap items-end gap-2 sm:w-auto"
                   >
                     <BrutalistSelect
                       id={`addon-${s.id}`}
@@ -266,7 +265,7 @@ export default async function AdminSubscriptionsPage({
                         type="number"
                         defaultValue={1}
                         min={1}
-                        className="w-20 text-xs"
+                        className="w-full text-xs sm:w-20"
                       />
                     </div>
                     <p className="w-full max-w-[42ch] font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">

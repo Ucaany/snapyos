@@ -5,7 +5,7 @@ import { Printer, ReceiptText } from "lucide-react";
 import { PrintLayoutRenderer } from "@/components/kiosk/PrintLayoutRenderer";
 import { BluetoothPrintScreen } from "@/components/kiosk/BluetoothPrintScreen";
 import { CupsPrintScreen } from "@/components/kiosk/CupsPrintScreen";
-import { Button } from "@/components/ui/button";
+import { KioskAction, KioskHeading } from "@/components/kiosk/ui";
 import {
   availablePrintPaths,
   isPrintPathEnabled,
@@ -138,9 +138,9 @@ export function PrintFlow({
     return (
       <div className="fixed inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-bg p-6 text-center">
         <Printer className="size-10 motion-safe:animate-pulse" aria-hidden />
-        <p className="font-display text-xl uppercase leading-none tracking-[-0.02em] md:text-2xl">
+        <KioskHeading as="p" size="sm">
           Menyiapkan lembar
-        </p>
+        </KioskHeading>
         <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
           Menempelkan QR hasil
         </p>
@@ -201,22 +201,22 @@ function PrintChoice({
   return (
     <div className="fixed inset-0 z-30 flex flex-col items-center justify-center gap-5 overflow-y-auto bg-bg p-6 text-center md:p-8">
       <Printer className="size-10 shrink-0" aria-hidden />
-      <p className="font-display text-xl uppercase leading-none tracking-[-0.02em] md:text-2xl">
+      <KioskHeading as="p" size="sm">
         Pilih jenis cetak
-      </p>
+      </KioskHeading>
       <p className="max-w-[46ch] text-sm leading-relaxed text-muted-foreground">
         Booth ini punya printer foto dan printer thermal. Pilih salah satu.
       </p>
       <div className="flex flex-wrap justify-center gap-2.5">
-        <Button size="lg" className="bg-accent" onClick={() => onChoose("photo")}>
+        <KioskAction tone="primary" size="lg" onClick={() => onChoose("photo")}>
           <Printer className="size-5" aria-hidden /> Cetak foto
-        </Button>
-        <Button size="lg" variant="outline" onClick={() => onChoose("thermal")}>
+        </KioskAction>
+        <KioskAction tone="secondary" size="lg" onClick={() => onChoose("thermal")}>
           <ReceiptText className="size-5" aria-hidden /> Cetak thermal
-        </Button>
-        <Button size="lg" variant="ghost" onClick={onSkip}>
+        </KioskAction>
+        <KioskAction tone="ghost" size="lg" onClick={onSkip}>
           Lanjut
-        </Button>
+        </KioskAction>
       </div>
     </div>
   );
@@ -226,16 +226,16 @@ function PrintUnavailable({ onSkip }: { onSkip: () => void }) {
   return (
     <div className="fixed inset-0 z-30 flex flex-col items-center justify-center gap-5 overflow-y-auto bg-bg p-6 text-center md:p-8">
       <Printer className="size-10 shrink-0 text-muted-foreground" aria-hidden />
-      <p className="font-display text-xl uppercase leading-none tracking-[-0.02em] md:text-2xl">
+      <KioskHeading as="p" size="sm">
         Cetak tidak tersedia
-      </p>
+      </KioskHeading>
       <p className="max-w-[46ch] text-sm leading-relaxed text-muted-foreground">
         Jalur cetak booth ini dimatikan owner atau perangkatnya tidak mendukung. Hasil digital tetap
         bisa diambil lewat QR.
       </p>
-      <Button size="lg" onClick={onSkip}>
+      <KioskAction tone="primary" size="lg" onClick={onSkip}>
         Lanjut
-      </Button>
+      </KioskAction>
     </div>
   );
 }

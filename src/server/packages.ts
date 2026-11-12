@@ -1,13 +1,15 @@
 /**
- * Package CRUD + m2m assign (templates/outlets/photoboxes) — docs/04 §4.9,
+ * Package CRUD + m2m assign (outlets/photoboxes) — docs/04 §4.9,
  * docs/08 §8.7. Harga integer IDR; package = dasar final amount (server-side).
+ * Assignment template dihapus 2026-11-11: semua template aktif tampil untuk
+ * semua paket, jadi tabel assignment template tidak lagi dibaca/ditulis di sini.
  */
 
 import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
 import { planLimitError } from "@/lib/plan-limits";
-import { invalidTemplateIds, type AssignableTemplateRow } from "@/lib/template-assignment";
+import { packageCopyName } from "@/lib/package-copy";
 import { can, type Permission } from "@/lib/rbac";
 import { getMembership } from "@/lib/tenant";
 import { invalidatePublicConfig } from "@/server/public-config";
@@ -21,10 +23,9 @@ import {
 
 const COLUMNS = `id, name, price, photo_count, print_count, digital_output, capture_mode,
   description, is_active, created_at,
-  package_templates ( template_id ), package_outlets ( outlet_id ), package_photoboxes ( photobox_id )`;
+  package_outlets ( outlet_id ), package_photoboxes ( photobox_id )`;
 
-type CountJoin =
-  { template_id?: string } | { outlet_id?: string } | { photobox_id?: string } | null;
+type CountJoin = { outlet_id?: string } | { photobox_id?: string } | null;
 
 export type PackageRow = {
   id: string;
@@ -37,10 +38,8 @@ export type PackageRow = {
   description: string | null;
   is_active: boolean;
   created_at: string;
-  template_ids: string[];
   outlet_ids: string[];
   photobox_ids: string[];
-  template_count: number;
   outlet_count: number;
   photobox_count: number;
 };
@@ -56,13 +55,12 @@ function mapRow(row: {
   description: string | null;
   is_active: boolean;
   created_at: string;
-  package_templates?: CountJoin[] | CountJoin;
   package_outlets?: CountJoin[] | CountJoin;
   package_photoboxes?: CountJoin[] | CountJoin;
 }): PackageRow {
   const toArray = (
     j: CountJoin[] | CountJoin | undefined,
-    key: "template_id" | "outlet_id" | "photobox_id"
+    key: "outlet_id" | "photobox_id"
   ): string[] => {
     if (!j) return [];
     const list = Array.isArray(j) ? j : [j];
@@ -70,7 +68,6 @@ function mapRow(row: {
       .map((r) => (r ? ((r as Record<string, unknown>)[key] as string | undefined) : undefined))
       .filter((v): v is string => Boolean(v));
   };
-  const template_ids = toArray(row.package_templates, "template_id");
   const outlet_ids = toArray(row.package_outlets, "outlet_id");
   const photobox_ids = toArray(row.package_photoboxes, "photobox_id");
   return {
@@ -84,10 +81,8 @@ function mapRow(row: {
     description: row.description,
     is_active: row.is_active,
     created_at: row.created_at,
-    template_ids,
     outlet_ids,
     photobox_ids,
-    template_count: template_ids.length,
     outlet_count: outlet_ids.length,
     photobox_count: photobox_ids.length,
   };
@@ -120,48 +115,10 @@ async function assertIdsOwned(businessId: string, table: "outlets" | "photoboxes
 }
 
 /**
- * Template assignable (docs/15 §15.9b): milik sendiri ATAU global yang aktif
- * dan (gratis atau sudah dibeli). Query hanya mengambil kandidat yang mungkin
- * valid; keputusan akhir memakai `invalidTemplateIds` (aturan murni bersama).
- */
-async function assertTemplatesAssignable(businessId: string, ids: string[]) {
-  if (ids.length === 0) return;
-  const supabase = createServerClient();
-  const [{ data: rows }, { data: purchases }] = await Promise.all([
-    supabase
-      .from("templates")
-      .select("id, business_id, is_active, is_premium, price")
-      .or(`business_id.eq.${businessId},business_id.is.null`)
-      .in("id", ids),
-    supabase
-      .from("business_template_purchases")
-      .select("template_id")
-      .eq("business_id", businessId),
-  ]);
-  const purchased = new Set(
-    ((purchases ?? []) as { template_id: string }[]).map((row) => row.template_id)
-  );
-  const invalid = invalidTemplateIds(
-    (rows ?? []) as AssignableTemplateRow[],
-    businessId,
-    purchased,
-    ids
-  );
-  if (invalid.length > 0) {
-    throw new ApiError(
-      "VALIDATION_ERROR",
-      "Ada template yang tidak bisa dipakai (nonaktif/belum dibeli)",
-      { template_ids: ["Berisi template yang tidak tersedia untuk business ini"] }
-    );
-  }
-}
-
-/**
- * Template boleh di-assign lintas paket berapa pun jumlah slotnya. Aturan
- * "slot_count == photo_count" dihapus 2026-10-19: slot frame menentukan
- * jumlah capture runtime, sedangkan `packages.photo_count` menjadi fallback
- * untuk template legacy tanpa slot. Slot yang perlu mengulang foto diisi
- * bergiliran (`src/lib/template-fit.ts`).
+ * Template assignable (docs/15 §15.9b) dihapus 2026-11-11 bersama assignment
+ * template: semua template aktif tampil untuk semua paket, jadi tidak ada lagi
+ * himpunan template per paket yang perlu divalidasi. Aturan murni
+ * `invalidTemplateIds` tetap dipakai validasi `default_template_id` booth.
  */
 
 /**
@@ -174,8 +131,8 @@ async function assertTemplatesAssignable(businessId: string, ids: string[]) {
 async function syncM2M(
   businessId: string,
   packageId: string,
-  table: "package_templates" | "package_outlets" | "package_photoboxes",
-  column: "template_id" | "outlet_id" | "photobox_id",
+  table: "package_outlets" | "package_photoboxes",
+  column: "outlet_id" | "photobox_id",
   ids: string[]
 ) {
   const supabase = createServerClient();
@@ -222,10 +179,11 @@ export async function listPackages(userId: string, businessId: string): Promise<
   return (data ?? []).map((row) => mapRow(row as Parameters<typeof mapRow>[0]));
 }
 
-export async function createPackage(userId: string, businessId: string, input: PackageCreateInput) {
-  const parsed = packageCreateSchema.parse(input);
-  await requireMembership(userId, businessId, "package:write");
-
+/**
+ * Gerbang plan `max_packages` — dipakai create DAN duplikat supaya semantik
+ * limit/pesan tidak bisa menyimpang antar jalur (keduanya menambah baris paket).
+ */
+async function assertPackageLimit(businessId: string) {
   const supabase = createServerClient();
   const [limits, { count }] = await Promise.all([
     requirePlanLimits(businessId),
@@ -240,14 +198,21 @@ export async function createPackage(userId: string, businessId: string, input: P
       `Plan Anda dibatasi ${limits.max_packages} paket. Upgrade untuk menambah.`
     );
   }
+}
+
+export async function createPackage(userId: string, businessId: string, input: PackageCreateInput) {
+  const parsed = packageCreateSchema.parse(input);
+  await requireMembership(userId, businessId, "package:write");
+
+  const supabase = createServerClient();
+  await assertPackageLimit(businessId);
 
   await Promise.all([
-    assertTemplatesAssignable(businessId, parsed.template_ids),
     assertIdsOwned(businessId, "outlets", parsed.outlet_ids),
     assertIdsOwned(businessId, "photoboxes", parsed.photobox_ids),
   ]);
 
-  const { template_ids, outlet_ids, photobox_ids, ...fields } = parsed;
+  const { outlet_ids, photobox_ids, ...fields } = parsed;
   const { data, error } = await supabase
     .from("packages")
     .insert({ business_id: businessId, ...fields })
@@ -263,7 +228,6 @@ export async function createPackage(userId: string, businessId: string, input: P
   }
 
   await Promise.all([
-    syncM2M(businessId, data.id, "package_templates", "template_id", template_ids),
     syncM2M(businessId, data.id, "package_outlets", "outlet_id", outlet_ids),
     syncM2M(businessId, data.id, "package_photoboxes", "photobox_id", photobox_ids),
   ]);
@@ -282,14 +246,10 @@ export async function updatePackage(
 
   const supabase = createServerClient();
 
-  // undefined = field tidak dikirim → jangan menyentuh assignment template.
-  if (parsed.template_ids !== undefined) {
-    await assertTemplatesAssignable(businessId, parsed.template_ids);
-  }
   await assertIdsOwned(businessId, "outlets", parsed.outlet_ids ?? []);
   await assertIdsOwned(businessId, "photoboxes", parsed.photobox_ids ?? []);
 
-  const { template_ids, outlet_ids, photobox_ids, ...fields } = parsed;
+  const { outlet_ids, photobox_ids, ...fields } = parsed;
   const { data, error } = await supabase
     .from("packages")
     .update(fields)
@@ -300,8 +260,6 @@ export async function updatePackage(
   if (error) throw new ApiError("INTERNAL", "Gagal memperbarui package");
   if (!data) throw new ApiError("NOT_FOUND", "Package tidak ditemukan");
 
-  if (template_ids)
-    await syncM2M(businessId, packageId, "package_templates", "template_id", template_ids);
   if (outlet_ids) await syncM2M(businessId, packageId, "package_outlets", "outlet_id", outlet_ids);
   if (photobox_ids)
     await syncM2M(businessId, packageId, "package_photoboxes", "photobox_id", photobox_ids);
@@ -336,4 +294,51 @@ export async function deletePackage(userId: string, businessId: string, packageI
   if (error) throw new ApiError("INTERNAL", "Gagal menghapus package");
   if (!data) throw new ApiError("NOT_FOUND", "Package tidak ditemukan");
   invalidatePublicConfig(businessId);
+}
+
+/**
+ * Duplikat paket sebagai draft (`is_active: false`) — pola sama dengan
+ * `duplicateTemplate`: salinan tidak langsung terjual sebelum owner memeriksa.
+ * Hanya `package_outlets` + `package_photoboxes` yang disalin; assignment
+ * template sudah tidak dipakai (semua template aktif tampil untuk semua paket).
+ */
+export async function duplicatePackage(userId: string, businessId: string, packageId: string) {
+  await requireMembership(userId, businessId, "package:write");
+  const supabase = createServerClient();
+
+  await assertPackageLimit(businessId);
+
+  const { data: source, error } = await supabase
+    .from("packages")
+    .select(COLUMNS)
+    .eq("id", packageId)
+    .eq("business_id", businessId)
+    .maybeSingle();
+  if (error) throw new ApiError("INTERNAL", "Gagal memuat package");
+  if (!source) throw new ApiError("NOT_FOUND", "Package tidak ditemukan");
+  const row = mapRow(source as Parameters<typeof mapRow>[0]);
+
+  const { data: created, error: insertError } = await supabase
+    .from("packages")
+    .insert({
+      business_id: businessId,
+      name: packageCopyName(row.name),
+      price: row.price,
+      photo_count: row.photo_count,
+      print_count: row.print_count,
+      digital_output: row.digital_output,
+      capture_mode: row.capture_mode,
+      description: row.description,
+      is_active: false,
+    })
+    .select("id, name")
+    .single();
+  if (insertError) throw new ApiError("INTERNAL", "Gagal menduplikasi package");
+
+  await Promise.all([
+    syncM2M(businessId, created.id, "package_outlets", "outlet_id", row.outlet_ids),
+    syncM2M(businessId, created.id, "package_photoboxes", "photobox_id", row.photobox_ids),
+  ]);
+  invalidatePublicConfig(businessId);
+  return created;
 }

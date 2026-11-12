@@ -8,7 +8,6 @@ import {
   CircleCheck,
   Eye,
   EyeOff,
-  Loader2,
   Plus,
   RotateCcw,
   Send,
@@ -92,7 +91,7 @@ export function AdminActionForm({
   submitLabel: string;
   pendingLabel?: string;
   variant?: "default" | "secondary" | "outline" | "destructive" | "ghost";
-  size?: "default" | "sm" | "lg" | "icon" | "icon-sm";
+  size?: "default" | "sm" | "lg";
   confirm?: string;
   confirmTitle?: string;
   className?: string;
@@ -114,7 +113,13 @@ export function AdminActionForm({
         ref={formRef}
         action={formAction}
         onSubmit={(event) => {
-          if (!confirm || confirmedRef.current) return;
+          if (!confirm) return;
+          if (confirmedRef.current) {
+            // Konfirmasi hanya berlaku untuk satu submit. Reset di sini supaya
+            // percobaan berikutnya (termasuk setelah error server) bertanya lagi.
+            confirmedRef.current = false;
+            return;
+          }
           event.preventDefault();
           setConfirmOpen(true);
         }}
@@ -178,7 +183,7 @@ function SubmitButton({
   label: string;
   pendingLabel?: string;
   variant: "default" | "secondary" | "outline" | "destructive" | "ghost";
-  size: "default" | "sm" | "lg" | "icon" | "icon-sm";
+  size: "default" | "sm" | "lg" | "icon";
   className?: string;
   icon?: ActionIconName;
   iconOnly?: boolean;
@@ -197,7 +202,7 @@ function SubmitButton({
         className={cn(className)}
       >
         {pending ? (
-          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+          <span aria-hidden="true" className="size-4 animate-pulse bg-current opacity-40" />
         ) : icon ? (
           <ActionGlyph name={icon} />
         ) : (

@@ -190,7 +190,7 @@ export function PaymentCredentialForm({ credential, webhookUrls, onCancel, onSav
     <form
       onSubmit={(event) => void submit(event)}
       noValidate
-      className="grid gap-4 border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111]"
+      className="grid gap-4 border-2 border-ink bg-surface p-5 shadow-hard"
     >
       <div className="flex items-center justify-between gap-3 border-b-2 border-ink pb-3">
         <h2 className="font-display text-xl uppercase tracking-tight">
@@ -201,7 +201,7 @@ export function PaymentCredentialForm({ credential, webhookUrls, onCancel, onSav
 
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="grid gap-1 font-mono text-xs uppercase tracking-[0.08em]">
-          Provider
+          Penyedia
           <select
             value={provider}
             disabled={editing || pending}
@@ -209,7 +209,7 @@ export function PaymentCredentialForm({ credential, webhookUrls, onCancel, onSav
               setProvider(event.target.value as GatewayProvider);
               setMethods([]);
             }}
-            className="h-11 border-2 border-ink bg-surface px-3 text-sm normal-case shadow-[2px_2px_0_0_#111111] disabled:opacity-50"
+            className="h-11 border-2 border-ink bg-surface px-3 text-sm normal-case shadow-hard-sm disabled:opacity-50"
           >
             {Object.entries(providerLabels).map(([value, label]) => (
               <option key={value} value={value}>
@@ -219,12 +219,12 @@ export function PaymentCredentialForm({ credential, webhookUrls, onCancel, onSav
           </select>
         </label>
         <label className="grid gap-1 font-mono text-xs uppercase tracking-[0.08em]">
-          Environment
+          Lingkungan
           <select
             value={environment}
             disabled={pending}
             onChange={(event) => setEnvironment(event.target.value as "sandbox" | "production")}
-            className="h-11 border-2 border-ink bg-surface px-3 text-sm normal-case shadow-[2px_2px_0_0_#111111] disabled:opacity-50"
+            className="h-11 border-2 border-ink bg-surface px-3 text-sm normal-case shadow-hard-sm disabled:opacity-50"
           >
             <option value="sandbox">Sandbox</option>
             <option value="production">Production</option>

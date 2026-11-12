@@ -20,7 +20,7 @@ import type { PrintSettings } from "@/lib/kiosk-types";
 import { reportPrintTestAction, savePhotoboxHardwareAction } from "@/server/hardware-actions";
 
 const SECTION =
-  "flex flex-col gap-4 border-2 border-ink bg-surface p-4 shadow-[4px_4px_0_0_#111111] md:p-5";
+  "flex flex-col gap-4 border-2 border-ink bg-surface p-4 shadow-hard md:p-5";
 const LABEL = "font-mono text-[10px] font-bold uppercase tracking-[0.16em]";
 const HEADING = "font-display text-lg uppercase leading-none tracking-[-0.01em]";
 const NEUTRAL =
@@ -41,7 +41,13 @@ export type HardwareDraft = {
   };
 };
 
-export type DetectedHardware = { printers: string[]; cameras: string[] };
+export type DetectedHardware = {
+  printers: string[];
+  cameras: string[];
+  printerState?: string;
+  printerMedia?: string | null;
+  printerQueue?: number;
+};
 
 type DetectState = "idle" | "busy" | "ok" | "unreachable";
 
@@ -129,9 +135,15 @@ export function HardwareDetectButton({
     const printers: string[] = [];
     const cameras: string[] = [];
     let reachable = false;
+    let printerState: string | undefined;
+    let printerMedia: string | null = null;
+    let printerQueue: number | undefined;
 
     try {
-      const health = await fetch(`${base}/health`, { cache: "no-store" });
+      const health = await fetch(`${base}/health`, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(5_000),
+      });
       if (health.ok) {
         reachable = true;
         const body = (await health.json().catch(() => null)) as {
@@ -149,13 +161,20 @@ export function HardwareDetectButton({
         const response = await fetch(`${base}/printer/health`, {
           cache: "no-store",
           headers: bridgeHeaders(),
+          signal: AbortSignal.timeout(5_000),
         });
         const body = (await response.json().catch(() => null)) as {
           printer?: string | null;
           ok?: boolean;
+          state?: string;
+          media?: string | null;
+          queue?: number;
         } | null;
         if (body?.printer) printers.push(body.printer);
         else if (body?.ok) printers.push("Printer default OS");
+        if (typeof body?.state === "string") printerState = body.state;
+        if (typeof body?.media === "string") printerMedia = body.media;
+        if (typeof body?.queue === "number") printerQueue = body.queue;
       } catch {
         /* token belum diisi: tetap boleh isi manual */
       }
@@ -163,6 +182,7 @@ export function HardwareDetectButton({
         const response = await fetch(`${base}/v1/camera/status`, {
           cache: "no-store",
           headers: bridgeHeaders(),
+          signal: AbortSignal.timeout(5_000),
         });
         const body = (await response.json().catch(() => null)) as {
           model?: string;
@@ -177,9 +197,16 @@ export function HardwareDetectButton({
 
     if (reachable) {
       setState("ok");
+      const printerDetail = [
+        printerState ? `status ${printerState}` : null,
+        printerMedia ? `media ${printerMedia}` : null,
+        printerQueue ? `antrean ${printerQueue}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
       setMessage(
         printers.length + cameras.length > 0
-          ? `Bridge menjawab · ${printers.length} printer · ${cameras.length} kamera`
+          ? `Bridge menjawab · ${printers.length} printer · ${cameras.length} kamera${printerDetail ? ` · ${printerDetail}` : ""}`
           : "Bridge menjawab, tidak ada perangkat terdaftar. Isi nama manual."
       );
     } else {
@@ -188,7 +215,7 @@ export function HardwareDetectButton({
         "Bridge lokal tidak menjawab. Isi nama perangkat manual, atau nyalakan bridge di komputer booth."
       );
     }
-    onDetected({ printers, cameras });
+    onDetected({ printers, cameras, printerState, printerMedia, printerQueue });
   }, [bridgeUrl, onDetected]);
 
   return (

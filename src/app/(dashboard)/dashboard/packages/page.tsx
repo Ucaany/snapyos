@@ -1,3 +1,5 @@
+import { PageShell } from "@/components/layout/PageShell";
+
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -32,26 +34,20 @@ export default async function PackagesPage() {
   ]);
 
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
+    <PageShell>
       <PageHeader
         eyebrow={`PAKET: ${active.role.toUpperCase()}`}
         title="Paket"
-        description="Paket menentukan harga dan jumlah foto/cetak di kiosk. Harga integer IDR; final amount saat checkout selalu dihitung server-side."
+        description="Paket menentukan harga dan jumlah foto/cetak di kiosk. Template tidak perlu di-assign: semua template aktif otomatis tersedia di setiap paket. Harga integer IDR; final amount saat checkout selalu dihitung server-side."
       />
 
       <PackagesTable
         packages={packages}
-        // Jumlah slot ditulis sebagai metadata: semua frame bisa dipakai paket
-        // mana pun, dan slot berlebih diisi bergiliran.
-        templates={templates.map((t) => ({
-          id: t.id,
-          name: `${t.name} (${t.category}, ${t.slot_count === 0 ? "tanpa slot" : `${t.slot_count} slot`})`,
-          slotCount: t.slot_count,
-        }))}
+        templateCount={templates.length}
         outlets={outlets.map((o) => ({ id: o.id, name: o.name }))}
         photoboxes={photoboxes.map((b) => ({ id: b.id, name: b.name }))}
         canWrite={canWrite}
       />
-    </div>
+    </PageShell>
   );
 }

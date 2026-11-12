@@ -62,7 +62,7 @@ Dilarang tampak seperti: generic Tailwind dashboard, generic AI SaaS, Linear/Str
 - **Owner dashboard finance/payment:** data SSR dan server actions menjadi default; client polling hanya untuk QR aktif, berhenti saat final/unmount, menampilkan nominal provider `total_amount` serta error inline. Credential gateway dirender redacted; secret tidak pernah kembali ke browser.
 - **Divider & sub-divider (aturan opacity):** garis struktur penuh pakai `border-ink` (2-4px). Sub-pemisah di dalam panel memakai opacity bertingkat tetap: `border-ink/10` untuk baris tabel, `border-ink/20` untuk pemisah grup di dalam kartu, `border-ink/40` hanya untuk outline dashed empty state. Alasan: header tabel/section tetap ink penuh (18.9:1), sedangkan garis berulang diredupkan agar tidak bersaing dengan border utama; 3 tingkat saja supaya ada satu kontrak visual, bukan pilihan acak per halaman.
 - **Owner add-on:** katalog global hanya admin. Owner melihat entitlement, memilih quantity, mengonfirmasi invoice, membayar QRIS, lalu mengelola cancellation akhir-periode.
-- **Dashboard-01 (HISTORIS — dihapus v1.4):** dual-shell `.snapyos-d01` sudah di-remove 2026-08-30. Seluruh dashboard memakai token brutalist dari `src/styles/tokens.css`. Lihat `docs/dashboard-redesign.md` untuk catatan historis.
+- **Dashboard-01 (HISTORIS — dihapus v1.4):** dual-shell `.snapyos-d01` sudah di-remove 2026-08-30. Seluruh dashboard memakai token brutalist dari `src/styles/tokens.css`.
 
 ## 5. Layout Principles
 

@@ -157,7 +157,7 @@ export function InvoicePayClient({
 
   if (initialStatus === "void") {
     return (
-      <div className="flex flex-col items-start gap-4 rounded-none border-2 border-ink p-6 shadow-[4px_4px_0_#111]">
+      <div className="flex flex-col items-start gap-4 rounded-none border-2 border-ink p-6 shadow-hard">
         <p className="font-display text-2xl uppercase tracking-tight">Invoice dibatalkan</p>
         <p className="max-w-[50ch] text-sm">
           Invoice {invoiceNumber} sudah tidak berlaku (plan diganti atau dibatalkan). Kembali ke
@@ -172,7 +172,7 @@ export function InvoicePayClient({
 
   if (phase === "paid") {
     return (
-      <div className="flex flex-col items-start gap-4 rounded-none border-2 border-ink p-6 shadow-[4px_4px_0_#111]">
+      <div className="flex flex-col items-start gap-4 rounded-none border-2 border-ink p-6 shadow-hard">
         <p className="flex items-center gap-2 font-display text-2xl uppercase tracking-tight">
           <CheckCircle2 className="size-5" aria-hidden /> Pembayaran berhasil
         </p>
@@ -213,7 +213,7 @@ export function InvoicePayClient({
           </div>
           <dl className="flex flex-col gap-1.5 border-t-2 border-ink/10 pt-3 text-sm">
             <div className="flex justify-between">
-              <dt className="text-muted-foreground">Business</dt>
+              <dt className="text-muted-foreground">Bisnis</dt>
               <dd className="font-mono font-bold">{businessName}</dd>
             </div>
             {items.length > 0 && (
@@ -242,7 +242,7 @@ export function InvoicePayClient({
         </CardContent>
       </Card>
 
-      <section className="flex flex-col items-center justify-center gap-3 rounded-none border-2 border-ink p-5 shadow-[4px_4px_0_#111]">
+      <section className="flex flex-col items-center justify-center gap-3 rounded-none border-2 border-ink p-5 shadow-hard">
         <p className="self-start text-xs text-muted-foreground">Scan QRIS</p>
 
         {phase === "idle" && (

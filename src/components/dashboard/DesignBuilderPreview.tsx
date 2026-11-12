@@ -136,7 +136,7 @@ export function DesignBuilderPreview({ businessName, branding }: Props) {
           <Select
             value={page}
             onChange={(event) => setPage(event.target.value as KioskPageId)}
-            className="h-9 text-xs"
+            className="min-h-11 text-xs"
           >
             {PAGE_LABELS.map((item) => (
               <option key={item.id} value={item.id}>
@@ -154,7 +154,7 @@ export function DesignBuilderPreview({ businessName, branding }: Props) {
             onChange={(event) =>
               setOrientation(event.target.value === "landscape" ? "landscape" : "portrait")
             }
-            className="h-9 text-xs"
+            className="min-h-11 text-xs"
           >
             <option value="portrait">Portrait</option>
             <option value="landscape">Landscape</option>

@@ -10,7 +10,7 @@ import { bool, num, str, toFormState, uuidList } from "@/lib/form-state";
 import { requireActiveBusiness } from "@/server/action-utils";
 import { requireEffectiveSubscription } from "@/server/require-subscription";
 import type { FormState } from "@/server/auth-actions";
-import { createPackage, deletePackage, updatePackage } from "@/server/packages";
+import { createPackage, deletePackage, duplicatePackage, updatePackage } from "@/server/packages";
 import {
   deleteTemplate,
   duplicateTemplate,
@@ -34,7 +34,6 @@ function packageInput(formData: FormData) {
     capture_mode: (str(formData, "capture_mode") || "single") as "single" | "burst" | "photostrip",
     description: str(formData, "description") || undefined,
     is_active: bool(formData, "is_active"),
-    template_ids: uuidList(formData, "template_ids"),
     outlet_ids: uuidList(formData, "outlet_ids"),
     photobox_ids: uuidList(formData, "photobox_ids"),
   };
@@ -84,6 +83,25 @@ export async function deletePackageAction(formData: FormData): Promise<FormState
     await deletePackage(ctx.user.id, ctx.businessId, id);
   } catch (error) {
     return toFormState(error, "Gagal menghapus paket. Coba lagi.");
+  }
+  revalidatePath("/dashboard/packages");
+  return { error: undefined };
+}
+
+/**
+ * Duplikat paket sebagai draft nonaktif. Pola sama dengan `deletePackageAction`:
+ * id dari formData, error diteruskan ke FormState, revalidate halaman paket.
+ */
+export async function duplicatePackageAction(formData: FormData): Promise<FormState> {
+  const ctx = await requireActiveBusiness();
+  const id = String(formData.get("id") ?? "");
+  if (!ctx) return { error: "Sesi berakhir. Silakan login ulang." };
+  if (!id) return { error: "Data tidak valid." };
+  try {
+    await requireEffectiveSubscription(ctx.businessId, "write");
+    await duplicatePackage(ctx.user.id, ctx.businessId, id);
+  } catch (error) {
+    return toFormState(error, "Gagal menduplikasi paket. Coba lagi.");
   }
   revalidatePath("/dashboard/packages");
   return { error: undefined };

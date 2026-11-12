@@ -98,7 +98,7 @@ export function CashPaymentNotifier({ businessId }: { businessId: string }) {
     <div
       role="status"
       aria-live="polite"
-      className="fixed bottom-4 right-4 z-50 w-[min(360px,calc(100vw-2rem))] border-2 border-ink bg-accent shadow-[6px_6px_0_0_#111111]"
+      className="fixed bottom-4 right-4 z-50 w-[min(360px,calc(100vw-2rem))] border-2 border-ink bg-accent shadow-hard-lg"
     >
       <header className="flex items-center justify-between gap-2 border-b-2 border-ink bg-ink px-3 py-2 text-bg">
         <span className="flex items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-[0.18em]">
@@ -132,7 +132,7 @@ export function CashPaymentNotifier({ businessId }: { businessId: string }) {
               type="button"
               disabled={busy === item.payment_reference}
               onClick={() => void confirm(item)}
-              className="mt-2 w-full border-2 border-ink bg-accent px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.05em] shadow-[2px_2px_0_0_#111111] active:translate-y-[1px] active:shadow-none disabled:opacity-50"
+              className="mt-2 w-full border-2 border-ink bg-accent px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.05em] shadow-hard-sm active:translate-y-[1px] active:shadow-none disabled:opacity-50"
             >
               {busy === item.payment_reference ? "Memproses..." : "Konfirmasi bayar"}
             </button>

@@ -33,7 +33,7 @@ export function SupportTicketsPanel({ tickets }: { tickets: SupportTicket[] }) {
     return (
       <Link
         href={`/dashboard/support/${t.id}`}
-        className="block border-2 border-ink bg-surface p-4 shadow-[4px_4px_0_0_#111111] transition-transform active:translate-y-[2px]"
+        className="block border-2 border-ink bg-surface p-4 shadow-hard transition-transform active:translate-y-[2px]"
       >
         <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
@@ -71,7 +71,7 @@ export function SupportTicketsPanel({ tickets }: { tickets: SupportTicket[] }) {
         <CollapsiblePanel className="mt-4">
           <form
             action={action}
-            className="flex flex-col gap-6 border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111] md:p-6"
+            className="flex flex-col gap-6 border-2 border-ink bg-surface p-5 shadow-hard md:p-6"
             noValidate
           >
             <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">

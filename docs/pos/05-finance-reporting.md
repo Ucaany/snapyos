@@ -13,7 +13,7 @@ Dieksekusi 2026-08-28. Yang jadi:
 - `src/server/pos-reports.ts`: `posRevenueReport`, `posBreakdownReport` (by product/cashier/outlet/booth/day), `posVsKioskSplit` — semua `requirePosAccess` + `pos:read`, scoped `.eq(business_id)`.
 - Logika agregasi pure diekstrak ke `src/lib/pos-reports-math.ts` (deviasi kecil dari §4 — agar unit-testable tanpa DB, pola repo).
 - UI: panel laporan di `/dashboard/pos` (`src/components/dashboard/PosReportsPanel.tsx` — deviasi dari peta "komponen di `src/components/pos/`").
-- Test: `tests/pos-reports.test.ts`.
+- Verifikasi: `src/lib/pos-reports-math.ts`.
 - Prinsip double-count §9 terjaga: revenue selalu dari `transactions`; `pos_orders` hanya breakdown.
 
 ---
@@ -121,12 +121,12 @@ Admin (`src/server/admin.ts` tambah kecil): revenue POS per tenant = agregasi `t
 
 ## 8. Testing
 
-| Test                | File                                        | Kasus                                                                                                         |
-| ------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Agregasi campuran   | `tests/pos-reports.test.ts` (mock)          | data kiosk+POS → split benar; by-product pakai snapshot; by-cashier join; by-booth join; day bucket           |
-| Snapshot regression | extend test transactions/analytics existing | angka summary data-pure-kiosk identik sebelum/sesudah                                                         |
-| Export              | extend test reports existing                | kolom SUMBER; karakter `=`/`+`/`-`/`@` di name tetap di-escape                                                |
-| Rekon silang manual | dev                                         | Σ pos_orders.paid = Σ transactions(pos_order_id) per hari; saldo/ledger TIDAK berubah oleh POS (offline — A3) |
+| Test                | Kasus                                                                                                         |
+| ------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Agregasi campuran   | data kiosk+POS → split benar; by-product pakai snapshot; by-cashier join; by-booth join; day bucket           |
+| Snapshot regression | angka summary data-pure-kiosk identik sebelum/sesudah                                                         |
+| Export              | kolom SUMBER; karakter `=`/`+`/`-`/`@` di name tetap di-escape                                                |
+| Rekon silang manual | dev: Σ pos_orders.paid = Σ transactions(pos_order_id) per hari; saldo/ledger TIDAK berubah oleh POS (offline — A3) |
 
 ---
 

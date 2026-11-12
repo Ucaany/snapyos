@@ -96,10 +96,10 @@ Template builder & marketplace didokumentasikan di §8.7a.
 >
 > - Layout divalidasi server-side (`layoutSchema`): id unik, `z` unik+kontigu `0..n-1`, preset cocok dimensi, bounds rotation-aware, `radius ≤ min(w,h)/2`, `circle` wajib persegi (±0.01), max 8 slot. Invalid → 4xx `VALIDATION_ERROR` dengan field errors.
 > - Template global (`business_id NULL`) tidak dapat ditulis dari sisi owner; builder global hanya admin.
-> - **Assignability** (`assertTemplatesAssignable`): template milik business sendiri, ATAU global yang `is_active` dan (gratis ATAU sudah dibeli). Global nonaktif/belum dibeli ditolak saat create **dan** update package.
-> - Package tanpa assignment menampilkan semua template aktif (`selectVisibleTemplates` fallback).
+> - **Tanpa assignment template (2026-11-11):** `assertTemplatesAssignable` dan `selectVisibleTemplates` dihapus. Semua template aktif tampil untuk semua paket; `package_templates` dorman (tidak dibaca/ditulis).
+> - Duplikat paket: `duplicatePackage` menyalin `package_outlets` + `package_photoboxes`, membuat salinan `is_active: false` bernama `... (salinan)` (≤ 80 karakter), dibatasi plan `max_packages`.
 > - Marketplace: `purchaseTemplate` membuat invoice pending dengan intent `{ type: "template_purchase", items: [...] }` (amount = `templates.price`, integer IDR). Saat paid, `applyInvoiceIntent` menulis `business_template_purchases` idempoten. Template premium nonaktif tidak bisa dibeli.
-> - **Public template** (`GET /api/v1/public/:businessSlug/templates?package=`): payload `id, name, category, file_url, thumbnail_url, layout, slot_count, version, package_ids`; `version` = epoch ms `updated_at`; `?package` opsional. Thumbnail = frame WebP hasil upload (bukan composite slot).
+> - **Public template** (`GET /api/v1/public/:businessSlug/templates?package=`): payload `id, name, category, file_url, thumbnail_url, layout, slot_count, version`; `version` = epoch ms `updated_at`; `?package` diterima tetapi **diabaikan** (tidak memfilter). `package_ids` dihapus dari payload. Thumbnail = frame WebP hasil upload (bukan composite slot).
 > - **Tidak ada server-side compose.** Render final dilakukan klien (`composeFrame`) lalu diunggah sebagai JPEG; print/result memakai JPEG itu.
 > - Cache publik: tag `public-config` per business + `public-config:global`, invalidasi pada mutasi template/global, TTL 30 detik.
 
@@ -146,7 +146,7 @@ Template builder & marketplace didokumentasikan di §8.7a.
 
 - `GET /api/v1/public/:businessSlug?photobox=<photoboxSlug>` — konfigurasi publik untuk booth: business, branding/welcome, checkout settings, photobox, dan packages. Parameter `photobox` wajib.
 - `GET /api/v1/public/:businessSlug/packages?photobox=<photoboxSlug>` — daftar package aktif untuk booth; parameter `photobox` wajib.
-- `GET /api/v1/public/:businessSlug/templates?package=` — daftar template aktif. `?package` opsional (kiosk baru memanggil tanpa parameter lalu memfilter di klien). Field respons (aditif): `id, name, category, file_url, thumbnail_url, layout, slot_count, version, package_ids`. `version` = epoch ms `templates.updated_at` (0 bila tak terbaca); `package_ids` = assignment `package_templates`. Header `Cache-Control: private, max-age=0, must-revalidate`; rate limit 120/menit/IP.
+- `GET /api/v1/public/:businessSlug/templates?package=` — daftar template aktif. `?package` diterima untuk kompatibilitas klien lama tetapi **diabaikan**; semua template aktif tampil untuk semua paket. Field respons: `id, name, category, file_url, thumbnail_url, layout, slot_count, version`. `version` = epoch ms `templates.updated_at` (0 bila tak terbaca). `package_ids` dihapus. Header `Cache-Control: private, max-age=0, must-revalidate`; rate limit 120/menit/IP.
 - `GET /api/v1/public/frame?url=<signed>&cache=<templateId:version>&w=<width>` — proxy biner frame/thumbnail. `cache` hanya penanda key Cache Storage untuk service worker (server **tidak** membacanya); `w` memilih versi resize 480px. Rate limit 180/menit/IP; `Cache-Control` `private, max-age=3600/600, stale-while-revalidate=86400` (dengan/tanpa `w`). Validasi allowlist origin, sniff MIME, batas 8 MB tetap.
 - `GET /api/v1/public/:businessSlug/stickers` — **[BELUM DIIMPLEMENTASI]** (stiker = emoji API global `GET /api/v1/emoji`, lihat §8.20)
 - `POST /api/v1/public/devices/activate` — aktivasi device `{ code }` → `{ device_token }`
@@ -262,7 +262,7 @@ Sebelumnya endpoint ini **statis** (selalu `200` walau Supabase/R2 mati), sehing
 tidak berguna untuk Nginx, systemd, atau uptime monitor. Sekarang ia menjalankan
 dua probe paralel dan mengembalikan **503** bila salah satu gagal.
 
-Logika probe ada di `src/lib/health.ts` (pure, teruji di `tests/health.test.ts`);
+Logika probe ada di `src/lib/health.ts` (pure);
 route `src/app/api/health/route.ts` hanya menyuplai closure probe.
 
 **Probe:**

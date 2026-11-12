@@ -23,7 +23,9 @@ import {
   fetchDeviceSettings,
   fetchRuntimeStatus,
   finalizeLocalSession,
+  saveDeviceSettings,
 } from "@/components/kiosk/local-runtime";
+import { listCupsPrinters } from "@/lib/print/cups";
 import { canBootOffline, isNetworkFailure } from "@/components/kiosk/boot-offline";
 import { useConfigSync } from "@/components/kiosk/use-config-sync";
 import { useKioskLock, useHoldExit } from "@/components/kiosk/use-kiosk-lock";
@@ -153,6 +155,48 @@ export function KioskApp({
       alive = false;
     };
   }, [config.photobox.camera_settings.bridge_url]);
+
+  // Auto-connect printer: hanya mengisi `printer_name` yang KOSONG. Nilai yang
+  // sudah diisi operator tidak pernah ditimpa, dan bridge mati tidak menyimpan apa pun.
+  useEffect(() => {
+    if (!deviceSettings) return;
+    const print = (deviceSettings.print_settings ?? {}) as Record<string, unknown>;
+    if (print.mode !== "cups") return;
+    const existing = typeof print.printer_name === "string" ? print.printer_name.trim() : "";
+    if (existing) return;
+    let alive = true;
+    void (async () => {
+      const settings = {
+        ...print,
+        bridge_url: deviceSettings.camera_settings?.bridge_url,
+      } as Parameters<typeof listCupsPrinters>[0];
+      const result = await listCupsPrinters(settings);
+      if (!alive || !result.ok) return;
+      const preferred = result.printers.find((p) => p.default) ?? result.printers[0];
+      if (!preferred) return;
+      try {
+        const saved = await saveDeviceSettings({
+          print_settings: {
+            ...print,
+            mode: "cups",
+            printer_name: preferred.name,
+            photo: {
+              ...(typeof print.photo === "object" && print.photo
+                ? (print.photo as Record<string, unknown>)
+                : {}),
+              printer_name: preferred.name,
+            },
+          },
+        });
+        if (alive) setDeviceSettings(saved);
+      } catch {
+        // Best-effort: jangan blokir flow pelanggan karena setelan printer.
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [deviceSettings]);
   // Derive (bukan sync-effect): idle = config live; sesi = snapshot state.
   // useMemo: mergeSettings mengembalikan objek baru, dan CameraCapture memo
   // akan re-render tiap KioskApp render tanpa identitas yang stabil.
@@ -956,7 +1000,6 @@ export function KioskApp({
       {step === "template" && selectedPackage && (
         <KioskScreenRenderer {...screenConfig("template")}>
           <TemplatePicker
-            packageId={selectedPackage.id}
             packagePhotoCount={selectedPackage.photo_count}
             packagePrintCount={selectedPackage.print_count}
             businessSlug={businessSlug}
@@ -1088,7 +1131,7 @@ export function KioskApp({
           // editor memindahkannya ke kanan-atas dan bertabrakan dengan header
           // foto + timer sesi; sudut kiri-bawah tidak dipakai kontrol mana pun.
           aria-describedby="kiosk-exit-help"
-          className="fixed left-3 z-40 flex size-12 items-center justify-center border-2 border-ink/20 bg-surface/60 text-muted-foreground opacity-40 transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink lg:left-4"
+          className="fixed left-3 z-40 flex size-12 items-center justify-center border-2 border-ink/40 bg-surface text-ink transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink lg:left-4"
           style={{
             marginLeft: "env(safe-area-inset-left)",
             bottom: online
@@ -1115,7 +1158,7 @@ export function KioskApp({
           aria-label="Petugas: buka setelan booth"
           title="Petugas: setelan booth"
           onClick={() => setSettingsPrompt(true)}
-          className="fixed left-3 z-40 flex size-12 items-center justify-center border-2 border-ink/20 bg-surface/60 text-muted-foreground opacity-40 transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink lg:left-4"
+          className="fixed left-3 z-40 flex size-12 items-center justify-center border-2 border-ink/40 bg-surface text-ink transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink lg:left-4"
           style={{
             marginLeft: "env(safe-area-inset-left)",
             bottom: online

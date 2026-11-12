@@ -6,6 +6,7 @@ import { Filter } from "lucide-react";
 import { PosProductsTable } from "@/components/dashboard/PosProductsTable";
 import { PosBoothsTable } from "@/components/dashboard/PosBoothsTable";
 import { PosReportsPanel } from "@/components/dashboard/PosReportsPanel";
+import { PageShell } from "@/components/layout/PageShell";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { IconButton } from "@/components/ui/icon-button";
 import { DateInput } from "@/components/ui/date-input";
@@ -48,7 +49,7 @@ export default async function PosManagementPage({
   if (!entitled) {
     const addOn = await getPosAddOnInfo();
     return (
-      <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
+      <PageShell>
         <PageHeader
           eyebrow={`POS: ${active.role.toUpperCase()}`}
           title="POS Kasir"
@@ -69,7 +70,7 @@ export default async function PosManagementPage({
             </Link>
           }
         />
-      </div>
+      </PageShell>
     );
   }
 
@@ -88,7 +89,7 @@ export default async function PosManagementPage({
   ]);
 
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
+    <PageShell>
       <PageHeader
         eyebrow={`POS: ${active.role.toUpperCase()}`}
         title="Manajemen POS"
@@ -163,6 +164,6 @@ export default async function PosManagementPage({
           </p>
         </section>
       ) : null}
-    </div>
+    </PageShell>
   );
 }

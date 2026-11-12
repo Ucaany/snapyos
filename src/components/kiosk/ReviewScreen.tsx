@@ -12,7 +12,7 @@ import {
   type KioskVisualStyle,
 } from "@/lib/kiosk-types";
 import { useObjectUrls } from "@/components/kiosk/use-object-url";
-import { KioskAction, kioskGutter } from "@/components/kiosk/ui";
+import { KioskAction, KioskHeader, kioskGutter } from "@/components/kiosk/ui";
 
 type Props = {
   photos: CapturePhoto[];
@@ -209,35 +209,23 @@ export function ReviewScreen({
         className={`mx-auto flex w-full max-w-[860px] flex-col gap-5 py-5 ${alignClass}`}
         style={{ paddingLeft: gutter, paddingRight: gutter }}
       >
-        <div className="flex w-full flex-col gap-1">
-          <p
-            className="font-mono text-[10px] font-bold uppercase tracking-[0.24em]"
-            style={{ opacity: 0.6 }}
-          >
-            CEK HASIL
-          </p>
-          <h1
-            className="font-display uppercase leading-[0.95] tracking-[-0.02em]"
-            style={{
-              fontSize: `calc(clamp(1.4rem, 2.8vw, 2rem) * ${kioskStyle?.fontScale ?? 1})`,
-              fontFamily: kioskStyle?.fontFamily,
-            }}
-          >
-            {heading}
-          </h1>
-          <p
-            className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em]"
-            style={{ opacity: 0.55 }}
-          >
-            {`${currentPhotos.length} dari ${photoCount} foto · ${retakes} ulang${
-              maxRetakes === null ? "" : ` / maks ${maxRetakes}`
-            }`}
-          </p>
-        </div>
+        <KioskHeader
+          eyebrow="CEK HASIL"
+          title={heading}
+          description={
+            <span className="font-mono text-[10px] uppercase tracking-[0.12em]">
+              {`${currentPhotos.length} dari ${photoCount} foto · ${retakes} ulang${
+                maxRetakes === null ? "" : ` / maks ${maxRetakes}`
+              }`}
+            </span>
+          }
+          align={kioskStyle?.align ?? "center"}
+          scale={kioskStyle?.fontScale ?? 1}
+        />
 
         {retaking !== null ? (
           <div className="flex w-full flex-col gap-3">
-            <div className="relative flex min-h-[42dvh] items-center justify-center overflow-hidden border-2 border-ink bg-ink">
+            <div className="relative flex min-h-[38dvh] items-center justify-center overflow-hidden border-2 border-ink bg-ink">
               {provider === "bridge" ? (
                 <p className="max-w-[40ch] p-6 text-center font-mono text-xs uppercase leading-relaxed tracking-[0.08em] text-bg">
                   Kamera bridge siap. Tekan ambil untuk mengganti foto {retaking + 1}.
@@ -269,7 +257,7 @@ export function ReviewScreen({
             {error && (
               <p
                 role="alert"
-                className="border-2 border-destructive bg-destructive/10 px-3 py-2 text-sm"
+                className="border-2 border-destructive bg-surface px-3 py-2 text-sm"
               >
                 {error}
               </p>

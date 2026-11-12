@@ -122,11 +122,11 @@ Field penting:
 | ------------- | -------------------------------------------------------- |
 | `name`        | Wajib, jelas untuk customer                              |
 | `price`       | Integer IDR, tidak boleh floating-point                  |
-| `photo_count` | Fallback jumlah capture untuk template legacy tanpa slot |
+| `photo_count` | Jumlah foto cadangan; hanya fallback untuk template legacy tanpa slot |
 | `print_count` | Jumlah hasil cetak                                       |
 | `is_active`   | Hanya package aktif tampil di kiosk                      |
 
-Server menghitung final amount. Frontend tidak dipercaya untuk harga, diskon, atau voucher.
+Server menghitung final amount. Frontend tidak dipercaya untuk harga, diskon, atau voucher. Template tidak perlu dipilih di form paket: semua template aktif otomatis tersedia. Tombol Duplikat membuat salinan nonaktif bernama `... (salinan)`.
 
 ## 8. Membuat Template
 
@@ -135,10 +135,10 @@ Server menghitung final amount. Frontend tidak dipercaya untuk harga, diskon, at
 3. Atur posisi, ukuran, rotasi, dan urutan layer.
 4. Simpan layout dalam unit design yang disepakati builder.
 5. Generate thumbnail preview.
-6. Assign template ke package.
-7. Uji frame lintas paket; frame ber-slot menentukan jumlah capture saat kiosk berjalan.
+6. Publish template. Semua template aktif langsung tampil di semua paket — tidak ada langkah assign.
+7. Uji frame di kiosk; frame ber-slot menentukan jumlah capture saat kiosk berjalan.
 
-Assignment lintas jumlah slot diperbolehkan; frame ber-slot menentukan capture, sedangkan template legacy memakai photo_count package.
+Frame ber-slot menentukan capture, sedangkan template legacy memakai photo_count package.
 
 ## 9. Payment Customer
 
@@ -263,7 +263,7 @@ Cron menolak request tanpa secret. `RETENTION_CRON_OPEN=1` hanya untuk mode deve
 ### Template tidak tampil
 
 - Pastikan template aktif.
-- Pastikan template di-assign ke package.
+- Semua template aktif tampil di semua paket; tidak ada assignment yang perlu diatur.
 - Frame ber-slot tetap dapat dipakai lintas paket; periksa layout dan URL frame bila tidak tampil.
 - Periksa response public template dan error server.
 

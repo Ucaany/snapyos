@@ -34,7 +34,7 @@ export default async function AdminTemplateBuilderPage({
   return (
     <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       <PageHeader
-        eyebrow="ADMIN - TEMPLATE BUILDER"
+        eyebrow="ADMIN / BUILDER TEMPLATE"
         title={template.name}
         description="Atur slot frame platform yang dipakai semua tenant. Tambah hingga 8 slot, geser lewat drag atau tombol panah, lalu simpan draft atau publish."
         meta={`${template.category.toUpperCase()} · ${template.is_active ? "AKTIF" : "NONAKTIF"}`}

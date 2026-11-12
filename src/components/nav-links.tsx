@@ -23,6 +23,12 @@ export const productLinks: LinkItemType[] = [
     icon: <CameraIcon />,
   },
   {
+    label: "Kamera Didukung",
+    href: "/kamera",
+    description: "Katalog kamera gphoto2 untuk booth",
+    icon: <CameraIcon />,
+  },
+  {
     label: "Dokumentasi",
     href: "/docs",
     description: "Panduan dan referensi teknis",

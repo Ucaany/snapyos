@@ -1,3 +1,5 @@
+import { PageShell } from "@/components/layout/PageShell";
+
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -25,7 +27,7 @@ export default async function DevicesPage() {
   ]);
 
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
+    <PageShell>
       <PageHeader
         eyebrow="PERANGKAT · PAIRING · DIAGNOSTIK"
         title="Manajemen Perangkat"
@@ -48,6 +50,6 @@ export default async function DevicesPage() {
         }))}
         canWrite={can(active.role, "photobox:write")}
       />
-    </div>
+    </PageShell>
   );
 }

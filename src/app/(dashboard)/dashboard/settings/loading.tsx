@@ -13,7 +13,7 @@ export default function Loading() {
         {Array.from({ length: 2 }).map((_, panel) => (
           <div
             key={panel}
-            className="flex flex-col gap-4 border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111] md:p-6"
+            className="flex flex-col gap-4 border-2 border-ink bg-surface p-5 shadow-hard md:p-6"
           >
             <Skeleton className="h-4 w-40" />
             <Skeleton className="h-11 w-full" />

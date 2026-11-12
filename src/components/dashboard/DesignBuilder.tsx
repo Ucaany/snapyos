@@ -277,7 +277,7 @@ function RangeField({
               type="button"
               onClick={onClear}
               disabled={disabled}
-              className="min-h-8 border-2 border-ink bg-surface px-2 font-mono text-[10px] uppercase tracking-[0.08em] hover:bg-muted disabled:opacity-50"
+              className="min-h-11 border-2 border-ink bg-surface px-2 font-mono text-[10px] uppercase tracking-[0.08em] hover:bg-muted disabled:opacity-50"
             >
               Warisi global
             </button>

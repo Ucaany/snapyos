@@ -71,3 +71,7 @@ windows/deploy/snapyos-install-manifest.json
 
 # Artefak rilis
 windows/*.zip
+
+# Artefak audit & rilis
+.audit-out/
+.audit-security/

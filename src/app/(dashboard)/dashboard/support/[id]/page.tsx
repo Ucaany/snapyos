@@ -1,3 +1,5 @@
+import { PageShell } from "@/components/layout/PageShell";
+
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
@@ -27,13 +29,13 @@ export default async function SupportTicketPage({ params }: { params: Promise<{ 
   }
 
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
+    <PageShell>
       <PageHeader
         eyebrow={`TIKET: ${active.role.toUpperCase()}`}
         title="Detail Tiket"
         description={ticket.subject}
       />
       <SupportTicketDetail ticket={ticket} />
-    </div>
+    </PageShell>
   );
 }

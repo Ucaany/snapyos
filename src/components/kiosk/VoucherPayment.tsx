@@ -2,7 +2,7 @@
 import { ArrowLeft, Tag } from "lucide-react";
 import type { KioskVisualStyle } from "@/lib/kiosk-types";
 import { OnScreenKeyboard } from "./OnScreenKeyboard";
-import { KioskAction, KioskCard, KioskEyebrow, KIOSK_FIELD } from "@/components/kiosk/ui";
+import { KioskAction, KioskCard, KioskEyebrow, KioskHeading, KIOSK_FIELD } from "@/components/kiosk/ui";
 
 export function VoucherPayment({
   code,
@@ -33,9 +33,9 @@ export function VoucherPayment({
         <Tag className="size-6 shrink-0" aria-hidden />
         <KioskEyebrow>{"VOUCHER SESI"}</KioskEyebrow>
       </div>
-      <h2 className="font-display text-2xl uppercase leading-[0.95] tracking-[-0.02em] md:text-3xl">
+      <KioskHeading as="h2" size="sm" scale={ks?.fontScale ?? 1}>
         Masukkan kode voucher
-      </h2>
+        </KioskHeading>
       <label className="flex flex-col gap-2">
         <span className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]">
           Kode voucher
@@ -58,7 +58,7 @@ export function VoucherPayment({
       {error && (
         <p
           role="alert"
-          className="border-2 border-destructive bg-destructive/10 px-3 py-2 text-xs font-bold uppercase leading-relaxed tracking-[0.04em]"
+          className="border-2 border-destructive bg-surface px-3 py-2 text-xs font-bold uppercase leading-relaxed tracking-[0.04em]"
         >
           {error}
         </p>

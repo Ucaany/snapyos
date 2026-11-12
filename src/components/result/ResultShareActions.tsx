@@ -45,7 +45,7 @@ export function ResultShareActions({ sharePath, zipHref }: Props) {
   }
 
   const buttonClass =
-    "inline-flex min-h-11 items-center justify-center gap-2 border-2 border-ink bg-surface px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.08em] text-ink shadow-hard outline-none transition-transform hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-hard-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink active:translate-x-[4px] active:translate-y-[4px] active:shadow-none";
+    "inline-flex min-h-11 items-center justify-center gap-2 border-2 border-ink bg-surface px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.08em] text-ink shadow-hard outline-none transition-transform focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink active:translate-x-[2px] active:translate-y-[2px] active:shadow-none";
 
   return (
     <div className="flex flex-col gap-2">

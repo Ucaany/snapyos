@@ -44,7 +44,7 @@ export function BusinessProfileEditor({ profile, canWrite }: Props) {
   return (
     <form action={formAction} onSubmit={() => setTouched(true)} noValidate className="contents">
       <section
-        className="border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111]"
+        className="border-2 border-ink bg-surface p-6 shadow-hard"
         aria-labelledby="business-profile-heading"
       >
         <div className="mb-5 flex items-center justify-between gap-4 border-b-2 border-ink pb-4">
@@ -152,7 +152,7 @@ export function BusinessProfileEditor({ profile, canWrite }: Props) {
               value={form.address}
               onChange={(e) => set("address")(e.target.value)}
               disabled={pending || !canWrite}
-              className="w-full rounded-none border-2 border-ink bg-surface px-3 py-2 text-base text-ink shadow-[2px_2px_0_0_#111111] outline-none placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+              className="w-full rounded-none border-2 border-ink bg-surface px-3 py-2 text-base text-ink shadow-hard-sm outline-none placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
             />
             {state.fieldErrors?.["address"]?.[0] && (
               <p role="alert" className="font-mono text-xs text-destructive">

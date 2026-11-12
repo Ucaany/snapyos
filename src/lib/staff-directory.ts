@@ -1,6 +1,6 @@
 /**
  * Pure builder direktori staff (owner) — member + akses booth + transaksi hari ini.
- * Dipakai src/server/staff.ts; tanpa "server-only" supaya bisa dites (tests/staff-directory.test.ts).
+ * Dipakai src/server/staff.ts; tanpa "server-only" supaya bisa dites terpisah.
  * Transaksi hari ini = status PAID, sudah diagregasi per booth di database
  * (RPC staff_directory_today, migrasi 0037). Builder ini hanya menggabungkan
  * agregat per booth ke setiap staff sesuai member_photoboxes (0018) —

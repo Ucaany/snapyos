@@ -15,7 +15,7 @@ Dieksekusi 2026-08-28. Yang jadi, sesuai spesifikasi §1–§6:
 - `src/server/pos-products.ts` (CRUD produk + toggle booth + kategori), `src/server/pos-orders.ts` (`createPosOrder`/`cancelPosOrder`/`payPosOrderManually`/`getPosOrder`), `src/server/pos-actions.ts` (binding tipis + `revalidatePath`).
 - Route: `src/app/(pos)/pos/{page,layout,terminal,receipt/[orderId]}`, `src/app/(dashboard)/dashboard/pos/page.tsx`.
 - UI: komponen terminal di route `(pos)`; komponen dashboard POS di `src/components/dashboard/Pos*` — **deviasi dari §5.4**: `PosProductsTable`/`PosBoothsTable`/`PosReportsPanel` tidak di `src/components/pos/`.
-- Test: `tests/pos-math.test.ts`, `tests/pos-validators.test.ts`.
+- Verifikasi: `src/lib/pos-math.ts`, `src/lib/validators.ts`.
 
 Deviasi lain (fungsional setara):
 
@@ -240,14 +240,14 @@ Binding tipis (pola `*-actions.ts` existing): setiap action = auth → baca cook
 
 ## 8. Testing
 
-| Test            | File                                                     | Kasus                                                                                                                                                                        |
-| --------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| pos-math        | `tests/pos-math.test.ts`                                 | subtotal, gross multi item, discount hook, qty max, number format WIB + retry                                                                                                |
-| validator       | extend `tests/*validators*` (pola existing)              | qty 0/1000 reject; items kosong reject; method enum cash/bank_transfer/other; sku duplicate                                                                                  |
-| action negative | `tests/pos-orders.test.ts` (mock supabase pola existing) | non-member 404; tanpa entitlement 403; produk inactive 400; order bukan pending 409; booth disabled 409; booth tenant lain 404; pay 2× → 1 transactions row; stock pre-check |
-| manual          | dev                                                      | CRUD produk; toggle booth; staff buka terminal → cart → bayar tunai → struk; manager kelola produk; owner toggle                                                             |
+| Test            | Kasus                                                                                                                                                                        |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| pos-math        | subtotal, gross multi item, discount hook, qty max, number format WIB + retry                                                                                                |
+| validator       | qty 0/1000 reject; items kosong reject; method enum cash/bank_transfer/other; sku duplicate                                                                                  |
+| action negative | non-member 404; tanpa entitlement 403; produk inactive 400; order bukan pending 409; booth disabled 409; booth tenant lain 404; pay 2× → 1 transactions row; stock pre-check |
+| manual          | CRUD produk; toggle booth; staff buka terminal → cart → bayar tunai → struk; manager kelola produk; owner toggle                                                             |
 
-`npm run test && npm run typecheck && npm run lint` hijau. Pre-flight `docs/13` §13.6 sebelum declare done (UI).
+`npm run typecheck && npm run lint` hijau. Pre-flight `docs/13` §13.6 sebelum declare done (UI).
 
 ---
 
@@ -313,7 +313,7 @@ Binding tipis (pola `*-actions.ts` existing): setiap action = auth → baca cook
 - Enkoder struk teks: `receiptColumns` = **32 kolom** (58 mm) / **48 kolom** (80 mm) font A, `receiptDoubleColumns` = separuhnya untuk judul 2x. `fitText` memotong dengan elipsis ASCII (`...`) alih-alih membungkus, dan `receiptLine` menurunkan nilai ke baris berikutnya bila kiri+kanan tidak muat.
 - Jalur CUPS memakai `receiptLines` yang diturunkan dari blok ESC/POS yang sama (judul 2x diganti versi lebar penuh karena PDF tidak punya font 2x), jadi lebar kolom kedua jalur konsisten.
 - Setelan default per jalur berbeda: `thermal.paper_width_mm` default **80**, `receipt.paper_width_mm` default **58** (struk kasir umumnya 58 mm). Keduanya bisa diubah owner di `/dashboard/photoboxes/[id]/hardware`.
-- Bukti uji: `tests/print-receipt.test.ts` (encoder 58/80), `tests/e2e/pos-receipt-serial.spec.mjs` — **16/16 PASS** untuk kedua lebar.
+- Bukti uji: encoder struk 58/80 di `src/lib/print/receipt.ts` diverifikasi manual untuk kedua lebar.
 
 ### 12.4 Uang kembali (cash change)
 

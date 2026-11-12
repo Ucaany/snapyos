@@ -4,6 +4,7 @@ import { Fragment, useActionState, useState } from "react";
 import { Pencil, Plus, PowerOff, Tag } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { IconButton } from "@/components/ui/icon-button";
 import { RecordCard } from "@/components/ui/record-card";
 import { RecordCollection } from "@/components/ui/record-collection";
@@ -35,6 +36,7 @@ export function PosProductsTable({
   canManage: boolean;
 }) {
   const [createState, createAction, creating] = useActionState(posCreateProductAction, initial);
+  const [createOpen, setCreateOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const allCategories = [...new Set([...DEFAULT_CATEGORIES, ...categories])];
@@ -52,7 +54,7 @@ export function PosProductsTable({
   );
 
   const table = (
-    <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
+    <div className="overflow-x-auto border-2 border-ink bg-surface shadow-hard">
       <table className="w-full border-collapse text-left lg:min-w-[820px]">
         <caption className="sr-only">Daftar produk POS</caption>
         <thead>
@@ -205,7 +207,7 @@ export function PosProductsTable({
   return (
     <div className="flex flex-col gap-6">
       {canManage && (
-        <Collapsible>
+        <Collapsible open={createOpen} onOpenChange={setCreateOpen}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <span className="inline-flex h-8 items-center border-2 border-ink bg-ink px-3 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-bg">
@@ -223,7 +225,7 @@ export function PosProductsTable({
           <CollapsiblePanel className="mt-4">
             <form
               action={createAction}
-              className="flex flex-col gap-6 border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111] md:p-6"
+              className="flex flex-col gap-6 border-2 border-ink bg-surface p-5 shadow-hard md:p-6"
               noValidate
             >
               <div className="flex items-center gap-3 border-b-2 border-ink pb-4">
@@ -252,16 +254,18 @@ export function PosProductsTable({
       )}
 
       {products.length === 0 ? (
-        <div className="flex flex-col items-start gap-4 border-2 border-dashed border-ink/40 bg-muted p-8">
-          <Tag className="size-8" aria-hidden />
-          <p className="font-mono text-sm font-bold uppercase tracking-[0.15em]">
-            {"Belum ada produk"}
-          </p>
-          <p className="max-w-[55ch] text-sm leading-relaxed text-muted-foreground">
-            Katalog ini dipakai semua booth POS: keychain, gantungan, cetak tambahan, merchandise.
-            Tambahkan produk pertama untuk mulai menjual di terminal kasir.
-          </p>
-        </div>
+        <EmptyState
+          icon={Tag}
+          eyebrow="Belum ada produk"
+          title="Katalog POS masih kosong"
+          body="Katalog ini dipakai semua booth POS: keychain, gantungan, cetak tambahan, merchandise. Tambahkan produk pertama untuk mulai menjual di terminal kasir."
+          cta={
+            <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
+              <Plus aria-hidden />
+              Produk pertama
+            </Button>
+          }
+        />
       ) : (
         <RecordCollection
           storageKey="snapyos.view.pos-products"

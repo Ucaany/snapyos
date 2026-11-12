@@ -36,7 +36,7 @@ export default async function AdminPromosPage() {
   return (
     <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       <PageHeader
-        eyebrow="ADMIN - SUBSCRIPTION PROMOS"
+        eyebrow="ADMIN / PROMO LANGGANAN"
         icon={Tag}
         title="Promo Berlangganan"
         meta={`${promos.length} kode promo · diskon billing plan`}
@@ -53,7 +53,7 @@ export default async function AdminPromosPage() {
           <AdminActionForm
             action={createPromoAction}
             submitLabel="Buat Promo"
-            className="grid grid-cols-2 gap-4 md:grid-cols-4"
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4"
           >
             <div className="flex flex-col gap-1">
               <label
@@ -174,7 +174,7 @@ export default async function AdminPromosPage() {
             return (
               <div
                 key={p.id}
-                className="border-2 border-ink bg-surface p-4 shadow-[4px_4px_0_0_#111111]"
+                className="border-2 border-ink bg-surface p-4 shadow-hard"
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <span className="flex flex-wrap items-center gap-3">
@@ -205,7 +205,7 @@ export default async function AdminPromosPage() {
                     action={updatePromoAction}
                     hidden={{ promoId: p.id }}
                     submitLabel="Simpan"
-                    className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4"
+                    className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4"
                   >
                     <div className="flex flex-col gap-1">
                       <label

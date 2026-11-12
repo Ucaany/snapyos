@@ -57,9 +57,9 @@ function DetailBlock({
       {detail && (
         <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-2">
           <section aria-label="Riwayat transaksi">
-            <h3 className="font-mono text-[11px] font-bold uppercase tracking-[0.12em]">
+            <h2 className="font-mono text-[11px] font-bold uppercase tracking-[0.12em]">
               Transaksi ({detail.transactions.length})
-            </h3>
+            </h2>
             {detail.transactions.length === 0 ? (
               <p className="mt-2 font-mono text-xs text-muted-foreground">Belum ada transaksi.</p>
             ) : (
@@ -81,9 +81,9 @@ function DetailBlock({
             )}
           </section>
           <section aria-label="Riwayat sesi">
-            <h3 className="font-mono text-[11px] font-bold uppercase tracking-[0.12em]">
+            <h2 className="font-mono text-[11px] font-bold uppercase tracking-[0.12em]">
               Sesi foto ({detail.sessions.length})
-            </h3>
+            </h2>
             {detail.sessions.length === 0 ? (
               <p className="mt-2 font-mono text-xs text-muted-foreground">Belum ada sesi.</p>
             ) : (
@@ -184,7 +184,7 @@ export function CustomersTable({
   }
 
   const table = (
-    <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
+    <div className="overflow-x-auto border-2 border-ink bg-surface shadow-hard">
       <table className="w-full border-collapse text-left lg:min-w-[860px]">
         <caption className="sr-only">Daftar pelanggan</caption>
         <thead>

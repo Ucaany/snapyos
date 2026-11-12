@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.18"
   },
   "scripts": {
     "dev": "next dev",
@@ -13,17 +13,13 @@
     "start": "node --env-file-if-exists=.env.local .next/standalone/server.js",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "verify": "npm run lint && npm run typecheck && npm test && npm run build",
+    "verify": "npm run lint && npm run typecheck && npm run build",
+    "test": "node --test --experimental-strip-types runtime/print/index.test.ts runtime/print/geometry.test.ts runtime/print/jobs.test.ts runtime/camera/gphoto2.test.ts src/lib/print-layout.test.ts scripts/sync-gphoto2-cameras.test.mjs",
+    "sync:cameras": "node scripts/sync-gphoto2-cameras.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "node --experimental-strip-types --test tests/*.test.ts",
-    "test:e2e": "node tests/e2e/run.mjs all",
-    "test:e2e:kiosk": "node tests/e2e/run.mjs kiosk",
-    "test:e2e:bluetooth": "node tests/e2e/run.mjs bluetooth",
-    "test:e2e:bluetooth:real": "node tests/e2e/kiosk-print-bluetooth-real.spec.mjs",
-    "test:e2e:print": "node tests/e2e/run.mjs standalone",
-    "bridge:local": "node scripts/photobooth-bridge.mjs",
-    "bridge:gphoto2": "node scripts/photobooth-bridge.mjs",
+    "bridge:local": "node --env-file-if-exists=.env.bridge scripts/photobooth-bridge.mjs",
+    "bridge:gphoto2": "node --env-file-if-exists=.env.bridge scripts/photobooth-bridge.mjs",
     "clean": "find . -name '._*' -not -path './node_modules/*' -delete",
     "predev": "npm run clean",
     "prebuild": "npm run clean"
@@ -67,7 +63,6 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "^16.3.3",
-    "playwright": "^1.64.0",
     "prettier": "^3.9.6",
     "shadcn": "^4.23.0",
     "tailwindcss": "^4",

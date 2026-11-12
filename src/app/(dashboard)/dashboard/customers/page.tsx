@@ -1,3 +1,5 @@
+import { PageShell } from "@/components/layout/PageShell";
+
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Search } from "lucide-react";
@@ -57,7 +59,7 @@ export default async function CustomersPage({
   };
 
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
+    <PageShell>
       <PageHeader
         eyebrow={`${result.total} PELANGGAN`}
         title="Pelanggan"
@@ -76,7 +78,7 @@ export default async function CustomersPage({
               defaultValue={query.q ?? ""}
               placeholder="Nama / telepon / email"
               aria-label="Cari pelanggan"
-              className="h-11 w-full rounded-none border-2 border-ink bg-surface px-3 font-mono text-sm shadow-[2px_2px_0_0_#111111] outline-none focus-visible:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink md:w-64"
+              className="h-11 w-full rounded-none border-2 border-ink bg-surface px-3 font-mono text-sm shadow-hard-sm outline-none focus-visible:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink md:w-64"
             />
             <IconButton type="submit" variant="default" label="Cari pelanggan" compact>
               <Search className="size-4" aria-hidden="true" />
@@ -94,6 +96,6 @@ export default async function CustomersPage({
         nextHref={result.page < totalPages ? pageHref(result.page + 1) : null}
         timeZone={active.business.timezone || "Asia/Jakarta"}
       />
-    </div>
+    </PageShell>
   );
 }

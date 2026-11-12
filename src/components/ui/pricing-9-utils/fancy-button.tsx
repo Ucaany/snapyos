@@ -10,7 +10,7 @@ const fancyButtonVariants = cva(
     variants: {
       variant: {
         default:
-          "border-2 border-ink bg-accent text-ink shadow-[2px_2px_0_0_#111111] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none",
+          "border-2 border-ink bg-accent text-ink shadow-hard-sm active:translate-x-[2px] active:translate-y-[2px] active:shadow-none",
       },
       size: {
         default: "h-9 px-4",

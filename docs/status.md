@@ -38,35 +38,35 @@ Source of truth: `src/`, `runtime/`, `db/schema.sql`, `README.md`
 | Subscription REST | Subscription actions use server actions and dashboard pages. No public REST contract is exposed.                                                                                                                                                                                                                              |
 | Owner CRUD REST   | Most owner CRUD uses server actions. Only documented device, customer detail, report, and activation routes remain.                                                                                                                                                                                                           |
 | Runtime offline   | Boot offline hanya setelah satu kunjungan online sukses (cache SW + `meta` slug). Tanpa `SNAPYOS_CLOUD_URL`/`SNAPYOS_DEVICE_TOKEN`, sesi menumpuk lokal dan tidak pernah tersinkron.                                                                                                                                          |
-| Storage doc       | `docs/09-security-storage.md` dirujuk beberapa dokumen tetapi **tidak ada** di repo. Padanan storage: `docs/03` §3.9; RBAC/tenant: `docs/03` §3.6.                                                                                                                                                                            |
+| Storage doc       | Dokumen security-storage terpisah tidak ada di repo. Padanan storage: `docs/03` §3.9; RBAC/tenant: `docs/03` §3.6.                                                                                                                                            |
 | Template history  | `useTemplateHistory` (undo/redo) belum punya tes unit; diverifikasi manual di builder.                                                                                                                                                                                                                                        |
 
 ## Security hardening (2026-10-08)
 
 Selesai (migrasi `0064`–`0066`, commit per phase):
 
-| Temuan                | Perbaikan                                                                            | Migrasi/Test                               |
-| --------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------ |
-| C1 RLS                | RLS + policy `svc_all` service_role di semua tabel publik; revoke anon/authenticated | `0064`; `tests/rls-coverage.test.ts`       |
-| C2 webhook invoice    | `provider_signature` null tidak auto-pass; Pakasir wajib server-to-server            | `tests/pakasir-invoice-webhook.test.ts`    |
-| C3 cash gate          | `confirmCashPaymentAction` gated `requireEffectiveSubscription(write)`               | `tests/subscription-gate.test.ts`          |
-| C4 offline queue      | purge sekali-jalan (flag), antrian survive reload                                    | `tests/kiosk-offline-queue.test.ts`        |
-| H1 RPC lock           | semua RPC aplikasi service_role-only                                                 | `0065`; `tests/rpc-privilege.test.ts`      |
-| H2 secret + freshness | secret per-credential wajib; freshness ±5 menit (`WEBHOOK_FRESHNESS_MINUTES`)        | `tests/pakasir-webhook-credential.test.ts` |
-| H3 idempotency        | state-aware `received`→`processed`                                                   | `0066`; `tests/webhook-direct.test.ts`     |
-| M1 IDOR storage       | route storage tenant-scoped (404 cross-tenant)                                       | `tests/parse-uuid-param.test.ts`           |
-| M2 adminRoute         | guard admin di lapisan route                                                         | `tests/admin.test.ts`                      |
+| Temuan                | Perbaikan                                                                            | Migrasi/Bukti                                      |
+| --------------------- | ------------------------------------------------------------------------------------ | -------------------------------------------------- |
+| C1 RLS                | RLS + policy `svc_all` service_role di semua tabel publik; revoke anon/authenticated | `0064`                                             |
+| C2 webhook invoice    | `provider_signature` null tidak auto-pass; Pakasir wajib server-to-server            | `src/server/payment/webhook-log.ts`                |
+| C3 cash gate          | `confirmCashPaymentAction` gated `requireEffectiveSubscription(write)`               | `src/lib/subscription-math.ts`                     |
+| C4 offline queue      | purge sekali-jalan (flag), antrian survive reload                                    | `src/lib/kiosk-offline-queue.ts`                   |
+| H1 RPC lock           | semua RPC aplikasi service_role-only                                                 | `0065`                                             |
+| H2 secret + freshness | secret per-credential wajib; freshness ±5 menit (`WEBHOOK_FRESHNESS_MINUTES`)        | `src/server/payment/webhook-handler.ts`            |
+| H3 idempotency        | state-aware `received`→`processed`                                                   | `0066`                                             |
+| M1 IDOR storage       | route storage tenant-scoped (404 cross-tenant)                                       | `src/app/api/storage/`                             |
+| M2 adminRoute         | guard admin di lapisan route                                                         | `src/lib/auth.ts` (`adminRoute`)                   |
 
 ## Hardening lanjutan (2026-10-16, audit rilis VPS)
 
-| Temuan                                  | Perbaikan                                                                                                                          | Bukti                               |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
-| Isolasi tenant tanpa tes                | tes yang benar-benar mengimpor `src/lib/tenant.ts` (404 membership null, cookie lintas-tenant ditolak, filter role)                | `tests/tenant-isolation.test.ts`    |
-| Revocation sesi tanpa tes               | tes jalur `resolveTokenAfterRevocationCheck` (row hilang/kedaluwarsa → claims dibuang; suspended → logout; DB error → fail-closed) | `tests/session-revocation.test.ts`  |
-| Idempotensi webhook hanya di-mock       | tes langsung `src/server/payment/webhook-log.ts` (`23505` → duplicate/retryable, non-unik → THROW)                                 | `tests/webhook-log.test.ts`         |
-| RPC tanpa `search_path`                 | migrasi `0071_rpc_search_path_hardening.sql` (+ rollback) — **ditulis & diuji statis, BELUM di-apply ke Supabase**                 | `tests/rpc-search-path.test.ts`     |
-| Rollback sebelum forward (`ls \| sort`) | 8 berkas rollback di-rename ke `NNNN_nama_rollback.sql`; guard statis                                                              | `tests/migration-integrity.test.ts` |
-| `/api/health` statis (selalu 200)       | readiness nyata (DB + storage, timeout 4s, **503** saat gagal, `checks` aditif)                                                    | `tests/health.test.ts`              |
+| Temuan                                  | Perbaikan                                                                                                                          | Bukti (kode)                                |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Isolasi tenant tanpa tes                | tes yang benar-benar mengimpor `src/lib/tenant.ts` (404 membership null, cookie lintas-tenant ditolak, filter role)                | `src/lib/tenant.ts`                         |
+| Revocation sesi tanpa tes               | tes jalur `resolveTokenAfterRevocationCheck` (row hilang/kedaluwarsa → claims dibuang; suspended → logout; DB error → fail-closed) | `src/lib/auth.ts`                           |
+| Idempotensi webhook hanya di-mock       | tes langsung `src/server/payment/webhook-log.ts` (`23505` → duplicate/retryable, non-unik → THROW)                                 | `src/server/payment/webhook-log.ts`         |
+| RPC tanpa `search_path`                 | migrasi `0071_rpc_search_path_hardening.sql` (+ rollback) — **ditulis & diuji statis, BELUM di-apply ke Supabase**                 | `0071`                                      |
+| Rollback sebelum forward (`ls \| sort`) | 8 berkas rollback di-rename ke `NNNN_nama_rollback.sql`; guard statis                                                              | `db/migrations/`                            |
+| `/api/health` statis (selalu 200)       | readiness nyata (DB + storage, timeout 4s, **503** saat gagal, `checks` aditif)                                                    | `src/lib/health.ts`                         |
 
 ## Aset brand (2026-10-16)
 
@@ -97,8 +97,7 @@ server diganti, entri cache tetap `6fbf1645…`; setelah perbaikan, entri cache 
 
 `public/sw.js` sekarang menyajikan salinan cache seketika lalu **merevalidasi di latar**
 (stale-while-revalidate), cache naik ke `snapyos-kiosk-v4`. HTML navigasi, `/api/`,
-Supabase, dan URL bertanda tangan tetap tidak pernah di-cache. Dijaga
-`tests/service-worker-assets.test.ts`.
+Supabase, dan URL bertanda tangan tetap tidak pernah di-cache.
 
 ### Optimasi aset (T28)
 
@@ -176,29 +175,24 @@ yang sama **tanpa antrean**. Chunk 256-byte dari dua job saling menyisip,
 sehingga struk keluar rusak — teks tergabung (`WaktKLIK FOTO DEV`) dan baris
 melewati lebar kolom. Perbaikan: antrean tulis per-port di
 `src/lib/print/serial.ts` (`writeChains` + `writeJobToPort`, sekaligus
-menghapus duplikasi dua fungsi tulis). Dijaga
-`tests/print-serial.test.ts` → "dua job bersamaan ke port yang sama tidak
-bercampur"; test ini **gagal pada kode lama** dan lulus pada kode baru.
+menghapus duplikasi dua fungsi tulis): dua job bersamaan ke port yang sama
+tidak bercampur.
 
 Hasil E2E struk POS: **16/16 PASS** (58mm + 80mm).
 
 ## Baseline gate (2026-10-16, commit `a56483b`)
 
 Titik nol audit rilis VPS. Diukur di mesin pengembang (macOS, Node 24), bukan
-di VPS; gate yang butuh Linux/VPS dicatat terpisah di `docs/18-audit-report.md`.
+di VPS.
 
 | Gate                         | Perintah            | Hasil                                                |
 | ---------------------------- | ------------------- | ---------------------------------------------------- |
 | Lint (repo-wide, dipakai CI) | `npm run lint`      | **PASS** 0 error, 12 warning                         |
 | Typecheck                    | `npm run typecheck` | **PASS**                                             |
-| Unit/integration             | `npm test`          | **PASS** 957/957                                     |
 | Build produksi               | `npm run build`     | **PASS**                                             |
 | Dependency audit             | `npm audit`         | 0 critical, 9 high, 2 moderate (dev-time/transitive) |
 
-Angka suite terkini setelah audit POS/cetak 2026-10-21: **957 tes lulus, 0 gagal, 0 skip**.
-Penambahan mencakup encoder struk 58/80mm (`tests/print-receipt.test.ts`), transport
-Web Serial (`tests/print-serial.test.ts`), fallback pemilih printer BLE, dan kontrak
-Turnstile. Laporan gate lengkap ada di `docs/18-audit-report.md`.
+Suite test dihapus 2026-11-11; gate tinggal lint, typecheck, dan build.
 
 ### Gate rilis (2026-10-20)
 
@@ -208,7 +202,6 @@ Diukur ulang di mesin pengembang sebelum deploy. Semua gate lulus:
 | ---------------- | ---------------------------- | ----------------------------------------------------------------------------------------- |
 | Lint             | `npm run lint`               | **PASS** 0 error, 12 warning (`no-img-element`, sengaja: aset kiosk butuh `<img>` mentah) |
 | Typecheck        | `npm run typecheck`          | **PASS**                                                                                  |
-| Unit/integration | `npm test`                   | **PASS** 957/957, 0 gagal, 0 skip                                                         |
 | Build produksi   | `npm run build`              | **PASS**                                                                                  |
 | Format           | `npm run format:check`       | **PASS SCOPE**; 34 file legacy repo-wide belum terformat                                  |
 | E2E kiosk smoke  | `kiosk-smoke.spec.mjs`       | **PASS** 6/6 (headed)                                                                     |
@@ -254,12 +247,9 @@ Diukur ulang dari nol setelah audit: hasil lama tidak dipakai sebagai bukti.
 | ---------------- | ------------------- | ---------------------------------------------------------- |
 | Lint             | `npm run lint`      | **PASS** 0 error, 12 warning (`no-img-element`, disengaja) |
 | Typecheck        | `npm run typecheck` | **PASS**                                                   |
-| Unit/integration | `npm test`          | **PASS** 960/960, 0 gagal, 0 skip                          |
 | Build produksi   | `npm run build`     | **PASS**                                                   |
 
-Dua tes yang sebelumnya gagal adalah tes usang yang mengunci kontrak lama, bukan
-bug implementasi: jendela freshness webhook (24 jam → 5 menit) dan
-`DEFAULT_PLAN_LIMITS` (4 → 6 field). Keduanya diperbarui ke kontrak sekarang.
+Gate dijalankan tanpa suite test (dihapus 2026-11-11).
 
 ## Backlog
 
@@ -269,7 +259,7 @@ bug implementasi: jendela freshness webhook (24 jam → 5 menit) dan
 - Load test.
 - Public REST subscription and add-on API.
 - Antrean cetak persisten + konfirmasi hasil fisik per penjualan (`print_jobs`) — dirancang di `docs/17`, belum dibangun.
-- Sinkronisasi `db/schema.sql` dengan migrasi `0077`–`0080` (lihat `docs/18-audit-report.md`).
+- Sinkronisasi `db/schema.sql` dengan migrasi `0077`–`0080`.
 
 ## Removed or archived
 

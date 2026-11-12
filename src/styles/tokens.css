@@ -66,6 +66,9 @@
   /* --- hard offset shadows (no blur) --- */
   --shadow-hard: 4px 4px 0 0 #111111;
   --shadow-hard-sm: 2px 2px 0 0 #111111;
+  --shadow-hard-xs: 3px 3px 0 0 #111111;
+  --shadow-hard-2xs: 1px 1px 0 0 #111111;
+  --shadow-hard-lg: 6px 6px 0 0 #111111;
 
   /* --- easing: kurva massa utk interaksi press (bukan ease default) --- */
   --ease-snap: cubic-bezier(0.32, 0.72, 0, 1);
@@ -142,9 +145,12 @@
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
 
-  /* hard shadows: shadow-hard, shadow-hard-sm */
+  /* hard shadows: shadow-hard, shadow-hard-sm, shadow-hard-xs */
   --shadow-hard: var(--shadow-hard);
   --shadow-hard-sm: var(--shadow-hard-sm);
+  --shadow-hard-xs: var(--shadow-hard-xs);
+  --shadow-hard-2xs: var(--shadow-hard-2xs);
+  --shadow-hard-lg: var(--shadow-hard-lg);
 
   /* easing: ease-snap */
   --ease-snap: var(--ease-snap);

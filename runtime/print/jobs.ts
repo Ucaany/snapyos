@@ -10,6 +10,7 @@ import { createHash, randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 
 export type PrintJobStatus = "queued" | "printing" | "submitted" | "done" | "failed";
+export type PrintFailureKind = "transient" | "permanent" | "unknown";
 
 export type PrintJob = {
   id: string;
@@ -27,6 +28,8 @@ export type PrintJob = {
   status: PrintJobStatus;
   attempts: number;
   error: string | null;
+  next_retry_at: string | null;
+  failure_kind: PrintFailureKind | null;
   created_at: string;
   updated_at: string;
 };
@@ -123,36 +126,97 @@ export function insertPrintJob(db: DatabaseSync, input: NewPrintJob): PrintJob {
 
 export function markPrinting(db: DatabaseSync, id: string): void {
   db.prepare(
-    "update print_jobs set status = 'printing', attempts = attempts + 1, error = null, updated_at = ? where id = ?"
+    "update print_jobs set status = 'printing', attempts = attempts + 1, error = null, next_retry_at = null, failure_kind = null, updated_at = ? where id = ?"
   ).run(nowIso(), id);
 }
 
 export function markSubmitted(db: DatabaseSync, id: string, spoolJobId: string | null): void {
   db.prepare(
-    "update print_jobs set status = 'submitted', spool_job_id = ?, error = null, updated_at = ? where id = ?"
+    "update print_jobs set status = 'submitted', spool_job_id = ?, error = null, next_retry_at = null, failure_kind = null, updated_at = ? where id = ?"
   ).run(spoolJobId, nowIso(), id);
 }
 
-export function markFailed(db: DatabaseSync, id: string, error: string): void {
-  db.prepare("update print_jobs set status = 'failed', error = ?, updated_at = ? where id = ?").run(
-    error.slice(0, 1000),
-    nowIso(),
-    id
-  );
+/**
+ * `retryAt` diisi hanya untuk kegagalan transien; job tetap `failed` sampai
+ * scheduler mengambilnya, sehingga operator tetap melihat sebabnya.
+ */
+export function markFailed(
+  db: DatabaseSync,
+  id: string,
+  error: string,
+  kind: PrintFailureKind = "unknown",
+  retryAt?: string | null
+): void {
+  db.prepare(
+    "update print_jobs set status = 'failed', error = ?, failure_kind = ?, next_retry_at = ?, updated_at = ? where id = ?"
+  ).run(error.slice(0, 1000), kind, retryAt ?? null, nowIso(), id);
+}
+
+/**
+ * Kegagalan yang bisa hilang sendiri (printer di-enable, kabel dicolok ulang)
+ * dicoba ulang; kerusakan data tidak, karena mengulang tidak akan mengubah apa pun.
+ */
+export function classifyPrintError(message: string): PrintFailureKind {
+  const text = message.toLowerCase();
+  if (
+    /pdf job hilang|no such file|enoent|tidak ditemukan|not found|media tidak valid|invalid media|printer tujuan tidak diketahui|belum diatur|tidak ada printer|unknown printer/.test(
+      text
+    )
+  ) {
+    return "permanent";
+  }
+  if (
+    /disabled|offline|busy|printing|processing|timeout|temporar|spooler|econn|etimedout|kabel|belum siap|tidak siap|not responding/.test(
+      text
+    )
+  ) {
+    return "transient";
+  }
+  return "unknown";
+}
+
+/** Job yang `next_retry_at`-nya sudah lewat dan masih di bawah batas percobaan. */
+export function dueRetryJobs(db: DatabaseSync, now: string, limit = 10): PrintJob[] {
+  const safeLimit = Math.min(50, Math.max(1, Math.floor(limit) || 10));
+  return db
+    .prepare(
+      "select * from print_jobs where status in ('failed','queued') and next_retry_at is not null and next_retry_at <= ? and attempts < ? order by next_retry_at asc limit ?"
+    )
+    .all(now, maxAttempts, safeLimit) as PrintJob[];
+}
+
+let maxAttempts = 3;
+
+/** Batas percobaan global untuk scheduler (dipasang dari env saat start). */
+export function setPrintRetryMax(value: number): void {
+  maxAttempts = Math.min(10, Math.max(0, Math.floor(value) || 0));
+}
+
+/** Jadwalkan percobaan ulang dengan backoff; `attempt` = jumlah percobaan saat ini. */
+export function scheduleRetry(
+  db: DatabaseSync,
+  id: string,
+  attempt: number,
+  backoffMs: number,
+  error: string
+): void {
+  const retryAt = new Date(Date.now() + Math.max(0, backoffMs)).toISOString();
+  db.prepare(
+    "update print_jobs set status = 'failed', error = ?, failure_kind = 'transient', next_retry_at = ?, updated_at = ? where id = ?"
+  ).run(error.slice(0, 1000), retryAt, nowIso(), id);
 }
 
 export function confirmPrintJob(db: DatabaseSync, id: string): PrintJob | null {
-  db.prepare("update print_jobs set status = 'done', updated_at = ? where id = ?").run(
-    nowIso(),
-    id
-  );
+  db.prepare(
+    "update print_jobs set status = 'done', next_retry_at = null, updated_at = ? where id = ?"
+  ).run(nowIso(), id);
   return getPrintJob(db, id);
 }
 
 /** Kembalikan job ke antrean untuk dicoba lagi (bukan kirim ulang buta). */
 export function requeuePrintJob(db: DatabaseSync, id: string): PrintJob | null {
   db.prepare(
-    "update print_jobs set status = 'queued', error = null, updated_at = ? where id = ? and status in ('failed','submitted','done','queued')"
+    "update print_jobs set status = 'queued', error = null, next_retry_at = null, failure_kind = null, updated_at = ? where id = ? and status in ('failed','submitted','done','queued')"
   ).run(nowIso(), id);
   return getPrintJob(db, id);
 }

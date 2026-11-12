@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Menu, X } from "lucide-react";
 
 import { buildNavGroups } from "@/components/dashboard/nav";
@@ -17,9 +17,12 @@ import { isNavActive } from "@/lib/nav-active";
 export function MobileNav({
   showPos = false,
   showPwaKiosk = false,
+  footer,
 }: {
   showPos?: boolean;
   showPwaKiosk?: boolean;
+  /** Aksi sekunder yang dipindah dari topbar pada layar <sm. */
+  footer?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -31,14 +34,42 @@ export function MobileNav({
     if (open) setOpen(false);
   }
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const wasOpen = useRef(false);
   const groups = buildNavGroups(showPos, showPwaKiosk);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      // Kembalikan fokus ke tombol pemicu saat panel ditutup.
+      if (wasOpen.current) triggerRef.current?.focus();
+      wasOpen.current = false;
+      return;
+    }
+    wasOpen.current = true;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") {
+        setOpen(false);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const panel = panelRef.current;
+      if (!panel) return;
+      const focusables = panel.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (!first || !last) return;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener("keydown", onKeyDown);
     const focusTimer = window.setTimeout(() => {
@@ -54,6 +85,7 @@ export function MobileNav({
   return (
     <div className="md:hidden">
       <button
+        ref={triggerRef}
         type="button"
         aria-label={open ? "Tutup menu" : "Buka menu"}
         aria-expanded={open}
@@ -117,6 +149,7 @@ export function MobileNav({
                   </div>
                 </section>
               ))}
+              {footer}
             </div>
           </div>
         </>

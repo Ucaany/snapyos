@@ -49,11 +49,6 @@ export type TemplateRow = {
   /** layout jsonb mentah — null/{} = template legacy (docs/15 §15.2). */
   layout: TemplateLayout | Record<string, never> | null;
   slot_count: number;
-  /** Di-assign ke minimal satu paket? Template aktif tanpa assignment tidak
-   *  pernah sampai ke kiosk. Opsional: builder/admin membangun row manual. */
-  assigned?: boolean;
-  /** Paket yang memakai template ini (informasi assignment di dashboard). */
-  assigned_packages?: { id: string; name: string; photo_count: number }[];
   /** true = template global platform (business_id NULL) — read-only untuk owner. */
   is_global: boolean;
   /** Signed URL thumbnail (fallback: null). Grid memakai ini dulu. */
@@ -213,43 +208,9 @@ export async function listTemplates(
   );
   const urlByKey = await signedUrlMap(BUCKET, keys, SIGNED_URL_TTL);
 
-  // Template aktif yang belum di-assign ke paket mana pun tidak akan pernah
-  // muncul di kiosk (docs/05 §5.4) — owner melihat sebabnya langsung di kartu,
-  // bukan menebak kenapa frame "sudah aktif" tetap tidak ada di booth.
-  const linkedIds = new Set<string>();
-  const packagesByTemplate = new Map<string, { id: string; name: string; photo_count: number }[]>();
-  if (rows.length > 0) {
-    const { data: linked } = await supabase
-      .from("package_templates")
-      .select("template_id, package_id")
-      .in(
-        "template_id",
-        rows.map((r) => r.id)
-      );
-    const links = (linked ?? []) as { template_id: string; package_id: string }[];
-    for (const l of links) linkedIds.add(l.template_id);
-
-    // Nama + jumlah foto paket: satu query untuk seluruh link (bukan N+1).
-    const packageIds = Array.from(new Set(links.map((l) => l.package_id)));
-    if (packageIds.length > 0) {
-      const { data: pkgs } = await supabase
-        .from("packages")
-        .select("id, name, photo_count")
-        .eq("business_id", businessId)
-        .in("id", packageIds);
-      const byId = new Map(
-        ((pkgs ?? []) as { id: string; name: string; photo_count: number }[]).map((p) => [p.id, p])
-      );
-      for (const l of links) {
-        const pkg = byId.get(l.package_id);
-        if (!pkg) continue;
-        const list = packagesByTemplate.get(l.template_id) ?? [];
-        list.push({ id: pkg.id, name: pkg.name, photo_count: pkg.photo_count });
-        packagesByTemplate.set(l.template_id, list);
-      }
-    }
-  }
-
+  // Query relasi assignment + kolom `assigned`/`assigned_packages` dihapus
+  // 2026-11-11: semua template aktif tampil untuk semua paket, jadi tidak ada
+  // lagi status "belum di-assign" yang perlu ditampilkan ke owner.
   return rows.map((row) => ({
     id: row.id,
     name: row.name,
@@ -260,8 +221,6 @@ export async function listTemplates(
     preview_url: urlByKey.get(row.file_url) ?? (isHttpUrl(row.file_url) ? row.file_url : null),
     layout: (row.layout ?? {}) as TemplateRow["layout"],
     slot_count: slotCount(row.layout),
-    assigned: linkedIds.has(row.id),
-    assigned_packages: packagesByTemplate.get(row.id) ?? [],
     is_global: globalIds.has(row.id),
     thumbnail_preview_url: row.thumbnail_url
       ? (urlByKey.get(row.thumbnail_url) ??

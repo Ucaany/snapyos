@@ -175,7 +175,7 @@ function ChartTooltipContent({
   return (
     <div
       className={cn(
-        "border-2 border-ink bg-surface px-3 py-2 text-xs shadow-[4px_4px_0_0_#111111]",
+        "border-2 border-ink bg-surface px-3 py-2 text-xs shadow-hard",
         className
       )}
     >

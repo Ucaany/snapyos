@@ -3,9 +3,9 @@
  * Default 3 hari per business (business_settings.retention_days) —
  * keputusan produk #4 (migrasi 0034). Validator app membatasi 1..3.
  *
- * PURE (tanpa `server-only`) agar logika cleanup dapat diuji via node:test —
- * lihat `tests/retention.test.ts`. Pembungkus produksi (Supabase + storage
- * provider) ada di `src/app/api/cron/retention/route.ts`.
+ * PURE (tanpa `server-only`) agar logika cleanup dapat diuji terpisah.
+ * Pembungkus produksi (Supabase + storage provider) ada di
+ * `src/app/api/cron/retention/route.ts`.
  */
 
 export const DEFAULT_RETENTION_DAYS = 3;

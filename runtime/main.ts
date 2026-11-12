@@ -11,10 +11,11 @@
 
 import { join } from "node:path";
 import { mkdirSync } from "node:fs";
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, unlink, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { createCameraRoles } from "./camera/index.ts";
+import { isAllowedCameraConfigKey } from "./camera/gphoto2.ts";
 import { ConfigError, loadConfig, type RuntimeConfig } from "./config.ts";
 import { getMeta, openDatabase, readVersion, type DatabaseSync } from "./db/index.ts";
 import { handleExitRoute } from "./exit/index.ts";
@@ -36,8 +37,10 @@ import {
 } from "./print/geometry.ts";
 import { createPrinter } from "./print/index.ts";
 import {
+  classifyPrintError,
   confirmPrintJob,
   defaultDedupeKey,
+  dueRetryJobs,
   findPrintJob,
   getPrintJob,
   insertPrintJob,
@@ -47,6 +50,8 @@ import {
   markSubmitted,
   printJobStats,
   requeuePrintJob,
+  scheduleRetry,
+  setPrintRetryMax,
   type PrintJob,
 } from "./print/jobs.ts";
 import { handleSessionRoute } from "./session/index.ts";
@@ -97,6 +102,7 @@ async function main(): Promise<void> {
   // Setelan tersimpan menang atas env saat memilih adapter; env tetap nilai
   // awal bila store kosong. Ganti provider berlaku setelah runtime restart.
   const effective = effectiveConfig(config, activeSettings(db, config));
+  setPrintRetryMax(effective.printRetryMax);
   // Dua peran kamera: stills (foto) dan stream (preview). Adapter yang sama
   // dipakai untuk keduanya bila stream tidak dikonfigurasi.
   const cameras = createCameraRoles(effective);
@@ -165,6 +171,54 @@ async function main(): Promise<void> {
     return next;
   }
 
+  function storedPrinterName(): string | undefined {
+    const stored = printDefaults(activeSettings(db, config)).printer_name;
+    return typeof stored === "string" && stored.trim() ? stored.trim() : undefined;
+  }
+
+  function logEvent(kind: string, detail?: unknown): void {
+    try {
+      db.prepare("insert into events (at, kind, session_id, detail_json) values (?, ?, null, ?)").run(
+        new Date().toISOString(),
+        kind,
+        detail === undefined ? null : JSON.stringify(detail).slice(0, 500)
+      );
+    } catch {
+      // Event hanya jejak operasional; kegagalan menulis tidak boleh membatalkan cetak.
+    }
+  }
+
+  /**
+   * Buka printer `disabled` sekali sebelum submit. `offline` (kabel/paper-out)
+   * sengaja TIDAK di-enable — job tetap gagal dan bisa dicoba ulang otomatis.
+   */
+  async function ensurePrinterReady(printerName?: string) {
+    let health = await printer.health(printerName);
+    if (health.state === "disabled" && effective.printerAutoEnable) {
+      try {
+        health = await printer.enable(printerName);
+        logEvent("printer_enabled", { printer: health.printer, state: health.state });
+      } catch (error) {
+        throw new Error(
+          `Printer ${health.printer || "default"} disabled dan gagal diaktifkan: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+    }
+    if (health.state === "offline") {
+      throw new Error(`Printer ${health.printer || "default"} offline. Periksa kabel dan kertas.`);
+    }
+    if (!health.ok && health.state !== "busy") {
+      throw new Error(`Printer ${health.printer || "default"} tidak siap (${health.state}).`);
+    }
+    return health;
+  }
+
+  function retryBackoffMs(attempt: number): number {
+    const base = Math.min(2 ** Math.max(1, attempt) * effective.printRetryBaseMs, 120_000);
+    const jitter = base * 0.1 * (Math.random() * 2 - 1);
+    return Math.max(500, Math.round(base + jitter));
+  }
+
   /**
    * Job `queued` yang tertinggal (crash/listrik mati saat submit) dilanjutkan
    * saat runtime start — tanpa ini kertas pelanggan tidak pernah keluar dan
@@ -172,21 +226,46 @@ async function main(): Promise<void> {
    * mencetaknya, dan mengirim ulang berarti cetak ganda.
    */
   function drainQueuedJobs(): void {
-    const pending = listPrintJobs(db, 100).filter((job) => job.status === "queued");
+    // Job `printing` yang tertinggal = runtime mati di tengah cetak. Tandai
+    // gagal supaya operator melihatnya; jangan kirim ulang otomatis (kertas
+    // mungkin sudah keluar).
+    db.prepare(
+      "update print_jobs set status='failed', failure_kind='unknown', error=?, updated_at=? where status='printing'"
+    ).run(
+      "Runtime berhenti saat mencetak; periksa kertas sebelum mencetak ulang.",
+      new Date().toISOString()
+    );
+    const pending = listPrintJobs(db, 100_000).filter((job) => job.status === "queued");
     for (const job of pending) {
       void runSerial(() => processJob(job)).catch(() => undefined);
     }
   }
 
+  /** Job `failed` yang `next_retry_at`-nya sudah lewat (retry transien). */
+  let retryDraining = false;
+  async function drainRetryJobs(): Promise<void> {
+    if (retryDraining) return;
+    retryDraining = true;
+    try {
+      const due = dueRetryJobs(db, new Date().toISOString(), 10);
+      for (const job of due) {
+        await runSerial(() => processJob(job)).catch(() => undefined);
+      }
+    } finally {
+      retryDraining = false;
+    }
+  }
+
   async function processJob(job: PrintJob): Promise<PrintJob> {
     if (!job.pdf_path) {
-      markFailed(db, job.id, "Berkas PDF job hilang.");
+      markFailed(db, job.id, "Berkas PDF job hilang.", "permanent");
       return getPrintJob(db, job.id)!;
     }
     markPrinting(db, job.id);
+    const attempt = job.attempts + 1;
     try {
       const pdf = await readFile(job.pdf_path);
-      await printer.health(job.printer_name || undefined);
+      await ensurePrinterReady(job.printer_name || undefined);
       const geometry = printGeometry({
         paper_size: job.paper_size ?? undefined,
         orientation: job.orientation ?? undefined,
@@ -198,8 +277,15 @@ async function main(): Promise<void> {
         job.media_name || undefined
       );
       markSubmitted(db, job.id, result.job_id);
+      await unlink(job.pdf_path).catch(() => undefined);
     } catch (error) {
-      markFailed(db, job.id, error instanceof Error ? error.message : "Cetak gagal.");
+      const message = error instanceof Error ? error.message : "Cetak gagal.";
+      const kind = classifyPrintError(message);
+      if (kind === "transient" && attempt < effective.printRetryMax) {
+        scheduleRetry(db, job.id, attempt, retryBackoffMs(attempt), message);
+      } else {
+        markFailed(db, job.id, message, kind);
+      }
     }
     return getPrintJob(db, job.id)!;
   }
@@ -216,7 +302,7 @@ async function main(): Promise<void> {
     const pdf = await buildPdf(merged, test);
 
     if (test) {
-      await printer.health(printerName || undefined);
+      await ensurePrinterReady(printerName || undefined);
       return printer.submit(pdf, printerName, geometry, mediaName);
     }
 
@@ -295,7 +381,7 @@ async function main(): Promise<void> {
 
       if (req.method === "GET" && url.pathname === "/v1/status") {
         const cameraStatus = await camera.status().catch((error: unknown) => ({
-          adapter: config.camera,
+          adapter: camera.kind,
           connected: false,
           mock: camera.mock,
           last_error: error instanceof Error ? error.message : "Adapter kamera error",
@@ -303,17 +389,23 @@ async function main(): Promise<void> {
         const printerStatus = await printer
           .health()
           .then((result) => ({
-            adapter: config.printer,
+            adapter: printer.kind,
             ok: result.ok,
             mock: printer.mock,
             mode: "cups" as const,
+            state: result.state,
+            media: result.media ?? null,
+            queue: result.queue ?? 0,
             job: printJobStats(db),
           }))
           .catch((error: unknown) => ({
-            adapter: config.printer,
+            adapter: printer.kind,
             ok: false,
             mock: printer.mock,
             mode: "cups" as const,
+            state: "unknown" as const,
+            media: null,
+            queue: 0,
             job: printJobStats(db),
             last_error: error instanceof Error ? error.message : "Adapter printer error",
           }));
@@ -321,7 +413,7 @@ async function main(): Promise<void> {
           streamCamera === camera
             ? null
             : await streamCamera.status().catch((error: unknown) => ({
-                adapter: config.cameraStream ?? config.camera,
+                adapter: streamCamera.kind,
                 connected: false,
                 mock: streamCamera.mock,
                 last_error: error instanceof Error ? error.message : "Adapter preview error",
@@ -351,7 +443,7 @@ async function main(): Promise<void> {
         (url.pathname === "/v1/diagnostics" || url.pathname === "/v1/diagnostics/export")
       ) {
         const cameraStatus = await camera.status().catch((error: unknown) => ({
-          adapter: config.camera,
+          adapter: camera.kind,
           connected: false,
           mock: camera.mock,
           last_error: error instanceof Error ? error.message : "Adapter kamera error",
@@ -359,20 +451,26 @@ async function main(): Promise<void> {
         const printerStatus = await printer
           .health()
           .then((value) => ({
-            adapter: config.printer,
+            adapter: printer.kind,
             ok: value.ok,
             printer: value.printer,
             mock: printer.mock,
             output: value.output,
+            state: value.state,
+            media: value.media ?? null,
+            queue: value.queue ?? 0,
             mode: "cups" as const,
             job: printJobStats(db),
           }))
           .catch((error: unknown) => ({
-            adapter: config.printer,
+            adapter: printer.kind,
             ok: false,
             printer: null,
             mock: printer.mock,
             output: "",
+            state: "unknown" as const,
+            media: null,
+            queue: 0,
             mode: "cups" as const,
             job: printJobStats(db),
             last_error: error instanceof Error ? error.message : "Adapter printer error",
@@ -430,6 +528,80 @@ async function main(): Promise<void> {
         return json(res, 200, await camera.status(), origin);
       }
 
+      if (req.method === "GET" && url.pathname === "/v1/camera/config") {
+        if (!camera.config) {
+          return json(
+            res,
+            501,
+            { code: "CAMERA_CONFIG_UNSUPPORTED", message: "Adapter kamera ini tidak mendukung config." },
+            origin
+          );
+        }
+        return json(res, 200, { ok: true, config: await camera.config() }, origin);
+      }
+
+      if (req.method === "PUT" && url.pathname === "/v1/camera/config") {
+        if (!camera.setConfig) {
+          return json(
+            res,
+            501,
+            { code: "CAMERA_CONFIG_UNSUPPORTED", message: "Adapter kamera ini tidak mendukung config." },
+            origin
+          );
+        }
+        const body = (await readJson(req, config.maxBodyBytes)) as {
+          settings?: Record<string, unknown>;
+        } | null;
+        const settings = body?.settings;
+        if (!settings || typeof settings !== "object" || Array.isArray(settings)) {
+          return json(res, 400, { message: "settings wajib berupa objek." }, origin);
+        }
+        const entries = Object.entries(settings);
+        if (entries.length === 0) {
+          return json(res, 400, { message: "Tidak ada setelan kamera yang dikirim." }, origin);
+        }
+        const rejected = entries
+          .map(([key]) => key)
+          .filter((key) => !isAllowedCameraConfigKey(key));
+        if (rejected.length > 0) {
+          throw new HttpError(
+            `Key config tidak diizinkan: ${rejected.join(", ")}.`,
+            400,
+            "CAMERA_CONFIG_NOT_ALLOWED"
+          );
+        }
+        const clean: Record<string, string> = {};
+        for (const [key, value] of entries) {
+          if (
+            typeof value !== "string" &&
+            typeof value !== "number" &&
+            typeof value !== "boolean"
+          ) {
+            throw new HttpError(`Nilai config ${key} harus string/angka/boolean.`, 400);
+          }
+          clean[key] = String(value);
+        }
+        return json(
+          res,
+          200,
+          { ok: true, config: await camera.setConfig(clean) },
+          origin
+        );
+      }
+
+      if (req.method === "POST" && url.pathname === "/v1/camera/reset") {
+        if (!camera.reset) {
+          return json(
+            res,
+            501,
+            { code: "CAMERA_CONFIG_UNSUPPORTED", message: "Adapter kamera ini tidak mendukung reset." },
+            origin
+          );
+        }
+        await camera.reset();
+        return json(res, 200, { ok: true }, origin);
+      }
+
       if (req.method === "GET" && url.pathname === "/printer/list") {
         // Deteksi read-only: antrean, setelan, dan job tidak disentuh.
         try {
@@ -478,12 +650,93 @@ async function main(): Promise<void> {
       }
 
       if (req.method === "GET" && url.pathname === "/printer/health") {
-        const stored = printDefaults(activeSettings(db, config)).printer_name;
         const printerName =
-          url.searchParams.get("printer")?.trim() ||
-          (typeof stored === "string" ? stored.trim() : "") ||
-          undefined;
-        return json(res, 200, await printer.health(printerName), origin);
+          url.searchParams.get("printer")?.trim() || storedPrinterName();
+        const health = await printer.health(printerName);
+        return json(
+          res,
+          200,
+          {
+            ...health,
+            ...(health.ok ? {} : { message: health.output || `Printer ${health.state}.` }),
+          },
+          origin
+        );
+      }
+
+      if (req.method === "GET" && url.pathname === "/v1/printer/status") {
+        const printerName =
+          url.searchParams.get("printer")?.trim() || storedPrinterName();
+        try {
+          const health = await printer.health(printerName);
+          return json(
+            res,
+            200,
+            {
+              ok: health.ok,
+              adapter: printer.kind,
+              printer: health.printer,
+              state: health.state,
+              media: health.media ?? null,
+              queue: health.queue ?? 0,
+              output: health.output,
+              job: printJobStats(db),
+            },
+            origin
+          );
+        } catch (error) {
+          return json(
+            res,
+            200,
+            {
+              ok: false,
+              adapter: printer.kind,
+              printer: printerName ?? null,
+              state: "unknown",
+              media: null,
+              queue: 0,
+              output: "",
+              reason: error instanceof Error ? error.message : "Status printer gagal.",
+              job: printJobStats(db),
+            },
+            origin
+          );
+        }
+      }
+
+      if (req.method === "GET" && url.pathname === "/v1/printer/jobs") {
+        const printerName =
+          url.searchParams.get("printer")?.trim() || storedPrinterName();
+        try {
+          return json(res, 200, { ok: true, jobs: await printer.jobs(printerName) }, origin);
+        } catch (error) {
+          return json(
+            res,
+            200,
+            {
+              ok: false,
+              jobs: [],
+              reason: error instanceof Error ? error.message : "Antrean printer gagal dibaca.",
+            },
+            origin
+          );
+        }
+      }
+
+      if (req.method === "POST" && url.pathname === "/v1/printer/enable") {
+        const body = (await readJson(req, config.maxBodyBytes).catch(() => ({}))) as {
+          printer?: unknown;
+        };
+        const requested = typeof body.printer === "string" ? body.printer.trim() : "";
+        const printerName = requested || storedPrinterName();
+        const health = await printer.enable(printerName);
+        logEvent("printer_enabled", { printer: health.printer, state: health.state });
+        return json(
+          res,
+          200,
+          { ok: health.ok, printer: health.printer, state: health.state },
+          origin
+        );
       }
 
       if (req.method === "POST" && url.pathname === "/camera/capture") {
@@ -496,7 +749,18 @@ async function main(): Promise<void> {
       }
 
       if (req.method === "GET" && url.pathname === "/camera/preview") {
-        const body = await streamCamera.preview();
+        let body: Buffer;
+        try {
+          body = await streamCamera.preview();
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Preview kamera gagal.";
+          // Setelah ambang kegagalan, adapter menyatakan kamera tidak siap;
+          // 503 memberi kiosk sinyal untuk menampilkan status, bukan retry buta.
+          if (/tidak siap untuk preview/i.test(message)) {
+            return json(res, 503, { message }, origin);
+          }
+          throw error;
+        }
         res.statusCode = 200;
         res.setHeader("Content-Type", "image/jpeg");
         res.setHeader("Cache-Control", "no-store");
@@ -507,7 +771,8 @@ async function main(): Promise<void> {
       if (req.method === "POST" && url.pathname === "/print") {
         const input = (await readJson(req, config.maxBodyBytes)) as PrintInput;
         const result = await submitPrint(input, false);
-        return json(res, 200, { ok: true, ...result }, origin);
+        const failed = "status" in result && result.status === "failed";
+        return json(res, 200, { ok: !failed, ...result }, origin);
       }
 
       if (req.method === "GET" && url.pathname === "/print/jobs") {
@@ -526,6 +791,8 @@ async function main(): Promise<void> {
       if (req.method === "POST" && retryMatch) {
         const queued = requeuePrintJob(db, decodeURIComponent(retryMatch[1]!));
         if (!queued) return json(res, 404, { message: "Job cetak tidak ditemukan." }, origin);
+        if (queued.status !== "queued")
+          return json(res, 409, { message: "Job sedang diproses." }, origin);
         if (!queued.pdf_path)
           return json(res, 400, { message: "Job tidak punya berkas PDF." }, origin);
         const processed = await runSerial(() => processJob(queued));
@@ -542,7 +809,8 @@ async function main(): Promise<void> {
       if (req.method === "POST" && url.pathname === "/printer/test") {
         const input = (await readJson(req, config.maxBodyBytes)) as PrintInput;
         const result = await submitPrint(input, true);
-        return json(res, 200, { ok: true, ...result }, origin);
+        const failed = "status" in result && result.status === "failed";
+        return json(res, 200, { ok: !failed, ...result }, origin);
       }
 
       return json(res, 404, { message: "Endpoint tidak ditemukan." }, origin);
@@ -562,6 +830,19 @@ async function main(): Promise<void> {
   });
 
   drainQueuedJobs();
+  void drainRetryJobs();
+  // Retry transien berjalan di latar; interval pendek cukup karena backoff
+  // sebenarnya disimpan di `next_retry_at` per job.
+  const retryTimer = setInterval(() => void drainRetryJobs(), 5_000);
+  retryTimer.unref();
+
+  server.once("error", (error) => {
+    console.error(
+      `[snapyos-runtime] Gagal listen di ${config.host}:${config.port}: ` +
+        (error instanceof Error ? error.message : String(error))
+    );
+    process.exit(1);
+  });
 
   server.listen(config.port, config.host, () => {
     console.log(
@@ -578,17 +859,24 @@ async function main(): Promise<void> {
     heartbeat: async () => {
       const cameraStatus = await camera
         .status()
-        .catch(() => ({ adapter: config.camera, connected: false, mock: camera.mock }));
+        .catch(() => ({ adapter: camera.kind, connected: false, mock: camera.mock }));
       const printerStatus = await printer
         .health()
-        .catch(() => ({ ok: false, printer: null, output: "" }));
+        .catch(() => ({
+          ok: false,
+          printer: null,
+          state: "unknown" as const,
+          output: "",
+          media: null,
+          queue: 0,
+        }));
       const report = buildLocalDiagnostics({
         config,
         db,
         camera: cameraStatus,
         cameraStream: null,
         printer: {
-          adapter: config.printer,
+          adapter: printer.kind,
           ...printerStatus,
           mock: printer.mock,
           mode: "cups",
@@ -600,8 +888,13 @@ async function main(): Promise<void> {
   });
 
   const shutdown = () => {
+    setTimeout(() => process.exit(0), 5_000).unref();
+    clearInterval(retryTimer);
     stopSync();
-    server.close(() => process.exit(0));
+    server.close(() => {
+      db.close();
+      process.exit(0);
+    });
   };
   process.once("SIGTERM", shutdown);
   process.once("SIGINT", shutdown);

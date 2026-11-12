@@ -78,7 +78,7 @@ Avg Transaction Rp21.612
 - Empty: "Belum ada transaksi" + CTA "Launch Photobox".
 - Error: `Alert` dengan retry.
 
-**Permission:** OWNER, MANAGER. STAFF hanya subset (lihat RBAC `09-security-storage.md`).
+**Permission:** OWNER, MANAGER. STAFF hanya subset (lihat RBAC `docs/03-architecture.md` §3.6).
 
 **Security:** semua aggregate di-scope `business_id` dari sesi; tidak boleh query lintas tenant.
 
@@ -366,19 +366,19 @@ BASIC   Rp20.000  — 3 photos, 1 print, digital copy
 PREMIUM Rp35.000  — 5 photos, 2 prints, digital copy, premium templates
 ```
 
-**Fields:** name, price, number of photos, number of prints, digital output (boolean), available templates (multi), description, active/inactive, applicable outlet, applicable photobox.
+**Fields:** name, price, jumlah foto cadangan, number of prints, digital output (boolean), description, active/inactive, applicable outlet, applicable photobox. **Tidak ada** pilihan template: semua template aktif otomatis tersedia untuk semua paket.
 
-**UI/Components:** `DataTable`, `Dialog` form, multi-select (`Combobox`), `Switch` active, price input.
+**UI/Components:** `DataTable`, form satu halaman 3 blok (Harga & Isi, Ketersediaan, Ringkasan live), multi-select (`Combobox`) untuk outlet/photobox, `Switch` active, price input, tombol Duplikat.
 
-**Data:** `packages`, `package_templates` (m2m), `package_outlets`, `package_photoboxes`.
+**Data:** `packages`, `package_outlets`, `package_photoboxes`. `package_templates` dibiarkan dorman (tidak dibaca/ditulis) sejak 2026-11-11.
 
 **API:**
 
 - `GET/POST/PATCH/DELETE /api/v1/business/:businessId/packages`
 
-**Validation:** price integer > 0; photo/print count ≥ 1; name wajib.
+**Validation:** price integer > 0; photo/print count ≥ 1; name wajib (maks 80 karakter; nama duplikat dipotong agar tetap ≤ 80).
 
-**Backend logic:** package adalah dasar perhitungan final amount di checkout (server-side).
+**Backend logic:** package adalah dasar perhitungan final amount di checkout (server-side). Duplikat paket menyalin outlet/photobox assignment dan membuat salinan **nonaktif** bernama `... (salinan)`, dibatasi plan `max_packages`.
 
 **Acceptance:** (AC 7) owner membuat package; package muncul di customer app.
 
@@ -390,15 +390,15 @@ PREMIUM Rp35.000  — 5 photos, 2 prints, digital copy, premium templates
 
 **Default categories:** Minimal, Cute, Retro, Y2K, Wedding, Birthday, Graduation, Event, Custom.
 
-**Owner dapat:** upload, create, edit, delete, kategorisasi, preview, active/inactive, assign ke package, **mendesain slot foto via Template Builder** (`15-template-builder.md`), dan membeli template premium (§15.9b).
+**Owner dapat:** upload, create, edit, delete, kategorisasi, preview, active/inactive, **mendesain slot foto via Template Builder** (`15-template-builder.md`), dan membeli template premium (§15.9b).
 
-**UI/Components:** grid preview (menampilkan frame/thumbnail — **bukan** composite slot), `Dialog` upload/create dengan pilihan eksplisit **Draft (default) / Publish**, `Select` kategori, `Switch` active, `Tabs` assign package, `TemplateBuilderCanvas` (`src/components/dashboard/TemplateBuilderCanvas.tsx`) untuk builder owner.
+**UI/Components:** grid preview (menampilkan frame/thumbnail — **bukan** composite slot), `Dialog` upload/create dengan pilihan eksplisit **Draft (default) / Publish**, `Select` kategori, `Switch` active, `TemplateBuilderCanvas` (`src/components/dashboard/TemplateBuilderCanvas.tsx`) untuk builder owner.
 
-**Data:** `templates` (file di storage + metadata + `layout` slot), `package_templates`, `business_template_purchases`.
+**Data:** `templates` (file di storage + metadata + `layout` slot), `business_template_purchases`. `package_templates` dorman.
 
 **API:** owner CRUD/upload/builder memakai **server actions** (`src/server/templates.ts`, `src/server/catalog-actions.ts`), bukan REST. REST owner dihapus Fase 5. Endpoint publik template tetap `GET /api/v1/public/:businessSlug/templates` (§8.7a `08-api-spec.md`).
 
-**Validation:** tipe file gambar (PNG/JPG/WebP — SVG dihapus dari allowlist, audit keamanan 2026-10-09), max size, nama wajib, `layout` valid (`layoutSchema` §15.2 — id unik, z kontigu, preset cocok dimensi, bounds rotation-aware, radius ≤ min(w,h)/2, circle persegi, max 8 slot). Assign ke paket tidak dibatasi jumlah slot.
+**Validation:** tipe file gambar (PNG/JPG/WebP — SVG dihapus dari allowlist, audit keamanan 2026-10-09), max size, nama wajib, `layout` valid (`layoutSchema` §15.2 — id unik, z kontigu, preset cocok dimensi, bounds rotation-aware, radius ≤ min(w,h)/2, circle persegi, max 8 slot). Template tidak perlu di-assign ke paket: semua template aktif tampil untuk semua paket; frame ber-slot menentukan jumlah capture.
 
 **Builder (terimplementasi):**
 
@@ -410,7 +410,7 @@ PREMIUM Rp35.000  — 5 photos, 2 prints, digital copy, premium templates
 - Chroma ada di builder, bukan editor kiosk: tombol "Deteksi area hijau" mengubah area hijau frame menjadi slot `mask` dan menulis PNG baru tanpa hijau (file asli disimpan). Deteksi menambah slot, tidak menimpa slot manual, dan tidak publish otomatis.
 - Preview builder memakai `composeFrame` yang sama dengan kiosk (client-authoritative); server tidak punya engine composite.
 
-**Read-only global:** baris milik business (`is_global=false`) bisa diedit. Template platform (`TEMPLATE PLATFORM`) tampil read-only tanpa edit/delete/simpan; global gratis aktif + yang sudah dibeli dapat di-assign; global yang dibeli membuka builder read-only ("Template platform — read-only").
+**Read-only global:** baris milik business (`is_global=false`) bisa diedit. Template platform (`TEMPLATE PLATFORM`) tampil read-only tanpa edit/delete/simpan; global gratis aktif + yang sudah dibeli dapat dipakai; global yang dibeli membuka builder read-only ("Template platform — read-only").
 
 **Security:** upload divalidasi; preview pakai signed URL jika private. Template global tidak bisa ditulis dari sisi owner. Mutasi template meng-invalidate public config kiosk (tag per-business + global, TTL 30 detik).
 
@@ -424,7 +424,7 @@ UMKM **bisa** membuat/mengkustomisasi template **lengkap dengan slot foto**:
 
 - Upload frame/overlay template sendiri (PNG transparan yang mereka desain di Canva/Figma/Photoshop).
 - **Template Builder** (`/dashboard/templates/builder/[id]`): tambah **slot foto** (rect/rounded/circle/ellipse) via drag atau input numerik di atas frame — atur posisi, ukuran, rotasi, fit, z. Hasil foto customer ter-composite pas ke slot (detail penuh: `15-template-builder.md`).
-- Simpan sebagai draft atau publish; kategorisasi, preview, aktif/nonaktif, assign ke package. Template assignable = milik sendiri atau global aktif yang gratis/sudah dibeli.
+- Simpan sebagai draft atau publish; kategorisasi, preview, aktif/nonaktif. Semua template aktif tampil di semua paket. Template yang bisa dipakai/diedit = milik sendiri atau global aktif yang gratis/sudah dibeli.
 - Template dipasangkan dengan **sticker & text tool** milik SnapyOS di editor customer.
 - Library template default per kategori (seed platform).
 

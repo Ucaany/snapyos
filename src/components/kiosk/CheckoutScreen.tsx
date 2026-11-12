@@ -22,6 +22,7 @@ import {
   KioskCard,
   KioskEyebrow,
   KioskHeader,
+  KioskHeading,
   KioskLoading,
   kioskGutter,
 } from "@/components/kiosk/ui";
@@ -320,7 +321,7 @@ export function CheckoutScreen({
         />
 
         {!online && phase !== "loading" && (
-          <div className="flex items-center gap-2 border-2 border-ink bg-accent-2/20 px-3 py-2">
+          <div className="flex items-center gap-2 border-2 border-ink bg-accent-2 px-3 py-2">
             <WifiOff className="size-4 shrink-0" aria-hidden />
             <p className="font-mono text-[10px] font-bold uppercase leading-tight tracking-[0.08em]">
               Offline. Status akan dicek saat koneksi kembali.
@@ -330,7 +331,7 @@ export function CheckoutScreen({
 
         {phase === "loading" && (
           <KioskCard
-            className="flex min-h-[46dvh] flex-col justify-center gap-4 p-6"
+            className="flex flex-col justify-center gap-4 p-5"
             style={{ borderRadius: radius }}
           >
             <KioskEyebrow>{"MENYIAPKAN PEMBAYARAN"}</KioskEyebrow>
@@ -339,7 +340,7 @@ export function CheckoutScreen({
         )}
 
         {phase === "error" && (
-          <KioskCard className="flex min-h-[42dvh] flex-col justify-center gap-4 p-6">
+          <KioskCard className="flex flex-col justify-center gap-4 p-5">
             <KioskEyebrow className="text-destructive">{"CHECKOUT GAGAL"}</KioskEyebrow>
             <p className="max-w-[52ch] text-sm leading-relaxed text-muted-foreground">{error}</p>
             <div className="flex flex-wrap gap-3">
@@ -357,9 +358,9 @@ export function CheckoutScreen({
           <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
             <KioskCard elevated className="flex flex-col gap-4 p-5 md:p-6">
               <KioskEyebrow>{"RINGKASAN PESANAN"}</KioskEyebrow>
-              <h2 className="font-display text-2xl uppercase leading-[0.95] tracking-[-0.02em] md:text-3xl">
+              <KioskHeading as="h2" size="sm" scale={kioskStyle?.fontScale ?? 1}>
                 {pkg.name}
-              </h2>
+              </KioskHeading>
               <dl className="divide-y-2 divide-ink/10 border-y-2 border-ink/15 font-mono text-sm">
                 <div className="flex items-baseline justify-between gap-4 py-3">
                   <dt className="text-muted-foreground">Subtotal</dt>
@@ -474,11 +475,11 @@ export function CheckoutScreen({
         )}
 
         {phase === "redirect" && payment && (
-          <KioskCard elevated className="flex min-h-[42dvh] flex-col justify-center gap-4 p-6">
+          <KioskCard elevated className="flex flex-col justify-center gap-4 p-5">
             <KioskEyebrow>{"LANJUTKAN PEMBAYARAN"}</KioskEyebrow>
-            <h2 className="font-display text-2xl uppercase leading-[0.95] tracking-[-0.02em] md:text-3xl">
+            <KioskHeading as="h2" size="sm" scale={kioskStyle?.fontScale ?? 1}>
               Buka aplikasi pembayaran
-            </h2>
+            </KioskHeading>
             {payment.payment_url ? (
               <a
                 href={payment.payment_url}
@@ -498,11 +499,11 @@ export function CheckoutScreen({
         )}
 
         {phase === "expired" && (
-          <KioskCard elevated className="flex min-h-[42dvh] flex-col justify-center gap-4 p-6">
+          <KioskCard elevated className="flex flex-col justify-center gap-4 p-5">
             <KioskEyebrow className="text-destructive">{"WAKTU HABIS"}</KioskEyebrow>
-            <h2 className="font-display text-2xl uppercase leading-[0.95] tracking-[-0.02em] md:text-3xl">
+            <KioskHeading as="h2" size="sm" scale={kioskStyle?.fontScale ?? 1}>
               Pembayaran kedaluwarsa
-            </h2>
+            </KioskHeading>
             <p className="max-w-[52ch] text-sm leading-relaxed text-muted-foreground">
               Sesi belum terpakai. Pilih paket lagi untuk membuat pembayaran baru.
             </p>

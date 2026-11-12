@@ -12,7 +12,7 @@ import { isNavActive } from "@/lib/nav-active";
 /**
  * Sidebar Admin Platform - docs/10 §10.1–10.4.
  * Dikelompokkan per kategori (mirror Sidebar owner, docs/11 §11.9):
- * mobile = strip horizontal flat, desktop = grup dengan header mono.
+ * mobile = daftar lipat, desktop = grup dengan header mono.
  * Satu accent dominan (accent kuning) per aturan color-consistency (docs/11).
  */
 
@@ -52,7 +52,7 @@ export function AdminSidebar({ collapsed = false }: { collapsed?: boolean }) {
         title={collapsed ? item.label : undefined}
         aria-current={active ? "page" : undefined}
         className={cn(
-          "flex min-h-11 shrink-0 items-center gap-2 px-3 py-2 font-mono text-xs uppercase tracking-[0.05em] transition-colors duration-150 ease-[var(--ease-brutal)]",
+          "flex min-h-11 min-w-0 shrink-0 items-center gap-2 px-3 py-2 font-mono text-xs uppercase tracking-[0.05em] transition-colors duration-150 ease-[var(--ease-brutal)]",
           // Collapsed: stretch penuh di content-box nav p-2 (46px) + ikon
           // center - border kotak aktif selalu utuh (46 ≥ 4+16), satu sumbu
           // vertikal dengan tombol toggle. Tanpa fit-content/cascade trick.
@@ -65,7 +65,9 @@ export function AdminSidebar({ collapsed = false }: { collapsed?: boolean }) {
         onClick={() => setMobileOpen(false)}
       >
         <item.icon className="size-4 shrink-0" />
-        <span className={cn("whitespace-nowrap", collapsed && "md:hidden")}>{item.label}</span>
+        <span className={cn("min-w-0 truncate whitespace-nowrap", collapsed && "md:hidden")}>
+          {item.label}
+        </span>
       </Link>
     );
   };

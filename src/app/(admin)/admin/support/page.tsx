@@ -4,9 +4,9 @@ import { CircleHelp, Filter } from "lucide-react";
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminPaginator } from "@/components/admin/AdminPaginator";
-import { AdminRecordCard } from "@/components/admin/AdminRecordCard";
+import { RecordCard } from "@/components/ui/record-card";
 import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
-import { RecordCollection } from "@/components/admin/RecordCollection";
+import { RecordCollection } from "@/components/ui/record-collection";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
@@ -49,7 +49,7 @@ export default async function AdminSupportPage({
   return (
     <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       <PageHeader
-        eyebrow="ADMIN - SUPPORT TICKETS"
+        eyebrow="ADMIN / TIKET BANTUAN"
         title="Tiket Bantuan"
         icon={CircleHelp}
         meta={`SEMUA TENANT · ${total} TIKET COCOK FILTER`}
@@ -151,7 +151,7 @@ export default async function AdminSupportPage({
           grid={
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
               {items.map((t) => (
-                <AdminRecordCard
+                <RecordCard
                   key={t.id}
                   title={t.subject}
                   subtitle={`${t.category} · ${t.area}`}

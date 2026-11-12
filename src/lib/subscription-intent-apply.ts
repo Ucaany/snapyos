@@ -2,8 +2,7 @@
  * Subscription invoice intent activation — core logic (docs/02 §2.4b).
  *
  * Modul ini PURE-ish: tanpa `server-only`, tanpa import `@/...`, tanpa
- * `next/*` — supaya bisa di-test dengan `node --test` (lihat
- * tests/subscription-intent-failure.test.ts). Konsumen produksi adalah
+ * `next/*` — supaya bisa di-test terpisah. Konsumen produksi adalah
  * adaptor tipis `applyInvoiceIntent` di `src/server/subscription.ts`
  * yang menyuntik service-role client + insertAudit nyata.
  *

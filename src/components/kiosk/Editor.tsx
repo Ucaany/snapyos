@@ -2,8 +2,6 @@
 
 import { memo, useEffect, useRef, useState } from "react";
 import { Check, Plus, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { defaultBrandColors, slotColors } from "@/lib/brand-defaults";
 import {
   FILTER_PRESETS,
@@ -28,6 +26,7 @@ import {
 } from "@/components/kiosk/photo-render";
 import { StickerPicker } from "@/components/kiosk/StickerPicker";
 import { KioskVideoBackground } from "@/components/kiosk/KioskVideoBackground";
+import { KIOSK_FIELD, KioskAction, KioskHeading } from "@/components/kiosk/ui";
 import { useObjectUrls } from "@/components/kiosk/use-object-url";
 
 const TEXT_COLORS = [
@@ -570,15 +569,14 @@ function EditorInner({
           <p className={sectionLabel} style={{ opacity: 0.6 }}>
             {"LANGKAH 03 · EDIT FOTO"}
           </p>
-          <h1
-            className="font-display uppercase leading-none tracking-[-0.02em]"
-            style={{
-              fontSize: `calc(clamp(1.15rem, 2.2vw, 1.5rem) * ${kioskStyle?.fontScale ?? 1})`,
-              fontFamily: kioskStyle?.fontFamily,
-            }}
+          <KioskHeading
+            as="h1"
+            size="sm"
+            scale={kioskStyle?.fontScale ?? 1}
+            style={{ fontFamily: kioskStyle?.fontFamily }}
           >
             {titleText || "Edit foto"}
-          </h1>
+          </KioskHeading>
           {hintText && (
             <p
               className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.1em]"
@@ -610,7 +608,7 @@ function EditorInner({
                     style={{ filter: filterCss(edits[i]?.adjust.filter) }}
                   />
                 ) : null}
-                <span className="relative z-10 bg-bg/70 px-1">{i + 1}</span>
+                <span className="relative z-10 bg-bg px-1">{i + 1}</span>
               </button>
             ))}
           </div>
@@ -752,25 +750,25 @@ function EditorInner({
               Teks
             </p>
             <div className="flex gap-2">
-              <Input
+              <input
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder="Tulis teks..."
                 maxLength={24}
-                className="h-11"
+                className={KIOSK_FIELD}
                 aria-label="Teks yang akan ditambahkan"
               />
-              <Button
-                type="button"
-                variant="outline"
+              <KioskAction
+                tone="secondary"
                 size="icon"
                 onClick={() =>
                   text.trim() && addOverlay("text", text.trim(), defaultBrandColors.ink)
                 }
                 aria-label="Tambah teks"
+                title="Tambah teks"
               >
                 <Plus className="size-4" aria-hidden />
-              </Button>
+              </KioskAction>
             </div>
           </div>
 
@@ -849,14 +847,13 @@ function EditorInner({
                         </button>
                       ))}
                     </div>
-                    <Button
-                      type="button"
-                      variant="destructive"
+                    <KioskAction
+                      tone="danger"
                       size="sm"
                       onClick={() => removeOverlay(o.id)}
                     >
                       <Trash2 className="size-4" aria-hidden /> Hapus
-                    </Button>
+                    </KioskAction>
                   </div>
                 ))}
             </div>
@@ -865,39 +862,33 @@ function EditorInner({
           {finishError && (
             <p
               role="alert"
-              className="border-2 border-destructive bg-destructive/10 px-3 py-2 text-xs leading-relaxed text-ink"
+              className="border-2 border-destructive bg-surface px-3 py-2 text-xs leading-relaxed text-ink"
             >
               {finishError}
             </p>
           )}
 
           {frameError && (
-            <Button type="button" variant="outline" onClick={() => window.location.reload()}>
+            <KioskAction tone="secondary" size="md" onClick={() => window.location.reload()}>
               Muat ulang frame
-            </Button>
+            </KioskAction>
           )}
 
-          <Button
+          <KioskAction
+            tone="primary"
             size="lg"
+            kioskStyle={kioskStyle}
             onClick={() => {
               setFinishError(null);
               void finish();
             }}
             disabled={finishing}
-            className="mt-auto min-h-14 bg-accent"
-            style={
-              kioskStyle
-                ? {
-                    borderRadius: kioskStyle.radius,
-                    backgroundColor: kioskStyle.accent,
-                    color: kioskStyle.accentText,
-                  }
-                : undefined
-            }
+            className="mt-auto"
+            full
           >
             <Check className="size-5" aria-hidden />
             {finishing ? "Menyimpan..." : "Selesai"}
-          </Button>
+          </KioskAction>
         </div>
       </div>
     </div>

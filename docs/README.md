@@ -12,7 +12,6 @@ SnapyOS Photobox Business Operating System.
 | Menyiapkan development   | [`03-architecture.md`](./03-architecture.md)           | Route, tenancy, data access, struktur kode                        |
 | Menjalankan local setup  | [`../README.md`](../README.md)                         | Install, environment, script, cron                                |
 | Memahami status fitur    | [`status.md`](./status.md)                             | Aktif, sebagian, backlog, arsip                                   |
-| Peta fitur per dashboard | [`16-feature-map-audit.md`](./16-feature-map-audit.md) | Audit kode: admin, owner, staff, kiosk, POS, API, DB (2026-10-11) |
 | Memahami istilah         | [`glossary.md`](./glossary.md)                         | Vocabulary canonical                                              |
 
 ## Referensi API
@@ -23,7 +22,6 @@ SnapyOS Photobox Business Operating System.
 | API aktif per route  | [`api/README.md`](./api/README.md)                   | Request, response, validation, error       |
 | Checkout dan webhook | [`06-checkout-payment.md`](./06-checkout-payment.md) | Direct merchant, voucher, offline cash     |
 | Database             | [`07-database-schema.md`](./07-database-schema.md)   | Entity, enum, constraint, index            |
-| Security             | [`09-security-storage.md`](./09-security-storage.md) | RBAC, tenant isolation, storage, retention |
 
 ## Konsep Produk
 
@@ -36,6 +34,7 @@ SnapyOS Photobox Business Operating System.
 | Admin platform           | [`10-admin-platform.md`](./10-admin-platform.md)               |
 | Design system            | [`11-design-system.md`](./11-design-system.md)                 |
 | Template builder         | [`15-template-builder.md`](./15-template-builder.md)           |
+| Kamera didukung          | [`17-supported-cameras.md`](./17-supported-cameras.md)         |
 
 ## Integrasi
 
@@ -49,7 +48,7 @@ SnapyOS Photobox Business Operating System.
 - Dokumen produk aktif tetap harus dibandingkan dengan kode dan schema sebelum perubahan.
 - API aktif dipisahkan dari route yang telah dihapus.
 - POS add-on terimplementasi dan memakai server actions, bukan REST owner.
-- Dokumen arsip: [`dashboard-redesign.md`](./dashboard-redesign.md), [`14-settlement-withdrawal.md`](./14-settlement-withdrawal.md), serta kontrak legacy yang diberi banner arsip.
+- Dokumen arsip: [`14-settlement-withdrawal.md`](./14-settlement-withdrawal.md), serta kontrak legacy yang diberi banner arsip.
 
 ## Cara Membaca
 
@@ -63,7 +62,7 @@ SnapyOS Photobox Business Operating System.
 
 Urutan resolusi konflik:
 
-1. Kode berjalan di `src/` dan test yang lulus.
+1. Kode berjalan di `src/`.
 2. `db/schema.sql` dan migration aktif.
 3. Dokumen API aktif.
 4. PRD produk.
@@ -90,6 +89,8 @@ Dokumen prosedural mengikuti urutan: ringkasan, prasyarat, langkah, expected res
 
 | Versi | Keputusan                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1.20  | Bersih-bersih 2026-11-11: artefak audit (`.audit-out/`, `.audit-security/`), cache `.vercel/`, `tsconfig.tsbuildinfo`, skrip PowerShell packaging Windows, `docs/16-feature-map-audit.md`, dan `docs/18-audit-report.md` dihapus. Tabel Supabase tak terpakai (`bookings`, `device_logs`, `event_templates`, `package_templates`, `stickers`) di-drop lewat migrasi `0085`. |
+| 1.19  | Tests suite dihapus (2026-11-11): `tests/`, `AUDIT-REPORT.md`, dan artefak audit dibersihkan; gate CI tinggal lint + typecheck + build. |
 | 1.18  | Design Builder per booth dipulihkan (2026-11-08): `/dashboard/branding` kembali sebagai builder (bukan redirect), cakupan booth/global, override `photoboxes.branding`, reset inherit, upload logo/video per booth, pratinjau in-page memakai komponen kiosk asli. Merge branding disatukan di `src/lib/branding-merge.ts`; kontras divalidasi pada branding efektif. `/dashboard/devices` tetap pairing/diagnostik.                                                                                                                                                                                     |
 | 1.17  | Rate limiter kembali **in-memory per proses** (2026-10-17): backend shared Upstash dihapus dari `src/lib/rate-limit.ts` beserta perilaku fail-closed di production yang membuat semua login ditolak saat `UPSTASH_*` kosong. Env `UPSTASH_*` dihapus dari `.env.example`; `tests/rate-limit-production-fallback.test.ts` dihapus. Konsekuensi didokumentasikan: limit efektif = limit × jumlah instance di deployment multi-instance.                                                                                                                                                                    |
 | 1.16  | Security hardening (audit 2026-10-09): `next` di-upgrade ke ^16.3.8 (RCE next/og, SSRF image opt, cache poisoning SSG/ISR → 0 critical), `xlsx` (prototype pollution + ReDoS, no-fix) diganti `exceljs` (generate-only), injeksi key storage via `page` kiosk ditutup (`KIOSK_PAGE_IDS` allowlist + guard path-traversal `r2Key`), SVG dihapus dari allowlist logo, rate limiter pindah ke backend shared opsional (Upstash) + fallback in-memory (fail-closed prod), secret webhook Pakasir dikonfirmasi timing-safe, aturan amount `final_amount` vs `total_amount`+admin fee Tripay didokumentasikan. |
@@ -110,5 +111,5 @@ Detail perubahan ada di git history dan dokumen fitur terkait. Jangan memakai ch
 
 - [`13-skill-anti-slop.md`](./13-skill-anti-slop.md): kebijakan engineering internal untuk anti-slop.
 - [`component-contract.md`](./component-contract.md): kontrak komponen UI.
-- [`12-roadmap-mvp.md`](./12-roadmap-mvp.md): roadmap dan acceptance criteria.
+- [`12-roadmap-mvp.md`](./12-roadmap-mvp.md): roadmap dan acceptance criteria (rujukan `tests/` di dalamnya historis).
 - [`pos/`](./pos/): referensi POS add-on.

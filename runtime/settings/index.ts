@@ -77,7 +77,7 @@ export function readDeviceSettings(db: DatabaseSync): SettingsShape {
  */
 export function defaultsFromConfig(config: RuntimeConfig): SettingsShape {
   return {
-    camera_settings: { provider: config.camera === "gphoto2" ? "gphoto2" : "browser" },
+    camera_settings: { provider: config.camera === "mock" ? "browser" : config.camera },
   };
 }
 
@@ -150,7 +150,8 @@ export function effectiveConfig(config: RuntimeConfig, settings: SettingsShape):
   return {
     ...config,
     camera: stored ?? config.camera,
-    printer: config.printer !== "mock" && printMode === "cups" ? "cups" : config.printer,
+    printer:
+      config.printer === "windows" ? "windows" : printMode === "cups" ? "cups" : config.printer,
   };
 }
 
@@ -237,6 +238,9 @@ export function readSettings(ctx: SettingsContext) {
  */
 export function writeSettings(ctx: SettingsContext, raw: unknown) {
   const incoming = validate(asObject(raw, "Payload"));
+  // Validasi semua grup dulu: grup sebelumnya tidak boleh tersimpan saat grup
+  // lain ditolak.
+  const checked: Partial<Record<DeviceGroup, unknown>> = {};
   for (const group of DEVICE_GROUPS) {
     const patch = incoming[group];
     if (!patch) continue;
@@ -250,7 +254,11 @@ export function writeSettings(ctx: SettingsContext, raw: unknown) {
         INVALID_SETTINGS
       );
     }
-    setSetting(ctx.db, group, check.data);
+    checked[group] = check.data;
+  }
+  for (const group of DEVICE_GROUPS) {
+    const value = checked[group];
+    if (value) setSetting(ctx.db, group, value);
   }
   return { status: 200, body: present(ctx.db, ctx.config) };
 }

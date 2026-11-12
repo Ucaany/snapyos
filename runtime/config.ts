@@ -71,6 +71,14 @@ export type RuntimeConfig = {
   powershellBin: string;
   cupsBin: string;
   lpstatBin: string;
+  /** `cupsenable` — untuk membuka printer yang ter-disable tanpa mouse. */
+  cupsenableBin: string;
+  /** Aktifkan printer `disabled` sekali sebelum submit (bukan untuk `offline`). */
+  printerAutoEnable: boolean;
+  /** Maksimum percobaan ulang otomatis untuk kegagalan transien. */
+  printRetryMax: number;
+  /** Backoff dasar retry (2^n × base, cap 2 menit). */
+  printRetryBaseMs: number;
   maxBodyBytes: number;
   /**
    * Tujuan sinkronisasi (Phase 7). Kosong = booth berjalan tanpa cloud: sesi
@@ -112,6 +120,22 @@ function readPort(raw: string | undefined, name: string, fallback: number): numb
   const value = Number(raw);
   if (!Number.isInteger(value) || value < 1 || value > 65535) {
     throw new ConfigError(`${name} harus bilangan bulat 1-65535.`);
+  }
+  return value;
+}
+
+/** Integer dengan batas; nilai tidak valid menggagalkan start (bukan diam-diam 0). */
+function readCount(
+  raw: string | undefined,
+  name: string,
+  fallback: number,
+  min: number,
+  max: number
+): number {
+  if (raw === undefined || raw.trim() === "") return fallback;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < min || value > max) {
+    throw new ConfigError(`${name} harus bilangan bulat ${min}-${max}.`);
   }
   return value;
 }
@@ -171,6 +195,10 @@ export function loadConfig(env: EnvLike): RuntimeConfig {
     .map((value) => value.trim())
     .filter(Boolean);
 
+  if (env.GPHOTO2_TIMEOUT_MS && !Number.isFinite(Number(env.GPHOTO2_TIMEOUT_MS))) {
+    throw new ConfigError("GPHOTO2_TIMEOUT_MS harus angka (milidetik).");
+  }
+
   const timeoutRaw = Number(env.GPHOTO2_TIMEOUT_MS);
   const timeoutMs = Number.isFinite(timeoutRaw)
     ? Math.min(120_000, Math.max(5_000, timeoutRaw))
@@ -208,6 +236,16 @@ export function loadConfig(env: EnvLike): RuntimeConfig {
     powershellBin: env.POWERSHELL_BIN?.trim() || "powershell",
     cupsBin: env.LP_BIN?.trim() || "lp",
     lpstatBin: env.LPSTAT_BIN?.trim() || "lpstat",
+    cupsenableBin: env.CUPSENABLE_BIN?.trim() || "cupsenable",
+    printerAutoEnable: env.SNAPYOS_PRINTER_AUTO_ENABLE !== "0",
+    printRetryMax: readCount(env.SNAPYOS_PRINT_RETRY_MAX, "SNAPYOS_PRINT_RETRY_MAX", 3, 0, 10),
+    printRetryBaseMs: readCount(
+      env.SNAPYOS_PRINT_RETRY_BASE_MS,
+      "SNAPYOS_PRINT_RETRY_BASE_MS",
+      5_000,
+      500,
+      120_000
+    ),
     // Cap body PDF/base64: 50 lembar × 8 foto tetap jauh di bawah ini.
     maxBodyBytes: 60 * 1024 * 1024,
     cloudUrl: (env.SNAPYOS_CLOUD_URL?.trim() || "").replace(/\/+$/, ""),

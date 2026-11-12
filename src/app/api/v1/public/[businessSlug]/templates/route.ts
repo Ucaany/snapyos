@@ -7,7 +7,9 @@ import { listPublicTemplates, resolveBusinessIdBySlug } from "@/server/public-co
 
 type Params = { params: Promise<{ businessSlug: string }> };
 
-/** GET /api/v1/public/:businessSlug/templates?package=<id> (docs/08 §8.14). */
+/** GET /api/v1/public/:businessSlug/templates (docs/08 §8.14).
+ *  `?package=<id>` masih diterima agar klien lama tidak error, tetapi diabaikan:
+ *  semua template aktif tampil untuk semua paket (2026-11-11). */
 export async function GET(request: Request, { params }: Params) {
   try {
     const ip = getClientIp(request.headers);
@@ -23,9 +25,8 @@ export async function GET(request: Request, { params }: Params) {
     }
 
     const { businessSlug } = await params;
-    const packageId = new URL(request.url).searchParams.get("package") ?? undefined;
     const businessId = await resolveBusinessIdBySlug(businessSlug);
-    return NextResponse.json(dataEnvelope(await listPublicTemplates(businessId, packageId)), {
+    return NextResponse.json(dataEnvelope(await listPublicTemplates(businessId)), {
       headers: { "Cache-Control": "private, max-age=0, must-revalidate" },
     });
   } catch (error) {

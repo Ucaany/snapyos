@@ -315,7 +315,7 @@ export async function updateSettingsAction(
   try {
     // Halaman punya DUA form terpisah (global + gateway); buildSettingsPayload
     // hanya mengirim key yang ada di form ini supaya submit satu form tidak
-    // menimpa toggle form lain (lihat tests/admin-settings-form.test.ts).
+    // menimpa toggle form lain.
     const input = buildSettingsPayload(formData) as AdminSettingsUpdateInput;
     await updatePlatformSettings(input);
     refresh("/admin/settings", "/admin");

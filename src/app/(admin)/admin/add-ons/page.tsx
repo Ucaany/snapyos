@@ -22,7 +22,7 @@ export default async function AdminAddOnsPage() {
   return (
     <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       <PageHeader
-        eyebrow="ADMIN - ADD-ONS"
+        eyebrow="ADMIN / ADD-ON"
         icon={Package}
         title="Manajemen Add-on"
         meta={`${addOns.length} add-on terdaftar`}
@@ -104,7 +104,7 @@ export default async function AdminAddOnsPage() {
           addOns.map((a) => (
             <div
               key={a.id}
-              className="border-2 border-ink bg-surface p-4 shadow-[4px_4px_0_0_#111111]"
+              className="border-2 border-ink bg-surface p-4 shadow-hard"
             >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <span className="flex items-center gap-3">

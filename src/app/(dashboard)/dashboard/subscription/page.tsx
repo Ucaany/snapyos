@@ -1,3 +1,5 @@
+import { PageShell } from "@/components/layout/PageShell";
+
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -41,7 +43,7 @@ export default async function SubscriptionPage() {
   const overview = await getSubscriptionOverview(user.id, active.business.id);
 
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
+    <PageShell>
       <PageHeader
         eyebrow="LANGGANAN · PAKET & TAGIHAN"
         title="Langganan"
@@ -72,6 +74,6 @@ export default async function SubscriptionPage() {
           </CardContent>
         </Card>
       )}
-    </div>
+    </PageShell>
   );
 }

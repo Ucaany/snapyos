@@ -32,7 +32,7 @@ export function ExpensesPanel({
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const table = (
-    <div className="overflow-x-auto border-2 border-ink bg-surface shadow-[4px_4px_0_0_#111111]">
+    <div className="overflow-x-auto border-2 border-ink bg-surface shadow-hard">
       <table className="w-full border-collapse text-left lg:min-w-[760px]">
         <caption className="sr-only">Daftar pengeluaran</caption>
         <thead>
@@ -159,7 +159,7 @@ export function ExpensesPanel({
           <CollapsiblePanel className="mt-4">
             <form
               action={createAction}
-              className="flex flex-col gap-6 border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111] md:p-6"
+              className="flex flex-col gap-6 border-2 border-ink bg-surface p-5 shadow-hard md:p-6"
               noValidate
             >
               <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">

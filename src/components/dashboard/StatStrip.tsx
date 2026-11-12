@@ -10,17 +10,18 @@ export function StatStrip({
   label,
 }: {
   items: { label: string; value: string; tone?: string }[];
-  columns?: 4 | 6 | 8;
+  columns?: 4 | 6 | 8 | 9;
   label: string;
 }) {
   return (
     <dl
       aria-label={label}
       className={cn(
-        "grid grid-cols-2 gap-[2px] border-2 border-ink bg-ink shadow-[4px_4px_0_0_#111111]",
+        "grid grid-cols-2 gap-[2px] border-2 border-ink bg-ink shadow-hard",
         columns === 4 && "md:grid-cols-4",
         columns === 6 && "sm:grid-cols-3 lg:grid-cols-6",
-        columns === 8 && "grid-cols-3 sm:grid-cols-4 xl:grid-cols-8"
+        columns === 8 && "grid-cols-3 sm:grid-cols-4 xl:grid-cols-8",
+        columns === 9 && "grid-cols-2 sm:grid-cols-3"
       )}
     >
       {items.map((item) => (

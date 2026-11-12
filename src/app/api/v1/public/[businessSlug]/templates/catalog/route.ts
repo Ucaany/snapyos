@@ -56,7 +56,9 @@ async function frameManifest(
   };
 }
 
-/** GET /api/v1/public/:businessSlug/templates/catalog?package=<id>. */
+/** GET /api/v1/public/:businessSlug/templates/catalog?package=<id>.
+ *  `package` tetap divalidasi untuk kompatibilitas klien lama, tetapi TIDAK
+ *  memfilter template: semua template aktif tampil untuk semua paket. */
 export async function GET(request: Request, { params }: Params) {
   try {
     const ip = getClientIp(request.headers);
@@ -86,7 +88,7 @@ export async function GET(request: Request, { params }: Params) {
       if (!data) throw new ApiError("NOT_FOUND", "Package tidak ditemukan");
     }
 
-    const templates = await listPublicTemplates(businessId, packageId);
+    const templates = await listPublicTemplates(businessId);
     const catalogTemplates: CatalogTemplate[] = [];
     for (const template of templates) {
       const asset = await frameManifest(template.file_url, request.url, `${template.id}:frame`);

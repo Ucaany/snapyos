@@ -556,6 +556,9 @@ export async function heartbeatDevice(input: DeviceHeartbeatInput) {
     adapter: input.printer.adapter,
     ok: input.printer.ok ?? false,
     ...(input.printer.mode ? { mode: input.printer.mode } : {}),
+    ...(input.printer.state ? { state: input.printer.state } : {}),
+    ...(input.printer.media !== undefined ? { media: input.printer.media } : {}),
+    ...(input.printer.queue !== undefined ? { queue: input.printer.queue } : {}),
     ...(input.printer.job !== undefined ? { job: input.printer.job } : {}),
     reported_at: new Date().toISOString(),
   };

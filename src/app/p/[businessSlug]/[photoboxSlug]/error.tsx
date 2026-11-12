@@ -22,7 +22,7 @@ export default function KioskError({ reset }: { error: Error; reset: () => void 
       <button
         type="button"
         onClick={reset}
-        className="inline-flex min-h-14 items-center gap-2 border-2 border-ink bg-accent px-6 py-3 font-display text-base font-bold uppercase tracking-[-0.01em] shadow-[4px_4px_0_0_#111111] transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+        className="inline-flex min-h-14 items-center gap-2 border-2 border-ink bg-accent px-6 py-3 font-display text-base font-bold uppercase tracking-[-0.01em] shadow-hard transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
       >
         <RotateCcw className="size-5" aria-hidden />
         Muat ulang booth

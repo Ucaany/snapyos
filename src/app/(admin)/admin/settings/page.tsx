@@ -22,7 +22,7 @@ export default async function AdminSettingsPage() {
   return (
     <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
       <PageHeader
-        eyebrow="ADMIN - PLATFORM SETTINGS"
+        eyebrow="ADMIN / PENGATURAN PLATFORM"
         icon={Settings}
         title="Konfigurasi Platform"
         meta="GLOBAL · BERLAKU UNTUK SEMUA TENANT"
@@ -143,8 +143,8 @@ export default async function AdminSettingsPage() {
         <CardHeader>
           <CardTitle>Payment Gateway Global</CardTitle>
           <CardDescription>
-            Aktifkan atau nonaktifkan provider secara global. Tanpa credential aktif, checkout
-            tenant memakai fallback aggregator. Pengaturan per-provider ini juga bisa diubah dari{" "}
+            Aktifkan atau nonaktifkan provider secara global. Tanpa credential aktif, kiosk hanya
+            menerima voucher dan tunai. Pengaturan per-provider ini juga bisa diubah dari{" "}
             <Link
               href="/admin/gateways"
               className="font-bold underline decoration-ink/40 underline-offset-2"
@@ -163,7 +163,7 @@ export default async function AdminSettingsPage() {
             <BrutalistCheckbox
               name="gateway_pakasir_enabled"
               label="Pakasir"
-              description="Aggregator + direct merchant."
+              description="Direct merchant owner."
               defaultChecked={s.gateway_pakasir_enabled !== false}
             />
             <BrutalistCheckbox

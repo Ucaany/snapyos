@@ -1,3 +1,6 @@
+> **Catatan 2026-11-11:** `tests/`, `windows/`, `AUDIT-REPORT.md`, dan `docs/windows-kiosk/`
+> sudah dihapus dari repo. Rujukan ke artefak tersebut di bawah dibiarkan sebagai catatan sejarah.
+
 # SnapyOS — Peta Fitur Menyeluruh (Audit Kode 2026-10-11, angka disegarkan 2026-10-21)
 
 > **Status**: audit berbasis kode berjalan (`src/`, `db/schema.sql`, `tests/`) + knowledge graph
@@ -303,7 +306,11 @@ Baris "catatan" menyebut bukti (`path:fungsi`) supaya klaim bisa diuji ulang.
 | Transport: dialog OS, CUPS bridge, ESC/POS (BLE + Serial)        | Aktif                | `PrintLayoutRenderer`, `CupsPrintScreen`, `BluetoothPrintScreen`                                                         |
 | Grup setelan `photo`/`thermal`/`receipt` + mirror ke field datar | Aktif                | `printPhotoSettingsSchema` (`src/lib/validators.ts`), `src/server/hardware-actions.ts`                                   |
 | Deteksi printer/kamera via bridge                                | Aktif                | `HardwareDetectButton` (`GET /health`, `/printer/health`, `/v1/camera/status`), `listCupsPrinters` (`GET /printer/list`) |
-| Antrean cetak lokal + konfirmasi fisik (`print_jobs`)            | Jalur CUPS foto saja | `scripts/photobooth-bridge.mjs`; struk POS **tidak** memakai antrean ini                                                 |
+| Status/antrean/enable printer + auto-connect                     | Aktif                | `GET /v1/printer/status`, `/v1/printer/jobs`, `POST /v1/printer/enable`; `KioskApp` auto-connect `printer_name` kosong |
+| Retry transien + polling status job                              | Aktif                | `runtime/print/jobs.ts` (`classifyPrintError`, `dueRetryJobs`), scheduler `runtime/main.ts`, `fetchPrintJob` di `CupsPrintScreen` |
+| Kontrol kamera gphoto2 (config/reset/status model)               | Aktif                | `runtime/camera/gphoto2.ts` (`config`, `setConfig`, `reset`), rute `/v1/camera/config` |
+| Katalog kamera publik + sync snapshot                            | Aktif                | `src/app/(marketing)/kamera/page.tsx`, `scripts/sync-gphoto2-cameras.mjs`, `src/data/gphoto2-cameras.json` |
+| Antrean cetak lokal + konfirmasi fisik (`print_jobs`)            | Jalur CUPS foto saja | `runtime/print/jobs.ts`; struk POS **tidak** memakai antrean ini                                                         |
 
 Batasan jujur: deteksi kertas habis tidak mungkin via web; `submitted` ≠ kertas keluar;
 Bootstrapping dua jalur hanya untuk baris yang sudah punya grup — baris lama tetap satu jalur
@@ -334,7 +341,7 @@ tidak di-enforce.
 | Snap tepi/tengah kanvas & slot lain (hanya geser satu slot) | Aktif                     | `src/lib/template-snap.ts:snapRect`                                        |
 | Layer teks di atas frame                                    | Aktif                     | `TemplateTextPanel`, `composeFrame` (`drawSlotText`)                       |
 | Template default booth + auto-pilih kiosk                   | Aktif                     | `photoboxes.default_template_id`, `selectAutoTemplate`                     |
-| Assign otomatis paket                                       | Aktif                     | `autoAssignTemplateIds`                                                    |
+| ~~Assign otomatis paket~~                                   | **Dihapus 2026-11-11**    | `autoAssignTemplateIds` dihapus; semua template aktif tampil di semua paket |
 | Komposit frame di server                                    | **Tidak ada** (by design) | render final di editor kiosk, diunggah sebagai JPEG                        |
 
 Batasan: `useTemplateHistory` belum punya tes unit; `sessions.template_id` belum dipersist.

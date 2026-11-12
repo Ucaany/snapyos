@@ -11,7 +11,7 @@ export function FeatureLockedPanel() {
     <div className="p-6 md:p-10">
       <div
         role="alert"
-        className="flex max-w-xl flex-col items-start gap-4 border-2 border-ink bg-surface p-6 shadow-[4px_4px_0_0_#111111]"
+        className="flex max-w-xl flex-col items-start gap-4 border-2 border-ink bg-surface p-6 shadow-hard"
       >
         <h1 className="font-display text-2xl uppercase tracking-tight text-ink">
           Fitur belum aktif
@@ -25,7 +25,7 @@ export function FeatureLockedPanel() {
         </p>
         <Link
           href="/dashboard/subscription"
-          className="inline-flex h-11 items-center gap-2 border-2 border-ink bg-accent px-6 font-mono text-sm font-bold uppercase tracking-[0.08em] shadow-[4px_4px_0_0_#111111] transition-transform hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[3px_3px_0_0_#111111] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
+          className="inline-flex h-11 items-center gap-2 border-2 border-ink bg-accent px-6 font-mono text-sm font-bold uppercase tracking-[0.08em] shadow-hard transition-transform hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-hard-xs active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
         >
           Upgrade Plan
           <ArrowRight className="size-4" aria-hidden />

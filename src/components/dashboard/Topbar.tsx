@@ -52,8 +52,34 @@ export function Topbar({
         {workspaceSlot}
 
         <div className="ml-auto flex shrink-0 items-center gap-2 md:gap-3">
-          <MobileNav showPos={showPos} showPwaKiosk={showPwaKiosk} />
-          {activeBusinessId && <StorageIndicator businessId={activeBusinessId} />}
+          <MobileNav
+            showPos={showPos}
+            showPwaKiosk={showPwaKiosk}
+            footer={
+              <div className="flex flex-col gap-3 border-t-2 border-ink/20 pt-4 sm:hidden">
+                {activeBusinessId && <StorageIndicator businessId={activeBusinessId} />}
+                {isAdmin ? (
+                  <Link
+                    href="/admin"
+                    className="flex min-h-11 items-center justify-center border-2 border-ink bg-accent px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.05em] text-ink"
+                  >
+                    Panel Admin
+                  </Link>
+                ) : null}
+                <div>
+                  <p className="text-sm font-semibold leading-tight">{user.name ?? "Owner"}</p>
+                  <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
+                    {user.email}
+                  </p>
+                </div>
+              </div>
+            }
+          />
+          {activeBusinessId && (
+            <div className="hidden sm:block">
+              <StorageIndicator businessId={activeBusinessId} />
+            </div>
+          )}
           {isAdmin ? (
             <Link
               href="/admin"

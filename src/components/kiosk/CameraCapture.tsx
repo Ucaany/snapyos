@@ -11,6 +11,7 @@ import {
   resolveCameraProvider,
   resolveFacingMode,
 } from "@/lib/camera-provider";
+import { getBridgeToken } from "@/lib/bridge-token";
 import { getDeviceProfile } from "@/lib/device-profile";
 import {
   FILTER_PRESETS,
@@ -304,6 +305,7 @@ function CameraCaptureInner({
   }, [cameraProvider, stage, error]);
 
   useEffect(() => {
+    if (!getBridgeToken()) return;
     if (cameraProvider !== "bridge" || stage === "review" || error) return;
     let cancelled = false;
     let previewInFlight = false;
@@ -381,8 +383,11 @@ function CameraCaptureInner({
       }
       setCurrent(photo);
       setStage("review");
-    } catch {
-      setError({ message: "Gagal mengambil foto. Coba lagi.", action: "COBA LAGI" });
+    } catch (e) {
+      setError({
+        message: e instanceof Error ? e.message : "Gagal mengambil foto. Coba lagi.",
+        action: "COBA LAGI",
+      });
       setStage("preview");
     }
   }
@@ -500,7 +505,7 @@ function CameraCaptureInner({
           </div>
         )}
 
-        {flash && <div className="pointer-events-none absolute inset-0 bg-white" />}
+        {flash && <div className="pointer-events-none absolute inset-0 bg-surface" />}
 
         {error && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-bg p-6 text-center">

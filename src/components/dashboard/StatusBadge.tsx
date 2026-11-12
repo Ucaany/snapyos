@@ -29,6 +29,10 @@ const LABEL: Record<string, string> = {
   resolved: "Selesai",
   trial: "Uji coba",
   past_due: "Tertunggak",
+  draft: "Draf",
+  sending: "Mengirim",
+  activated: "Diaktifkan",
+  dismissed: "Diabaikan",
 };
 
 const STYLE: Record<string, string> = {
@@ -43,15 +47,21 @@ const STYLE: Record<string, string> = {
   maintenance: "bg-accent",
   processing: "bg-accent",
   partial: "bg-accent-4 text-bg",
-  failed: "bg-accent-2 text-ink",
+  failed: "border-destructive bg-destructive text-destructive-foreground",
   cancelled: "bg-muted text-muted-foreground",
   expired: "bg-muted text-muted-foreground",
   inactive: "bg-muted text-muted-foreground",
   offline: "bg-accent",
   refunded: "bg-accent-4 text-bg",
-  open: "bg-accent-3",
+  open: "bg-accent",
   needs_action: "bg-accent",
   resolved: "bg-muted text-muted-foreground",
+  trial: "bg-accent",
+  past_due: "bg-accent",
+  draft: "bg-muted text-muted-foreground",
+  sending: "bg-accent-4 text-bg",
+  activated: "bg-accent-3",
+  dismissed: "bg-muted text-muted-foreground",
 };
 
 export function StatusBadge({

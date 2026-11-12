@@ -305,6 +305,8 @@ Owner mengatur booth mana yang bisa diakses staff; PK `(user_id, photobox_id)`.
 
 ### package_templates (m2m)
 
+> **Dihapus (0085, 2026-11-11):** tabel tidak lagi dipakai aplikasi. Struktur di bawah tinggal catatan sejarah; rollback `0085` membuatnya kembali bila perlu.
+
 | kolom                        | tipe                | ket |
 | ---------------------------- | ------------------- | --- |
 | package_id                   | uuid → packages.id  |     |
@@ -350,6 +352,8 @@ Owner mengatur booth mana yang bisa diakses staff; PK `(user_id, photobox_id)`.
 | is_global | boolean     |     |
 
 ### stickers
+
+> **Dihapus (0085, 2026-11-11):** tabel tidak lagi dipakai aplikasi.
 
 | kolom       | tipe                 | ket                                                          |
 | ----------- | -------------------- | ------------------------------------------------------------ |
@@ -513,6 +517,8 @@ Constraint: `unique(business_id, provider, environment)` — satu credential per
 
 ### device_logs (0027 — riwayat per device)
 
+> **Dihapus (0085, 2026-11-11):** tabel tidak pernah ditulis/dibaca kode.
+
 Log perangkat Electron. Auto-cleanup 30 hari via cron retention. **TIDAK** menyimpan token, serial number, USB path, atau secret.
 
 | kolom      | tipe              | ket                                                                |
@@ -624,6 +630,8 @@ Terpisah dari `payments` (checkout kiosk); webhook Pakasir bercabang saat `order
 
 ### bookings
 
+> **Dihapus (0085, 2026-11-11):** fitur booking belum pernah dibangun.
+
 | kolom                   | tipe                 | ket                                                  |
 | ----------------------- | -------------------- | ---------------------------------------------------- |
 | id                      | uuid PK              |                                                      |
@@ -720,6 +728,8 @@ Booking wajib memiliki resource (`photobox_id` atau `outlet_id`) dan interval wa
 | created_at / updated_at | timestamptz          |                   |
 
 ### event_templates (m2m)
+
+> **Dihapus (0085, 2026-11-11):** fitur event mode belum ada.
 
 | kolom       | tipe                | ket |
 | ----------- | ------------------- | --- |

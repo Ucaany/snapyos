@@ -58,7 +58,7 @@ export function InstallPWA() {
   }
 
   return (
-    <div className="flex flex-col gap-3 border-2 border-ink bg-accent/20 p-4 shadow-[4px_4px_0_0_#111111]">
+    <div className="flex flex-col gap-3 border-2 border-ink bg-accent/20 p-4 shadow-hard">
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
           <p className="font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">

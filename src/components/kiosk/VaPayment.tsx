@@ -3,7 +3,7 @@ import { ArrowLeft, Copy } from "lucide-react";
 import { formatIDR } from "@/lib/dashboard-math";
 import type { KioskVisualStyle } from "@/lib/kiosk-types";
 import type { PendingPayment } from "./QrisPayment";
-import { KioskAction, KioskCard, KioskEyebrow } from "@/components/kiosk/ui";
+import { KioskAction, KioskCard, KioskEyebrow, KioskHeading } from "@/components/kiosk/ui";
 
 export function VaPayment({
   payment,
@@ -28,9 +28,9 @@ export function VaPayment({
       style={{ borderRadius: radius }}
     >
       <KioskEyebrow>{"VIRTUAL ACCOUNT"}</KioskEyebrow>
-      <h2 className="font-display text-2xl uppercase leading-[0.95] tracking-[-0.02em] md:text-3xl">
+      <KioskHeading as="h2" size="sm" scale={ks?.fontScale ?? 1}>
         {payment.method}
-      </h2>
+        </KioskHeading>
       <p
         className="break-all border-2 border-ink bg-accent px-4 py-4 font-mono text-xl font-bold leading-tight tracking-[0.02em] md:text-2xl"
         style={{ borderRadius: radius }}

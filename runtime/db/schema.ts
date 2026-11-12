@@ -10,7 +10,7 @@
 import type { DatabaseSync } from "node:sqlite";
 
 /** Versi skema saat ini. Naikkan saat ada migrasi baru. */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 /** Tabel yang ikut export/import setelan. PIN darurat sengaja TIDAK di sini. */
 const MIGRATION_1 = `
@@ -119,8 +119,20 @@ create index if not exists idx_print_jobs_created on print_jobs (created_at);
 create index if not exists idx_print_jobs_status on print_jobs (status);
 `;
 
+/**
+ * Phase 4: retry transien.
+ *
+ * `next_retry_at` hanya diisi untuk kegagalan yang layak dicoba ulang
+ * (disabled/offline/busy/timeout). Job `submitted` tidak pernah punya nilai ini.
+ */
+const MIGRATION_4 = `
+alter table print_jobs add column next_retry_at text;
+alter table print_jobs add column failure_kind text;
+create index if not exists idx_print_jobs_retry on print_jobs (next_retry_at);
+`;
+
 /** Migrasi berurutan; indeks array + 1 = versi skema. */
-const MIGRATIONS: readonly string[] = [MIGRATION_1, MIGRATION_2, MIGRATION_3];
+const MIGRATIONS: readonly string[] = [MIGRATION_1, MIGRATION_2, MIGRATION_3, MIGRATION_4];
 
 export function readVersion(db: DatabaseSync): number {
   const row = db.prepare("pragma user_version").get() as { user_version?: number } | undefined;
