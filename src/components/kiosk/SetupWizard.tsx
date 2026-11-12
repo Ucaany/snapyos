@@ -72,6 +72,7 @@ export function SetupWizard({
 
   // print state
   const [printConfirmed, setPrintConfirmed] = useState(false);
+  const [printSkipping, setPrintSkipping] = useState(false);
   const [printers, setPrinters] = useState<PrinterListItem[]>([]);
   const [selectedPrinter, setSelectedPrinter] = useState<string>(
     printSettings.printer_name ?? ""
@@ -634,11 +635,28 @@ export function SetupWizard({
                   </Button>
                 </div>
               ) : (
-                <div className="flex flex-col gap-2 border-2 border-dashed border-ink/40 p-4">
+                <div className="flex flex-col gap-3 border-2 border-dashed border-ink/40 p-4">
                   <p className="text-xs leading-relaxed text-muted-foreground">
                     Cetak aktif. Konfirmasi uji cetak berhasil sebelum menyelesaikan setup. Periksa
                     kertas, tinta/ribbon, dan nama printer di panel setelan booth.
                   </p>
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    Lewati hanya jika printer belum siap. Booth tetap tersimpan, tetapi status cetak
+                    ditandai belum terverifikasi.
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="w-fit min-h-14 font-mono uppercase"
+                    disabled={printSkipping}
+                    onClick={() => {
+                      setPrintSkipping(true);
+                      void report({
+                        printer: { confirmed: false, last_test_at: new Date().toISOString() },
+                      }).finally(onDone);
+                    }}
+                  >
+                    Lewati uji cetak
+                  </Button>
                 </div>
               )}
             </>

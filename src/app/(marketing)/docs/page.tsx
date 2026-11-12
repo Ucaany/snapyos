@@ -145,6 +145,30 @@ export default function DocsPage() {
             />
           </div>
 
+          <div className="mt-10">
+            <Link
+              href="/docs/perangkat"
+              className="group flex flex-col gap-2 rounded-none border-2 border-ink bg-surface p-5 shadow-hard transition-transform hover:-translate-y-0.5 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <span className="flex flex-col gap-1">
+                <span className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                  Perangkat
+                </span>
+                <span className="text-lg font-display font-black uppercase tracking-tight">
+                  Kamera, printer, dan token bridge
+                </span>
+                <span className="max-w-xl text-xs leading-5 text-muted-foreground">
+                  Jenis kamera gphoto2, tiga jalur cetak, dan cara generate token bridge untuk
+                  Windows dan macOS.
+                </span>
+              </span>
+              <span className="inline-flex shrink-0 items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.14em] group-hover:underline">
+                Buka halaman
+                <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
+              </span>
+            </Link>
+          </div>
+
           <div className="mt-14 border-t border-ink pt-10">
             <h3 className="text-2xl font-display font-black uppercase tracking-tight md:text-3xl">
               Daftar isi tiap kategori

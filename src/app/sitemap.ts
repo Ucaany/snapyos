@@ -9,6 +9,7 @@ const MARKETING_PATHS = [
   "/kontak",
   "/subscribe",
   "/docs",
+  "/docs/perangkat",
   "/kamera",
   "/ketentuan-layanan",
   "/kebijakan-privasi",

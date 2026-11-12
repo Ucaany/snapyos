@@ -14,6 +14,25 @@ mewajibkan header `X-Bridge-Token`. Bridge **menolak start** tanpa
 `PHOTOBOOTH_BRIDGE_TOKEN` (minimal 16 karakter) — tidak ada deployment yang
 diam-diam berjalan terbuka.
 
+Token dibuat sekali di komputer kiosk, lalu dipakai ulang. Project ini
+mensyaratkan Node >= 22, jadi `base64url` (butuh Node >= 15.7) selalu tersedia.
+
+### macOS (zsh)
+
+```bash
+node -e "console.log(require('node:crypto').randomBytes(24).toString('base64url'))"
+```
+
+### Windows (PowerShell)
+
+Perintah yang sama berjalan apa adanya di PowerShell:
+
+```powershell
+node -e "console.log(require('node:crypto').randomBytes(24).toString('base64url'))"
+```
+
+### Linux (bash)
+
 ```bash
 node -e "console.log(require('node:crypto').randomBytes(24).toString('base64url'))"
 ```
@@ -29,7 +48,17 @@ Simpan nilai yang sama di dua tempat:
 `/health` sengaja dibiarkan terbuka: Setup Perangkat memakainya untuk mendeteksi
 kamera sebelum token diisi.
 
-## Instalasi kiosk
+## Instalasi per OS
+
+Ringkasan:
+
+| OS      | Instalasi bridge                                   | Adapter printer | Service manager            |
+| ------- | -------------------------------------------------- | --------------- | -------------------------- |
+| Linux   | `bash scripts/install-photobooth-bridge.sh` (apt-get) | `cups`       | systemd (unit contoh disediakan) |
+| macOS   | `brew install gphoto2` atau script yang sama (Homebrew) | `cups`     | tidak ada unit bawaan; jalankan manual |
+| Windows | tidak ada script/unit; jalankan Node langsung     | `windows`       | tidak ada unit bawaan; jalankan manual |
+
+### Linux
 
 Jalankan dari root project pada komputer kiosk:
 
@@ -40,10 +69,41 @@ lpstat -p -d
 PHOTOBOOTH_BRIDGE_TOKEN=<token> npm run bridge:gphoto2
 ```
 
-Untuk Linux yang memakai systemd, salin
-`scripts/photobooth-bridge.service.example` ke unit service, sesuaikan
-`PHOTOBOOTH_BRIDGE_ORIGINS` dan path project, isi `/etc/snapyos/bridge.env`
-(mode 0600) dengan `PHOTOBOOTH_BRIDGE_TOKEN`, lalu aktifkan service.
+Script memakai `apt-get` (gphoto2 + CUPS) bila tersedia. Untuk Linux yang
+memakai systemd, salin `scripts/photobooth-bridge.service.example` ke unit
+service, sesuaikan `PHOTOBOOTH_BRIDGE_ORIGINS` dan path project, isi
+`/etc/snapyos/bridge.env` (mode 0600) dengan `PHOTOBOOTH_BRIDGE_TOKEN`, lalu
+aktifkan service. Unit systemd ini **khusus Linux**.
+
+### macOS
+
+CUPS sudah tersedia di macOS (`lpstat`, `lp`). Pasang gphoto2 lewat Homebrew:
+
+```bash
+brew install gphoto2
+gphoto2 --auto-detect
+lpstat -p -d
+PHOTOBOOTH_BRIDGE_TOKEN=<token> npm run bridge:gphoto2
+```
+
+`bash scripts/install-photobooth-bridge.sh` juga jalan di macOS (memakai
+Homebrew untuk gphoto2). Tidak ada unit `launchd` yang disertakan — contoh
+systemd di atas hanya untuk Linux, jadi bridge dijalankan manual atau lewat
+mekanisme startup pilihan Anda.
+
+### Windows
+
+Script `bash` dan unit systemd **tidak berlaku** di Windows. Jalankan bridge
+langsung dengan Node dari PowerShell di root project:
+
+```powershell
+$env:PHOTOBOOTH_BRIDGE_TOKEN="<token>"; npm run bridge:gphoto2
+```
+
+Adapter printer `windows` memakai Windows print spooler lewat PowerShell
+`Get-Printer` (set `SNAPYOS_PRINTER=windows`). `gphoto2` tetap harus terpasang
+dan tersedia di `PATH` agar adapter kamera `gphoto2` berfungsi; dokumen ini
+tidak menetapkan perintah package manager untuk Windows.
 
 Health check yang harus lulus:
 
@@ -153,7 +213,9 @@ satu key gagal, error menyebut key dan pilihan yang tersedia (tanpa rollback).
 Preview yang gagal 10× berturut-turut membuat `status().connected = false` dan
 `GET /camera/preview` menjawab `503` dengan pesan actionable. Capture tetap
 bisa dicoba. Di Linux, user service harus berada di grup `plugdev`/`lp`; bila
-perlu nonaktifkan `gvfs-gphoto2-volume-monitor` yang mengunci USB.
+perlu nonaktifkan `gvfs-gphoto2-volume-monitor` yang mengunci USB. Di macOS
+tidak ada grup tersebut; di Windows pastikan tidak ada aplikasi lain yang
+memegang perangkat USB kamera.
 
 ## Katalog kamera
 
