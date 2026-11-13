@@ -23,7 +23,7 @@ export async function GET(request: Request, { params }: Params) {
     // Kiosk poll 3 detik = 20 req/menit/booth. Batas IP harus longgar supaya
     // beberapa booth di satu NAT tidak saling mengunci; batas per device yang
     // menahan booth tunggal yang kebablasan.
-    const rl = await rateLimit(`paystatus:${ip}`, 600, 60_000);
+    const rl = await rateLimit(`paystatus:${ip}`, 600, 60_000, { failOpen: true });
     const deviceRl = await rateLimitByDevice("paystatus", device_token, 120, 60_000);
     if (!rl.ok || (deviceRl && !deviceRl.ok)) {
       const retryAfter = !rl.ok ? rl.retryAfterSec : (deviceRl?.retryAfterSec ?? 0);

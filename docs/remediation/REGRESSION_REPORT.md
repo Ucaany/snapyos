@@ -1,41 +1,45 @@
 # REGRESSION REPORT
 
-## Cakupan regresi
+Tanggal: 2026-11-13.
 
-Perubahan sesi ini menyentuh: kiosk session/finalize, CSP, business context
-resolver, feature gate UI, admin subscription/add-on/retention, staff workspace
-switching, auth session lifecycle, dan password change.
+## Cakupan regresi sesi ini
+
+Perubahan menyentuh: token undangan/reset, email auth, scope sesi PIN, rate limit
+produksi, trigger credential, gate 404 kiosk, dan baseline `schema.sql`.
 
 ## Regression checklist
 
 | Area | Skenario | Status |
 |---|---|---|
-| Kiosk | Sesi normal (capture lengkap) tetap finalize | PASS (kode + unit) |
-| Kiosk | Timer habis, capture parsial → finalize | PASS (unit `kiosk-capture`) |
-| Kiosk | Capture berlebih tetap ditolak | PASS (unit) |
-| Kiosk | Booth maintenance → layar perawatan + transaksi ditolak | PASS (kode) |
-| Kiosk | Resume sesi mempertahankan `print_count` | PASS (kode) |
-| Kiosk | QR kontras rendah → fallback hitam/putih | PASS (kode) |
-| Kiosk | Editor header tanpa `color-mix` | PASS (kode) |
-| Owner | Dashboard & page memakai business context sama | PASS (kode) |
-| Owner | Reports/staff/finance/payment terkunci tanpa fitur | PASS (kode) |
-| Admin | Set subscription active tanpa periode → periode diisi | PASS (kode) |
-| Admin | Add-on feature quantity > 1 ditolak | PASS (kode) |
-| Admin | Default retention tidak menimpa override | PASS (kode) |
-| Staff | Staff multi-business dapat switch workspace | PASS (kode) |
-| Auth | Idle 12 jam → sesi berakhir | PASS (kode) |
-| Auth | Double submit create business → satu business | PASS (kode) |
-| Auth | Staff dihapus → session dicabut | PASS (kode) |
-| Auth | Ganti password butuh password lama | PASS (kode) |
+| Auth | Login password tetap berfungsi (typecheck/build + smoke login page) | PASS (kode) |
+| Auth | Login PIN tetap membuat sesi, kini ber-scope staff | PASS (kode) |
+| Auth | Change password terautentikasi tidak berubah | PASS (kode) |
+| Auth | Reset password: token sekali pakai, sesi lama dicabut | PASS (kode + DB) |
+| Auth | Permintaan reset untuk email tak dikenal tetap generik | PASS (kode) |
+| Staff | Undangan tidak langsung memberi membership | PASS (kode + DB) |
+| Staff | Accept undangan menghormati kuota plan | PASS (kode) |
+| Staff | Owner/manager tidak bisa diberi PIN | PASS (kode lama) |
+| Staff | Sesi PIN tidak melihat membership owner/manager | PASS (unit test) |
+| Staff | Sesi PIN ditolak admin guard | PASS (unit test + kode) |
+| Rate limit | Login/checkout fail-closed tanpa Redis di production | PASS (kode) |
+| Rate limit | Webhook/read-only tetap jalan saat Redis outage | PASS (kode) |
+| Payment | Maksimal 2 credential aktif | PASS (DB concurrency) |
+| Payment | Credential lama tidak hilang saat aktivasi ditolak | PASS (DB) |
+| Kiosk | Slug valid tetap render (build + layout cache) | PASS (kode) |
+| Kiosk | Slug invalid → 404 | PASS (E2E) |
+| Kiosk | Manifest booth valid tetap 200 | PASS (kode) |
+| DB | `schema.sql` dari nol | PASS (Postgres 16) |
+| DB | Rollback 0091 | PASS |
 
 ## Yang belum diregresi
 
-- E2E browser seluruh role (tidak ada Playwright).
+- E2E alur ber-login seluruh role.
 - Hardware fisik.
-- Multi-instance rate limit.
-- Migrasi DB.
+- Redis multi-instance.
+- Migrasi staging/production.
 
 ## Kesimpulan
 
-Tidak ada regresi yang terdeteksi oleh typecheck, lint, unit test, dan build.
-Regresi runtime/browser belum dapat dibuktikan tanpa browser automation.
+Tidak ada regresi yang terdeteksi oleh typecheck, lint, 58 unit test, build, 12 E2E,
+audit dependency, dan validasi DB ephemeral. Regresi runtime ber-login dan hardware
+belum dapat dibuktikan tanpa environment tersebut.

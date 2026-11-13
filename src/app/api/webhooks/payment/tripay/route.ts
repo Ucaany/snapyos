@@ -10,7 +10,7 @@ const MAX_WEBHOOK_BYTES = 64 * 1024;
 /** Read exact bytes as text: Tripay signs the original JSON body, not parsed JSON. */
 export async function POST(request: Request) {
   const ip = getClientIp(request.headers);
-  const rl = await rateLimit(`webhook:tripay:${ip}`, 120, 60_000);
+  const rl = await rateLimit(`webhook:tripay:${ip}`, 120, 60_000, { failOpen: true });
   if (!rl.ok) {
     return NextResponse.json(
       { received: false },

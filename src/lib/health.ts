@@ -34,6 +34,8 @@ export type HealthReport = {
   checks: {
     database: HealthCheck;
     storage: HealthCheck;
+    /** AUTH-07: produksi wajib Redis; tanpa Redis status degraded. */
+    rateLimit: HealthCheck;
   };
 };
 
@@ -89,14 +91,16 @@ export async function probe(
 export function buildHealthReport(args: {
   database: HealthCheck;
   storage: HealthCheck;
+  rateLimit: HealthCheck;
   now?: () => number;
   service?: string;
 }): HealthReport {
   const now = args.now ?? Date.now;
   return {
-    status: args.database.ok && args.storage.ok ? "ok" : "degraded",
+    status:
+      args.database.ok && args.storage.ok && args.rateLimit.ok ? "ok" : "degraded",
     service: args.service ?? "snapyos",
     time: new Date(now()).toISOString(),
-    checks: { database: args.database, storage: args.storage },
+    checks: { database: args.database, storage: args.storage, rateLimit: args.rateLimit },
   };
 }

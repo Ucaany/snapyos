@@ -19,8 +19,53 @@ const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL ?? "";
 const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN ?? "";
 const redisAvailable = Boolean(UPSTASH_URL && UPSTASH_TOKEN);
 
+/**
+ * Produksi wajib Redis. Tanpa Redis, limiter TIDAK boleh diam-diam memakai
+ * counter per-instance: limit efektif menjadi limit × jumlah instance.
+ * `RATE_LIMIT_REQUIRE_REDIS=false` hanya untuk deployment single-instance yang
+ * secara eksplisit menerima risiko itu.
+ */
+const REQUIRE_REDIS_IN_PRODUCTION = process.env.RATE_LIMIT_REQUIRE_REDIS !== "false";
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
+
 let redisDegraded = false;
 let redisRetryAfter = 0;
+let lastDegradedLogAt = 0;
+
+function logDegraded(reason: string) {
+  const now = Date.now();
+  if (now - lastDegradedLogAt < 60_000) return;
+  lastDegradedLogAt = now;
+  // Tidak pernah mencetak URL/token Redis.
+  console.error(`[rate-limit] Redis tidak tersedia (${reason}); kebijakan produksi diterapkan`);
+}
+
+export type RateLimitOptions = {
+  /**
+   * Izinkan fallback in-memory saat Redis tidak tersedia. HANYA untuk endpoint
+   * read-only/webhook yang tidak boleh mati total saat Redis outage. Default
+   * fail-closed di production.
+   */
+  failOpen?: boolean;
+};
+
+export type RateLimitStatus = {
+  backend: "redis" | "memory" | "unavailable";
+  configured: boolean;
+  degraded: boolean;
+  productionRequiresRedis: boolean;
+};
+
+export function rateLimitStatus(): RateLimitStatus {
+  const configured = redisAvailable;
+  const backend = configured && !redisDegraded ? "redis" : configured ? "unavailable" : "memory";
+  return {
+    backend,
+    configured,
+    degraded: redisDegraded,
+    productionRequiresRedis: IS_PRODUCTION && REQUIRE_REDIS_IN_PRODUCTION,
+  };
+}
 
 async function redisCommand<T = unknown>(...args: (string | number)[]): Promise<T> {
   const res = await fetch(`${UPSTASH_URL}`, {
@@ -141,7 +186,8 @@ function inMemoryRateLimit(
 export async function rateLimit(
   key: string,
   limit: number,
-  windowMs: number
+  windowMs: number,
+  options: RateLimitOptions = {}
 ): Promise<{ ok: boolean; retryAfterSec: number }> {
   if (redisAvailable && !redisDegraded) {
     try {
@@ -149,13 +195,23 @@ export async function rateLimit(
     } catch {
       redisDegraded = true;
       redisRetryAfter = Date.now() + 30_000;
-      // fallback ke in-memory
+      logDegraded("request gagal");
     }
   }
 
   // coba reconnect Redis tiap 30 detik
   if (redisDegraded && Date.now() > redisRetryAfter) {
     redisDegraded = false;
+  }
+
+  // Produksi tanpa Redis: default fail-closed. Fallback lokal hanya bila
+  // pemanggil eksplisit menandai endpoint aman (read-only/webhook).
+  if (IS_PRODUCTION && REQUIRE_REDIS_IN_PRODUCTION && !options.failOpen) {
+    logDegraded("backend tidak terkonfigurasi / outage");
+    return { ok: false, retryAfterSec: 60 };
+  }
+  if (IS_PRODUCTION && options.failOpen) {
+    logDegraded("fallback fail-open diizinkan pemanggil");
   }
 
   return inMemoryRateLimit(key, limit, windowMs);
@@ -227,12 +283,13 @@ export async function rateLimitByDevice(
   route: string,
   deviceToken: string | null | undefined,
   limit: number,
-  windowMs: number
+  windowMs: number,
+  options: RateLimitOptions = {}
 ): Promise<{ ok: boolean; retryAfterSec: number } | null> {
   if (!deviceToken) return null;
   const prefix = deviceToken.slice(0, 16);
   const key = `${route}:device:${createHash("sha256").update(prefix).digest("hex").slice(0, 24)}`;
-  return rateLimit(key, limit, windowMs);
+  return rateLimit(key, limit, windowMs, options);
 }
 
 /** Hapus bucket (reset hitungan setelah sukses). */

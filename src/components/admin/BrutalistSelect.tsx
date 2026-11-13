@@ -28,7 +28,9 @@ export function BrutalistSelect({
   ...rest
 }: Props) {
   const generatedId = React.useId();
-  const selectId = id ?? `bs-${name ?? generatedId}`;
+  // Selalu sufiks useId: dua form dengan name sama (create + edit) tidak
+  // boleh berbagi id (HTML invalid + label menunjuk field yang salah).
+  const selectId = id ?? `bs-${name ?? "select"}-${generatedId}`;
   return (
     <div className={cn("flex flex-col gap-1", wrapperClassName)}>
       {label ? (

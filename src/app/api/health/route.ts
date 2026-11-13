@@ -13,7 +13,8 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { getWriteStorage } from "@/server/storage";
-import { buildHealthReport, probe, type HealthReport } from "@/lib/health";
+import { buildHealthReport, probe, type HealthCheck, type HealthReport } from "@/lib/health";
+import { rateLimitStatus } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -37,9 +38,28 @@ async function probeStorage(): Promise<void> {
   }
 }
 
+/** AUTH-07: produksi tanpa Redis = tidak siap (fail-closed), bukan degraded diam-diam. */
+function probeRateLimit(): HealthCheck {
+  const status = rateLimitStatus();
+  const ok = status.backend === "redis" || !status.productionRequiresRedis;
+  return {
+    ok,
+    latencyMs: 0,
+    ...(ok
+      ? {}
+      : {
+          detail: `rate limit backend=${status.backend}; Redis wajib di production (UPSTASH_REDIS_REST_URL/TOKEN)`,
+        }),
+  };
+}
+
 export async function GET() {
   const [database, storage] = await Promise.all([probe(probeDatabase), probe(probeStorage)]);
-  const report: HealthReport = buildHealthReport({ database, storage });
+  const report: HealthReport = buildHealthReport({
+    database,
+    storage,
+    rateLimit: probeRateLimit(),
+  });
   return NextResponse.json(report, {
     status: report.status === "ok" ? 200 : 503,
     headers: { "Cache-Control": "no-store" },

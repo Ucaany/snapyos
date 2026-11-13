@@ -14,7 +14,7 @@ export async function GET(request: Request, { params }: Params) {
     // bit): rate-limit per IP agar tidak bisa di-scrape (enumerasi token).
     // 60 req/60s per IP, idiom sama dgn route public lain (sessions/route.ts).
     const ip = getClientIp(request.headers);
-    const rl = await rateLimit(`result:${ip}`, 60, 60_000);
+    const rl = await rateLimit(`result:${ip}`, 60, 60_000, { failOpen: true });
     if (!rl.ok) {
       return NextResponse.json(
         {

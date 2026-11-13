@@ -14,7 +14,7 @@ type Params = { params: Promise<{ businessSlug: string }> };
 export async function GET(request: Request, { params }: Params) {
   try {
     const ip = getClientIp(request.headers);
-    const rl = await rateLimit(`config:${ip}`, 60, 60_000);
+    const rl = await rateLimit(`config:${ip}`, 60, 60_000, { failOpen: true });
     if (!rl.ok) {
       return NextResponse.json(
         { error: "Too many requests" },

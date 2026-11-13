@@ -22,7 +22,7 @@ function frameEnv(): FrameProxyEnv {
 
 export async function GET(request: Request) {
   const ip = getClientIp(request.headers);
-  const rl = await rateLimit(`frame:${ip}`, 180, 60_000);
+  const rl = await rateLimit(`frame:${ip}`, 180, 60_000, { failOpen: true });
   if (!rl.ok) {
     return new NextResponse("Too many requests", {
       status: 429,

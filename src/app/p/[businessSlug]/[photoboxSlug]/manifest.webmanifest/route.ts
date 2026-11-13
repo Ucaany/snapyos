@@ -1,4 +1,6 @@
 import type { MetadataRoute } from "next";
+import { ApiError } from "@/lib/api-errors";
+import { resolveBusinessAndPhotobox } from "@/server/public-config";
 
 type Props = { params: Promise<{ businessSlug: string; photoboxSlug: string }> };
 
@@ -10,6 +12,14 @@ type Props = { params: Promise<{ businessSlug: string; photoboxSlug: string }> }
  */
 export async function GET(_request: Request, { params }: Props) {
   const { businessSlug, photoboxSlug } = await params;
+  try {
+    await resolveBusinessAndPhotobox(businessSlug, photoboxSlug);
+  } catch (error) {
+    if (error instanceof ApiError && error.code === "NOT_FOUND") {
+      return new Response("Not found", { status: 404 });
+    }
+    throw error;
+  }
   const kioskPath = `/p/${businessSlug}/${photoboxSlug}`;
 
   const manifest: MetadataRoute.Manifest = {

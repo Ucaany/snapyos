@@ -40,9 +40,9 @@ export function SupportTicketsPanel({ tickets }: { tickets: SupportTicket[] }) {
             <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
               {`${t.category} · ${t.area}`}
             </p>
-            <h3 className="min-w-0 break-words font-display text-lg uppercase tracking-tight">
+            <h2 className="min-w-0 break-words font-display text-lg uppercase tracking-tight">
               {t.subject}
-            </h3>
+            </h2>
           </div>
           <StatusBadge status={t.status} label={STATUS_LABEL[t.status]} />
         </div>

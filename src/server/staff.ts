@@ -22,6 +22,14 @@ import {
 import { hashDevicePin } from "@/lib/device-token";
 import { requireFeature } from "@/server/feature-gate";
 import { insertAudit } from "@/server/audit";
+import { sendStaffInvitationEmail } from "@/lib/auth-emails";
+import { invitationEmailMatches } from "@/lib/auth-tokens";
+import {
+  claimStaffInvitation,
+  createStaffInvitation,
+  lookupStaffInvitation,
+  markInvitationDelivery,
+} from "@/server/auth-tokens";
 
 async function requireOwner(userId: string, businessId: string) {
   const membership = await getMembership(userId, businessId);
@@ -199,7 +207,7 @@ export async function setStaffPhotoboxes(
 export async function inviteStaff(userId: string, businessId: string, input: StaffInviteInput) {
   const parsed = staffInviteSchema.parse(input);
   await requireFeature(businessId, "staff");
-  await requireOwner(userId, businessId);
+  const membership = await requireOwner(userId, businessId);
 
   const supabase = createServerClient();
 
@@ -230,34 +238,125 @@ export async function inviteStaff(userId: string, businessId: string, input: Sta
     });
   }
 
-  const limits = await requirePlanLimits(businessId);
+  // Cek kuota lebih awal supaya owner tidak mengirim undangan yang pasti gagal
+  // saat diterima. Pemeriksaan final tetap atomik di RPC saat accept.
+  await requirePlanLimits(businessId);
 
-  // Kuota + insert atomik (0069) — owner tidak dihitung (plan boleh max_staff 0).
+  const invitation = await createStaffInvitation({
+    businessId,
+    email: parsed.email,
+    role: parsed.role,
+    invitedBy: userId,
+  });
+
+  const delivery = await sendStaffInvitationEmail({
+    to: parsed.email,
+    businessName: membership.business.name,
+    inviterName: null,
+    role: parsed.role,
+    token: invitation.token,
+  });
+  await markInvitationDelivery(invitation.id, delivery);
+  if (!delivery.ok) {
+    // Undangan tanpa email tidak berguna dan tidak boleh meninggalkan tautan
+    // hidup yang tidak diketahui penerima.
+    await supabase
+      .from("staff_invitations")
+      .update({ revoked_at: new Date().toISOString() })
+      .eq("id", invitation.id);
+    throw new ApiError(
+      "INTERNAL",
+      `Undangan gagal dikirim: ${delivery.error ?? "email tidak terkonfigurasi"}. Periksa RESEND_API_KEY/RESEND_FROM.`
+    );
+  }
+
+  await insertAudit({
+    actorId: userId,
+    businessId,
+    action: "staff.invite",
+    target: invitation.id,
+    meta: { user_id: target.id, role: parsed.role, delivery: "sent" },
+  });
+  return {
+    invitationId: invitation.id,
+    email: parsed.email,
+    role: parsed.role,
+    expiresAt: invitation.expiresAt,
+  };
+}
+
+/**
+ * Terima undangan staff (AUTH-03). Wajib login sebagai pemilik email undangan;
+ * token sekali pakai, ber-expiry, dan hanya memberi role yang diundangkan.
+ */
+export async function acceptStaffInvitation(
+  userId: string,
+  userEmail: string | null | undefined,
+  token: string
+) {
+  const lookup = await lookupStaffInvitation(token);
+  if (!lookup.ok) {
+    const message =
+      lookup.reason === "expired"
+        ? "Undangan sudah kedaluwarsa. Minta owner mengirim ulang."
+        : lookup.reason === "used"
+          ? "Undangan ini sudah dipakai."
+          : lookup.reason === "revoked"
+            ? "Undangan ini sudah dibatalkan."
+            : "Undangan tidak valid.";
+    throw new ApiError("VALIDATION_ERROR", message);
+  }
+  const invitation = lookup.invitation;
+  if (!userEmail || !invitationEmailMatches(invitation.email, userEmail)) {
+    throw new ApiError("FORBIDDEN", "Undangan ini ditujukan untuk akun email lain.");
+  }
+
+  const supabase = createServerClient();
+  const { data: existing } = await supabase
+    .from("business_members")
+    .select("id, role")
+    .eq("business_id", invitation.businessId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (existing) {
+    await claimStaffInvitation(invitation.id, userId);
+    return { businessId: invitation.businessId, role: (existing as { role: string }).role };
+  }
+
+  const limits = await requirePlanLimits(invitation.businessId);
   const { data, error } = await supabase.rpc("add_business_member_with_quota", {
-    p_business_id: businessId,
+    p_business_id: invitation.businessId,
     p_max_staff: limits.max_staff,
-    p_user_id: target.id,
-    p_role: parsed.role,
+    p_user_id: userId,
+    p_role: invitation.role,
   });
   if (error) {
     if (isPlanLimitError(error)) {
       throw new ApiError(
         "PLAN_LIMIT_REACHED",
-        `Plan Anda dibatasi ${limits.max_staff} anggota manager/staff. Upgrade untuk menambah.`
+        `Plan bisnis ini dibatasi ${limits.max_staff} anggota manager/staff. Hubungi owner untuk upgrade.`
       );
     }
-    throw new ApiError("INTERNAL", "Gagal menambahkan staff");
+    throw new ApiError("INTERNAL", "Gagal menerima undangan");
   }
   const inserted = data as { id: string } | null;
-  if (!inserted) throw new ApiError("INTERNAL", "Gagal menambahkan staff");
+  if (!inserted) throw new ApiError("INTERNAL", "Gagal menerima undangan");
+
+  const claimed = await claimStaffInvitation(invitation.id, userId);
+  if (!claimed) {
+    // Balapan: request lain sudah menerima undangan ini. Membership unik
+    // membuat hasil akhirnya tetap satu; jangan klaim token dua kali.
+    throw new ApiError("VALIDATION_ERROR", "Undangan ini sudah dipakai.");
+  }
+
   await insertAudit({
     actorId: userId,
-    businessId,
-    action: "staff.invite",
-    target: inserted.id,
-    meta: { user_id: target.id, role: parsed.role },
+    businessId: invitation.businessId,
+    action: "staff.invite.accept",
+    target: invitation.id,
+    meta: { role: invitation.role },
   });
-  return { id: inserted.id, userId: target.id, email: target.email, role: parsed.role };
+  return { businessId: invitation.businessId, role: invitation.role };
 }
 
 export async function updateStaffRole(

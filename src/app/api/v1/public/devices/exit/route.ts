@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     // Endpoint verifikasi PIN: limit per IP dulu (tanpa baca body) agar argon2
     // dan lock per-booth tidak bisa dipakai sebagai amplifikasi.
     const ip = getClientIp(request.headers);
-    const rl = await rateLimit(`device-exit:${ip}`, 20, 60_000);
+    const rl = await rateLimit(`device-exit:${ip}`, 20, 60_000, { failOpen: true });
     if (!rl.ok) {
       return NextResponse.json(
         {

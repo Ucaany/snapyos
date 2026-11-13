@@ -16,7 +16,7 @@
     "verify": "npm run lint && npm run typecheck && npm run build",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test": "node --test --experimental-strip-types runtime/print/index.test.ts runtime/print/geometry.test.ts runtime/print/jobs.test.ts runtime/camera/gphoto2.test.ts src/lib/print-layout.test.ts src/lib/branding-merge.test.ts src/lib/branding-reset.test.ts src/lib/kiosk-capture.test.ts scripts/sync-gphoto2-cameras.test.mjs",
+    "test": "node --test --experimental-strip-types runtime/print/index.test.ts runtime/print/geometry.test.ts runtime/print/jobs.test.ts runtime/camera/gphoto2.test.ts src/lib/print-layout.test.ts src/lib/branding-merge.test.ts src/lib/branding-reset.test.ts src/lib/kiosk-capture.test.ts src/lib/auth-tokens.test.ts src/lib/payment-credentials.test.ts scripts/sync-gphoto2-cameras.test.mjs",
     "sync:cameras": "node scripts/sync-gphoto2-cameras.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

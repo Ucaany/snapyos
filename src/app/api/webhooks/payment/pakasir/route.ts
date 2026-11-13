@@ -24,7 +24,7 @@ const MAX_WEBHOOK_BYTES = 64 * 1024;
  */
 export async function POST(request: Request) {
   const ip = getClientIp(request.headers);
-  const rl = await rateLimit(`webhook:pakasir:${ip}`, 120, 60_000);
+  const rl = await rateLimit(`webhook:pakasir:${ip}`, 120, 60_000, { failOpen: true });
   if (!rl.ok) {
     return NextResponse.json(
       { received: false },

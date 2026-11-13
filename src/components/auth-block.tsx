@@ -162,6 +162,17 @@ export function AuthPage() {
               </div>
             )}
 
+            {!pinMode && (
+              <div className="flex justify-end">
+                <Link
+                  href="/forgot-password"
+                  className="font-mono text-xs uppercase tracking-[0.05em] text-muted-foreground underline underline-offset-4 transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+                >
+                  Lupa password?
+                </Link>
+              </div>
+            )}
+
             <button
               type="button"
               onClick={() => setPinMode((mode) => !mode)}
@@ -219,7 +230,7 @@ export function AuthPage() {
           <p className="text-muted-foreground text-sm">
             Hubungi admin SnapyOS untuk pembuatan akun.{" "}
             <Link
-              className="underline underline-offset-4 hover:text-primary [@media(pointer:coarse)]:inline-flex [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:items-center"
+              className="underline underline-offset-4 hover:text-accent-4 [@media(pointer:coarse)]:inline-flex [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:items-center"
               href="/register"
             >
               Pelajari cara mendaftar

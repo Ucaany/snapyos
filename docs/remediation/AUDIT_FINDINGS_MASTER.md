@@ -44,11 +44,11 @@ Status yang dipakai: `FIXED`, `PARTIALLY FIXED`, `BLOCKED`, `NOT VERIFIED`,
 
 | Finding ID | Severity | Root Cause | Affected Files | Fix Strategy | Acceptance | Status |
 |---|---|---|---|---|---|---|
-| AUTH-01 | High | Belum ada password reset/change | `src/server/auth-actions.ts`, settings UI | Tambah change-password terautentikasi (verifikasi password lama); reset via email butuh token + email infra | User dapat mengganti password dengan aman | PARTIALLY FIXED (change; reset belum) |
+| AUTH-01 | High | Belum ada password reset/change | `src/server/auth-actions.ts`, `src/server/auth-tokens.ts`, `src/lib/auth-emails.ts`, `src/app/(auth)/forgot-password`, `src/app/(auth)/reset-password/[token]` | Change-password terautentikasi + reset token 1 jam, sekali pakai, hash SHA-256, cabut semua sesi, anti-enumerasi, rate limit | Reset hanya sekali, sesi lama mati, respons generik | FIXED (email delivery NOT VERIFIED) |
 | AUTH-02 | High | Session 30 hari tanpa idle timeout | `src/lib/auth.ts`, `src/lib/constants.ts` | Tambah idle timeout di JWT callback (`lastSeen`), throttle update | Sesi idle berakhir | FIXED |
-| AUTH-07 | High | Rate limit fallback memory per-instance | `src/lib/rate-limit.ts` | Redis sliding window sudah primary; fallback in-memory didokumentasikan | Limit konsisten multi-instance | PARTIALLY FIXED (butuh Redis produksi) |
+| AUTH-07 | High | Rate limit fallback memory per-instance | `src/lib/rate-limit.ts`, `src/app/api/health/route.ts` | Produksi fail-closed tanpa Redis; endpoint read-only/webhook opt-in fail-open; health degraded; log tanpa secret | Limit konsisten multi-instance; konfigurasi tidak aman ditolak | FIXED (multi-instance runtime NOT VERIFIED) |
 | AUTH-11 | High | `AUTH_URL` localhost berisiko di production | `.env.example`, `src/lib/auth.ts` | `trustHost: true` + Host header; `.env.example` sudah https | Redirect tidak ke localhost | FIXED (already in code) |
-| AUTH-03 | Medium | Staff invitation direct membership tanpa consent/token/expiry | `src/server/staff.ts` | Undangan berbasis token + expiry | Invitation butuh consent | NOT VERIFIED (desain produk) |
+| AUTH-03 | Medium | Staff invitation direct membership tanpa consent/token/expiry | `src/server/staff.ts`, `src/server/auth-tokens.ts`, `src/app/invite/[token]` | Token 7 hari, hash SHA-256, sekali pakai, email harus cocok, penerima wajib setuju, kuota dicek saat accept | Undangan butuh consent; token tidak bisa dipakai dua kali | FIXED (email delivery NOT VERIFIED) |
 | AUTH-04 | Medium | Suspend satu business mencabut session seluruh member | `src/lib/tenant.ts` | Membership difilter per business; session tidak dicabut global | Scope suspend benar | FIXED (already in code) |
 | AUTH-05 | Medium | Workspace creation belum idempotent | `src/server/business.ts` | Kembalikan business existing untuk owner+nama sama; tangani 23505 | Double submit tidak membuat dua workspace | FIXED |
 | AUTH-06 | Medium | Hapus staff tidak mencabut session lama | `src/server/staff.ts` | Cabut `auth_sessions` bila user tidak punya membership tersisa | Staff dihapus tidak bisa memakai session lama | FIXED |
@@ -56,7 +56,7 @@ Status yang dipakai: `FIXED`, `PARTIALLY FIXED`, `BLOCKED`, `NOT VERIFIED`,
 | AUTH-09 | Medium | Suspended workspace state kurang tepat | `src/lib/tenant.ts`, UI | Membership suspended difilter; tampilkan state yang jelas | State suspended benar | PARTIALLY FIXED |
 | AUTH-10 | Medium | Touch target landing/mobile nav kecil | marketing components | Naikkan ke ≥44px | Target sentuh memadai | NOT VERIFIED |
 | AUTH-12..AUTH-16 | Medium | Session/config/access-control/hardening (detail di laporan asli) | — | Verifikasi ulang terhadap kode | Sesuai laporan asli | NOT VERIFIED (detail tidak tersedia di brief) |
-| AUTH-17 | Low | Invalid kiosk slug mengembalikan 200 | `src/app/p/**` | `notFound()` untuk slug invalid | HTTP 404 | FIXED (already in code) |
+| AUTH-17 | Low | Invalid kiosk slug mengembalikan 200 | `src/app/p/**/layout.tsx`, `manifest.webmanifest/route.ts` | Gate 404 di layout (di luar Suspense boundary) + validasi manifest | HTTP 404 | FIXED (E2E) |
 | AUTH-18..AUTH-20 | Low | Konsistensi keamanan/testing/authorization | — | Verifikasi ulang | Sesuai laporan asli | NOT VERIFIED |
 | AUTH-21 | Low | CSRF logout API belum terverifikasi | `src/server/auth-actions.ts` | Server action + SameSite cookie | CSRF terlindungi | NOT VERIFIED |
 | AUTH-22..AUTH-24 | Low | Maintenance/logging/consistency | — | Verifikasi ulang | Sesuai laporan asli | NOT VERIFIED |
@@ -76,7 +76,7 @@ Status yang dipakai: `FIXED`, `PARTIALLY FIXED`, `BLOCKED`, `NOT VERIFIED`,
 | O-005 | Medium | Voucher `usage_per_customer` tidak ditegakkan | `checkout-shared.ts` | Butuh identitas customer | Limit ditegakkan | BLOCKED (sama dengan K-011) |
 | O-010 | Medium | Finance gate tidak inline | `dashboard/finance/page.tsx` | Inline `hasFeature("finance")` | UI terkunci rapi | FIXED |
 | O-011 | Medium | Payment page tidak cek `direct_payment`; credential bisa terlihat | `dashboard/payment/page.tsx` | Inline gate sebelum memuat credential | Credential tidak dimuat saat fitur mati | FIXED |
-| O-012 | Medium | Dua active credential race | `src/server/payment-credentials.ts` | Cek constraint/transaksi DB | Tidak ada dua aktif | NOT VERIFIED |
+| O-012 | Medium | Dua active credential race | `db/migrations/0091_*`, `src/server/payment-credentials.ts` | Trigger + advisory lock per business; error P0001 dipetakan | Maksimal 2 aktif, konkurensi aman | FIXED (DB concurrency test) |
 | O-018 | Medium | Profil bisnis masih bisa diedit saat expired | `src/server/business.ts` | Gate mutasi dengan `requirePlanLimits` | Edit diblokir saat expired | FIXED |
 | O-004, O-006..O-009, O-014, O-016, O-017 | Low/Info | Premium button role, POS add-on, storage error, denied state, PWA, test hook, dead code | dashboard components | Perbaikan UI bertahap | Konsisten | NOT VERIFIED |
 
@@ -108,7 +108,7 @@ Status yang dipakai: `FIXED`, `PARTIALLY FIXED`, `BLOCKED`, `NOT VERIFIED`,
 
 | Finding ID | Severity | Root Cause | Affected Files | Fix Strategy | Acceptance | Status |
 |---|---|---|---|---|---|---|
-| S-001 | High | PIN login membuat full account session | `src/lib/auth.ts`, `src/server/staff-pin.ts` | PIN hanya untuk membership role `staff` (sudah); residual: user multi-role tetap dapat session penuh | Tidak ada privilege escalation | PARTIALLY FIXED |
+| S-001 | High | PIN login membuat full account session | `src/lib/auth.ts`, `src/lib/tenant.ts`, `src/lib/session-scope.ts`, `src/server/admin/guard.ts` | JWT claim `scope=staff`; membership difilter ke role staff; admin ditolak; getMembership fail-closed | PIN tidak bisa akses owner/admin | FIXED (runtime role E2E NOT VERIFIED) |
 | S-002 | High | Staff multi-business tidak bisa pindah workspace | `StaffTopbar.tsx`, `staff/layout.tsx`, `business-actions.ts` | Tambah `WorkspaceSwitcher`; izinkan staff switch | Staff dapat pindah business | FIXED |
 | S-003 | Medium | Counter package/template beda dengan isi modul | `staff-overview.ts` | Samakan query/filter | Counter akurat | NOT VERIFIED |
 | S-004 | Medium | Live session dibatasi 20 tanpa indikator | `staff-overview.ts`, UI | Tampilkan batas/indikator | Batas terlihat | NOT VERIFIED |

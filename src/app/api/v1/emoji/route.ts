@@ -29,7 +29,7 @@ function toEmoji(e: EmojiApiItem) {
 
 export async function GET(request: Request) {
   const ip = getClientIp(request.headers);
-  const rl = await rateLimit(`emoji:${ip}`, 60, 60_000);
+  const rl = await rateLimit(`emoji:${ip}`, 60, 60_000, { failOpen: true });
   if (!rl.ok) {
     return NextResponse.json(
       { error: { code: "RATE_LIMITED", message: "Terlalu banyak permintaan. Coba lagi nanti." } },

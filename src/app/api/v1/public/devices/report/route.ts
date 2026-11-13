@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     // Setiap request menulis 2 baris (photoboxes + devices). Limit per IP agar
     // bearer token yang bocor tidak bisa dipakai membanjiri write/heartbeat.
     const ip = getClientIp(request.headers);
-    const rl = await rateLimit(`device-report:${ip}`, 30, 60_000);
+    const rl = await rateLimit(`device-report:${ip}`, 30, 60_000, { failOpen: true });
     if (!rl.ok) {
       return NextResponse.json(
         {

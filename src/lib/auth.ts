@@ -27,6 +27,8 @@ declare module "next-auth/jwt" {
     role?: "user" | "admin";
     /** epoch ms aktivitas terakhir — idle timeout (AUTH-02). */
     lastSeen?: number;
+    /** "staff" = sesi PIN; tidak boleh mewarisi role owner/manager (S-001). */
+    scope?: "staff";
   }
 }
 
@@ -277,7 +279,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             email: user.email,
             name: user.name,
             image: user.avatar_url,
-          };
+            scope: "staff",
+          } as unknown as typeof user & { scope: "staff" };
         }
 
         if (!user.password_hash) {
@@ -345,7 +348,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           console.error("[auth] gagal membuat sesi DB:", insertError.message);
           return {}; // gagal mint sesi = gagal login
         }
-        return { ...token, uid: user.id, sid, lastSeen: Date.now() };
+        const scope = (user as { scope?: "staff" }).scope;
+        return {
+          ...token,
+          uid: user.id,
+          sid,
+          lastSeen: Date.now(),
+          ...(scope ? { scope } : {}),
+        };
       }
 
       // Token lama yang memiliki identitas tanpa session id tidak boleh melewati
@@ -384,6 +394,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     session: async ({ session, token }) => {
       if (!token.uid) return session;
       session.user.id = token.uid;
+      if (token.scope) session.user.scope = token.scope;
       if (token.role) {
         session.user.role = token.role;
         return session;

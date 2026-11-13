@@ -8,6 +8,7 @@ import {
   assertPaymentCredentialTenant,
   assertActiveCredentialLimit,
   canTestCredentialInEnvironment,
+  isActiveCredentialLimitError,
   redactPaymentCredential,
   type PaymentCredentialPublic,
   type PaymentCredentialStored,
@@ -120,6 +121,7 @@ export async function createCredential(
     .select(CREDENTIAL_FIELDS)
     .single();
   if (error || !data) {
+    if (isActiveCredentialLimitError(error)) assertActiveCredentialLimit(2);
     if (error?.code === "23505")
       throw new ApiError("VALIDATION_ERROR", "Credential provider dan environment ini sudah ada");
     throw new ApiError("INTERNAL", "Gagal menyimpan payment gateway");
@@ -191,6 +193,7 @@ export async function updateCredential(
     .select(CREDENTIAL_FIELDS)
     .single();
   if (error || !data) {
+    if (isActiveCredentialLimitError(error)) assertActiveCredentialLimit(2);
     if (error?.code === "23505")
       throw new ApiError("VALIDATION_ERROR", "Credential provider dan environment ini sudah ada");
     throw new ApiError("INTERNAL", "Gagal memperbarui payment gateway");

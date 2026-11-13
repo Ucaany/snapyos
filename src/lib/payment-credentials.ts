@@ -261,6 +261,17 @@ export function gatewayEnvironment(): PaymentCredentialEnvironment {
     : "sandbox";
 }
 
+/** Error dari trigger DB 0091 saat batas 2 credential aktif dilanggar. */
+export function isActiveCredentialLimitError(
+  error: { code?: string | null; message?: string | null } | null
+): boolean {
+  if (!error) return false;
+  return (
+    error.code === "P0001" &&
+    String(error.message ?? "").includes("ACTIVE_PAYMENT_CREDENTIAL_LIMIT")
+  );
+}
+
 /** Tolak aktivasi saat sudah mencapai batas credential aktif. */
 export function assertActiveCredentialLimit(
   activeCount: number,

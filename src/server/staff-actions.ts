@@ -6,11 +6,14 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { str, toFormState } from "@/lib/form-state";
+import { requireUser } from "@/lib/tenant";
 import { requireActiveBusiness } from "@/server/action-utils";
 import { requireEffectiveSubscription } from "@/server/require-subscription";
 import type { FormState } from "@/server/auth-actions";
 import {
+  acceptStaffInvitation,
   inviteStaff,
   removeStaff,
   setStaffPhotoboxes,
@@ -19,6 +22,26 @@ import {
 } from "@/server/staff";
 
 // --- STAFF (docs/04 §4.13) ---
+
+/** Terima undangan staff (AUTH-03) — butuh login sebagai pemilik email. */
+export async function acceptInvitationAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const user = await requireUser();
+  if (!user) return { error: "Masuk dulu untuk menerima undangan." };
+  const token = str(formData, "token");
+  if (!token) return { error: "Token undangan tidak valid." };
+  let role: "manager" | "staff";
+  try {
+    const result = await acceptStaffInvitation(user.id, user.email, token);
+    role = result.role === "manager" ? "manager" : "staff";
+  } catch (error) {
+    return toFormState(error, "Gagal menerima undangan.");
+  }
+  revalidatePath("/dashboard/staff");
+  redirect(role === "manager" ? "/dashboard" : "/staff");
+}
 
 export async function inviteStaffAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const ctx = await requireActiveBusiness();
@@ -33,7 +56,7 @@ export async function inviteStaffAction(_prev: FormState, formData: FormData): P
     return toFormState(error);
   }
   revalidatePath("/dashboard/staff");
-  return { error: undefined };
+  return { success: "Undangan dikirim. Akses aktif setelah penerima menyetujui." };
 }
 
 export async function setStaffPinAction(_prev: FormState, formData: FormData): Promise<FormState> {

@@ -18,7 +18,7 @@ type Params = { params: Promise<{ resultToken: string }> };
 export async function GET(request: Request, { params }: Params) {
   try {
     const ip = getClientIp(request.headers);
-    const rl = await rateLimit(`result-zip:${ip}`, 10, 60_000);
+    const rl = await rateLimit(`result-zip:${ip}`, 10, 60_000, { failOpen: true });
     if (!rl.ok) {
       return NextResponse.json(
         {

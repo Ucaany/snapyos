@@ -420,6 +420,14 @@ export function StaffPanel({
             {inviteState.error}
           </p>
         )}
+        {inviteState.success && (
+          <p
+            role="status"
+            className="border-2 border-ink bg-accent px-3 py-2 font-mono text-xs text-ink"
+          >
+            {inviteState.success}
+          </p>
+        )}
         <div className="border-2 border-ink/15 bg-muted px-3 py-2 font-mono text-[10px] uppercase tracking-[0.05em]">
           {`Kuota: ${staff.length}/${maxStaff} (termasuk owner)`}
         </div>

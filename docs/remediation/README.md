@@ -15,7 +15,11 @@ Kiosk, dan Authentication/Routing.
 6. `TEST_RESULTS.md` — gate yang dijalankan beserta bukti.
 7. `SECURITY_REVIEW.md`, `HARDWARE_VALIDATION.md`, `REGRESSION_REPORT.md`,
    `FINAL_PRODUCTION_READINESS.md` — hasil fase akhir.
-8. `agents/` — laporan per agent (A–H).
+8. `BLOCKER_CLOSURE_REPORT.md` — status setiap blocker sprint terakhir.
+9. `DATABASE_MIGRATION_VALIDATION.md` — validasi baseline, migrasi 0091, rollback.
+10. `DEPENDENCY_SECURITY_REPORT.md` — hasil `npm audit` + keputusan.
+11. `E2E_EXECUTION_REPORT.md` — hasil Playwright dan yang belum dijalankan.
+12. `agents/` — laporan per agent (A–H).
 
 ## Prinsip
 

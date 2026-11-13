@@ -9,12 +9,17 @@
 
 import { AuthError } from "next-auth";
 import { hash, verify } from "@node-rs/argon2";
+import { headers } from "next/headers";
 import { signIn, signOut } from "@/lib/auth";
 import { createServerClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/rate-limit";
+import { getClientIp } from "@/lib/request-ip";
 import { requireUser } from "@/lib/tenant";
 import { str, toFormState } from "@/lib/form-state";
-import { changePasswordSchema, loginSchema } from "@/lib/validators";
+import { changePasswordSchema, forgotPasswordSchema, loginSchema, resetPasswordSchema } from "@/lib/validators";
+import { consumePasswordResetToken, createPasswordResetToken } from "@/server/auth-tokens";
+import { sendPasswordResetEmail } from "@/lib/auth-emails";
+import { insertAudit } from "@/server/audit";
 
 export type FormState = {
   error?: string;
@@ -136,4 +141,100 @@ export async function changePasswordAction(
   if (error) return { error: "Gagal menyimpan password baru." };
 
   return { success: "Password diperbarui." };
+}
+
+/**
+ * Minta tautan reset password (AUTH-01). Respons SELALU sama, baik email
+ * terdaftar maupun tidak (anti-enumerasi). Token hanya dibuat untuk akun aktif
+ * yang punya password; kegagalan kirim email tidak membocorkan keberadaan akun.
+ */
+export async function requestPasswordResetAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const generic: FormState = {
+    success: "Jika email terdaftar, tautan reset password sudah dikirim. Cek kotak masuk.",
+  };
+  const ip = getClientIp(await headers());
+  const ipLimit = await rateLimit(`forgot:ip:${ip}`, 5, 15 * 60_000);
+  if (!ipLimit.ok) return generic;
+
+  const parsed = forgotPasswordSchema.safeParse({ email: str(formData, "email") });
+  if (!parsed.success) return toFormState(parsed.error);
+
+  const emailLimit = await rateLimit(`forgot:email:${parsed.data.email}`, 3, 60 * 60_000);
+  if (!emailLimit.ok) return generic;
+
+  const supabase = createServerClient();
+  const { data: user } = await supabase
+    .from("users")
+    .select("id, email, name, status, password_hash")
+    .eq("email", parsed.data.email)
+    .maybeSingle();
+
+  const account = user as
+    | { id: string; email: string; name: string | null; status: string; password_hash: string | null }
+    | null;
+  if (account && account.status === "active" && account.password_hash) {
+    try {
+      const reset = await createPasswordResetToken(account.id, ip);
+      const delivery = await sendPasswordResetEmail({
+        to: account.email,
+        name: account.name,
+        token: reset.token,
+      });
+      if (!delivery.ok) {
+        console.error("[auth] reset password email gagal:", delivery.error);
+      }
+      await insertAudit({
+        actorId: account.id,
+        businessId: null,
+        action: "auth.password.reset.request",
+        target: account.id,
+        meta: { delivery: delivery.ok ? "sent" : "failed" },
+      });
+    } catch (error) {
+      console.error("[auth] gagal membuat reset token:", error instanceof Error ? error.message : error);
+    }
+  }
+  return generic;
+}
+
+/** Selesaikan reset password dengan token sekali pakai (AUTH-01). */
+export async function resetPasswordAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const ip = getClientIp(await headers());
+  const limit = await rateLimit(`reset:ip:${ip}`, 10, 15 * 60_000);
+  if (!limit.ok) {
+    return { error: "Terlalu banyak percobaan. Coba lagi beberapa menit lagi." };
+  }
+
+  const parsed = resetPasswordSchema.safeParse({
+    token: str(formData, "token"),
+    password: String(formData.get("password") ?? ""),
+    confirm_password: String(formData.get("confirm_password") ?? ""),
+  });
+  if (!parsed.success) return toFormState(parsed.error);
+
+  const userId = await consumePasswordResetToken(parsed.data.token);
+  if (!userId) {
+    return { error: "Tautan reset tidak valid, sudah dipakai, atau sudah kedaluwarsa." };
+  }
+
+  const passwordHash = await hash(parsed.data.password);
+  const supabase = createServerClient();
+  const { error } = await supabase
+    .from("users")
+    .update({ password_hash: passwordHash })
+    .eq("id", userId);
+  if (error) return { error: "Gagal menyimpan password baru. Minta tautan reset baru." };
+
+  // Password berubah = semua sesi lama tidak boleh hidup.
+  await supabase.from("auth_sessions").delete().eq("user_id", userId);
+  await insertAudit({
+    actorId: userId,
+    businessId: null,
+    action: "auth.password.reset",
+    target: userId,
+  });
+  return { success: "Password diperbarui. Silakan login dengan password baru." };
 }

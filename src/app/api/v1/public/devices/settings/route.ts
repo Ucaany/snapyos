@@ -19,7 +19,7 @@ export async function PATCH(request: Request) {
   try {
     // Token device = bearer; batasi per IP sebelum body dibaca.
     const ip = getClientIp(request.headers);
-    const rl = await rateLimit(`device-settings:${ip}`, 30, 60_000);
+    const rl = await rateLimit(`device-settings:${ip}`, 30, 60_000, { failOpen: true });
     if (!rl.ok) {
       return NextResponse.json(
         {

@@ -35,7 +35,7 @@ export default function PrivacyPage() {
           <p>
             Hubungi{" "}
             <a
-              className="font-semibold text-primary underline [@media(pointer:coarse)]:inline-flex [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:items-center"
+              className="font-semibold text-ink underline [@media(pointer:coarse)]:inline-flex [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:items-center"
               href="mailto:hello@snapyos.id"
             >
               hello@snapyos.id

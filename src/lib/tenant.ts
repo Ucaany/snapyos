@@ -11,6 +11,7 @@ import { auth } from "@/lib/auth";
 import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
 import type { BusinessRole } from "@/lib/rbac";
+import { membershipVisibleToScope } from "@/lib/session-scope";
 
 export const ACTIVE_BUSINESS_COOKIE = "snapyos_active_business";
 
@@ -19,6 +20,8 @@ export type AppUser = {
   email?: string | null;
   name?: string | null;
   role: "user" | "admin";
+  /** Sesi PIN staff: tidak boleh mewarisi role owner/manager (S-001). */
+  scope?: "staff";
 };
 
 export type Membership = {
@@ -44,6 +47,7 @@ export const requireUser = cache(async (): Promise<AppUser | null> => {
     email: session.user.email,
     name: session.user.name,
     role: session.user.role ?? "user",
+    ...(session.user.scope ? { scope: session.user.scope } : {}),
   };
 });
 
@@ -51,6 +55,8 @@ export const requireUser = cache(async (): Promise<AppUser | null> => {
  *  Di-memo per-request via React.cache: layout + page + getActiveBusiness
  *  memanggil fungsi ini beberapa kali, tapi query Supabase hanya 1×. */
 export const getUserMemberships = cache(async (userId: string): Promise<Membership[]> => {
+  const sessionUser = await requireUser();
+  const staffScoped = sessionUser?.scope === "staff";
   const supabase = createServerClient();
   const { data, error } = await supabase
     .from("business_members")
@@ -71,7 +77,11 @@ export const getUserMemberships = cache(async (userId: string): Promise<Membersh
     // tanpa filter ini, suspend hanya menghapus session sekali dan tenant
     // masuk lagi pada login berikutnya.
     if (business.status !== "active") return [];
-    return [{ business, role: row.role as BusinessRole }];
+    const role = row.role as BusinessRole;
+    // Sesi PIN hanya melihat dan memakai membership staff. Owner/manager di
+    // business lain tidak pernah masuk ke shell/token ini.
+    if (!membershipVisibleToScope(role, staffScoped ? "staff" : undefined)) return [];
+    return [{ business, role }];
   });
 });
 
@@ -106,6 +116,8 @@ export async function getActiveBusinessForRoles(
 export const getMembership = cache(
   async (userId: string, businessId: string): Promise<Membership | null> => {
     const supabase = createServerClient();
+    const sessionUser = await requireUser();
+    const staffScoped = sessionUser?.scope === "staff";
     const { data, error } = await supabase
       .from("business_members")
       .select("role, businesses ( id, slug, name, status, timezone, currency )")
@@ -116,6 +128,8 @@ export const getMembership = cache(
     if (error) {
       throw new ApiError("INTERNAL", "Gagal memeriksa membership business");
     }
+    if (staffScoped && (!data || !membershipVisibleToScope(data.role as BusinessRole, "staff")))
+      return null;
 
     const business = data?.businesses as Membership["business"] | Membership["business"][] | null;
     if (!data || !business || Array.isArray(business)) return null;

@@ -4,6 +4,9 @@
  */
 
 import { z } from "zod";
+
+/** Pesan validasi default Bahasa Indonesia (Zod v4 locale). */
+z.config(z.locales.id());
 import { layoutSchema } from "./template-layout.ts";
 import { MAX_RANGE_DAYS, rangeDays } from "./dashboard-math.ts";
 import { RETENTION_MAX_DAYS, RETENTION_MIN_DAYS } from "./retention.ts";
@@ -158,8 +161,27 @@ export const changePasswordSchema = z
     path: ["new_password"],
   });
 
-export const staffPinSchema = z.object({
-  user_id: uuid,
+/** Minta reset password (AUTH-01). Respons selalu generik (anti-enumerasi). */
+export const forgotPasswordSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Format email tidak valid"),
+});
+
+/** Reset password dengan token sekali pakai. */
+export const resetPasswordSchema = z
+  .object({
+    token: z.string().trim().min(1, "Token tidak valid"),
+    password: z
+      .string()
+      .min(8, "Password minimal 8 karakter")
+      .max(72, "Password maksimal 72 karakter"),
+    confirm_password: z.string().min(1, "Konfirmasi password wajib diisi"),
+  })
+  .refine((v) => v.password === v.confirm_password, {
+    message: "Konfirmasi password tidak sama",
+    path: ["confirm_password"],
+  });
+
+export const staffPinSchema = z.object({  user_id: uuid,
   photobox_id: uuid,
   // Kosong = hapus PIN (set null); non-kosong wajib 6 digit. PIN lama 4–6
   // digit tetap bisa dipakai login (jalur verifikasi tidak memakai schema ini),
@@ -900,12 +922,20 @@ export const packageCreateSchema = z.object({
   name: z.string().trim().min(1, "Nama package wajib diisi").max(80, "Nama maksimal 80 karakter"),
   // Lantai harga = lantai produk POS (src/lib/form-ui.ts IDR_PRICE_FLOOR).
   price: z
-    .number()
+    .number({ error: "Harga harus berupa angka" })
     .int("Harga harus integer IDR")
     .min(1000, "Harga minimal Rp 1.000")
     .max(2_000_000_000, "Harga terlalu besar"),
-  photo_count: z.number().int().min(1, "Jumlah foto ≥ 1").max(50),
-  print_count: z.number().int().min(0, "Jumlah cetak ≥ 0").max(50),
+  photo_count: z
+    .number({ error: "Jumlah foto harus berupa angka" })
+    .int("Jumlah foto harus bilangan bulat")
+    .min(1, "Jumlah foto ≥ 1")
+    .max(50),
+  print_count: z
+    .number({ error: "Jumlah cetak harus berupa angka" })
+    .int("Jumlah cetak harus bilangan bulat")
+    .min(0, "Jumlah cetak ≥ 0")
+    .max(50),
   digital_output: z.boolean().optional().default(false),
   capture_mode: z.enum(["single", "burst", "photostrip"]).optional().default("single"),
   description: z.string().trim().max(500).optional(),

@@ -7,6 +7,7 @@ import "server-only";
 import { ApiError } from "@/lib/api-errors";
 import { requireUser, type AppUser } from "@/lib/tenant";
 import { insertAudit } from "@/server/audit";
+import { scopeCanBeAdmin } from "@/lib/session-scope";
 
 export function adminEmails(): string[] {
   return (process.env.ADMIN_EMAILS ?? "")
@@ -25,9 +26,11 @@ export function isAdminEmail(email: string | null | undefined): boolean {
  * Dipakai routing pasca-login dan proxy agar keduanya identik.
  */
 export function isAdminUser(
-  user: { role?: string | null; email?: string | null } | null | undefined
+  user: { role?: string | null; email?: string | null; scope?: string | null } | null | undefined
 ): boolean {
   if (!user) return false;
+  // Sesi PIN staff tidak pernah menjadi admin, walau akunnya punya role admin.
+  if (!scopeCanBeAdmin(user.scope === "staff" ? "staff" : undefined)) return false;
   return user.role === "admin" || isAdminEmail(user.email ?? null);
 }
 

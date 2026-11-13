@@ -1,9 +1,9 @@
 # HARDWARE VALIDATION
 
-Status: **NOT VERIFIED** — tidak ada kamera, printer, atau bridge fisik di
-environment ini. Tidak ada klaim PASS.
+Status: **NOT VERIFIED** — tidak ada kamera, printer, atau bridge fisik di environment
+ini. Tidak ada klaim PASS berdasarkan mock atau inspeksi statis.
 
-## Yang diverifikasi lewat kode
+## Yang diverifikasi lewat kode/unit test
 
 | Area | Temuan | Status |
 |---|---|---|
@@ -22,8 +22,7 @@ environment ini. Tidak ada klaim PASS.
 2. Pairing device, izinkan permission kamera.
 3. Masuk setup wizard, pilih kamera, jalankan test capture.
 4. Catat resolusi aktual di `device_status.camera`; pastikan >= 720p.
-5. Cabut kamera saat kiosk berjalan; pastikan layar error muncul, bukan
-   frame hitam.
+5. Cabut kamera saat kiosk berjalan; pastikan layar error muncul, bukan frame hitam.
 6. Colok ulang; pastikan kiosk pulih tanpa reload.
 
 ### Printer CUPS
@@ -35,14 +34,12 @@ environment ini. Tidak ada klaim PASS.
 5. Nyalakan printer, retry; pastikan tidak ada cetak ganda.
 6. Cabut kabel USB; pastikan kiosk menampilkan panduan, bukan spinner abadi.
 
-### Bridge
+### Alur penuh
 
-1. Jalankan `npm run bridge:local` di mesin booth.
-2. Pastikan kiosk dapat memanggil `http://127.0.0.1:17777`.
-3. Putuskan bridge; pastikan kiosk fallback ke pesan error yang jelas.
-4. Nyalakan ulang bridge; pastikan kiosk pulih.
+Payment → Capture → Editing → Print → Result. Ulangi retry print minimal sekali dan
+pastikan `print_count`/entitlement tidak berubah ganda.
 
 ## Kesimpulan
 
-Validasi hardware **belum selesai**. Status production readiness tidak boleh
-READY sampai prosedur di atas dijalankan di booth fisik.
+Validasi hardware **belum selesai**. Status production readiness tidak boleh READY
+sampai prosedur di atas dijalankan di minimal satu booth fisik.
