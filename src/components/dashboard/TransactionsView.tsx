@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { ChevronLeft, ChevronRight, Receipt, Wallet } from "lucide-react";
+import Link from "next/link";
+import { ChevronLeft, ChevronRight, ExternalLink, Receipt, Wallet } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -33,6 +34,8 @@ type Props = {
   prevHref: string | null;
   nextHref: string | null;
   timeZone?: string;
+  /** Basis URL halaman detail transaksi (owner vs staff). */
+  detailBasePath?: string;
 };
 
 const METHOD_LABEL: Record<string, string> = {
@@ -57,6 +60,7 @@ export function TransactionsView({
   prevHref,
   nextHref,
   timeZone,
+  detailBasePath = "/dashboard/transactions",
 }: Props) {
   const [state, action, pending] = useActionState(createManualTxAction, initial);
   const [outletId, setOutletId] = useState("");
@@ -102,6 +106,9 @@ export function TransactionsView({
             <th scope="col" className="px-4 py-3.5">
               Status
             </th>
+            <th scope="col" className="px-4 py-3.5">
+              Hasil
+            </th>
             <th scope="col" className="hidden px-4 py-3.5 lg:table-cell">
               Sumber
             </th>
@@ -113,7 +120,14 @@ export function TransactionsView({
               key={tx.id}
               className="border-b-2 border-ink/10 transition-colors hover:bg-muted/60"
             >
-              <td className="px-4 py-3.5 font-mono text-xs font-bold">{tx.number}</td>
+              <td className="px-4 py-3.5 font-mono text-xs font-bold">
+                <Link
+                  href={`${detailBasePath}/${tx.id}`}
+                  className="underline decoration-2 underline-offset-2 hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+                >
+                  {tx.number}
+                </Link>
+              </td>
               <td className="hidden px-4 py-3.5 font-mono text-xs md:table-cell">
                 {formatDate(tx.paid_at ?? tx.created_at, timeZone)}
               </td>
@@ -149,6 +163,32 @@ export function TransactionsView({
               </td>
               <td className="px-4 py-3.5">
                 <StatusBadge status={tx.status} />
+              </td>
+              <td className="px-4 py-3.5">
+                {tx.result_token ? (
+                  <div className="flex flex-col items-start gap-1">
+                    <a
+                      href={`/r/${tx.result_token}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 border-2 border-ink bg-accent px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.08em] hover:bg-ink hover:text-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+                    >
+                      Foto
+                      <ExternalLink className="size-3" aria-hidden />
+                    </a>
+                    {tx.days_left !== null && (
+                      <span
+                        className={`font-mono text-[10px] uppercase tracking-[0.06em] ${
+                          tx.days_left === 0 ? "font-bold text-destructive" : "text-muted-foreground"
+                        }`}
+                      >
+                        {tx.days_left === 0 ? "Kedaluwarsa" : `Sisa ${tx.days_left} hari`}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <span className="font-mono text-xs text-muted-foreground">-</span>
+                )}
               </td>
               <td className="hidden px-4 py-3.5 lg:table-cell">
                 {tx.pos_order_id ? (
@@ -200,7 +240,44 @@ export function TransactionsView({
                     : "Dapat ditarik",
               },
               { label: "Sumber", value: tx.pos_order_id ? "POS" : "Kiosk" },
+              {
+                label: "Hasil",
+                value: tx.result_token ? (
+                  <span className="flex flex-col gap-0.5">
+                    <a
+                      href={`/r/${tx.result_token}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline decoration-2 underline-offset-2 hover:bg-accent"
+                    >
+                      Buka foto
+                    </a>
+                    {tx.days_left !== null && (
+                      <span
+                        className={
+                          tx.days_left === 0
+                            ? "font-bold text-destructive"
+                            : "text-muted-foreground"
+                        }
+                      >
+                        {tx.days_left === 0 ? "Kedaluwarsa" : `Sisa ${tx.days_left} hari`}
+                      </span>
+                    )}
+                  </span>
+                ) : (
+                  "-"
+                ),
+              },
             ]}
+            actions={
+              <Link
+                href={`${detailBasePath}/${tx.id}`}
+                className="inline-flex min-h-9 items-center gap-1 border-2 border-ink bg-surface px-2 py-1 font-mono text-[11px] font-bold uppercase tracking-[0.08em] hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+              >
+                Detail
+                <ExternalLink className="size-3" aria-hidden />
+              </Link>
+            }
           />
         </li>
       ))}

@@ -438,10 +438,11 @@ hanya bisa diuji di lokasi, dan halaman yang mencoba melakukannya sudah dihapus.
 **Yang tetap di dashboard** (form ubah booth):
 
 - `name`, `slug`, `outlet_id`, `status`, `payment_mode`
+- `exit_pin` (write-only, 4–8 digit; di-hash argon2id di server — form tidak pernah menampilkan PIN lama)
 - `print_settings.copies` (biaya bahan) dan `print_settings.layout` (bentuk output pelanggan)
 
 **Yang ditolak dari sesi pengguna** (`src/lib/photobox-form-fields.ts`): seluruh field kamera,
-printer fisik, sesi, dan `exit_pin`. Bila dikirim lewat form, action mengembalikan error yang
+printer fisik, dan sesi. Bila dikirim lewat form, action mengembalikan error yang
 menyebut field mana, bukan membuangnya diam-diam. Jalur sah satu-satunya adalah device token
 (`PATCH /api/v1/public/devices/settings`).
 

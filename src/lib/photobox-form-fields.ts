@@ -1,10 +1,10 @@
 /**
  * Field photobox: mana yang boleh datang dari form dashboard.
  *
- * Form dashboard hanya menyimpan identitas dan kebijakan bisnis. Setelan mesin
- * (kamera, printer, sesi) ditulis aplikasi booth lewat device token; `exit_pin`
- * tetap milik cloud tapi tidak punya editor di dashboard lagi. Semuanya ditolak
- * bila dikirim dari sesi pengguna, bukan dibuang diam-diam.
+ * Form dashboard hanya menyimpan identitas, kebijakan bisnis, dan PIN keluar
+ * kiosk (write-only, di-hash server). Setelan mesin (kamera, printer, sesi)
+ * ditulis aplikasi booth lewat device token; field mesin tetap ditolak bila
+ * dikirim dari sesi pengguna, bukan dibuang diam-diam.
  */
 
 /** Satu-satunya field yang boleh datang dari form dashboard. */
@@ -46,7 +46,6 @@ export const DASHBOARD_FORBIDDEN_PHOTOBOX_FIELDS = [
   "margins_mm",
   "bluetooth_paper_width_mm",
   "bluetooth_device_name",
-  "exit_pin",
 ] as const;
 
 const FORBIDDEN = new Set<string>(DASHBOARD_FORBIDDEN_PHOTOBOX_FIELDS);

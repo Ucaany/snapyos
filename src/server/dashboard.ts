@@ -397,9 +397,6 @@ export async function getDashboardAlerts(
     failedPayments,
     storage,
     subscriptionDaysLeft,
-    boothsWithoutDefaultTemplate: dependencies.boothHealth.items.filter(
-      (booth) => booth.status !== "maintenance" && booth.needsDefaultTemplate
-    ).length,
   });
 }
 

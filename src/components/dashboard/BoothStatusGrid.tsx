@@ -70,13 +70,8 @@ export function BoothStatusGrid({ items }: { items: BoothHealthItem[] }) {
               <dt className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
                 Template default
               </dt>
-              <dd
-                className={cn(
-                  "font-mono text-[11px] font-bold leading-tight",
-                  booth.needsDefaultTemplate && "text-destructive"
-                )}
-              >
-                {booth.needsDefaultTemplate ? "BELUM DI-SET" : "TERPASANG"}
+              <dd className="font-mono text-[11px] font-bold leading-tight">
+                {booth.needsDefaultTemplate ? "SEMUA TEMPLATE" : "TERPASANG"}
               </dd>
             </div>
           </dl>
@@ -90,7 +85,7 @@ export function BoothStatusGrid({ items }: { items: BoothHealthItem[] }) {
           {booth.needsDefaultTemplate && (
             <p className="flex items-center gap-1.5 border-2 border-ink/25 bg-muted px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
               <CircleAlert className="size-3.5 shrink-0" aria-hidden />
-              Ikut template paket
+              Tamu pilih dari template paket
             </p>
           )}
         </li>

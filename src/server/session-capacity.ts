@@ -11,23 +11,30 @@ import "server-only";
 
 import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
-import { OFFLINE_FINALIZE_GRACE_MS } from "@/lib/session-timer";
 import { requirePlanLimits } from "@/server/plan-limits";
 import { countOnlineDevices } from "@/server/device-online";
+
+/**
+ * Grace self-heal booth — sengaja jauh lebih pendek dari grace finalize offline
+ * (`OFFLINE_FINALIZE_GRACE_MS`, 10 menit). Sesi yang sudah lewat `expires_at`
+ * tidak boleh mengunci booth belasan menit hanya karena finalize belum jalan;
+ * finalize sendiri tetap punya grace-nya dan partial unique index (db/0004)
+ * tetap penjaga atomik terhadap dua sesi aktif.
+ */
+const SESSION_SELF_HEAL_GRACE_MS = 60_000;
 
 export async function assertSessionCapacity(businessId: string, photoboxId: string) {
   const supabase = createServerClient();
   const now = new Date().toISOString();
 
-  // Self-heal booth: expire sesi aktif yang lewat expires_at + grace (kiosk
-  // crash/abandon). Tanpa ini, partial unique index 1 sesi aktif/photobox
+  // Self-heal booth: expire sesi aktif yang lewat expires_at + grace pendek
+  // (kiosk crash/abandon). Tanpa ini, partial unique index 1 sesi aktif/photobox
   // (db/0004) mengunci booth sampai cron retention harian — booth tidak bisa
   // dipakai berjam-jam padahal tidak ada sesi sungguhan berjalan ("sesi lain
   // masih berjalan" padahal hanya 1/zombie). Cron retention lakukan hal sama
   // tapi hanya harian; di sini dijalankan tiap attempt sesi/checkout agar booth
-  // cepat bebas. Threshold = grace finalize offline → lindungi in-flight
-  // finalize kiosk yang baru saja kehilangan koneksi (foto belum disinkronkan).
-  const staleBefore = new Date(Date.now() - OFFLINE_FINALIZE_GRACE_MS).toISOString();
+  // cepat bebas. Grace pendek melindungi finalize yang baru saja mulai.
+  const staleBefore = new Date(Date.now() - SESSION_SELF_HEAL_GRACE_MS).toISOString();
   await supabase
     .from("sessions")
     .update({ status: "expired", finalized_at: now })

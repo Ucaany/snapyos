@@ -98,6 +98,8 @@ function photoboxInput(formData: FormData) {
     outlet_id: formValue("outlet_id"),
     status: (str(formData, "status") || "offline") as "online" | "offline" | "maintenance",
     payment_mode: (str(formData, "payment_mode") || null) as "gateway" | "voucher" | null,
+    // PIN keluar kiosk (write-only). Kosong = tidak diubah saat edit.
+    exit_pin: str(formData, "exit_pin") || undefined,
     // Hanya dua field cetak milik cloud. Sisanya (printer_name, paper_size,
     // margins_mm, mode) dilaporkan aplikasi booth lewat device token.
     print_settings: {

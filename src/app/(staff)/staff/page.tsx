@@ -266,7 +266,8 @@ export default async function StaffDashboardPage() {
                 <span className="text-accent">OFFLINE</span> dan minta owner restart bila mati.
               </p>
               <p className="mt-2 font-mono text-[11px] uppercase leading-relaxed tracking-[0.06em] text-bg/70">
-                Tidak ada akses finansial di shell ini. Transaksi dan settlement ditangani owner.
+                Transaksi booth Anda bisa dilacak read-only di menu Transaksi. Settlement tetap
+                ditangani owner.
               </p>
             </div>
           </StaffPanel>
@@ -274,7 +275,7 @@ export default async function StaffDashboardPage() {
       </div>
 
       <StaffPanel aria-label="Indeks modul operasional">
-        <StaffPanelHeader label="INDEKS.MODUL" meta="4 MODUL READ-ONLY" />
+        <StaffPanelHeader label="INDEKS.MODUL" meta="5 MODUL READ-ONLY" />
         <div className="p-4 sm:p-5">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <ResourceCard

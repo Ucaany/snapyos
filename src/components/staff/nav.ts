@@ -1,4 +1,4 @@
-import { Camera, Gauge, ImageIcon, Package, Store } from "lucide-react";
+import { Camera, Gauge, ImageIcon, Package, Receipt, Store } from "lucide-react";
 
 /**
  * Nav shell staff (read-only, docs/04 §4.13). Label Bahasa Indonesia agar
@@ -17,4 +17,5 @@ export const STAFF_NAV: StaffNavItem[] = [
   { label: "Outlet", href: "/staff/outlets", icon: Store },
   { label: "Paket", href: "/staff/packages", icon: Package },
   { label: "Template", href: "/staff/templates", icon: ImageIcon },
+  { label: "Transaksi", href: "/staff/transactions", icon: Receipt },
 ];

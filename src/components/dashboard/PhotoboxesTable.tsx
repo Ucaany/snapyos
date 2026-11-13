@@ -211,10 +211,7 @@ export function PhotoboxesTable({
   return (
     <div className="flex flex-col gap-6">
       {canWrite && noPinBooths.length > 0 && (
-        <aside
-          role="alert"
-          className="border-2 border-ink bg-accent p-4 shadow-hard"
-        >
+        <aside role="alert" className="border-2 border-ink bg-accent p-4 shadow-hard">
           <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em]">
             {"PERINGATAN KEAMANAN · " + noPinBooths.length + " BOOTH TANPA PIN"}
           </p>
@@ -222,8 +219,8 @@ export function PhotoboxesTable({
             Booth ini keluar kiosk tanpa PIN
           </p>
           <p className="mt-1 max-w-[70ch] text-sm leading-relaxed text-ink">
-            Tanpa PIN, siapa pun bisa keluar dari mode kiosk dan mengakses perangkat booth. PIN
-            keluar tidak lagi diubah dari dashboard.
+            Tanpa PIN, siapa pun bisa keluar dari mode kiosk dan mengakses perangkat booth. Atur PIN
+            lewat tombol Ubah pada booth.
           </p>
           <ul className="mt-3 flex flex-wrap gap-2 font-mono text-[11px] uppercase tracking-[0.06em]">
             {noPinBooths.map((b) => (

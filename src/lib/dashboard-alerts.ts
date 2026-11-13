@@ -16,8 +16,7 @@ export type DashboardAlert = {
     | "booth_offline"
     | "payment_failed"
     | "storage_high"
-    | "subscription_expiring"
-    | "booth_no_template";
+    | "subscription_expiring";
   tone: DashboardAlertTone;
   title: string;
   detail: string;
@@ -34,8 +33,6 @@ export type DashboardAlertInput = {
   storage: { percent: number; usedMb: number; limitMb: number } | null;
   /** Sisa hari langganan efektif; null = tidak ada langganan/tanggal. */
   subscriptionDaysLeft: number | null;
-  /** Booth aktif tanpa default_template_id. */
-  boothsWithoutDefaultTemplate: number;
 };
 
 const TONE_ORDER: Record<DashboardAlertTone, number> = { danger: 0, warning: 1, info: 2 };
@@ -95,17 +92,6 @@ export function buildDashboardAlerts(input: DashboardAlertInput): DashboardAlert
         : `Sisa ${input.subscriptionDaysLeft} hari. Perpanjang sebelum kiosk berhenti melayani.`,
       href: "/dashboard/subscription",
       count: Math.max(0, input.subscriptionDaysLeft),
-    });
-  }
-
-  if (input.boothsWithoutDefaultTemplate > 0) {
-    alerts.push({
-      key: "booth_no_template",
-      tone: "info",
-      title: "Booth tanpa template default",
-      detail: `${input.boothsWithoutDefaultTemplate} booth belum punya template default; frame mengikuti template paket. Set default per booth agar hasil konsisten.`,
-      href: "/dashboard/photoboxes",
-      count: input.boothsWithoutDefaultTemplate,
     });
   }
 

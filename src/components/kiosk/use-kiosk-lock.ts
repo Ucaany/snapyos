@@ -69,6 +69,11 @@ export function useKioskLock(
   // Guard: requestFullscreen masih menunggu jawaban → fullscreenchange yang
   // datang di tengah jalan bukan berarti petugas keluar kiosk.
   const requestingRef = useRef(false);
+  // Fullscreen pernah benar-benar aktif. Overlay re-engage hanya untuk
+  // kehilangan fullscreen yang nyata; bila request pertama ditolak (iframe,
+  // kebijakan browser, tanpa gesture) jangan kunci layar — retry diam-diam
+  // pada gestur berikutnya (onPointerDown).
+  const hadFullscreenRef = useRef(false);
 
   const requestFullscreen = useCallback(() => {
     if (unlockedRef.current) return;
@@ -87,12 +92,14 @@ export function useKioskLock(
       el.requestFullscreen().then(
         () => {
           requestingRef.current = false;
+          hadFullscreenRef.current = true;
           setReengage(false);
         },
         () => {
           requestingRef.current = false;
-          // Tanpa user gesture — tunggu interaksi pertama untuk retry.
-          setReengage(true);
+          // Tanpa user gesture / ditolak browser — jangan kunci layar; gestur
+          // berikutnya mencoba lagi (lihat onPointerDown).
+          setReengage(hadFullscreenRef.current);
         }
       );
     }
@@ -133,6 +140,7 @@ export function useKioskLock(
   const relock = useCallback(() => {
     clearHold();
     unlockedRef.current = false;
+    hadFullscreenRef.current = false;
     clearUnlocked();
     setReengage(false);
     setLockEpoch((n) => n + 1);
@@ -197,8 +205,10 @@ export function useKioskLock(
 
     const onFullscreenChange = () => {
       if (unlockedRef.current || requestingRef.current) return;
-      // Keluar fullscreen (di luar jalur unlock) → tandai re-engage.
-      setReengage(!document.fullscreenElement);
+      if (document.fullscreenElement) hadFullscreenRef.current = true;
+      // Keluar fullscreen (di luar jalur unlock) → tandai re-engage hanya bila
+      // fullscreen memang pernah aktif; kegagalan awal bukan "terkunci".
+      setReengage(!document.fullscreenElement && hadFullscreenRef.current);
     };
 
     const onVisibilityChange = () => {

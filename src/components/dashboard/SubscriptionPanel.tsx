@@ -69,6 +69,20 @@ function fmtDate(iso: string | null): string {
   });
 }
 
+/** Sisa hari sampai tanggal berakhir; null bila tanggal tidak valid. */
+function daysLeft(iso: string | null): number | null {
+  if (!iso) return null;
+  const ms = Date.parse(iso);
+  if (!Number.isFinite(ms)) return null;
+  return Math.max(0, Math.ceil((ms - Date.now()) / (24 * 60 * 60 * 1000)));
+}
+
+function daysLeftLabel(iso: string | null): string {
+  const days = daysLeft(iso);
+  if (days === null) return "";
+  return days === 0 ? " · kedaluwarsa" : ` · sisa ${days} hari`;
+}
+
 const INVOICE_STATUS_LABEL: Record<string, string> = {
   pending: "Menunggu",
   paid: "Lunas",
@@ -314,10 +328,10 @@ export function SubscriptionPanel({
             <CardDescription>
               {subscription
                 ? subscription.status === "trial"
-                  ? `Trial sampai ${fmtDate(subscription.trialEndsAt)}`
+                  ? `Trial sampai ${fmtDate(subscription.trialEndsAt)}${daysLeftLabel(subscription.trialEndsAt)}`
                   : subscription.status === "expired"
                     ? "Langganan kedaluwarsa: aktifkan kembali untuk memulihkan akses."
-                    : `Periode berakhir ${fmtDate(subscription.currentPeriodEnd)}`
+                    : `Periode berakhir ${fmtDate(subscription.currentPeriodEnd)}${daysLeftLabel(subscription.currentPeriodEnd)}`
                 : "Business ini belum punya subscription aktif."}
             </CardDescription>
           </CardHeader>

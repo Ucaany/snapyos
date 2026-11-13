@@ -655,7 +655,9 @@ export function KioskApp({
       // satu per satu) dari capture mentah. Template legacy tanpa slot → kirim
       // set kosong; server/runtime jatuh ke `bodies` (foto final berframe) untuk
       // menghasilkan kedua GIF, jadi tidak ada render GIF sia-sia di kiosk.
-      const hasSlots = Boolean(selectedTemplate?.layout && selectedTemplate.layout.slots.length > 0);
+      const hasSlots = Boolean(
+        selectedTemplate?.layout && selectedTemplate.layout.slots.length > 0
+      );
       const gifSource = hasSlots
         ? await resolveGifProcessFrames(
             photos.map((p) => p.blob),
@@ -1239,10 +1241,10 @@ export function KioskApp({
         <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center gap-5 border-4 border-ink bg-bg p-6 text-center">
           <Maximize2 className="size-10" aria-hidden />
           <h2 className="font-display text-2xl uppercase leading-none tracking-[-0.02em] md:text-3xl">
-            Mode kiosk terkunci
+            Kembali ke mode kiosk
           </h2>
           <p className="max-w-[46ch] text-sm leading-relaxed text-muted-foreground">
-            Layar kembali ke mode penuh untuk melanjutkan sesi.
+            Layar penuh terlepas. Ketuk tombol di bawah untuk melanjutkan sesi.
           </p>
           <button
             type="button"

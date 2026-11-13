@@ -847,6 +847,24 @@ export function DesignBuilder({
     setPageField(page, "elements", undefined);
   };
 
+  /**
+   * Unggah logo = niat menampilkannya. Dua gate bisa membuat logo "tidak
+   * muncul" walau unggahan sukses: `kiosk.show_logo` dan elemen `logo` yang
+   * disembunyikan per layar. Nyalakan keduanya untuk layar sambutan, dengan
+   * basis elemen efektif agar urutan/konfigurasi global tidak hilang.
+   */
+  const revealWelcomeLogo = () => {
+    setKiosk("show_logo", true);
+    const merged =
+      scope === "booth" ? mergeBranding(baselineGlobal, draft) : mergeBranding({}, draft);
+    const current = merged.kiosk?.pages?.welcome?.elements ?? {};
+    const logo = current.logo ?? {};
+    setPageField("welcome", "elements", {
+      ...current,
+      logo: { ...logo, visible: true },
+    });
+  };
+
   const applyScope = (next: "global" | "booth") => {
     setScope(next);
     setSaveState({});
@@ -993,6 +1011,7 @@ export function DesignBuilder({
 
       if (kind === "logo") {
         setTop("logo_key", assetKey);
+        revealWelcomeLogo();
         if (scope === "booth") {
           setBoothOverrides((current) => ({
             ...current,
@@ -1243,6 +1262,24 @@ export function DesignBuilder({
                       onFile={(file) => uploadAsset("logo", file)}
                       onRemove={logoKey ? () => setTop("logo_key", null) : undefined}
                     />
+                    {effective.logo_url &&
+                    (effective.kiosk?.show_logo === false ||
+                      effective.kiosk?.pages?.welcome?.elements?.logo?.visible === false) ? (
+                      <div
+                        role="status"
+                        className="mt-3 flex flex-wrap items-center gap-2 border-2 border-ink bg-accent px-3 py-2 font-mono text-[10px] uppercase tracking-[0.06em] text-ink"
+                      >
+                        <span>Logo tersimpan, tetapi disembunyikan oleh setelan tampilan.</span>
+                        <button
+                          type="button"
+                          onClick={revealWelcomeLogo}
+                          disabled={!canWrite}
+                          className="min-h-9 border-2 border-ink bg-surface px-2 font-mono text-[10px] font-bold uppercase tracking-[0.06em] shadow-hard-sm transition-transform active:translate-y-[1px] disabled:opacity-50"
+                        >
+                          Tampilkan logo
+                        </button>
+                      </div>
+                    ) : null}
                   </div>
                 </fieldset>
 

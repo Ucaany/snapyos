@@ -184,6 +184,38 @@ export function PhotoboxForm({ outlets, photobox, onDone }: Props) {
               <option value="maintenance">MAINTENANCE</option>
             </Select>
           </div>
+
+          <div className="flex flex-col gap-2">
+            <label
+              htmlFor={`pb-exit-pin-${uid}`}
+              className="font-mono text-xs uppercase tracking-[0.1em]"
+            >
+              PIN keluar kiosk {isEdit ? "(kosongkan bila tidak diubah)" : "(opsional)"}
+            </label>
+            <Input
+              id={`pb-exit-pin-${uid}`}
+              name="exit_pin"
+              type="password"
+              inputMode="numeric"
+              autoComplete="new-password"
+              pattern="[0-9]{4,8}"
+              minLength={4}
+              maxLength={8}
+              placeholder="4–8 digit angka"
+              disabled={pending}
+              aria-invalid={Boolean(fieldError(state, "exit_pin"))}
+            />
+            {fieldError(state, "exit_pin") ? (
+              <p role="alert" className="font-mono text-xs text-destructive">
+                {fieldError(state, "exit_pin")}
+              </p>
+            ) : (
+              <p className="font-mono text-xs text-muted-foreground">
+                Dipakai petugas untuk keluar kiosk dan membuka setelan booth. Tidak pernah
+                ditampilkan lagi setelah disimpan.
+              </p>
+            )}
+          </div>
         </fieldset>
 
         <fieldset className="grid grid-cols-1 gap-4 border-2 border-ink p-4 md:col-span-2 md:grid-cols-2">

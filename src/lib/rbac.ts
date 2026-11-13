@@ -18,6 +18,7 @@ export type Permission =
   | "photobox:read"
   | "photobox:write"
   | "transaction:read"
+  | "transaction:track"
   | "transaction:write"
   | "transaction:manual-create"
   | "payment:confirm"
@@ -52,6 +53,7 @@ export const PERMISSIONS: Record<BusinessRole, readonly string[]> = {
     "photobox:read",
     "photobox:write",
     "transaction:read",
+    "transaction:track",
     "transaction:write",
     // Konfirmasi pembayaran tunai kiosk (bayar di kasir) — operasional kasir.
     "payment:confirm",
@@ -79,6 +81,8 @@ export const PERMISSIONS: Record<BusinessRole, readonly string[]> = {
     "photobox:read",
     "package:read",
     "template:read",
+    // Tracking transaksi read-only, dibatasi booth yang di-assign (bukan finansial penuh).
+    "transaction:track",
     // POS add-on — kasir (docs/pos/01 §6 A6).
     "pos:sell",
     "pos:read",
