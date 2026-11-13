@@ -16,6 +16,7 @@ import {
   type AdminSubscriptionUpdateInput,
 } from "@/lib/validators";
 import { decideAttach, planCancelAddOn } from "@/lib/admin-addon-ops";
+import { addOnQuantityAllowed, nextPeriod } from "@/lib/subscription-math";
 import { requireAdmin, audit } from "./guard";
 
 // ---------------------------------------------------------------------------
@@ -225,6 +226,14 @@ export async function updateSubscription(
   if (parsed.extend_days) {
     patch.current_period_end = extendIsoDays(current.current_period_end, parsed.extend_days);
   }
+  // A-014: status `active` tanpa periode valid membuat fitur tetap terkunci
+  // walau admin sudah mengaktifkan. Pastikan periode berakhir di masa depan.
+  if (parsed.status === "active") {
+    const periodEnd = (patch.current_period_end as string | undefined) ?? current.current_period_end;
+    if (!periodEnd || new Date(periodEnd).getTime() <= Date.now()) {
+      patch.current_period_end = nextPeriod(new Date()).end.toISOString();
+    }
+  }
   if (Object.keys(patch).length === 0) {
     throw new ApiError("VALIDATION_ERROR", "Minimal satu aksi diisi");
   }
@@ -261,6 +270,18 @@ export async function attachSubscriptionAddOn(input: {
     .eq("id", parsed.subscription_id)
     .maybeSingle();
   if (!sub) throw new ApiError("NOT_FOUND", "Subscription tidak ditemukan");
+
+  // A-015: add-on ber-unit `feature` adalah entitlement biner. Quantity > 1
+  // menagih berkali-kali tanpa menambah hak.
+  const { data: addOn } = await supabase
+    .from("add_ons")
+    .select("unit")
+    .eq("id", parsed.add_on_id)
+    .maybeSingle();
+  if (!addOn) throw new ApiError("NOT_FOUND", "Add-on tidak ditemukan");
+  if (!addOnQuantityAllowed((addOn as { unit: string | null }).unit, parsed.quantity)) {
+    throw new ApiError("VALIDATION_ERROR", "Add-on fitur tidak dapat berjumlah lebih dari 1");
+  }
 
   // Upsert polos tidak mengembalikan row cancelled (status tetap) → cek existing
   // dulu, lalu reaktivasi bila status='cancelled' (fix inkon sistem admin/owner).
@@ -342,6 +363,23 @@ export async function updateSubscriptionAddOn(
   const admin = await requireAdmin();
   const parsed = adminSubscriptionAddOnUpdateSchema.parse(input);
   const supabase = createServerClient();
+
+  // A-015: validasi unit sebelum menulis quantity.
+  const { data: link } = await supabase
+    .from("subscription_add_ons")
+    .select("add_on_id")
+    .eq("id", linkId)
+    .maybeSingle();
+  const linkRow = (link ?? null) as unknown as { add_on_id: string } | null;
+  if (!linkRow) throw new ApiError("NOT_FOUND", "Add-on tidak ditemukan");
+  const { data: addOnRow } = await supabase
+    .from("add_ons")
+    .select("unit")
+    .eq("id", linkRow.add_on_id)
+    .maybeSingle();
+  if (!addOnQuantityAllowed((addOnRow as { unit: string | null } | null)?.unit, parsed.quantity)) {
+    throw new ApiError("VALIDATION_ERROR", "Add-on fitur tidak dapat berjumlah lebih dari 1");
+  }
 
   const { data, error } = await supabase
     .from("subscription_add_ons")

@@ -3,10 +3,12 @@ import { PageShell } from "@/components/layout/PageShell";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { FeatureLockedPanel } from "@/components/dashboard/FeatureLockedPanel";
 import { StaffPanel } from "@/components/dashboard/StaffPanel";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
-import { getActiveBusiness, requireUser } from "@/lib/tenant";
+import { getActiveBusinessForRoles, requireUser } from "@/lib/tenant";
+import { hasFeature } from "@/server/feature-gate";
 import { listStaffDirectory } from "@/server/staff";
 import { listPhotoboxes } from "@/server/photoboxes";
 import { getPlanLimits } from "@/server/plan-limits";
@@ -20,7 +22,7 @@ export default async function StaffPage() {
   const user = await requireUser();
   if (!user) redirect("/login");
 
-  const active = await getActiveBusiness(user.id);
+  const active = await getActiveBusinessForRoles(user.id, ["owner", "manager"]);
   if (!active) redirect("/dashboard");
 
   if (active.role !== "owner") {
@@ -36,6 +38,12 @@ export default async function StaffPage() {
         </Card>
       </div>
     );
+  }
+
+  // Gate plan: halaman staff tidak boleh terbuka hanya karena role owner
+  // (O-015). Server action invite sudah di-gate; UI harus konsisten.
+  if (!(await hasFeature(active.business.id, "staff"))) {
+    return <FeatureLockedPanel />;
   }
 
   const photoboxes = await listPhotoboxes(user.id, active.business.id);

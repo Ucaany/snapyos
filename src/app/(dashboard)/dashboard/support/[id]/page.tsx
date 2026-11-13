@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { SupportTicketDetail } from "@/components/dashboard/SupportTicketDetail";
 import { PageHeader } from "@/components/ui/page-header";
-import { getActiveBusiness, requireUser } from "@/lib/tenant";
+import { getActiveBusinessForRoles, requireUser } from "@/lib/tenant";
 import { getSupportTicket } from "@/server/support-tickets";
 
 export const metadata: Metadata = {
@@ -17,7 +17,7 @@ export default async function SupportTicketPage({ params }: { params: Promise<{ 
   const user = await requireUser();
   if (!user) redirect("/login");
 
-  const active = await getActiveBusiness(user.id);
+  const active = await getActiveBusinessForRoles(user.id, ["owner", "manager"]);
   if (!active) redirect("/dashboard");
 
   const { id } = await params;

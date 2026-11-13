@@ -11,6 +11,7 @@ import { can } from "@/lib/rbac";
 import { getMembership, getUserMemberships, type Membership } from "@/lib/tenant";
 import { isValidSlug, slugify } from "@/lib/slug";
 import { isSubscriptionEffective, nextPeriod } from "@/lib/subscription-math";
+import { requirePlanLimits } from "@/server/plan-limits";
 import { brandingCacheTag } from "@/server/branding";
 import { invalidatePublicConfig } from "@/server/public-config";
 import { sendWelcomeEmail } from "@/server/lifecycle-email";
@@ -101,6 +102,25 @@ export async function createBusiness(userId: string, input: BusinessCreateInput)
 
   const supabase = createServerClient();
 
+  // AUTH-05: idempotensi double-submit. Owner tidak boleh punya dua business
+  // dengan nama identik; request kedua mengembalikan yang sudah ada.
+  const { data: existingSameName } = await supabase
+    .from("businesses")
+    .select("id, slug, name, status, timezone, currency")
+    .eq("owner_id", userId)
+    .eq("name", parsed.name)
+    .maybeSingle();
+  if (existingSameName) {
+    return existingSameName as {
+      id: string;
+      slug: string;
+      name: string;
+      status: string;
+      timezone: string;
+      currency: string;
+    };
+  }
+
   // Plan limit: max_businesses (docs/02 §2.3) — starter = 1 workspace.
   // Subscription aktif terbaru (trial/active/past_due) menentukan limit owner —
   // owner paid juga dibatasi (bukan hanya trial) — H3 audit.
@@ -168,6 +188,24 @@ export async function createBusiness(userId: string, input: BusinessCreateInput)
       break;
     }
     if (error.code !== "23505") throw new ApiError("INTERNAL", "Gagal membuat business");
+    // Race double-submit: request konkuren sudah membuat business dengan nama
+    // yang sama → kembalikan baris itu, jangan buat slug baru.
+    const { data: raced } = await supabase
+      .from("businesses")
+      .select("id, slug, name, status, timezone, currency")
+      .eq("owner_id", userId)
+      .eq("name", parsed.name)
+      .maybeSingle();
+    if (raced) {
+      return raced as {
+        id: string;
+        slug: string;
+        name: string;
+        status: string;
+        timezone: string;
+        currency: string;
+      };
+    }
     if (attempt >= 3) {
       throw new ApiError("VALIDATION_ERROR", "Nama terlalu umum, coba nama lain");
     }
@@ -278,6 +316,8 @@ export async function updateBusiness(
   if (!can(membership.role, "business:update")) {
     throw new ApiError("FORBIDDEN", "Anda tidak punya izin mengubah business ini");
   }
+  // O-018: subscription expired tidak boleh mengubah profil/settings.
+  await requirePlanLimits(businessId);
 
   const supabase = createServerClient();
   const { data, error } = await supabase
@@ -363,6 +403,8 @@ export async function updateSettings(
   if (!can(membership.role, "business:update")) {
     throw new ApiError("FORBIDDEN", "Anda tidak punya izin mengubah settings ini");
   }
+  // O-018: settings juga terkunci saat subscription tidak efektif.
+  await requirePlanLimits(businessId);
 
   const supabase = createServerClient();
 

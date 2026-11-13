@@ -1,20 +1,26 @@
 import Link from "next/link";
 import { LogOut } from "lucide-react";
 
+import { WorkspaceSwitcher } from "@/components/dashboard/WorkspaceSwitcher";
 import { logoutAction } from "@/server/auth-actions";
 
 /**
- * Topbar shell /staff, lebih ramping dari owner: tanpa workspace switcher
- * (staff hanya perlu akses cepat ke operasional). Badge peran "STAFF"
- * dicetak permanen agar staff tidak bingung dengan shell owner. Tinggi
- * dipatok `h-16` dan tanpa wrap supaya offset sticky sidebar deterministik.
+ * Topbar shell /staff, lebih ramping dari owner. Workspace switcher tetap ada
+ * agar staff yang menjadi member beberapa business bisa berpindah (S-002).
+ * Badge peran "STAFF" dicetak permanen agar staff tidak bingung dengan shell
+ * owner. Tinggi dipatok `h-16` dan tanpa wrap supaya offset sticky sidebar
+ * deterministik.
  */
 export function StaffTopbar({
   user,
   businessName,
+  businesses,
+  activeId,
 }: {
   user: { name: string | null | undefined; email: string | null | undefined };
   businessName: string | null | undefined;
+  businesses: { id: string; name: string }[];
+  activeId: string | null;
 }) {
   return (
     <header className="sticky top-0 z-30 border-b-2 border-ink bg-bg">
@@ -30,7 +36,10 @@ export function StaffTopbar({
             STAFF
           </span>
         </Link>
-        <p className="hidden min-w-0 max-w-[28ch] truncate border-2 border-ink bg-surface px-2 py-1 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground md:block">
+        <div className="hidden min-w-0 md:block">
+          <WorkspaceSwitcher businesses={businesses} activeId={activeId} />
+        </div>
+        <p className="hidden min-w-0 max-w-[28ch] truncate border-2 border-ink bg-surface px-2 py-1 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground lg:block">
           <span className="text-ink">BISNIS</span> {businessName ?? "Tanpa bisnis"}
         </p>
         <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">

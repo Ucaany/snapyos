@@ -21,6 +21,7 @@ import {
 } from "@/lib/validators";
 import { hashDevicePin } from "@/lib/device-token";
 import { requireFeature } from "@/server/feature-gate";
+import { insertAudit } from "@/server/audit";
 
 async function requireOwner(userId: string, businessId: string) {
   const membership = await getMembership(userId, businessId);
@@ -249,6 +250,13 @@ export async function inviteStaff(userId: string, businessId: string, input: Sta
   }
   const inserted = data as { id: string } | null;
   if (!inserted) throw new ApiError("INTERNAL", "Gagal menambahkan staff");
+  await insertAudit({
+    actorId: userId,
+    businessId,
+    action: "staff.invite",
+    target: inserted.id,
+    meta: { user_id: target.id, role: parsed.role },
+  });
   return { id: inserted.id, userId: target.id, email: target.email, role: parsed.role };
 }
 
@@ -291,6 +299,16 @@ export async function updateStaffRole(
     .maybeSingle();
   if (error) throw new ApiError("INTERNAL", "Gagal mengubah role");
   if (!data) throw new ApiError("NOT_FOUND", "Member tidak ditemukan");
+  // Privilege berubah → paksa login ulang agar token lama tidak membawa
+  // permission lama (AUTH-02/AUTH-06).
+  await supabase.from("auth_sessions").delete().eq("user_id", targetUserId);
+  await insertAudit({
+    actorId: userId,
+    businessId,
+    action: "staff.role.update",
+    target: targetUserId,
+    meta: { from: memberRole, to: parsed.role },
+  });
   return { userId: targetUserId, role: parsed.role };
 }
 
@@ -315,6 +333,24 @@ export async function removeStaff(userId: string, businessId: string, targetUser
     .eq("business_id", businessId)
     .eq("user_id", targetUserId);
   if (error) throw new ApiError("INTERNAL", "Gagal menghapus member");
+
+  // AUTH-06: bila user tidak lagi menjadi member business mana pun, cabut
+  // seluruh session DB-nya. Session lama tidak boleh tetap hidup setelah
+  // akses dicabut.
+  const { count } = await supabase
+    .from("business_members")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", targetUserId);
+  if ((count ?? 0) === 0) {
+    await supabase.from("auth_sessions").delete().eq("user_id", targetUserId);
+  }
+  await insertAudit({
+    actorId: userId,
+    businessId,
+    action: "staff.remove",
+    target: targetUserId,
+    meta: { role: (member as { role?: string }).role ?? null },
+  });
 }
 
 /** Owner set PIN login staff untuk (member × booth). pin kosong = hapus PIN. */
@@ -366,4 +402,12 @@ export async function setStaffPin(
     .eq("user_id", parsed.user_id)
     .eq("photobox_id", parsed.photobox_id);
   if (error) throw new ApiError("INTERNAL", "Gagal menyimpan PIN");
+  // Jangan pernah mencatat PIN/hash ke audit — hanya fakta set/clear.
+  await insertAudit({
+    actorId: userId,
+    businessId,
+    action: "staff.pin.set",
+    target: parsed.user_id,
+    meta: { photobox_id: parsed.photobox_id, cleared: !pin },
+  });
 }

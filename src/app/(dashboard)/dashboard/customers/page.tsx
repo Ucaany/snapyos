@@ -10,7 +10,7 @@ import { PreserveSearchParams } from "@/components/dashboard/PreserveSearchParam
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { can } from "@/lib/rbac";
-import { getActiveBusiness, requireUser } from "@/lib/tenant";
+import { getActiveBusinessForRoles, requireUser } from "@/lib/tenant";
 import { listCustomers } from "@/server/customers";
 
 export const metadata: Metadata = {
@@ -26,7 +26,7 @@ export default async function CustomersPage({
   const user = await requireUser();
   if (!user) redirect("/login");
 
-  const active = await getActiveBusiness(user.id);
+  const active = await getActiveBusinessForRoles(user.id, ["owner", "manager"]);
   if (!active) redirect("/dashboard");
 
   if (!can(active.role, "customer:read")) {

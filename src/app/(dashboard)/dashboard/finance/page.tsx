@@ -1,4 +1,5 @@
 import { AccessDeniedPanel } from "@/components/dashboard/AccessDeniedPanel";
+import { FeatureLockedPanel } from "@/components/dashboard/FeatureLockedPanel";
 import { PageShell } from "@/components/layout/PageShell";
 
 import type { Metadata } from "next";
@@ -12,7 +13,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { can } from "@/lib/rbac";
 import { formatBp, formatIDR } from "@/lib/dashboard-math";
-import { getActiveBusiness, requireUser } from "@/lib/tenant";
+import { getActiveBusinessForRoles, requireUser } from "@/lib/tenant";
+import { hasFeature } from "@/server/feature-gate";
 import { getFinanceSummary, listExpenses } from "@/server/finance";
 import { listOutlets } from "@/server/outlets";
 
@@ -42,7 +44,7 @@ export default async function FinancePage({
   const user = await requireUser();
   if (!user) redirect("/login");
 
-  const active = await getActiveBusiness(user.id);
+  const active = await getActiveBusinessForRoles(user.id, ["owner", "manager"]);
   if (!active) redirect("/dashboard");
 
   if (!can(active.role, "finance:read")) {
@@ -51,6 +53,10 @@ export default async function FinancePage({
         <AccessDeniedPanel resource="finance" />
       </PageShell>
     );
+  }
+  // Gate plan inline (O-010) — server sudah menolak, UI harus menjelaskan.
+  if (!(await hasFeature(active.business.id, "finance"))) {
+    return <FeatureLockedPanel />;
   }
   const canWrite = can(active.role, "expense:write");
 

@@ -77,7 +77,11 @@ export async function switchWorkspaceAction(formData: FormData): Promise<void> {
   if (!user || !businessId) redirect("/login");
 
   const membership = await getMembership(user.id, businessId);
-  if (!membership || (membership.role !== "owner" && membership.role !== "manager")) {
+  if (!membership) redirect("/dashboard");
+  // Staff juga boleh pindah workspace (S-002). Shell tujuan mengikuti role
+  // pada business yang dipilih.
+  const isStaff = membership.role === "staff";
+  if (!isStaff && membership.role !== "owner" && membership.role !== "manager") {
     redirect("/dashboard");
   }
 
@@ -91,5 +95,6 @@ export async function switchWorkspaceAction(formData: FormData): Promise<void> {
   });
 
   revalidatePath("/dashboard", "layout");
-  redirect("/dashboard");
+  revalidatePath("/staff", "layout");
+  redirect(isStaff ? "/staff" : "/dashboard");
 }

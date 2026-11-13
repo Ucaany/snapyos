@@ -16,7 +16,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { cn } from "@/lib/utils";
 import { can } from "@/lib/rbac";
 import { formatIDR } from "@/lib/dashboard-math";
-import { getActiveBusiness, requireUser } from "@/lib/tenant";
+import { getActiveBusinessForRoles, requireUser } from "@/lib/tenant";
 import { getRevenueSeries } from "@/server/dashboard";
 import { getPaidTxInsights, getRevenueBreakdown } from "@/server/analytics";
 
@@ -43,7 +43,7 @@ export default async function AnalyticsPage({
   const user = await requireUser();
   if (!user) redirect("/login");
 
-  const active = await getActiveBusiness(user.id);
+  const active = await getActiveBusinessForRoles(user.id, ["owner", "manager"]);
   if (!active) redirect("/dashboard");
 
   const financialAccess = can(active.role, "transaction:read");

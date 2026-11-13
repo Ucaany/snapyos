@@ -10,7 +10,11 @@ import { redactSensitive } from "@/lib/error-redaction";
 import { getClientIp } from "@/lib/request-ip";
 import { recordLoginEvent } from "@/server/login-events";
 import { verifyTurnstile } from "@/lib/turnstile";
-import { SESSION_MAX_AGE_SECONDS as SESSION_MAX_AGE } from "@/lib/constants";
+import {
+  SESSION_MAX_AGE_SECONDS as SESSION_MAX_AGE,
+  SESSION_IDLE_SECONDS,
+  SESSION_IDLE_REFRESH_MS,
+} from "@/lib/constants";
 import { verifyStaffPin } from "@/server/staff-pin";
 
 declare module "next-auth/jwt" {
@@ -21,6 +25,8 @@ declare module "next-auth/jwt" {
     sid?: string;
     /** role user (public.users) — dibawa di token supaya session callback bebas query */
     role?: "user" | "admin";
+    /** epoch ms aktivitas terakhir — idle timeout (AUTH-02). */
+    lastSeen?: number;
   }
 }
 
@@ -339,7 +345,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           console.error("[auth] gagal membuat sesi DB:", insertError.message);
           return {}; // gagal mint sesi = gagal login
         }
-        return { ...token, uid: user.id, sid };
+        return { ...token, uid: user.id, sid, lastSeen: Date.now() };
       }
 
       // Token lama yang memiliki identitas tanpa session id tidak boleh melewati
@@ -349,15 +355,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // Revocation check: baris hilang/expired membuat klaim dibuang.
       // Join users sekaligus ambil role agar pemeriksaan tetap satu round-trip.
       if (token.sid) {
+        const now = Date.now();
+        const lastSeen = typeof token.lastSeen === "number" ? token.lastSeen : now;
+        // Idle timeout: sesi tanpa aktivitas berakhir walau cookie masih hidup.
+        if (now - lastSeen > SESSION_IDLE_SECONDS * 1000) return {};
+
         const { data: row, error: rowError } = await fetchSessionRow(supabase, token.sid);
         if (rowError) {
           console.error("[auth] cek sesi DB gagal:", rowError.message);
         }
-        return resolveTokenAfterRevocationCheck({
+        const resolved = resolveTokenAfterRevocationCheck({
           token,
           row: row as SessionRow | null,
           rowError: rowError as { message: string } | null,
         });
+        if (!resolved.uid) return resolved;
+        // Throttle: perbarui lastSeen maksimal tiap 5 menit agar tidak menulis
+        // cookie di setiap request.
+        if (now - lastSeen > SESSION_IDLE_REFRESH_MS) {
+          return { ...resolved, lastSeen: now };
+        }
+        return resolved;
       }
       return token;
     },

@@ -61,6 +61,8 @@ export type DeviceCtx = {
     business_id: string;
     slug: string;
     outlet_id: string;
+    /** online | offline | maintenance — booth maintenance tidak boleh transaksi. */
+    status: string;
     camera_settings: unknown;
     print_settings: unknown;
     session_settings: unknown;
@@ -76,6 +78,15 @@ export async function requireDevice(businessSlug: string, deviceToken: string): 
   const device = await resolveActiveDevice(deviceToken);
   if (device.businessSlug !== businessSlug) {
     throw new ApiError("NOT_FOUND", "Business tidak ditemukan");
+  }
+  // Booth maintenance tidak boleh menerima checkout/payment baru. Verifikasi
+  // device tetap boleh (kiosk perlu merender layar perawatan), jadi gate ada
+  // di jalur transaksi, bukan di resolveActiveDevice.
+  if (device.photobox.status === "maintenance") {
+    throw new ApiError(
+      "VALIDATION_ERROR",
+      "Booth sedang dalam perawatan. Hubungi petugas untuk mengaktifkannya kembali."
+    );
   }
   return device as unknown as DeviceCtx;
 }

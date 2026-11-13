@@ -19,6 +19,10 @@ const securityHeaders = [
       `script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""}`,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https: blob:",
+      // Video background kiosk disajikan dari Supabase Storage / R2 (signed
+      // URL). Tanpa `media-src`, `default-src 'self'` memblokir semuanya dan
+      // layar kiosk kehilangan video.
+      "media-src 'self' https: blob: data:",
       "font-src 'self' data:",
       // Runtime lokal kiosk (kamera + printer) berjalan di loopback dengan
       // skema http, jadi `'self'` dan `https:` tidak menjangkaunya. Tanpa entri
@@ -45,6 +49,10 @@ const nextConfig: NextConfig = {
   ...(process.env.NODE_ENV === "development"
     ? {
         allowedDevOrigins: [
+          // Playwright e2e menembak dev server lewat 127.0.0.1 (bukan
+          // localhost), jadi origin itu wajib didaftarkan atau HMR/chunk
+          // dev diblokir cross-origin.
+          "127.0.0.1",
           "graph-headstand-copper.ngrok-free.dev",
           "*.ngrok-free.dev",
           "*.ngrok.io",

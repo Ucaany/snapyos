@@ -20,7 +20,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { destinationFor } from "@/lib/destination";
 import { can } from "@/lib/rbac";
 import { formatDate, formatIDR } from "@/lib/dashboard-math";
-import { getActiveBusiness, getUserMemberships, requireUser } from "@/lib/tenant";
+import { getActiveBusinessForRoles, getUserMemberships, requireUser } from "@/lib/tenant";
 
 import {
   getBoothHealth,
@@ -73,7 +73,7 @@ export default async function DashboardPage({
   if (dest !== "/dashboard") redirect(dest);
 
   // --- Overview revenue business aktif (docs/12 Phase 2, AC 35–38) ---
-  const active = await getActiveBusiness(user.id);
+  const active = await getActiveBusinessForRoles(user.id, ["owner", "manager"]);
   if (!active) redirect("/welcome");
 
   const financialAccess = can(active.role, "transaction:read");

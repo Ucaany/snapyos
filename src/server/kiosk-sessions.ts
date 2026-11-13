@@ -16,6 +16,7 @@ import { resolveActiveDevice } from "@/server/devices";
 import { getOfflineEnabled } from "@/server/business";
 import { generateResultToken } from "@/lib/device-token";
 import { computeExpiresAt, OFFLINE_FINALIZE_GRACE_MS } from "@/lib/session-timer";
+import { captureCountAllowed } from "@/lib/kiosk-capture";
 import { MAX_SLOTS, slotCount } from "@/lib/template-layout";
 import { validatePhotoFile } from "@/lib/upload-validation";
 import { todayISO, formatTxNumber } from "@/lib/dashboard-math";
@@ -155,6 +156,14 @@ export async function createSession(
   const device = await resolveActiveDevice(parsed.device_token);
   if (device.businessSlug !== businessSlug) {
     throw new ApiError("NOT_FOUND", "Business tidak ditemukan");
+  }
+  // Booth maintenance tidak boleh membuka sesi baru (K-003). Verifikasi device
+  // tetap lolos agar kiosk bisa menampilkan layar perawatan.
+  if (device.photobox.status === "maintenance") {
+    throw new ApiError(
+      "VALIDATION_ERROR",
+      "Booth sedang dalam perawatan. Hubungi petugas untuk mengaktifkannya kembali."
+    );
   }
 
   const supabase = createServerClient();
@@ -566,20 +575,21 @@ export async function finalizeSession(
   if (session.status !== "active") {
     throw new ApiError("SESSION_EXPIRED", "Sesi sudah berakhir");
   }
-  if (session.expires_at) {
+  const expired = session.expires_at
+    ? Date.now() >= new Date(session.expires_at).getTime()
+    : false;
+  if (session.expires_at && expired) {
     const expiredAt = new Date(session.expires_at).getTime();
-    if (Date.now() >= expiredAt) {
-      // Grace offline: foto ter-capture sebelum expiry tetap diproses bila
-      // kiosk finalisasi terlambat karena sinkronisasi koneksi (docs/05 §5.1b).
-      const withinGrace = Date.now() < expiredAt + OFFLINE_FINALIZE_GRACE_MS;
-      if (!withinGrace || photos.length === 0) {
-        await supabase
-          .from("sessions")
-          .update({ status: "expired", finalized_at: new Date().toISOString() })
-          .eq("id", session.id)
-          .eq("status", "active");
-        throw new ApiError("SESSION_EXPIRED", "Waktu sesi sudah habis");
-      }
+    // Grace offline: foto ter-capture sebelum expiry tetap diproses bila
+    // kiosk finalisasi terlambat karena sinkronisasi koneksi (docs/05 §5.1b).
+    const withinGrace = Date.now() < expiredAt + OFFLINE_FINALIZE_GRACE_MS;
+    if (!withinGrace || photos.length === 0) {
+      await supabase
+        .from("sessions")
+        .update({ status: "expired", finalized_at: new Date().toISOString() })
+        .eq("id", session.id)
+        .eq("status", "active");
+      throw new ApiError("SESSION_EXPIRED", "Waktu sesi sudah habis");
     }
   }
 
@@ -622,7 +632,7 @@ export async function finalizeSession(
     templateSlotCount > 0 &&
     gifPhotos.length > 0 &&
     typeof expectedCaptureCount === "number" &&
-    captureCount !== expectedCaptureCount
+    !captureCountAllowed({ expired, captureCount, expected: expectedCaptureCount })
   ) {
     throw new ApiError(
       "VALIDATION_ERROR",

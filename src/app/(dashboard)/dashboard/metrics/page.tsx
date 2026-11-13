@@ -13,7 +13,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { can } from "@/lib/rbac";
 import { formatBp, formatIDR } from "@/lib/dashboard-math";
-import { getActiveBusiness, requireUser } from "@/lib/tenant";
+import { getActiveBusinessForRoles, requireUser } from "@/lib/tenant";
 import { getBusinessMetrics } from "@/server/metrics";
 import { getPaidTxInsights } from "@/server/analytics";
 import { getRevenueSeries } from "@/server/dashboard";
@@ -31,7 +31,7 @@ export default async function MetricsPage({
   const user = await requireUser();
   if (!user) redirect("/login");
 
-  const active = await getActiveBusiness(user.id);
+  const active = await getActiveBusinessForRoles(user.id, ["owner", "manager"]);
   if (!active) redirect("/dashboard");
 
   if (!can(active.role, "transaction:read")) {

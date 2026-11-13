@@ -12,6 +12,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { defaultBrandColors } from "@/lib/brand-defaults";
+import { contrastRatio } from "@/lib/color";
 import { kioskThemeVars, type KioskVisualStyle } from "@/lib/kiosk-types";
 import type { KioskElementsConfig } from "@/lib/kiosk-elements";
 import { kioskElementText } from "@/lib/kiosk-elements";
@@ -89,6 +90,9 @@ export function ResultScreen({
   const downloadTimer = useRef<number | null>(null);
   const qrDark = kioskStyle?.text ?? defaultBrandColors.ink;
   const qrLight = kioskStyle?.bg ?? defaultBrandColors.bg;
+  // QR butuh kontras tinggi. Tema owner bisa menghasilkan pasangan warna yang
+  // tidak terbaca scanner; fallback ke hitam/putih murni bila < 7:1.
+  const qrSafe = contrastRatio(qrDark, qrLight) >= 7;
   // QR hanya bermakna bila sesi sudah tersinkron: halaman /r/[token] hanya
   // merender sesi berstatus completed. Menampilkan QR saat pendingSync/syncFailed
   // mengirim customer ke link yang masih 404.
@@ -98,7 +102,10 @@ export function ResultScreen({
     if (!qrUsable || !resultToken) return;
     let cancelled = false;
     const target = `${window.location.origin}/r/${resultToken}`;
-    QRCode.toDataURL(target, { width: 280, margin: 2, color: { dark: qrDark, light: qrLight } })
+    const color = qrSafe
+      ? { dark: qrDark, light: qrLight }
+      : { dark: "#111111", light: "#ffffff" };
+    QRCode.toDataURL(target, { width: 280, margin: 2, color })
       .then((url) => {
         if (!cancelled) setQr({ token: resultToken, url });
       })
@@ -110,7 +117,7 @@ export function ResultScreen({
     return () => {
       cancelled = true;
     };
-  }, [qrUsable, resultToken, qrDark, qrLight]);
+  }, [qrUsable, resultToken, qrDark, qrLight, qrSafe]);
 
   // Turunan, bukan state: belum ada entri untuk token ini = masih dimuat.
   const qrForToken = qr?.token === resultToken ? qr.url : undefined;

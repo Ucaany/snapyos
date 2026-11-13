@@ -3,11 +3,13 @@ import { PageShell } from "@/components/layout/PageShell";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { FeatureLockedPanel } from "@/components/dashboard/FeatureLockedPanel";
 import { KioskPaymentPreview } from "@/components/dashboard/KioskPaymentPreview";
 import { PaymentGatewaySettings } from "@/components/dashboard/PaymentGatewaySettings";
 import { PageHeader } from "@/components/ui/page-header";
 import { paymentWebhookStatus } from "@/lib/payment-credentials";
-import { getActiveBusiness, getMembership, requireUser } from "@/lib/tenant";
+import { getActiveBusinessForRoles, getMembership, requireUser } from "@/lib/tenant";
+import { hasFeature } from "@/server/feature-gate";
 import { listCredentials } from "@/server/payment-credentials";
 import { listKioskPaymentMethods } from "@/server/payment/payment-methods";
 import { listPhotoboxes } from "@/server/photoboxes";
@@ -26,12 +28,18 @@ export default async function PaymentGatewayPage({
 }) {
   const user = await requireUser();
   if (!user) redirect("/login");
-  const active = await getActiveBusiness(user.id);
+  const active = await getActiveBusinessForRoles(user.id, ["owner", "manager"]);
   if (!active) redirect("/dashboard");
   const membership = await getMembership(user.id, active.business.id);
   if (membership?.role !== "owner") redirect("/dashboard/settings");
 
   const businessId = active.business.id;
+  // Gate plan SEBELUM memuat credential (O-011): tanpa ini halaman memanggil
+  // listCredentials yang melempar FEATURE_DISABLED dan credential tetap
+  // berpotensi tampil lewat jalur lain.
+  if (!(await hasFeature(businessId, "direct_payment"))) {
+    return <FeatureLockedPanel />;
+  }
   const [credentials, booths, query] = await Promise.all([
     listCredentials(user.id, businessId),
     listPhotoboxes(user.id, businessId),

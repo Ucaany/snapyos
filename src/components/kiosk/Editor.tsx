@@ -3,6 +3,7 @@
 import { memo, useEffect, useRef, useState } from "react";
 import { Check, Plus, Trash2 } from "lucide-react";
 import { defaultBrandColors, slotColors } from "@/lib/brand-defaults";
+import { mixHex } from "@/lib/color";
 import {
   FILTER_PRESETS,
   filterCss,
@@ -568,7 +569,9 @@ function EditorInner({
         style={
           kioskStyle
             ? {
-                backgroundColor: `color-mix(in srgb, ${kioskStyle.text} 5%, ${kioskStyle.bg})`,
+                // mixHex = padanan color-mix sRGB yang dihitung di JS, jadi
+                // tetap bekerja di Chromium lama tanpa dukungan color-mix().
+                backgroundColor: mixHex(kioskStyle.bg, kioskStyle.text, 0.05),
                 color: kioskStyle.text,
               }
             : undefined

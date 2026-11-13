@@ -99,6 +99,8 @@ type VerifyData = {
     result_token: string | null;
     /** Kuota foto paket asli (server) — anti-drift paket sintetis saat resume. */
     photo_count: number | null;
+    /** Entitlement cetak paket asli — resume tidak boleh menghapus hak cetak. */
+    print_count: number | null;
   } | null;
   /** Checkout paid yang sesinya belum dibuat (exit/reload pasca-bayar) — klaim, jangan bayar ulang. */
   claimable_checkout_id?: string | null;
@@ -293,7 +295,7 @@ export function KioskApp({
           name: "Paket kamu",
           price: 0,
           photo_count: active.photo_count ?? 3,
-          print_count: 0,
+          print_count: active.print_count ?? 0,
           digital_output: true,
           capture_mode: "single" as const,
         }
@@ -894,6 +896,19 @@ export function KioskApp({
   // Panduan cara pakai (branding.kiosk.guide_steps) — kosong = dilewati.
   const guideSteps = kioskBranding?.guide_steps ?? [];
   const hasGuide = guideSteps.length > 0;
+
+  // Booth maintenance: hentikan seluruh alur customer dan tampilkan layar
+  // perawatan. Backend juga menolak sesi/checkout/payment baru (K-003).
+  if (currentPhotobox.status === "maintenance") {
+    return (
+      <div
+        data-kiosk-shell="true"
+        className="flex h-[100dvh] flex-col overflow-hidden bg-bg text-ink"
+      >
+        <KioskScreenRenderer {...screenConfig("maintenance")} state="maintenance" />
+      </div>
+    );
+  }
 
   return (
     <div

@@ -78,6 +78,8 @@ type PhotoboxJoined = {
   business_id: string;
   slug: string;
   outlet_id: string;
+  /** online | offline | maintenance — ditegakkan di jalur transaksi. */
+  status: string;
   camera_settings: Record<string, unknown> | null;
   print_settings: Record<string, unknown> | null;
   session_settings: Record<string, unknown> | null;
@@ -105,7 +107,7 @@ export async function resolveActiveDevice(token: string) {
   const { data } = await supabase
     .from("devices")
     .select(
-      "id, business_id, photobox_id, status, last_seen_at, last_heartbeat_at, photoboxes ( id, business_id, slug, outlet_id, camera_settings, print_settings, session_settings, device_status, default_template_id, exit_pin_hash, exit_pin_failed_count, exit_pin_locked_until ), businesses ( slug, status )"
+      "id, business_id, photobox_id, status, last_seen_at, last_heartbeat_at, photoboxes ( id, business_id, slug, outlet_id, status, camera_settings, print_settings, session_settings, device_status, default_template_id, exit_pin_hash, exit_pin_failed_count, exit_pin_locked_until ), businesses ( slug, status )"
     )
     .eq("device_token_hash", hashDeviceToken(token))
     .maybeSingle();
@@ -309,7 +311,7 @@ export async function verifyDevice(input: DeviceVerifyInput) {
   const { data: sessionRow } = await supabase
     .from("sessions")
     .select(
-      "id, package_id, expires_at, checkout_sessions ( result_token ), packages ( photo_count )"
+      "id, package_id, expires_at, checkout_sessions ( result_token ), packages ( photo_count, print_count )"
     )
     .eq("photobox_id", photobox.id)
     .eq("status", "active")
@@ -322,7 +324,10 @@ export async function verifyDevice(input: DeviceVerifyInput) {
     package_id: string;
     expires_at: string;
     checkout_sessions: { result_token: string | null } | { result_token: string | null }[] | null;
-    packages: { photo_count: number } | { photo_count: number }[] | null;
+    packages:
+      | { photo_count: number; print_count: number }
+      | { photo_count: number; print_count: number }[]
+      | null;
   } | null;
   const checkout = active?.checkout_sessions ?? null;
   const resultToken =
@@ -340,6 +345,14 @@ export async function verifyDevice(input: DeviceVerifyInput) {
       ? pkgJoin.photo_count
       : Array.isArray(pkgJoin)
         ? (pkgJoin[0]?.photo_count ?? null)
+        : null;
+  // Entitlement cetak paket asli — resume tidak boleh menghapus hak cetak
+  // customer yang sudah membayar (K-026).
+  const printCount =
+    pkgJoin && !Array.isArray(pkgJoin)
+      ? pkgJoin.print_count
+      : Array.isArray(pkgJoin)
+        ? (pkgJoin[0]?.print_count ?? null)
         : null;
 
   // Checkout paid tapi sesi belum dibuat (kiosk keluar/reload pasca-bayar,
@@ -369,6 +382,9 @@ export async function verifyDevice(input: DeviceVerifyInput) {
     photobox: {
       id: photobox.id,
       slug: photobox.slug,
+      // Status booth dipakai kiosk untuk menampilkan layar perawatan dan
+      // berhenti menawarkan paket (K-003/K-004).
+      status: photobox.status,
       camera_settings: photobox.camera_settings ?? {},
       print_settings: photobox.print_settings ?? {},
       session_settings: photobox.session_settings ?? {},
@@ -384,6 +400,7 @@ export async function verifyDevice(input: DeviceVerifyInput) {
           expires_at: active.expires_at,
           result_token: resultToken,
           photo_count: photoCount,
+          print_count: printCount,
         }
       : null,
     claimable_checkout_id: claimableCheckoutId,

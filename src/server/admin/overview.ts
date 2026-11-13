@@ -6,6 +6,7 @@ import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
 import { paymentSummary, sumMrr, type FeePolicy } from "@/lib/admin-math";
+import { isSubscriptionEffective } from "@/lib/subscription-math";
 import { requireAdmin } from "./guard";
 
 // ---------------------------------------------------------------------------
@@ -30,7 +31,9 @@ export async function getAdminOverviewGuarded(): Promise<AdminOverview> {
   const [businesses, subscriptions, outlets, photoboxes, sessions, transactions] =
     await Promise.all([
       supabase.from("businesses").select("id", { count: "exact", head: true }),
-      supabase.from("subscriptions").select("status, plans ( price_monthly )"),
+      supabase
+        .from("subscriptions")
+        .select("status, trial_ends_at, current_period_end, plans ( price_monthly )"),
       supabase.from("outlets").select("id", { count: "exact", head: true }),
       supabase.from("photoboxes").select("id", { count: "exact", head: true }),
       supabase.from("sessions").select("id", { count: "exact", head: true }),
@@ -48,10 +51,15 @@ export async function getAdminOverviewGuarded(): Promise<AdminOverview> {
 
   type SubRow = {
     status: string;
+    trial_ends_at: string | null;
+    current_period_end: string | null;
     plans: { price_monthly: number } | null;
   };
   const subs = (subscriptions.data ?? []) as unknown as SubRow[];
-  const active = subs.filter((s) => s.status === "active");
+  // A-001: status `active` saja tidak cukup — periode harus masih berlaku.
+  const active = subs.filter((s) =>
+    isSubscriptionEffective(s.status, s.trial_ends_at, s.current_period_end)
+  );
   return {
     totalBusinesses: businesses.count ?? 0,
     activeSubscribers: active.length,
@@ -136,16 +144,20 @@ async function feeByBusinessMap(): Promise<Map<string, FeePolicy>> {
   const supabase = createServerClient();
   const { data } = await supabase
     .from("subscriptions")
-    .select("business_id, status, plans ( platform_fee_percent, platform_fee_flat )")
+    .select("business_id, status, trial_ends_at, current_period_end, plans ( platform_fee_percent, platform_fee_flat )")
     .in("status", ["trial", "active", "past_due"])
     .order("created_at", { ascending: false });
   type Row = {
     business_id: string;
     status: string;
+    trial_ends_at: string | null;
+    current_period_end: string | null;
     plans: { platform_fee_percent: number; platform_fee_flat: number } | null;
   };
   const map = new Map<string, FeePolicy>();
   for (const row of (data ?? []) as unknown as Row[]) {
+    // A-017: fee hanya berlaku bila periode subscription masih efektif.
+    if (!isSubscriptionEffective(row.status, row.trial_ends_at, row.current_period_end)) continue;
     if (!map.has(row.business_id) && row.plans) {
       map.set(row.business_id, {
         percent: row.plans.platform_fee_percent,

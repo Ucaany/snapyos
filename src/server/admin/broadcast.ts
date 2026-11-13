@@ -91,6 +91,8 @@ export async function listBroadcasts(): Promise<AdminBroadcastRow[]> {
 }
 
 export async function getBroadcastStats(campaignIds: string[]): Promise<AdminBroadcastStats[]> {
+  // A-032: guard internal — fungsi ini bisa dipanggil dari jalur lain.
+  await requireAdmin();
   if (campaignIds.length === 0) return [];
   const supabase = createServerClient();
   const { data, error } = await supabase

@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { ApiError } from "@/lib/api-errors";
 import { can } from "@/lib/rbac";
-import { getActiveBusiness, requireUser } from "@/lib/tenant";
+import { getActiveBusinessForRoles, requireUser } from "@/lib/tenant";
 import type { TemplateLayout } from "@/lib/template-layout";
 import {
   detectTemplateChromaSlotsAction,
@@ -23,7 +23,7 @@ export default async function TemplateBuilderPage({ params }: { params: Promise<
   const user = await requireUser();
   if (!user) redirect("/login");
 
-  const active = await getActiveBusiness(user.id);
+  const active = await getActiveBusinessForRoles(user.id, ["owner", "manager"]);
   if (!active) redirect("/dashboard");
   if (!can(active.role, "template:read")) notFound();
   const canWrite = can(active.role, "template:write");

@@ -11,7 +11,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { ApiError } from "@/lib/api-errors";
 import { can } from "@/lib/rbac";
-import { getActiveBusiness, requireUser } from "@/lib/tenant";
+import { getActiveBusinessForRoles, requireUser } from "@/lib/tenant";
 import { getPhotobox } from "@/server/photoboxes";
 import { listTemplates } from "@/server/templates";
 
@@ -39,7 +39,7 @@ export default async function PhotoboxHardwarePage({
   const user = await requireUser();
   if (!user) redirect("/login");
 
-  const active = await getActiveBusiness(user.id);
+  const active = await getActiveBusinessForRoles(user.id, ["owner", "manager"]);
   if (!active) redirect("/dashboard");
 
   const canWrite = can(active.role, "photobox:write");

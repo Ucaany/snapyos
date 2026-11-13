@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { DeviceManagement } from "@/components/dashboard/DeviceManagement";
 import { PageHeader } from "@/components/ui/page-header";
 import { can } from "@/lib/rbac";
-import { getActiveBusiness, requireUser } from "@/lib/tenant";
+import { getActiveBusinessForRoles, requireUser } from "@/lib/tenant";
 import { listPhotoboxes } from "@/server/photoboxes";
 
 export const metadata: Metadata = { title: "Perangkat | SnapyOS" };
@@ -15,7 +15,7 @@ export default async function DevicesPage() {
   const user = await requireUser();
   if (!user) redirect("/login");
 
-  const active = await getActiveBusiness(user.id);
+  const active = await getActiveBusinessForRoles(user.id, ["owner", "manager"]);
   if (!active) redirect("/dashboard");
 
   const photoboxes = await listPhotoboxes(user.id, active.business.id);

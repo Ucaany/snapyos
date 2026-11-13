@@ -7,7 +7,7 @@ import { VouchersTable } from "@/components/dashboard/VouchersTable";
 import { FeatureLockedPanel } from "@/components/dashboard/FeatureLockedPanel";
 import { PageHeader } from "@/components/ui/page-header";
 import { can } from "@/lib/rbac";
-import { getActiveBusiness, requireUser } from "@/lib/tenant";
+import { getActiveBusinessForRoles, requireUser } from "@/lib/tenant";
 import { hasFeature } from "@/server/feature-gate";
 import { listVouchers, getVoucherAnalyticsBatch } from "@/server/vouchers";
 import { listPackages } from "@/server/packages";
@@ -22,7 +22,7 @@ export default async function VouchersPage() {
   const user = await requireUser();
   if (!user) redirect("/login");
 
-  const active = await getActiveBusiness(user.id);
+  const active = await getActiveBusinessForRoles(user.id, ["owner", "manager"]);
   if (!active) redirect("/dashboard");
 
   // Gate plan dibaca sebelum query supaya plan tanpa voucher mendapat panel

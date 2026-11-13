@@ -1,4 +1,5 @@
 import { AccessDeniedPanel } from "@/components/dashboard/AccessDeniedPanel";
+import { FeatureLockedPanel } from "@/components/dashboard/FeatureLockedPanel";
 import { PageShell } from "@/components/layout/PageShell";
 
 import type { Metadata } from "next";
@@ -12,8 +13,9 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Select } from "@/components/ui/select";
 import { LABEL_CLASS as labelClass } from "@/lib/form-ui";
 import { can } from "@/lib/rbac";
-import { getActiveBusiness, requireUser } from "@/lib/tenant";
+import { getActiveBusinessForRoles, requireUser } from "@/lib/tenant";
 import { todayISO } from "@/lib/dashboard-math";
+import { hasFeature } from "@/server/feature-gate";
 
 export const metadata: Metadata = {
   title: "Laporan: SnapyOS",
@@ -36,7 +38,7 @@ export default async function ReportsPage() {
   const user = await requireUser();
   if (!user) redirect("/login");
 
-  const active = await getActiveBusiness(user.id);
+  const active = await getActiveBusinessForRoles(user.id, ["owner", "manager"]);
   if (!active) redirect("/dashboard");
 
   if (!can(active.role, "report:read")) {
@@ -45,6 +47,11 @@ export default async function ReportsPage() {
         <AccessDeniedPanel resource="report" />
       </PageShell>
     );
+  }
+
+  // Gate plan di UI, bukan hanya 403 JSON dari endpoint export (O-013).
+  if (!(await hasFeature(active.business.id, "reports"))) {
+    return <FeatureLockedPanel />;
   }
 
   const tz = active.business.timezone || "Asia/Jakarta";

@@ -8,7 +8,7 @@ import { DesignBuilder } from "@/components/dashboard/DesignBuilder";
 import { PageHeader } from "@/components/ui/page-header";
 import { brandingSchema } from "@/lib/validators";
 import { can } from "@/lib/rbac";
-import { getActiveBusiness, requireUser } from "@/lib/tenant";
+import { getActiveBusinessForRoles, requireUser } from "@/lib/tenant";
 import { getBranding, signBrandingAssets } from "@/server/branding";
 import { listPhotoboxes } from "@/server/photoboxes";
 
@@ -24,7 +24,7 @@ export default async function DesignBuilderPage({
   const user = await requireUser();
   if (!user) redirect("/login");
 
-  const active = await getActiveBusiness(user.id);
+  const active = await getActiveBusinessForRoles(user.id, ["owner", "manager"]);
   if (!active) redirect("/dashboard");
 
   const businessId = active.business.id;

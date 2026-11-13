@@ -15,7 +15,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { cn } from "@/lib/utils";
 import { formatIDR } from "@/lib/dashboard-math";
 import { can } from "@/lib/rbac";
-import { getActiveBusiness, requireUser } from "@/lib/tenant";
+import { getActiveBusinessForRoles, requireUser } from "@/lib/tenant";
 import { getPosAddOnInfo, hasPosEntitlement } from "@/server/pos-entitlement";
 import { listPosBooths, listPosCategories, listPosProducts } from "@/server/pos-products";
 import {
@@ -39,7 +39,7 @@ export default async function PosManagementPage({
   const user = await requireUser();
   if (!user) redirect("/login");
 
-  const active = await getActiveBusiness(user.id);
+  const active = await getActiveBusinessForRoles(user.id, ["owner", "manager"]);
   if (!active) redirect("/dashboard");
 
   const query = await searchParams;

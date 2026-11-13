@@ -39,6 +39,13 @@ export default async function StaffLayout({ children }: { children: React.ReactN
       <StaffTopbar
         user={{ name: user.name, email: user.email }}
         businessName={active?.business.name ?? null}
+        businesses={memberships
+          .filter((membership) => membership.role === "staff")
+          .map((membership) => ({
+            id: membership.business.id,
+            name: membership.business.name,
+          }))}
+        activeId={active?.business.id ?? null}
       />
       <div className="grid w-full flex-1 content-start grid-cols-1 md:content-stretch md:grid-cols-[240px_1fr]">
         <StaffSidebar />

@@ -12,7 +12,7 @@ import { IconButton } from "@/components/ui/icon-button";
 import { PageHeader } from "@/components/ui/page-header";
 import { Select } from "@/components/ui/select";
 import { can } from "@/lib/rbac";
-import { getActiveBusiness, requireUser } from "@/lib/tenant";
+import { getActiveBusinessForRoles, requireUser } from "@/lib/tenant";
 import { listTransactions } from "@/server/transactions";
 import { listOutlets } from "@/server/outlets";
 import { listPhotoboxes } from "@/server/photoboxes";
@@ -54,7 +54,7 @@ export default async function TransactionsPage({
   const user = await requireUser();
   if (!user) redirect("/login");
 
-  const active = await getActiveBusiness(user.id);
+  const active = await getActiveBusinessForRoles(user.id, ["owner", "manager"]);
   if (!active) redirect("/dashboard");
 
   if (!can(active.role, "transaction:read")) {

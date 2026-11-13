@@ -6,11 +6,12 @@ import { redirect } from "next/navigation";
 import { BusinessProfileEditor } from "@/components/dashboard/BusinessProfileEditor";
 import { CheckoutSettingsEditor } from "@/components/dashboard/CheckoutSettingsEditor";
 import { OutputSettingsEditor } from "@/components/dashboard/OutputSettingsEditor";
+import { PasswordChangeForm } from "@/components/dashboard/PasswordChangeForm";
 import { RetentionSettingsEditor } from "@/components/dashboard/RetentionSettingsEditor";
 import { StorageUsageCard } from "@/components/dashboard/StorageUsageCard";
 import { PageHeader } from "@/components/ui/page-header";
 import { can } from "@/lib/rbac";
-import { getActiveBusiness, requireUser } from "@/lib/tenant";
+import { getActiveBusinessForRoles, requireUser } from "@/lib/tenant";
 import { getBusinessProfile, getSettings } from "@/server/business";
 import { getStorageUsage } from "@/server/storage-usage";
 
@@ -27,7 +28,7 @@ export default async function SettingsPage() {
   const user = await requireUser();
   if (!user) redirect("/login");
 
-  const active = await getActiveBusiness(user.id);
+  const active = await getActiveBusinessForRoles(user.id, ["owner", "manager"]);
   if (!active) redirect("/dashboard");
 
   const canWrite = can(active.role, "business:update");
@@ -97,6 +98,7 @@ export default async function SettingsPage() {
           maxWidth={gifMaxWidth}
           canWrite={canWrite}
         />
+        <PasswordChangeForm />
       </div>
     </PageShell>
   );

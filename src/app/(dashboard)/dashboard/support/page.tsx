@@ -7,7 +7,7 @@ import { BookOpen } from "lucide-react";
 import { SupportTicketsPanel } from "@/components/dashboard/SupportTicketsPanel";
 import { IconLink } from "@/components/ui/icon-button";
 import { PageHeader } from "@/components/ui/page-header";
-import { getActiveBusiness, requireUser } from "@/lib/tenant";
+import { getActiveBusinessForRoles, requireUser } from "@/lib/tenant";
 import { listSupportTickets } from "@/server/support-tickets";
 
 export const metadata: Metadata = {
@@ -21,7 +21,7 @@ export default async function SupportPage() {
   const user = await requireUser();
   if (!user) redirect("/login");
 
-  const active = await getActiveBusiness(user.id);
+  const active = await getActiveBusinessForRoles(user.id, ["owner", "manager"]);
   if (!active) redirect("/dashboard");
 
   const tickets = await listSupportTickets();

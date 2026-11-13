@@ -6,7 +6,7 @@ import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
 import { adminSettingsUpdateSchema, type AdminSettingsUpdateInput } from "@/lib/validators";
-import { RETENTION_MAX_DAYS, RETENTION_MIN_DAYS } from "@/lib/retention";
+import { RETENTION_MAX_DAYS, RETENTION_MIN_DAYS, DEFAULT_RETENTION_DAYS } from "@/lib/retention";
 import { requireAdmin, audit } from "./guard";
 
 // ---------------------------------------------------------------------------
@@ -74,6 +74,21 @@ export async function updatePlatformSettings(input: AdminSettingsUpdateInput) {
 
   const supabase = createServerClient();
 
+  // A-024: baca default lama SEBELUM upsert. Default baru hanya diterapkan ke
+  // tenant yang masih memakai default lama, sehingga override owner tidak
+  // tertimpa diam-diam.
+  let previousRetention: number = DEFAULT_RETENTION_DAYS;
+  if (parsed.default_retention_days !== undefined) {
+    const { data: prev } = await supabase
+      .from("platform_settings")
+      .select("value")
+      .eq("key", "default_retention_days")
+      .maybeSingle();
+    const raw = (prev as { value?: unknown } | null)?.value;
+    const n = typeof raw === "number" ? raw : Number(raw);
+    if (Number.isInteger(n) && n > 0) previousRetention = n;
+  }
+
   for (const [key, value] of Object.entries(parsed)) {
     // zod 4 mempertahankan key yang eksplisit `undefined`; skip agar tidak
     // upsert value null ke kolom jsonb NOT NULL (form parsial, mis. gateway saja).
@@ -83,12 +98,13 @@ export async function updatePlatformSettings(input: AdminSettingsUpdateInput) {
       .upsert({ key, value }, { onConflict: "key" });
     if (error) throw new ApiError("INTERNAL", `Gagal menyimpan setting ${key}`);
   }
-  // Default retention CEO diterapkan ke SEMUA tenant (mis. 3 hari);
-  // owner masih bisa override per business dari /dashboard/settings.
+  // Default retention CEO diterapkan ke tenant yang BELUM override (masih
+  // memakai default lama). Owner tetap bisa override per business.
   if (parsed.default_retention_days !== undefined) {
     const { error } = await supabase
       .from("business_settings")
-      .update({ retention_days: parsed.default_retention_days });
+      .update({ retention_days: parsed.default_retention_days })
+      .eq("retention_days", previousRetention);
     if (error) {
       throw new ApiError("INTERNAL", "Default retention tersimpan tapi gagal diterapkan ke tenant");
     }

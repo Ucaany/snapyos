@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { PackagesTable } from "@/components/dashboard/PackagesTable";
 import { PageHeader } from "@/components/ui/page-header";
 import { can } from "@/lib/rbac";
-import { getActiveBusiness, requireUser } from "@/lib/tenant";
+import { getActiveBusinessForRoles, requireUser } from "@/lib/tenant";
 import { listPackages } from "@/server/packages";
 import { listTemplates } from "@/server/templates";
 import { listOutlets } from "@/server/outlets";
@@ -21,7 +21,7 @@ export default async function PackagesPage() {
   const user = await requireUser();
   if (!user) redirect("/login");
 
-  const active = await getActiveBusiness(user.id);
+  const active = await getActiveBusinessForRoles(user.id, ["owner", "manager"]);
   if (!active) redirect("/dashboard");
 
   const canWrite = can(active.role, "package:write");

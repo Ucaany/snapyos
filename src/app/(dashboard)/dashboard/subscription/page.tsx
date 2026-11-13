@@ -7,7 +7,7 @@ import { SubscriptionPanel } from "@/components/dashboard/SubscriptionPanel";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { can } from "@/lib/rbac";
-import { getActiveBusiness, requireUser } from "@/lib/tenant";
+import { getActiveBusinessForRoles, requireUser } from "@/lib/tenant";
 import { getSubscriptionOverview } from "@/server/subscription";
 
 export const metadata: Metadata = {
@@ -19,7 +19,7 @@ export default async function SubscriptionPage() {
   const user = await requireUser();
   if (!user) redirect("/login");
 
-  const active = await getActiveBusiness(user.id);
+  const active = await getActiveBusinessForRoles(user.id, ["owner", "manager"]);
   if (!active) redirect("/dashboard");
 
   // Langganan & tagihan = owner-only (docs/09 §9.2), sama dengan gate server.

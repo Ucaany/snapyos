@@ -144,6 +144,20 @@ export const loginSchema = z
     message: "Isi password atau PIN",
   });
 
+/** Ganti password terautentikasi (AUTH-01) — verifikasi password lama. */
+export const changePasswordSchema = z
+  .object({
+    current_password: z.string().min(1, "Password saat ini wajib diisi"),
+    new_password: z
+      .string()
+      .min(8, "Password minimal 8 karakter")
+      .max(72, "Password maksimal 72 karakter"),
+  })
+  .refine((v) => v.current_password !== v.new_password, {
+    message: "Password baru harus berbeda dari password saat ini",
+    path: ["new_password"],
+  });
+
 export const staffPinSchema = z.object({
   user_id: uuid,
   photobox_id: uuid,

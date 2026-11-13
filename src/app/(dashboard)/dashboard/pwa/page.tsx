@@ -8,7 +8,7 @@ import { ArrowRight, MonitorSmartphone, Smartphone, Tablet } from "lucide-react"
 import { PageHeader } from "@/components/ui/page-header";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { can } from "@/lib/rbac";
-import { getActiveBusiness, requireUser } from "@/lib/tenant";
+import { getActiveBusinessForRoles, requireUser } from "@/lib/tenant";
 import { hasFeature } from "@/server/feature-gate";
 import { cn } from "@/lib/utils";
 
@@ -37,7 +37,7 @@ export default async function PwaPage() {
   const user = await requireUser();
   if (!user) redirect("/login");
 
-  const active = await getActiveBusiness(user.id);
+  const active = await getActiveBusinessForRoles(user.id, ["owner", "manager"]);
   if (!active) redirect("/dashboard");
 
   if (!can(active.role, "photobox:write")) redirect("/dashboard");

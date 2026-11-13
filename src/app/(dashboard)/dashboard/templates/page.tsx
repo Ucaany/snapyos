@@ -8,7 +8,7 @@ import { PremiumTemplatesGrid } from "@/components/dashboard/PremiumTemplatesGri
 import { PageHeader } from "@/components/ui/page-header";
 import { can } from "@/lib/rbac";
 import { formatIDR } from "@/lib/dashboard-math";
-import { getActiveBusiness, requireUser } from "@/lib/tenant";
+import { getActiveBusinessForRoles, requireUser } from "@/lib/tenant";
 import { listTemplates } from "@/server/templates";
 import { listPremiumTemplates, listPurchasedTemplates } from "@/server/template-purchase";
 
@@ -21,7 +21,7 @@ export default async function TemplatesPage() {
   const user = await requireUser();
   if (!user) redirect("/login");
 
-  const active = await getActiveBusiness(user.id);
+  const active = await getActiveBusinessForRoles(user.id, ["owner", "manager"]);
   if (!active) redirect("/dashboard");
 
   const canWrite = can(active.role, "template:write");

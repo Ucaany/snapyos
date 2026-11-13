@@ -14,7 +14,9 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "verify": "npm run lint && npm run typecheck && npm run build",
-    "test": "node --test --experimental-strip-types runtime/print/index.test.ts runtime/print/geometry.test.ts runtime/print/jobs.test.ts runtime/camera/gphoto2.test.ts src/lib/print-layout.test.ts src/lib/branding-merge.test.ts src/lib/branding-reset.test.ts scripts/sync-gphoto2-cameras.test.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test": "node --test --experimental-strip-types runtime/print/index.test.ts runtime/print/geometry.test.ts runtime/print/jobs.test.ts runtime/camera/gphoto2.test.ts src/lib/print-layout.test.ts src/lib/branding-merge.test.ts src/lib/branding-reset.test.ts src/lib/kiosk-capture.test.ts scripts/sync-gphoto2-cameras.test.mjs",
     "sync:cameras": "node scripts/sync-gphoto2-cameras.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -54,6 +56,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.0",
     "@tailwindcss/postcss": "^4",
     "@types/jpeg-js": "^0.3.0",
     "@types/node": "^20",
