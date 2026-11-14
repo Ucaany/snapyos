@@ -30,8 +30,10 @@ export {
 } from "./platform-health";
 export {
   type AdminUserRow,
+  type AdminUserStats,
   type UserDetail,
   listUsers,
+  getUserStats,
   getUserDetail,
   updateUser,
   createUser,
@@ -39,9 +41,17 @@ export {
 } from "./users";
 export {
   type AdminBusinessRow,
+  type AdminBusinessStats,
+  type AdminBusinessDetail,
+  type AdminBusinessDetailBooth,
+  type AdminBusinessDetailDevice,
+  type AdminBusinessDetailTransaction,
   listBusinesses,
+  getBusinessStats,
+  getBusinessDetail,
   getBusinessUsage,
   updateBusiness,
+  revokeBusinessDevice,
   deleteBusiness,
 } from "./businesses";
 export { type AdminPlanRow, listPlans, createPlan, updatePlan } from "./plans";

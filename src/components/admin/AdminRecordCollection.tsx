@@ -13,6 +13,7 @@ import { LayoutGrid, List, Pencil, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/admin/ui/button";
 import { Card, CardContent } from "@/components/admin/ui/card";
 import { ToggleGroup, ToggleGroupItem } from "@/components/admin/ui/toggle-group";
+import { AdminSectionHeading } from "@/components/admin/AdminSectionHeading";
 import { cn } from "@/lib/utils";
 
 export type ViewMode = "list" | "grid";
@@ -43,6 +44,8 @@ export function AdminRecordCollection({
   label = "Daftar data",
   title,
   description,
+  toolbar,
+  empty,
   mobileDefault = "grid",
 }: {
   storageKey: string;
@@ -51,6 +54,9 @@ export function AdminRecordCollection({
   label?: string;
   title?: string;
   description?: string;
+  toolbar?: ReactNode;
+  /** Bila diisi, list/grid diganti empty state (toolbar tetap tampil). */
+  empty?: ReactNode;
   mobileDefault?: ViewMode;
 }) {
   const [override, setOverride] = useState<ViewMode | null>(null);
@@ -101,39 +107,49 @@ export function AdminRecordCollection({
   return (
     <RecordCollectionContext.Provider value={{ mode, setMode: pick }}>
       <section aria-label={label} className="flex flex-col gap-3">
-        <div className="flex flex-row items-center justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="text-base font-medium">{title ?? label}</h2>
-            {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <span className="hidden text-xs text-muted-foreground sm:inline">Tampilan</span>
-            <ToggleGroup
-              value={mode ? [mode] : []}
-              onValueChange={(value) => {
-                const next = value[0];
-                if (next === "list" || next === "grid") pick(next);
-              }}
-              variant="outline"
-              size="sm"
-              aria-label="Pilih tampilan data"
-            >
-              <ToggleGroupItem value="list" aria-label="Tampilan daftar">
-                <List className="size-4" />
-              </ToggleGroupItem>
-              <ToggleGroupItem value="grid" aria-label="Tampilan kotak">
-                <LayoutGrid className="size-4" />
-              </ToggleGroupItem>
-            </ToggleGroup>
-          </div>
-        </div>
+        <AdminSectionHeading
+          title={title ?? label}
+          description={description}
+          action={
+            empty ? undefined : (
+              <div className="flex items-center gap-2">
+                <span className="hidden text-xs text-muted-foreground sm:inline">Tampilan</span>
+                <ToggleGroup
+                  value={mode ? [mode] : []}
+                  onValueChange={(value) => {
+                    const next = value[0];
+                    if (next === "list" || next === "grid") pick(next);
+                  }}
+                  variant="outline"
+                  size="sm"
+                  aria-label="Pilih tampilan data"
+                >
+                  <ToggleGroupItem value="list" aria-label="Tampilan daftar">
+                    <List className="size-4" />
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="grid" aria-label="Tampilan kotak">
+                    <LayoutGrid className="size-4" />
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </div>
+            )
+          }
+        />
 
-        <div className={cn("min-w-0", listVisible)}>
-          <Card>
-            <CardContent>{list}</CardContent>
-          </Card>
-        </div>
-        <div className={cn("min-w-0", gridVisible)}>{grid}</div>
+        {toolbar}
+
+        {empty ? (
+          empty
+        ) : (
+          <>
+            <div className={cn("min-w-0", listVisible)}>
+              <Card>
+                <CardContent>{list}</CardContent>
+              </Card>
+            </div>
+            <div className={cn("min-w-0", gridVisible)}>{grid}</div>
+          </>
+        )}
       </section>
     </RecordCollectionContext.Provider>
   );

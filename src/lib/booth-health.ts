@@ -3,6 +3,8 @@
  * Murni (tanpa supabase) agar unit-testable — pola src/lib/*.
  */
 
+import { DEVICE_ONLINE_WINDOW_MS } from "./device-online.ts";
+
 /** Booth dianggap bermasalah bila heartbeat terakhir lebih tua dari ini. */
 export const BOOTH_STALE_MINUTES = 10;
 /** Alert storage mulai muncul pada persentase pemakaian ini. */
@@ -36,6 +38,33 @@ export type BoothHealth = {
   /** Booth non-maintenance dengan heartbeat lebih tua dari BOOTH_STALE_MINUTES. */
   stale: BoothHealthItem[];
 };
+
+/** Booth online = device aktif dengan heartbeat dalam window (bukan status administratif). */
+export function isBoothOnline(lastHeartbeatAt: string | null, nowMs: number): boolean {
+  if (!lastHeartbeatAt) return false;
+  const ms = Date.parse(lastHeartbeatAt);
+  if (Number.isNaN(ms)) return false;
+  return nowMs - ms <= DEVICE_ONLINE_WINDOW_MS;
+}
+
+/** Hitung booth online/offline/maintenance dari heartbeat terbaru per booth. */
+export function summarizeBooths(
+  rows: { status: string; lastHeartbeatAt: string | null }[],
+  nowMs: number
+): { total: number; online: number; offline: number; maintenance: number } {
+  let online = 0;
+  let maintenance = 0;
+  for (const row of rows) {
+    if (row.status === "maintenance") maintenance += 1;
+    else if (isBoothOnline(row.lastHeartbeatAt, nowMs)) online += 1;
+  }
+  return {
+    total: rows.length,
+    online,
+    maintenance,
+    offline: rows.length - online - maintenance,
+  };
+}
 
 /** Menit sejak `iso`; 0 bila timestamp kosong/invalid. */
 export function minutesSince(iso: string | null, nowMs: number): number | null {

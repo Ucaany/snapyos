@@ -98,7 +98,6 @@ export default async function AdminSubscriptionPendingReviewPage({
   return (
     <div className="flex flex-col gap-6">
       <AdminPageHeader
-        eyebrow="Admin / Langganan / Antrian Aktivasi"
         icon={AlertOctagon}
         title="Antrian Aktivasi Manual"
         description="Invoice sudah lunas (uang settled di provider), tapi aktivasi plan atau add-on gagal karena subscription tidak berada pada status yang valid. Biasanya owner cancel + cron transisi terjadi sebelum webhook paid diterima. Setiap kasus memerlukan keputusan manual: aktivasi (perbaiki via /admin/subscriptions, lalu tutup tiket) atau refund (via dashboard Pakasir)."

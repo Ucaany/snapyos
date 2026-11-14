@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CreditCard, Filter } from "lucide-react";
 import { AdminActionButton } from "@/components/admin/AdminActionForm";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
+import { AdminFilterForm } from "@/components/admin/AdminFilterForm";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminPaginator } from "@/components/admin/AdminPaginator";
 import { AdminRecordCard } from "@/components/admin/AdminRecordCard";
@@ -9,7 +10,13 @@ import { AdminRecordCollection } from "@/components/admin/AdminRecordCollection"
 import { AdminStatusBadge } from "@/components/admin/AdminStatusBadge";
 import { AdminSelect } from "@/components/admin/AdminSelect";
 import { Button, buttonVariants } from "@/components/admin/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/admin/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/admin/ui/card";
 import {
   Table,
   TableBody,
@@ -42,7 +49,6 @@ export default async function AdminGatewaysPage({
   return (
     <div className="flex flex-col gap-6">
       <AdminPageHeader
-        eyebrow="Admin / Gateway"
         icon={CreditCard}
         title="Payment Gateway"
         meta={`${state.total} CREDENTIAL · ENABLE/DISABLE GLOBAL PER PROVIDER`}
@@ -88,7 +94,7 @@ export default async function AdminGatewaysPage({
         </CardContent>
       </Card>
 
-      <form method="GET" className="flex flex-wrap items-end gap-3" role="search">
+      <AdminFilterForm action="/admin/gateways" className="flex flex-wrap items-end gap-3">
         <AdminSelect
           name="provider"
           label="Provider"
@@ -107,7 +113,7 @@ export default async function AdminGatewaysPage({
             Hapus filter
           </Link>
         ) : null}
-      </form>
+      </AdminFilterForm>
 
       {state.credentials.length === 0 ? (
         <AdminEmptyState heading="Belum ada credential" icon={CreditCard}>

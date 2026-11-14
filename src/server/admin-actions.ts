@@ -48,6 +48,7 @@ import {
   setGlobalTemplateActive,
   updateAddOn,
   updateBusiness,
+  revokeBusinessDevice,
   updateGlobalTemplate,
   updateGlobalTemplateLayout,
   uploadGlobalTemplateFile,
@@ -123,6 +124,20 @@ export async function deleteBusinessAction(
   try {
     await deleteBusiness(str(formData, "businessId"));
     refresh("/admin/businesses", "/admin");
+    return {};
+  } catch (error) {
+    return toFormState(error);
+  }
+}
+
+export async function revokeBusinessDeviceAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  try {
+    const businessId = str(formData, "businessId");
+    await revokeBusinessDevice(businessId, str(formData, "deviceId"));
+    refresh(`/admin/businesses/${businessId}`, "/admin/businesses");
     return {};
   } catch (error) {
     return toFormState(error);

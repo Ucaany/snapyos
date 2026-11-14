@@ -4,13 +4,20 @@ import { ScrollText, Search } from "lucide-react";
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
 import { AdminDisclosure } from "@/components/admin/AdminDisclosureCard";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
+import { AdminFilterForm } from "@/components/admin/AdminFilterForm";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminPaginator } from "@/components/admin/AdminPaginator";
 import { AdminRecordCard } from "@/components/admin/AdminRecordCard";
 import { AdminRecordCollection } from "@/components/admin/AdminRecordCollection";
 import { AdminSelect } from "@/components/admin/AdminSelect";
 import { Button, buttonVariants } from "@/components/admin/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/admin/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/admin/ui/card";
 import { Input } from "@/components/admin/ui/input";
 import { Label } from "@/components/admin/ui/label";
 import {
@@ -60,7 +67,6 @@ export default async function AdminAuditPage({
   return (
     <div className="flex flex-col gap-6">
       <AdminPageHeader
-        eyebrow="Admin / Log Audit"
         title="Log Audit"
         icon={ScrollText}
         meta={`${total} ENTRY · SEMUA AKSI ADMIN & FINANSIAL TERCATAT`}
@@ -75,30 +81,30 @@ export default async function AdminAuditPage({
           </CardDescription>
         </CardHeader>
         <CardContent>
-        <AdminActionForm
-          action={deleteAuditLogsAction}
-          submitLabel="Hapus Log Sebelum Tanggal"
-          variant="destructive"
-          confirm="Hapus seluruh log audit sebelum tanggal ini? Tindakan permanen dan tidak bisa dibatalkan."
-          className="flex flex-wrap items-end gap-3"
-        >
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="audit-before" className="text-xs font-medium text-muted-foreground">
-              Hapus sebelum tanggal
-            </Label>
-            <Input
-              id="audit-before"
-              name="before"
-              type="date"
-              required
-              className="w-full sm:w-44"
-            />
-          </div>
-        </AdminActionForm>
+          <AdminActionForm
+            action={deleteAuditLogsAction}
+            submitLabel="Hapus Log Sebelum Tanggal"
+            variant="destructive"
+            confirm="Hapus seluruh log audit sebelum tanggal ini? Tindakan permanen dan tidak bisa dibatalkan."
+            className="flex flex-wrap items-end gap-3"
+          >
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="audit-before" className="text-xs font-medium text-muted-foreground">
+                Hapus sebelum tanggal
+              </Label>
+              <Input
+                id="audit-before"
+                name="before"
+                type="date"
+                required
+                className="w-full sm:w-44"
+              />
+            </div>
+          </AdminActionForm>
         </CardContent>
       </Card>
 
-      <form method="GET" className="flex flex-wrap items-end gap-3" role="search">
+      <AdminFilterForm action="/admin/audit" className="flex flex-wrap items-end gap-3">
         <AdminSelect
           name="action"
           label="Prefix aksi"
@@ -129,7 +135,7 @@ export default async function AdminAuditPage({
             Hapus filter
           </Link>
         ) : null}
-      </form>
+      </AdminFilterForm>
 
       {items.length === 0 ? (
         <AdminEmptyState heading="Tidak ada log" icon={ScrollText}>
@@ -153,7 +159,7 @@ export default async function AdminAuditPage({
               </TableHeader>
               <TableBody>
                 {items.map((log) => (
-                  <TableRow key={log.id} className="align-top">
+                  <TableRow key={log.id}>
                     <TableCell className="whitespace-nowrap text-muted-foreground">
                       {dateTimeFmt.format(new Date(log.created_at))}
                     </TableCell>

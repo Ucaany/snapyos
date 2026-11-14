@@ -3,6 +3,7 @@ import { CircleHelp, Filter } from "lucide-react";
 
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
+import { AdminFilterForm } from "@/components/admin/AdminFilterForm";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminPaginator } from "@/components/admin/AdminPaginator";
 import { AdminRecordCard } from "@/components/admin/AdminRecordCard";
@@ -43,12 +44,11 @@ export default async function AdminSupportPage({
   return (
     <div className="flex flex-col gap-6">
       <AdminPageHeader
-        eyebrow="Admin / Tiket Bantuan"
         title="Tiket Bantuan"
         icon={CircleHelp}
         meta={`Semua tenant · ${total} tiket cocok filter`}
         right={
-          <form method="GET" className="flex flex-wrap items-end gap-3" role="search">
+          <AdminFilterForm action="/admin/support" className="flex flex-wrap items-end gap-3">
             <AdminSelect
               name="status"
               label="Status"
@@ -62,7 +62,7 @@ export default async function AdminSupportPage({
               <Filter className="size-4" aria-hidden="true" />
               Terapkan
             </Button>
-          </form>
+          </AdminFilterForm>
         }
       />
 
@@ -72,7 +72,10 @@ export default async function AdminSupportPage({
           icon={CircleHelp}
           action={
             q.status ? (
-              <Link href="/admin/support" className={buttonVariants({ variant: "outline", size: "sm" })}>
+              <Link
+                href="/admin/support"
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+              >
                 Hapus filter
               </Link>
             ) : null

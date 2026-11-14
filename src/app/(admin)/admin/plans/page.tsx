@@ -7,7 +7,13 @@ import { AdminStatGrid } from "@/components/admin/AdminStatGrid";
 import { AdminStatusBadge } from "@/components/admin/AdminStatusBadge";
 import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
 import { AdminSelect } from "@/components/admin/AdminSelect";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/admin/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/admin/ui/card";
 import { Input } from "@/components/admin/ui/input";
 import { formatIDR } from "@/lib/dashboard-math";
 import { createPlanAction, updatePlanAction } from "@/server/admin-actions";
@@ -111,7 +117,6 @@ export default async function AdminPlansPage() {
   return (
     <div className="flex flex-col gap-6">
       <AdminPageHeader
-        eyebrow="Admin / Paket"
         icon={CreditCard}
         title="Manajemen Paket"
         meta="Harga · limit sesi konkuren · feature flags · platform fee"

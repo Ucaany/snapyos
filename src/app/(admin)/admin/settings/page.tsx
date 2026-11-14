@@ -30,7 +30,6 @@ export default async function AdminSettingsPage() {
   return (
     <div className="flex flex-col gap-6">
       <AdminPageHeader
-        eyebrow="Admin / Pengaturan Platform"
         icon={Settings}
         title="Konfigurasi Platform"
         meta="Global · berlaku untuk semua tenant"

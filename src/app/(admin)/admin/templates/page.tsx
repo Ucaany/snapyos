@@ -11,7 +11,13 @@ import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
 import { AdminSelect } from "@/components/admin/AdminSelect";
 import { Badge } from "@/components/admin/ui/badge";
 import { buttonVariants } from "@/components/admin/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/admin/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/admin/ui/card";
 import {
   Collapsible,
   CollapsibleContent,
@@ -55,7 +61,6 @@ export default async function AdminTemplatesPage() {
   return (
     <div className="flex flex-col gap-6">
       <AdminPageHeader
-        eyebrow="Admin / Template"
         icon={ImageIcon}
         title="Template Global"
         meta={`${categories.length} kategori · ${templates.length} template global`}
@@ -76,11 +81,20 @@ export default async function AdminTemplatesPage() {
             className="flex flex-wrap items-end gap-2"
           >
             <div className="flex flex-col gap-1">
-              <Label htmlFor="cat-name" className="text-xs text-muted-foreground">Nama kategori</Label>
-              <Input id="cat-name" name="name" placeholder="cth. Wedding" className="w-full sm:w-56" />
+              <Label htmlFor="cat-name" className="text-xs text-muted-foreground">
+                Nama kategori
+              </Label>
+              <Input
+                id="cat-name"
+                name="name"
+                placeholder="cth. Wedding"
+                className="w-full sm:w-56"
+              />
             </div>
             <div className="flex flex-col gap-1">
-              <Label htmlFor="cat-price" className="text-xs text-muted-foreground">Harga default (IDR, opsional)</Label>
+              <Label htmlFor="cat-price" className="text-xs text-muted-foreground">
+                Harga default (IDR, opsional)
+              </Label>
               <Input
                 id="cat-price"
                 name="price"
@@ -142,7 +156,9 @@ export default async function AdminTemplatesPage() {
               className="grid grid-cols-1 gap-4 md:grid-cols-2"
             >
               <div className="flex flex-col gap-1">
-                <Label htmlFor="tpl-name" className="text-xs text-muted-foreground">Nama template</Label>
+                <Label htmlFor="tpl-name" className="text-xs text-muted-foreground">
+                  Nama template
+                </Label>
                 <Input id="tpl-name" name="name" placeholder="cth. Frame Wedding Emas" required />
               </div>
               <AdminSelect
@@ -164,7 +180,9 @@ export default async function AdminTemplatesPage() {
                 />
               </div>
               <div className="flex flex-col gap-1 md:col-span-2">
-                <Label htmlFor="tpl-file-url" className="text-xs text-muted-foreground">URL file frame (opsional bila upload file)</Label>
+                <Label htmlFor="tpl-file-url" className="text-xs text-muted-foreground">
+                  URL file frame (opsional bila upload file)
+                </Label>
                 <Input
                   id="tpl-file-url"
                   name="file_url"
@@ -172,7 +190,9 @@ export default async function AdminTemplatesPage() {
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <Label htmlFor="tpl-thumb" className="text-xs text-muted-foreground">URL thumbnail (opsional)</Label>
+                <Label htmlFor="tpl-thumb" className="text-xs text-muted-foreground">
+                  URL thumbnail (opsional)
+                </Label>
                 <Input
                   id="tpl-thumb"
                   name="thumbnail_url"
@@ -184,7 +204,9 @@ export default async function AdminTemplatesPage() {
                 </p>
               </div>
               <div className="flex flex-col gap-1">
-                <Label htmlFor="tpl-price" className="text-xs text-muted-foreground">Harga (IDR, opsional)</Label>
+                <Label htmlFor="tpl-price" className="text-xs text-muted-foreground">
+                  Harga (IDR, opsional)
+                </Label>
                 <Input
                   id="tpl-price"
                   name="price"
@@ -227,7 +249,10 @@ export default async function AdminTemplatesPage() {
           ) : (
             <ul className="flex flex-col">
               {templates.map((t) => (
-                <li key={t.id} className="flex flex-wrap items-center justify-between gap-3 border-t py-3 first:border-t-0">
+                <li
+                  key={t.id}
+                  className="flex flex-wrap items-center justify-between gap-3 border-t py-3 first:border-t-0"
+                >
                   <span className="min-w-0">
                     <span className="block text-sm font-medium">
                       {t.name}
@@ -285,9 +310,12 @@ export default async function AdminTemplatesPage() {
                         className="mt-3 flex flex-wrap items-end gap-3"
                       >
                         <div className="flex flex-col gap-1">
-                          <Label htmlFor={`edit-name-${t.id}`} className="text-xs text-muted-foreground">
-                          Nama
-                        </Label>
+                          <Label
+                            htmlFor={`edit-name-${t.id}`}
+                            className="text-xs text-muted-foreground"
+                          >
+                            Nama
+                          </Label>
                           <Input
                             id={`edit-name-${t.id}`}
                             name="name"
@@ -296,9 +324,12 @@ export default async function AdminTemplatesPage() {
                           />
                         </div>
                         <div className="flex flex-col gap-1">
-                          <Label htmlFor={`edit-price-${t.id}`} className="text-xs text-muted-foreground">
-                          Harga (IDR)
-                        </Label>
+                          <Label
+                            htmlFor={`edit-price-${t.id}`}
+                            className="text-xs text-muted-foreground"
+                          >
+                            Harga (IDR)
+                          </Label>
                           <Input
                             id={`edit-price-${t.id}`}
                             name="price"
@@ -309,8 +340,16 @@ export default async function AdminTemplatesPage() {
                             className="w-full sm:w-40"
                           />
                         </div>
-                        <AdminCheckbox name="is_premium" label="Premium" defaultChecked={t.is_premium} />
-                        <AdminCheckbox name="is_active" label="Aktif" defaultChecked={t.is_active} />
+                        <AdminCheckbox
+                          name="is_premium"
+                          label="Premium"
+                          defaultChecked={t.is_premium}
+                        />
+                        <AdminCheckbox
+                          name="is_active"
+                          label="Aktif"
+                          defaultChecked={t.is_active}
+                        />
                       </AdminActionForm>
                     </CollapsibleContent>
                   </Collapsible>
@@ -323,55 +362,55 @@ export default async function AdminTemplatesPage() {
 
       {purchases.length === 0 ? (
         <AdminEmptyState heading="Belum ada pembelian">
-          Belum ada tenant yang membeli template premium. Pembelian tercatat di sini setelah
-          invoice QRIS lunas.
+          Belum ada tenant yang membeli template premium. Pembelian tercatat di sini setelah invoice
+          QRIS lunas.
         </AdminEmptyState>
       ) : (
-            <AdminRecordCollection
-              storageKey="snapyos.view.admin.template-purchases"
-              label="Riwayat pembelian template"
-              title="Riwayat Pembelian Template"
-              description="Pembelian template premium oleh tenant (diproses saat invoice QRIS lunas)."
-              list={
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Business</TableHead>
-                      <TableHead>Template</TableHead>
-                      <TableHead>Harga</TableHead>
-                      <TableHead className="hidden sm:table-cell">Dibeli</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {purchases.map((p) => (
-                      <TableRow key={p.id}>
-                        <TableCell className="font-medium">{p.business_name}</TableCell>
-                        <TableCell>{p.template_name}</TableCell>
-                        <TableCell className="font-medium">{formatIDR(p.price)}</TableCell>
-                        <TableCell className="hidden text-muted-foreground sm:table-cell">
-                          {dateFmt.format(new Date(p.created_at))}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              }
-              grid={
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  {purchases.map((p) => (
-                    <AdminRecordCard
-                      key={p.id}
-                      title={p.template_name}
-                      subtitle={p.business_name}
-                      meta={[
-                        { label: "Harga", value: formatIDR(p.price) },
-                        { label: "Dibeli", value: dateFmt.format(new Date(p.created_at)) },
-                      ]}
-                    />
-                  ))}
-                </div>
-              }
-            />
+        <AdminRecordCollection
+          storageKey="snapyos.view.admin.template-purchases"
+          label="Riwayat pembelian template"
+          title="Riwayat Pembelian Template"
+          description="Pembelian template premium oleh tenant (diproses saat invoice QRIS lunas)."
+          list={
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Business</TableHead>
+                  <TableHead>Template</TableHead>
+                  <TableHead>Harga</TableHead>
+                  <TableHead className="hidden sm:table-cell">Dibeli</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {purchases.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell className="font-medium">{p.business_name}</TableCell>
+                    <TableCell>{p.template_name}</TableCell>
+                    <TableCell className="font-medium">{formatIDR(p.price)}</TableCell>
+                    <TableCell className="hidden text-muted-foreground sm:table-cell">
+                      {dateFmt.format(new Date(p.created_at))}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          }
+          grid={
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {purchases.map((p) => (
+                <AdminRecordCard
+                  key={p.id}
+                  title={p.template_name}
+                  subtitle={p.business_name}
+                  meta={[
+                    { label: "Harga", value: formatIDR(p.price) },
+                    { label: "Dibeli", value: dateFmt.format(new Date(p.created_at)) },
+                  ]}
+                />
+              ))}
+            </div>
+          }
+        />
       )}
     </div>
   );

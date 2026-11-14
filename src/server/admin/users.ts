@@ -42,6 +42,58 @@ const ADMIN_USER_COLUMNS =
   "id, email, email_verified, name, role, status, created_at, whatsapp, acquisition_source, planned_devices, signup_ip, signup_user_agent";
 
 // ---------------------------------------------------------------------------
+// Aggregate stats — KPI halaman Tenant
+// ---------------------------------------------------------------------------
+
+export type AdminUserStats = {
+  total: number;
+  admins: number;
+  regular: number;
+  active: number;
+  suspended: number;
+  verified: number;
+  unverified: number;
+  withBusiness: number;
+  withoutBusiness: number;
+};
+
+/** Breakdown akun platform. Dipakai KPI `/admin/users` dan overview. */
+export async function getUserStats(): Promise<AdminUserStats> {
+  await requireAdmin();
+  const supabase = createServerClient();
+  const [userRows, ownerRows] = await Promise.all([
+    supabase.from("users").select("id, role, status, email_verified"),
+    supabase.from("businesses").select("owner_id"),
+  ]);
+  if (userRows.error || ownerRows.error) {
+    throw new ApiError("INTERNAL", "Gagal memuat statistik user");
+  }
+
+  const users = (userRows.data ?? []) as unknown as {
+    id: string;
+    role: string;
+    status: string;
+    email_verified: string | null;
+  }[];
+  const ownerIds = new Set(
+    ((ownerRows.data ?? []) as unknown as { owner_id: string }[]).map((o) => o.owner_id)
+  );
+  const withBusiness = users.filter((u) => ownerIds.has(u.id)).length;
+
+  return {
+    total: users.length,
+    admins: users.filter((u) => u.role === "admin").length,
+    regular: users.filter((u) => u.role !== "admin").length,
+    active: users.filter((u) => u.status !== "suspended").length,
+    suspended: users.filter((u) => u.status === "suspended").length,
+    verified: users.filter((u) => u.email_verified !== null).length,
+    unverified: users.filter((u) => u.email_verified === null).length,
+    withBusiness,
+    withoutBusiness: users.length - withBusiness,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Queries
 // ---------------------------------------------------------------------------
 

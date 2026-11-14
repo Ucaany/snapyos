@@ -3,6 +3,7 @@ import { Filter, Landmark } from "lucide-react";
 
 import { AdminDisclosureCard } from "@/components/admin/AdminDisclosureCard";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
+import { AdminFilterForm } from "@/components/admin/AdminFilterForm";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminPaginator } from "@/components/admin/AdminPaginator";
 import { AdminRecordCard } from "@/components/admin/AdminRecordCard";
@@ -11,7 +12,13 @@ import { AdminStatGrid } from "@/components/admin/AdminStatGrid";
 import { AdminStatusBadge } from "@/components/admin/AdminStatusBadge";
 import { AdminSelect } from "@/components/admin/AdminSelect";
 import { Button, buttonVariants } from "@/components/admin/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/admin/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/admin/ui/card";
 import { Input } from "@/components/admin/ui/input";
 import {
   Table,
@@ -75,13 +82,12 @@ export default async function AdminPaymentsPage({
   return (
     <div className="flex flex-col gap-6">
       <AdminPageHeader
-        eyebrow="Admin / Pembayaran"
         icon={Landmark}
         title="Monitoring Pembayaran"
         meta={`Semua tenant · ${total} payment cocok filter`}
       />
 
-      <form method="GET" className="flex flex-wrap items-end gap-3" role="search">
+      <AdminFilterForm action="/admin/payments" className="flex flex-wrap items-end gap-3">
         <AdminSelect
           name="status"
           label="Status"
@@ -136,7 +142,7 @@ export default async function AdminPaymentsPage({
             Hapus filter
           </Link>
         ) : null}
-      </form>
+      </AdminFilterForm>
 
       <Card>
         <CardHeader>
@@ -176,7 +182,10 @@ export default async function AdminPaymentsPage({
             { label: "Gagal", value: String(summary.counts.failed ?? 0) },
             { label: "Kedaluwarsa", value: String(summary.counts.expired ?? 0) },
             { label: "Dibatalkan", value: String(summary.counts.cancelled ?? 0) },
-            { label: "Webhook Invalid Sig", value: String(summary.webhookIntegrity.invalidSignature) },
+            {
+              label: "Webhook Invalid Sig",
+              value: String(summary.webhookIntegrity.invalidSignature),
+            },
             { label: "Webhook Error", value: String(summary.webhookIntegrity.errors) },
             { label: "Webhook Total", value: String(summary.webhookIntegrity.total) },
           ]}
@@ -298,7 +307,9 @@ export default async function AdminPaymentsPage({
                 {items.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell className="font-bold">{p.payment_reference}</TableCell>
-                    <TableCell className="hidden text-sm md:table-cell">{p.business_name}</TableCell>
+                    <TableCell className="hidden text-sm md:table-cell">
+                      {p.business_name}
+                    </TableCell>
                     <TableCell className="font-bold">
                       {formatIDR(p.final_amount)}
                       {p.discount_amount > 0 ? (

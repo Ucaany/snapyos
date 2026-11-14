@@ -28,6 +28,7 @@ import {
 import { AdminMetricCard } from "@/components/admin/AdminMetricCard";
 import { AdminPagedTable } from "@/components/admin/AdminPagedBlocks";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { AdminSectionHeading } from "@/components/admin/AdminSectionHeading";
 import { AdminStatGrid } from "@/components/admin/AdminStatGrid";
 import { Alert, AlertDescription, AlertTitle } from "@/components/admin/ui/alert";
 import { Badge } from "@/components/admin/ui/badge";
@@ -142,7 +143,11 @@ export default async function AdminOverviewPage() {
   );
   const revenueMax = Math.max(1, ...analytics.series.map((day) => day.revenue));
   const revenueScale = [
-    { label: "Hari ini", value: revenueToday, share: revenue30 ? (revenueToday / revenue30) * 100 : 0 },
+    {
+      label: "Hari ini",
+      value: revenueToday,
+      share: revenue30 ? (revenueToday / revenue30) * 100 : 0,
+    },
     { label: "7 hari", value: revenue7, share: revenue30 ? (revenue7 / revenue30) * 100 : 0 },
     { label: "30 hari", value: revenue30, share: 100 },
   ];
@@ -240,7 +245,6 @@ export default async function AdminOverviewPage() {
       <AdminPageHeader
         size="hero"
         icon={Gauge}
-        eyebrow="Admin / Operasi platform"
         title="Ringkasan platform"
         description={`Agregat seluruh tenant · ${payments.webhookIntegrity.total} webhook terekam.`}
       />
@@ -253,7 +257,7 @@ export default async function AdminOverviewPage() {
       ) : null}
 
       <section aria-labelledby="admin-overview-metrics" className="flex flex-col gap-4">
-        <SectionHeading
+        <AdminSectionHeading
           id="admin-overview-metrics"
           title="Ikhtisar"
           description="Angka kunci seluruh tenant SnapyOS."
@@ -295,274 +299,275 @@ export default async function AdminOverviewPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
-        <Card className="xl:col-span-7">
-          <CardHeader className="border-b">
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp
-                className="size-4 text-emerald-600 dark:text-emerald-400"
-                aria-hidden="true"
-              />
-              Skala pendapatan &amp; kondisi API
-            </CardTitle>
-            <CardDescription>
-              Pendapatan berjalan dan kesehatan jalur data platform.
-            </CardDescription>
-            <CardAction>
-              <Badge
-                variant={
-                  apiStatus === "bad"
-                    ? "destructive"
-                    : apiStatus === "warn"
-                      ? "default"
-                      : "secondary"
-                }
-              >
-                {apiStatus === "bad" ? "Gangguan" : apiStatus === "warn" ? "Pantau" : "Normal"}
-              </Badge>
-            </CardAction>
-          </CardHeader>
-          <CardContent className="grid items-start gap-6 md:grid-cols-2">
-            <div className="flex flex-col gap-4">
-              <div className="flex items-baseline justify-between gap-3">
-                <h3 className="text-xs font-medium text-muted-foreground">Skala pendapatan</h3>
-                <span className="text-xs text-muted-foreground tabular-nums">
-                  {delta7 === null
-                    ? "Belum ada pembanding"
-                    : `${delta7 >= 0 ? "+" : ""}${delta7.toFixed(1).replace(".", ",")}% vs 7 hari sebelumnya`}
-                </span>
-              </div>
-              <ul className="flex flex-col gap-3">
-                {revenueScale.map((row) => (
-                  <li key={row.label} className="flex flex-col gap-1.5">
-                    <div className="flex items-baseline justify-between gap-3">
-                      <span className="text-sm">{row.label}</span>
-                      <span className="text-sm font-medium tabular-nums">
-                        {formatIDR(row.value)}
-                      </span>
-                    </div>
-                    <div
-                      className="h-1.5 overflow-hidden rounded-full bg-muted"
-                      role="img"
-                      aria-label={`${row.label}: ${formatIDR(row.value)}, ${Math.round(row.share)}% dari 30 hari`}
-                    >
+          <Card className="xl:col-span-7">
+            <CardHeader className="border-b">
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp
+                  className="size-4 text-emerald-600 dark:text-emerald-400"
+                  aria-hidden="true"
+                />
+                Skala pendapatan &amp; kondisi API
+              </CardTitle>
+              <CardDescription>
+                Pendapatan berjalan dan kesehatan jalur data platform.
+              </CardDescription>
+              <CardAction>
+                <Badge
+                  variant={
+                    apiStatus === "bad"
+                      ? "destructive"
+                      : apiStatus === "warn"
+                        ? "default"
+                        : "secondary"
+                  }
+                >
+                  {apiStatus === "bad" ? "Gangguan" : apiStatus === "warn" ? "Pantau" : "Normal"}
+                </Badge>
+              </CardAction>
+            </CardHeader>
+            <CardContent className="grid items-start gap-6 md:grid-cols-2">
+              <div className="flex flex-col gap-4">
+                <div className="flex items-baseline justify-between gap-3">
+                  <h3 className="text-xs font-medium text-muted-foreground">Skala pendapatan</h3>
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {delta7 === null
+                      ? "Belum ada pembanding"
+                      : `${delta7 >= 0 ? "+" : ""}${delta7.toFixed(1).replace(".", ",")}% vs 7 hari sebelumnya`}
+                  </span>
+                </div>
+                <ul className="flex flex-col gap-3">
+                  {revenueScale.map((row) => (
+                    <li key={row.label} className="flex flex-col gap-1.5">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="text-sm">{row.label}</span>
+                        <span className="text-sm font-medium tabular-nums">
+                          {formatIDR(row.value)}
+                        </span>
+                      </div>
                       <div
-                        className="h-full rounded-full bg-emerald-500"
-                        style={{ width: `${Math.min(100, Math.max(2, row.share))}%` }}
-                      />
-                    </div>
-                  </li>
-                ))}
+                        className="h-1.5 overflow-hidden rounded-full bg-muted"
+                        role="img"
+                        aria-label={`${row.label}: ${formatIDR(row.value)}, ${Math.round(row.share)}% dari 30 hari`}
+                      >
+                        <div
+                          className="h-full rounded-full bg-emerald-500"
+                          style={{ width: `${Math.min(100, Math.max(2, row.share))}%` }}
+                        />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                <AdminStatGrid
+                  columns={2}
+                  className="border-t pt-4"
+                  items={[
+                    {
+                      label: "Rata-rata harian",
+                      value: formatIDR(
+                        Math.round(revenue30 / Math.max(1, analytics.series.length))
+                      ),
+                      hint: "30 hari terakhir",
+                    },
+                    {
+                      label: "Hari tertinggi",
+                      value: formatIDR(revenuePeak.revenue),
+                      hint: shortDate(revenuePeak.date),
+                    },
+                    {
+                      label: "Transaksi 7 hari",
+                      value: numberFormat.format(tx7),
+                    },
+                    {
+                      label: "Rata-rata tiket",
+                      value: formatIDR(averageTicket),
+                    },
+                  ]}
+                />
+              </div>
+
+              <div className="flex flex-col gap-4 border-t pt-5 md:border-t-0 md:border-l md:pt-0 md:pl-6">
+                <h3 className="text-xs font-medium text-muted-foreground">Kondisi API</h3>
+                <ul className="flex flex-col gap-3">
+                  {apiChecks.map((check) => (
+                    <li key={check.label} className="flex items-start justify-between gap-3">
+                      <span className="flex min-w-0 flex-col gap-0.5">
+                        <span className="text-sm">{check.label}</span>
+                        <span className="text-xs text-muted-foreground">{check.note}</span>
+                      </span>
+                      <span className="flex shrink-0 flex-col items-end gap-1">
+                        <span className="text-sm font-medium tabular-nums">{check.value}</span>
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1.5 text-[11px]",
+                            check.state === "bad"
+                              ? "text-destructive"
+                              : check.state === "warn"
+                                ? "text-amber-700 dark:text-amber-400"
+                                : "text-emerald-700 dark:text-emerald-400"
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "size-1.5 rounded-full",
+                              check.state === "bad"
+                                ? "bg-destructive"
+                                : check.state === "warn"
+                                  ? "bg-amber-500"
+                                  : "bg-emerald-500"
+                            )}
+                            aria-hidden="true"
+                          />
+                          {check.state === "bad"
+                            ? "Gangguan"
+                            : check.state === "warn"
+                              ? "Pantau"
+                              : "Normal"}
+                        </span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="mt-auto flex flex-col gap-1.5 border-t pt-4 text-xs text-muted-foreground">
+                  <p className="font-medium text-foreground">Ambang status</p>
+                  <p>Latensi: Normal &lt;300 ms · Pantau &lt;800 ms · Gangguan ≥800 ms.</p>
+                  <p>Error rate: Normal &lt;1% · Pantau &lt;5% · Gangguan ≥5%.</p>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 border-t pt-4 md:col-span-2">
+                <div className="flex items-baseline justify-between gap-3 text-xs">
+                  <span className="text-muted-foreground">Pendapatan harian 30 hari</span>
+                  <span className="text-muted-foreground tabular-nums">
+                    tertinggi {formatIDR(revenuePeak.revenue)} · {shortDate(revenuePeak.date)}
+                  </span>
+                </div>
+                <div
+                  className="flex h-16 items-end gap-[3px]"
+                  role="img"
+                  aria-label={`Grafik batang pendapatan harian 30 hari, tertinggi ${formatIDR(revenuePeak.revenue)} pada ${shortDate(revenuePeak.date)}`}
+                >
+                  {analytics.series.map((day) => (
+                    <span
+                      key={day.date}
+                      className="flex-1 rounded-[2px] bg-emerald-500/70 dark:bg-emerald-400/60"
+                      style={{ height: `${Math.max(6, (day.revenue / revenueMax) * 100)}%` }}
+                      title={`${day.date}: ${formatIDR(day.revenue)}`}
+                    />
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="xl:col-span-5">
+            <CardHeader className="border-b">
+              <CardTitle className="flex items-center gap-2">
+                <Repeat className="size-4 text-sky-600 dark:text-sky-400" aria-hidden="true" />
+                Skala langganan
+              </CardTitle>
+              <CardDescription>
+                {numberFormat.format(subscriptionStats.total)} langganan ·{" "}
+                {numberFormat.format(subscriptionStats.effectiveActive)} efektif.
+              </CardDescription>
+              <CardAction>
+                <Badge variant="secondary">
+                  {numberFormat.format(subscriptionStats.trialsEndingSoon)} trial berakhir ≤3 hari
+                </Badge>
+              </CardAction>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              <ul className="flex flex-col gap-3">
+                {subscriptionScale.map((row) => {
+                  const share = subscriptionStats.total
+                    ? (row.value / subscriptionStats.total) * 100
+                    : 0;
+                  return (
+                    <li key={row.key} className="flex flex-col gap-1.5">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span
+                            className="size-2 shrink-0 rounded-full"
+                            style={{ backgroundColor: row.color }}
+                            aria-hidden="true"
+                          />
+                          <span className="truncate text-sm">{row.label}</span>
+                        </span>
+                        <span className="flex shrink-0 items-baseline gap-2 tabular-nums">
+                          <span className="text-sm font-medium">
+                            {numberFormat.format(row.value)}
+                          </span>
+                          <span className="w-10 text-right text-xs text-muted-foreground">
+                            {share.toFixed(share >= 10 ? 0 : 1).replace(".", ",")}%
+                          </span>
+                        </span>
+                      </div>
+                      <div
+                        className="h-1.5 overflow-hidden rounded-full bg-muted"
+                        role="img"
+                        aria-label={`${row.label}: ${row.value} subscription (${Math.round(share)}%)`}
+                      >
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${Math.min(100, Math.max(share > 0 ? 2 : 0, share))}%`,
+                            backgroundColor: row.color,
+                          }}
+                        />
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
+
               <AdminStatGrid
                 columns={2}
                 className="border-t pt-4"
                 items={[
                   {
-                    label: "Rata-rata harian",
-                    value: formatIDR(Math.round(revenue30 / Math.max(1, analytics.series.length))),
-                    hint: "30 hari terakhir",
+                    label: "Perpanjangan ≤7 hari",
+                    value: numberFormat.format(subscriptionStats.renewalsDueSoon),
                   },
                   {
-                    label: "Hari tertinggi",
-                    value: formatIDR(revenuePeak.revenue),
-                    hint: shortDate(revenuePeak.date),
+                    label: "Trial berakhir ≤3 hari",
+                    value: numberFormat.format(subscriptionStats.trialsEndingSoon),
                   },
+                  { label: "Lewat tempo", value: numberFormat.format(subscriptionStats.pastDue) },
                   {
-                    label: "Transaksi 7 hari",
-                    value: numberFormat.format(tx7),
-                  },
-                  {
-                    label: "Rata-rata tiket",
-                    value: formatIDR(averageTicket),
+                    label: "Review aktivasi",
+                    value: numberFormat.format(health.pendingReview),
                   },
                 ]}
               />
 
-            </div>
-
-            <div className="flex flex-col gap-4 border-t pt-5 md:border-t-0 md:border-l md:pt-0 md:pl-6">
-              <h3 className="text-xs font-medium text-muted-foreground">Kondisi API</h3>
-              <ul className="flex flex-col gap-3">
-                {apiChecks.map((check) => (
-                  <li key={check.label} className="flex items-start justify-between gap-3">
-                    <span className="flex min-w-0 flex-col gap-0.5">
-                      <span className="text-sm">{check.label}</span>
-                      <span className="text-xs text-muted-foreground">{check.note}</span>
-                    </span>
-                    <span className="flex shrink-0 flex-col items-end gap-1">
-                      <span className="text-sm font-medium tabular-nums">{check.value}</span>
-                      <span
-                        className={cn(
-                          "inline-flex items-center gap-1.5 text-[11px]",
-                          check.state === "bad"
-                            ? "text-destructive"
-                            : check.state === "warn"
-                              ? "text-amber-700 dark:text-amber-400"
-                              : "text-emerald-700 dark:text-emerald-400"
-                        )}
+              {subscriptionStats.planSplit.length ? (
+                <div className="flex flex-col gap-2 border-t pt-4">
+                  <p className="text-xs text-muted-foreground">MRR per paket</p>
+                  <ul className="flex flex-col gap-2">
+                    {subscriptionStats.planSplit.map((plan) => (
+                      <li
+                        key={plan.planName}
+                        className="flex items-center justify-between gap-3 text-xs"
                       >
-                        <span
-                          className={cn(
-                            "size-1.5 rounded-full",
-                            check.state === "bad"
-                              ? "bg-destructive"
-                              : check.state === "warn"
-                                ? "bg-amber-500"
-                                : "bg-emerald-500"
-                          )}
-                          aria-hidden="true"
-                        />
-                        {check.state === "bad"
-                          ? "Gangguan"
-                          : check.state === "warn"
-                            ? "Pantau"
-                            : "Normal"}
-                      </span>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-
-              <div className="mt-auto flex flex-col gap-1.5 border-t pt-4 text-xs text-muted-foreground">
-                <p className="font-medium text-foreground">Ambang status</p>
-                <p>Latensi: Normal &lt;300 ms · Pantau &lt;800 ms · Gangguan ≥800 ms.</p>
-                <p>Error rate: Normal &lt;1% · Pantau &lt;5% · Gangguan ≥5%.</p>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2 border-t pt-4 md:col-span-2">
-              <div className="flex items-baseline justify-between gap-3 text-xs">
-                <span className="text-muted-foreground">Pendapatan harian 30 hari</span>
-                <span className="text-muted-foreground tabular-nums">
-                  tertinggi {formatIDR(revenuePeak.revenue)} · {shortDate(revenuePeak.date)}
-                </span>
-              </div>
-              <div
-                className="flex h-16 items-end gap-[3px]"
-                role="img"
-                aria-label={`Grafik batang pendapatan harian 30 hari, tertinggi ${formatIDR(revenuePeak.revenue)} pada ${shortDate(revenuePeak.date)}`}
-              >
-                {analytics.series.map((day) => (
-                  <span
-                    key={day.date}
-                    className="flex-1 rounded-[2px] bg-emerald-500/70 dark:bg-emerald-400/60"
-                    style={{ height: `${Math.max(6, (day.revenue / revenueMax) * 100)}%` }}
-                    title={`${day.date}: ${formatIDR(day.revenue)}`}
-                  />
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="xl:col-span-5">
-          <CardHeader className="border-b">
-            <CardTitle className="flex items-center gap-2">
-              <Repeat className="size-4 text-sky-600 dark:text-sky-400" aria-hidden="true" />
-              Skala langganan
-            </CardTitle>
-            <CardDescription>
-              {numberFormat.format(subscriptionStats.total)} langganan ·{" "}
-              {numberFormat.format(subscriptionStats.effectiveActive)} efektif.
-            </CardDescription>
-            <CardAction>
-              <Badge variant="secondary">
-                {numberFormat.format(subscriptionStats.trialsEndingSoon)} trial berakhir ≤3 hari
-              </Badge>
-            </CardAction>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            <ul className="flex flex-col gap-3">
-              {subscriptionScale.map((row) => {
-                const share = subscriptionStats.total
-                  ? (row.value / subscriptionStats.total) * 100
-                  : 0;
-                return (
-                  <li key={row.key} className="flex flex-col gap-1.5">
-                    <div className="flex items-baseline justify-between gap-3">
-                      <span className="flex min-w-0 items-center gap-2">
-                        <span
-                          className="size-2 shrink-0 rounded-full"
-                          style={{ backgroundColor: row.color }}
-                          aria-hidden="true"
-                        />
-                        <span className="truncate text-sm">{row.label}</span>
-                      </span>
-                      <span className="flex shrink-0 items-baseline gap-2 tabular-nums">
-                        <span className="text-sm font-medium">
-                          {numberFormat.format(row.value)}
+                        <span className="truncate">{plan.planName}</span>
+                        <span className="flex shrink-0 items-center gap-2 tabular-nums">
+                          <span className="text-muted-foreground">
+                            {numberFormat.format(plan.count)} langganan
+                          </span>
+                          <span className="font-medium">{formatIDR(plan.mrr)}</span>
                         </span>
-                        <span className="w-10 text-right text-xs text-muted-foreground">
-                          {share.toFixed(share >= 10 ? 0 : 1).replace(".", ",")}%
-                        </span>
-                      </span>
-                    </div>
-                    <div
-                      className="h-1.5 overflow-hidden rounded-full bg-muted"
-                      role="img"
-                      aria-label={`${row.label}: ${row.value} subscription (${Math.round(share)}%)`}
-                    >
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: `${Math.min(100, Math.max(share > 0 ? 2 : 0, share))}%`,
-                          backgroundColor: row.color,
-                        }}
-                      />
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-
-            <AdminStatGrid
-              columns={2}
-              className="border-t pt-4"
-              items={[
-                {
-                  label: "Perpanjangan ≤7 hari",
-                  value: numberFormat.format(subscriptionStats.renewalsDueSoon),
-                },
-                {
-                  label: "Trial berakhir ≤3 hari",
-                  value: numberFormat.format(subscriptionStats.trialsEndingSoon),
-                },
-                { label: "Lewat tempo", value: numberFormat.format(subscriptionStats.pastDue) },
-                {
-                  label: "Review aktivasi",
-                  value: numberFormat.format(health.pendingReview),
-                },
-              ]}
-            />
-
-            {subscriptionStats.planSplit.length ? (
-              <div className="flex flex-col gap-2 border-t pt-4">
-                <p className="text-xs text-muted-foreground">MRR per paket</p>
-                <ul className="flex flex-col gap-2">
-                  {subscriptionStats.planSplit.map((plan) => (
-                    <li
-                      key={plan.planName}
-                      className="flex items-center justify-between gap-3 text-xs"
-                    >
-                      <span className="truncate">{plan.planName}</span>
-                      <span className="flex shrink-0 items-center gap-2 tabular-nums">
-                        <span className="text-muted-foreground">
-                          {numberFormat.format(plan.count)} langganan
-                        </span>
-                        <span className="font-medium">{formatIDR(plan.mrr)}</span>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-          </CardContent>
-        </Card>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
         </div>
       </section>
 
       <section aria-labelledby="admin-overview-activity" className="flex flex-col gap-4">
-        <SectionHeading
+        <AdminSectionHeading
           id="admin-overview-activity"
           title="Aktivitas"
           description="Tren 30 hari terakhir."
@@ -572,7 +577,10 @@ export default async function AdminOverviewPage() {
           <Card>
             <CardHeader className="border-b">
               <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="size-4 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                <BarChart3
+                  className="size-4 text-emerald-600 dark:text-emerald-400"
+                  aria-hidden="true"
+                />
                 Pendapatan harian
               </CardTitle>
               <CardDescription>Pembayaran lunas 30 hari terakhir.</CardDescription>
@@ -610,7 +618,7 @@ export default async function AdminOverviewPage() {
       </section>
 
       <section aria-labelledby="admin-overview-payments" className="flex flex-col gap-4">
-        <SectionHeading
+        <AdminSectionHeading
           id="admin-overview-payments"
           title="Pembayaran"
           description="Agregat seluruh gateway pembayaran tenant."
@@ -752,7 +760,10 @@ export default async function AdminOverviewPage() {
           <Card className="xl:col-span-7">
             <CardHeader className="border-b">
               <CardTitle className="flex items-center gap-2">
-                <Building2 className="size-4 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                <Building2
+                  className="size-4 text-emerald-600 dark:text-emerald-400"
+                  aria-hidden="true"
+                />
                 Tenant teratas
               </CardTitle>
               <CardDescription>Diurutkan dari volume bruto terbesar.</CardDescription>
@@ -840,7 +851,7 @@ export default async function AdminOverviewPage() {
       </section>
 
       <section aria-labelledby="admin-overview-health" className="flex flex-col gap-4">
-        <SectionHeading
+        <AdminSectionHeading
           id="admin-overview-health"
           title="Kesehatan platform"
           description="Supabase, VPS, dan sebaran akun."
@@ -881,7 +892,10 @@ export default async function AdminOverviewPage() {
           <Card className="xl:col-span-7">
             <CardHeader className="border-b">
               <CardTitle className="flex items-center gap-2">
-                <Database className="size-4 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                <Database
+                  className="size-4 text-emerald-600 dark:text-emerald-400"
+                  aria-hidden="true"
+                />
                 Kesehatan Supabase
               </CardTitle>
               <CardDescription>
@@ -969,7 +983,10 @@ export default async function AdminOverviewPage() {
                   { label: "Total user", value: numberFormat.format(health.users.total) },
                   { label: "Suspended", value: numberFormat.format(health.users.suspended) },
                   { label: "Terverifikasi", value: numberFormat.format(health.users.verified) },
-                  { label: "Belum verifikasi", value: numberFormat.format(health.users.unverified) },
+                  {
+                    label: "Belum verifikasi",
+                    value: numberFormat.format(health.users.unverified),
+                  },
                 ]}
               />
             </CardContent>
@@ -996,51 +1013,51 @@ export default async function AdminOverviewPage() {
             </CardHeader>
             <CardContent className="flex flex-col gap-6">
               <div className="flex flex-col gap-5">
-              <UsageMeter
-                label="RAM"
-                value={`${formatBytes(vps.memUsed)} / ${formatBytes(vps.memTotal)}`}
-                pct={vps.memPct}
-                detail={`${vps.memPct}% terpakai · ${formatBytes(vps.memFree)} bebas`}
-              />
-              <UsageMeter
-                label="Disk"
-                value={
-                  vps.diskUsed !== null && vps.diskTotal !== null
-                    ? `${formatBytes(vps.diskUsed)} / ${formatBytes(vps.diskTotal)}`
-                    : "Tidak ada data"
-                }
-                pct={vps.diskPct}
-                detail={
-                  vps.diskFree !== null
-                    ? `${formatBytes(vps.diskFree)} bebas di volume utama`
-                    : "Metrik disk tidak tersedia."
-                }
-              />
-              <UsageMeter
-                label="CPU load (1m)"
-                value={`${vps.load1.toFixed(2)} / ${vps.cpuCount} vCPU`}
-                pct={vps.loadPct}
-                detail={`Load 5m ${vps.load5.toFixed(2)} · 15m ${vps.load15.toFixed(2)}`}
-              />
-            </div>
+                <UsageMeter
+                  label="RAM"
+                  value={`${formatBytes(vps.memUsed)} / ${formatBytes(vps.memTotal)}`}
+                  pct={vps.memPct}
+                  detail={`${vps.memPct}% terpakai · ${formatBytes(vps.memFree)} bebas`}
+                />
+                <UsageMeter
+                  label="Disk"
+                  value={
+                    vps.diskUsed !== null && vps.diskTotal !== null
+                      ? `${formatBytes(vps.diskUsed)} / ${formatBytes(vps.diskTotal)}`
+                      : "Tidak ada data"
+                  }
+                  pct={vps.diskPct}
+                  detail={
+                    vps.diskFree !== null
+                      ? `${formatBytes(vps.diskFree)} bebas di volume utama`
+                      : "Metrik disk tidak tersedia."
+                  }
+                />
+                <UsageMeter
+                  label="CPU load (1m)"
+                  value={`${vps.load1.toFixed(2)} / ${vps.cpuCount} vCPU`}
+                  pct={vps.loadPct}
+                  detail={`Load 5m ${vps.load5.toFixed(2)} · 15m ${vps.load15.toFixed(2)}`}
+                />
+              </div>
 
               <AdminStatGrid
                 columns={2}
                 className="border-t pt-4"
                 items={[
                   { label: "Waktu aktif host", value: formatUptime(vps.uptimeSec) },
-                { label: "Waktu aktif proses", value: formatUptime(vps.processUptimeSec) },
-                { label: "RAM proses", value: formatBytes(vps.processRss) },
-                { label: "vCPU", value: numberFormat.format(vps.cpuCount) },
-                {
-                  label: "Bandwidth masuk",
-                  value: formatNetwork(vps.netRxBytes, vps.netRxMbps),
-                  hint: vps.netRxBytes === null ? "Metrik jaringan butuh Linux (VPS)" : undefined,
-                },
-                {
-                  label: "Bandwidth keluar",
-                  value: formatNetwork(vps.netTxBytes, vps.netTxMbps),
-                },
+                  { label: "Waktu aktif proses", value: formatUptime(vps.processUptimeSec) },
+                  { label: "RAM proses", value: formatBytes(vps.processRss) },
+                  { label: "vCPU", value: numberFormat.format(vps.cpuCount) },
+                  {
+                    label: "Bandwidth masuk",
+                    value: formatNetwork(vps.netRxBytes, vps.netRxMbps),
+                    hint: vps.netRxBytes === null ? "Metrik jaringan butuh Linux (VPS)" : undefined,
+                  },
+                  {
+                    label: "Bandwidth keluar",
+                    value: formatNetwork(vps.netTxBytes, vps.netTxMbps),
+                  },
                 ]}
               />
             </CardContent>
@@ -1081,98 +1098,109 @@ export default async function AdminOverviewPage() {
                 </Badge>
               </CardAction>
             </CardHeader>
-          <CardContent className="flex flex-col gap-5">
-            {cloudflare.ok ? (
-              <>
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <UsageMeter
-                    label="Rasio cache"
-                    value={
-                      cloudflare.cacheRatio !== null
-                        ? `${numberFormat.format(cloudflare.cacheRatio)}%`
-                        : "Tidak ada data"
-                    }
-                    pct={cloudflare.cacheRatio}
-                    invert
-                    detail={`${numberFormat.format(cloudflare.cachedRequests ?? 0)} dari ${numberFormat.format(cloudflare.requests ?? 0)} request dilayani dari cache.`}
-                  />
-                  <UsageMeter
-                    label="Ancaman diblokir"
-                    value={numberFormat.format(cloudflare.threats ?? 0)}
-                    pct={
-                      cloudflare.requests
-                        ? Math.min(
-                            100,
-                            Math.round(((cloudflare.threats ?? 0) / cloudflare.requests) * 100)
-                          )
-                        : 0
-                    }
-                    detail={
-                      (cloudflare.threats ?? 0) > 0
-                        ? "Bot dan request mencurigakan yang ditandai WAF Cloudflare."
-                        : "Tidak ada request yang ditandai WAF."
-                    }
-                  />
-                </div>
-
-                <AdminStatGrid
-                  columns={2}
-                  items={[
-                    { label: "Tayangan halaman", value: numberFormat.format(cloudflare.pageViews ?? 0) },
-                    { label: "Bandwidth edge", value: formatBytes(cloudflare.bytes) },
-                    { label: "Error 4xx", value: numberFormat.format(cloudflare.clientErrors ?? 0) },
-                    { label: "Error 5xx", value: numberFormat.format(cloudflare.serverErrors ?? 0) },
-                  ]}
-                />
-
-                {cloudflare.countries.length ? (
-                  <div className="flex flex-col gap-2 border-t pt-4">
-                    <p className="text-xs text-muted-foreground">Negara teratas</p>
-                    <ul className="flex flex-col gap-1.5">
-                      {cloudflare.countries.map((country) => (
-                        <li
-                          key={country.code}
-                          className="flex items-center justify-between gap-3 text-xs"
-                        >
-                          <span className="font-mono text-[11px] text-muted-foreground">
-                            {country.code}
-                          </span>
-                          <span className="flex items-center gap-3 tabular-nums">
-                            <span>{numberFormat.format(country.requests)} permintaan</span>
-                            {country.threats > 0 ? (
-                              <Badge variant="destructive" className="h-5 px-1.5 text-[11px]">
-                                {numberFormat.format(country.threats)} ancaman
-                              </Badge>
-                            ) : (
-                              <span className="w-16 text-right text-muted-foreground">aman</span>
-                            )}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
+            <CardContent className="flex flex-col gap-5">
+              {cloudflare.ok ? (
+                <>
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <UsageMeter
+                      label="Rasio cache"
+                      value={
+                        cloudflare.cacheRatio !== null
+                          ? `${numberFormat.format(cloudflare.cacheRatio)}%`
+                          : "Tidak ada data"
+                      }
+                      pct={cloudflare.cacheRatio}
+                      invert
+                      detail={`${numberFormat.format(cloudflare.cachedRequests ?? 0)} dari ${numberFormat.format(cloudflare.requests ?? 0)} request dilayani dari cache.`}
+                    />
+                    <UsageMeter
+                      label="Ancaman diblokir"
+                      value={numberFormat.format(cloudflare.threats ?? 0)}
+                      pct={
+                        cloudflare.requests
+                          ? Math.min(
+                              100,
+                              Math.round(((cloudflare.threats ?? 0) / cloudflare.requests) * 100)
+                            )
+                          : 0
+                      }
+                      detail={
+                        (cloudflare.threats ?? 0) > 0
+                          ? "Bot dan request mencurigakan yang ditandai WAF Cloudflare."
+                          : "Tidak ada request yang ditandai WAF."
+                      }
+                    />
                   </div>
-                ) : null}
-              </>
-            ) : (
-              <div className="flex flex-col gap-2 text-sm text-muted-foreground">
-                <p>
-                  {cloudflare.configured
-                    ? (cloudflare.error ?? "Data Cloudflare tidak tersedia.")
-                    : `Isi ${cloudflare.missing.join(" dan ")} untuk menampilkan traffic edge, cache, dan ancaman bot.`}
-                </p>
-                {!cloudflare.configured ? (
-                  <>
-                    <p className="text-xs">
-                      Token API butuh izin <span className="font-medium">Zone &gt; Analytics &gt; Read</span>{" "}
-                      untuk zone yang sama dengan CLOUDFLARE_ZONE_ID.
-                    </p>
-                    <p className="text-xs">
-                      Verifikasi cepat: <code className="font-mono">node scripts/cloudflare-check.mjs</code>
-                    </p>
-                  </>
-                ) : null}
-              </div>
-            )}
+
+                  <AdminStatGrid
+                    columns={2}
+                    items={[
+                      {
+                        label: "Tayangan halaman",
+                        value: numberFormat.format(cloudflare.pageViews ?? 0),
+                      },
+                      { label: "Bandwidth edge", value: formatBytes(cloudflare.bytes) },
+                      {
+                        label: "Error 4xx",
+                        value: numberFormat.format(cloudflare.clientErrors ?? 0),
+                      },
+                      {
+                        label: "Error 5xx",
+                        value: numberFormat.format(cloudflare.serverErrors ?? 0),
+                      },
+                    ]}
+                  />
+
+                  {cloudflare.countries.length ? (
+                    <div className="flex flex-col gap-2 border-t pt-4">
+                      <p className="text-xs text-muted-foreground">Negara teratas</p>
+                      <ul className="flex flex-col gap-1.5">
+                        {cloudflare.countries.map((country) => (
+                          <li
+                            key={country.code}
+                            className="flex items-center justify-between gap-3 text-xs"
+                          >
+                            <span className="font-mono text-[11px] text-muted-foreground">
+                              {country.code}
+                            </span>
+                            <span className="flex items-center gap-3 tabular-nums">
+                              <span>{numberFormat.format(country.requests)} permintaan</span>
+                              {country.threats > 0 ? (
+                                <Badge variant="destructive" className="h-5 px-1.5 text-[11px]">
+                                  {numberFormat.format(country.threats)} ancaman
+                                </Badge>
+                              ) : (
+                                <span className="w-16 text-right text-muted-foreground">aman</span>
+                              )}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+                  <p>
+                    {cloudflare.configured
+                      ? (cloudflare.error ?? "Data Cloudflare tidak tersedia.")
+                      : `Isi ${cloudflare.missing.join(" dan ")} untuk menampilkan traffic edge, cache, dan ancaman bot.`}
+                  </p>
+                  {!cloudflare.configured ? (
+                    <>
+                      <p className="text-xs">
+                        Token API butuh izin{" "}
+                        <span className="font-medium">Zone &gt; Analytics &gt; Read</span> untuk
+                        zone yang sama dengan CLOUDFLARE_ZONE_ID.
+                      </p>
+                      <p className="text-xs">
+                        Verifikasi cepat:{" "}
+                        <code className="font-mono">node scripts/cloudflare-check.mjs</code>
+                      </p>
+                    </>
+                  ) : null}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -1369,23 +1397,4 @@ function formatNetwork(bytes: number | null, mbps: number | null): string {
   if (bytes === null) return "Tidak ada data";
   const rate = mbps === null ? "" : ` · ${mbps.toFixed(2).replace(".", ",")} Mbps`;
   return `${formatBytes(bytes)}${rate}`;
-}
-
-function SectionHeading({
-  id,
-  title,
-  description,
-}: {
-  id: string;
-  title: string;
-  description?: string;
-}) {
-  return (
-    <div className="min-w-0 space-y-0.5 border-b pb-3">
-      <h2 id={id} className="text-sm font-semibold tracking-tight">
-        {title}
-      </h2>
-      {description ? <p className="text-xs text-muted-foreground">{description}</p> : null}
-    </div>
-  );
 }

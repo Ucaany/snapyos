@@ -6,7 +6,13 @@ import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminStatusBadge } from "@/components/admin/AdminStatusBadge";
 import { AdminSelect } from "@/components/admin/AdminSelect";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/admin/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/admin/ui/card";
 import { Input } from "@/components/admin/ui/input";
 import { Textarea } from "@/components/admin/ui/textarea";
 import {
@@ -64,7 +70,6 @@ export default async function AdminBroadcastsPage() {
   return (
     <div className="flex flex-col gap-6">
       <AdminPageHeader
-        eyebrow="Admin / Broadcast Email"
         icon={Send}
         title="Broadcast Email"
         meta="Pengumuman · marketing · resend dengan limit · riwayat pengiriman"
@@ -234,9 +239,7 @@ async function RecipientHistory({ campaignId }: { campaignId: string }) {
   const dateFmt = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" });
   return (
     <div className="mt-4">
-      <p className="mb-2 text-xs text-muted-foreground">
-        Riwayat Pengiriman ({recipients.length})
-      </p>
+      <p className="mb-2 text-xs text-muted-foreground">Riwayat Pengiriman ({recipients.length})</p>
       <div className="max-h-96 overflow-y-auto">
         <Table>
           <TableHeader>
@@ -251,7 +254,7 @@ async function RecipientHistory({ campaignId }: { campaignId: string }) {
           </TableHeader>
           <TableBody>
             {recipients.map((r) => (
-              <TableRow key={r.id} className="align-top">
+              <TableRow key={r.id}>
                 <TableCell>
                   <span className="font-semibold">{r.name ?? r.email}</span>
                   <br />

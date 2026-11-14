@@ -34,7 +34,6 @@ export default async function AdminTemplateBuilderPage({
   return (
     <div className="flex flex-col gap-6">
       <AdminPageHeader
-        eyebrow="Admin / Builder Template"
         icon={LayoutTemplate}
         title={template.name}
         description="Atur slot frame platform yang dipakai semua tenant. Tambah hingga 8 slot, geser lewat drag atau tombol panah, lalu simpan draft atau publish."
@@ -51,15 +50,15 @@ export default async function AdminTemplateBuilderPage({
       />
 
       <div className="admin-builder">
-      <TemplateBuilderCanvas
-        templateName={template.name}
-        initialLayout={initialLayout}
-        initialActive={template.is_active}
-        frameUrl={template.preview_url}
-        readOnly={false}
-        onSave={saveGlobalTemplateLayoutAction.bind(null, id)}
-        onDetectChroma={detectGlobalTemplateChromaSlotsAction.bind(null, id)}
-      />
+        <TemplateBuilderCanvas
+          templateName={template.name}
+          initialLayout={initialLayout}
+          initialActive={template.is_active}
+          frameUrl={template.preview_url}
+          readOnly={false}
+          onSave={saveGlobalTemplateLayoutAction.bind(null, id)}
+          onDetectChroma={detectGlobalTemplateChromaSlotsAction.bind(null, id)}
+        />
       </div>
     </div>
   );

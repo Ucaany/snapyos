@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   ShieldOff,
   Trash2,
+  Unplug,
   XCircle,
 } from "lucide-react";
 
@@ -36,6 +37,7 @@ export type ActionIconName =
   | "shieldCheck"
   | "shieldOff"
   | "trash"
+  | "unplug"
   | "xCircle";
 
 type FormVariant = "default" | "neutral" | "destructive" | "ghost" | "noShadow" | "reverse";
@@ -83,6 +85,8 @@ function ActionGlyph({ name }: { name: ActionIconName }) {
       return <ShieldOff className={className} aria-hidden="true" />;
     case "trash":
       return <Trash2 className={className} aria-hidden="true" />;
+    case "unplug":
+      return <Unplug className={className} aria-hidden="true" />;
     case "xCircle":
       return <XCircle className={className} aria-hidden="true" />;
   }

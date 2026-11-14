@@ -8,6 +8,7 @@ import { ApiError } from "@/lib/api-errors";
 import { paymentSummary, sumMrr, type FeePolicy } from "@/lib/admin-math";
 import { isSubscriptionEffective } from "@/lib/subscription-math";
 import { requireAdmin } from "./guard";
+import { getUserStats } from "./users";
 
 // ---------------------------------------------------------------------------
 // Overview — docs/10 §10.1
@@ -236,7 +237,9 @@ async function feeByBusinessMap(): Promise<Map<string, FeePolicy>> {
   const supabase = createServerClient();
   const { data } = await supabase
     .from("subscriptions")
-    .select("business_id, status, trial_ends_at, current_period_end, plans ( platform_fee_percent, platform_fee_flat )")
+    .select(
+      "business_id, status, trial_ends_at, current_period_end, plans ( platform_fee_percent, platform_fee_flat )"
+    )
     .in("status", ["trial", "active", "past_due"])
     .order("created_at", { ascending: false });
   type Row = {
@@ -305,9 +308,8 @@ export async function getDatabaseHealth(): Promise<DatabaseHealth> {
   await requireAdmin();
   const supabase = createServerClient();
 
-  const [userRows, ownerRows, pendingReview, webhookErrors, ...tableCounts] = await Promise.all([
-    supabase.from("users").select("id, role, status, email_verified"),
-    supabase.from("businesses").select("owner_id"),
+  const [usersBreakdown, pendingReview, webhookErrors, ...tableCounts] = await Promise.all([
+    getUserStats(),
     supabase
       .from("subscription_intent_failures")
       .select("id", { count: "exact", head: true })
@@ -318,29 +320,6 @@ export async function getDatabaseHealth(): Promise<DatabaseHealth> {
       .eq("status", "error"),
     ...HEALTH_TABLES.map((t) => supabase.from(t).select("id", { count: "exact", head: true })),
   ]);
-
-  const users = (userRows.data ?? []) as unknown as {
-    id: string;
-    role: string;
-    status: string;
-    email_verified: string | null;
-  }[];
-  const ownerIds = new Set(
-    ((ownerRows.data ?? []) as unknown as { owner_id: string }[]).map((o) => o.owner_id)
-  );
-  const withBusiness = users.filter((u) => ownerIds.has(u.id)).length;
-
-  const usersBreakdown: UserBreakdown = {
-    total: users.length,
-    admins: users.filter((u) => u.role === "admin").length,
-    regular: users.filter((u) => u.role !== "admin").length,
-    active: users.filter((u) => u.status !== "suspended").length,
-    suspended: users.filter((u) => u.status === "suspended").length,
-    verified: users.filter((u) => u.email_verified !== null).length,
-    unverified: users.filter((u) => u.email_verified === null).length,
-    withBusiness,
-    withoutBusiness: users.length - withBusiness,
-  };
 
   return {
     users: usersBreakdown,
