@@ -75,6 +75,98 @@ export async function getAdminOverviewGuarded(): Promise<AdminOverview> {
 }
 
 // ---------------------------------------------------------------------------
+// Subscription stats — docs/10 §10.2 (status scale + renewal pressure)
+// ---------------------------------------------------------------------------
+
+export type AdminSubscriptionStats = {
+  total: number;
+  statusCounts: Record<string, number>;
+  effectiveActive: number;
+  trialsEndingSoon: number;
+  renewalsDueSoon: number;
+  pastDue: number;
+  planSplit: { planName: string; count: number; mrr: number }[];
+};
+
+/**
+ * Agregat subscription untuk panel admin. `renewalsDueSoon` = active yang
+ * periodenya habis dalam 7 hari; `trialsEndingSoon` = trial berakhir <= 3 hari.
+ * Semua hitungan memakai tanggal, bukan hanya string status.
+ */
+export async function getSubscriptionStats(): Promise<AdminSubscriptionStats> {
+  await requireAdmin();
+  const supabase = createServerClient();
+  const { data, error } = await supabase
+    .from("subscriptions")
+    .select("status, trial_ends_at, current_period_end, plans ( name, price_monthly )");
+  if (error) throw new ApiError("INTERNAL", "Gagal memuat statistik langganan");
+
+  type Row = {
+    status: string;
+    trial_ends_at: string | null;
+    current_period_end: string | null;
+    plans: { name: string; price_monthly: number } | null;
+  };
+  const rows = (data ?? []) as unknown as Row[];
+  const now = Date.now();
+  const in3Days = now + 3 * 86_400_000;
+  const in7Days = now + 7 * 86_400_000;
+
+  const statusCounts: Record<string, number> = {
+    trial: 0,
+    active: 0,
+    past_due: 0,
+    cancelled: 0,
+    expired: 0,
+  };
+  let effectiveActive = 0;
+  let trialsEndingSoon = 0;
+  let renewalsDueSoon = 0;
+  const plans = new Map<string, { count: number; mrr: number }>();
+
+  for (const row of rows) {
+    statusCounts[row.status] = (statusCounts[row.status] ?? 0) + 1;
+    const effective = isSubscriptionEffective(
+      row.status,
+      row.trial_ends_at,
+      row.current_period_end
+    );
+
+    if (effective) {
+      effectiveActive += 1;
+      const name = row.plans?.name ?? "Tanpa paket";
+      const current = plans.get(name) ?? { count: 0, mrr: 0 };
+      current.count += 1;
+      current.mrr += row.plans?.price_monthly ?? 0;
+      plans.set(name, current);
+    }
+
+    const trialEnd = row.trial_ends_at ? new Date(row.trial_ends_at).getTime() : null;
+    if (row.status === "trial" && trialEnd && trialEnd >= now && trialEnd <= in3Days) {
+      trialsEndingSoon += 1;
+    }
+
+    const periodEnd = row.current_period_end ? new Date(row.current_period_end).getTime() : null;
+    if (row.status === "active" && periodEnd && periodEnd >= now && periodEnd <= in7Days) {
+      renewalsDueSoon += 1;
+    }
+  }
+
+  return {
+    total: rows.length,
+    statusCounts,
+    effectiveActive,
+    trialsEndingSoon,
+    renewalsDueSoon,
+    pastDue: statusCounts.past_due ?? 0,
+    planSplit: [...plans.entries()]
+      .map(([planName, value]) => ({ planName, ...value }))
+      .sort((a, b) => b.mrr - a.mrr)
+      .slice(0, 5),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Payments monitoring — docs/10 §10.3
 // ---------------------------------------------------------------------------
 

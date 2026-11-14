@@ -1,15 +1,18 @@
-import { ChevronDown, CreditCard } from "lucide-react";
+import { CreditCard } from "lucide-react";
 
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
-import { BrutalistCheckbox } from "@/components/admin/BrutalistCheckbox";
-import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
-import { StatusBadge } from "@/components/dashboard/StatusBadge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { PageHeader } from "@/components/ui/page-header";
+import { AdminDisclosureCard } from "@/components/admin/AdminDisclosureCard";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { AdminStatGrid } from "@/components/admin/AdminStatGrid";
+import { AdminStatusBadge } from "@/components/admin/AdminStatusBadge";
+import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
+import { AdminSelect } from "@/components/admin/AdminSelect";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/admin/ui/card";
+import { Input } from "@/components/admin/ui/input";
 import { formatIDR } from "@/lib/dashboard-math";
 import { createPlanAction, updatePlanAction } from "@/server/admin-actions";
 import { listPlans } from "@/server/admin";
+import { Label } from "@/components/admin/ui/label";
 
 /**
  * Admin plans - create/edit harga, limits (incl.
@@ -86,9 +89,9 @@ function Field({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="font-mono text-[11px] uppercase tracking-[0.12em]">
+      <Label htmlFor={id} className="text-xs font-medium text-muted-foreground">
         {label}
-      </label>
+      </Label>
       <Input
         id={id}
         name={name}
@@ -106,12 +109,12 @@ export default async function AdminPlansPage() {
   const featureKeys = featureKeysFrom(plans);
 
   return (
-    <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
-      <PageHeader
-        eyebrow="ADMIN / PAKET"
+    <div className="flex flex-col gap-6">
+      <AdminPageHeader
+        eyebrow="Admin / Paket"
         icon={CreditCard}
         title="Manajemen Paket"
-        meta="HARGA · LIMIT SESI KONKUREN · FEATURE FLAGS · PLATFORM FEE"
+        meta="Harga · limit sesi konkuren · feature flags · platform fee"
       />
 
       <Card>
@@ -215,7 +218,7 @@ export default async function AdminPlansPage() {
               type="number"
               defaultValue={0}
             />
-            <BrutalistSelect
+            <AdminSelect
               id="new-cycle"
               name="billing_cycle"
               label="Siklus Billing"
@@ -227,11 +230,11 @@ export default async function AdminPlansPage() {
             />
             <div className="col-span-1 flex flex-col gap-2 sm:col-span-2 md:col-span-4">
               <fieldset className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                <legend className="mb-2 w-full font-mono text-[11px] uppercase tracking-[0.12em]">
+                <legend className="mb-2 w-full text-xs font-medium text-muted-foreground">
                   Feature flags (default: nonaktif)
                 </legend>
                 {featureKeys.map((key) => (
-                  <BrutalistCheckbox
+                  <AdminCheckbox
                     key={key}
                     name={`feature_${key}`}
                     label={featureLabel(key)}
@@ -239,7 +242,7 @@ export default async function AdminPlansPage() {
                   />
                 ))}
               </fieldset>
-              <BrutalistCheckbox
+              <AdminCheckbox
                 name="is_active"
                 label="Plan aktif (bisa dipilih owner)"
                 defaultChecked
@@ -251,27 +254,27 @@ export default async function AdminPlansPage() {
 
       <div className="flex flex-col gap-6">
         {plans.map((p) => (
-          <details
+          <AdminDisclosureCard
             key={p.id}
-            className="border-2 border-ink bg-surface shadow-hard"
+            trigger={
+              <>
+                <span className="flex items-center gap-3">
+                  <span className="text-base font-medium tracking-tight">{p.name}</span>
+                  <span className="text-xs text-muted-foreground">{p.code}</span>
+                </span>
+                <span className="flex items-center gap-3 text-xs font-semibold tabular-nums">
+                  {formatIDR(p.price_monthly)}/BLN
+                  {p.billing_cycle === "yearly" && p.price_yearly != null
+                    ? ` · ${formatIDR(p.price_yearly)}/THN`
+                    : ""}
+                  <AdminStatusBadge status={p.is_active ? "active" : "inactive"} />
+                </span>
+              </>
+            }
           >
-            <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-3 p-4">
-              <span className="flex items-center gap-3">
-                <span className="font-display text-lg uppercase tracking-tight">{p.name}</span>
-                <span className="font-mono text-xs text-muted-foreground">{p.code}</span>
-              </span>
-              <span className="flex items-center gap-3 font-mono text-xs font-bold">
-                {formatIDR(p.price_monthly)}/BLN
-                {p.billing_cycle === "yearly" && p.price_yearly != null
-                  ? ` · ${formatIDR(p.price_yearly)}/THN`
-                  : ""}
-                <StatusBadge status={p.is_active ? "active" : "inactive"} />
-              </span>
-              <ChevronDown className="summary-chevron size-4 shrink-0" aria-hidden="true" />
-            </summary>
-            <div className="border-t-2 border-ink/10 p-4">
-              <dl className="mb-4 grid grid-cols-2 gap-[2px] border-2 border-ink bg-ink md:grid-cols-4">
-                {[
+            <div className="flex flex-col gap-4">
+              <AdminStatGrid
+                items={[
                   {
                     label: "Harga tahunan",
                     value: p.price_yearly != null ? formatIDR(p.price_yearly) : "-",
@@ -293,15 +296,8 @@ export default async function AdminPlansPage() {
                   { label: "Storage", value: `${p.storage_limit_mb} MB` },
                   { label: "Fee %", value: String(p.platform_fee_percent) },
                   { label: "Fee flat", value: formatIDR(p.platform_fee_flat) },
-                ].map((cell) => (
-                  <div key={cell.label} className="flex flex-col gap-1 bg-surface p-3">
-                    <dt className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
-                      {cell.label}
-                    </dt>
-                    <dd className="font-mono text-xs font-bold uppercase">{cell.value}</dd>
-                  </div>
-                ))}
-              </dl>
+                ]}
+              />
               <AdminActionForm
                 action={updatePlanAction}
                 hidden={{ planId: p.id }}
@@ -394,7 +390,7 @@ export default async function AdminPlansPage() {
                   type="number"
                   defaultValue={p.platform_fee_flat}
                 />
-                <BrutalistSelect
+                <AdminSelect
                   id={`cycle-${p.id}`}
                   name="billing_cycle"
                   label="Siklus Billing"
@@ -406,11 +402,11 @@ export default async function AdminPlansPage() {
                 />
                 <div className="col-span-1 flex flex-col gap-2 sm:col-span-2 md:col-span-4">
                   <fieldset className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    <legend className="mb-2 w-full font-mono text-[11px] uppercase tracking-[0.12em]">
+                    <legend className="mb-2 w-full text-xs font-medium text-muted-foreground">
                       Feature flags
                     </legend>
                     {featureKeys.map((key) => (
-                      <BrutalistCheckbox
+                      <AdminCheckbox
                         key={key}
                         name={`feature_${key}`}
                         label={featureLabel(key)}
@@ -418,7 +414,7 @@ export default async function AdminPlansPage() {
                       />
                     ))}
                   </fieldset>
-                  <BrutalistCheckbox
+                  <AdminCheckbox
                     name="is_active"
                     label="Plan aktif (bisa dipilih owner)"
                     defaultChecked={p.is_active}
@@ -426,7 +422,7 @@ export default async function AdminPlansPage() {
                 </div>
               </AdminActionForm>
             </div>
-          </details>
+          </AdminDisclosureCard>
         ))}
       </div>
     </div>

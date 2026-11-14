@@ -1,14 +1,18 @@
-import { ChevronDown, ScrollText, Search } from "lucide-react";
+import Link from "next/link";
+import { ScrollText, Search } from "lucide-react";
 
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
+import { AdminDisclosure } from "@/components/admin/AdminDisclosureCard";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminPaginator } from "@/components/admin/AdminPaginator";
-import { RecordCard } from "@/components/ui/record-card";
-import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
-import { RecordCollection } from "@/components/ui/record-collection";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { PageHeader } from "@/components/ui/page-header";
+import { AdminRecordCard } from "@/components/admin/AdminRecordCard";
+import { AdminRecordCollection } from "@/components/admin/AdminRecordCollection";
+import { AdminSelect } from "@/components/admin/AdminSelect";
+import { Button, buttonVariants } from "@/components/admin/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/admin/ui/card";
+import { Input } from "@/components/admin/ui/input";
+import { Label } from "@/components/admin/ui/label";
 import {
   Table,
   TableBody,
@@ -16,7 +20,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/components/admin/ui/table";
 import { deleteAuditLogsAction } from "@/server/admin-actions";
 import { listAuditLogs } from "@/server/admin";
 
@@ -54,36 +58,34 @@ export default async function AdminAuditPage({
   const totalPages = Math.max(1, Math.ceil(total / 50));
 
   return (
-    <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
-      <PageHeader
-        eyebrow="ADMIN / LOG AUDIT"
+    <div className="flex flex-col gap-6">
+      <AdminPageHeader
+        eyebrow="Admin / Log Audit"
         title="Log Audit"
         icon={ScrollText}
         meta={`${total} ENTRY · SEMUA AKSI ADMIN & FINANSIAL TERCATAT`}
       />
 
-      <section className="border-2 border-ink bg-muted p-4 shadow-hard">
-        <p className="font-mono text-xs font-bold uppercase tracking-[0.15em]">
-          {"HAPUS RIWAYAT (RETENSI)"}
-        </p>
-        <p className="mt-1 max-w-[60ch] text-xs leading-relaxed text-muted-foreground">
-          Hapus log audit lebih lama dari tanggal batas. Tindakan permanen - pastikan tidak ada
-          investigasi/audit yang sedang berjalan.
-        </p>
+      <Card size="sm">
+        <CardHeader>
+          <CardTitle>Hapus riwayat (retensi)</CardTitle>
+          <CardDescription className="max-w-[60ch] text-xs leading-relaxed">
+            Hapus log audit lebih lama dari tanggal batas. Tindakan permanen — pastikan tidak ada
+            investigasi/audit yang sedang berjalan.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
         <AdminActionForm
           action={deleteAuditLogsAction}
           submitLabel="Hapus Log Sebelum Tanggal"
           variant="destructive"
           confirm="Hapus seluruh log audit sebelum tanggal ini? Tindakan permanen dan tidak bisa dibatalkan."
-          className="mt-4 flex flex-wrap items-end gap-3"
+          className="flex flex-wrap items-end gap-3"
         >
           <div className="flex flex-col gap-1">
-            <label
-              htmlFor="audit-before"
-              className="font-mono text-[11px] uppercase tracking-[0.12em]"
-            >
+            <Label htmlFor="audit-before" className="text-xs font-medium text-muted-foreground">
               Hapus sebelum tanggal
-            </label>
+            </Label>
             <Input
               id="audit-before"
               name="before"
@@ -93,10 +95,11 @@ export default async function AdminAuditPage({
             />
           </div>
         </AdminActionForm>
-      </section>
+        </CardContent>
+      </Card>
 
       <form method="GET" className="flex flex-wrap items-end gap-3" role="search">
-        <BrutalistSelect
+        <AdminSelect
           name="action"
           label="Prefix aksi"
           defaultValue={q.action ?? ""}
@@ -106,12 +109,9 @@ export default async function AdminAuditPage({
           ]}
         />
         <div className="flex flex-col gap-1">
-          <label
-            htmlFor="audit-search"
-            className="font-mono text-[11px] uppercase tracking-[0.12em]"
-          >
+          <Label htmlFor="audit-search" className="text-xs font-medium text-muted-foreground">
             Cari aksi / target
-          </label>
+          </Label>
           <Input
             id="audit-search"
             name="search"
@@ -120,23 +120,23 @@ export default async function AdminAuditPage({
             className="w-full sm:w-56"
           />
         </div>
-        <Button
-          type="submit"
-          size="icon"
-          variant="secondary"
-          aria-label="Filter log"
-          title="Filter log"
-        >
+        <Button type="submit" size="sm" variant="outline">
           <Search className="size-4" aria-hidden="true" />
+          Terapkan
         </Button>
+        {q.action || q.search ? (
+          <Link href="/admin/audit" className={buttonVariants({ variant: "ghost", size: "sm" })}>
+            Hapus filter
+          </Link>
+        ) : null}
       </form>
 
       {items.length === 0 ? (
-        <AdminEmptyState heading="TIDAK ADA LOG" icon={ScrollText}>
+        <AdminEmptyState heading="Tidak ada log" icon={ScrollText}>
           Tidak ada entry audit yang cocok dengan filter.
         </AdminEmptyState>
       ) : (
-        <RecordCollection
+        <AdminRecordCollection
           storageKey="snapyos.view.admin.audit"
           label="Log audit"
           list={
@@ -158,14 +158,14 @@ export default async function AdminAuditPage({
                       {dateTimeFmt.format(new Date(log.created_at))}
                     </TableCell>
                     <TableCell>
-                      <span className="font-bold">{log.actor_email ?? "system"}</span>
+                      <span className="font-medium">{log.actor_email ?? "system"}</span>
                       {log.actor_name ? (
-                        <span className="block text-[11px] text-muted-foreground">
+                        <span className="block text-xs text-muted-foreground">
                           {log.actor_name}
                         </span>
                       ) : null}
                     </TableCell>
-                    <TableCell className="break-all font-bold">{log.action}</TableCell>
+                    <TableCell className="break-all font-medium">{log.action}</TableCell>
                     <TableCell className="hidden break-all text-muted-foreground md:table-cell">
                       {log.target ?? "-"}
                     </TableCell>
@@ -173,15 +173,14 @@ export default async function AdminAuditPage({
                       {log.business_name ?? "-"}
                     </TableCell>
                     <TableCell className="hidden xl:table-cell">
-                      <details>
-                        <summary className="flex min-h-11 cursor-pointer items-center gap-1 text-[11px] text-muted-foreground">
-                          Lihat meta
-                          <ChevronDown className="summary-chevron size-3.5" aria-hidden="true" />
-                        </summary>
-                        <pre className="mt-1 max-w-[40ch] whitespace-pre-wrap break-all text-[11px] text-muted-foreground">
+                      <AdminDisclosure
+                        triggerClassName="min-h-11 justify-start gap-1 text-xs text-muted-foreground hover:text-foreground"
+                        trigger={<span>Lihat meta</span>}
+                      >
+                        <pre className="max-w-[40ch] whitespace-pre-wrap break-all text-xs text-muted-foreground">
                           {JSON.stringify(log.meta)}
                         </pre>
-                      </details>
+                      </AdminDisclosure>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -191,7 +190,7 @@ export default async function AdminAuditPage({
           grid={
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
               {items.map((log) => (
-                <RecordCard
+                <AdminRecordCard
                   key={log.id}
                   title={log.action}
                   subtitle={`${log.actor_email ?? "system"} · ${dateTimeFmt.format(new Date(log.created_at))}`}
@@ -200,15 +199,15 @@ export default async function AdminAuditPage({
                     { label: "Bisnis", value: log.business_name ?? "-" },
                   ]}
                   footer={
-                    <details className="border-t-2 border-ink/10 pt-2">
-                      <summary className="flex min-h-11 cursor-pointer items-center gap-1 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
-                        Meta
-                        <ChevronDown className="summary-chevron size-3.5" aria-hidden="true" />
-                      </summary>
-                      <pre className="mt-1 max-w-full whitespace-pre-wrap break-all text-[11px] text-muted-foreground">
+                    <AdminDisclosure
+                      className="border-t pt-2"
+                      triggerClassName="min-h-11 justify-start gap-1 text-xs text-muted-foreground hover:text-foreground"
+                      trigger={<span>Meta</span>}
+                    >
+                      <pre className="max-w-full whitespace-pre-wrap break-all text-xs text-muted-foreground">
                         {JSON.stringify(log.meta)}
                       </pre>
-                    </details>
+                    </AdminDisclosure>
                   }
                 />
               ))}

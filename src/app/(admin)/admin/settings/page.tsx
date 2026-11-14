@@ -2,10 +2,18 @@ import Link from "next/link";
 import { Settings } from "lucide-react";
 
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
-import { BrutalistCheckbox } from "@/components/admin/BrutalistCheckbox";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { PageHeader } from "@/components/ui/page-header";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/admin/ui/card";
+import { Input } from "@/components/admin/ui/input";
+import { Label } from "@/components/admin/ui/label";
+import { Switch } from "@/components/admin/ui/switch";
 import { updateSettingsAction } from "@/server/admin-actions";
 import { getPlatformSettings } from "@/server/admin";
 
@@ -20,12 +28,12 @@ export default async function AdminSettingsPage() {
   const s = await getPlatformSettings();
 
   return (
-    <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
-      <PageHeader
-        eyebrow="ADMIN / PENGATURAN PLATFORM"
+    <div className="flex flex-col gap-6">
+      <AdminPageHeader
+        eyebrow="Admin / Pengaturan Platform"
         icon={Settings}
         title="Konfigurasi Platform"
-        meta="GLOBAL · BERLAKU UNTUK SEMUA TENANT"
+        meta="Global · berlaku untuk semua tenant"
       />
 
       <Card>
@@ -44,12 +52,9 @@ export default async function AdminSettingsPage() {
             className="grid grid-cols-1 gap-4 md:grid-cols-3"
           >
             <div className="flex flex-col gap-1">
-              <label
-                htmlFor="s-fee-pct"
-                className="font-mono text-[11px] uppercase tracking-[0.12em]"
-              >
+              <Label htmlFor="s-fee-pct" className="text-xs font-medium text-muted-foreground">
                 Platform fee default (%)
-              </label>
+              </Label>
               <Input
                 id="s-fee-pct"
                 name="platform_fee_percent"
@@ -62,12 +67,9 @@ export default async function AdminSettingsPage() {
               </p>
             </div>
             <div className="flex flex-col gap-1">
-              <label
-                htmlFor="s-fee-flat"
-                className="font-mono text-[11px] uppercase tracking-[0.12em]"
-              >
+              <Label htmlFor="s-fee-flat" className="text-xs font-medium text-muted-foreground">
                 Platform fee default flat (IDR)
-              </label>
+              </Label>
               <Input
                 id="s-fee-flat"
                 name="platform_fee_flat"
@@ -76,12 +78,9 @@ export default async function AdminSettingsPage() {
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label
-                htmlFor="s-retention"
-                className="font-mono text-[11px] uppercase tracking-[0.12em]"
-              >
+              <Label htmlFor="s-retention" className="text-xs font-medium text-muted-foreground">
                 Default retention (hari)
-              </label>
+              </Label>
               <Input
                 id="s-retention"
                 name="default_retention_days"
@@ -96,12 +95,9 @@ export default async function AdminSettingsPage() {
               </p>
             </div>
             <div className="flex flex-col gap-1">
-              <label
-                htmlFor="s-trial"
-                className="font-mono text-[11px] uppercase tracking-[0.12em]"
-              >
+              <Label htmlFor="s-trial" className="text-xs font-medium text-muted-foreground">
                 Trial (hari)
-              </label>
+              </Label>
               <Input
                 id="s-trial"
                 name="trial_days"
@@ -111,12 +107,9 @@ export default async function AdminSettingsPage() {
             </div>
 
             <div className="flex flex-col gap-1 md:col-span-3">
-              <label
-                htmlFor="s-maint-msg"
-                className="font-mono text-[11px] uppercase tracking-[0.12em]"
-              >
+              <Label htmlFor="s-maint-msg" className="text-xs font-medium text-muted-foreground">
                 Pesan maintenance (kustom)
-              </label>
+              </Label>
               <Input
                 id="s-maint-msg"
                 name="maintenance_message"
@@ -128,13 +121,23 @@ export default async function AdminSettingsPage() {
               </p>
             </div>
 
-            <BrutalistCheckbox
-              name="maintenance_mode"
-              label="Maintenance mode"
-              description="Blokir visitor non-admin (middleware 503). Berlaku segera setelah disimpan."
-              defaultChecked={Boolean(s.maintenance_mode)}
-              wrapperClassName="col-span-1 md:col-span-3"
-            />
+            <div className="col-span-1 flex items-start justify-between gap-4 border-t pt-3 md:col-span-3">
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <Label htmlFor="maintenance_mode" className="text-sm font-medium">
+                  Maintenance mode
+                </Label>
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  Blokir visitor non-admin (middleware 503). Berlaku segera setelah disimpan.
+                </p>
+              </div>
+              <Switch
+                id="maintenance_mode"
+                name="maintenance_mode"
+                value="true"
+                uncheckedValue="false"
+                defaultChecked={Boolean(s.maintenance_mode)}
+              />
+            </div>
           </AdminActionForm>
         </CardContent>
       </Card>
@@ -147,7 +150,7 @@ export default async function AdminSettingsPage() {
             menerima voucher dan tunai. Pengaturan per-provider ini juga bisa diubah dari{" "}
             <Link
               href="/admin/gateways"
-              className="font-bold underline decoration-ink/40 underline-offset-2"
+              className="font-medium underline decoration-muted-foreground/40 underline-offset-2"
             >
               /admin/gateways
             </Link>
@@ -160,19 +163,19 @@ export default async function AdminSettingsPage() {
             submitLabel="Simpan gateway global"
             className="grid grid-cols-1 gap-4 md:grid-cols-3"
           >
-            <BrutalistCheckbox
+            <AdminCheckbox
               name="gateway_pakasir_enabled"
               label="Pakasir"
               description="Direct merchant owner."
               defaultChecked={s.gateway_pakasir_enabled !== false}
             />
-            <BrutalistCheckbox
+            <AdminCheckbox
               name="gateway_midtrans_enabled"
               label="Midtrans"
               description="Direct merchant owner."
               defaultChecked={s.gateway_midtrans_enabled !== false}
             />
-            <BrutalistCheckbox
+            <AdminCheckbox
               name="gateway_tripay_enabled"
               label="Tripay"
               description="Direct merchant owner."

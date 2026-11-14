@@ -1,11 +1,18 @@
 import type { ReactNode } from "react";
 
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/admin/ui/empty";
+
 export type EmptyStateIcon = React.ComponentType<{ className?: string }>;
 
 /**
- * Empty state brutalist bersama. Satu komponen, satu bentuk untuk seluruh
- * halaman admin: heading mono uppercase, penjelasan penyebab, aksi mengisi.
- * `icon` opsional menandai jenis entitas yang kosong (Lucide, DESIGN §4).
+ * Empty state admin berbasis shadcn `Empty`. API sama dengan komponen lama.
  */
 export function AdminEmptyState({
   heading,
@@ -19,19 +26,17 @@ export function AdminEmptyState({
   icon?: EmptyStateIcon;
 }) {
   return (
-    <div className="flex flex-col items-start gap-2 border-2 border-dashed border-ink/40 bg-muted p-4 md:p-5">
-      <div className="flex items-center gap-2">
+    <Empty className="border border-dashed">
+      <EmptyHeader>
         {Icon ? (
-          <span className="flex size-8 shrink-0 items-center justify-center border-2 border-ink/40 bg-surface">
-            <Icon className="size-4 text-muted-foreground" aria-hidden="true" />
-          </span>
+          <EmptyMedia variant="icon">
+            <Icon aria-hidden="true" />
+          </EmptyMedia>
         ) : null}
-        <p className="font-mono text-sm font-bold uppercase tracking-[0.15em]">{heading}</p>
-      </div>
-      {children ? (
-        <p className="max-w-[55ch] text-sm leading-relaxed text-muted-foreground">{children}</p>
-      ) : null}
-      {action ? <div className="mt-2">{action}</div> : null}
-    </div>
+        <EmptyTitle>{heading}</EmptyTitle>
+        {children ? <EmptyDescription>{children}</EmptyDescription> : null}
+      </EmptyHeader>
+      {action ? <EmptyContent>{action}</EmptyContent> : null}
+    </Empty>
   );
 }

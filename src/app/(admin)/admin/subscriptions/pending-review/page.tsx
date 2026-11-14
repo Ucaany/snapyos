@@ -3,12 +3,22 @@ import { AlertOctagon, ArrowLeft } from "lucide-react";
 
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
-import { StatusBadge } from "@/components/dashboard/StatusBadge";
-import { PageHeader } from "@/components/ui/page-header";
-import { buttonVariants } from "@/components/ui/button-variants";
-import { Textarea } from "@/components/ui/textarea";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminPaginator } from "@/components/admin/AdminPaginator";
-import { cn } from "@/lib/utils";
+import { AdminStatusBadge } from "@/components/admin/AdminStatusBadge";
+import { AdminStatusTabs } from "@/components/admin/AdminStatusTabs";
+import { Badge } from "@/components/admin/ui/badge";
+import { buttonVariants } from "@/components/admin/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/admin/ui/card";
+import { Label } from "@/components/admin/ui/label";
+import { Textarea } from "@/components/admin/ui/textarea";
 import {
   activateIntentFailureAction,
   dismissIntentFailureAction,
@@ -33,7 +43,7 @@ import { formatIDR } from "@/lib/dashboard-math";
  *      hanya menutup tiket (invoice tetap paid sebagai fakta historis).
  *   3. DISMISS - false alarm / duplikat / superseded oleh retry yang berhasil.
  *
- * UI mengikuti Neo-Brutalist token seperti /admin/subscriptions.
+ * UI mengikuti komponen admin shadcn seperti /admin/subscriptions.
  */
 
 const STATUS_TABS: { key: IntentFailureStatus; label: string }[] = [
@@ -86,10 +96,9 @@ export default async function AdminSubscriptionPendingReviewPage({
   const totalPages = Math.max(1, Math.ceil(total / 25));
 
   return (
-    <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
-      {/* Header - micro-typography + massive header per docs/11 §11.1 */}
-      <PageHeader
-        eyebrow="ADMIN / LANGGANAN / ANTRIAN AKTIVASI"
+    <div className="flex flex-col gap-6">
+      <AdminPageHeader
+        eyebrow="Admin / Langganan / Antrian Aktivasi"
         icon={AlertOctagon}
         title="Antrian Aktivasi Manual"
         description="Invoice sudah lunas (uang settled di provider), tapi aktivasi plan atau add-on gagal karena subscription tidak berada pada status yang valid. Biasanya owner cancel + cron transisi terjadi sebelum webhook paid diterima. Setiap kasus memerlukan keputusan manual: aktivasi (perbaiki via /admin/subscriptions, lalu tutup tiket) atau refund (via dashboard Pakasir)."
@@ -105,38 +114,15 @@ export default async function AdminSubscriptionPendingReviewPage({
         }
       />
 
-      {/* Tabs status + counts */}
-      <nav
-        aria-label="Filter status kasus"
-        className="flex flex-wrap gap-2 border-b-2 border-ink pb-3"
-      >
-        {STATUS_TABS.map((tab) => {
-          const active = tab.key === activeStatus;
-          const count = countsByStatus[tab.key];
-          return (
-            <Link
-              key={tab.key}
-              href={`/admin/subscriptions/pending-review?status=${tab.key}`}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                buttonVariants({ variant: active ? "default" : "outline", size: "sm" }),
-                "gap-2 font-mono uppercase tracking-[0.1em]"
-              )}
-            >
-              <span>{tab.label}</span>
-              <span
-                className={
-                  active
-                    ? "border-2 border-ink bg-bg px-1.5 py-0.5 text-[11px] tabular-nums"
-                    : "border-2 border-ink/40 bg-muted px-1.5 py-0.5 text-[11px] tabular-nums text-muted-foreground"
-                }
-              >
-                {String(count).padStart(2, "0")}
-              </span>
-            </Link>
-          );
-        })}
-      </nav>
+      <AdminStatusTabs
+        tabs={STATUS_TABS.map((tab) => ({
+          key: tab.key,
+          label: tab.label,
+          count: countsByStatus[tab.key],
+        }))}
+        active={activeStatus}
+        basePath="/admin/subscriptions/pending-review"
+      />
 
       {/* Empty state */}
       {items.length === 0 ? (
@@ -155,111 +141,101 @@ export default async function AdminSubscriptionPendingReviewPage({
       ) : (
         <ul className="flex flex-col gap-4">
           {items.map((f) => (
-            <li key={f.id} className="border-2 border-ink bg-surface shadow-hard">
-              {/* Header baris */}
-              <div className="flex flex-wrap items-start justify-between gap-3 border-b-2 border-ink/10 p-4">
-                <div className="flex flex-col gap-1">
-                  <span className="font-display text-lg uppercase tracking-tight">
-                    {f.business_name}
-                  </span>
-                  <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
-                    INVOICE {f.invoice_number} · {dateFmt.format(new Date(f.created_at))}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="border-2 border-ink bg-accent px-2 py-1 font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-ink">
-                    {formatIDR(f.amount)}
-                  </span>
-                  <StatusBadge status={f.status} />
-                </div>
-              </div>
-
-              {/* Body - reason + intent snapshot */}
-              <div className="grid grid-cols-[minmax(0,1fr)] gap-4 p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-                <div className="flex min-w-0 flex-col gap-2">
-                  <p className="font-mono text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
-                    [ REASON ]
-                  </p>
-                  <p className="w-fit border-2 border-ink bg-accent px-2 py-1 font-mono text-sm font-bold uppercase tracking-[0.05em] text-ink">
-                    {f.reason}
-                  </p>
-                  <p className="text-xs leading-relaxed text-muted-foreground">
-                    {reasonHelp(f.reason)}
-                  </p>
-                  {f.message ? (
-                    <pre className="mt-1 overflow-x-auto border-2 border-ink/40 bg-muted p-2 font-mono text-[11px] leading-relaxed text-ink">
-                      {f.message}
-                    </pre>
-                  ) : null}
-                  {f.subscription_id ? (
-                    <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
-                      SUBSCRIPTION_ID{" "}
-                      <code className="bg-muted px-1 py-0.5 text-ink">{f.subscription_id}</code>
-                    </p>
-                  ) : (
-                    <p className="mt-2 inline-block w-fit border-2 border-destructive bg-destructive px-1.5 py-0.5 font-mono text-[11px] uppercase tracking-[0.1em] text-destructive-foreground">
-                      SUBSCRIPTION_ID {"<NULL>"}
-                    </p>
-                  )}
-                </div>
-
-                <div className="flex min-w-0 flex-col gap-2">
-                  <p className="font-mono text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
-                    [ INTENT SNAPSHOT ]
-                  </p>
-                  <pre className="max-h-64 overflow-auto border-2 border-ink/40 bg-muted p-3 font-mono text-[11px] leading-relaxed text-ink">
-                    {JSON.stringify(f.intent_snapshot, null, 2)}
-                  </pre>
-                </div>
-              </div>
-
-              {/* Resolution meta (kalau bukan pending) */}
-              {f.status !== "pending" ? (
-                <div className="flex flex-col gap-1 border-t-2 border-ink/10 bg-muted p-4">
-                  <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
-                    RESOLVED{f.resolved_by_name ? ` BY ${f.resolved_by_name}` : ""}
-                    {f.resolved_at ? ` · ${dateFmt.format(new Date(f.resolved_at))}` : ""}
-                  </p>
-                  {f.resolution_note ? (
-                    <p className="text-sm leading-relaxed text-ink">{f.resolution_note}</p>
-                  ) : null}
-                </div>
-              ) : null}
-
-              {/* Aksi resolusi - hanya untuk kasus pending */}
-              {f.status === "pending" ? (
-                <div className="flex flex-col gap-3 border-t-2 border-ink/10 bg-muted p-4">
-                  <p className="font-mono text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
-                    [ RESOLUSI ]
-                  </p>
-                  <div className="grid gap-3 md:grid-cols-3">
-                    <ResolveForm
-                      failureId={f.id}
-                      action={activateIntentFailureAction}
-                      label="AKTIVASI MANUAL"
-                      variant="default"
-                      hint="Setelah mengaktifkan plan/add-on lewat /admin/subscriptions atau langsung DB."
-                      confirm="Tutup tiket sebagai AKTIVASI MANUAL? Pastikan plan/add-on sudah benar-benar aktif."
-                    />
-                    <ResolveForm
-                      failureId={f.id}
-                      action={refundIntentFailureAction}
-                      label="MARK REFUNDED"
-                      variant="destructive"
-                      hint="Setelah issue refund via dashboard Pakasir (invoice tetap paid)."
-                      confirm="Tutup tiket sebagai REFUNDED? Pastikan refund sudah di-issue di Pakasir."
-                    />
-                    <ResolveForm
-                      failureId={f.id}
-                      action={dismissIntentFailureAction}
-                      label="DISMISS"
-                      variant="outline"
-                      hint="False alarm / duplikat / superseded oleh retry yang berhasil."
-                      confirm="Tutup tiket sebagai DISMISS?"
-                    />
+            <li key={f.id}>
+              <Card>
+                <CardHeader className="border-b">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="flex min-w-0 flex-col gap-1">
+                      <CardTitle>{f.business_name}</CardTitle>
+                      <CardDescription className="text-xs">
+                        Invoice {f.invoice_number} · {dateFmt.format(new Date(f.created_at))}
+                      </CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="tabular-nums">
+                        {formatIDR(f.amount)}
+                      </Badge>
+                      <AdminStatusBadge status={f.status} />
+                    </div>
                   </div>
-                </div>
-              ) : null}
+                </CardHeader>
+
+                <CardContent className="grid gap-4 md:grid-cols-2">
+                  <div className="flex min-w-0 flex-col gap-2">
+                    <h3 className="text-xs font-medium text-muted-foreground">Alasan kegagalan</h3>
+                    <p className="text-sm font-medium">{f.reason}</p>
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      {reasonHelp(f.reason)}
+                    </p>
+                    {f.message ? (
+                      <pre className="overflow-x-auto rounded-md bg-muted p-2 text-xs leading-relaxed text-foreground">
+                        {f.message}
+                      </pre>
+                    ) : null}
+                    <p className="text-xs text-muted-foreground">
+                      Subscription ID{" "}
+                      {f.subscription_id ? (
+                        <code className="rounded bg-muted px-1 py-0.5 text-foreground">
+                          {f.subscription_id}
+                        </code>
+                      ) : (
+                        <span className="font-medium text-destructive">tidak ada</span>
+                      )}
+                    </p>
+                  </div>
+
+                  <div className="flex min-w-0 flex-col gap-2">
+                    <h3 className="text-xs font-medium text-muted-foreground">Intent snapshot</h3>
+                    <pre className="max-h-64 overflow-auto rounded-md bg-muted p-3 text-xs leading-relaxed text-foreground">
+                      {JSON.stringify(f.intent_snapshot, null, 2)}
+                    </pre>
+                  </div>
+                </CardContent>
+
+                {f.status !== "pending" ? (
+                  <CardFooter className="flex-col items-start gap-1">
+                    <p className="text-xs text-muted-foreground">
+                      Diselesaikan{f.resolved_by_name ? ` oleh ${f.resolved_by_name}` : ""}
+                      {f.resolved_at ? ` · ${dateFmt.format(new Date(f.resolved_at))}` : ""}
+                    </p>
+                    {f.resolution_note ? (
+                      <p className="text-sm leading-relaxed text-foreground">{f.resolution_note}</p>
+                    ) : null}
+                  </CardFooter>
+                ) : null}
+
+                {f.status === "pending" ? (
+                  <CardFooter className="flex-col items-stretch gap-3">
+                    <p className="text-xs font-medium text-muted-foreground">Resolusi</p>
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <ResolveForm
+                        failureId={f.id}
+                        action={activateIntentFailureAction}
+                        label="Aktivasi manual"
+                        variant="default"
+                        hint="Setelah mengaktifkan plan/add-on lewat /admin/subscriptions atau langsung DB."
+                        confirm="Tutup tiket sebagai AKTIVASI MANUAL? Pastikan plan/add-on sudah benar-benar aktif."
+                      />
+                      <ResolveForm
+                        failureId={f.id}
+                        action={refundIntentFailureAction}
+                        label="Mark refunded"
+                        variant="destructive"
+                        hint="Setelah issue refund via dashboard Pakasir (invoice tetap paid)."
+                        confirm="Tutup tiket sebagai REFUNDED? Pastikan refund sudah di-issue di Pakasir."
+                      />
+                      <ResolveForm
+                        failureId={f.id}
+                        action={dismissIntentFailureAction}
+                        label="Dismiss"
+                        variant="neutral"
+                        hint="False alarm / duplikat / superseded oleh retry yang berhasil."
+                        confirm="Tutup tiket sebagai DISMISS?"
+                      />
+                    </div>
+                  </CardFooter>
+                ) : null}
+              </Card>
             </li>
           ))}
         </ul>
@@ -282,7 +258,7 @@ export default async function AdminSubscriptionPendingReviewPage({
 // /admin/subscriptions AdminActionForm children.
 // ---------------------------------------------------------------------------
 
-type ResolveVariant = "default" | "outline" | "destructive";
+type ResolveVariant = "default" | "neutral" | "destructive";
 
 function ResolveForm({
   failureId,
@@ -307,14 +283,11 @@ function ResolveForm({
       submitLabel={label}
       variant={variant}
       confirm={confirm}
-      className="flex flex-col gap-2 border-2 border-ink/40 bg-surface p-3"
+      className="flex flex-col gap-2"
     >
-      <label
-        htmlFor={noteId}
-        className="font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-ink"
-      >
+      <Label htmlFor={noteId} className="text-xs text-muted-foreground">
         Catatan (opsional)
-      </label>
+      </Label>
       <Textarea
         id={noteId}
         name="note"
@@ -323,7 +296,7 @@ function ResolveForm({
         placeholder="referensi refund / plan yang di-attach / dsb."
         className="min-h-[3rem] resize-y text-xs"
       />
-      <p className="font-mono text-[11px] leading-snug text-muted-foreground">{hint}</p>
+      <p className="text-xs leading-snug text-muted-foreground">{hint}</p>
     </AdminActionForm>
   );
 }

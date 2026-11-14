@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import {
   Ban,
@@ -17,8 +17,10 @@ import {
   XCircle,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { toast } from "sonner";
+
+import { AdminConfirmDialog } from "@/components/admin/AdminConfirmDialog";
+import { Button } from "@/components/admin/ui/button";
 import { cn } from "@/lib/utils";
 import type { FormState } from "@/server/auth-actions";
 
@@ -36,11 +38,26 @@ export type ActionIconName =
   | "trash"
   | "xCircle";
 
-/**
- * Ikon aksi dikirim sebagai NAMA, bukan komponen. Halaman admin adalah Server
- * Component; fungsi komponen tidak bisa menyeberang ke Client Component
- * (`AdminActionForm`). Glyph ini yang menjembatani keduanya.
- */
+type FormVariant = "default" | "neutral" | "destructive" | "ghost" | "noShadow" | "reverse";
+
+/** Peta varian lama ke varian shadcn default. */
+function toAdminVariant(
+  variant: FormVariant
+): "default" | "outline" | "destructive" | "ghost" | "secondary" {
+  switch (variant) {
+    case "neutral":
+      return "secondary";
+    case "noShadow":
+      return "secondary";
+    case "reverse":
+      return "outline";
+    case "ghost":
+      return "outline";
+    default:
+      return variant;
+  }
+}
+
 function ActionGlyph({ name }: { name: ActionIconName }) {
   const className = "size-4";
   switch (name) {
@@ -90,7 +107,7 @@ export function AdminActionForm({
   hidden?: Record<string, string>;
   submitLabel: string;
   pendingLabel?: string;
-  variant?: "default" | "secondary" | "outline" | "destructive" | "ghost";
+  variant?: FormVariant;
   size?: "default" | "sm" | "lg";
   confirm?: string;
   confirmTitle?: string;
@@ -102,6 +119,15 @@ export function AdminActionForm({
 }) {
   const [state, formAction] = useActionState(action, {});
   const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const submittedRef = useRef(false);
+
+  useEffect(() => {
+    if (!submittedRef.current) return;
+    submittedRef.current = false;
+    if (state.error) return;
+    toast.success(state.success ?? "Perubahan disimpan.");
+  }, [state]);
   const confirmedRef = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -113,10 +139,9 @@ export function AdminActionForm({
         ref={formRef}
         action={formAction}
         onSubmit={(event) => {
+          submittedRef.current = true;
           if (!confirm) return;
           if (confirmedRef.current) {
-            // Konfirmasi hanya berlaku untuk satu submit. Reset di sini supaya
-            // percobaan berikutnya (termasuk setelah error server) bertanya lagi.
             confirmedRef.current = false;
             return;
           }
@@ -131,13 +156,13 @@ export function AdminActionForm({
         ))}
         {children}
         {state.error ? (
-          <p role="alert" className="font-mono text-xs text-destructive">
+          <p role="alert" className="text-xs text-destructive">
             {state.error}
           </p>
         ) : null}
         {Object.entries(state.fieldErrors ?? {}).map(([field, errors]) =>
           errors?.[0] ? (
-            <p key={field} role="alert" className="font-mono text-xs text-destructive">
+            <p key={field} role="alert" className="text-xs text-destructive">
               {errors[0]}
             </p>
           ) : null
@@ -145,15 +170,15 @@ export function AdminActionForm({
         <SubmitButton
           label={submitLabel}
           pendingLabel={pendingLabel}
-          variant={variant}
-          size={compact ? "icon" : size}
+          variant={toAdminVariant(variant)}
+          size={compact ? "icon-sm" : size}
           className={submitClassName}
           icon={icon}
           iconOnly={compact}
         />
       </form>
       {confirm ? (
-        <ConfirmDialog
+        <AdminConfirmDialog
           open={confirmOpen}
           onOpenChange={setConfirmOpen}
           title={confirmTitle}
@@ -162,6 +187,7 @@ export function AdminActionForm({
           variant={variant === "destructive" ? "destructive" : "default"}
           onConfirm={() => {
             confirmedRef.current = true;
+            submittedRef.current = true;
             setConfirmOpen(false);
             formRef.current?.requestSubmit();
           }}
@@ -182,8 +208,8 @@ function SubmitButton({
 }: {
   label: string;
   pendingLabel?: string;
-  variant: "default" | "secondary" | "outline" | "destructive" | "ghost";
-  size: "default" | "sm" | "lg" | "icon";
+  variant: "default" | "outline" | "destructive" | "ghost" | "secondary";
+  size: "default" | "sm" | "lg" | "icon" | "icon-sm";
   className?: string;
   icon?: ActionIconName;
   iconOnly?: boolean;
@@ -195,14 +221,14 @@ function SubmitButton({
       <Button
         type="submit"
         variant={variant}
-        size="icon"
+        size="icon-sm"
         disabled={pending}
         aria-label={label}
         title={label}
         className={cn(className)}
       >
         {pending ? (
-          <span aria-hidden="true" className="size-4 animate-pulse bg-current opacity-40" />
+          <span aria-hidden="true" className="size-4 animate-pulse rounded bg-current opacity-40" />
         ) : icon ? (
           <ActionGlyph name={icon} />
         ) : (

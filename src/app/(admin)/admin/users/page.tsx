@@ -3,15 +3,17 @@ import { Mail, UserPlus, Users } from "lucide-react";
 
 import { AdminActionButton, AdminActionForm } from "@/components/admin/AdminActionForm";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminPaginator } from "@/components/admin/AdminPaginator";
-import { RecordCard } from "@/components/ui/record-card";
-import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
-import { RecordCollection } from "@/components/ui/record-collection";
-import { StatusBadge } from "@/components/dashboard/StatusBadge";
-import { Button } from "@/components/ui/button";
-import { buttonVariants } from "@/components/ui/button-variants";
-import { Input } from "@/components/ui/input";
-import { PageHeader } from "@/components/ui/page-header";
+import { AdminRecordCard } from "@/components/admin/AdminRecordCard";
+import { AdminRecordCollection } from "@/components/admin/AdminRecordCollection";
+import { AdminStatusBadge } from "@/components/admin/AdminStatusBadge";
+import { AdminSelect } from "@/components/admin/AdminSelect";
+import { Badge } from "@/components/admin/ui/badge";
+import { Button, buttonVariants } from "@/components/admin/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/admin/ui/card";
+import { Input } from "@/components/admin/ui/input";
+import { Label } from "@/components/admin/ui/label";
 import {
   Table,
   TableBody,
@@ -19,7 +21,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/components/admin/ui/table";
 import { createUserAction, deleteUserAction, updateUserAction } from "@/server/admin-actions";
 import { getAdminUser, isAdminEmail, listUsers } from "@/server/admin";
 
@@ -27,33 +29,20 @@ type UserRow = Awaited<ReturnType<typeof listUsers>>["items"][number];
 
 function RoleBadge({ role, envAdmin }: { role: "user" | "admin"; envAdmin: boolean }) {
   if (role === "admin") {
-    return (
-      <span className="inline-block border-2 border-ink bg-ink px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-bg">
-        ADMIN
-      </span>
-    );
+    return <Badge>ADMIN</Badge>;
   }
-  return envAdmin ? (
+  return (
     <span className="flex flex-col gap-1">
-      <span className="inline-block w-fit border-2 border-ink bg-surface px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em]">
-        USER
-      </span>
-      <span className="font-mono text-[11px] leading-tight text-muted-foreground">
-        + akses admin via ADMIN_EMAILS
-      </span>
-    </span>
-  ) : (
-    <span className="inline-block w-fit border-2 border-ink/40 bg-surface px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-      USER
+      <Badge variant="secondary">USER</Badge>
+      {envAdmin ? (
+        <span className="text-xs leading-tight text-muted-foreground">
+          + akses admin via ADMIN_EMAILS
+        </span>
+      ) : null}
     </span>
   );
 }
 
-/**
- * Aksi baris user dipakai oleh tampilan daftar dan grid supaya perilaku
- * keduanya identik. Tombol ikon 44px (aria-label = submitLabel) supaya kolom
- * aksi sempit, terutama di handphone, tanpa mengorbankan nama aksesibel.
- */
 function UserRowActions({ u, adminId }: { u: UserRow; adminId?: string }) {
   const suspended = u.status === "suspended";
   return (
@@ -64,7 +53,7 @@ function UserRowActions({ u, adminId }: { u: UserRow; adminId?: string }) {
         submitLabel={suspended ? "Aktifkan" : "Suspend"}
         icon={suspended ? "circleCheck" : "ban"}
         iconOnly
-        variant={suspended ? "secondary" : "destructive"}
+        variant={suspended ? "neutral" : "destructive"}
         confirm={suspended ? undefined : `Suspend ${u.email}? Semua sesi aktif akan dicabut.`}
         confirmTitle={`Suspend ${u.email}`}
       />
@@ -74,7 +63,7 @@ function UserRowActions({ u, adminId }: { u: UserRow; adminId?: string }) {
         submitLabel={u.role === "admin" ? "Jadikan User" : "Jadikan Admin"}
         icon={u.role === "admin" ? "shieldOff" : "shieldCheck"}
         iconOnly
-        variant="outline"
+        variant="neutral"
         confirm={
           u.role === "admin"
             ? `Turunkan ${u.email} menjadi user biasa? Akses platform dicabut.`
@@ -88,6 +77,7 @@ function UserRowActions({ u, adminId }: { u: UserRow; adminId?: string }) {
           hidden={{ userId: u.id }}
           submitLabel="Hapus"
           icon="trash"
+          iconOnly
           variant="destructive"
           confirm={`Hapus ${u.email} permanen? Semua sesi dicabut dan data user hilang. Tindakan tidak bisa dibatalkan.`}
           confirmTitle={`Hapus ${u.email}`}
@@ -97,11 +87,6 @@ function UserRowActions({ u, adminId }: { u: UserRow; adminId?: string }) {
   );
 }
 
-/**
- * Admin users - tambah/hapus user oleh CEO + suspend/reactivate + ubah role
- * (docs/10 §10.2). Pendaftaran mandiri publik ditutup; akun hanya lahir di sini.
- * Suspended user: sesi DB dihapus + login diblokir (docs/09 §10).
- */
 export default async function AdminUsersPage({
   searchParams,
 }: {
@@ -118,26 +103,19 @@ export default async function AdminUsersPage({
   const totalPages = Math.max(1, Math.ceil(total / 20));
 
   return (
-    <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
-      <PageHeader
-        eyebrow="ADMIN / PENGGUNA"
+    <div className="flex flex-col gap-6">
+      <AdminPageHeader
+        eyebrow="Admin / Pengguna"
         title="Manajemen User"
         icon={Users}
         meta={`${total} user terdaftar`}
         description="Buat, suspend, dan ubah role akun platform. Pendaftaran mandiri ditutup."
         right={
-          <form
-            method="GET"
-            className="flex w-full flex-wrap items-end gap-2 sm:w-auto"
-            role="search"
-          >
+          <form method="GET" className="flex w-full flex-wrap items-end gap-2 sm:w-auto" role="search">
             <div className="flex w-full flex-col gap-1 sm:w-auto">
-              <label
-                htmlFor="user-search"
-                className="font-mono text-[11px] uppercase tracking-[0.12em]"
-              >
+              <Label htmlFor="user-search" className="text-xs text-muted-foreground">
                 Cari email / nama
-              </label>
+              </Label>
               <Input
                 id="user-search"
                 name="search"
@@ -146,59 +124,37 @@ export default async function AdminUsersPage({
                 placeholder="cth. owner@klik.id"
               />
             </div>
-            <Button
-              type="submit"
-              size="sm"
-              variant="secondary"
-              aria-label="Cari user"
-              title="Cari user"
-            >
+            <Button type="submit" size="sm" variant="outline" aria-label="Cari user">
               Cari
             </Button>
           </form>
         }
       />
 
-      <section
-        aria-labelledby="tambah-user"
-        className="border-2 border-ink bg-muted p-4 shadow-hard"
-      >
-        <p
-          id="tambah-user"
-          className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-[0.15em]"
-        >
-          <UserPlus className="size-4" aria-hidden="true" />
-          TAMBAH USER
-        </p>
-        <p className="mt-1 max-w-[60ch] text-xs leading-relaxed text-muted-foreground">
-          Pendaftaran mandiri ditutup, akun baru hanya dibuat dari sini. Password minimal 8
-          karakter; bagikan ke user secara aman.
-        </p>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <UserPlus className="size-4" aria-hidden="true" />
+            Tambah user
+          </CardTitle>
+          <CardDescription className="max-w-[60ch]">
+            Pendaftaran mandiri ditutup, akun baru hanya dibuat dari sini. Password minimal 8
+            karakter; bagikan ke user secara aman.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
         <AdminActionForm
           action={createUserAction}
           submitLabel="Tambah User"
           pendingLabel="Menyimpan..."
-          className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-[1fr_1.4fr_1fr_0.7fr_auto] lg:items-end"
+          className="grid gap-4 md:grid-cols-2 lg:grid-cols-[1fr_1.4fr_1fr_0.7fr_auto] lg:items-end"
         >
           <div className="flex flex-col gap-1">
-            <label htmlFor="new-name" className="font-mono text-[11px] uppercase tracking-[0.12em]">
-              Nama
-            </label>
-            <Input
-              id="new-name"
-              name="name"
-              required
-              maxLength={80}
-              placeholder="cth. Budi Santoso"
-            />
+            <Label htmlFor="new-name" className="text-xs text-muted-foreground">Nama</Label>
+            <Input id="new-name" name="name" required maxLength={80} placeholder="cth. Budi Santoso" />
           </div>
           <div className="flex flex-col gap-1">
-            <label
-              htmlFor="new-email"
-              className="font-mono text-[11px] uppercase tracking-[0.12em]"
-            >
-              Email
-            </label>
+            <Label htmlFor="new-email" className="text-xs text-muted-foreground">Email</Label>
             <Input
               id="new-email"
               name="email"
@@ -209,12 +165,7 @@ export default async function AdminUsersPage({
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label
-              htmlFor="new-password"
-              className="font-mono text-[11px] uppercase tracking-[0.12em]"
-            >
-              Password
-            </label>
+            <Label htmlFor="new-password" className="text-xs text-muted-foreground">Password</Label>
             <Input
               id="new-password"
               name="password"
@@ -226,7 +177,7 @@ export default async function AdminUsersPage({
             />
           </div>
           <div className="flex flex-col gap-1">
-            <BrutalistSelect
+            <AdminSelect
               id="new-role"
               name="role"
               label="Role"
@@ -236,23 +187,21 @@ export default async function AdminUsersPage({
                 { value: "admin", label: "ADMIN" },
               ]}
             />
-            <p className="font-mono text-[11px] leading-tight text-muted-foreground">
+            <p className="text-xs leading-tight text-muted-foreground">
               user = dashboard bisnis · admin = kelola platform
             </p>
           </div>
         </AdminActionForm>
-      </section>
+        </CardContent>
+      </Card>
 
       {items.length === 0 ? (
         <AdminEmptyState
-          heading="TIDAK ADA USER"
+          heading="Tidak ada user"
           icon={Users}
           action={
             q.search ? (
-              <Link
-                href="/admin/users"
-                className={buttonVariants({ variant: "outline", size: "sm" })}
-              >
+              <Link href="/admin/users" className={buttonVariants({ variant: "outline", size: "sm" })}>
                 Hapus filter
               </Link>
             ) : null
@@ -261,14 +210,15 @@ export default async function AdminUsersPage({
           {q.search ? (
             <>
               Tidak ada user yang cocok dengan pencarian{" "}
-              <span className="font-mono">{q.search}</span>. Coba kata kunci lain atau hapus filter.
+              <span className="font-medium">{q.search}</span>. Coba kata kunci lain atau hapus
+              filter.
             </>
           ) : (
             "Belum ada user terdaftar. Tambah akun pertama lewat formulir di atas."
           )}
         </AdminEmptyState>
       ) : (
-        <RecordCollection
+        <AdminRecordCollection
           storageKey="snapyos.view.admin.users"
           label="Daftar user"
           list={
@@ -288,15 +238,15 @@ export default async function AdminUsersPage({
               <TableBody>
                 {items.map((u) => (
                   <TableRow key={u.id} className="align-top">
-                    <TableCell className="font-bold">
+                    <TableCell className="font-medium">
                       <Link
                         href={`/admin/users/${u.id}`}
-                        className="inline-flex min-h-11 items-center underline decoration-ink/40 underline-offset-2 hover:bg-muted"
+                        className="underline-offset-2 hover:underline"
                       >
                         {u.email}
                       </Link>
                       {!u.email_verified ? (
-                        <span className="ml-1 inline-block border-2 border-ink/40 px-1 text-[11px] uppercase text-muted-foreground">
+                        <span className="ml-1 text-xs text-muted-foreground">
                           belum verifikasi
                         </span>
                       ) : null}
@@ -304,19 +254,16 @@ export default async function AdminUsersPage({
                     <TableCell className="hidden md:table-cell">
                       {u.name ?? "-"}
                       {u.whatsapp ? (
-                        <span className="block font-mono text-[11px] text-muted-foreground">
+                        <span className="block text-xs text-muted-foreground">
                           WA {u.whatsapp}
                         </span>
                       ) : null}
                     </TableCell>
                     <TableCell>
-                      <RoleBadge
-                        role={u.role}
-                        envAdmin={u.role !== "admin" && isAdminEmail(u.email)}
-                      />
+                      <RoleBadge role={u.role} envAdmin={u.role !== "admin" && isAdminEmail(u.email)} />
                     </TableCell>
                     <TableCell>
-                      <StatusBadge status={u.status === "suspended" ? "inactive" : "active"} />
+                      <AdminStatusBadge status={u.status === "suspended" ? "inactive" : "active"} />
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
                       {u.businesses.length > 0 ? (
@@ -325,30 +272,28 @@ export default async function AdminUsersPage({
                             <li key={b.id}>
                               <Link
                                 href={`/admin/businesses?search=${encodeURIComponent(b.slug)}`}
-                                className="inline-flex min-h-11 items-center font-bold underline decoration-ink/40 underline-offset-2 hover:bg-muted"
+                                className="font-medium underline-offset-2 hover:underline"
                               >
                                 {b.name}
                               </Link>
-                              <span className="block text-[11px] text-muted-foreground">
+                              <span className="block text-xs text-muted-foreground">
                                 /p/{b.slug}
                               </span>
                             </li>
                           ))}
                         </ul>
                       ) : (
-                        <span className="text-[11px] uppercase text-muted-foreground">
-                          belum punya bisnis
-                        </span>
+                        <span className="text-xs text-muted-foreground">belum punya bisnis</span>
                       )}
                     </TableCell>
-                    <TableCell className="hidden text-muted-foreground uppercase xl:table-cell">
+                    <TableCell className="hidden text-muted-foreground xl:table-cell">
                       {u.acquisition_source ?? "-"}
                       {u.planned_devices !== null ? ` · ${u.planned_devices} device` : ""}
                     </TableCell>
                     <TableCell className="hidden text-muted-foreground lg:table-cell">
                       {dateFmt.format(new Date(u.created_at))}
                       {u.signup_ip ? (
-                        <span className="block text-[11px]">{u.signup_ip}</span>
+                        <span className="block text-xs">{u.signup_ip}</span>
                       ) : null}
                     </TableCell>
                     <TableCell>
@@ -362,24 +307,18 @@ export default async function AdminUsersPage({
           grid={
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {items.map((u) => (
-                <RecordCard
+                <AdminRecordCard
                   key={u.id}
                   title={
-                    <Link
-                      href={`/admin/users/${u.id}`}
-                      className="underline decoration-ink/40 underline-offset-2 hover:bg-muted"
-                    >
+                    <Link href={`/admin/users/${u.id}`} className="underline-offset-2 hover:underline">
                       {u.email}
                     </Link>
                   }
                   subtitle={u.name ?? "Tanpa nama"}
                   badge={
                     <div className="flex flex-wrap justify-end gap-1">
-                      <RoleBadge
-                        role={u.role}
-                        envAdmin={u.role !== "admin" && isAdminEmail(u.email)}
-                      />
-                      <StatusBadge status={u.status === "suspended" ? "inactive" : "active"} />
+                      <RoleBadge role={u.role} envAdmin={u.role !== "admin" && isAdminEmail(u.email)} />
+                      <AdminStatusBadge status={u.status === "suspended" ? "inactive" : "active"} />
                     </div>
                   }
                   meta={[
@@ -390,7 +329,7 @@ export default async function AdminUsersPage({
                   ]}
                   footer={
                     u.businesses.length > 0 ? (
-                      <p className="flex items-start gap-1 font-mono text-[11px] leading-tight text-muted-foreground">
+                      <p className="flex items-start gap-1 text-xs leading-tight text-muted-foreground">
                         <Mail className="mt-0.5 size-3 shrink-0" aria-hidden="true" />
                         <span className="min-w-0 break-words">
                           {u.businesses.map((b) => b.name).join(", ")}

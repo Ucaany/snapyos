@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, LayoutTemplate } from "lucide-react";
 
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { buttonVariants } from "@/components/admin/ui/button";
 import { TemplateBuilderCanvas } from "@/components/dashboard/TemplateBuilderCanvas";
-import { PageHeader } from "@/components/ui/page-header";
-import { buttonVariants } from "@/components/ui/button-variants";
 import { ApiError } from "@/lib/api-errors";
 import { slotCount, type TemplateLayout } from "@/lib/template-layout";
 import { getGlobalTemplate } from "@/server/admin";
@@ -32,23 +32,25 @@ export default async function AdminTemplateBuilderPage({
   const initialLayout = slotCount(template.layout) > 0 ? (template.layout as TemplateLayout) : null;
 
   return (
-    <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
-      <PageHeader
-        eyebrow="ADMIN / BUILDER TEMPLATE"
+    <div className="flex flex-col gap-6">
+      <AdminPageHeader
+        eyebrow="Admin / Builder Template"
+        icon={LayoutTemplate}
         title={template.name}
         description="Atur slot frame platform yang dipakai semua tenant. Tambah hingga 8 slot, geser lewat drag atau tombol panah, lalu simpan draft atau publish."
-        meta={`${template.category.toUpperCase()} · ${template.is_active ? "AKTIF" : "NONAKTIF"}`}
+        meta={`${template.category.toUpperCase()} · ${template.is_active ? "Aktif" : "Nonaktif"}`}
         right={
           <Link
             href="/admin/templates"
             className={buttonVariants({ variant: "outline", size: "sm" })}
           >
-            <ArrowLeft aria-hidden="true" />
+            <ArrowLeft className="size-4" aria-hidden="true" />
             Kembali ke Templates
           </Link>
         }
       />
 
+      <div className="admin-builder">
       <TemplateBuilderCanvas
         templateName={template.name}
         initialLayout={initialLayout}
@@ -58,6 +60,7 @@ export default async function AdminTemplateBuilderPage({
         onSave={saveGlobalTemplateLayoutAction.bind(null, id)}
         onDetectChroma={detectGlobalTemplateChromaSlotsAction.bind(null, id)}
       />
+      </div>
     </div>
   );
 }

@@ -1,9 +1,8 @@
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/components/admin/ui/skeleton";
 
 /**
- * Kerangka loading bersama untuk halaman list admin. Bentuknya mengikuti
- * halaman tujuan (header, filter opsional, form opsional, daftar baris) supaya
- * tidak ada lompatan layout saat data selesai dimuat (antislop R-27).
+ * Kerangka loading admin berbasis shadcn Skeleton. Bentuk mengikuti halaman
+ * tujuan supaya tidak ada lompatan layout.
  */
 export function AdminListLoading({
   rows = 6,
@@ -17,16 +16,16 @@ export function AdminListLoading({
   rowClassName?: string;
 }) {
   return (
-    <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
+    <div className="flex flex-col gap-6">
       <div className="space-y-2">
         <Skeleton className="h-4 w-44" />
         <Skeleton className="h-9 w-64" />
       </div>
-      {showFilter ? <Skeleton className="h-11 w-full max-w-2xl" /> : null}
-      {showForm ? <Skeleton className="h-40 border-2 border-ink/10" /> : null}
+      {showFilter ? <Skeleton className="h-9 w-full max-w-2xl" /> : null}
+      {showForm ? <Skeleton className="h-40" /> : null}
       <div className="flex flex-col gap-3">
         {Array.from({ length: rows }).map((_, index) => (
-          <Skeleton key={index} className={`${rowClassName} border-2 border-ink/10`} />
+          <Skeleton key={index} className={rowClassName} />
         ))}
       </div>
     </div>

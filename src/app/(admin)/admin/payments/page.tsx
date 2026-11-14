@@ -1,17 +1,18 @@
 import Link from "next/link";
-import { ChevronDown, Filter, Landmark } from "lucide-react";
+import { Filter, Landmark } from "lucide-react";
 
-import { AdminPaginator } from "@/components/admin/AdminPaginator";
+import { AdminDisclosureCard } from "@/components/admin/AdminDisclosureCard";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
-import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
-import { RecordCard } from "@/components/ui/record-card";
-import { RecordCollection } from "@/components/ui/record-collection";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { StatusBadge } from "@/components/dashboard/StatusBadge";
-import { Button } from "@/components/ui/button";
-import { buttonVariants } from "@/components/ui/button-variants";
-import { Input } from "@/components/ui/input";
-import { PageHeader } from "@/components/ui/page-header";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { AdminPaginator } from "@/components/admin/AdminPaginator";
+import { AdminRecordCard } from "@/components/admin/AdminRecordCard";
+import { AdminRecordCollection } from "@/components/admin/AdminRecordCollection";
+import { AdminStatGrid } from "@/components/admin/AdminStatGrid";
+import { AdminStatusBadge } from "@/components/admin/AdminStatusBadge";
+import { AdminSelect } from "@/components/admin/AdminSelect";
+import { Button, buttonVariants } from "@/components/admin/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/admin/ui/card";
+import { Input } from "@/components/admin/ui/input";
 import {
   Table,
   TableBody,
@@ -19,10 +20,11 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/components/admin/ui/table";
 import { formatIDR } from "@/lib/dashboard-math";
 import { adminPaymentQuerySchema } from "@/lib/validators";
 import { getPaymentsSummary, listPayments, adminPosRevenueSummary } from "@/server/admin";
+import { Label } from "@/components/admin/ui/label";
 
 /**
  * Admin payment monitoring - docs/10 §10.3: filter status/provider/tanggal,
@@ -71,16 +73,16 @@ export default async function AdminPaymentsPage({
   const hasFilter = Boolean(q.status || q.provider || q.from || q.to);
 
   return (
-    <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
-      <PageHeader
-        eyebrow="ADMIN / PEMBAYARAN"
+    <div className="flex flex-col gap-6">
+      <AdminPageHeader
+        eyebrow="Admin / Pembayaran"
         icon={Landmark}
         title="Monitoring Pembayaran"
-        meta={`SEMUA TENANT · ${total} PAYMENT COCOK FILTER`}
+        meta={`Semua tenant · ${total} payment cocok filter`}
       />
 
       <form method="GET" className="flex flex-wrap items-end gap-3" role="search">
-        <BrutalistSelect
+        <AdminSelect
           name="status"
           label="Status"
           defaultValue={q.status ?? ""}
@@ -89,7 +91,7 @@ export default async function AdminPaymentsPage({
             ...PAYMENT_STATUSES.map((s) => ({ value: s, label: s.toUpperCase() })),
           ]}
         />
-        <BrutalistSelect
+        <AdminSelect
           name="provider"
           label="Provider"
           defaultValue={q.provider ?? ""}
@@ -99,9 +101,9 @@ export default async function AdminPaymentsPage({
           ]}
         />
         <div className="flex w-full flex-col gap-1 sm:w-auto">
-          <label htmlFor="f-from" className="font-mono text-[11px] uppercase tracking-[0.12em]">
+          <Label htmlFor="f-from" className="text-xs font-medium text-muted-foreground">
             Dari
-          </label>
+          </Label>
           <Input
             id="f-from"
             name="from"
@@ -111,9 +113,9 @@ export default async function AdminPaymentsPage({
           />
         </div>
         <div className="flex w-full flex-col gap-1 sm:w-auto">
-          <label htmlFor="f-to" className="font-mono text-[11px] uppercase tracking-[0.12em]">
+          <Label htmlFor="f-to" className="text-xs font-medium text-muted-foreground">
             Sampai
-          </label>
+          </Label>
           <Input
             id="f-to"
             name="to"
@@ -122,14 +124,9 @@ export default async function AdminPaymentsPage({
             className="w-full sm:w-40"
           />
         </div>
-        <Button
-          type="submit"
-          size="icon"
-          variant="secondary"
-          aria-label="Terapkan filter"
-          title="Terapkan filter"
-        >
+        <Button type="submit" size="sm" variant="outline">
           <Filter className="size-4" aria-hidden="true" />
+          Terapkan
         </Button>
         {hasFilter ? (
           <Link
@@ -149,53 +146,17 @@ export default async function AdminPaymentsPage({
             Angka ringkasan mengikuti filter tanggal saja, bukan status/provider.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <dl className="grid grid-cols-2 gap-[2px] border-2 border-ink bg-ink md:grid-cols-4">
-            {[
+        <CardContent className="flex flex-col gap-4">
+          <AdminStatGrid
+            items={[
               { label: "Volume Bruto", value: formatIDR(summary.gross) },
               { label: "Biaya Platform", value: formatIDR(summary.fee) },
               { label: "Bersih", value: formatIDR(summary.net) },
               { label: "Dikembalikan", value: formatIDR(summary.refunded) },
-            ].map((cell) => (
-              <div key={cell.label} className="flex flex-col gap-1 bg-surface p-3">
-                <dt className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
-                  {cell.label}
-                </dt>
-                <dd className="font-mono text-sm font-bold leading-none">{cell.value}</dd>
-              </div>
-            ))}
-          </dl>
-
-          <details className="mt-2 border-2 border-ink bg-surface">
-            <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 px-3 font-mono text-[11px] font-bold uppercase tracking-[0.12em]">
-              Status pembayaran & webhook
-              <ChevronDown className="summary-chevron size-3.5" aria-hidden="true" />
-            </summary>
-            <dl className="grid grid-cols-2 gap-[2px] border-t-2 border-ink bg-ink md:grid-cols-4">
-              {[
-                { label: "Lunas", value: String(summary.counts.paid ?? 0) },
-                { label: "Menunggu", value: String(summary.counts.pending ?? 0) },
-                { label: "Gagal", value: String(summary.counts.failed ?? 0) },
-                { label: "Kedaluwarsa", value: String(summary.counts.expired ?? 0) },
-                { label: "Dibatalkan", value: String(summary.counts.cancelled ?? 0) },
-                {
-                  label: "Webhook Invalid Sig",
-                  value: String(summary.webhookIntegrity.invalidSignature),
-                },
-                { label: "Webhook Error", value: String(summary.webhookIntegrity.errors) },
-                { label: "Webhook Total", value: String(summary.webhookIntegrity.total) },
-              ].map((cell) => (
-                <div key={cell.label} className="flex flex-col gap-1 bg-surface p-3">
-                  <dt className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
-                    {cell.label}
-                  </dt>
-                  <dd className="font-mono text-sm font-bold leading-none">{cell.value}</dd>
-                </div>
-              ))}
-            </dl>
-          </details>
+            ]}
+          />
           {summary.byProvider.length > 0 ? (
-            <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+            <p className="text-xs leading-relaxed text-muted-foreground">
               Provider:{" "}
               {summary.byProvider
                 .map((p) => `${p.provider} (${p.count}x · ${formatIDR(p.volume)})`)
@@ -204,6 +165,23 @@ export default async function AdminPaymentsPage({
           ) : null}
         </CardContent>
       </Card>
+
+      <AdminDisclosureCard
+        trigger={<span className="text-sm font-medium">Status pembayaran & webhook</span>}
+      >
+        <AdminStatGrid
+          items={[
+            { label: "Lunas", value: String(summary.counts.paid ?? 0) },
+            { label: "Menunggu", value: String(summary.counts.pending ?? 0) },
+            { label: "Gagal", value: String(summary.counts.failed ?? 0) },
+            { label: "Kedaluwarsa", value: String(summary.counts.expired ?? 0) },
+            { label: "Dibatalkan", value: String(summary.counts.cancelled ?? 0) },
+            { label: "Webhook Invalid Sig", value: String(summary.webhookIntegrity.invalidSignature) },
+            { label: "Webhook Error", value: String(summary.webhookIntegrity.errors) },
+            { label: "Webhook Total", value: String(summary.webhookIntegrity.total) },
+          ]}
+        />
+      </AdminDisclosureCard>
 
       <Card>
         <CardHeader>
@@ -219,7 +197,7 @@ export default async function AdminPaymentsPage({
               Belum ada payment lunas pada periode ini.
             </p>
           ) : (
-            <Table containerClassName="shadow-none">
+            <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Bisnis</TableHead>
@@ -260,17 +238,17 @@ export default async function AdminPaymentsPage({
             <p className="text-xs text-muted-foreground">Belum ada transaksi POS.</p>
           ) : (
             <>
-              <p className="mb-3 font-mono text-xs font-bold uppercase tracking-[0.08em]">
+              <p className="mb-3 text-xs font-semibold">
                 {`TOTAL POS: ${formatIDR(posRevenue.total)}`}
               </p>
               <ul className="flex flex-col gap-2">
                 {posRevenue.rows.map((r) => (
                   <li
                     key={r.businessId}
-                    className="flex items-center justify-between gap-3 border-2 border-ink bg-surface px-3 py-2"
+                    className="flex items-center justify-between gap-3 border-t py-2 first:border-t-0"
                   >
                     <span className="text-sm">{r.businessName}</span>
-                    <span className="font-mono text-xs">
+                    <span className="text-xs tabular-nums">
                       {formatIDR(r.final)}
                       <span className="ml-2 text-muted-foreground">{r.count}x</span>
                     </span>
@@ -301,7 +279,7 @@ export default async function AdminPaymentsPage({
           {hasFilter ? " Hapus filter untuk melihat seluruh riwayat." : ""}
         </AdminEmptyState>
       ) : (
-        <RecordCollection
+        <AdminRecordCollection
           storageKey="snapyos.view.admin.payments"
           label="Daftar payment"
           list={
@@ -329,9 +307,9 @@ export default async function AdminPaymentsPage({
                         </span>
                       ) : null}
                     </TableCell>
-                    <TableCell className="hidden uppercase lg:table-cell">{p.provider}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{p.provider}</TableCell>
                     <TableCell>
-                      <StatusBadge status={p.status} />
+                      <AdminStatusBadge status={p.status} />
                     </TableCell>
                     <TableCell className="hidden text-muted-foreground lg:table-cell">
                       {dateTimeFmt.format(new Date(p.paid_at ?? p.created_at))}
@@ -344,11 +322,11 @@ export default async function AdminPaymentsPage({
           grid={
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {items.map((p) => (
-                <RecordCard
+                <AdminRecordCard
                   key={p.id}
                   title={p.payment_reference}
                   subtitle={p.business_name}
-                  badge={<StatusBadge status={p.status} />}
+                  badge={<AdminStatusBadge status={p.status} />}
                   meta={[
                     { label: "Nilai", value: formatIDR(p.final_amount) },
                     { label: "Provider", value: p.provider.toUpperCase() },

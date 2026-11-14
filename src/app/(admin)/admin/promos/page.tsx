@@ -1,16 +1,18 @@
-import { ChevronDown, Tag } from "lucide-react";
+import { Tag } from "lucide-react";
 
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
+import { AdminDisclosure } from "@/components/admin/AdminDisclosureCard";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
-import { BrutalistCheckbox } from "@/components/admin/BrutalistCheckbox";
-import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
-import { StatusBadge } from "@/components/dashboard/StatusBadge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { AdminStatusBadge } from "@/components/admin/AdminStatusBadge";
+import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
+import { AdminSelect } from "@/components/admin/AdminSelect";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/admin/ui/card";
+import { Input } from "@/components/admin/ui/input";
 import { formatIDR } from "@/lib/dashboard-math";
 import { createPromoAction, updatePromoAction } from "@/server/admin-actions";
 import { listPromos } from "@/server/admin";
-import { PageHeader } from "@/components/ui/page-header";
+import { Label } from "@/components/admin/ui/label";
 
 /**
  * Admin Subscription Promos - docs/10 §10.2 (migration 0014).
@@ -34,9 +36,9 @@ export default async function AdminPromosPage() {
   const dateFmt = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" });
 
   return (
-    <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
-      <PageHeader
-        eyebrow="ADMIN / PROMO LANGGANAN"
+    <div className="flex flex-col gap-6">
+      <AdminPageHeader
+        eyebrow="Admin / Promo Langganan"
         icon={Tag}
         title="Promo Berlangganan"
         meta={`${promos.length} kode promo · diskon billing plan`}
@@ -56,27 +58,21 @@ export default async function AdminPromosPage() {
             className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4"
           >
             <div className="flex flex-col gap-1">
-              <label
-                htmlFor="promo-code"
-                className="font-mono text-[11px] uppercase tracking-[0.12em]"
-              >
+              <Label htmlFor="promo-code" className="text-xs font-medium text-muted-foreground">
                 Kode
-              </label>
+              </Label>
               <Input id="promo-code" name="code" placeholder="LAUNCH50" required />
             </div>
-            <BrutalistSelect
+            <AdminSelect
               name="type"
               label="Tipe"
               defaultValue="percentage"
               options={TYPE_OPTIONS}
             />
             <div className="flex flex-col gap-1">
-              <label
-                htmlFor="promo-amount"
-                className="font-mono text-[11px] uppercase tracking-[0.12em]"
-              >
+              <Label htmlFor="promo-amount" className="text-xs font-medium text-muted-foreground">
                 Nilai (persen atau IDR)
-              </label>
+              </Label>
               <Input
                 id="promo-amount"
                 name="amount"
@@ -87,12 +83,9 @@ export default async function AdminPromosPage() {
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label
-                htmlFor="promo-min-tx"
-                className="font-mono text-[11px] uppercase tracking-[0.12em]"
-              >
+              <Label htmlFor="promo-min-tx" className="text-xs font-medium text-muted-foreground">
                 Min. transaksi (IDR)
-              </label>
+              </Label>
               <Input
                 id="promo-min-tx"
                 name="min_transaction"
@@ -102,12 +95,9 @@ export default async function AdminPromosPage() {
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label
-                htmlFor="promo-max"
-                className="font-mono text-[11px] uppercase tracking-[0.12em]"
-              >
+              <Label htmlFor="promo-max" className="text-xs font-medium text-muted-foreground">
                 Max diskon (IDR, opsional)
-              </label>
+              </Label>
               <Input
                 id="promo-max"
                 name="max_discount"
@@ -117,30 +107,21 @@ export default async function AdminPromosPage() {
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label
-                htmlFor="promo-start"
-                className="font-mono text-[11px] uppercase tracking-[0.12em]"
-              >
+              <Label htmlFor="promo-start" className="text-xs font-medium text-muted-foreground">
                 Berlaku mulai (opsional)
-              </label>
+              </Label>
               <Input id="promo-start" name="start_date" type="date" />
             </div>
             <div className="flex flex-col gap-1">
-              <label
-                htmlFor="promo-end"
-                className="font-mono text-[11px] uppercase tracking-[0.12em]"
-              >
+              <Label htmlFor="promo-end" className="text-xs font-medium text-muted-foreground">
                 Berlaku sampai (opsional)
-              </label>
+              </Label>
               <Input id="promo-end" name="end_date" type="date" />
             </div>
             <div className="flex flex-col gap-1">
-              <label
-                htmlFor="promo-limit"
-                className="font-mono text-[11px] uppercase tracking-[0.12em]"
-              >
+              <Label htmlFor="promo-limit" className="text-xs font-medium text-muted-foreground">
                 Batas pemakaian (opsional)
-              </label>
+              </Label>
               <Input
                 id="promo-limit"
                 name="usage_limit"
@@ -149,7 +130,7 @@ export default async function AdminPromosPage() {
                 placeholder="Kosong = tak terbatas"
               />
             </div>
-            <BrutalistCheckbox
+            <AdminCheckbox
               name="is_active"
               label="Aktifkan segera"
               defaultChecked
@@ -161,7 +142,7 @@ export default async function AdminPromosPage() {
 
       <div className="flex flex-col gap-4">
         {promos.length === 0 ? (
-          <AdminEmptyState heading="BELUM ADA PROMO" icon={Tag}>
+          <AdminEmptyState heading="Belum ada promo" icon={Tag}>
             Buat promo pertama di atas, dipakai saat owner meng-upgrade atau renew plan.
           </AdminEmptyState>
         ) : (
@@ -172,63 +153,61 @@ export default async function AdminPromosPage() {
                 : `${p.used_count} / ${p.usage_limit}`;
             const valueText = p.type === "percentage" ? `${p.amount}%` : formatIDR(p.amount);
             return (
-              <div
-                key={p.id}
-                className="border-2 border-ink bg-surface p-4 shadow-hard"
-              >
+              <Card key={p.id}>
+                <CardContent className="flex flex-col gap-2">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <span className="flex flex-wrap items-center gap-3">
-                    <span className="font-display text-lg uppercase tracking-tight">{p.code}</span>
-                    <span className="font-mono text-xs text-muted-foreground">
+                    <span className="text-base font-medium tracking-tight">{p.code}</span>
+                    <span className="text-xs text-muted-foreground">
                       {p.type.toUpperCase()} · {valueText}
                       {p.max_discount ? ` · max ${formatIDR(p.max_discount)}` : ""}
                       {p.min_transaction > 0 ? ` · min ${formatIDR(p.min_transaction)}` : ""}
                     </span>
                   </span>
                   <span className="flex items-center gap-3">
-                    <span className="font-mono text-xs text-muted-foreground">{usageText}</span>
-                    <StatusBadge status={p.is_active ? "active" : "inactive"} />
+                    <span className="text-xs text-muted-foreground">{usageText}</span>
+                    <AdminStatusBadge status={p.is_active ? "active" : "inactive"} />
                   </span>
                 </div>
-                <p className="mt-2 font-mono text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   {p.start_date ? `MULAI ${dateFmt.format(new Date(p.start_date))}` : "MULAI -"}
                   {" · "}
                   {p.end_date ? `SAMPAI ${dateFmt.format(new Date(p.end_date))}` : "SAMPAI -"}
                 </p>
 
-                <details className="mt-4 border-t-2 border-ink/10 pt-4">
-                  <summary className="flex min-h-11 cursor-pointer items-center gap-2 font-mono text-xs uppercase tracking-[0.12em]">
-                    Edit promo
-                    <ChevronDown className="summary-chevron size-3.5" aria-hidden="true" />
-                  </summary>
+                <AdminDisclosure
+                  className="border-t pt-3"
+                  triggerClassName="min-h-9 text-xs font-medium text-muted-foreground hover:text-foreground"
+                  trigger={<span>Edit promo</span>}
+                >
                   <AdminActionForm
                     action={updatePromoAction}
                     hidden={{ promoId: p.id }}
                     submitLabel="Simpan"
-                    className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4"
+                    className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4"
                   >
                     <div className="flex flex-col gap-1">
-                      <label
+                      <Label
                         htmlFor={`code-${p.id}`}
-                        className="font-mono text-[11px] uppercase tracking-[0.12em]"
+                        className="text-xs font-medium text-muted-foreground"
                       >
                         Kode
-                      </label>
+                      </Label>
                       <Input id={`code-${p.id}`} name="code" defaultValue={p.code} />
                     </div>
-                    <BrutalistSelect
+                    <AdminSelect
                       name="type"
                       label="Tipe"
                       defaultValue={p.type}
                       options={TYPE_OPTIONS}
                     />
                     <div className="flex flex-col gap-1">
-                      <label
+                      <Label
                         htmlFor={`amt-${p.id}`}
-                        className="font-mono text-[11px] uppercase tracking-[0.12em]"
+                        className="text-xs font-medium text-muted-foreground"
                       >
                         Nilai
-                      </label>
+                      </Label>
                       <Input
                         id={`amt-${p.id}`}
                         name="amount"
@@ -237,12 +216,12 @@ export default async function AdminPromosPage() {
                       />
                     </div>
                     <div className="flex flex-col gap-1">
-                      <label
+                      <Label
                         htmlFor={`min-${p.id}`}
-                        className="font-mono text-[11px] uppercase tracking-[0.12em]"
+                        className="text-xs font-medium text-muted-foreground"
                       >
                         Min. transaksi
-                      </label>
+                      </Label>
                       <Input
                         id={`min-${p.id}`}
                         name="min_transaction"
@@ -251,12 +230,12 @@ export default async function AdminPromosPage() {
                       />
                     </div>
                     <div className="flex flex-col gap-1">
-                      <label
+                      <Label
                         htmlFor={`max-${p.id}`}
-                        className="font-mono text-[11px] uppercase tracking-[0.12em]"
+                        className="text-xs font-medium text-muted-foreground"
                       >
                         Max diskon
-                      </label>
+                      </Label>
                       <Input
                         id={`max-${p.id}`}
                         name="max_discount"
@@ -265,12 +244,12 @@ export default async function AdminPromosPage() {
                       />
                     </div>
                     <div className="flex flex-col gap-1">
-                      <label
+                      <Label
                         htmlFor={`start-${p.id}`}
-                        className="font-mono text-[11px] uppercase tracking-[0.12em]"
+                        className="text-xs font-medium text-muted-foreground"
                       >
                         Mulai
-                      </label>
+                      </Label>
                       <Input
                         id={`start-${p.id}`}
                         name="start_date"
@@ -279,12 +258,12 @@ export default async function AdminPromosPage() {
                       />
                     </div>
                     <div className="flex flex-col gap-1">
-                      <label
+                      <Label
                         htmlFor={`end-${p.id}`}
-                        className="font-mono text-[11px] uppercase tracking-[0.12em]"
+                        className="text-xs font-medium text-muted-foreground"
                       >
                         Sampai
-                      </label>
+                      </Label>
                       <Input
                         id={`end-${p.id}`}
                         name="end_date"
@@ -293,12 +272,12 @@ export default async function AdminPromosPage() {
                       />
                     </div>
                     <div className="flex flex-col gap-1">
-                      <label
+                      <Label
                         htmlFor={`limit-${p.id}`}
-                        className="font-mono text-[11px] uppercase tracking-[0.12em]"
+                        className="text-xs font-medium text-muted-foreground"
                       >
                         Batas pemakaian
-                      </label>
+                      </Label>
                       <Input
                         id={`limit-${p.id}`}
                         name="usage_limit"
@@ -306,15 +285,16 @@ export default async function AdminPromosPage() {
                         defaultValue={p.usage_limit ?? ""}
                       />
                     </div>
-                    <BrutalistCheckbox
+                    <AdminCheckbox
                       name="is_active"
                       label="Aktif"
                       defaultChecked={p.is_active}
                       wrapperClassName="col-span-2 md:col-span-4"
                     />
                   </AdminActionForm>
-                </details>
-              </div>
+                </AdminDisclosure>
+                </CardContent>
+              </Card>
             );
           })
         )}

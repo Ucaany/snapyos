@@ -1,16 +1,17 @@
 import { Package } from "lucide-react";
 
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
-import { BrutalistCheckbox } from "@/components/admin/BrutalistCheckbox";
+import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
-import { StatusBadge } from "@/components/dashboard/StatusBadge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { PageHeader } from "@/components/ui/page-header";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { AdminStatusBadge } from "@/components/admin/AdminStatusBadge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/admin/ui/card";
+import { Input } from "@/components/admin/ui/input";
 import { formatIDR } from "@/lib/dashboard-math";
 import { storageAddOnDisplayName } from "@/lib/storage-units";
 import { createAddOnAction, updateAddOnAction } from "@/server/admin-actions";
 import { listAddOns } from "@/server/admin";
+import { Label } from "@/components/admin/ui/label";
 
 /**
  * Admin add-ons - create/edit harga & unit, active/inactive (docs/10 §10.2).
@@ -20,9 +21,9 @@ export default async function AdminAddOnsPage() {
   const addOns = await listAddOns();
 
   return (
-    <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
-      <PageHeader
-        eyebrow="ADMIN / ADD-ON"
+    <div className="flex flex-col gap-6">
+      <AdminPageHeader
+        eyebrow="Admin / Add-on"
         icon={Package}
         title="Manajemen Add-on"
         meta={`${addOns.length} add-on terdaftar`}
@@ -42,48 +43,33 @@ export default async function AdminAddOnsPage() {
             className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
           >
             <div className="flex flex-col gap-1">
-              <label
-                htmlFor="addon-code"
-                className="font-mono text-[11px] uppercase tracking-[0.12em]"
-              >
+              <Label htmlFor="addon-code" className="text-xs font-medium text-muted-foreground">
                 Kode
-              </label>
+              </Label>
               <Input id="addon-code" name="code" placeholder="extra-session" />
             </div>
             <div className="flex flex-col gap-1">
-              <label
-                htmlFor="addon-name"
-                className="font-mono text-[11px] uppercase tracking-[0.12em]"
-              >
+              <Label htmlFor="addon-name" className="text-xs font-medium text-muted-foreground">
                 Nama
-              </label>
+              </Label>
               <Input id="addon-name" name="name" placeholder="Add-on +1 Sesi" />
             </div>
             <div className="flex flex-col gap-1">
-              <label
-                htmlFor="addon-price"
-                className="font-mono text-[11px] uppercase tracking-[0.12em]"
-              >
+              <Label htmlFor="addon-price" className="text-xs font-medium text-muted-foreground">
                 Harga / bln (IDR)
-              </label>
+              </Label>
               <Input id="addon-price" name="price_monthly" type="number" defaultValue={49000} />
             </div>
             <div className="flex flex-col gap-1">
-              <label
-                htmlFor="addon-unit"
-                className="font-mono text-[11px] uppercase tracking-[0.12em]"
-              >
+              <Label htmlFor="addon-unit" className="text-xs font-medium text-muted-foreground">
                 Unit
-              </label>
+              </Label>
               <Input id="addon-unit" name="unit" defaultValue="session" />
             </div>
             <div className="flex flex-col gap-1">
-              <label
-                htmlFor="addon-storage"
-                className="font-mono text-[11px] uppercase tracking-[0.12em]"
-              >
+              <Label htmlFor="addon-storage" className="text-xs font-medium text-muted-foreground">
                 Storage (MB)
-              </label>
+              </Label>
               <Input
                 id="addon-storage"
                 name="storage_mb"
@@ -102,32 +88,30 @@ export default async function AdminAddOnsPage() {
           </AdminEmptyState>
         ) : (
           addOns.map((a) => (
-            <div
-              key={a.id}
-              className="border-2 border-ink bg-surface p-4 shadow-hard"
-            >
+            <Card key={a.id}>
+              <CardContent className="flex flex-col gap-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <span className="flex items-center gap-3">
-                  <span className="font-display text-lg uppercase tracking-tight">
+                  <span className="text-base font-medium tracking-tight">
                     {storageAddOnDisplayName({
                       name: a.name,
                       unit: a.unit,
                       storageMb: a.storage_mb,
                     })}
                   </span>
-                  <span className="font-mono text-xs text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     {a.code} · unit {a.unit}
                     {a.storage_mb ? ` · +${a.storage_mb} MB` : ""}
                   </span>
                 </span>
-                <span className="flex items-center gap-3 font-mono text-xs font-bold">
+                <span className="flex items-center gap-3 text-xs font-semibold">
                   {formatIDR(a.price_monthly)}/BLN
-                  <StatusBadge status={a.is_active ? "active" : "inactive"} />
+                  <AdminStatusBadge status={a.is_active ? "active" : "inactive"} />
                 </span>
               </div>
               <div
                 key={`${a.id}:${a.name}:${a.price_monthly}:${a.unit}:${a.storage_mb ?? ""}:${a.is_active}`}
-                className="mt-4 border-t-2 border-ink/10 pt-4"
+                className="border-t pt-3"
               >
                 <AdminActionForm
                   action={updateAddOnAction}
@@ -136,12 +120,12 @@ export default async function AdminAddOnsPage() {
                   className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
                 >
                   <div className="flex flex-col gap-1">
-                    <label
+                    <Label
                       htmlFor={`name-${a.id}`}
-                      className="font-mono text-[11px] uppercase tracking-[0.12em]"
+                      className="text-xs font-medium text-muted-foreground"
                     >
                       Nama
-                    </label>
+                    </Label>
                     <Input
                       id={`name-${a.id}`}
                       name="name"
@@ -153,12 +137,12 @@ export default async function AdminAddOnsPage() {
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label
+                    <Label
                       htmlFor={`price-${a.id}`}
-                      className="font-mono text-[11px] uppercase tracking-[0.12em]"
+                      className="text-xs font-medium text-muted-foreground"
                     >
                       Harga / bln
-                    </label>
+                    </Label>
                     <Input
                       id={`price-${a.id}`}
                       name="price_monthly"
@@ -167,21 +151,21 @@ export default async function AdminAddOnsPage() {
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label
+                    <Label
                       htmlFor={`unit-${a.id}`}
-                      className="font-mono text-[11px] uppercase tracking-[0.12em]"
+                      className="text-xs font-medium text-muted-foreground"
                     >
                       Unit
-                    </label>
+                    </Label>
                     <Input id={`unit-${a.id}`} name="unit" defaultValue={a.unit} />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label
+                    <Label
                       htmlFor={`storage-${a.id}`}
-                      className="font-mono text-[11px] uppercase tracking-[0.12em]"
+                      className="text-xs font-medium text-muted-foreground"
                     >
                       Storage (MB)
-                    </label>
+                    </Label>
                     <Input
                       id={`storage-${a.id}`}
                       name="storage_mb"
@@ -189,10 +173,11 @@ export default async function AdminAddOnsPage() {
                       defaultValue={a.storage_mb ?? ""}
                     />
                   </div>
-                  <BrutalistCheckbox name="is_active" label="Aktif" defaultChecked={a.is_active} />
+                  <AdminCheckbox name="is_active" label="Aktif" defaultChecked={a.is_active} />
                 </AdminActionForm>
               </div>
-            </div>
+              </CardContent>
+            </Card>
           ))
         )}
       </div>

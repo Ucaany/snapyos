@@ -3,14 +3,13 @@ import { CircleHelp, Filter } from "lucide-react";
 
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminPaginator } from "@/components/admin/AdminPaginator";
-import { RecordCard } from "@/components/ui/record-card";
-import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
-import { RecordCollection } from "@/components/ui/record-collection";
-import { StatusBadge } from "@/components/dashboard/StatusBadge";
-import { Button } from "@/components/ui/button";
-import { buttonVariants } from "@/components/ui/button-variants";
-import { PageHeader } from "@/components/ui/page-header";
+import { AdminRecordCard } from "@/components/admin/AdminRecordCard";
+import { AdminRecordCollection } from "@/components/admin/AdminRecordCollection";
+import { AdminStatusBadge } from "@/components/admin/AdminStatusBadge";
+import { AdminSelect } from "@/components/admin/AdminSelect";
+import { Button, buttonVariants } from "@/components/admin/ui/button";
 import {
   Table,
   TableBody,
@@ -18,20 +17,15 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { updateSupportTicketStatusAction } from "@/server/admin-actions";
-import { listSupportTicketsAdmin } from "@/server/admin";
+} from "@/components/admin/ui/table";
 import { STATUS_LABEL } from "@/lib/support-ticket-constants";
-
-/**
- * Admin support tickets - docs/10 §10.6: tiket lintas tenant + ubah status
- * (open / needs_action / resolved). Semua aksi ter-audit + guarded requireAdmin.
- */
+import { listSupportTicketsAdmin } from "@/server/admin";
+import { updateSupportTicketStatusAction } from "@/server/admin-actions";
 
 const STATUS_OPTIONS = [
-  { value: "open", label: "TERBUKA" },
-  { value: "needs_action", label: "BUTUH TINDAKAN" },
-  { value: "resolved", label: "SELESAI" },
+  { value: "open", label: "Terbuka" },
+  { value: "needs_action", label: "Butuh tindakan" },
+  { value: "resolved", label: "Selesai" },
 ] as const;
 
 export default async function AdminSupportPage({
@@ -47,31 +41,26 @@ export default async function AdminSupportPage({
   const totalPages = Math.max(1, Math.ceil(total / 20));
 
   return (
-    <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
-      <PageHeader
-        eyebrow="ADMIN / TIKET BANTUAN"
+    <div className="flex flex-col gap-6">
+      <AdminPageHeader
+        eyebrow="Admin / Tiket Bantuan"
         title="Tiket Bantuan"
         icon={CircleHelp}
-        meta={`SEMUA TENANT · ${total} TIKET COCOK FILTER`}
+        meta={`Semua tenant · ${total} tiket cocok filter`}
         right={
           <form method="GET" className="flex flex-wrap items-end gap-3" role="search">
-            <BrutalistSelect
+            <AdminSelect
               name="status"
               label="Status"
               defaultValue={q.status ?? ""}
               options={[
-                { value: "", label: "SEMUA" },
+                { value: "", label: "Semua" },
                 ...STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label })),
               ]}
             />
-            <Button
-              type="submit"
-              size="icon"
-              variant="secondary"
-              aria-label="Filter tiket"
-              title="Filter tiket"
-            >
+            <Button type="submit" size="sm" variant="outline">
               <Filter className="size-4" aria-hidden="true" />
+              Terapkan
             </Button>
           </form>
         }
@@ -79,14 +68,11 @@ export default async function AdminSupportPage({
 
       {items.length === 0 ? (
         <AdminEmptyState
-          heading="TIDAK ADA TIKET"
+          heading="Tidak ada tiket"
           icon={CircleHelp}
           action={
             q.status ? (
-              <Link
-                href="/admin/support"
-                className={buttonVariants({ variant: "outline", size: "sm" })}
-              >
+              <Link href="/admin/support" className={buttonVariants({ variant: "outline", size: "sm" })}>
                 Hapus filter
               </Link>
             ) : null
@@ -97,7 +83,7 @@ export default async function AdminSupportPage({
             : "Belum ada tiket masuk. Tiket muncul di sini setelah owner mengirim laporan dari dashboard."}
         </AdminEmptyState>
       ) : (
-        <RecordCollection
+        <AdminRecordCollection
           storageKey="snapyos.view.admin.support"
           label="Daftar tiket bantuan"
           list={
@@ -115,15 +101,13 @@ export default async function AdminSupportPage({
               <TableBody>
                 {items.map((t) => (
                   <TableRow key={t.id}>
-                    <TableCell className="max-w-[280px] text-sm font-semibold">
-                      {t.subject}
-                    </TableCell>
+                    <TableCell className="max-w-[280px] font-medium">{t.subject}</TableCell>
                     <TableCell className="hidden md:table-cell">{t.business_name}</TableCell>
-                    <TableCell className="hidden text-[11px] uppercase text-muted-foreground lg:table-cell">
+                    <TableCell className="hidden text-xs text-muted-foreground lg:table-cell">
                       {t.category} · {t.area}
                     </TableCell>
                     <TableCell>
-                      <StatusBadge status={t.status} label={STATUS_LABEL[t.status]} />
+                      <AdminStatusBadge status={t.status} label={STATUS_LABEL[t.status]} />
                     </TableCell>
                     <TableCell className="hidden text-muted-foreground lg:table-cell">
                       {dateFmt.format(new Date(t.created_at))}
@@ -135,7 +119,7 @@ export default async function AdminSupportPage({
                         submitLabel="Simpan"
                         className="flex flex-wrap items-center gap-2"
                       >
-                        <BrutalistSelect
+                        <AdminSelect
                           name="status"
                           defaultValue={t.status}
                           aria-label={`Status tiket: ${t.subject}`}
@@ -151,11 +135,11 @@ export default async function AdminSupportPage({
           grid={
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
               {items.map((t) => (
-                <RecordCard
+                <AdminRecordCard
                   key={t.id}
                   title={t.subject}
                   subtitle={`${t.category} · ${t.area}`}
-                  badge={<StatusBadge status={t.status} label={STATUS_LABEL[t.status]} />}
+                  badge={<AdminStatusBadge status={t.status} label={STATUS_LABEL[t.status]} />}
                   meta={[
                     { label: "Bisnis", value: t.business_name },
                     { label: "Waktu", value: dateFmt.format(new Date(t.created_at)) },
@@ -169,7 +153,7 @@ export default async function AdminSupportPage({
                       iconOnly
                       className="flex w-full items-end gap-2"
                     >
-                      <BrutalistSelect
+                      <AdminSelect
                         id={`status-grid-${t.id}`}
                         name="status"
                         defaultValue={t.status}

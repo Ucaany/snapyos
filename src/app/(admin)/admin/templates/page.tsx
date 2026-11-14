@@ -1,15 +1,34 @@
 import Link from "next/link";
 import { ChevronDown, ImageIcon, Pencil } from "lucide-react";
+
 import { AdminActionButton, AdminActionForm } from "@/components/admin/AdminActionForm";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
-import { BrutalistCheckbox } from "@/components/admin/BrutalistCheckbox";
-import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
-import { StatusBadge } from "@/components/dashboard/StatusBadge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { RecordCard } from "@/components/ui/record-card";
-import { RecordCollection } from "@/components/ui/record-collection";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { AdminRecordCard } from "@/components/admin/AdminRecordCard";
+import { AdminRecordCollection } from "@/components/admin/AdminRecordCollection";
+import { AdminStatusBadge } from "@/components/admin/AdminStatusBadge";
+import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
+import { AdminSelect } from "@/components/admin/AdminSelect";
+import { Badge } from "@/components/admin/ui/badge";
+import { buttonVariants } from "@/components/admin/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/admin/ui/card";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/admin/ui/collapsible";
+import { Input } from "@/components/admin/ui/input";
+import { Label } from "@/components/admin/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/admin/ui/table";
 import { formatIDR } from "@/lib/dashboard-math";
+import { listGlobalTemplates, listTemplateCategories, listTemplatePurchases } from "@/server/admin";
 import {
   createCategoryAction,
   createGlobalTemplateAction,
@@ -18,25 +37,10 @@ import {
   toggleTemplateAction,
   updateGlobalTemplateAction,
 } from "@/server/admin-actions";
-import { listGlobalTemplates, listTemplateCategories, listTemplatePurchases } from "@/server/admin";
-import { PageHeader } from "@/components/ui/page-header";
-import { buttonVariants } from "@/components/ui/button-variants";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 /**
  * Admin templates & kategori global - docs/10 §10.2 (migration 0039).
  * Template global = templates dengan business_id NULL (docs/07 §7.3).
- *
- * K4 (audit 2026-09-16): tambahkan form upload template global (URL file frame
- * + kategori FK). Owner tetap upload frame lewat dashboard Templates miliknya; admin
- * memasang template referensi platform.
  */
 export default async function AdminTemplatesPage() {
   const [categories, templates, purchases] = await Promise.all([
@@ -46,23 +50,23 @@ export default async function AdminTemplatesPage() {
   ]);
 
   const dateFmt = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" });
-  const categoryOptions = categories.map((c) => ({ value: c.id, label: c.name.toUpperCase() }));
+  const categoryOptions = categories.map((c) => ({ value: c.id, label: c.name }));
 
   return (
-    <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
-      <PageHeader
-        eyebrow="ADMIN / TEMPLATE"
+    <div className="flex flex-col gap-6">
+      <AdminPageHeader
+        eyebrow="Admin / Template"
         icon={ImageIcon}
         title="Template Global"
-        meta={`${categories.length} KATEGORI · ${templates.length} TEMPLATE GLOBAL`}
+        meta={`${categories.length} kategori · ${templates.length} template global`}
       />
 
       <Card>
         <CardHeader>
           <CardTitle>Kategori Template</CardTitle>
           <CardDescription>
-            Kategori global dipakai seluruh tenant + template global (FK
-            <code className="ml-1 font-mono text-[11px]">templates.category_id</code>).
+            Kategori global dipakai seluruh tenant + template global (FK{" "}
+            <code className="text-xs">templates.category_id</code>).
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
@@ -72,26 +76,11 @@ export default async function AdminTemplatesPage() {
             className="flex flex-wrap items-end gap-2"
           >
             <div className="flex flex-col gap-1">
-              <label
-                htmlFor="cat-name"
-                className="font-mono text-[11px] uppercase tracking-[0.12em]"
-              >
-                Nama kategori
-              </label>
-              <Input
-                id="cat-name"
-                name="name"
-                placeholder="cth. Wedding"
-                className="w-full sm:w-56"
-              />
+              <Label htmlFor="cat-name" className="text-xs text-muted-foreground">Nama kategori</Label>
+              <Input id="cat-name" name="name" placeholder="cth. Wedding" className="w-full sm:w-56" />
             </div>
             <div className="flex flex-col gap-1">
-              <label
-                htmlFor="cat-price"
-                className="font-mono text-[11px] uppercase tracking-[0.12em]"
-              >
-                Harga default (IDR, opsional)
-              </label>
+              <Label htmlFor="cat-price" className="text-xs text-muted-foreground">Harga default (IDR, opsional)</Label>
               <Input
                 id="cat-price"
                 name="price"
@@ -104,27 +93,25 @@ export default async function AdminTemplatesPage() {
           </AdminActionForm>
 
           {categories.length === 0 ? (
-            <p className="font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
-              {"BELUM ADA KATEGORI GLOBAL"}
-            </p>
+            <p className="text-sm text-muted-foreground">Belum ada kategori global.</p>
           ) : (
             <ul className="flex flex-wrap gap-2">
               {categories.map((c) => (
                 <li
                   key={c.id}
-                  className="flex items-center gap-3 border-2 border-ink bg-muted px-3 py-2 font-mono text-xs uppercase"
+                  className="flex items-center gap-3 rounded-lg border bg-card px-3 py-2 text-xs"
                 >
                   <span>
                     {c.name}
                     {c.price !== null ? (
-                      <span className="ml-2 font-bold text-ink">{formatIDR(c.price)}</span>
+                      <span className="ml-2 font-medium text-foreground">{formatIDR(c.price)}</span>
                     ) : null}
                   </span>
                   <AdminActionButton
                     action={deleteCategoryAction}
                     hidden={{ categoryId: c.id }}
                     submitLabel="Hapus kategori"
-                    variant="ghost"
+                    variant="destructive"
                     confirm={`Hapus kategori "${c.name}"? Ditolak bila masih dipakai template.`}
                     confirmTitle={`Hapus kategori ${c.name}`}
                   />
@@ -145,8 +132,8 @@ export default async function AdminTemplatesPage() {
         </CardHeader>
         <CardContent>
           {categories.length === 0 ? (
-            <p className="font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
-              {"BUAT KATEGORI DULU SEBELUM UPLOAD TEMPLATE"}
+            <p className="text-sm text-muted-foreground">
+              Buat kategori dulu sebelum upload template.
             </p>
           ) : (
             <AdminActionForm
@@ -155,15 +142,10 @@ export default async function AdminTemplatesPage() {
               className="grid grid-cols-1 gap-4 md:grid-cols-2"
             >
               <div className="flex flex-col gap-1">
-                <label
-                  htmlFor="tpl-name"
-                  className="font-mono text-[11px] uppercase tracking-[0.12em]"
-                >
-                  Nama template
-                </label>
+                <Label htmlFor="tpl-name" className="text-xs text-muted-foreground">Nama template</Label>
                 <Input id="tpl-name" name="name" placeholder="cth. Frame Wedding Emas" required />
               </div>
-              <BrutalistSelect
+              <AdminSelect
                 name="category_id"
                 label="Kategori"
                 defaultValue={categoryOptions[0]?.value ?? ""}
@@ -171,12 +153,9 @@ export default async function AdminTemplatesPage() {
                 required
               />
               <div className="flex flex-col gap-1 md:col-span-2">
-                <label
-                  htmlFor="tpl-file"
-                  className="font-mono text-[11px] uppercase tracking-[0.12em]"
-                >
-                  Upload file frame (PNG/JPG/WebP) - atau isi URL di bawah
-                </label>
+                <Label htmlFor="tpl-file" className="text-xs text-muted-foreground">
+                  Upload file frame (PNG/JPG/WebP) — atau isi URL di bawah
+                </Label>
                 <Input
                   id="tpl-file"
                   name="file"
@@ -185,12 +164,7 @@ export default async function AdminTemplatesPage() {
                 />
               </div>
               <div className="flex flex-col gap-1 md:col-span-2">
-                <label
-                  htmlFor="tpl-file-url"
-                  className="font-mono text-[11px] uppercase tracking-[0.12em]"
-                >
-                  URL file frame (opsional bila upload file)
-                </label>
+                <Label htmlFor="tpl-file-url" className="text-xs text-muted-foreground">URL file frame (opsional bila upload file)</Label>
                 <Input
                   id="tpl-file-url"
                   name="file_url"
@@ -198,32 +172,19 @@ export default async function AdminTemplatesPage() {
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label
-                  htmlFor="tpl-thumb"
-                  className="font-mono text-[11px] uppercase tracking-[0.12em]"
-                >
-                  URL thumbnail (opsional)
-                </label>
+                <Label htmlFor="tpl-thumb" className="text-xs text-muted-foreground">URL thumbnail (opsional)</Label>
                 <Input
                   id="tpl-thumb"
                   name="thumbnail_url"
                   placeholder="https://cdn.snapyos.biz.id/templates/thumb.jpg"
                   aria-describedby="tpl-thumb-help"
                 />
-                <p
-                  id="tpl-thumb-help"
-                  className="font-mono text-[10px] uppercase leading-snug tracking-[0.08em] text-muted-foreground"
-                >
+                <p id="tpl-thumb-help" className="text-xs leading-snug text-muted-foreground">
                   Wajib URL/key storage SnapyOS (Supabase/R2) — bukan domain eksternal.
                 </p>
               </div>
               <div className="flex flex-col gap-1">
-                <label
-                  htmlFor="tpl-price"
-                  className="font-mono text-[11px] uppercase tracking-[0.12em]"
-                >
-                  Harga (IDR, opsional)
-                </label>
+                <Label htmlFor="tpl-price" className="text-xs text-muted-foreground">Harga (IDR, opsional)</Label>
                 <Input
                   id="tpl-price"
                   name="price"
@@ -232,14 +193,14 @@ export default async function AdminTemplatesPage() {
                   placeholder="Kosong = gratis"
                 />
               </div>
-              <BrutalistCheckbox
+              <AdminCheckbox
                 name="is_premium"
                 label="Template premium (berbayar)"
                 description="Tandai agar template hanya bisa dipakai tenant yang membayar."
                 defaultChecked={false}
                 wrapperClassName="md:col-span-2"
               />
-              <BrutalistCheckbox
+              <AdminCheckbox
                 name="is_active"
                 label="Aktif segera"
                 description="Non-aktifkan bila masih dalam review / staging."
@@ -260,33 +221,30 @@ export default async function AdminTemplatesPage() {
         </CardHeader>
         <CardContent>
           {templates.length === 0 ? (
-            <AdminEmptyState heading="BELUM ADA TEMPLATE GLOBAL" icon={ImageIcon}>
+            <AdminEmptyState heading="Belum ada template global" icon={ImageIcon}>
               Upload template pertama lewat form &quot;Upload Template Global Baru&quot; di atas.
             </AdminEmptyState>
           ) : (
             <ul className="flex flex-col">
               {templates.map((t) => (
-                <li
-                  key={t.id}
-                  className="flex flex-wrap items-center justify-between gap-3 border-t-2 border-ink/10 py-3 first:border-t-0"
-                >
+                <li key={t.id} className="flex flex-wrap items-center justify-between gap-3 border-t py-3 first:border-t-0">
                   <span className="min-w-0">
-                    <span className="block text-sm font-bold">
+                    <span className="block text-sm font-medium">
                       {t.name}
                       {t.is_premium ? (
-                        <span className="ml-2 inline-block border-2 border-ink bg-ink px-1.5 py-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-bg">
-                          PREMIUM
-                        </span>
+                        <Badge className="ml-2" variant="secondary">
+                          Premium
+                        </Badge>
                       ) : null}
                     </span>
-                    <span className="font-mono text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       {t.category_name ?? "Tanpa kategori"} ·{" "}
                       {dateFmt.format(new Date(t.created_at))}
-                      {t.price !== null ? ` · ${formatIDR(t.price)}` : " · GRATIS"}
+                      {t.price !== null ? ` · ${formatIDR(t.price)}` : " · Gratis"}
                     </span>
                   </span>
-                  <span className="flex items-center gap-3">
-                    <StatusBadge status={t.is_active ? "active" : "inactive"} />
+                  <span className="flex items-center gap-2">
+                    <AdminStatusBadge status={t.is_active ? "active" : "inactive"} />
                     <Link
                       href={`/admin/templates/builder/${t.id}`}
                       aria-label={`Atur slot template ${t.name}`}
@@ -301,7 +259,7 @@ export default async function AdminTemplatesPage() {
                       submitLabel={t.is_active ? "Nonaktifkan" : "Aktifkan"}
                       icon={t.is_active ? "eyeOff" : "eye"}
                       iconOnly
-                      variant={t.is_active ? "outline" : "secondary"}
+                      variant="neutral"
                     />
                     <AdminActionButton
                       action={deleteGlobalTemplateAction}
@@ -309,65 +267,53 @@ export default async function AdminTemplatesPage() {
                       submitLabel="Hapus template"
                       icon="trash"
                       iconOnly
-                      variant="ghost"
+                      variant="destructive"
                       confirm={`Hapus template "${t.name}"? Riwayat pembelian tenant untuk template ini ikut terhapus.`}
                       confirmTitle={`Hapus template ${t.name}`}
                     />
                   </span>
-                  <details className="w-full border-t-2 border-ink/10 pt-3">
-                    <summary className="flex min-h-11 cursor-pointer items-center gap-2 font-mono text-xs uppercase tracking-[0.12em]">
+                  <Collapsible className="w-full border-t pt-3">
+                    <CollapsibleTrigger className="group flex min-h-9 w-full items-center gap-2 text-xs font-medium">
                       Edit harga / premium
-                      <ChevronDown className="summary-chevron size-3.5" aria-hidden="true" />
-                    </summary>
-                    <AdminActionForm
-                      action={updateGlobalTemplateAction}
-                      hidden={{ templateId: t.id }}
-                      submitLabel="Simpan"
-                      className="mt-3 flex flex-wrap items-end gap-3"
-                    >
-                      <div className="flex flex-col gap-1">
-                        <label
-                          htmlFor={`edit-name-${t.id}`}
-                          className="font-mono text-[11px] uppercase tracking-[0.12em]"
-                        >
+                      <ChevronDown className="size-3.5 transition-transform group-aria-expanded:rotate-180" />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <AdminActionForm
+                        action={updateGlobalTemplateAction}
+                        hidden={{ templateId: t.id }}
+                        submitLabel="Simpan"
+                        className="mt-3 flex flex-wrap items-end gap-3"
+                      >
+                        <div className="flex flex-col gap-1">
+                          <Label htmlFor={`edit-name-${t.id}`} className="text-xs text-muted-foreground">
                           Nama
-                        </label>
-                        <Input
-                          id={`edit-name-${t.id}`}
-                          name="name"
-                          defaultValue={t.name}
-                          className="w-full sm:w-52"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <label
-                          htmlFor={`edit-price-${t.id}`}
-                          className="font-mono text-[11px] uppercase tracking-[0.12em]"
-                        >
+                        </Label>
+                          <Input
+                            id={`edit-name-${t.id}`}
+                            name="name"
+                            defaultValue={t.name}
+                            className="w-full sm:w-52"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <Label htmlFor={`edit-price-${t.id}`} className="text-xs text-muted-foreground">
                           Harga (IDR)
-                        </label>
-                        <Input
-                          id={`edit-price-${t.id}`}
-                          name="price"
-                          type="number"
-                          min={0}
-                          defaultValue={t.price ?? ""}
-                          placeholder="Kosong = gratis"
-                          className="w-full sm:w-40"
-                        />
-                      </div>
-                      <BrutalistCheckbox
-                        name="is_premium"
-                        label="Premium"
-                        defaultChecked={t.is_premium}
-                      />
-                      <BrutalistCheckbox
-                        name="is_active"
-                        label="Aktif"
-                        defaultChecked={t.is_active}
-                      />
-                    </AdminActionForm>
-                  </details>
+                        </Label>
+                          <Input
+                            id={`edit-price-${t.id}`}
+                            name="price"
+                            type="number"
+                            min={0}
+                            defaultValue={t.price ?? ""}
+                            placeholder="Kosong = gratis"
+                            className="w-full sm:w-40"
+                          />
+                        </div>
+                        <AdminCheckbox name="is_premium" label="Premium" defaultChecked={t.is_premium} />
+                        <AdminCheckbox name="is_active" label="Aktif" defaultChecked={t.is_active} />
+                      </AdminActionForm>
+                    </CollapsibleContent>
+                  </Collapsible>
                 </li>
               ))}
             </ul>
@@ -375,25 +321,19 @@ export default async function AdminTemplatesPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Riwayat Pembelian Template</CardTitle>
-          <CardDescription>
-            Pembelian template premium oleh tenant (diproses saat invoice QRIS lunas).
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {purchases.length === 0 ? (
-            <AdminEmptyState heading="BELUM ADA PEMBELIAN">
-              Belum ada tenant yang membeli template premium. Pembelian tercatat di sini setelah
-              invoice QRIS lunas.
-            </AdminEmptyState>
-          ) : (
-            <RecordCollection
+      {purchases.length === 0 ? (
+        <AdminEmptyState heading="Belum ada pembelian">
+          Belum ada tenant yang membeli template premium. Pembelian tercatat di sini setelah
+          invoice QRIS lunas.
+        </AdminEmptyState>
+      ) : (
+            <AdminRecordCollection
               storageKey="snapyos.view.admin.template-purchases"
               label="Riwayat pembelian template"
+              title="Riwayat Pembelian Template"
+              description="Pembelian template premium oleh tenant (diproses saat invoice QRIS lunas)."
               list={
-                <Table containerClassName="shadow-none">
+                <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Business</TableHead>
@@ -405,9 +345,9 @@ export default async function AdminTemplatesPage() {
                   <TableBody>
                     {purchases.map((p) => (
                       <TableRow key={p.id}>
-                        <TableCell className="text-sm font-bold">{p.business_name}</TableCell>
+                        <TableCell className="font-medium">{p.business_name}</TableCell>
                         <TableCell>{p.template_name}</TableCell>
-                        <TableCell className="font-bold">{formatIDR(p.price)}</TableCell>
+                        <TableCell className="font-medium">{formatIDR(p.price)}</TableCell>
                         <TableCell className="hidden text-muted-foreground sm:table-cell">
                           {dateFmt.format(new Date(p.created_at))}
                         </TableCell>
@@ -419,7 +359,7 @@ export default async function AdminTemplatesPage() {
               grid={
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   {purchases.map((p) => (
-                    <RecordCard
+                    <AdminRecordCard
                       key={p.id}
                       title={p.template_name}
                       subtitle={p.business_name}
@@ -432,9 +372,7 @@ export default async function AdminTemplatesPage() {
                 </div>
               }
             />
-          )}
-        </CardContent>
-      </Card>
+      )}
     </div>
   );
 }

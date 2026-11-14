@@ -1,12 +1,14 @@
-import { ChevronDown, Send } from "lucide-react";
+import { Send } from "lucide-react";
 
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
+import { AdminDisclosureCard } from "@/components/admin/AdminDisclosureCard";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
-import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
-import { StatusBadge } from "@/components/dashboard/StatusBadge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { AdminStatusBadge } from "@/components/admin/AdminStatusBadge";
+import { AdminSelect } from "@/components/admin/AdminSelect";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/admin/ui/card";
+import { Input } from "@/components/admin/ui/input";
+import { Textarea } from "@/components/admin/ui/textarea";
 import {
   createBroadcastAction,
   sendBroadcastAction,
@@ -14,7 +16,7 @@ import {
 } from "@/server/admin-actions";
 import { listBroadcasts, getBroadcastStats, listBroadcastRecipients } from "@/server/admin";
 import { BROADCAST_KIND_LABEL } from "@/lib/broadcast-email";
-import { PageHeader } from "@/components/ui/page-header";
+import { Label } from "@/components/admin/ui/label";
 import {
   Table,
   TableBody,
@@ -22,7 +24,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/components/admin/ui/table";
 
 /**
  * Admin Broadcast Email - marketing/pengumuman via Resend (migration 0057/0058).
@@ -60,12 +62,12 @@ export default async function AdminBroadcastsPage() {
   const statsByCampaign = new Map(stats.map((s) => [s.campaign_id, s]));
 
   return (
-    <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
-      <PageHeader
-        eyebrow="ADMIN / BROADCAST EMAIL"
+    <div className="flex flex-col gap-6">
+      <AdminPageHeader
+        eyebrow="Admin / Broadcast Email"
         icon={Send}
         title="Broadcast Email"
-        meta="PENGUMUMAN · MARKETING · RESEND DENGAN LIMIT · RIWAYAT PENGIRIMAN"
+        meta="Pengumuman · marketing · resend dengan limit · riwayat pengiriman"
       />
 
       <Card>
@@ -83,25 +85,22 @@ export default async function AdminBroadcastsPage() {
             submitClassName="min-h-11"
             className="grid grid-cols-1 gap-4 md:grid-cols-2"
           >
-            <BrutalistSelect
+            <AdminSelect
               name="kind"
               label="Jenis Broadcast"
               defaultValue="announcement"
               options={KIND_OPTIONS}
             />
-            <BrutalistSelect
+            <AdminSelect
               name="template_key"
               label="Template"
               defaultValue="default"
               options={TEMPLATE_OPTIONS}
             />
             <div className="flex flex-col gap-1 md:col-span-2">
-              <label
-                htmlFor="bc-subject"
-                className="font-mono text-[11px] uppercase tracking-[0.12em]"
-              >
+              <Label htmlFor="bc-subject" className="text-xs font-medium text-muted-foreground">
                 Subjek
-              </label>
+              </Label>
               <Input
                 id="bc-subject"
                 name="subject"
@@ -110,12 +109,9 @@ export default async function AdminBroadcastsPage() {
               />
             </div>
             <div className="flex flex-col gap-1 md:col-span-2">
-              <label
-                htmlFor="bc-body"
-                className="font-mono text-[11px] uppercase tracking-[0.12em]"
-              >
+              <Label htmlFor="bc-body" className="text-xs font-medium text-muted-foreground">
                 Isi pesan
-              </label>
+              </Label>
               <Textarea
                 id="bc-body"
                 name="body"
@@ -125,19 +121,16 @@ export default async function AdminBroadcastsPage() {
                 required
               />
             </div>
-            <BrutalistSelect
+            <AdminSelect
               name="audience"
               label="Audiens"
               defaultValue="all"
               options={AUDIENCE_OPTIONS}
             />
             <div className="flex flex-col gap-1">
-              <label
-                htmlFor="bc-max-resend"
-                className="font-mono text-[11px] uppercase tracking-[0.12em]"
-              >
+              <Label htmlFor="bc-max-resend" className="text-xs font-medium text-muted-foreground">
                 Limit resend (0–10)
-              </label>
+              </Label>
               <Input
                 id="bc-max-resend"
                 name="max_resend"
@@ -153,7 +146,7 @@ export default async function AdminBroadcastsPage() {
 
       <div className="flex flex-col gap-4">
         {broadcasts.length === 0 ? (
-          <AdminEmptyState heading="BELUM ADA BROADCAST" icon={Send}>
+          <AdminEmptyState heading="Belum ada broadcast" icon={Send}>
             Buat draft pertama di atas, lalu kirim ke audiens terpilih.
           </AdminEmptyState>
         ) : (
@@ -166,37 +159,32 @@ export default async function AdminBroadcastsPage() {
             const canResend = isTerminal && resendLeft > 0;
             const resendExhausted = isTerminal && resendLeft <= 0;
             return (
-              <details
+              <AdminDisclosureCard
                 key={b.id}
-                className="border-2 border-ink bg-surface shadow-hard"
-              >
-                <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-3 p-4">
-                  <span className="flex flex-wrap items-center gap-3">
-                    <span className="font-display text-lg uppercase tracking-tight">
-                      {b.subject}
-                    </span>
-                    <span className="border-2 border-ink bg-accent px-2 py-0.5 font-mono text-[11px] uppercase">
+                trigger={
+                  <>
+                    <span className="text-base font-medium tracking-tight">{b.subject}</span>
+                    <span className="rounded-md border bg-muted px-2 py-0.5 text-xs">
                       {BROADCAST_KIND_LABEL[b.kind] ?? b.kind}
                     </span>
-                    <span className="font-mono text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       AUDIENS {b.audience.toUpperCase()} · TEMPLATE {b.template_key}
                     </span>
-                  </span>
-                  <StatusBadge status={b.status} />
-                  <ChevronDown className="summary-chevron size-4 shrink-0" aria-hidden="true" />
-                </summary>
-
-                <div className="border-t-2 border-ink/10 p-4">
-                  <pre className="whitespace-pre-wrap border-2 border-ink/40 bg-bg p-3 font-mono text-xs leading-relaxed">
+                    <AdminStatusBadge status={b.status} />
+                  </>
+                }
+              >
+                <div className="flex flex-col gap-4">
+                  <pre className="whitespace-pre-wrap rounded-md border bg-background p-3 text-xs leading-relaxed">
                     {b.body}
                   </pre>
 
-                  <p className="mt-2 font-mono text-xs text-muted-foreground">
+                  <p className="mt-2 text-xs text-muted-foreground">
                     {sentText} · RESEND {b.resend_count}/{b.max_resend}
                     {s && s.failed > 0 ? ` · GAGAL ${s.failed}` : ""}
                   </p>
 
-                  <div className="mt-4 flex flex-wrap items-center gap-3 border-t-2 border-ink/10 pt-4">
+                  <div className="mt-4 flex flex-wrap items-center gap-3 border-t pt-4">
                     {canSend && (
                       <AdminActionForm
                         action={sendBroadcastAction}
@@ -212,12 +200,12 @@ export default async function AdminBroadcastsPage() {
                         hidden={{ campaignId: b.id }}
                         submitLabel={`Kirim Ulang Gagal (${resendLeft} tersisa)`}
                         pendingLabel="Mengirim ulang…"
-                        variant="outline"
+                        variant="neutral"
                         submitClassName="min-h-11"
                       />
                     )}
                     {resendExhausted && (
-                      <p className="font-mono text-xs text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         Batas resend tercapai ({b.resend_count}/{b.max_resend})
                       </p>
                     )}
@@ -225,7 +213,7 @@ export default async function AdminBroadcastsPage() {
 
                   <RecipientHistory campaignId={b.id} />
                 </div>
-              </details>
+              </AdminDisclosureCard>
             );
           })
         )}
@@ -238,7 +226,7 @@ async function RecipientHistory({ campaignId }: { campaignId: string }) {
   const recipients = await listBroadcastRecipients(campaignId);
   if (recipients.length === 0) {
     return (
-      <p className="mt-4 font-mono text-xs text-muted-foreground">
+      <p className="mt-4 text-xs text-muted-foreground">
         Belum ada penerima. Kirim broadcast untuk melihat riwayat pengiriman.
       </p>
     );
@@ -246,11 +234,11 @@ async function RecipientHistory({ campaignId }: { campaignId: string }) {
   const dateFmt = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" });
   return (
     <div className="mt-4">
-      <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+      <p className="mb-2 text-xs text-muted-foreground">
         Riwayat Pengiriman ({recipients.length})
       </p>
       <div className="max-h-96 overflow-y-auto">
-        <Table containerClassName="border-ink/40 shadow-none">
+        <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Penerima</TableHead>
@@ -265,19 +253,19 @@ async function RecipientHistory({ campaignId }: { campaignId: string }) {
             {recipients.map((r) => (
               <TableRow key={r.id} className="align-top">
                 <TableCell>
-                  <span className="font-bold">{r.name ?? r.email}</span>
+                  <span className="font-semibold">{r.name ?? r.email}</span>
                   <br />
-                  <span className="text-[11px] text-muted-foreground">{r.email}</span>
+                  <span className="text-xs text-muted-foreground">{r.email}</span>
                 </TableCell>
-                <TableCell className="uppercase">{r.kind}</TableCell>
+                <TableCell>{r.kind}</TableCell>
                 <TableCell>
-                  <StatusBadge status={r.status} />
+                  <AdminStatusBadge status={r.status} />
                 </TableCell>
                 <TableCell className="hidden sm:table-cell">{r.resend_count}x</TableCell>
-                <TableCell className="hidden text-[11px] md:table-cell">
+                <TableCell className="hidden text-xs md:table-cell">
                   {r.last_sent_at ? dateFmt.format(new Date(r.last_sent_at)) : "-"}
                 </TableCell>
-                <TableCell className="break-all text-[11px]">
+                <TableCell className="break-all text-xs">
                   {r.provider_message_id ? (
                     <span className="text-muted-foreground">{r.provider_message_id}</span>
                   ) : (

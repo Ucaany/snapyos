@@ -1,17 +1,19 @@
 import Link from "next/link";
-import { Building2 } from "lucide-react";
+import { Building2, Filter } from "lucide-react";
 
 import { AdminActionButton } from "@/components/admin/AdminActionForm";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminPaginator } from "@/components/admin/AdminPaginator";
-import { RecordCard } from "@/components/ui/record-card";
-import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
-import { RecordCollection } from "@/components/ui/record-collection";
-import { StatusBadge } from "@/components/dashboard/StatusBadge";
-import { Button } from "@/components/ui/button";
-import { buttonVariants } from "@/components/ui/button-variants";
-import { Input } from "@/components/ui/input";
-import { PageHeader } from "@/components/ui/page-header";
+import { AdminRecordCard } from "@/components/admin/AdminRecordCard";
+import { AdminRecordCollection } from "@/components/admin/AdminRecordCollection";
+import { AdminStatusBadge } from "@/components/admin/AdminStatusBadge";
+import { AdminSelect } from "@/components/admin/AdminSelect";
+import { Badge } from "@/components/admin/ui/badge";
+import { Progress } from "@/components/admin/ui/progress";
+import { Button, buttonVariants } from "@/components/admin/ui/button";
+import { Input } from "@/components/admin/ui/input";
+import { Label } from "@/components/admin/ui/label";
 import {
   Table,
   TableBody,
@@ -19,7 +21,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/components/admin/ui/table";
 import { deleteBusinessAction, updateBusinessAction } from "@/server/admin-actions";
 import { listBusinesses } from "@/server/admin";
 
@@ -32,25 +34,24 @@ function StorageBadge({
 }) {
   if (storage.limitMb <= 0) {
     return (
-      <span className="inline-flex h-6 items-center border-2 border-ink/40 bg-muted px-2 text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+      <Badge variant="outline" className="text-muted-foreground">
         TIDAK AKTIF
-      </span>
+      </Badge>
     );
   }
   return (
     <>
-      <span className={storage.isFull ? "font-bold text-destructive" : ""}>
+      <span className={storage.isFull ? "font-medium text-destructive" : ""}>
         {storage.usedMb} / {storage.limitMb} MB
       </span>
-      <br />
-      <span
-        className={
-          "mt-1 inline-flex h-6 items-center border-2 border-ink px-2 text-[11px] font-bold uppercase tracking-[0.1em] " +
-          (storage.isFull ? "bg-accent" : "bg-accent-3")
-        }
-      >
+      <Progress
+        value={Math.min(100, storage.percent)}
+        className="mt-1.5 h-1.5 w-24"
+        aria-label={`Pemakaian storage ${storage.percent}%`}
+      />
+      <Badge variant={storage.isFull ? "destructive" : "secondary"} className="mt-1">
         {storage.isFull ? "PENUH - UPGRADE" : `AKTIF · ${storage.percent}%`}
-      </span>
+      </Badge>
     </>
   );
 }
@@ -65,7 +66,7 @@ function BusinessRowActions({ b }: { b: BusinessRow }) {
         submitLabel={suspended ? "Aktifkan" : "Suspend"}
         icon={suspended ? "circleCheck" : "ban"}
         iconOnly
-        variant={suspended ? "secondary" : "destructive"}
+        variant={suspended ? "neutral" : "destructive"}
         confirm={
           suspended
             ? undefined
@@ -108,60 +109,52 @@ export default async function AdminBusinessesPage({
   const filtered = Boolean(q.search || status);
 
   return (
-    <div className="flex flex-col gap-6 p-6 md:gap-8 md:p-10">
-      <PageHeader
-        eyebrow="ADMIN / BISNIS"
+    <div className="flex flex-col gap-6">
+      <AdminPageHeader
+        eyebrow="Admin / Bisnis"
         title="Manajemen Bisnis"
         icon={Building2}
         meta={`${total} tenant · suspend memblokir sesi & checkout baru`}
-        right={
-          <form
-            method="GET"
-            className="flex w-full flex-wrap items-end gap-2 sm:w-auto"
-            role="search"
-          >
-            <div className="flex w-full flex-col gap-1 sm:w-auto">
-              <label
-                htmlFor="biz-search"
-                className="font-mono text-[11px] uppercase tracking-[0.12em]"
-              >
-                Cari nama / slug
-              </label>
-              <Input
-                id="biz-search"
-                name="search"
-                defaultValue={q.search ?? ""}
-                className="w-full sm:w-56"
-                placeholder="cth. klik-foto"
-              />
-            </div>
-            <BrutalistSelect
-              id="biz-status"
-              name="status"
-              label="Status"
-              defaultValue={status ?? ""}
-              options={[
-                { value: "", label: "SEMUA" },
-                { value: "active", label: "AKTIF" },
-                { value: "suspended", label: "SUSPEND" },
-              ]}
-            />
-            <Button
-              type="submit"
-              size="sm"
-              variant="secondary"
-              aria-label="Terapkan filter"
-              title="Terapkan filter"
-            >
-              Terapkan
-            </Button>
-          </form>
-        }
       />
+
+      <form method="GET" className="flex flex-wrap items-end gap-3" role="search">
+        <div className="flex w-full flex-col gap-1 sm:w-auto">
+          <Label htmlFor="biz-search" className="text-xs text-muted-foreground">
+            Cari nama / slug
+          </Label>
+          <Input
+            id="biz-search"
+            name="search"
+            defaultValue={q.search ?? ""}
+            className="w-full sm:w-56"
+            placeholder="cth. klik-foto"
+          />
+        </div>
+        <AdminSelect
+          id="biz-status"
+          name="status"
+          label="Status"
+          defaultValue={status ?? ""}
+          options={[
+            { value: "", label: "SEMUA" },
+            { value: "active", label: "AKTIF" },
+            { value: "suspended", label: "SUSPEND" },
+          ]}
+        />
+        <Button type="submit" size="sm" variant="outline">
+          <Filter className="size-4" aria-hidden="true" />
+          Terapkan
+        </Button>
+        {filtered ? (
+          <Link href="/admin/businesses" className={buttonVariants({ variant: "ghost", size: "sm" })}>
+            Hapus filter
+          </Link>
+        ) : null}
+      </form>
 
       {items.length === 0 ? (
         <AdminEmptyState
-          heading="TIDAK ADA BISNIS"
+          heading="Tidak ada bisnis"
           icon={Building2}
           action={
             filtered ? (
@@ -184,7 +177,7 @@ export default async function AdminBusinessesPage({
           )}
         </AdminEmptyState>
       ) : (
-        <RecordCollection
+        <AdminRecordCollection
           storageKey="snapyos.view.admin.businesses"
           label="Daftar bisnis"
           list={
@@ -204,12 +197,12 @@ export default async function AdminBusinessesPage({
                 {items.map((b) => (
                   <TableRow key={b.id} className="align-top">
                     <TableCell>
-                      <span className="block text-sm font-bold">{b.name}</span>
-                      <span className="text-[11px] text-muted-foreground">
+                      <span className="block text-sm font-medium">{b.name}</span>
+                      <span className="text-xs text-muted-foreground">
                         <Link
                           href={`/p/${b.slug}`}
                           target="_blank"
-                          className="inline-flex min-h-11 items-center underline decoration-ink/40 underline-offset-2 hover:bg-muted"
+                          className="underline decoration-muted-foreground/40 underline-offset-2 hover:text-foreground"
                         >
                           /p/{b.slug}
                         </Link>{" "}
@@ -218,11 +211,11 @@ export default async function AdminBusinessesPage({
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">{b.owner_email ?? "-"}</TableCell>
                     <TableCell>
-                      <span className="block font-bold uppercase">{b.plan_name ?? "-"}</span>
-                      <StatusBadge status={b.subscription_status ?? "expired"} />
+                      <span className="block font-medium">{b.plan_name ?? "-"}</span>
+                      <AdminStatusBadge status={b.subscription_status ?? "expired"} />
                     </TableCell>
                     <TableCell>
-                      <StatusBadge status={b.status === "suspended" ? "inactive" : "active"} />
+                      <AdminStatusBadge status={b.status === "suspended" ? "inactive" : "active"} />
                     </TableCell>
                     <TableCell className="hidden text-muted-foreground xl:table-cell">
                       {b.usage.outlets} outlet · {b.usage.photoboxes} booth
@@ -243,14 +236,16 @@ export default async function AdminBusinessesPage({
           grid={
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {items.map((b) => (
-                <RecordCard
+                <AdminRecordCard
                   key={b.id}
                   title={b.name}
                   subtitle={b.owner_email ?? "Tanpa owner"}
                   badge={
                     <div className="flex flex-col items-end gap-1">
-                      <StatusBadge status={b.status === "suspended" ? "inactive" : "active"} />
-                      <StatusBadge status={b.subscription_status ?? "expired"} />
+                      <AdminStatusBadge
+                        status={b.status === "suspended" ? "inactive" : "active"}
+                      />
+                      <AdminStatusBadge status={b.subscription_status ?? "expired"} />
                     </div>
                   }
                   meta={[
@@ -270,7 +265,7 @@ export default async function AdminBusinessesPage({
                     <Link
                       href={`/p/${b.slug}`}
                       target="_blank"
-                      className="inline-flex min-h-11 items-center font-mono text-[11px] underline decoration-ink/40 underline-offset-2 hover:bg-muted"
+                      className="inline-flex min-h-11 items-center text-xs underline decoration-muted-foreground/40 underline-offset-2 hover:bg-muted"
                     >
                       /p/{b.slug}
                     </Link>

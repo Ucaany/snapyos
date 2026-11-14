@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "../styles/tokens.css";
+@import "../styles/admin-theme.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -46,6 +47,15 @@
   }
   body {
     @apply bg-bg text-ink;
+    font-weight: var(--font-weight-base);
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-weight: var(--font-weight-heading);
   }
   ::selection {
     background: var(--color-accent);
