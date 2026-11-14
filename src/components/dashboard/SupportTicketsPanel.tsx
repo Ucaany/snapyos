@@ -9,7 +9,7 @@ import { RecordCollection } from "@/components/ui/record-collection";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { BrutalistSelect } from "@/components/admin/BrutalistSelect";
+import { AdminSelect } from "@/components/admin/AdminSelect";
 import {
   STATUS_LABEL,
   SUPPORT_TICKET_CATEGORIES,
@@ -92,12 +92,12 @@ export function SupportTicketsPanel({ tickets }: { tickets: SupportTicket[] }) {
                 />
               </label>
 
-              <BrutalistSelect
+              <AdminSelect
                 name="category"
                 label="Kategori"
                 options={CATEGORY_OPTIONS.map((c) => ({ value: c, label: c.toUpperCase() }))}
               />
-              <BrutalistSelect
+              <AdminSelect
                 name="area"
                 label="Bagian yang bermasalah"
                 options={AREA_OPTIONS.map((a) => ({ value: a, label: a.toUpperCase() }))}
