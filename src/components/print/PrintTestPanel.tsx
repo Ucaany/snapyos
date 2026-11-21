@@ -399,7 +399,7 @@ export function PrintTestPanel({
             </Button>
             <Button
               type="button"
-              variant="outline"
+              variant="neutral"
               onClick={() => void report(false)}
               disabled={reporting}
             >

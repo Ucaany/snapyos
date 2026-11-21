@@ -1,35 +1,45 @@
 import { cva } from "class-variance-authority";
 
 /**
- * Varian tombol brutalis untuk pemakaian non-komponen (`buttonVariants()` pada
- * <Link>). Modul ini sengaja TANPA "use client" agar bisa dipanggil dari
- * server component — komponen <Button /> sendiri ada di `button.tsx`.
+ * Varian tombol neobrutalism.dev untuk pemakaian non-komponen
+ * (`buttonVariants()` pada <Link>). Modul ini sengaja TANPA "use client" agar
+ * bisa dipanggil dari server component — komponen <Button /> sendiri ada di
+ * `button.tsx`.
+ *
+ * Varian registry: default, noShadow, neutral, reverse.
+ * Ekstensi SnapyOS: destructive, ghost, link (aksi berbahaya / teks / transparan).
  */
 export const buttonVariants = cva(
-  "group/button inline-flex min-h-11 shrink-0 items-center justify-center rounded-none border-2 border-ink bg-clip-padding text-sm font-bold whitespace-nowrap transition-all outline-none select-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-0 active:not-aria-[haspopup]:translate-x-[2px] active:not-aria-[haspopup]:translate-y-[2px] disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "relative inline-flex items-center justify-center whitespace-nowrap rounded-base text-sm font-base ring-offset-white transition-all gap-2 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-disabled:pointer-events-none data-disabled:opacity-50",
   {
     variants: {
       variant: {
         default:
-          "bg-accent text-ink shadow-hard-sm hover:bg-accent/85 active:shadow-none",
-        outline: "bg-surface text-ink shadow-hard-sm hover:bg-bg active:shadow-none",
-        secondary: "bg-ink text-bg hover:bg-ink/85 active:shadow-none",
-        ghost:
-          "border-transparent bg-transparent shadow-none hover:bg-muted hover:text-ink aria-expanded:bg-muted aria-expanded:text-ink",
+          "text-main-foreground bg-main border-2 border-border shadow-shadow hover:translate-x-boxShadowX hover:translate-y-boxShadowY hover:shadow-none",
+        noShadow: "text-main-foreground bg-main border-2 border-border",
+        neutral:
+          "bg-secondary-background text-foreground border-2 border-border shadow-shadow hover:translate-x-boxShadowX hover:translate-y-boxShadowY hover:shadow-none",
+        reverse:
+          "text-main-foreground bg-main border-2 border-border hover:translate-x-reverseBoxShadowX hover:translate-y-reverseBoxShadowY hover:shadow-shadow",
         destructive:
-          "border-destructive bg-destructive text-destructive-foreground hover:bg-destructive/90 active:shadow-none",
-        link: "border-transparent bg-transparent text-ink underline-offset-4 hover:underline shadow-none",
+          "bg-destructive text-destructive-foreground border-2 border-border shadow-shadow hover:translate-x-boxShadowX hover:translate-y-boxShadowY hover:shadow-none",
+        ghost: "border-2 border-transparent bg-transparent text-foreground hover:bg-muted",
+        link: "border-2 border-transparent bg-transparent text-foreground underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-11 min-h-11 gap-1.5 px-3",
-        sm: "h-11 min-h-11 gap-1 px-2.5 text-[0.8rem]",
-        lg: "h-12 min-h-12 gap-1.5 px-4 text-base",
-        icon: "size-11 min-h-11 min-w-11",
-        "icon-compact":
-          "relative size-9 min-h-9! min-w-9! after:absolute after:-inset-1 after:content-['']",
-        "icon-sm": "size-11 min-h-11 min-w-11",
+        default: "h-10 px-4 py-2",
+        xs: "h-8 gap-1.5 px-2.5 text-xs after:absolute after:-inset-1.5 after:content-[''] [&_svg]:size-3.5",
+        sm: "h-9 px-3 after:absolute after:-inset-1.5 after:content-['']",
+        lg: "h-11 px-8",
+        icon: "size-10",
+        "icon-xs": "size-8 after:absolute after:-inset-1.5 after:content-[''] [&_svg]:size-3.5",
+        "icon-sm": "size-9 after:absolute after:-inset-1.5 after:content-['']",
+        "icon-lg": "size-11",
       },
     },
-    defaultVariants: { variant: "default", size: "default" },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
   }
 );

@@ -3,12 +3,12 @@
 import { useMemo, useState, type ReactNode } from "react";
 
 import { DesignBuilderPreview } from "@/components/dashboard/DesignBuilderPreview";
-import { Alert } from "@/components/ui/neo/alert";
-import { Slider } from "@/components/ui/neo/slider";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/neo/tabs";
+import { Alert } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Dialog,
@@ -475,11 +475,11 @@ function RangeField({
         min={min}
         max={max}
         step={step}
-        value={current}
+        value={[current]}
         disabled={disabled}
         aria-valuetext={display}
         aria-describedby={describedBy(id, hint)}
-        onChange={(event) => onChange(Number(event.target.value))}
+        onValueChange={(next) => onChange(Number(Array.isArray(next) ? next[0] : next))}
       />
       <div className="flex items-center justify-between gap-2">
         <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
@@ -668,7 +668,7 @@ function UploadField({
           </p>
         ) : null}
         {onRemove ? (
-          <Button type="button" variant="outline" size="sm" onClick={onRemove} disabled={disabled}>
+          <Button type="button" variant="neutral" size="sm" onClick={onRemove} disabled={disabled}>
             {removeLabel ?? "Hapus"}
           </Button>
         ) : null}
@@ -1208,19 +1208,22 @@ export function DesignBuilder({
             </div>
 
             {scope === "booth" && inherited ? (
-              <Alert tone="info">
+              <Alert>
                 Photobox ini mewarisi branding global. Ubah field lalu simpan untuk membuat
                 kustomisasi.
               </Alert>
             ) : null}
             {!canWrite ? (
-              <Alert tone="warning">
+              <Alert className="bg-accent">
                 Anda hanya dapat melihat. Perubahan memerlukan izin tulis.
               </Alert>
             ) : null}
 
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList aria-label="Bagian pengaturan tampilan">
+              <TabsList
+                aria-label="Bagian pengaturan tampilan"
+                className="grid w-full grid-cols-2 sm:grid-cols-4"
+              >
                 <TabsTrigger value="merek">Merek</TabsTrigger>
                 <TabsTrigger value="sambutan">Sambutan</TabsTrigger>
                 <TabsTrigger value="tampilan">Tampilan</TabsTrigger>
@@ -1733,7 +1736,7 @@ export function DesignBuilder({
                   </p>
                   {elementErrorEntry ? (
                     <div className="mt-2">
-                      <Alert tone="danger">{elementErrorEntry[1][0]}</Alert>
+                      <Alert variant="destructive">{elementErrorEntry[1][0]}</Alert>
                     </div>
                   ) : null}
                   <ul className="mt-3 flex flex-col gap-2">
@@ -1906,9 +1909,7 @@ export function DesignBuilder({
                   </legend>
                   <div className="mt-3 flex flex-col gap-4">
                     {page === "welcome" ? (
-                      <Alert tone="info">
-                        Teks sambutan diatur di tab Sambutan agar tidak ada duplikasi.
-                      </Alert>
+                      <Alert>Teks sambutan diatur di tab Sambutan agar tidak ada duplikasi.</Alert>
                     ) : (
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <TextField
@@ -1995,7 +1996,7 @@ export function DesignBuilder({
                         }
                       />
                     ) : (
-                      <Alert tone="info">
+                      <Alert>
                         Video per layar dikelola di cakupan Global. Photobox mewarisinya otomatis.
                       </Alert>
                     )}
@@ -2004,9 +2005,9 @@ export function DesignBuilder({
               </TabsContent>
             </Tabs>
 
-            {saveState.error ? <Alert tone="danger">{saveState.error}</Alert> : null}
+            {saveState.error ? <Alert variant="destructive">{saveState.error}</Alert> : null}
             {errorEntries.length > 0 ? (
-              <Alert tone="danger">
+              <Alert variant="destructive">
                 <p>
                   Periksa {errorEntries.length} field.{" "}
                   {firstErrorId ? (
@@ -2057,7 +2058,7 @@ export function DesignBuilder({
                   </Button>
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="neutral"
                     onClick={discardChanges}
                     disabled={!dirty || saving || uploading}
                   >
@@ -2114,10 +2115,10 @@ export function DesignBuilder({
             disimpan. Pilih simpan, buang, atau batal sebelum pindah.
           </DialogDescription>
           <DialogFooter>
-            <Button type="button" variant="secondary" size="sm" onClick={() => setPendingNav(null)}>
+            <Button type="button" variant="neutral" size="sm" onClick={() => setPendingNav(null)}>
               Batal
             </Button>
-            <Button type="button" variant="outline" size="sm" onClick={applyPending}>
+            <Button type="button" variant="neutral" size="sm" onClick={applyPending}>
               Buang
             </Button>
             <Button

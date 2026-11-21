@@ -81,6 +81,20 @@
   --font-display: var(--font-archivo-black), "Archivo Black", sans-serif;
   --font-body: var(--font-plex-sans), "IBM Plex Sans", sans-serif;
   --font-mono: var(--font-space-mono), "Space Mono", monospace;
+
+  /* --- neobrutalism.dev token bridge (palette tetap SnapyOS, radius 0) --- */
+  --main: var(--color-accent);
+  --main-foreground: var(--color-ink);
+  --secondary-background: var(--color-surface);
+  --overlay: color-mix(in srgb, var(--color-ink) 80%, transparent);
+  --shadow: 4px 4px 0 0 var(--color-ink);
+  --radius-base: var(--radius);
+  --font-weight-base: 500;
+  --font-weight-heading: 700;
+  --spacing-boxShadowX: 4px;
+  --spacing-boxShadowY: 4px;
+  --spacing-reverseBoxShadowX: -4px;
+  --spacing-reverseBoxShadowY: -4px;
 }
 
 @theme inline {
@@ -136,6 +150,20 @@
   --color-slot-7: var(--color-slot-7);
   --color-slot-8: var(--color-slot-8);
 
+  /* neobrutalism.dev semantic bridge */
+  --color-main: var(--main);
+  --color-main-foreground: var(--main-foreground);
+  --color-secondary-background: var(--secondary-background);
+  --color-overlay: var(--overlay);
+  --shadow-shadow: var(--shadow);
+  --radius-base: var(--radius-base);
+  --font-weight-base: var(--font-weight-base);
+  --font-weight-heading: var(--font-weight-heading);
+  --spacing-boxShadowX: var(--spacing-boxShadowX);
+  --spacing-boxShadowY: var(--spacing-boxShadowY);
+  --spacing-reverseBoxShadowX: var(--spacing-reverseBoxShadowX);
+  --spacing-reverseBoxShadowY: var(--spacing-reverseBoxShadowY);
+
   /* radius scale (all derive from --radius = 0) */
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -161,6 +189,5 @@
   /* fonts: font-display, font-sans (body), font-mono */
   --font-sans: var(--font-body);
   --font-display: var(--font-display);
-  --font-heading: var(--font-display);
   --font-mono: var(--font-mono);
 }

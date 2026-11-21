@@ -57,7 +57,7 @@ export function PackageEditForm({ pkg, templateCount, outlets, photoboxes, onDon
         </p>
       )}
       <div className="flex justify-end gap-3 border-t-2 border-ink/10 pt-4">
-        <Button type="button" variant="outline" size="sm" onClick={onDone} disabled={pending}>
+        <Button type="button" variant="neutral" size="sm" onClick={onDone} disabled={pending}>
           Batal
         </Button>
         <Button type="submit" size="sm" disabled={pending}>

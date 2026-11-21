@@ -68,7 +68,7 @@ export function HeroSection({
 
         <div className="fade-in slide-in-from-bottom-10 flex w-fit animate-in items-center justify-center gap-3 fill-mode-backwards pt-2 delay-300 duration-500 ease-out">
           <a href="#kiosk">
-            <Button variant="outline">
+            <Button variant="neutral">
               <PhoneCallIcon data-icon="inline-start" /> Lihat Kiosk
             </Button>
           </a>

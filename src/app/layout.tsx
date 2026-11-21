@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Archivo_Black, IBM_Plex_Sans, Space_Mono } from "next/font/google";
+import { Archivo_Black, Geist, Geist_Mono, IBM_Plex_Sans, Space_Mono } from "next/font/google";
 import "./globals.css";
 import { PwaRegister } from "@/components/PwaRegister";
 
@@ -18,6 +18,18 @@ const plexSans = IBM_Plex_Sans({
 const spaceMono = Space_Mono({
   variable: "--font-space-mono",
   weight: ["400", "700"],
+  subsets: ["latin"],
+});
+
+// Font default shadcn untuk shell /admin. Shell lain tetap memakai font
+// brutalist di atas.
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
   subsets: ["latin"],
 });
 
@@ -55,7 +67,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html
       lang="id"
-      className={`${archivoBlack.variable} ${plexSans.variable} ${spaceMono.variable} h-full antialiased`}
+      className={`${archivoBlack.variable} ${plexSans.variable} ${spaceMono.variable} ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <PwaRegister />

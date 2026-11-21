@@ -9,9 +9,5 @@ export function ChartSkeleton({
   className?: string;
   height?: string;
 }) {
-  return (
-    <Skeleton
-      className={cn("w-full border-2 border-ink shadow-hard", height, className)}
-    />
-  );
+  return <Skeleton className={cn("w-full border-2 border-ink shadow-hard", height, className)} />;
 }

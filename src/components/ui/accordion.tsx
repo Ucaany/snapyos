@@ -1,39 +1,14 @@
 "use client";
 
-import * as React from "react";
 import { Accordion as AccordionPrimitive } from "@base-ui/react/accordion";
 import { ChevronDown } from "lucide-react";
+
+import * as React from "react";
+
 import { cn } from "@/lib/utils";
 
-// Catatan: tidak ada prop `collapsible` (beda dari Radix). Accordion Base UI
-// mode `single` selalu bisa ditutup — lihat `AccordionRoot.handleValueChange`
-// (`value[0] === newValue ? [] : [newValue]`) — jadi prop itu tidak akan
-// mengubah apa pun kalau diteruskan.
-function Accordion({
-  className,
-  type,
-  defaultValue,
-  ...props
-}: Omit<React.ComponentProps<typeof AccordionPrimitive.Root>, "defaultValue"> & {
-  type?: "single" | "multiple";
-  defaultValue?: string | string[];
-}) {
-  return (
-    <AccordionPrimitive.Root
-      data-slot="accordion"
-      className={cn("w-full", className)}
-      multiple={type === "multiple"}
-      keepMounted
-      defaultValue={
-        defaultValue === undefined
-          ? undefined
-          : Array.isArray(defaultValue)
-            ? defaultValue
-            : [defaultValue]
-      }
-      {...props}
-    />
-  );
+function Accordion({ ...props }: React.ComponentProps<typeof AccordionPrimitive.Root>) {
+  return <AccordionPrimitive.Root data-slot="accordion" {...props} />;
 }
 
 function AccordionItem({
@@ -43,20 +18,10 @@ function AccordionItem({
   return (
     <AccordionPrimitive.Item
       data-slot="accordion-item"
-      className={cn("border-b-2 border-ink", className)}
-      {...props}
-    />
-  );
-}
-
-function AccordionHeader({
-  className,
-  ...props
-}: React.ComponentProps<typeof AccordionPrimitive.Header>) {
-  return (
-    <AccordionPrimitive.Header
-      data-slot="accordion-header"
-      className={cn("flex", className)}
+      className={cn(
+        "rounded-base overflow-hidden border-2 border-b border-border shadow-shadow",
+        className
+      )}
       {...props}
     />
   );
@@ -68,20 +33,19 @@ function AccordionTrigger({
   ...props
 }: React.ComponentProps<typeof AccordionPrimitive.Trigger>) {
   return (
-    <AccordionPrimitive.Trigger
-      data-slot="accordion-trigger"
-      className={cn(
-        "flex flex-1 items-center justify-between gap-4 rounded-none py-4 text-left text-sm font-bold uppercase tracking-[0.04em] outline-none transition-all hover:text-ink focus-visible:ring-2 focus-visible:ring-ink disabled:pointer-events-none disabled:opacity-50 [&[data-panel-open]>svg]:rotate-180",
-        className
-      )}
-      {...props}
-    >
-      {children}
-      <ChevronDown
-        data-slot="accordion-icon"
-        className="pointer-events-none size-4 shrink-0 text-muted-foreground transition-transform duration-200"
-      />
-    </AccordionPrimitive.Trigger>
+    <AccordionPrimitive.Header className="flex">
+      <AccordionPrimitive.Trigger
+        data-slot="accordion-trigger"
+        className={cn(
+          "flex flex-1 items-center justify-between text-left text-base text-main-foreground border-border focus-visible:ring-[3px] bg-main p-4 font-heading transition-all [&[data-panel-open]>svg]:rotate-180 data-panel-open:rounded-b-none data-panel-open:border-b-2 disabled:pointer-events-none disabled:opacity-50 data-disabled:pointer-events-none data-disabled:opacity-50",
+          className
+        )}
+        {...props}
+      >
+        {children}
+        <ChevronDown className="pointer-events-none size-5 shrink-0 transition-transform duration-200" />
+      </AccordionPrimitive.Trigger>
+    </AccordionPrimitive.Header>
   );
 }
 
@@ -93,19 +57,12 @@ function AccordionContent({
   return (
     <AccordionPrimitive.Panel
       data-slot="accordion-content"
-      className={cn(
-        "grid grid-rows-[0fr] overflow-hidden text-sm transition-all data-open:grid-rows-[1fr]",
-        className
-      )}
+      className="h-(--accordion-panel-height) overflow-hidden rounded-b-base bg-secondary-background text-sm font-base transition-[height] duration-200 ease-out data-starting-style:h-0 data-ending-style:h-0"
       {...props}
     >
-      <div className="min-h-0 overflow-hidden">
-        <div data-slot="accordion-content-inner" className="pb-4 pt-0 text-muted-foreground">
-          {children}
-        </div>
-      </div>
+      <div className={cn("p-4", className)}>{children}</div>
     </AccordionPrimitive.Panel>
   );
 }
 
-export { Accordion, AccordionItem, AccordionHeader, AccordionTrigger, AccordionContent };
+export { Accordion, AccordionItem, AccordionTrigger, AccordionContent };

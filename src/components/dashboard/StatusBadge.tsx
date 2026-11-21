@@ -75,7 +75,7 @@ export function StatusBadge({
 }) {
   return (
     <Badge
-      variant="outline"
+      variant="neutral"
       className={cn("min-h-6", STYLE[status] ?? "bg-muted text-muted-foreground", className)}
     >
       {label ?? LABEL[status] ?? status}

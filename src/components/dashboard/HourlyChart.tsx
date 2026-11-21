@@ -40,9 +40,7 @@ export function HourlyChart({
             {slots.map((count, h) => (
               <div
                 key={h}
-                className={
-                  h === peakHour ? "bg-accent" : count > 0 ? "bg-ink/70" : "bg-ink/10"
-                }
+                className={h === peakHour ? "bg-accent" : count > 0 ? "bg-ink/70" : "bg-ink/10"}
                 style={{ height: `${Math.max(2, Math.round((count / maxHourly) * 100))}%` }}
                 title={`${hourLabel(h)}:00: ${count} trx`}
               />

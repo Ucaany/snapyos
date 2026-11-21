@@ -36,7 +36,7 @@ export default async function PosReceiptPage({ params }: { params: Promise<{ ord
         <p className="max-w-[55ch] text-sm leading-relaxed text-muted-foreground">
           Order tidak dapat dimuat. Kembali ke terminal untuk transaksi baru.
         </p>
-        <Link href="/pos" className={cn(buttonVariants({ variant: "outline" }))}>
+        <Link href="/pos" className={cn(buttonVariants({ variant: "neutral" }))}>
           Kembali ke terminal
         </Link>
       </div>

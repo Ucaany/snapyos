@@ -66,7 +66,7 @@ export default async function DocsGroupPage({ params }: Props) {
             Semua kategori
           </Link>
           <div className="mt-6 flex max-w-3xl flex-col items-start gap-5">
-            <Badge variant="secondary">Panduan {g.title}</Badge>
+            <Badge variant="neutral">Panduan {g.title}</Badge>
             <h1 className="text-balance text-4xl font-display font-black uppercase leading-[0.95] tracking-tight md:text-5xl">
               {g.title}: {g.desc}
             </h1>
@@ -211,7 +211,7 @@ export default async function DocsGroupPage({ params }: Props) {
               </nav>
 
               <div className="mt-8">
-                <Button variant="outline" nativeButton={false} render={<Link href="/docs" />}>
+                <Button variant="neutral" nativeButton={false} render={<Link href="/docs" />}>
                   <ArrowLeft data-icon="inline-start" />
                   Kembali ke ringkasan
                 </Button>

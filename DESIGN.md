@@ -2,9 +2,11 @@
 
 > Semantic design system (tokens, typography, components, motion, bans). Source of truth pendamping `docs/11-design-system.md` & `docs/13-skill-anti-slop.md`. PRD SnapyOS menang atas skill mana pun bila konflik.
 
-> **DEFAULT AESTHETIC = Neo-Brutalism** (`industrial-brutalist-ui`) — bahasa visual **seluruh** UI SnapyOS: marketing, auth, kiosk customer, result page, dashboard owner/admin/staff, dan semua API response. Skill lain hanya menyumbang perilaku interaksi, bukan tampilan.
+> **DEFAULT AESTHETIC = Neo-Brutalism** (`industrial-brutalist-ui`) — bahasa visual **seluruh** UI SnapyOS: marketing, auth, kiosk customer, result page, dashboard owner/staff, dan semua API response. Skill lain hanya menyumbang perilaku interaksi, bukan tampilan.
 >
-> **Koreksi (2026-10-29):** tema kedua `modern` **tidak dikirim**. Verifikasi kode: tidak ada `src/styles/theme-modern.css`, tidak ada cookie `snapyos_dashboard_theme`, dan `/admin/settings` maupun `/dashboard/settings` tidak punya pemilih tema. Satu-satunya bahasa visual yang berlaku adalah Neo-Brutalism di seluruh shell.
+> **Pengecualian resmi (2026-11-14): `/admin/*` memakai shadcn default.** Layout block `sidebar-08`, komponen default base-nova di `src/components/admin/ui/*`, tema neutral di-scope `.admin-theme` (`src/styles/admin-theme.css`). Shell lain tetap Neo-Brutalism. Detail: `docs/11-design-system.md` §11.12.
+>
+> **Koreksi (2026-10-29):** tema kedua `modern` **tidak dikirim**. Verifikasi kode: tidak ada `src/styles/theme-modern.css`, tidak ada cookie `snapyos_dashboard_theme`, dan `/admin/settings` maupun `/dashboard/settings` tidak punya pemilih tema. Satu-satunya bahasa visual yang berlaku adalah Neo-Brutalism di seluruh shell selain `/admin/*`.
 
 ## 1. Visual Theme & Atmosphere
 
@@ -42,7 +44,7 @@ Dilarang tampak seperti: generic Tailwind dashboard, generic AI SaaS, Linear/Str
 
 ## 4. Component Stylings
 
-- **Buttons:** Flat, border 2px solid ink, hard shadow, tactile `:active` → `-translate-y-[1px]` / `scale-[0.98]`. Primary = bg accent; secondary = ghost/outline. Label ≤ 3 kata, tidak wrap, WCAG AA kontras.
+- **Buttons:** Flat, border 2px solid ink, hard shadow 4px, hover `translate-x-boxShadowX translate-y-boxShadowY` lalu shadow hilang (registry neobrutalism.dev). Varian `default/noShadow/neutral/reverse` + ekstensi `destructive/ghost/link`. Label ≤ 3 kata, tidak wrap, WCAG AA kontras. Ukuran `xs/sm/default/lg/icon-*`; `xs/sm/icon-xs/icon-sm` tetap punya hit area 44px.
 - **Cards:** Border 2px + hard shadow. Hanya bila elevation menyampaikan hierarki. High-density (tabel/finance) → ganti dengan `divide-y` / `border-t`.
 - **Inputs:** Label di atas, helper di atas, error di bawah. Focus ring solid ink/accent. Placeholder bukan label.
 - **Loaders:** Skeletal shimmer matching layout. Bukan spinner generik.

@@ -6,39 +6,45 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
-/**
- * Badge — Neo-Brutalism: kotak border 2px, mono, uppercase, radius 0.
- */
-
 const badgeVariants = cva(
-  "group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-none border-2 border-ink px-2 py-0.5 font-mono text-xs font-bold uppercase tracking-[0.08em] whitespace-nowrap transition-all focus-visible:ring-2 focus-visible:ring-ink has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 aria-invalid:border-destructive [&>svg]:pointer-events-none [&>svg]:size-3!",
+  "inline-flex items-center justify-center rounded-base border-2 border-border px-2.5 py-0.5 text-xs font-base w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] overflow-hidden",
   {
     variants: {
       variant: {
-        default: "bg-accent text-ink [a]:hover:bg-accent",
-        secondary: "bg-ink text-bg [a]:hover:bg-ink",
-        destructive:
-          "border-destructive bg-destructive/10 text-destructive [a]:hover:bg-destructive/20",
-        outline: "border-ink bg-surface text-ink [a]:hover:bg-muted",
-        ghost: "border-transparent bg-transparent hover:bg-muted hover:text-ink",
-        link: "border-transparent bg-transparent text-ink underline-offset-4 hover:underline",
+        default: "bg-main text-main-foreground",
+        neutral: "bg-secondary-background text-foreground",
+        outline: "bg-secondary-background text-foreground",
+        secondary: "bg-foreground text-background",
+        destructive: "bg-destructive text-destructive-foreground",
+        ghost: "border-transparent bg-transparent",
+        link: "border-transparent bg-transparent underline-offset-4 hover:underline",
       },
     },
-    defaultVariants: { variant: "default" },
+    defaultVariants: {
+      variant: "default",
+    },
   }
 );
 
 function Badge({
   className,
-  variant = "default",
+  variant,
   render,
   ...props
 }: useRender.ComponentProps<"span"> & VariantProps<typeof badgeVariants>) {
   return useRender({
     defaultTagName: "span",
-    props: mergeProps<"span">({ className: cn(badgeVariants({ variant }), className) }, props),
     render,
-    state: { slot: "badge", variant },
+    props: mergeProps<"span">(
+      {
+        className: cn(badgeVariants({ variant }), className),
+      },
+      props
+    ),
+    state: {
+      slot: "badge",
+      variant: variant ?? "default",
+    },
   });
 }
 

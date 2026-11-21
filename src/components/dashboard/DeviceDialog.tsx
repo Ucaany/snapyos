@@ -285,8 +285,8 @@ export function DeviceDialog({
       <DialogTrigger
         render={
           <Button
-            variant="outline"
-            size="icon-compact"
+            variant="neutral"
+            size="icon-xs"
             aria-label={`Perangkat ${photobox.name}`}
             title={`Perangkat ${photobox.name}`}
           >
@@ -425,7 +425,7 @@ export function DeviceDialog({
               </p>
               <Button
                 size="sm"
-                variant="outline"
+                variant="neutral"
                 className="min-h-11"
                 onClick={() => void generateCode()}
                 disabled={busy || hasActive}
@@ -511,9 +511,12 @@ export function DeviceDialog({
                   <div className="flex flex-wrap items-center justify-end gap-3">
                     <span
                       className={`inline-block border-2 border-ink px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em] ${
-                        d.status === "active" && heartbeatTone(d.last_heartbeat_at ?? d.last_seen_at, heartbeatNow) === "active"
+                        d.status === "active" &&
+                        heartbeatTone(d.last_heartbeat_at ?? d.last_seen_at, heartbeatNow) ===
+                          "active"
                           ? "bg-accent-3"
-                          : heartbeatTone(d.last_heartbeat_at ?? d.last_seen_at, heartbeatNow) === "dead"
+                          : heartbeatTone(d.last_heartbeat_at ?? d.last_seen_at, heartbeatNow) ===
+                              "dead"
                             ? "bg-destructive/10 text-destructive"
                             : "bg-muted text-muted-foreground"
                       }`}

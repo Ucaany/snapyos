@@ -65,8 +65,7 @@ export function KioskPaymentPreview({ booths, selectedId, methods, basePath }: P
             >
               {booths.map((booth) => (
                 <option key={booth.id} value={booth.id}>
-                  {booth.name} ·{" "}
-                  {booth.payment_mode ? MODE_LABEL[booth.payment_mode] : "CASH"}
+                  {booth.name} · {booth.payment_mode ? MODE_LABEL[booth.payment_mode] : "CASH"}
                 </option>
               ))}
             </Select>

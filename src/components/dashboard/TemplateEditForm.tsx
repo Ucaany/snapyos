@@ -133,7 +133,7 @@ export function TemplateEditForm({ template, onDone }: Props) {
         </p>
       )}
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" size="sm" onClick={onDone} disabled={pending}>
+        <Button type="button" variant="neutral" size="sm" onClick={onDone} disabled={pending}>
           Batal
         </Button>
         <Button type="submit" size="sm" disabled={pending}>

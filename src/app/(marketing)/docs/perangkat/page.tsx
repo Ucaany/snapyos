@@ -154,7 +154,7 @@ export default function DeviceDocsPage() {
       <main id="top" className="relative space-y-12 overflow-x-clip pb-4 md:space-y-16">
         <section className="mx-auto w-full max-w-5xl px-4 pt-12 md:px-8 md:pt-16">
           <div className="flex max-w-3xl flex-col items-start gap-5">
-            <Badge variant="secondary">Dokumentasi perangkat</Badge>
+            <Badge variant="neutral">Dokumentasi perangkat</Badge>
             <h1 className="text-balance text-4xl font-display font-black uppercase leading-[0.95] tracking-tight md:text-5xl">
               Perangkat dan kamera
             </h1>
@@ -200,7 +200,7 @@ export default function DeviceDocsPage() {
                 {`${total.toLocaleString("id-ID")} model dari daftar resmi libgphoto2/gphoto2. Angka di bawah dihitung dari katalog saat build, bukan ditulis manual.`}
               </p>
             </div>
-            <Button variant="outline" nativeButton={false} render={<Link href="/kamera" />}>
+            <Button variant="neutral" nativeButton={false} render={<Link href="/kamera" />}>
               Lihat katalog lengkap
               <ArrowRight data-icon="inline-end" />
             </Button>
@@ -543,7 +543,7 @@ export default function DeviceDocsPage() {
               mengikuti kode berjalan di kiosk dan bridge lokal, bukan asumsi dukungan vendor.
             </p>
             <div className="mt-4 flex flex-wrap gap-3">
-              <Button variant="outline" nativeButton={false} render={<Link href="/docs" />}>
+              <Button variant="neutral" nativeButton={false} render={<Link href="/docs" />}>
                 Kembali ke dokumentasi
               </Button>
               <Button nativeButton={false} render={<Link href="/kamera" />}>

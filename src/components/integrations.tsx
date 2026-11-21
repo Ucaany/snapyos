@@ -21,7 +21,7 @@ export function Integrations() {
       <div className="p-4 md:p-6">
         <div className="space-y-4">
           <div className="flex flex-col items-start gap-4">
-            <Badge variant="secondary" className="w-fit">
+            <Badge variant="neutral" className="w-fit">
               Gateway Pembayaran
             </Badge>
             <h2 className="font-display text-3xl font-black uppercase leading-[0.95] tracking-tight text-foreground sm:text-4xl">

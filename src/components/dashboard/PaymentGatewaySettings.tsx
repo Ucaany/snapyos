@@ -48,9 +48,10 @@ const PROVIDERS: { id: GatewayProvider; name: string; description: string }[] = 
  */
 export function PaymentGatewaySettings({ initialCredentials, webhookUrls }: Props) {
   const router = useRouter();
-  const [editing, setEditing] = useState<{ provider: GatewayProvider; environment: Environment } | null>(
-    null
-  );
+  const [editing, setEditing] = useState<{
+    provider: GatewayProvider;
+    environment: Environment;
+  } | null>(null);
   const refresh = () => router.refresh();
 
   return (
@@ -113,7 +114,7 @@ export function PaymentGatewaySettings({ initialCredentials, webhookUrls }: Prop
                         <Button
                           key={env}
                           type="button"
-                          variant="outline"
+                          variant="neutral"
                           size="sm"
                           onClick={() => setEditing({ provider: provider.id, environment: env })}
                         >
@@ -142,7 +143,7 @@ export function PaymentGatewaySettings({ initialCredentials, webhookUrls }: Prop
                       <div className="flex justify-end gap-3">
                         <Button
                           type="button"
-                          variant="outline"
+                          variant="neutral"
                           size="sm"
                           onClick={() => setEditing({ provider: provider.id, environment: env })}
                         >

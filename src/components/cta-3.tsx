@@ -44,7 +44,7 @@ export async function CallToAction() {
         >
           Chat tim kami
         </Button>
-        <Button variant="outline" nativeButton={false} render={<Link href="/register" />}>
+        <Button variant="neutral" nativeButton={false} render={<Link href="/register" />}>
           Ajukan Akun <ArrowRight data-icon="inline-end" />
         </Button>
       </div>

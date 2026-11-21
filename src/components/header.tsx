@@ -39,7 +39,7 @@ export function Header() {
           <DesktopNav />
         </div>
         <div className="hidden items-center gap-2 md:flex">
-          <Button variant="outline" nativeButton={false} render={<Link href="/login" />}>
+          <Button variant="neutral" nativeButton={false} render={<Link href="/login" />}>
             Masuk
           </Button>
           <Button nativeButton={false} render={<Link href="/register" />}>

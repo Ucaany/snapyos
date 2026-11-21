@@ -65,7 +65,7 @@ export function ConfirmDialog({
         <DialogFooter>
           <DialogClose
             render={
-              <Button variant="secondary" size="sm" disabled={loading}>
+              <Button variant="neutral" size="sm" disabled={loading}>
                 {cancelLabel}
               </Button>
             }

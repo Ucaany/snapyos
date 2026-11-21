@@ -129,7 +129,7 @@ export function PosReportsPanel({ data, timeZone }: { data: PosReportsData; time
                 href={`${pathname}?${params.toString()}`}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  buttonVariants({ variant: active ? "default" : "outline", size: "sm" }),
+                  buttonVariants({ variant: active ? "default" : "neutral", size: "sm" }),
                   "font-mono uppercase tracking-[0.08em]"
                 )}
               >

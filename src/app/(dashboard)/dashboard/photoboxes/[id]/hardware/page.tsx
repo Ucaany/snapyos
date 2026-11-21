@@ -115,7 +115,7 @@ export default async function PhotoboxHardwarePage({
     <div className="flex flex-col gap-6 p-4 sm:p-6 md:p-10">
       <Link
         href="/dashboard/photoboxes"
-        className={buttonVariants({ variant: "outline", size: "sm", className: "w-fit" })}
+        className={buttonVariants({ variant: "neutral", size: "sm", className: "w-fit" })}
       >
         <ArrowLeft className="size-4" aria-hidden /> Photobox
       </Link>

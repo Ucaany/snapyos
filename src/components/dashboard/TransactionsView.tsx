@@ -179,7 +179,9 @@ export function TransactionsView({
                     {tx.days_left !== null && (
                       <span
                         className={`font-mono text-[10px] uppercase tracking-[0.06em] ${
-                          tx.days_left === 0 ? "font-bold text-destructive" : "text-muted-foreground"
+                          tx.days_left === 0
+                            ? "font-bold text-destructive"
+                            : "text-muted-foreground"
                         }`}
                       >
                         {tx.days_left === 0 ? "Kedaluwarsa" : `Sisa ${tx.days_left} hari`}

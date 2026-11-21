@@ -307,7 +307,7 @@ export function BluetoothPrintScreen({
             Android, atau cetak lewat dialog sistem.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
-            <Button size="lg" variant="outline" onClick={onUseBrowserPrint}>
+            <Button size="lg" variant="neutral" onClick={onUseBrowserPrint}>
               Cetak lewat dialog
             </Button>
             <Button size="lg" className="bg-accent" onClick={() => leave(false)}>
@@ -339,7 +339,7 @@ export function BluetoothPrintScreen({
               <Button size="lg" onClick={onUseBrowserPrint} className="bg-accent">
                 Cetak lewat dialog
               </Button>
-              <Button size="lg" variant="outline" onClick={() => leave(false)}>
+              <Button size="lg" variant="neutral" onClick={() => leave(false)}>
                 Lanjut
               </Button>
             </div>
@@ -352,7 +352,7 @@ export function BluetoothPrintScreen({
                 <Button size="lg" onClick={() => void retry()} className="bg-accent">
                   Coba lagi
                 </Button>
-                <Button size="lg" variant="outline" onClick={() => leave(false)}>
+                <Button size="lg" variant="neutral" onClick={() => leave(false)}>
                   Lanjut tanpa cetak
                 </Button>
               </div>
@@ -372,7 +372,7 @@ export function BluetoothPrintScreen({
           <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
             {progress ? `LEMBAR ${progress.sheet} / ${progress.total}` : "SIAPKAN KERTAS"}
           </p>
-          <Button size="lg" variant="outline" onClick={() => leave(false)}>
+          <Button size="lg" variant="neutral" onClick={() => leave(false)}>
             Lanjut
           </Button>
         </>
@@ -390,10 +390,10 @@ export function BluetoothPrintScreen({
             <Button size="lg" onClick={() => void connectAndPrintSerial()} className="bg-accent">
               <Printer className="size-5" aria-hidden /> Hubungkan printer (SPP)
             </Button>
-            <Button size="lg" variant="outline" onClick={onUseBrowserPrint}>
+            <Button size="lg" variant="neutral" onClick={onUseBrowserPrint}>
               Cetak lewat dialog
             </Button>
-            <Button size="lg" variant="outline" onClick={() => leave(false)}>
+            <Button size="lg" variant="neutral" onClick={() => leave(false)}>
               Lanjut
             </Button>
           </div>
@@ -417,10 +417,10 @@ export function BluetoothPrintScreen({
             <Button size="lg" onClick={() => void connectAndPrint()} className="bg-accent">
               <Printer className="size-5" aria-hidden /> Hubungkan printer
             </Button>
-            <Button size="lg" variant="outline" onClick={onUseBrowserPrint}>
+            <Button size="lg" variant="neutral" onClick={onUseBrowserPrint}>
               Cetak lewat dialog
             </Button>
-            <Button size="lg" variant="outline" onClick={() => leave(false)}>
+            <Button size="lg" variant="neutral" onClick={() => leave(false)}>
               Lanjut
             </Button>
           </div>

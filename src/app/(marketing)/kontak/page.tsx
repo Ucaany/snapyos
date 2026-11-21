@@ -24,7 +24,7 @@ export default function ContactPage() {
       <main className="relative space-y-12 pb-4 md:space-y-16">
         <section className="mx-auto w-full max-w-5xl px-4 pt-12 md:px-8 md:pt-16">
           <div className="mx-auto flex max-w-3xl flex-col items-center gap-5 text-center">
-            <Badge variant="secondary">Kontak</Badge>
+            <Badge variant="neutral">Kontak</Badge>
             <h1 className="text-balance text-4xl font-display font-black uppercase leading-[0.95] tracking-tight md:text-5xl">
               Bicarakan kebutuhan booth Anda
             </h1>
@@ -39,7 +39,7 @@ export default function ContactPage() {
                 <ArrowRight data-icon="inline-end" />
               </Button>
               <Button
-                variant="outline"
+                variant="neutral"
                 nativeButton={false}
                 render={<a href="mailto:hello@snapyos.id" />}
               >
@@ -94,7 +94,7 @@ export default function ContactPage() {
                   dokumentasi.
                 </p>
                 <div className="mt-5 flex flex-wrap gap-3">
-                  <Button variant="outline" nativeButton={false} render={<Link href="/docs" />}>
+                  <Button variant="neutral" nativeButton={false} render={<Link href="/docs" />}>
                     Dokumentasi
                   </Button>
                 </div>

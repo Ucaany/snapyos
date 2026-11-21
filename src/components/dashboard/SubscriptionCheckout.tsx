@@ -153,7 +153,7 @@ export function SubscriptionCheckout({
                 <Button
                   key={p.id}
                   type="button"
-                  variant={p.code === planCode ? "default" : "outline"}
+                  variant={p.code === planCode ? "default" : "neutral"}
                   size="sm"
                   onClick={() => {
                     setPlanCode(p.code);
@@ -195,7 +195,7 @@ export function SubscriptionCheckout({
                       <div className="flex items-center gap-2">
                         <Button
                           type="button"
-                          variant="outline"
+                          variant="neutral"
                           size="icon-sm"
                           onClick={() => setQty(a.id, qty - 1)}
                           disabled={qty <= 0}
@@ -214,7 +214,7 @@ export function SubscriptionCheckout({
                         />
                         <Button
                           type="button"
-                          variant="outline"
+                          variant="neutral"
                           size="icon-sm"
                           onClick={() => setQty(a.id, qty + 1)}
                           disabled={qty >= 99}
@@ -248,7 +248,7 @@ export function SubscriptionCheckout({
               />
               <Button
                 type="button"
-                variant="outline"
+                variant="neutral"
                 size="sm"
                 onClick={() => void applyPromo()}
                 disabled={promoBusy || !promoInput.trim()}

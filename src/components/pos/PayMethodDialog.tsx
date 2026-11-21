@@ -104,7 +104,7 @@ export function PayMethodDialog({
                   key={q.label}
                   type="button"
                   size="sm"
-                  variant="outline"
+                  variant="neutral"
                   disabled={busy || q.value < finalAmount}
                   onClick={() => setRaw(String(q.value))}
                 >
@@ -147,7 +147,7 @@ export function PayMethodDialog({
             </Button>
             <Button
               size="lg"
-              variant="secondary"
+              variant="neutral"
               disabled={busy}
               onClick={() => void onPay("bank_transfer")}
             >
@@ -156,7 +156,7 @@ export function PayMethodDialog({
             </Button>
             <Button
               size="lg"
-              variant="secondary"
+              variant="neutral"
               disabled={busy}
               onClick={() => void onPay("other")}
             >

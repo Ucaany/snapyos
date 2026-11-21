@@ -69,7 +69,7 @@ export default async function PwaPage() {
         </p>
         <Link
           href="/dashboard/photoboxes"
-          className={cn(buttonVariants({ variant: "outline" }), "ml-auto")}
+          className={cn(buttonVariants({ variant: "neutral" }), "ml-auto")}
         >
           Buka pairing <ArrowRight className="size-4" aria-hidden />
         </Link>

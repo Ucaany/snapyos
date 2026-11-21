@@ -54,7 +54,7 @@ export default function DocsPage() {
       <main id="top" className="relative space-y-12 overflow-x-clip pb-4 md:space-y-16">
         <section className="mx-auto w-full max-w-5xl px-4 pt-12 md:px-8 md:pt-16">
           <div className="mx-auto flex max-w-3xl flex-col items-center gap-5 text-center">
-            <Badge variant="secondary">Dokumentasi</Badge>
+            <Badge variant="neutral">Dokumentasi</Badge>
             <h1 className="text-balance text-4xl font-display font-black uppercase leading-[0.95] tracking-tight md:text-5xl">
               Panduan SnapyOS untuk customer dan owner
             </h1>
@@ -67,7 +67,7 @@ export default function DocsPage() {
                 Panduan customer
                 <ArrowRight data-icon="inline-end" />
               </Button>
-              <Button variant="outline" nativeButton={false} render={<Link href="/docs/owner" />}>
+              <Button variant="neutral" nativeButton={false} render={<Link href="/docs/owner" />}>
                 Panduan owner
               </Button>
             </div>

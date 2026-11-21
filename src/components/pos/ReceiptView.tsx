@@ -245,12 +245,12 @@ export function ReceiptView({
     <div className="print-root mx-auto flex min-h-[100dvh] w-full max-w-md flex-col gap-6 p-4 md:p-8 print:mx-0 print:min-h-0 print:w-full print:max-w-none print:p-0">
       <div className={canPrint ? "flex flex-col gap-3 print:hidden" : "hidden print:hidden"}>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Button variant="outline" size="sm" onClick={() => router.push("/pos")}>
+          <Button variant="neutral" size="sm" onClick={() => router.push("/pos")}>
             <RotateCcw aria-hidden />
             Transaksi baru
           </Button>
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={() => window.print()}>
+            <Button size="sm" variant="neutral" onClick={() => window.print()}>
               <Printer aria-hidden />
               Cetak dialog
             </Button>
@@ -271,7 +271,7 @@ export function ReceiptView({
             {serialSupported && (
               <Button
                 size="sm"
-                variant="outline"
+                variant="neutral"
                 onClick={() => void printSerial()}
                 disabled={btState === "printing"}
               >

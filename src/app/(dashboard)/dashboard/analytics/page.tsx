@@ -117,7 +117,7 @@ export default async function AnalyticsPage({
             aria-current={tab === t.key ? "page" : undefined}
             className={cn(
               buttonVariants({
-                variant: tab === t.key ? "default" : "outline",
+                variant: tab === t.key ? "default" : "neutral",
                 size: "sm",
               }),
               "shrink-0 font-mono uppercase tracking-[0.08em]"

@@ -511,7 +511,7 @@ export function KioskSimulation() {
                 </Button>
                 <Button
                   size="sm"
-                  variant="outline"
+                  variant="neutral"
                   onClick={() => void startCamera()}
                   disabled={cameraOn}
                 >
@@ -531,7 +531,7 @@ export function KioskSimulation() {
               </>
             )}
             {stepIdx === 4 && (
-              <Button size="sm" variant="outline" onClick={reset}>
+              <Button size="sm" variant="neutral" onClick={reset}>
                 Mulai lagi
               </Button>
             )}

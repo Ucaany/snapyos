@@ -2,7 +2,7 @@
 
 ## Status Implementasi (audit 2026-08-30)
 
-Dokumen ini = sumber kebenaran gaya brutalist untuk SELURUH UI SnapyOS. **Dual-shell Dashboard-01 pernah ada dan DIHAPUS 2026-08-30**, lalu dihidupkan kembali 2026-10-25 sebagai tema `modern` (`@efferd/app-shell-3` + primitif shadcn `base-nova`), dan **DIHAPUS LAGI 2026-10-28**: `src/components/efferd/*`, `src/components/theme/*`, `src/lib/dashboard-theme*.ts`, `src/styles/theme-modern.css`, dan `src/components/ui/modern-classes.ts` sudah tidak ada. Brutalis sekarang satu-satunya tema untuk marketing, auth, kiosk, POS, result page, dan seluruh shell dashboard owner/admin/staff. 
+Dokumen ini = sumber kebenaran gaya brutalist untuk SELURUH UI SnapyOS. **Dual-shell Dashboard-01 pernah ada dan DIHAPUS 2026-08-30**, lalu dihidupkan kembali 2026-10-25 sebagai tema `modern` (`@efferd/app-shell-3` + primitif shadcn `base-nova`), dan **DIHAPUS LAGI 2026-10-28**: `src/components/efferd/*`, `src/components/theme/*`, `src/lib/dashboard-theme*.ts`, `src/styles/theme-modern.css`, dan `src/components/ui/modern-classes.ts` sudah tidak ada. Brutalis sekarang satu-satunya tema untuk marketing, auth, kiosk, POS, result page, dan seluruh shell dashboard owner/admin/staff.
 
 ## 11.1 Prinsip
 
@@ -80,7 +80,30 @@ Font: display bold (misal "Space Grotesk"/"Archivo Black" untuk heading), body r
 | Skeleton                          | Loading state                                                                 |
 | Chart (Recharts wrapper)          | Revenue analytics                                                             |
 
-**Aturan:** shadcn/ui = component foundation; Neo-Brutalism = visual identity. Jangan pakai default styling shadcn tanpa kustomisasi. Override variabel/`cn` agar semua komponen konsisten Neo-Brutalism.
+**Aturan:** shadcn/ui = component foundation; Neo-Brutalism = visual identity. Jangan pakai default styling shadcn tanpa kustomisasi. Override variabel/`cn` agar semua komponen konsisten Neo-Brutalism. **Pengecualian:** `/admin/*` memakai shadcn default (lihat §11.12).
+
+### Implementasi neobrutalism.dev (2026-11-14)
+
+Sejak 2026-11-14 komponen UI memakai registry [neobrutalism.dev](https://www.neobrutalism.dev) (basis shadcn/ui + Base UI), bukan styling shadcn default. Palet tetap SnapyOS; radius tetap 0.
+
+- **Token bridge** ada di `src/styles/tokens.css`: `--main`, `--main-foreground`, `--secondary-background`, `--overlay`, `--shadow`, `--radius-base`, `--font-weight-base`, `--font-weight-heading`, `--spacing-boxShadowX/Y`, `--spacing-reverseBoxShadowX/Y`. Semua dipetakan ke `@theme inline` agar utility registry (`bg-main`, `shadow-shadow`, `rounded-base`, `translate-x-boxShadowX`) bekerja tanpa mengubah warna/radius proyek.
+- **Button API:** `default`, `noShadow`, `neutral`, `reverse`, plus ekstensi SnapyOS `destructive`, `ghost`, `link`. Ukuran `xs`, `sm`, `default`, `lg`, `icon-xs`, `icon-sm`, `icon`, `icon-lg`. Varian lama `outline`/`secondary` sudah dimigrasikan ke `neutral`.
+- **Perilaku:** border 2px, hard shadow 4px, hover menggeser tombol sebesar offset shadow lalu shadow hilang (`reverse` kebalikannya). Tombol kecil tetap punya hit area minimum 44px lewat pseudo-element.
+- **Komponen:** seluruh registry dipasang (accordion, alert, alert-dialog, attachment, avatar, badge, breadcrumb, button, button-group, bubble, calendar, carousel, chart, checkbox, collapsible, command, context-menu, dialog, direction, drawer, dropdown-menu, empty, field, form, hover-card, image-card, input, input-group, input-otp, item, kbd, label, marquee, menubar, marker, message, message-scroller, native-select, navigation-menu, pagination, popover, progress, questionnaire, radio-group, resizable, scroll-area, select, sheet, sidebar, skeleton, slider, spinner, switch, table, tabs, textarea, toast, toggle, toggle-group, tooltip).
+- **Select:** `src/components/ui/select.tsx` adalah kompatibilitas API native `<select>` di atas registry Select (Base UI), sehingga form server-action tetap mengirim `name`. Select kaya tersedia di `rich-select.tsx`.
+- **MultiSelect:** diganti daftar `Checkbox` registry; `name` berulang tetap dibaca `formData.getAll()`.
+- **Komposit SnapyOS** yang tidak ada di registry (`PageHeader`, `EmptyState`, `RecordCard`, `RecordCollection`, `IconButton`, `ConfirmDialog`, `DateInput`) tetap dipertahankan sebagai lapisan di atas primitif registry.
+
+### 11.12 Pengecualian Admin — shadcn default (2026-11-14)
+
+`/admin/*` adalah satu-satunya shell yang memakai tampilan default shadcn. Shell lain (marketing, auth, kiosk, POS, owner, staff) tetap Neo-Brutalism.
+
+- **Layout:** block resmi `sidebar-08` (`SidebarProvider` + `AppSidebar` + `SidebarInset` + `SidebarTrigger` + breadcrumb header). Sumber: `src/components/admin/sidebar-08/*`.
+- **Komponen:** default base-nova di `src/components/admin/ui/*`. Shell lain tetap memakai `src/components/ui/*` (neobrutalism). Dilarang impor silang antar dua namespace.
+- **Tema:** `.admin-theme` di `src/styles/admin-theme.css` menimpa token warna + radius ke palet neutral shadcn. `body::after` (grain brutalist) dimatikan untuk admin.
+- **Tipografi:** font proyek dipertahankan (Archivo Black / IBM Plex Sans / Space Mono); yang berubah hanya warna, radius, border, shadow, dan geometri komponen.
+- **Komposit admin:** `AdminPageHeader`, `AdminStatusBadge`, `AdminEmptyState`, `AdminPaginator`, `AdminListLoading`, `AdminMetricCard`, `AdminRecordCard`, `AdminRecordCollection`, `AdminActionForm`, `AdminConfirmDialog`, `AdminCharts` — semuanya dibangun di atas primitif `src/components/admin/ui/*`.
+- **Migrasi bertahap:** shell lain belum boleh memakai `src/components/admin/ui/*` sampai docs ini diperbarui lagi.
 
 ### Calendar / DateRange / Booking Rules
 

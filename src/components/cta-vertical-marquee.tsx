@@ -118,7 +118,7 @@ export default function CTAWithVerticalMarquee() {
                 <Button size="sm">Lihat paket</Button>
               </a>
               <a href="/kontak">
-                <Button size="sm" variant="outline">
+                <Button size="sm" variant="neutral">
                   Diskusi Demo
                 </Button>
               </a>

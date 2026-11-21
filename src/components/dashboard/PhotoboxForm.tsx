@@ -345,7 +345,7 @@ export function PhotoboxForm({ outlets, photobox, onDone }: Props) {
                   : "Simpan photobox"}
         </Button>
         {onDone && (
-          <Button type="button" variant="outline" size="sm" onClick={onDone} disabled={pending}>
+          <Button type="button" variant="neutral" size="sm" onClick={onDone} disabled={pending}>
             Batal
           </Button>
         )}

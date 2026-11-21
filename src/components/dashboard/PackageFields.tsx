@@ -24,7 +24,12 @@ function FieldError({ state, field, id }: { state: FormState; field: string; id:
   );
 }
 
-function Block({ step, title, hint, children }: {
+function Block({
+  step,
+  title,
+  hint,
+  children,
+}: {
   step: string;
   title: string;
   hint?: string;

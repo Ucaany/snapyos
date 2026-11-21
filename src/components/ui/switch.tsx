@@ -1,13 +1,16 @@
 "use client";
 
 import { Switch as SwitchPrimitive } from "@base-ui/react/switch";
+
+import * as React from "react";
+
 import { cn } from "@/lib/utils";
 
 function Switch({
   className,
   size = "default",
   ...props
-}: SwitchPrimitive.Root.Props & {
+}: React.ComponentProps<typeof SwitchPrimitive.Root> & {
   size?: "sm" | "default";
 }) {
   return (
@@ -15,16 +18,20 @@ function Switch({
       data-slot="switch"
       data-size={size}
       className={cn(
-        // Kotak visual switch sengaja kecil (18x32). Area ketuknya diperluas
-        // lewat ::after; di layar sentuh dinaikkan sampai 44px (antislop R-03).
-        "peer group/switch relative inline-flex shrink-0 items-center rounded-none border-2 border-ink bg-surface transition-all outline-none group-has-[:focus-visible]/field-label:border-transparent group-has-[:focus-visible]/field-label:ring-0 after:absolute after:-inset-x-3 after:-inset-y-2 [@media(pointer:coarse)]:after:-inset-y-[13px] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-[size=default]:h-[18.4px] data-[size=default]:w-[32px] data-[size=sm]:h-[14px] data-[size=sm]:w-[24px] dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 data-checked:bg-primary data-unchecked:bg-surface dark:data-unchecked:bg-surface/20 data-disabled:cursor-not-allowed data-disabled:opacity-50",
+        "peer inline-flex shrink-0 cursor-pointer items-center rounded-full border-2 border-border bg-secondary-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 data-disabled:cursor-not-allowed data-disabled:opacity-50 data-checked:bg-main data-unchecked:bg-secondary-background",
+        size === "default" && "h-6 w-12",
+        size === "sm" && "h-5 w-9",
         className
       )}
       {...props}
     >
       <SwitchPrimitive.Thumb
         data-slot="switch-thumb"
-        className="pointer-events-none block rounded-none border border-ink bg-ink ring-0 transition-transform group-data-[size=default]/switch:size-4 group-data-[size=sm]/switch:size-3 group-data-[size=default]/switch:data-checked:translate-x-[calc(100%-2px)] group-data-[size=sm]/switch:data-checked:translate-x-[calc(100%-2px)] dark:data-checked:bg-primary-foreground group-data-[size=default]/switch:data-unchecked:translate-x-0 group-data-[size=sm]/switch:data-unchecked:translate-x-0 dark:data-unchecked:bg-foreground"
+        className={cn(
+          "pointer-events-none block rounded-full bg-white border-2 border-border ring-0 transition-transform data-unchecked:translate-x-1",
+          size === "default" && "h-4 w-4 data-checked:translate-x-6",
+          size === "sm" && "h-3 w-3 data-checked:translate-x-4"
+        )}
       />
     </SwitchPrimitive.Root>
   );

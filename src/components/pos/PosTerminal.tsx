@@ -290,7 +290,7 @@ export function PosTerminal({
                   <span className="flex items-center gap-1">
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="neutral"
                       size="icon-sm"
                       aria-label={`Kurangi ${product.name}`}
                       onClick={() => setQty(product.id, qty - 1)}
@@ -300,7 +300,7 @@ export function PosTerminal({
                     <output className="w-8 text-center font-mono text-sm font-bold">{qty}</output>
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="neutral"
                       size="icon-sm"
                       aria-label={`Tambah ${product.name}`}
                       onClick={() => addProduct(product)}

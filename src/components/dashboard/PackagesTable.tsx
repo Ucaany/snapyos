@@ -54,7 +54,7 @@ function DuplicateButton({ pkg, compact }: { pkg: PackageRow; compact?: boolean 
     <div>
       <Button
         type="button"
-        variant="outline"
+        variant="neutral"
         size="sm"
         disabled={pending}
         onClick={duplicate}
@@ -247,7 +247,7 @@ export function PackagesTable({ packages, templateCount, outlets, photoboxes, ca
           <span className="text-muted-foreground">{" \u00b7 Semua tersedia untuk paket ini"}</span>
         </p>
         <Button
-          variant="outline"
+          variant="neutral"
           size="sm"
           className="gap-2"
           nativeButton={false}

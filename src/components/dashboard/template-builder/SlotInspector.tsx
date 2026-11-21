@@ -105,7 +105,7 @@ export function SlotInspector({
         </Button>
         <Button
           type="button"
-          variant="outline"
+          variant="neutral"
           size="sm"
           aria-label="Duplikat slot terpilih"
           onClick={onDuplicate}
@@ -116,7 +116,7 @@ export function SlotInspector({
         </Button>
         <Button
           type="button"
-          variant="outline"
+          variant="neutral"
           size="sm"
           aria-label="Naikkan z slot terpilih"
           onClick={() => onMoveZ(1)}
@@ -127,7 +127,7 @@ export function SlotInspector({
         </Button>
         <Button
           type="button"
-          variant="outline"
+          variant="neutral"
           size="sm"
           aria-label="Turunkan z slot terpilih"
           onClick={() => onMoveZ(-1)}
@@ -146,7 +146,7 @@ export function SlotInspector({
               key={shape}
               type="button"
               size="sm"
-              variant={slot.shape === shape ? "default" : "outline"}
+              variant={slot.shape === shape ? "default" : "neutral"}
               aria-label={`Bentuk ${shape}`}
               aria-pressed={slot.shape === shape}
               onClick={() => onShape(shape)}
@@ -170,7 +170,7 @@ export function SlotInspector({
               key={fit}
               type="button"
               size="sm"
-              variant={(slot.fit ?? "cover") === fit ? "default" : "outline"}
+              variant={(slot.fit ?? "cover") === fit ? "default" : "neutral"}
               aria-label={`Fit ${fit}`}
               aria-pressed={(slot.fit ?? "cover") === fit}
               onClick={() => onPatch({ fit })}

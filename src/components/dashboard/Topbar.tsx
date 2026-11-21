@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { LogOut } from "lucide-react";
 
 import { logoutAction } from "@/server/auth-actions";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { IconButton } from "@/components/ui/icon-button";
 import { MobileNav } from "@/components/dashboard/MobileNav";
 import { StorageIndicator } from "@/components/dashboard/StorageIndicator";
@@ -61,7 +62,11 @@ export function Topbar({
                 {isAdmin ? (
                   <Link
                     href="/admin"
-                    className="flex min-h-11 items-center justify-center border-2 border-ink bg-accent px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.05em] text-ink"
+                    className={buttonVariants({
+                      variant: "default",
+                      size: "sm",
+                      className: "w-full",
+                    })}
                   >
                     Panel Admin
                   </Link>
@@ -83,7 +88,11 @@ export function Topbar({
           {isAdmin ? (
             <Link
               href="/admin"
-              className="hidden min-h-11 items-center border-2 border-ink bg-accent px-2.5 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.05em] text-ink transition-colors hover:bg-accent/80 active:translate-y-[2px] sm:inline-flex md:px-3 md:text-xs"
+              className={buttonVariants({
+                variant: "default",
+                size: "sm",
+                className: "hidden sm:inline-flex",
+              })}
             >
               Panel Admin
             </Link>
@@ -95,7 +104,7 @@ export function Topbar({
             </p>
           </div>
           <form action={logoutAction}>
-            <IconButton type="submit" label="Keluar" compact variant="outline">
+            <IconButton type="submit" label="Keluar" variant="neutral">
               <LogOut className="size-4" aria-hidden="true" />
             </IconButton>
           </form>

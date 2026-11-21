@@ -154,8 +154,8 @@ export function DocArticleBlock({ article }: { article: HelpArticle }) {
       className="scroll-mt-24 border-t border-border pt-10 first:border-t-0 first:pt-0"
     >
       <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="secondary">{article.category}</Badge>
-        {article.audience && <Badge variant="outline">{article.audience}</Badge>}
+        <Badge variant="neutral">{article.category}</Badge>
+        {article.audience && <Badge variant="neutral">{article.audience}</Badge>}
       </div>
       <h3 className="mt-3 text-balance font-display text-3xl font-black uppercase leading-[0.95] tracking-tight sm:text-4xl">
         {article.title}

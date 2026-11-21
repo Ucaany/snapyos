@@ -163,7 +163,7 @@ export function InvoicePayClient({
           Invoice {invoiceNumber} sudah tidak berlaku (plan diganti atau dibatalkan). Kembali ke
           Subscription untuk melihat tagihan aktif.
         </p>
-        <Link href="/dashboard/subscription" className={buttonVariants({ variant: "outline" })}>
+        <Link href="/dashboard/subscription" className={buttonVariants({ variant: "neutral" })}>
           <ArrowLeft className="size-4" aria-hidden /> Kembali
         </Link>
       </div>
@@ -186,11 +186,11 @@ export function InvoicePayClient({
           <a
             href={`/dashboard/subscription/invoice/${invoiceId}/receipt?download=1`}
             download={`${invoiceNumber}.pdf`}
-            className={buttonVariants({ variant: "outline" })}
+            className={buttonVariants({ variant: "neutral" })}
           >
             <Download className="size-4" aria-hidden /> Unduh bukti invoice
           </a>
-          <Link href="/dashboard/subscription" className={buttonVariants({ variant: "outline" })}>
+          <Link href="/dashboard/subscription" className={buttonVariants({ variant: "neutral" })}>
             <ArrowLeft className="size-4" aria-hidden /> Kembali ke Subscription
           </Link>
         </div>
@@ -371,7 +371,7 @@ export function InvoicePayClient({
                 <Button
                   type="button"
                   size="sm"
-                  variant="outline"
+                  variant="neutral"
                   onClick={() => void start()}
                   disabled={busy || !canWrite}
                 >

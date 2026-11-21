@@ -41,7 +41,7 @@ export default function AboutPage() {
       <main className="relative space-y-12 pb-4 md:space-y-16">
         <section className="mx-auto w-full max-w-5xl px-4 pt-12 md:px-8 md:pt-16">
           <div className="mx-auto flex max-w-3xl flex-col items-center gap-5 text-center">
-            <Badge variant="secondary">Tentang Kami</Badge>
+            <Badge variant="neutral">Tentang Kami</Badge>
             <h1 className="text-balance text-4xl font-display font-black uppercase leading-[0.95] tracking-tight md:text-5xl">
               Operasional photobox, lebih mudah dikelola
             </h1>
@@ -54,7 +54,7 @@ export default function AboutPage() {
                 Konsultasi Bisnis
                 <ArrowRight data-icon="inline-end" />
               </Button>
-              <Button variant="outline" nativeButton={false} render={<Link href="/kontak" />}>
+              <Button variant="neutral" nativeButton={false} render={<Link href="/kontak" />}>
                 Hubungi tim
               </Button>
             </div>
@@ -119,10 +119,10 @@ export default function AboutPage() {
                 POS, tanpa akses ke konfigurasi bisnis.
               </p>
               <div className="mt-5 flex flex-wrap gap-3">
-                <Button variant="outline" nativeButton={false} render={<Link href="/docs" />}>
+                <Button variant="neutral" nativeButton={false} render={<Link href="/docs" />}>
                   Baca dokumentasi
                 </Button>
-                <Button variant="outline" nativeButton={false} render={<Link href="/" />}>
+                <Button variant="neutral" nativeButton={false} render={<Link href="/" />}>
                   Kembali ke beranda
                 </Button>
               </div>

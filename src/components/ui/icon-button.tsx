@@ -9,7 +9,7 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-type Variant = "default" | "outline" | "secondary" | "ghost" | "destructive" | "link";
+type Variant = "default" | "neutral" | "ghost" | "destructive" | "link" | "noShadow" | "reverse";
 type Side = "top" | "bottom" | "left" | "right";
 
 type CommonProps = {
@@ -60,7 +60,7 @@ export function IconButton({
   label,
   icon: Icon,
   children,
-  variant = "outline",
+  variant = "neutral",
   compact = false,
   side = "top",
   className,
@@ -79,7 +79,7 @@ export function IconButton({
     <Button
       type={type}
       variant={variant}
-      size={compact ? "icon-compact" : "icon-sm"}
+      size={compact ? "icon-xs" : "icon-sm"}
       aria-label={label}
       title={hint ?? label}
       className={className}
@@ -100,7 +100,7 @@ export function IconLink({
   label,
   icon: Icon,
   children,
-  variant = "outline",
+  variant = "neutral",
   compact = false,
   side = "top",
   className,
@@ -121,10 +121,7 @@ export function IconLink({
       download={download}
       aria-label={label}
       title={label}
-      className={cn(
-        buttonVariants({ variant, size: compact ? "icon-compact" : "icon-sm" }),
-        className
-      )}
+      className={cn(buttonVariants({ variant, size: compact ? "icon-xs" : "icon-sm" }), className)}
     />
   );
 

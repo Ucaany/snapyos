@@ -103,8 +103,7 @@ const PALETTE_ITEMS: { kind: PaletteKind; label: string; hint: string }[] = [
  * tetap menghasilkan utility-nya. Kunci = `${left}-${right}`.
  */
 const GRID_CLASSES: Record<string, string> = {
-  "true-true":
-    "lg:grid-cols-[minmax(0,260px)_minmax(0,1.6fr)_minmax(0,340px)]",
+  "true-true": "lg:grid-cols-[minmax(0,260px)_minmax(0,1.6fr)_minmax(0,340px)]",
   "true-false": "lg:grid-cols-[minmax(0,260px)_minmax(0,1fr)]",
   "false-true": "lg:grid-cols-[minmax(0,1fr)_minmax(0,340px)]",
   "false-false": "lg:grid-cols-1",
@@ -1044,7 +1043,7 @@ export function TemplateBuilderCanvas({
           <div className="ml-auto flex flex-wrap items-center gap-2">
             <Button
               type="button"
-              variant="outline"
+              variant="neutral"
               size="sm"
               onClick={undo}
               disabled={!history.canUndo}
@@ -1056,7 +1055,7 @@ export function TemplateBuilderCanvas({
             </Button>
             <Button
               type="button"
-              variant="outline"
+              variant="neutral"
               size="sm"
               onClick={redo}
               disabled={!history.canRedo}
@@ -1069,7 +1068,7 @@ export function TemplateBuilderCanvas({
             {onDuplicateTemplate && (
               <Button
                 type="button"
-                variant="outline"
+                variant="neutral"
                 size="sm"
                 onClick={duplicateTemplate}
                 disabled={duplicating}
@@ -1135,7 +1134,7 @@ export function TemplateBuilderCanvas({
                 <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="neutral"
                     size="sm"
                     aria-label="Tambah slot"
                     onClick={() => addSlot()}
@@ -1147,7 +1146,7 @@ export function TemplateBuilderCanvas({
                   {selected && (
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="neutral"
                       size="sm"
                       aria-label="Duplikat slot terpilih"
                       onClick={duplicateSlot}
@@ -1319,7 +1318,7 @@ export function TemplateBuilderCanvas({
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
-              variant="outline"
+              variant="neutral"
               size="sm"
               onClick={panels.toggleLeft}
               aria-expanded={panels.left}
@@ -1330,7 +1329,7 @@ export function TemplateBuilderCanvas({
             </Button>
             <Button
               type="button"
-              variant="outline"
+              variant="neutral"
               size="sm"
               onClick={panels.toggleRight}
               aria-expanded={panels.right}
@@ -1341,7 +1340,7 @@ export function TemplateBuilderCanvas({
             </Button>
             <Button
               type="button"
-              variant="outline"
+              variant="neutral"
               size="sm"
               onClick={viewport.zoomOut}
               disabled={viewport.zoom <= ZOOM_MIN}
@@ -1354,7 +1353,7 @@ export function TemplateBuilderCanvas({
             </span>
             <Button
               type="button"
-              variant="outline"
+              variant="neutral"
               size="sm"
               onClick={viewport.zoomIn}
               disabled={viewport.zoom >= ZOOM_MAX}
@@ -1364,7 +1363,7 @@ export function TemplateBuilderCanvas({
             </Button>
             <Button
               type="button"
-              variant="outline"
+              variant="neutral"
               size="sm"
               onClick={fitToStage}
               aria-label="Sesuaikan ke layar"
@@ -1434,285 +1433,288 @@ export function TemplateBuilderCanvas({
             aria-label="Properti slot dan kanvas"
             className="flex min-w-0 flex-col gap-5"
           >
-          {canEdit && selected && (
-            <>
-              <SlotInspector
-                uid={uid}
-                slot={selected}
-                slotNumber={slotNumber}
-                canEdit={canEdit}
-                onPatch={(patch) => patchSlot(selected.id, patch)}
-                onShape={setShape}
-                onWidth={setWidth}
-                onHeight={setHeight}
-                onDelete={deleteSelection}
-                onDuplicate={duplicateSlot}
-                onMoveZ={moveZ}
-                fieldIssue={slotIssue}
-              />
-              <TemplateTextPanel
-                uid={uid}
-                slot={selected}
-                canEdit={canEdit}
-                onPatchProperties={(patch) => patchProperties(selected.id, patch)}
-              />
-            </>
-          )}
+            {canEdit && selected && (
+              <>
+                <SlotInspector
+                  uid={uid}
+                  slot={selected}
+                  slotNumber={slotNumber}
+                  canEdit={canEdit}
+                  onPatch={(patch) => patchSlot(selected.id, patch)}
+                  onShape={setShape}
+                  onWidth={setWidth}
+                  onHeight={setHeight}
+                  onDelete={deleteSelection}
+                  onDuplicate={duplicateSlot}
+                  onMoveZ={moveZ}
+                  fieldIssue={slotIssue}
+                />
+                <TemplateTextPanel
+                  uid={uid}
+                  slot={selected}
+                  canEdit={canEdit}
+                  onPatchProperties={(patch) => patchProperties(selected.id, patch)}
+                />
+              </>
+            )}
 
-          {canEdit && (
-            <div className="flex flex-col gap-4 border-2 border-ink bg-surface p-3 shadow-hard">
-              <fieldset className="flex flex-col gap-2">
-                <legend className={labelClass}>Preset kanvas</legend>
-                <div className="flex flex-wrap gap-2">
-                  {PRESET_OPTIONS.map((preset) => (
-                    <Button
-                      key={preset.key}
-                      type="button"
-                      size="sm"
-                      variant={layout.canvas.preset === preset.key ? "default" : "outline"}
-                      aria-label={`Preset ${preset.label}`}
-                      aria-pressed={layout.canvas.preset === preset.key}
-                      onClick={() => handlePreset(preset.key)}
-                    >
-                      {preset.label}
-                    </Button>
-                  ))}
-                </div>
-              </fieldset>
+            {canEdit && (
+              <div className="flex flex-col gap-4 border-2 border-ink bg-surface p-3 shadow-hard">
+                <fieldset className="flex flex-col gap-2">
+                  <legend className={labelClass}>Preset kanvas</legend>
+                  <div className="flex flex-wrap gap-2">
+                    {PRESET_OPTIONS.map((preset) => (
+                      <Button
+                        key={preset.key}
+                        type="button"
+                        size="sm"
+                        variant={layout.canvas.preset === preset.key ? "default" : "neutral"}
+                        aria-label={`Preset ${preset.label}`}
+                        aria-pressed={layout.canvas.preset === preset.key}
+                        onClick={() => handlePreset(preset.key)}
+                      >
+                        {preset.label}
+                      </Button>
+                    ))}
+                  </div>
+                </fieldset>
 
-              <div className="flex flex-col gap-2 border-2 border-ink/20 bg-muted p-3">
-                <p className={labelClass}>Deteksi area hijau</p>
-                <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.06em] text-muted-foreground">
-                  Hijau dihapus dari frame dan diganti slot foto. File asli disimpan untuk deteksi
-                  ulang.
-                </p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    aria-label="Deteksi area hijau frame"
-                    onClick={() => void runDetect()}
-                    disabled={!onDetectChroma || detecting}
-                  >
-                    {detecting
-                      ? "Mendeteksi…"
-                      : confirmDetect
-                        ? "Yakin? Klik lagi"
-                        : "Deteksi area hijau"}
-                  </Button>
-                  {confirmDetect && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      aria-label="Batalkan deteksi"
-                      onClick={() => setConfirmDetect(false)}
-                    >
-                      Batal
-                    </Button>
-                  )}
-                </div>
-                {detectMessage && (
-                  <p
-                    role={detectMessage.kind === "error" ? "alert" : "status"}
-                    className={
-                      detectMessage.kind === "error"
-                        ? "font-mono text-[10px] uppercase tracking-[0.06em] text-destructive"
-                        : "font-mono text-[10px] uppercase tracking-[0.06em] text-ink"
-                    }
-                  >
-                    {detectMessage.text}
+                <div className="flex flex-col gap-2 border-2 border-ink/20 bg-muted p-3">
+                  <p className={labelClass}>Deteksi area hijau</p>
+                  <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.06em] text-muted-foreground">
+                    Hijau dihapus dari frame dan diganti slot foto. File asli disimpan untuk deteksi
+                    ulang.
                   </p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1">
-                  <label htmlFor={`${uid}-cw`} className={labelClass}>
-                    Canvas width
-                  </label>
-                  <Input
-                    id={`${uid}-cw`}
-                    type="number"
-                    step={1}
-                    min={1}
-                    max={CANVAS_MAX}
-                    value={layout.canvas.width}
-                    onChange={(event) =>
-                      applyCanvasSize(
-                        Number(event.target.value) || 1,
-                        layout.canvas.height,
-                        "custom"
-                      )
-                    }
-                    aria-invalid={Boolean(issueFor("canvas.width"))}
-                  />
-                  {issueFor("canvas.width") && (
-                    <p role="alert" className="font-mono text-[10px] uppercase text-destructive">
-                      {issueFor("canvas.width")}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="neutral"
+                      aria-label="Deteksi area hijau frame"
+                      onClick={() => void runDetect()}
+                      disabled={!onDetectChroma || detecting}
+                    >
+                      {detecting
+                        ? "Mendeteksi…"
+                        : confirmDetect
+                          ? "Yakin? Klik lagi"
+                          : "Deteksi area hijau"}
+                    </Button>
+                    {confirmDetect && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        aria-label="Batalkan deteksi"
+                        onClick={() => setConfirmDetect(false)}
+                      >
+                        Batal
+                      </Button>
+                    )}
+                  </div>
+                  {detectMessage && (
+                    <p
+                      role={detectMessage.kind === "error" ? "alert" : "status"}
+                      className={
+                        detectMessage.kind === "error"
+                          ? "font-mono text-[10px] uppercase tracking-[0.06em] text-destructive"
+                          : "font-mono text-[10px] uppercase tracking-[0.06em] text-ink"
+                      }
+                    >
+                      {detectMessage.text}
                     </p>
                   )}
                 </div>
-                <div className="flex flex-col gap-1">
-                  <label htmlFor={`${uid}-ch`} className={labelClass}>
-                    Canvas height
-                  </label>
-                  <Input
-                    id={`${uid}-ch`}
-                    type="number"
-                    step={1}
-                    min={1}
-                    max={CANVAS_MAX}
-                    value={layout.canvas.height}
-                    onChange={(event) =>
-                      applyCanvasSize(
-                        layout.canvas.width,
-                        Number(event.target.value) || 1,
-                        "custom"
-                      )
-                    }
-                    aria-invalid={Boolean(issueFor("canvas.height"))}
-                  />
-                  {issueFor("canvas.height") && (
-                    <p role="alert" className="font-mono text-[10px] uppercase text-destructive">
-                      {issueFor("canvas.height")}
-                    </p>
-                  )}
-                </div>
-              </div>
 
-              <div className="flex flex-wrap items-end gap-3">
-                <div className="flex flex-col gap-1">
-                  <label htmlFor={`${uid}-bg-color`} className={labelClass}>
-                    Background
-                  </label>
-                  <input
-                    id={`${uid}-bg-color`}
-                    type="color"
-                    value={HEX.test(bgInput) ? bgInput : DEFAULT_CANVAS_BACKGROUND}
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      setBgDraft(value);
-                      history.commit({
-                        ...layout,
-                        canvas: { ...layout.canvas, background: value },
-                      });
-                    }}
-                    aria-label="Warna background kanvas"
-                    className="h-11 w-20 cursor-pointer border-2 border-ink bg-surface p-1 shadow-hard-sm focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label htmlFor={`${uid}-cw`} className={labelClass}>
+                      Canvas width
+                    </label>
+                    <Input
+                      id={`${uid}-cw`}
+                      type="number"
+                      step={1}
+                      min={1}
+                      max={CANVAS_MAX}
+                      value={layout.canvas.width}
+                      onChange={(event) =>
+                        applyCanvasSize(
+                          Number(event.target.value) || 1,
+                          layout.canvas.height,
+                          "custom"
+                        )
+                      }
+                      aria-invalid={Boolean(issueFor("canvas.width"))}
+                    />
+                    {issueFor("canvas.width") && (
+                      <p role="alert" className="font-mono text-[10px] uppercase text-destructive">
+                        {issueFor("canvas.width")}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label htmlFor={`${uid}-ch`} className={labelClass}>
+                      Canvas height
+                    </label>
+                    <Input
+                      id={`${uid}-ch`}
+                      type="number"
+                      step={1}
+                      min={1}
+                      max={CANVAS_MAX}
+                      value={layout.canvas.height}
+                      onChange={(event) =>
+                        applyCanvasSize(
+                          layout.canvas.width,
+                          Number(event.target.value) || 1,
+                          "custom"
+                        )
+                      }
+                      aria-invalid={Boolean(issueFor("canvas.height"))}
+                    />
+                    {issueFor("canvas.height") && (
+                      <p role="alert" className="font-mono text-[10px] uppercase text-destructive">
+                        {issueFor("canvas.height")}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div className="flex min-w-40 flex-1 flex-col gap-1">
-                  <label htmlFor={`${uid}-bg-hex`} className={labelClass}>
-                    Hex
-                  </label>
-                  <Input
-                    id={`${uid}-bg-hex`}
-                    value={bgInput}
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      setBgDraft(value);
-                      if (HEX.test(value)) {
-                        history.replace({
+
+                <div className="flex flex-wrap items-end gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label htmlFor={`${uid}-bg-color`} className={labelClass}>
+                      Background
+                    </label>
+                    <input
+                      id={`${uid}-bg-color`}
+                      type="color"
+                      value={HEX.test(bgInput) ? bgInput : DEFAULT_CANVAS_BACKGROUND}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setBgDraft(value);
+                        history.commit({
                           ...layout,
                           canvas: { ...layout.canvas, background: value },
                         });
-                      }
-                    }}
-                    onBlur={() => {
-                      // Hex tidak valid ditinggalkan → kembali ke nilai kanvas.
-                      if (!HEX.test(bgInput)) setBgDraft(null);
-                    }}
-                    aria-invalid={!HEX.test(bgInput) || Boolean(issueFor("canvas.background"))}
-                    placeholder="#ffffff"
-                  />
-                  {!HEX.test(bgInput) ? (
-                    <p className="font-mono text-[10px] uppercase text-destructive">
-                      Hex harus format #rrggbb
-                    </p>
-                  ) : (
-                    issueFor("canvas.background") && (
-                      <p role="alert" className="font-mono text-[10px] uppercase text-destructive">
-                        {issueFor("canvas.background")}
+                      }}
+                      aria-label="Warna background kanvas"
+                      className="h-11 w-20 cursor-pointer border-2 border-ink bg-surface p-1 shadow-hard-sm focus-visible:ring-2 focus-visible:ring-ink focus-visible:outline-none"
+                    />
+                  </div>
+                  <div className="flex min-w-40 flex-1 flex-col gap-1">
+                    <label htmlFor={`${uid}-bg-hex`} className={labelClass}>
+                      Hex
+                    </label>
+                    <Input
+                      id={`${uid}-bg-hex`}
+                      value={bgInput}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setBgDraft(value);
+                        if (HEX.test(value)) {
+                          history.replace({
+                            ...layout,
+                            canvas: { ...layout.canvas, background: value },
+                          });
+                        }
+                      }}
+                      onBlur={() => {
+                        // Hex tidak valid ditinggalkan → kembali ke nilai kanvas.
+                        if (!HEX.test(bgInput)) setBgDraft(null);
+                      }}
+                      aria-invalid={!HEX.test(bgInput) || Boolean(issueFor("canvas.background"))}
+                      placeholder="#ffffff"
+                    />
+                    {!HEX.test(bgInput) ? (
+                      <p className="font-mono text-[10px] uppercase text-destructive">
+                        Hex harus format #rrggbb
                       </p>
-                    )
-                  )}
+                    ) : (
+                      issueFor("canvas.background") && (
+                        <p
+                          role="alert"
+                          className="font-mono text-[10px] uppercase text-destructive"
+                        >
+                          {issueFor("canvas.background")}
+                        </p>
+                      )
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {canEdit && (
-            <div className="flex flex-col gap-3">
-              {invalid && (
-                <div
-                  role="alert"
-                  className="border-2 border-destructive bg-destructive/10 px-3 py-2"
-                >
-                  <p className="font-mono text-xs font-bold uppercase tracking-[0.08em]">
-                    {`${issues.length} masalah layout — simpan dinonaktifkan`}
-                  </p>
-                  <ul className="mt-2 flex list-inside list-disc flex-col gap-1 font-mono text-[11px] text-ink">
-                    {issues.map((issue) => (
-                      <li key={`${issue.path}-${issue.message}`}>
-                        {`${issue.path}: ${issue.message}`}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {saveMessage?.kind === "ok" && (
-                <p
-                  role="status"
-                  className="border-2 border-ink bg-accent px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.08em]"
-                >
-                  {saveMessage.text}
-                </p>
-              )}
-
-              {saveMessage?.kind === "error" && (
-                <div
-                  role="alert"
-                  className="border-2 border-destructive bg-destructive/10 px-3 py-2"
-                >
-                  <p className="font-mono text-xs font-bold uppercase tracking-[0.08em]">
-                    {saveMessage.text}
-                  </p>
-                  {saveMessage.fields.length > 0 && (
-                    <ul className="mt-2 flex list-inside list-disc flex-col gap-1 font-mono text-[11px]">
-                      {saveMessage.fields.map((field) => (
-                        <li key={field}>{field}</li>
+            {canEdit && (
+              <div className="flex flex-col gap-3">
+                {invalid && (
+                  <div
+                    role="alert"
+                    className="border-2 border-destructive bg-destructive/10 px-3 py-2"
+                  >
+                    <p className="font-mono text-xs font-bold uppercase tracking-[0.08em]">
+                      {`${issues.length} masalah layout — simpan dinonaktifkan`}
+                    </p>
+                    <ul className="mt-2 flex list-inside list-disc flex-col gap-1 font-mono text-[11px] text-ink">
+                      {issues.map((issue) => (
+                        <li key={`${issue.path}-${issue.message}`}>
+                          {`${issue.path}: ${issue.message}`}
+                        </li>
                       ))}
                     </ul>
-                  )}
-                </div>
-              )}
+                  </div>
+                )}
 
-              {onSave && (
-                <div className="flex flex-wrap justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => save(false)}
-                    disabled={invalid || pending}
-                    aria-label="Simpan draft"
+                {saveMessage?.kind === "ok" && (
+                  <p
+                    role="status"
+                    className="border-2 border-ink bg-accent px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.08em]"
                   >
-                    {pending ? "Menyimpan…" : "Simpan draft"}
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={() => save(true)}
-                    disabled={invalid || pending}
-                    aria-label="Publish template"
+                    {saveMessage.text}
+                  </p>
+                )}
+
+                {saveMessage?.kind === "error" && (
+                  <div
+                    role="alert"
+                    className="border-2 border-destructive bg-destructive/10 px-3 py-2"
                   >
-                    {pending ? "Menyimpan…" : "Publish"}
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
+                    <p className="font-mono text-xs font-bold uppercase tracking-[0.08em]">
+                      {saveMessage.text}
+                    </p>
+                    {saveMessage.fields.length > 0 && (
+                      <ul className="mt-2 flex list-inside list-disc flex-col gap-1 font-mono text-[11px]">
+                        {saveMessage.fields.map((field) => (
+                          <li key={field}>{field}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+
+                {onSave && (
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="neutral"
+                      onClick={() => save(false)}
+                      disabled={invalid || pending}
+                      aria-label="Simpan draft"
+                    >
+                      {pending ? "Menyimpan…" : "Simpan draft"}
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => save(true)}
+                      disabled={invalid || pending}
+                      aria-label="Publish template"
+                    >
+                      {pending ? "Menyimpan…" : "Publish"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
           </aside>
         )}
       </div>

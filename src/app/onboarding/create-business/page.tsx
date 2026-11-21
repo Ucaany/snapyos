@@ -22,7 +22,7 @@ export default async function CreateBusinessPage() {
       <div className="relative mx-auto max-w-[900px]">
         <div className="flex items-center justify-between gap-4 border-2 border-ink bg-surface p-2 shadow-[4px_4px_0_0_#111111]">
           <Button
-            variant="outline"
+            variant="neutral"
             size="sm"
             nativeButton={false}
             className="min-h-11 rounded-none border-2 border-ink bg-surface font-mono text-[11px] uppercase tracking-[0.16em] text-ink shadow-[2px_2px_0_0_#111111] hover:bg-muted active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"

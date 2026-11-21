@@ -1,20 +1,21 @@
 import * as React from "react";
 
 const MOBILE_BREAKPOINT = 768;
-const QUERY = `(max-width: ${MOBILE_BREAKPOINT - 1}px)`;
 
-/**
- * useIsMobile — langganan media query tanpa setState di effect
- * (dipakai sidebar shadcn untuk mode sheet di layar kecil).
- */
+function subscribe(callback: () => void) {
+  const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
+  mql.addEventListener("change", callback);
+  return () => mql.removeEventListener("change", callback);
+}
+
+function getSnapshot() {
+  return window.innerWidth < MOBILE_BREAKPOINT;
+}
+
+function getServerSnapshot() {
+  return false;
+}
+
 export function useIsMobile() {
-  return React.useSyncExternalStore(
-    (onChange) => {
-      const mql = window.matchMedia(QUERY);
-      mql.addEventListener("change", onChange);
-      return () => mql.removeEventListener("change", onChange);
-    },
-    () => window.matchMedia(QUERY).matches,
-    () => false
-  );
+  return React.useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }

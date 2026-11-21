@@ -12,10 +12,7 @@ import { cn } from "@/lib/utils";
  */
 export function PageShell({ className, children, ...rest }: ComponentProps<"div">) {
   return (
-    <div
-      className={cn("flex flex-col gap-6 p-4 sm:p-6 md:gap-8 md:p-10", className)}
-      {...rest}
-    >
+    <div className={cn("flex flex-col gap-6 p-4 sm:p-6 md:gap-8 md:p-10", className)} {...rest}>
       {children}
     </div>
   );

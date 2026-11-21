@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { HardDrive } from "lucide-react";
 
+import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import { formatStorageMb } from "@/lib/storage-units";
 
@@ -52,7 +53,8 @@ export function StorageIndicator({ businessId }: { businessId: string }) {
           : "Penyimpanan"
       }
       className={cn(
-        "hidden min-h-11 shrink-0 items-center gap-2 border-2 border-ink bg-surface px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.05em] text-ink transition-colors hover:bg-accent active:translate-y-[2px] sm:flex md:px-3 md:text-xs"
+        buttonVariants({ variant: "neutral", size: "sm" }),
+        "hidden shrink-0 gap-2 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.05em] sm:flex md:px-3 md:text-xs"
       )}
     >
       <HardDrive className="size-4 shrink-0" />

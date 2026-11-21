@@ -282,13 +282,13 @@ export function CupsPrintScreen({
               </ol>
               <Link
                 href="/docs/perangkat"
-                className={`${buttonVariants({ variant: "outline", size: "lg" })} w-fit underline decoration-2 underline-offset-4`}
+                className={`${buttonVariants({ variant: "neutral", size: "lg" })} w-fit underline decoration-2 underline-offset-4`}
               >
                 Buka panduan perangkat
               </Link>
             </div>
             <div className="flex flex-wrap justify-center gap-3">
-              <Button size="lg" variant="outline" onClick={retry}>
+              <Button size="lg" variant="neutral" onClick={retry}>
                 Coba lagi
               </Button>
               <Button size="lg" onClick={skip}>
@@ -321,7 +321,7 @@ export function CupsPrintScreen({
               >
                 <Check className="size-5" aria-hidden /> Kertas keluar
               </Button>
-              <Button size="lg" variant="outline" onClick={skip}>
+              <Button size="lg" variant="neutral" onClick={skip}>
                 Lanjut
               </Button>
             </div>
@@ -341,7 +341,7 @@ export function CupsPrintScreen({
                   <Printer className="size-5" aria-hidden /> Cetak
                 </Button>
               )}
-              <Button size="lg" variant="outline" onClick={skip}>
+              <Button size="lg" variant="neutral" onClick={skip}>
                 Lanjut
               </Button>
             </div>

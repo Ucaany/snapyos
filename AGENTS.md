@@ -13,11 +13,12 @@ Sebelum menulis komponen, halaman, styling, atau markup visual apa pun, WAJIB me
 
 Detail & resolusi konflik: `docs/13-skill-anti-slop.md` (skill mapping §13.1, prioritas §13.2, override table §13.2, pre-flight §13.6).
 
-## KUNCI ESTETIKA (single aesthetic — brutalist)
+## KUNCI ESTETIKA (brutalist + pengecualian admin)
 
-- **Neo-Brutalism adalah satu-satunya bahasa visual untuk seluruh UI SnapyOS** — marketing, auth, kiosk customer, result page, shell dashboard owner/admin/staff — `src/styles/tokens.css` + `globals.css` §`@layer base`.
-- **Dilarang** estetika lain: minimalist-ui, glassmorphism, "premium luxury", soft/rounded SaaS, dark-mesh AI landing, shell shadcn default. (Dual-shell Dashboard-01 pernah ada, **dihapus 2026-08-30** — satu dashboard brutalist saja.)
+- **Neo-Brutalism adalah satu-satunya bahasa visual untuk seluruh UI SnapyOS** — marketing, auth, kiosk customer, result page, shell dashboard owner/staff — `src/styles/tokens.css` + `globals.css` §`@layer base`.
+- **Dilarang** estetika lain di shell tersebut: minimalist-ui, glassmorphism, "premium luxury", soft/rounded SaaS, dark-mesh AI landing, shell shadcn default. (Dual-shell Dashboard-01 pernah ada, **dihapus 2026-08-30** — satu dashboard brutalist saja.)
 - Scope brutalist **wajib** untuk: `(marketing)/*`, `(auth)/*`, `(dashboard)/*`, `(staff)/*`, `(pos)/*`, `app/p/**` (kiosk publik), `app/r/**` (result online), `app/api/**` (response), seluruh `globals.css`.
+- **Pengecualian resmi (2026-11-14): `/admin/*` memakai shadcn default.** Admin Dashboard dibangun dari block resmi `sidebar-08` + komponen default base-nova di `src/components/admin/ui/*`, dengan tema neutral di-scope lewat `.admin-theme` (`src/styles/admin-theme.css`). Dilarang mengimpor `@/components/ui/*` (neobrutalism) dari `src/app/(admin)` atau `src/components/admin/*`, dan dilarang memakai `@/components/admin/ui/*` di shell lain. Migrasi shell lain ke shadcn default dilakukan bertahap dan belum berlaku sampai docs diperbarui lagi.
 - Skill desain lain (mis. `high-end-visual-design`) hanya menyumbang perilaku interaksi, bukan tampilan.
 
 ## Source of Truth (urutan prioritas)

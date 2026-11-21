@@ -25,7 +25,7 @@ export default function InvoiceNotFound() {
           Invoice tidak ada, bukan milik business Anda, atau sudah dihapus. Kembali ke Subscription
           untuk melihat tagihan aktif.
         </p>
-        <Link href="/dashboard/subscription" className={buttonVariants({ variant: "outline" })}>
+        <Link href="/dashboard/subscription" className={buttonVariants({ variant: "neutral" })}>
           <ArrowLeft className="size-4" aria-hidden /> Kembali ke Subscription
         </Link>
       </div>

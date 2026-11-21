@@ -424,7 +424,7 @@ export function SetupWizard({
                 Browser tidak mendukung kamera. Gunakan Chrome terbaru di perangkat kiosk.
               </p>
               <Button
-                variant="outline"
+                variant="neutral"
                 className="w-fit"
                 onClick={() => {
                   void report({ camera: { error: "UNSUPPORTED" } });
@@ -442,7 +442,7 @@ export function SetupWizard({
                     <Camera className="size-8" aria-hidden />
                     <p className="max-w-[42ch] text-sm leading-relaxed">{cameraError.message}</p>
                     <Button
-                      variant="outline"
+                      variant="neutral"
                       onClick={() => void openStream(selectedId || undefined)}
                     >
                       {cameraError.action}
@@ -528,7 +528,7 @@ export function SetupWizard({
                   <BridgeTokenField />
                   <div className="flex flex-wrap items-center gap-2">
                     <Button
-                      variant="outline"
+                      variant="neutral"
                       disabled={printerBusy}
                       onClick={() => void detectPrinters()}
                     >
@@ -576,7 +576,7 @@ export function SetupWizard({
                   )}
                   {printerStatus?.state === "disabled" && (
                     <Button
-                      variant="outline"
+                      variant="neutral"
                       className="w-fit"
                       disabled={printerBusy}
                       onClick={() => void activatePrinter()}
@@ -622,7 +622,7 @@ export function SetupWizard({
                     Cetak tidak aktif untuk booth ini. Setup bisa diselesaikan tanpa uji cetak.
                   </p>
                   <Button
-                    variant="outline"
+                    variant="neutral"
                     className="w-fit"
                     onClick={() => {
                       void report({
@@ -645,7 +645,7 @@ export function SetupWizard({
                     ditandai belum terverifikasi.
                   </p>
                   <Button
-                    variant="outline"
+                    variant="neutral"
                     className="w-fit min-h-14 font-mono uppercase"
                     disabled={printSkipping}
                     onClick={() => {

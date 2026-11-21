@@ -19,8 +19,7 @@ import { resolvePrintMode } from "@/lib/print/print-mode";
 import type { PrintSettings } from "@/lib/kiosk-types";
 import { reportPrintTestAction, savePhotoboxHardwareAction } from "@/server/hardware-actions";
 
-const SECTION =
-  "flex flex-col gap-4 border-2 border-ink bg-surface p-4 shadow-hard md:p-5";
+const SECTION = "flex flex-col gap-4 border-2 border-ink bg-surface p-4 shadow-hard md:p-5";
 const LABEL = "font-mono text-[10px] font-bold uppercase tracking-[0.16em]";
 const HEADING = "font-display text-lg uppercase leading-none tracking-[-0.01em]";
 const NEUTRAL =
@@ -234,7 +233,7 @@ export function HardwareDetectButton({
       <Button
         type="button"
         size="sm"
-        variant="outline"
+        variant="neutral"
         className="w-fit"
         disabled={state === "busy"}
         onClick={() => void detect()}
@@ -268,7 +267,7 @@ export function HardwareDetectButton({
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
-              variant="outline"
+              variant="neutral"
               className="min-h-11"
               onClick={() => void detect()}
             >
@@ -277,7 +276,7 @@ export function HardwareDetectButton({
             </Button>
             <Button
               type="button"
-              variant="outline"
+              variant="neutral"
               className="min-h-11"
               aria-expanded={manualOpen}
               onClick={() => setManualOpen((open) => !open)}
@@ -298,8 +297,8 @@ export function HardwareDetectButton({
                 onChange={(event) => setManualName(event.target.value)}
               />
               <span className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.06em] text-muted-foreground">
-                Catatan lokal di halaman ini, tidak disimpan ke server. Nama yang benar-benar dipakai
-                diisi di kolom perangkat di bawah.
+                Catatan lokal di halaman ini, tidak disimpan ke server. Nama yang benar-benar
+                dipakai diisi di kolom perangkat di bawah.
               </span>
             </label>
           ) : null}
@@ -756,9 +755,7 @@ export function PhotoboxHardwarePanel({
     []
   );
 
-  async function save(
-    group: "photo" | "thermal" | "receipt" | "camera" | "session" | "template"
-  ) {
+  async function save(group: "photo" | "thermal" | "receipt" | "camera" | "session" | "template") {
     if (!canWrite) return;
     setSavingGroup(group);
     setStatus(null);

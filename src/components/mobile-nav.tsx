@@ -74,7 +74,7 @@ export function MobileNav() {
                 href="/login"
                 onClick={close}
                 className={buttonVariants({
-                  variant: "outline",
+                  variant: "neutral",
                   className: "w-full",
                 })}
               >

@@ -48,7 +48,7 @@ export default async function TemplateBuilderPage({ params }: { params: Promise<
         right={
           <Link
             href="/dashboard/templates"
-            className={buttonVariants({ variant: "outline", size: "sm" })}
+            className={buttonVariants({ variant: "neutral", size: "sm" })}
           >
             <ArrowLeft aria-hidden="true" />
             Kembali ke Templates

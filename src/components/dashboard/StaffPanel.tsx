@@ -112,7 +112,7 @@ function RoleForm({ member, currentUserId }: { member: StaffDirectoryRow; curren
         </select>
         <IconButton
           type="submit"
-          variant="outline"
+          variant="neutral"
           label={`Simpan role ${member.name ?? member.email}`}
           icon={Save}
           compact
@@ -147,7 +147,7 @@ function RemoveForm({
         <Button
           type="button"
           variant="destructive"
-          size="icon-compact"
+          size="icon-xs"
           aria-label={`Keluarkan ${member.email}`}
           disabled={disabled}
           title={
@@ -204,7 +204,7 @@ function PinField({
           aria-invalid={Boolean(pinError)}
           className="min-h-11 max-w-[120px] font-mono text-xs"
         />
-        <Button type="submit" variant="outline" size="sm" disabled={pending}>
+        <Button type="submit" variant="neutral" size="sm" disabled={pending}>
           {pending ? "…" : "Set"}
         </Button>
       </form>
@@ -294,7 +294,7 @@ function BoothsEditor({
             <Save aria-hidden />
             {pending ? "Menyimpan…" : "Simpan akses"}
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={pending}>
+          <Button type="button" variant="neutral" size="sm" onClick={onClose} disabled={pending}>
             Batal
           </Button>
           <p className="font-mono text-[10px] uppercase tracking-[0.05em] text-muted-foreground">
@@ -536,8 +536,8 @@ export function StaffPanel({
                           <div className="flex items-start justify-end gap-2">
                             <Button
                               type="button"
-                              variant="outline"
-                              size="icon-compact"
+                              variant="neutral"
+                              size="icon-xs"
                               aria-label={`Atur akses booth ${member.name ?? member.email ?? ""}`}
                               title={
                                 member.role === "owner"

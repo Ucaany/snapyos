@@ -55,8 +55,8 @@ function SubmitButton({
   return (
     <Button
       type="submit"
-      variant={enabled ? "default" : "outline"}
-      size="icon-compact"
+      variant={enabled ? "default" : "neutral"}
+      size="icon-xs"
       disabled={disabled || pending}
       title={
         disabled

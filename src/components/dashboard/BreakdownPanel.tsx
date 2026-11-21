@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { buttonVariants } from "@/components/ui/button-variants";
 import type { RevenueBreakdown } from "@/server/dashboard";
 import { formatIDR } from "@/lib/dashboard-math";
 
@@ -80,7 +81,11 @@ export function BreakdownPanel({
         <span aria-hidden className="h-px flex-1 bg-ink/30" />
         <Link
           href="/dashboard/analytics?tab=package"
-          className="font-bold underline underline-offset-4 hover:bg-ink hover:text-bg"
+          className={buttonVariants({
+            variant: "link",
+            size: "sm",
+            className: "h-auto min-h-11 px-2 py-1 text-[10px] uppercase tracking-[0.2em]",
+          })}
         >
           Analitik lengkap
         </Link>

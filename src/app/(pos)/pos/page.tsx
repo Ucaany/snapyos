@@ -47,7 +47,7 @@ export default async function PosGatePage() {
           <p className="max-w-[55ch] text-sm leading-relaxed text-muted-foreground">
             Owner/manager mengaktifkan POS per booth di halaman manajemen POS.
           </p>
-          <Link href="/dashboard/pos" className={cn(buttonVariants({ variant: "outline" }))}>
+          <Link href="/dashboard/pos" className={cn(buttonVariants({ variant: "neutral" }))}>
             Ke manajemen POS
           </Link>
         </div>

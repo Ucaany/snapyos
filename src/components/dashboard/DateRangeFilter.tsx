@@ -142,7 +142,7 @@ export function DateRangeFilter({
               <Button
                 type="button"
                 size="sm"
-                variant="secondary"
+                variant="neutral"
                 aria-label="Pilih rentang tanggal"
                 className="min-h-11 min-w-0 shrink justify-between px-3 sm:min-h-9 sm:flex-none sm:shrink-0 sm:justify-center"
               />
@@ -181,7 +181,7 @@ export function DateRangeFilter({
             key={p.days}
             type="button"
             size="sm"
-            variant={days === p.days ? "default" : "outline"}
+            variant={days === p.days ? "default" : "neutral"}
             className="min-h-11 sm:min-h-9"
             onClick={() => applyPreset(p.days)}
           >

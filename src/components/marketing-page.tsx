@@ -58,7 +58,7 @@ export function MarketingLinks() {
       <Link className={buttonVariants()} href="/register">
         Konsultasi Bisnis
       </Link>
-      <Link className={buttonVariants({ variant: "outline" })} href="/">
+      <Link className={buttonVariants({ variant: "neutral" })} href="/">
         Kembali ke beranda
       </Link>
     </div>

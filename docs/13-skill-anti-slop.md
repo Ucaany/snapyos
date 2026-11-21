@@ -35,6 +35,10 @@ Dokumen ini menetapkan **skill yang wajib diaktifkan/load** sebelum development 
 | `design-taste-frontend` discourages `lucide-react`                                          | SnapyOS **wajib** Lucide (sesuai PRD §58 & §51) — override karena stack sudah ditetapkan                                               |
 | `design-taste-frontend` ban marquee >1, eyebrow >1/3 section                                | Landing SnapyOS boleh marquee/eyebrow secukupnya, tetap terkontrol                                                                     |
 
+**Implementasi komponen (2026-11-14):** registry `neobrutalism.dev` (shadcn/ui + Base UI) adalah implementasi resmi Neo-Brutalism untuk `src/components/ui/*`. Token tetap SnapyOS (`--color-accent`, `--shadow-hard`, `--radius: 0`); aturan anti-slop tidak berubah.
+
+**Pengecualian admin (2026-11-14):** `/admin/*` memakai shadcn default (`src/components/admin/ui/*` + block `sidebar-08` + `.admin-theme`). Aturan anti-slop tetap berlaku (kontras, target sentuh, fokus, tanpa dummy data), tetapi larangan "shell shadcn default" tidak berlaku untuk route admin. Detail: `docs/11-design-system.md` §11.12.
+
 ---
 
 ## 13.3 Aturan Anti-Slop WAJIB (dari design-taste-frontend)

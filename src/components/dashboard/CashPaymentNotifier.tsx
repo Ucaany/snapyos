@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Banknote, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import { formatIDR } from "@/lib/dashboard-math";
 import { confirmCashPaymentAction } from "@/server/cash-payment-actions";
 
@@ -104,14 +106,15 @@ export function CashPaymentNotifier({ businessId }: { businessId: string }) {
         <span className="flex items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-[0.18em]">
           <Banknote className="size-4" aria-hidden />[ BAYAR DI KASIR ] {visible.length}
         </span>
-        <button
-          type="button"
+        <IconButton
+          label="Tutup notifikasi"
+          variant="ghost"
+          compact
           onClick={dismissAll}
-          aria-label="Tutup notifikasi"
-          className="flex size-11 items-center justify-center border border-bg/40 text-bg hover:bg-bg hover:text-ink"
+          className="text-bg hover:bg-bg hover:text-ink"
         >
           <X className="size-4" aria-hidden />
-        </button>
+        </IconButton>
       </header>
 
       <ol className="flex max-h-64 flex-col gap-2 overflow-y-auto p-3">
@@ -128,14 +131,15 @@ export function CashPaymentNotifier({ businessId }: { businessId: string }) {
               </div>
               <strong className="shrink-0 font-mono text-sm">{formatIDR(item.amount)}</strong>
             </div>
-            <button
+            <Button
               type="button"
+              size="sm"
               disabled={busy === item.payment_reference}
               onClick={() => void confirm(item)}
-              className="mt-2 w-full border-2 border-ink bg-accent px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.05em] shadow-hard-sm active:translate-y-[1px] active:shadow-none disabled:opacity-50"
+              className="mt-2 w-full"
             >
               {busy === item.payment_reference ? "Memproses..." : "Konfirmasi bayar"}
-            </button>
+            </Button>
           </li>
         ))}
       </ol>

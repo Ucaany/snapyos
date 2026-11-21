@@ -8,23 +8,23 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 
 /**
- * Button — Neo-Brutalism: border 2px ink, hard shadow, mono, radius 0.
- * Varian & ukuran tunggal di `button-variants.ts` (dipakai juga untuk <Link>).
+ * Button — neobrutalism.dev (Base UI): border 2px, hard shadow, hover
+ * translate sebesar offset shadow. Varian & ukuran tunggal di
+ * `button-variants.ts` (dipakai juga untuk <Link> dari server component).
  */
-
 function Button({
   className,
-  variant = "default",
-  size = "default",
+  variant,
+  size,
   ...props
-}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+}: React.ComponentProps<typeof ButtonPrimitive> & VariantProps<typeof buttonVariants>) {
   return (
     <ButtonPrimitive
       data-slot="button"
-      className={cn(buttonVariants({ variant, size }), className)}
+      className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />
   );
 }
 
-export { Button };
+export { Button, buttonVariants };

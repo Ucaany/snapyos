@@ -34,7 +34,8 @@ const SubscriptionCheckout = dynamic(
   }
 );
 
-type TriggerVariant = "default" | "secondary" | "outline" | "destructive" | "ghost" | "link";
+type TriggerVariant =
+  "default" | "neutral" | "destructive" | "ghost" | "link" | "noShadow" | "reverse";
 type TriggerSize = "default" | "sm" | "lg" | "icon" | "icon-sm";
 
 type Props = {

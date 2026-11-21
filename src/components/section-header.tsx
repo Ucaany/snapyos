@@ -11,7 +11,7 @@ export function SectionHeader({
 }) {
   return (
     <div className="flex flex-col items-center gap-4 text-center">
-      <Badge variant="secondary" className="w-fit">
+      <Badge variant="neutral" className="w-fit">
         {badge}
       </Badge>
       <h2 className="font-display text-3xl font-black uppercase leading-[0.95] tracking-tight text-foreground sm:text-4xl">

@@ -74,8 +74,8 @@ export function DeleteConfirmForm({
       <form className="inline-flex">
         <Button
           type="button"
-          variant={variant === "destructive" ? "destructive" : "secondary"}
-          size={compact ? "icon-compact" : "icon"}
+          variant={variant === "destructive" ? "destructive" : "neutral"}
+          size={compact ? "icon-xs" : "icon"}
           disabled={disabled}
           onClick={() => setOpen(true)}
           title={triggerTitle ?? triggerLabel}

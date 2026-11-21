@@ -350,10 +350,7 @@ export function SubscriptionPanel({
             </p>
 
             {isCancelledStatus && (
-              <div
-                role="status"
-                className="border-2 border-destructive bg-surface p-4 shadow-hard"
-              >
+              <div role="status" className="border-2 border-destructive bg-surface p-4 shadow-hard">
                 <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-destructive">
                   Langganan dibatalkan
                 </p>

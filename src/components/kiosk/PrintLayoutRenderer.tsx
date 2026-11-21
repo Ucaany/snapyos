@@ -295,7 +295,7 @@ function PrintLayoutRendererInner({
               {errorMsg || "Terjadi kesalahan saat mencetak."}
             </p>
             <div className="flex flex-wrap justify-center gap-2.5">
-              <Button variant="outline" size="lg" onClick={handleRetry}>
+              <Button variant="neutral" size="lg" onClick={handleRetry}>
                 Coba lagi
               </Button>
               <Button size="lg" className="bg-accent" onClick={handleSkip}>
@@ -341,7 +341,7 @@ function PrintLayoutRendererInner({
               <Button size="lg" className="bg-accent" onClick={handleManualPrint}>
                 <Printer className="size-5" aria-hidden /> Cetak {totalSheets} lembar
               </Button>
-              <Button size="lg" variant="outline" onClick={handleSkip}>
+              <Button size="lg" variant="neutral" onClick={handleSkip}>
                 Lanjut
               </Button>
             </div>
@@ -355,7 +355,7 @@ function PrintLayoutRendererInner({
             <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
               {`${totalSheets} LEMBAR · ${plan.kind.toUpperCase()}`}
             </p>
-            <Button size="lg" variant="outline" onClick={handleSkip}>
+            <Button size="lg" variant="neutral" onClick={handleSkip}>
               Lanjut
             </Button>
           </>

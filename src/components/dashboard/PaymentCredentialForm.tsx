@@ -328,7 +328,7 @@ export function PaymentCredentialForm({
           {pending ? "Menyimpan..." : editing ? "Simpan Perubahan" : "Simpan Gateway"}
         </Button>
         {editing && (
-          <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
+          <Button type="button" variant="neutral" disabled={pending} onClick={onCancel}>
             Batal
           </Button>
         )}

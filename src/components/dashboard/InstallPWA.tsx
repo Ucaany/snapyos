@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { Download, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import { getDeviceProfile } from "@/lib/device-profile";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -70,14 +71,15 @@ export function InstallPWA() {
               : "Pasang SnapyOS sebagai aplikasi kiosk di perangkat ini, tanpa App Store, tanpa install file. Buka dari layar utama, fullscreen."}
           </p>
         </div>
-        <button
-          type="button"
-          aria-label="Tutup"
+        <IconButton
+          label="Tutup"
+          variant="ghost"
+          compact
           onClick={() => setDismissed(true)}
-          className="relative shrink-0 text-muted-foreground after:absolute after:-inset-3 hover:text-ink"
+          className="text-muted-foreground hover:text-ink"
         >
           <X className="size-4" aria-hidden />
-        </button>
+        </IconButton>
       </div>
       {showIosGuide ? null : (
         <Button size="sm" className="self-start" onClick={() => void install()}>

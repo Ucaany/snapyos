@@ -51,7 +51,7 @@ export default async function InvoicePayPage({ params }: { params: Promise<{ id:
         description={`Invoice ${invoice.number} · ${invoice.businessName} · batas waktu berlaku untuk QR aktif. QR kedaluwarsa dapat diganti tanpa mengubah invoice, plan, atau add-on.`}
         right={
           <Button
-            variant="secondary"
+            variant="neutral"
             size="sm"
             nativeButton={false}
             render={<Link href="/dashboard/subscription" />}

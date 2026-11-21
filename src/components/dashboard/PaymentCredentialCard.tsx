@@ -193,21 +193,21 @@ export function PaymentCredentialCard({ credential, webhookUrls, onChanged }: Pr
           label={testLabel}
           hint={testDisabledReason ?? undefined}
           icon={PlugZap}
-          variant="secondary"
+          variant="neutral"
           disabled={pending || !testable}
           onClick={() => void run(() => testCredentialAction(credential.id), testSuccess)}
         />
         <IconButton
           label="Ubah credential"
           icon={Pencil}
-          variant="outline"
+          variant="neutral"
           disabled={pending}
           onClick={() => setEditing(true)}
         />
         <IconButton
           label={credential.is_active ? "Nonaktifkan credential" : "Aktifkan credential"}
           icon={credential.is_active ? PowerOff : Power}
-          variant="outline"
+          variant="neutral"
           disabled={pending}
           onClick={() =>
             void run(

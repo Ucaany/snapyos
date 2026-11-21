@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Menu, X } from "lucide-react";
 
 import { buildNavGroups } from "@/components/dashboard/nav";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { isNavActive } from "@/lib/nav-active";
 
@@ -84,19 +85,21 @@ export function MobileNav({
 
   return (
     <div className="md:hidden">
-      <button
+      <Button
         ref={triggerRef}
         type="button"
+        variant="neutral"
+        size="sm"
         aria-label={open ? "Tutup menu" : "Buka menu"}
         aria-expanded={open}
         aria-controls="mobile-nav-panel"
         title={open ? "Tutup menu" : "Buka menu"}
         onClick={() => setOpen((value) => !value)}
-        className="flex min-h-11 min-w-11 items-center justify-center gap-1.5 border-2 border-ink bg-surface px-2 font-mono text-[10px] font-bold uppercase tracking-[0.05em] text-ink transition-colors hover:bg-accent active:translate-y-[2px]"
+        className="gap-1.5 px-2"
       >
         {open ? <X className="size-4" aria-hidden /> : <Menu className="size-4" aria-hidden />}
         <span className="hidden sm:inline">Menu</span>
-      </button>
+      </Button>
 
       {open && (
         <>
