@@ -1,14 +1,17 @@
-import { CreditCard } from "lucide-react";
+import { CheckCircle2, CreditCard, LayoutGrid, Percent, Wallet } from "lucide-react";
 
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
-import { AdminDisclosureCard } from "@/components/admin/AdminDisclosureCard";
+import { AdminDisclosure } from "@/components/admin/AdminDisclosureCard";
+import { AdminMetricCard } from "@/components/admin/AdminMetricCard";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { AdminSectionHeading } from "@/components/admin/AdminSectionHeading";
 import { AdminStatGrid } from "@/components/admin/AdminStatGrid";
 import { AdminStatusBadge } from "@/components/admin/AdminStatusBadge";
 import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
 import { AdminSelect } from "@/components/admin/AdminSelect";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -113,6 +116,11 @@ function Field({
 export default async function AdminPlansPage() {
   const plans = await listPlans();
   const featureKeys = featureKeysFrom(plans);
+  const activePlans = plans.filter((plan) => plan.is_active).length;
+  const minPrice = plans.length ? Math.min(...plans.map((plan) => plan.price_monthly)) : 0;
+  const avgFee = plans.length
+    ? plans.reduce((total, plan) => total + plan.platform_fee_percent, 0) / plans.length
+    : 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -121,6 +129,45 @@ export default async function AdminPlansPage() {
         title="Manajemen Paket"
         meta="Harga · limit sesi konkuren · feature flags · platform fee"
       />
+
+      <section aria-labelledby="admin-plans-metrics" className="flex flex-col gap-4">
+        <AdminSectionHeading
+          id="admin-plans-metrics"
+          title="Ikhtisar"
+          description="Katalog paket dan harga yang tersedia untuk owner."
+        />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <AdminMetricCard
+            accent
+            tone="emerald"
+            icon={CheckCircle2}
+            label="Paket aktif"
+            value={String(activePlans)}
+            sub={`${plans.length - activePlans} nonaktif`}
+          />
+          <AdminMetricCard
+            tone="neutral"
+            icon={LayoutGrid}
+            label="Total paket"
+            value={String(plans.length)}
+            sub="Seluruh katalog"
+          />
+          <AdminMetricCard
+            tone="sky"
+            icon={Wallet}
+            label="Harga terendah"
+            value={formatIDR(minPrice)}
+            sub="Per bulan"
+          />
+          <AdminMetricCard
+            tone="amber"
+            icon={Percent}
+            label="Fee rata-rata"
+            value={`${avgFee.toFixed(1).replace(".", ",")}%`}
+            sub="Platform fee persen"
+          />
+        </div>
+      </section>
 
       <Card>
         <CardHeader>
@@ -257,179 +304,186 @@ export default async function AdminPlansPage() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-col gap-6">
-        {plans.map((p) => (
-          <AdminDisclosureCard
-            key={p.id}
-            trigger={
-              <>
-                <span className="flex items-center gap-3">
-                  <span className="text-base font-medium tracking-tight">{p.name}</span>
-                  <span className="text-xs text-muted-foreground">{p.code}</span>
-                </span>
-                <span className="flex items-center gap-3 text-xs font-semibold tabular-nums">
-                  {formatIDR(p.price_monthly)}/BLN
-                  {p.billing_cycle === "yearly" && p.price_yearly != null
-                    ? ` · ${formatIDR(p.price_yearly)}/THN`
-                    : ""}
+      <section aria-labelledby="admin-plans-catalog" className="flex flex-col gap-4">
+        <AdminSectionHeading
+          id="admin-plans-catalog"
+          title="Katalog paket"
+          description={`${plans.length} paket terdaftar · ${activePlans} aktif.`}
+        />
+
+        <div className="flex flex-col gap-4">
+          {plans.map((p) => (
+            <Card key={p.id}>
+              <CardHeader>
+                <CardTitle>{p.name}</CardTitle>
+                <CardDescription>
+                  {p.code.toUpperCase()} · {p.billing_cycle === "yearly" ? "Tahunan" : "Bulanan"} ·{" "}
+                  {formatIDR(p.price_monthly)}/bln
+                </CardDescription>
+                <CardAction>
                   <AdminStatusBadge status={p.is_active ? "active" : "inactive"} />
-                </span>
-              </>
-            }
-          >
-            <div className="flex flex-col gap-4">
-              <AdminStatGrid
-                items={[
-                  {
-                    label: "Harga tahunan",
-                    value: p.price_yearly != null ? formatIDR(p.price_yearly) : "-",
-                  },
-                  {
-                    label: "Siklus billing",
-                    value: p.billing_cycle === "yearly" ? "Tahunan" : "Bulanan",
-                  },
-                  { label: "Sesi konkuren", value: String(p.max_concurrent_sessions) },
-                  {
-                    label: "Bisnis / Outlet / Booth",
-                    value: `${p.max_businesses} / ${p.max_outlets} / ${p.max_photoboxes}`,
-                  },
-                  { label: "Staff", value: String(p.max_staff) },
-                  {
-                    label: "Paket foto / Template",
-                    value: `${p.max_packages} / ${p.max_templates}`,
-                  },
-                  { label: "Storage", value: `${p.storage_limit_mb} MB` },
-                  { label: "Fee %", value: String(p.platform_fee_percent) },
-                  { label: "Fee flat", value: formatIDR(p.platform_fee_flat) },
-                ]}
-              />
-              <AdminActionForm
-                action={updatePlanAction}
-                hidden={{ planId: p.id }}
-                submitLabel="Simpan Perubahan"
-                className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4"
-              >
-                <Field id={`name-${p.id}`} label="Nama" name="name" defaultValue={p.name} />
-                <Field
-                  id={`price-${p.id}`}
-                  label="Harga / bln"
-                  name="price_monthly"
-                  type="number"
-                  defaultValue={p.price_monthly}
-                />
-                <Field
-                  id={`price-yearly-${p.id}`}
-                  label="Harga / thn"
-                  name="price_yearly"
-                  type="number"
-                  defaultValue={p.price_yearly ?? ""}
-                />
-                <Field
-                  id={`biz-${p.id}`}
-                  label="Max Bisnis"
-                  name="max_businesses"
-                  type="number"
-                  defaultValue={p.max_businesses}
-                />
-                <Field
-                  id={`outlets-${p.id}`}
-                  label="Max Outlet"
-                  name="max_outlets"
-                  type="number"
-                  defaultValue={p.max_outlets}
-                />
-                <Field
-                  id={`boxes-${p.id}`}
-                  label="Max Photobox"
-                  name="max_photoboxes"
-                  type="number"
-                  defaultValue={p.max_photoboxes}
-                />
-                <Field
-                  id={`packages-${p.id}`}
-                  label="Max Paket Foto"
-                  name="max_packages"
-                  type="number"
-                  defaultValue={p.max_packages}
-                />
-                <Field
-                  id={`templates-${p.id}`}
-                  label="Max Template"
-                  name="max_templates"
-                  type="number"
-                  defaultValue={p.max_templates}
-                />
-                <Field
-                  id={`sessions-${p.id}`}
-                  label="Sesi konkuren"
-                  name="max_concurrent_sessions"
-                  type="number"
-                  defaultValue={p.max_concurrent_sessions}
-                />
-                <Field
-                  id={`staff-${p.id}`}
-                  label="Max Staff"
-                  name="max_staff"
-                  type="number"
-                  defaultValue={p.max_staff}
-                />
-                <Field
-                  id={`storage-${p.id}`}
-                  label="Storage Limit (MB)"
-                  name="storage_limit_mb"
-                  type="number"
-                  defaultValue={p.storage_limit_mb}
-                />
-                <Field
-                  id={`fee-pct-${p.id}`}
-                  label="Fee %"
-                  name="platform_fee_percent"
-                  type="number"
-                  step="0.5"
-                  defaultValue={p.platform_fee_percent}
-                />
-                <Field
-                  id={`fee-flat-${p.id}`}
-                  label="Fee flat"
-                  name="platform_fee_flat"
-                  type="number"
-                  defaultValue={p.platform_fee_flat}
-                />
-                <AdminSelect
-                  id={`cycle-${p.id}`}
-                  name="billing_cycle"
-                  label="Siklus Billing"
-                  defaultValue={p.billing_cycle}
-                  options={[
-                    { value: "monthly", label: "Bulanan" },
-                    { value: "yearly", label: "Tahunan" },
+                </CardAction>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-4">
+                <AdminStatGrid
+                  items={[
+                    {
+                      label: "Harga tahunan",
+                      value: p.price_yearly != null ? formatIDR(p.price_yearly) : "-",
+                    },
+                    {
+                      label: "Siklus billing",
+                      value: p.billing_cycle === "yearly" ? "Tahunan" : "Bulanan",
+                    },
+                    { label: "Sesi konkuren", value: String(p.max_concurrent_sessions) },
+                    {
+                      label: "Bisnis / Outlet / Booth",
+                      value: `${p.max_businesses} / ${p.max_outlets} / ${p.max_photoboxes}`,
+                    },
+                    { label: "Staff", value: String(p.max_staff) },
+                    {
+                      label: "Paket foto / Template",
+                      value: `${p.max_packages} / ${p.max_templates}`,
+                    },
+                    { label: "Storage", value: `${p.storage_limit_mb} MB` },
+                    { label: "Fee %", value: String(p.platform_fee_percent) },
+                    { label: "Fee flat", value: formatIDR(p.platform_fee_flat) },
                   ]}
                 />
-                <div className="col-span-1 flex flex-col gap-2 sm:col-span-2 md:col-span-4">
-                  <fieldset className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    <legend className="mb-2 w-full text-xs font-medium text-muted-foreground">
-                      Feature flags
-                    </legend>
-                    {featureKeys.map((key) => (
+                <AdminDisclosure
+                  className="border-t pt-3"
+                  triggerClassName="min-h-11 text-xs font-medium text-muted-foreground hover:text-foreground"
+                  trigger={<span>Edit paket</span>}
+                >
+                  <AdminActionForm
+                    action={updatePlanAction}
+                    hidden={{ planId: p.id }}
+                    submitLabel="Simpan Perubahan"
+                    className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4"
+                  >
+                    <Field id={`name-${p.id}`} label="Nama" name="name" defaultValue={p.name} />
+                    <Field
+                      id={`price-${p.id}`}
+                      label="Harga / bln"
+                      name="price_monthly"
+                      type="number"
+                      defaultValue={p.price_monthly}
+                    />
+                    <Field
+                      id={`price-yearly-${p.id}`}
+                      label="Harga / thn"
+                      name="price_yearly"
+                      type="number"
+                      defaultValue={p.price_yearly ?? ""}
+                    />
+                    <Field
+                      id={`biz-${p.id}`}
+                      label="Max Bisnis"
+                      name="max_businesses"
+                      type="number"
+                      defaultValue={p.max_businesses}
+                    />
+                    <Field
+                      id={`outlets-${p.id}`}
+                      label="Max Outlet"
+                      name="max_outlets"
+                      type="number"
+                      defaultValue={p.max_outlets}
+                    />
+                    <Field
+                      id={`boxes-${p.id}`}
+                      label="Max Photobox"
+                      name="max_photoboxes"
+                      type="number"
+                      defaultValue={p.max_photoboxes}
+                    />
+                    <Field
+                      id={`packages-${p.id}`}
+                      label="Max Paket Foto"
+                      name="max_packages"
+                      type="number"
+                      defaultValue={p.max_packages}
+                    />
+                    <Field
+                      id={`templates-${p.id}`}
+                      label="Max Template"
+                      name="max_templates"
+                      type="number"
+                      defaultValue={p.max_templates}
+                    />
+                    <Field
+                      id={`sessions-${p.id}`}
+                      label="Sesi konkuren"
+                      name="max_concurrent_sessions"
+                      type="number"
+                      defaultValue={p.max_concurrent_sessions}
+                    />
+                    <Field
+                      id={`staff-${p.id}`}
+                      label="Max Staff"
+                      name="max_staff"
+                      type="number"
+                      defaultValue={p.max_staff}
+                    />
+                    <Field
+                      id={`storage-${p.id}`}
+                      label="Storage Limit (MB)"
+                      name="storage_limit_mb"
+                      type="number"
+                      defaultValue={p.storage_limit_mb}
+                    />
+                    <Field
+                      id={`fee-pct-${p.id}`}
+                      label="Fee %"
+                      name="platform_fee_percent"
+                      type="number"
+                      step="0.5"
+                      defaultValue={p.platform_fee_percent}
+                    />
+                    <Field
+                      id={`fee-flat-${p.id}`}
+                      label="Fee flat"
+                      name="platform_fee_flat"
+                      type="number"
+                      defaultValue={p.platform_fee_flat}
+                    />
+                    <AdminSelect
+                      id={`cycle-${p.id}`}
+                      name="billing_cycle"
+                      label="Siklus Billing"
+                      defaultValue={p.billing_cycle}
+                      options={[
+                        { value: "monthly", label: "Bulanan" },
+                        { value: "yearly", label: "Tahunan" },
+                      ]}
+                    />
+                    <div className="col-span-1 flex flex-col gap-2 sm:col-span-2 md:col-span-4">
+                      <fieldset className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        <legend className="mb-2 w-full text-xs font-medium text-muted-foreground">
+                          Feature flags
+                        </legend>
+                        {featureKeys.map((key) => (
+                          <AdminCheckbox
+                            key={key}
+                            name={`feature_${key}`}
+                            label={featureLabel(key)}
+                            defaultChecked={Boolean(p.features?.[key])}
+                          />
+                        ))}
+                      </fieldset>
                       <AdminCheckbox
-                        key={key}
-                        name={`feature_${key}`}
-                        label={featureLabel(key)}
-                        defaultChecked={Boolean(p.features?.[key])}
+                        name="is_active"
+                        label="Plan aktif (bisa dipilih owner)"
+                        defaultChecked={p.is_active}
                       />
-                    ))}
-                  </fieldset>
-                  <AdminCheckbox
-                    name="is_active"
-                    label="Plan aktif (bisa dipilih owner)"
-                    defaultChecked={p.is_active}
-                  />
-                </div>
-              </AdminActionForm>
-            </div>
-          </AdminDisclosureCard>
-        ))}
-      </div>
+                    </div>
+                  </AdminActionForm>
+                </AdminDisclosure>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

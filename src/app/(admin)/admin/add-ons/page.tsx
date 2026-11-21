@@ -1,12 +1,16 @@
-import { Package } from "lucide-react";
+import { CheckCircle2, HardDrive, LayoutGrid, Package, Wallet } from "lucide-react";
 
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
 import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
+import { AdminDisclosure } from "@/components/admin/AdminDisclosureCard";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
+import { AdminMetricCard } from "@/components/admin/AdminMetricCard";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { AdminSectionHeading } from "@/components/admin/AdminSectionHeading";
 import { AdminStatusBadge } from "@/components/admin/AdminStatusBadge";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -25,14 +29,58 @@ import { Label } from "@/components/admin/ui/label";
  */
 export default async function AdminAddOnsPage() {
   const addOns = await listAddOns();
+  const activeAddOns = addOns.filter((addOn) => addOn.is_active).length;
+  const storageAddOns = addOns.filter((addOn) => addOn.storage_mb).length;
+  const averagePrice = addOns.length
+    ? Math.round(addOns.reduce((total, addOn) => total + addOn.price_monthly, 0) / addOns.length)
+    : 0;
 
   return (
     <div className="flex flex-col gap-6">
       <AdminPageHeader
         icon={Package}
         title="Manajemen Add-on"
-        meta={`${addOns.length} add-on terdaftar`}
+        meta={`${addOns.length} add-on terdaftar · ${activeAddOns} aktif`}
       />
+
+      <section aria-labelledby="admin-add-ons-metrics" className="flex flex-col gap-4">
+        <AdminSectionHeading
+          id="admin-add-ons-metrics"
+          title="Ikhtisar"
+          description="Add-on yang dapat dibeli owner di samping paket utama."
+        />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <AdminMetricCard
+            accent
+            tone="emerald"
+            icon={CheckCircle2}
+            label="Add-on aktif"
+            value={String(activeAddOns)}
+            sub={`${addOns.length - activeAddOns} nonaktif`}
+          />
+          <AdminMetricCard
+            tone="neutral"
+            icon={LayoutGrid}
+            label="Total add-on"
+            value={String(addOns.length)}
+            sub="Seluruh katalog"
+          />
+          <AdminMetricCard
+            tone="sky"
+            icon={HardDrive}
+            label="Add-on storage"
+            value={String(storageAddOns)}
+            sub="Menambah kuota penyimpanan"
+          />
+          <AdminMetricCard
+            tone="amber"
+            icon={Wallet}
+            label="Harga rata-rata"
+            value={formatIDR(averagePrice)}
+            sub="Per bulan"
+          />
+        </div>
+      </section>
 
       <Card>
         <CardHeader>
@@ -86,106 +134,118 @@ export default async function AdminAddOnsPage() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-col gap-4">
+      <section aria-labelledby="admin-add-ons-list" className="flex flex-col gap-4">
+        <AdminSectionHeading
+          id="admin-add-ons-list"
+          title="Katalog add-on"
+          description={`${addOns.length} add-on terdaftar · ${activeAddOns} aktif.`}
+        />
+
         {addOns.length === 0 ? (
           <AdminEmptyState heading="BELUM ADA ADD-ON" icon={Package}>
             Buat add-on pertama di atas, dipakai owner untuk menambah limit sesi konkuren.
           </AdminEmptyState>
         ) : (
-          addOns.map((a) => (
-            <Card key={a.id}>
-              <CardContent className="flex flex-col gap-3">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <span className="flex items-center gap-3">
-                    <span className="text-base font-medium tracking-tight">
-                      {storageAddOnDisplayName({
-                        name: a.name,
-                        unit: a.unit,
-                        storageMb: a.storage_mb,
-                      })}
+          <div className="flex flex-col gap-4">
+            {addOns.map((a) => (
+              <Card key={a.id}>
+                <CardHeader>
+                  <CardTitle>
+                    {storageAddOnDisplayName({
+                      name: a.name,
+                      unit: a.unit,
+                      storageMb: a.storage_mb,
+                    })}
+                  </CardTitle>
+                  <CardDescription>
+                    {a.code.toUpperCase()} · unit {a.unit}
+                    {a.storage_mb ? ` · +${a.storage_mb} MB` : ""}
+                  </CardDescription>
+                  <CardAction>
+                    <span className="flex items-center gap-3">
+                      <span className="text-sm font-semibold tabular-nums">
+                        {formatIDR(a.price_monthly)}/bln
+                      </span>
+                      <AdminStatusBadge status={a.is_active ? "active" : "inactive"} />
                     </span>
-                    <span className="text-xs text-muted-foreground">
-                      {a.code} · unit {a.unit}
-                      {a.storage_mb ? ` · +${a.storage_mb} MB` : ""}
-                    </span>
-                  </span>
-                  <span className="flex items-center gap-3 text-xs font-semibold">
-                    {formatIDR(a.price_monthly)}/BLN
-                    <AdminStatusBadge status={a.is_active ? "active" : "inactive"} />
-                  </span>
-                </div>
-                <div
-                  key={`${a.id}:${a.name}:${a.price_monthly}:${a.unit}:${a.storage_mb ?? ""}:${a.is_active}`}
-                  className="border-t pt-3"
-                >
-                  <AdminActionForm
-                    action={updateAddOnAction}
-                    hidden={{ addOnId: a.id }}
-                    submitLabel="Simpan"
-                    className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+                  </CardAction>
+                </CardHeader>
+                <CardContent>
+                  <AdminDisclosure
+                    key={`${a.id}:${a.name}:${a.price_monthly}:${a.unit}:${a.storage_mb ?? ""}:${a.is_active}`}
+                    className="border-t pt-3"
+                    triggerClassName="min-h-11 text-xs font-medium text-muted-foreground hover:text-foreground"
+                    trigger={<span>Edit add-on</span>}
                   >
-                    <div className="flex flex-col gap-1">
-                      <Label
-                        htmlFor={`name-${a.id}`}
-                        className="text-xs font-medium text-muted-foreground"
-                      >
-                        Nama
-                      </Label>
-                      <Input
-                        id={`name-${a.id}`}
-                        name="name"
-                        defaultValue={storageAddOnDisplayName({
-                          name: a.name,
-                          unit: a.unit,
-                          storageMb: a.storage_mb,
-                        })}
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <Label
-                        htmlFor={`price-${a.id}`}
-                        className="text-xs font-medium text-muted-foreground"
-                      >
-                        Harga / bln
-                      </Label>
-                      <Input
-                        id={`price-${a.id}`}
-                        name="price_monthly"
-                        type="number"
-                        defaultValue={a.price_monthly}
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <Label
-                        htmlFor={`unit-${a.id}`}
-                        className="text-xs font-medium text-muted-foreground"
-                      >
-                        Unit
-                      </Label>
-                      <Input id={`unit-${a.id}`} name="unit" defaultValue={a.unit} />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <Label
-                        htmlFor={`storage-${a.id}`}
-                        className="text-xs font-medium text-muted-foreground"
-                      >
-                        Storage (MB)
-                      </Label>
-                      <Input
-                        id={`storage-${a.id}`}
-                        name="storage_mb"
-                        type="number"
-                        defaultValue={a.storage_mb ?? ""}
-                      />
-                    </div>
-                    <AdminCheckbox name="is_active" label="Aktif" defaultChecked={a.is_active} />
-                  </AdminActionForm>
-                </div>
-              </CardContent>
-            </Card>
-          ))
+                    <AdminActionForm
+                      action={updateAddOnAction}
+                      hidden={{ addOnId: a.id }}
+                      submitLabel="Simpan"
+                      className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+                    >
+                      <div className="flex flex-col gap-1">
+                        <Label
+                          htmlFor={`name-${a.id}`}
+                          className="text-xs font-medium text-muted-foreground"
+                        >
+                          Nama
+                        </Label>
+                        <Input
+                          id={`name-${a.id}`}
+                          name="name"
+                          defaultValue={storageAddOnDisplayName({
+                            name: a.name,
+                            unit: a.unit,
+                            storageMb: a.storage_mb,
+                          })}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <Label
+                          htmlFor={`price-${a.id}`}
+                          className="text-xs font-medium text-muted-foreground"
+                        >
+                          Harga / bln
+                        </Label>
+                        <Input
+                          id={`price-${a.id}`}
+                          name="price_monthly"
+                          type="number"
+                          defaultValue={a.price_monthly}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <Label
+                          htmlFor={`unit-${a.id}`}
+                          className="text-xs font-medium text-muted-foreground"
+                        >
+                          Unit
+                        </Label>
+                        <Input id={`unit-${a.id}`} name="unit" defaultValue={a.unit} />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <Label
+                          htmlFor={`storage-${a.id}`}
+                          className="text-xs font-medium text-muted-foreground"
+                        >
+                          Storage (MB)
+                        </Label>
+                        <Input
+                          id={`storage-${a.id}`}
+                          name="storage_mb"
+                          type="number"
+                          defaultValue={a.storage_mb ?? ""}
+                        />
+                      </div>
+                      <AdminCheckbox name="is_active" label="Aktif" defaultChecked={a.is_active} />
+                    </AdminActionForm>
+                  </AdminDisclosure>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }

@@ -1,14 +1,17 @@
-import { Tag } from "lucide-react";
+import { CheckCircle2, Infinity as InfinityIcon, Tag, Ticket } from "lucide-react";
 
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
 import { AdminDisclosure } from "@/components/admin/AdminDisclosureCard";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
+import { AdminMetricCard } from "@/components/admin/AdminMetricCard";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { AdminSectionHeading } from "@/components/admin/AdminSectionHeading";
 import { AdminStatusBadge } from "@/components/admin/AdminStatusBadge";
 import { AdminCheckbox } from "@/components/admin/AdminCheckbox";
 import { AdminSelect } from "@/components/admin/AdminSelect";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -40,6 +43,9 @@ function toDateInput(iso: string | null): string {
 export default async function AdminPromosPage() {
   const promos = await listPromos();
   const dateFmt = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" });
+  const activePromos = promos.filter((promo) => promo.is_active).length;
+  const totalUsage = promos.reduce((total, promo) => total + promo.used_count, 0);
+  const unlimitedPromos = promos.filter((promo) => promo.usage_limit === null).length;
 
   return (
     <div className="flex flex-col gap-6">
@@ -48,6 +54,45 @@ export default async function AdminPromosPage() {
         title="Promo Berlangganan"
         meta={`${promos.length} kode promo · diskon billing plan`}
       />
+
+      <section aria-labelledby="admin-promos-metrics" className="flex flex-col gap-4">
+        <AdminSectionHeading
+          id="admin-promos-metrics"
+          title="Ikhtisar"
+          description="Kode diskon untuk pembelian dan perpanjangan langganan."
+        />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <AdminMetricCard
+            accent
+            tone="emerald"
+            icon={CheckCircle2}
+            label="Promo aktif"
+            value={String(activePromos)}
+            sub={`${promos.length - activePromos} nonaktif`}
+          />
+          <AdminMetricCard
+            tone="neutral"
+            icon={Tag}
+            label="Total kode"
+            value={String(promos.length)}
+            sub="Seluruh katalog"
+          />
+          <AdminMetricCard
+            tone="sky"
+            icon={Ticket}
+            label="Total pemakaian"
+            value={String(totalUsage)}
+            sub="Akumulasi seluruh promo"
+          />
+          <AdminMetricCard
+            tone="amber"
+            icon={InfinityIcon}
+            label="Tanpa batas"
+            value={String(unlimitedPromos)}
+            sub="Kuota pemakaian terbuka"
+          />
+        </div>
+      </section>
 
       <Card>
         <CardHeader>
@@ -145,165 +190,170 @@ export default async function AdminPromosPage() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-col gap-4">
+      <section aria-labelledby="admin-promos-list" className="flex flex-col gap-4">
+        <AdminSectionHeading
+          id="admin-promos-list"
+          title="Katalog promo"
+          description={`${promos.length} kode terdaftar · ${activePromos} aktif.`}
+        />
+
         {promos.length === 0 ? (
           <AdminEmptyState heading="Belum ada promo" icon={Tag}>
             Buat promo pertama di atas, dipakai saat owner meng-upgrade atau renew plan.
           </AdminEmptyState>
         ) : (
-          promos.map((p) => {
-            const usageText =
-              p.usage_limit === null
-                ? `${p.used_count} pemakaian (tak terbatas)`
-                : `${p.used_count} / ${p.usage_limit}`;
-            const valueText = p.type === "percentage" ? `${p.amount}%` : formatIDR(p.amount);
-            return (
-              <Card key={p.id}>
-                <CardContent className="flex flex-col gap-2">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <span className="flex flex-wrap items-center gap-3">
-                      <span className="text-base font-medium tracking-tight">{p.code}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {p.type.toUpperCase()} · {valueText}
-                        {p.max_discount ? ` · max ${formatIDR(p.max_discount)}` : ""}
-                        {p.min_transaction > 0 ? ` · min ${formatIDR(p.min_transaction)}` : ""}
-                      </span>
-                    </span>
-                    <span className="flex items-center gap-3">
-                      <span className="text-xs text-muted-foreground">{usageText}</span>
+          <div className="flex flex-col gap-4">
+            {promos.map((p) => {
+              const usageText =
+                p.usage_limit === null
+                  ? `${p.used_count} pemakaian (tak terbatas)`
+                  : `${p.used_count} / ${p.usage_limit}`;
+              const valueText = p.type === "percentage" ? `${p.amount}%` : formatIDR(p.amount);
+              return (
+                <Card key={p.id}>
+                  <CardHeader>
+                    <CardTitle>{p.code}</CardTitle>
+                    <CardDescription>
+                      {p.type.toUpperCase()} · {valueText} · {usageText}
+                      {p.max_discount ? ` · max ${formatIDR(p.max_discount)}` : ""}
+                      {p.min_transaction > 0 ? ` · min ${formatIDR(p.min_transaction)}` : ""}
+                    </CardDescription>
+                    <CardAction>
                       <AdminStatusBadge status={p.is_active ? "active" : "inactive"} />
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {p.start_date ? `MULAI ${dateFmt.format(new Date(p.start_date))}` : "MULAI -"}
-                    {" · "}
-                    {p.end_date ? `SAMPAI ${dateFmt.format(new Date(p.end_date))}` : "SAMPAI -"}
-                  </p>
+                    </CardAction>
+                  </CardHeader>
+                  <CardContent className="flex flex-col gap-2">
+                    <p className="text-xs text-muted-foreground">
+                      {p.start_date ? `MULAI ${dateFmt.format(new Date(p.start_date))}` : "MULAI -"}
+                      {" · "}
+                      {p.end_date ? `SAMPAI ${dateFmt.format(new Date(p.end_date))}` : "SAMPAI -"}
+                    </p>
 
-                  <AdminDisclosure
-                    className="border-t pt-3"
-                    triggerClassName="min-h-9 text-xs font-medium text-muted-foreground hover:text-foreground"
-                    trigger={<span>Edit promo</span>}
-                  >
-                    <AdminActionForm
-                      action={updatePromoAction}
-                      hidden={{ promoId: p.id }}
-                      submitLabel="Simpan"
-                      className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4"
+                    <AdminDisclosure
+                      className="border-t pt-3"
+                      triggerClassName="min-h-11 text-xs font-medium text-muted-foreground hover:text-foreground"
+                      trigger={<span>Edit promo</span>}
                     >
-                      <div className="flex flex-col gap-1">
-                        <Label
-                          htmlFor={`code-${p.id}`}
-                          className="text-xs font-medium text-muted-foreground"
-                        >
-                          Kode
-                        </Label>
-                        <Input id={`code-${p.id}`} name="code" defaultValue={p.code} />
-                      </div>
-                      <AdminSelect
-                        name="type"
-                        label="Tipe"
-                        defaultValue={p.type}
-                        options={TYPE_OPTIONS}
-                      />
-                      <div className="flex flex-col gap-1">
-                        <Label
-                          htmlFor={`amt-${p.id}`}
-                          className="text-xs font-medium text-muted-foreground"
-                        >
-                          Nilai
-                        </Label>
-                        <Input
-                          id={`amt-${p.id}`}
-                          name="amount"
-                          type="number"
-                          defaultValue={p.amount}
+                      <AdminActionForm
+                        action={updatePromoAction}
+                        hidden={{ promoId: p.id }}
+                        submitLabel="Simpan"
+                        className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4"
+                      >
+                        <div className="flex flex-col gap-1">
+                          <Label
+                            htmlFor={`code-${p.id}`}
+                            className="text-xs font-medium text-muted-foreground"
+                          >
+                            Kode
+                          </Label>
+                          <Input id={`code-${p.id}`} name="code" defaultValue={p.code} />
+                        </div>
+                        <AdminSelect
+                          name="type"
+                          label="Tipe"
+                          defaultValue={p.type}
+                          options={TYPE_OPTIONS}
                         />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <Label
-                          htmlFor={`min-${p.id}`}
-                          className="text-xs font-medium text-muted-foreground"
-                        >
-                          Min. transaksi
-                        </Label>
-                        <Input
-                          id={`min-${p.id}`}
-                          name="min_transaction"
-                          type="number"
-                          defaultValue={p.min_transaction}
+                        <div className="flex flex-col gap-1">
+                          <Label
+                            htmlFor={`amt-${p.id}`}
+                            className="text-xs font-medium text-muted-foreground"
+                          >
+                            Nilai
+                          </Label>
+                          <Input
+                            id={`amt-${p.id}`}
+                            name="amount"
+                            type="number"
+                            defaultValue={p.amount}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <Label
+                            htmlFor={`min-${p.id}`}
+                            className="text-xs font-medium text-muted-foreground"
+                          >
+                            Min. transaksi
+                          </Label>
+                          <Input
+                            id={`min-${p.id}`}
+                            name="min_transaction"
+                            type="number"
+                            defaultValue={p.min_transaction}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <Label
+                            htmlFor={`max-${p.id}`}
+                            className="text-xs font-medium text-muted-foreground"
+                          >
+                            Max diskon
+                          </Label>
+                          <Input
+                            id={`max-${p.id}`}
+                            name="max_discount"
+                            type="number"
+                            defaultValue={p.max_discount ?? ""}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <Label
+                            htmlFor={`start-${p.id}`}
+                            className="text-xs font-medium text-muted-foreground"
+                          >
+                            Mulai
+                          </Label>
+                          <Input
+                            id={`start-${p.id}`}
+                            name="start_date"
+                            type="date"
+                            defaultValue={toDateInput(p.start_date)}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <Label
+                            htmlFor={`end-${p.id}`}
+                            className="text-xs font-medium text-muted-foreground"
+                          >
+                            Sampai
+                          </Label>
+                          <Input
+                            id={`end-${p.id}`}
+                            name="end_date"
+                            type="date"
+                            defaultValue={toDateInput(p.end_date)}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <Label
+                            htmlFor={`limit-${p.id}`}
+                            className="text-xs font-medium text-muted-foreground"
+                          >
+                            Batas pemakaian
+                          </Label>
+                          <Input
+                            id={`limit-${p.id}`}
+                            name="usage_limit"
+                            type="number"
+                            defaultValue={p.usage_limit ?? ""}
+                          />
+                        </div>
+                        <AdminCheckbox
+                          name="is_active"
+                          label="Aktif"
+                          defaultChecked={p.is_active}
+                          wrapperClassName="col-span-2 md:col-span-4"
                         />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <Label
-                          htmlFor={`max-${p.id}`}
-                          className="text-xs font-medium text-muted-foreground"
-                        >
-                          Max diskon
-                        </Label>
-                        <Input
-                          id={`max-${p.id}`}
-                          name="max_discount"
-                          type="number"
-                          defaultValue={p.max_discount ?? ""}
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <Label
-                          htmlFor={`start-${p.id}`}
-                          className="text-xs font-medium text-muted-foreground"
-                        >
-                          Mulai
-                        </Label>
-                        <Input
-                          id={`start-${p.id}`}
-                          name="start_date"
-                          type="date"
-                          defaultValue={toDateInput(p.start_date)}
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <Label
-                          htmlFor={`end-${p.id}`}
-                          className="text-xs font-medium text-muted-foreground"
-                        >
-                          Sampai
-                        </Label>
-                        <Input
-                          id={`end-${p.id}`}
-                          name="end_date"
-                          type="date"
-                          defaultValue={toDateInput(p.end_date)}
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <Label
-                          htmlFor={`limit-${p.id}`}
-                          className="text-xs font-medium text-muted-foreground"
-                        >
-                          Batas pemakaian
-                        </Label>
-                        <Input
-                          id={`limit-${p.id}`}
-                          name="usage_limit"
-                          type="number"
-                          defaultValue={p.usage_limit ?? ""}
-                        />
-                      </div>
-                      <AdminCheckbox
-                        name="is_active"
-                        label="Aktif"
-                        defaultChecked={p.is_active}
-                        wrapperClassName="col-span-2 md:col-span-4"
-                      />
-                    </AdminActionForm>
-                  </AdminDisclosure>
-                </CardContent>
-              </Card>
-            );
-          })
+                      </AdminActionForm>
+                    </AdminDisclosure>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }

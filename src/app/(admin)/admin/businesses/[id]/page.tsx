@@ -84,12 +84,11 @@ export default async function AdminBusinessDetailPage({
   const printersReady = devices.filter((d) => d.printer?.ok).length;
 
   return (
-    <div className="admin-grid-lines flex flex-col gap-10">
+    <div className="flex flex-col gap-6">
       <AdminPageHeader
-        size="hero"
         icon={Building2}
         title={business.name}
-        description={`${business.owner_email ?? "Tanpa owner"} · ${subscription.plan_name ?? "Tanpa paket"} · ${outlets.length} outlet · ${booths.length} booth.`}
+        meta={`${business.owner_email ?? "Tanpa owner"} · ${subscription.plan_name ?? "Tanpa paket"} · ${outlets.length} outlet · ${booths.length} booth.`}
         right={
           <div className="flex flex-wrap items-center gap-2">
             <AdminStatusBadge status={suspended ? "inactive" : "active"} />
@@ -193,7 +192,7 @@ export default async function AdminBusinessDetailPage({
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
           <Card className="xl:col-span-7">
-            <CardHeader className="border-b">
+            <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Building2
                   className="size-4 text-emerald-600 dark:text-emerald-400"
@@ -230,7 +229,7 @@ export default async function AdminBusinessDetailPage({
           </Card>
 
           <Card className="xl:col-span-5">
-            <CardHeader className="border-b">
+            <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CreditCard className="size-4 text-sky-600 dark:text-sky-400" aria-hidden="true" />
                 Langganan
@@ -292,7 +291,7 @@ export default async function AdminBusinessDetailPage({
           description="Status live per booth dari heartbeat device."
         />
         <Card>
-          <CardHeader className="border-b">
+          <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Radio className="size-4 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
               Booth tenant
@@ -409,7 +408,7 @@ export default async function AdminBusinessDetailPage({
           description="Device terpairing, status kamera, dan printer dari laporan heartbeat."
         />
         <Card>
-          <CardHeader className="border-b">
+          <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Monitor className="size-4 text-sky-600 dark:text-sky-400" aria-hidden="true" />
               Perangkat terhubung
@@ -539,7 +538,7 @@ export default async function AdminBusinessDetailPage({
           description="Lokasi fisik tempat booth dipasang."
         />
         <Card>
-          <CardHeader className="border-b">
+          <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Store className="size-4 text-sky-600 dark:text-sky-400" aria-hidden="true" />
               Daftar outlet
@@ -583,7 +582,7 @@ export default async function AdminBusinessDetailPage({
           description="50 transaksi terakhir tenant ini."
         />
         <Card>
-          <CardHeader className="border-b">
+          <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Receipt
                 className="size-4 text-emerald-600 dark:text-emerald-400"

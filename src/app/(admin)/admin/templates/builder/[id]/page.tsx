@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, LayoutTemplate } from "lucide-react";
 
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { AdminSectionHeading } from "@/components/admin/AdminSectionHeading";
 import { buttonVariants } from "@/components/admin/ui/button";
 import { TemplateBuilderCanvas } from "@/components/dashboard/TemplateBuilderCanvas";
 import { ApiError } from "@/lib/api-errors";
@@ -36,7 +37,6 @@ export default async function AdminTemplateBuilderPage({
       <AdminPageHeader
         icon={LayoutTemplate}
         title={template.name}
-        description="Atur slot frame platform yang dipakai semua tenant. Tambah hingga 8 slot, geser lewat drag atau tombol panah, lalu simpan draft atau publish."
         meta={`${template.category.toUpperCase()} · ${template.is_active ? "Aktif" : "Nonaktif"}`}
         right={
           <Link
@@ -49,17 +49,25 @@ export default async function AdminTemplateBuilderPage({
         }
       />
 
-      <div className="admin-builder">
-        <TemplateBuilderCanvas
-          templateName={template.name}
-          initialLayout={initialLayout}
-          initialActive={template.is_active}
-          frameUrl={template.preview_url}
-          readOnly={false}
-          onSave={saveGlobalTemplateLayoutAction.bind(null, id)}
-          onDetectChroma={detectGlobalTemplateChromaSlotsAction.bind(null, id)}
+      <section aria-labelledby="admin-template-builder" className="flex flex-col gap-4">
+        <AdminSectionHeading
+          id="admin-template-builder"
+          title="Editor slot"
+          description="Atur hingga 8 slot, geser lewat drag atau tombol panah, lalu simpan draft atau publish."
         />
-      </div>
+
+        <div className="admin-builder">
+          <TemplateBuilderCanvas
+            templateName={template.name}
+            initialLayout={initialLayout}
+            initialActive={template.is_active}
+            frameUrl={template.preview_url}
+            readOnly={false}
+            onSave={saveGlobalTemplateLayoutAction.bind(null, id)}
+            onDetectChroma={detectGlobalTemplateChromaSlotsAction.bind(null, id)}
+          />
+        </div>
+      </section>
     </div>
   );
 }

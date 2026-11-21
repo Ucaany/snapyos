@@ -259,12 +259,11 @@ export default async function AdminBusinessesPage({
   const boothPerTenant = stats.total ? stats.photoboxes / stats.total : 0;
 
   return (
-    <div className="admin-grid-lines flex flex-col gap-10">
+    <div className="flex flex-col gap-6">
       <AdminPageHeader
-        size="hero"
         icon={Building2}
         title="Manajemen Bisnis"
-        description={`${numberFormat.format(total)} tenant terdaftar. Suspend memblokir sesi & checkout baru di seluruh booth tenant.`}
+        meta={`${numberFormat.format(total)} tenant terdaftar. Suspend memblokir sesi & checkout baru di seluruh booth tenant.`}
       />
 
       <section aria-labelledby="admin-businesses-metrics" className="flex flex-col gap-4">
@@ -309,7 +308,7 @@ export default async function AdminBusinessesPage({
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
           <Card className="xl:col-span-7">
-            <CardHeader className="border-b">
+            <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Building2
                   className="size-4 text-emerald-600 dark:text-emerald-400"
@@ -355,7 +354,7 @@ export default async function AdminBusinessesPage({
           </Card>
 
           <Card className="xl:col-span-5">
-            <CardHeader className="border-b">
+            <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Activity className="size-4 text-sky-600 dark:text-sky-400" aria-hidden="true" />
                 Pemakaian platform

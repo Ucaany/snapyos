@@ -94,7 +94,7 @@ export const ADMIN_NAV_SHORTCUTS: AdminShortcut[] = [
   },
   {
     name: "Webhook Error",
-    url: "/admin/payments",
+    url: "/admin/payments#admin-payments-webhook",
     icon: Receipt,
   },
   {

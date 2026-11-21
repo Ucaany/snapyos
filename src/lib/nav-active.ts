@@ -11,6 +11,7 @@
  * shell punya pengecualian berbeda.
  */
 export function isNavActive(pathname: string, href: string, rootHref: string): boolean {
-  if (href === rootHref) return pathname === rootHref;
-  return pathname === href || pathname.startsWith(`${href}/`);
+  const path = href.split(/[?#]/, 1)[0];
+  if (path === rootHref) return pathname === rootHref;
+  return pathname === path || pathname.startsWith(`${path}/`);
 }

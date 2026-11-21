@@ -49,12 +49,11 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
   const numberFormat = new Intl.NumberFormat("id-ID");
 
   return (
-    <div className="admin-grid-lines flex flex-col gap-10">
+    <div className="flex flex-col gap-6">
       <AdminPageHeader
-        size="hero"
         icon={Users}
         title={user.name ?? user.email}
-        description={`${user.email} · ${user.role.toUpperCase()} · Terdaftar ${dateFmt.format(new Date(user.created_at))}.`}
+        meta={`${user.email} · ${user.role.toUpperCase()} · Terdaftar ${dateFmt.format(new Date(user.created_at))}.`}
         right={
           <div className="flex flex-wrap items-center gap-2">
             <AdminStatusBadge status={user.status === "suspended" ? "inactive" : "active"} />
@@ -140,7 +139,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
           <Card className="xl:col-span-7">
-            <CardHeader className="border-b">
+            <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Users
                   className="size-4 text-emerald-600 dark:text-emerald-400"
@@ -181,7 +180,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
           </Card>
 
           <Card className="xl:col-span-5">
-            <CardHeader className="border-b">
+            <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Building2 className="size-4 text-sky-600 dark:text-sky-400" aria-hidden="true" />
                 Bisnis
@@ -241,7 +240,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
           description="Riwayat invoice tenant milik akun ini."
         />
         <Card>
-          <CardHeader className="border-b">
+          <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Receipt
                 className="size-4 text-emerald-600 dark:text-emerald-400"
@@ -299,7 +298,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
           description="Riwayat transaksi tenant milik akun ini."
         />
         <Card>
-          <CardHeader className="border-b">
+          <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CreditCard className="size-4 text-sky-600 dark:text-sky-400" aria-hidden="true" />
               Riwayat transaksi

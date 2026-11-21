@@ -1,17 +1,10 @@
 import {
-  BarChart3,
   Building2,
-  Cloud,
   CreditCard,
-  Database,
   Gauge,
-  LayoutGrid,
   Percent,
-  PieChart,
   Receipt,
-  Repeat,
   RotateCcw,
-  Server,
   ShieldCheck,
   TrendingUp,
   UserCheck,
@@ -241,12 +234,11 @@ export default async function AdminOverviewPage() {
   }));
 
   return (
-    <div className="admin-grid-lines flex flex-col gap-10">
+    <div className="flex flex-col gap-6">
       <AdminPageHeader
-        size="hero"
         icon={Gauge}
         title="Ringkasan platform"
-        description={`Agregat seluruh tenant · ${payments.webhookIntegrity.total} webhook terekam.`}
+        meta={`Agregat seluruh tenant · ${numberFormat.format(payments.webhookIntegrity.total)} webhook terekam.`}
       />
 
       {settings.maintenance_mode ? (
@@ -300,14 +292,8 @@ export default async function AdminOverviewPage() {
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
           <Card className="xl:col-span-7">
-            <CardHeader className="border-b">
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp
-                  className="size-4 text-emerald-600 dark:text-emerald-400"
-                  aria-hidden="true"
-                />
-                Skala pendapatan &amp; kondisi API
-              </CardTitle>
+            <CardHeader>
+              <CardTitle>Skala pendapatan &amp; kondisi API</CardTitle>
               <CardDescription>
                 Pendapatan berjalan dan kesehatan jalur data platform.
               </CardDescription>
@@ -461,11 +447,8 @@ export default async function AdminOverviewPage() {
           </Card>
 
           <Card className="xl:col-span-5">
-            <CardHeader className="border-b">
-              <CardTitle className="flex items-center gap-2">
-                <Repeat className="size-4 text-sky-600 dark:text-sky-400" aria-hidden="true" />
-                Skala langganan
-              </CardTitle>
+            <CardHeader>
+              <CardTitle>Skala langganan</CardTitle>
               <CardDescription>
                 {numberFormat.format(subscriptionStats.total)} langganan ·{" "}
                 {numberFormat.format(subscriptionStats.effectiveActive)} efektif.
@@ -575,14 +558,8 @@ export default async function AdminOverviewPage() {
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Card>
-            <CardHeader className="border-b">
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3
-                  className="size-4 text-emerald-600 dark:text-emerald-400"
-                  aria-hidden="true"
-                />
-                Pendapatan harian
-              </CardTitle>
+            <CardHeader>
+              <CardTitle>Pendapatan harian</CardTitle>
               <CardDescription>Pembayaran lunas 30 hari terakhir.</CardDescription>
             </CardHeader>
             <CardContent>
@@ -597,11 +574,8 @@ export default async function AdminOverviewPage() {
           </Card>
 
           <Card>
-            <CardHeader className="border-b">
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="size-4 text-sky-600 dark:text-sky-400" aria-hidden="true" />
-                Transaksi &amp; sesi
-              </CardTitle>
+            <CardHeader>
+              <CardTitle>Transaksi &amp; sesi</CardTitle>
               <CardDescription>Volume harian 30 hari terakhir.</CardDescription>
             </CardHeader>
             <CardContent>
@@ -657,11 +631,8 @@ export default async function AdminOverviewPage() {
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
           <Card className="xl:col-span-4">
-            <CardHeader className="border-b">
-              <CardTitle className="flex items-center gap-2">
-                <PieChart className="size-4 text-sky-600 dark:text-sky-400" aria-hidden="true" />
-                Status pembayaran
-              </CardTitle>
+            <CardHeader>
+              <CardTitle>Status pembayaran</CardTitle>
               <CardDescription>Komposisi seluruh pembayaran.</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-5">
@@ -728,11 +699,8 @@ export default async function AdminOverviewPage() {
           </Card>
 
           <Card className="xl:col-span-8">
-            <CardHeader className="border-b">
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="size-4 text-sky-600 dark:text-sky-400" aria-hidden="true" />
-                Volume per provider
-              </CardTitle>
+            <CardHeader>
+              <CardTitle>Volume per provider</CardTitle>
               <CardDescription>Distribusi volume pembayaran seluruh waktu.</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-5">
@@ -758,14 +726,8 @@ export default async function AdminOverviewPage() {
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
           <Card className="xl:col-span-7">
-            <CardHeader className="border-b">
-              <CardTitle className="flex items-center gap-2">
-                <Building2
-                  className="size-4 text-emerald-600 dark:text-emerald-400"
-                  aria-hidden="true"
-                />
-                Tenant teratas
-              </CardTitle>
+            <CardHeader>
+              <CardTitle>Tenant teratas</CardTitle>
               <CardDescription>Diurutkan dari volume bruto terbesar.</CardDescription>
             </CardHeader>
             <CardContent>
@@ -810,11 +772,8 @@ export default async function AdminOverviewPage() {
           </Card>
 
           <Card className="xl:col-span-5">
-            <CardHeader className="border-b">
-              <CardTitle className="flex items-center gap-2">
-                <ShieldCheck className="size-4 text-sky-600 dark:text-sky-400" aria-hidden="true" />
-                Integritas webhook
-              </CardTitle>
+            <CardHeader>
+              <CardTitle>Integritas webhook</CardTitle>
               <CardDescription>
                 {numberFormat.format(webhookTotal)} webhook terekam.
               </CardDescription>
@@ -890,14 +849,8 @@ export default async function AdminOverviewPage() {
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
           <Card className="xl:col-span-7">
-            <CardHeader className="border-b">
-              <CardTitle className="flex items-center gap-2">
-                <Database
-                  className="size-4 text-emerald-600 dark:text-emerald-400"
-                  aria-hidden="true"
-                />
-                Kesehatan Supabase
-              </CardTitle>
+            <CardHeader>
+              <CardTitle>Kesehatan Supabase</CardTitle>
               <CardDescription>
                 Postgres {health.tables.length} tabel inti · {numberFormat.format(totalRows)} baris
                 data.
@@ -965,11 +918,8 @@ export default async function AdminOverviewPage() {
           </Card>
 
           <Card className="xl:col-span-5">
-            <CardHeader className="border-b">
-              <CardTitle className="flex items-center gap-2">
-                <LayoutGrid className="size-4 text-sky-600 dark:text-sky-400" aria-hidden="true" />
-                Matriks aktivitas
-              </CardTitle>
+            <CardHeader>
+              <CardTitle>Matriks aktivitas</CardTitle>
               <CardDescription>
                 14 hari terakhir · {numberFormat.format(health.users.active)} akun aktif.
               </CardDescription>
@@ -995,11 +945,8 @@ export default async function AdminOverviewPage() {
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
           <Card className="xl:col-span-7">
-            <CardHeader className="border-b">
-              <CardTitle className="flex items-center gap-2">
-                <Server className="size-4 text-sky-600 dark:text-sky-400" aria-hidden="true" />
-                Kesehatan VPS
-              </CardTitle>
+            <CardHeader>
+              <CardTitle>Kesehatan VPS</CardTitle>
               <CardDescription>
                 {vps.platform} {vps.release} · {vps.arch} · {vps.cpuCount} vCPU
               </CardDescription>
@@ -1064,11 +1011,8 @@ export default async function AdminOverviewPage() {
           </Card>
 
           <Card className="xl:col-span-5">
-            <CardHeader className="border-b">
-              <CardTitle className="flex items-center gap-2">
-                <Cloud className="size-4 text-amber-600 dark:text-amber-400" aria-hidden="true" />
-                Cloudflare Edge
-              </CardTitle>
+            <CardHeader>
+              <CardTitle>Cloudflare Edge</CardTitle>
               <CardDescription>
                 {cloudflare.ok
                   ? `${numberFormat.format(cloudflare.requests ?? 0)} request hari ini · ${numberFormat.format(cloudflare.uniques ?? 0)} pengunjung unik.`

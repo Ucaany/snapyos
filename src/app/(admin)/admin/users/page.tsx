@@ -178,12 +178,11 @@ export default async function AdminUsersPage({
   ];
 
   return (
-    <div className="admin-grid-lines flex flex-col gap-10">
+    <div className="flex flex-col gap-6">
       <AdminPageHeader
-        size="hero"
         icon={Users}
         title="Manajemen User"
-        description={`${numberFormat.format(total)} user terdaftar. Buat, suspend, dan ubah role akun platform. Pendaftaran mandiri ditutup.`}
+        meta={`${numberFormat.format(total)} user terdaftar. Buat, suspend, dan ubah role akun platform. Pendaftaran mandiri ditutup.`}
       />
 
       <section aria-labelledby="admin-users-metrics" className="flex flex-col gap-4">
@@ -227,7 +226,7 @@ export default async function AdminUsersPage({
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
           <Card className="xl:col-span-7">
-            <CardHeader className="border-b">
+            <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <UserCheck
                   className="size-4 text-emerald-600 dark:text-emerald-400"
@@ -273,7 +272,7 @@ export default async function AdminUsersPage({
           </Card>
 
           <Card className="xl:col-span-5">
-            <CardHeader className="border-b">
+            <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <UserPlus className="size-4 text-sky-600 dark:text-sky-400" aria-hidden="true" />
                 Tambah user

@@ -1,13 +1,16 @@
-import { Send } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Send, Users } from "lucide-react";
 
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
-import { AdminDisclosureCard } from "@/components/admin/AdminDisclosureCard";
+import { AdminDisclosure } from "@/components/admin/AdminDisclosureCard";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
+import { AdminMetricCard } from "@/components/admin/AdminMetricCard";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { AdminSectionHeading } from "@/components/admin/AdminSectionHeading";
 import { AdminStatusBadge } from "@/components/admin/AdminStatusBadge";
 import { AdminSelect } from "@/components/admin/AdminSelect";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -66,6 +69,11 @@ export default async function AdminBroadcastsPage() {
   const broadcasts = await listBroadcasts();
   const stats = await getBroadcastStats(broadcasts.map((b) => b.id));
   const statsByCampaign = new Map(stats.map((s) => [s.campaign_id, s]));
+  const sentTotal = stats.reduce((total, campaign) => total + campaign.sent, 0);
+  const failedTotal = stats.reduce((total, campaign) => total + campaign.failed, 0);
+  const recipientTotal = stats.reduce((total, campaign) => total + campaign.total, 0);
+  const draftCount = broadcasts.filter((broadcast) => broadcast.status === "draft").length;
+  const deliveryPct = recipientTotal ? (sentTotal / recipientTotal) * 100 : 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -75,9 +83,48 @@ export default async function AdminBroadcastsPage() {
         meta="Pengumuman · marketing · resend dengan limit · riwayat pengiriman"
       />
 
+      <section aria-labelledby="admin-broadcasts-metrics" className="flex flex-col gap-4">
+        <AdminSectionHeading
+          id="admin-broadcasts-metrics"
+          title="Ikhtisar"
+          description="Kampanye email platform dan status pengiriman penerima."
+        />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <AdminMetricCard
+            accent
+            tone="emerald"
+            icon={CheckCircle2}
+            label="Email terkirim"
+            value={String(sentTotal)}
+            sub={`${deliveryPct.toFixed(1).replace(".", ",")}% delivery`}
+          />
+          <AdminMetricCard
+            tone="neutral"
+            icon={Send}
+            label="Total broadcast"
+            value={String(broadcasts.length)}
+            sub={`${draftCount} draft`}
+          />
+          <AdminMetricCard
+            tone="sky"
+            icon={Users}
+            label="Total penerima"
+            value={String(recipientTotal)}
+            sub="Seluruh kampanye"
+          />
+          <AdminMetricCard
+            tone="amber"
+            icon={AlertTriangle}
+            label="Gagal terkirim"
+            value={String(failedTotal)}
+            sub="Perlu kirim ulang"
+          />
+        </div>
+      </section>
+
       <Card>
         <CardHeader>
-          <CardTitle>Buat Broadcast Baru</CardTitle>
+          <CardTitle>Buat broadcast baru</CardTitle>
           <CardDescription>
             Pilih jenis &amp; template, kirim ke audiens terpilih. Delivery via Resend.
           </CardDescription>
@@ -149,80 +196,94 @@ export default async function AdminBroadcastsPage() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-col gap-4">
+      <section aria-labelledby="admin-broadcasts-list" className="flex flex-col gap-4">
+        <AdminSectionHeading
+          id="admin-broadcasts-list"
+          title="Kampanye"
+          description={`${broadcasts.length} kampanye · ${draftCount} draft · ${failedTotal} email gagal.`}
+        />
+
         {broadcasts.length === 0 ? (
           <AdminEmptyState heading="Belum ada broadcast" icon={Send}>
             Buat draft pertama di atas, lalu kirim ke audiens terpilih.
           </AdminEmptyState>
         ) : (
-          broadcasts.map((b) => {
-            const s = statsByCampaign.get(b.id);
-            const sentText = s ? `${s.sent}/${s.total} terkirim` : "belum dikirim";
-            const resendLeft = b.max_resend - b.resend_count;
-            const isTerminal = b.status === "partial" || b.status === "failed";
-            const canSend = b.status === "draft" || b.status === "sending";
-            const canResend = isTerminal && resendLeft > 0;
-            const resendExhausted = isTerminal && resendLeft <= 0;
-            return (
-              <AdminDisclosureCard
-                key={b.id}
-                trigger={
-                  <>
-                    <span className="text-base font-medium tracking-tight">{b.subject}</span>
-                    <span className="rounded-md border bg-muted px-2 py-0.5 text-xs">
-                      {BROADCAST_KIND_LABEL[b.kind] ?? b.kind}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      AUDIENS {b.audience.toUpperCase()} · TEMPLATE {b.template_key}
-                    </span>
-                    <AdminStatusBadge status={b.status} />
-                  </>
-                }
-              >
-                <div className="flex flex-col gap-4">
-                  <pre className="whitespace-pre-wrap rounded-md border bg-background p-3 text-xs leading-relaxed">
-                    {b.body}
-                  </pre>
+          <div className="flex flex-col gap-4">
+            {broadcasts.map((b) => {
+              const s = statsByCampaign.get(b.id);
+              const sentText = s ? `${s.sent}/${s.total} terkirim` : "belum dikirim";
+              const resendLeft = b.max_resend - b.resend_count;
+              const isTerminal = b.status === "partial" || b.status === "failed";
+              const canSend = b.status === "draft" || b.status === "sending";
+              const canResend = isTerminal && resendLeft > 0;
+              const resendExhausted = isTerminal && resendLeft <= 0;
+              return (
+                <Card key={b.id}>
+                  <CardHeader>
+                    <CardTitle>{b.subject}</CardTitle>
+                    <CardDescription>
+                      {BROADCAST_KIND_LABEL[b.kind] ?? b.kind} · audiens {b.audience.toUpperCase()}{" "}
+                      · template {b.template_key} · {sentText} · resend {b.resend_count}/
+                      {b.max_resend}
+                      {s && s.failed > 0 ? ` · gagal ${s.failed}` : ""}
+                    </CardDescription>
+                    <CardAction>
+                      <AdminStatusBadge status={b.status} />
+                    </CardAction>
+                  </CardHeader>
+                  <CardContent className="flex flex-col gap-4">
+                    <AdminDisclosure
+                      className="border-t pt-3"
+                      triggerClassName="min-h-11 text-xs font-medium text-muted-foreground hover:text-foreground"
+                      trigger={<span>Isi &amp; riwayat pengiriman</span>}
+                    >
+                      <div className="flex flex-col gap-4">
+                        <pre className="whitespace-pre-wrap rounded-md border bg-background p-3 text-xs leading-relaxed">
+                          {b.body}
+                        </pre>
 
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {sentText} · RESEND {b.resend_count}/{b.max_resend}
-                    {s && s.failed > 0 ? ` · GAGAL ${s.failed}` : ""}
-                  </p>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {sentText} · RESEND {b.resend_count}/{b.max_resend}
+                          {s && s.failed > 0 ? ` · GAGAL ${s.failed}` : ""}
+                        </p>
 
-                  <div className="mt-4 flex flex-wrap items-center gap-3 border-t pt-4">
-                    {canSend && (
-                      <AdminActionForm
-                        action={sendBroadcastAction}
-                        hidden={{ campaignId: b.id }}
-                        submitLabel="Kirim Sekarang"
-                        pendingLabel="Mengirim…"
-                        submitClassName="min-h-11"
-                      />
-                    )}
-                    {canResend && (
-                      <AdminActionForm
-                        action={resendBroadcastAction}
-                        hidden={{ campaignId: b.id }}
-                        submitLabel={`Kirim Ulang Gagal (${resendLeft} tersisa)`}
-                        pendingLabel="Mengirim ulang…"
-                        variant="neutral"
-                        submitClassName="min-h-11"
-                      />
-                    )}
-                    {resendExhausted && (
-                      <p className="text-xs text-muted-foreground">
-                        Batas resend tercapai ({b.resend_count}/{b.max_resend})
-                      </p>
-                    )}
-                  </div>
+                        <div className="mt-4 flex flex-wrap items-center gap-3 border-t pt-4">
+                          {canSend && (
+                            <AdminActionForm
+                              action={sendBroadcastAction}
+                              hidden={{ campaignId: b.id }}
+                              submitLabel="Kirim Sekarang"
+                              pendingLabel="Mengirim…"
+                              submitClassName="min-h-11"
+                            />
+                          )}
+                          {canResend && (
+                            <AdminActionForm
+                              action={resendBroadcastAction}
+                              hidden={{ campaignId: b.id }}
+                              submitLabel={`Kirim Ulang Gagal (${resendLeft} tersisa)`}
+                              pendingLabel="Mengirim ulang…"
+                              variant="neutral"
+                              submitClassName="min-h-11"
+                            />
+                          )}
+                          {resendExhausted && (
+                            <p className="text-xs text-muted-foreground">
+                              Batas resend tercapai ({b.resend_count}/{b.max_resend})
+                            </p>
+                          )}
+                        </div>
 
-                  <RecipientHistory campaignId={b.id} />
-                </div>
-              </AdminDisclosureCard>
-            );
-          })
+                        <RecipientHistory campaignId={b.id} />
+                      </div>
+                    </AdminDisclosure>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }

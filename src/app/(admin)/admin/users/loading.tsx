@@ -3,11 +3,10 @@ import { Skeleton } from "@/components/admin/ui/skeleton";
 /** Bentuk /admin/users: hero + KPI + kartu skala/tambah user + daftar. */
 export default function AdminUsersLoading() {
   return (
-    <div className="flex flex-col gap-10" aria-busy="true" aria-label="Memuat daftar user">
+    <div className="flex flex-col gap-6" aria-busy="true" aria-label="Memuat daftar user">
       <div className="space-y-2">
         <Skeleton className="h-4 w-32" />
         <Skeleton className="h-9 w-64" />
-        <Skeleton className="h-3 w-80" />
       </div>
       <div className="flex flex-col gap-4">
         <Skeleton className="h-10 w-52" />

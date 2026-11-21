@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/admin/ui/skeleton";
 
 export default function AdminLoading() {
   return (
-    <div className="flex flex-col gap-10" aria-busy="true" aria-label="Memuat halaman admin">
+    <div className="flex flex-col gap-6" aria-busy="true" aria-label="Memuat halaman admin">
       <div className="flex flex-col gap-2">
         <Skeleton className="h-3 w-32" />
         <Skeleton className="h-8 w-64" />

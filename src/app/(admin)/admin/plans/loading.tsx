@@ -8,6 +8,11 @@ export default function AdminFormListLoading() {
         <Skeleton className="h-4 w-36" />
         <Skeleton className="h-9 w-64" />
       </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <Skeleton key={index} className="h-[108px] rounded-xl" />
+        ))}
+      </div>
       <Skeleton className="h-56" />
       <div className="flex flex-col gap-4">
         {Array.from({ length: 3 }).map((_, i) => (

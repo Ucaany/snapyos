@@ -1,13 +1,15 @@
 import Link from "next/link";
-import { CircleHelp, Filter } from "lucide-react";
+import { AlertTriangle, CheckCircle2, CircleHelp, Filter, Inbox } from "lucide-react";
 
 import { AdminActionForm } from "@/components/admin/AdminActionForm";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminFilterForm } from "@/components/admin/AdminFilterForm";
+import { AdminMetricCard } from "@/components/admin/AdminMetricCard";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminPaginator } from "@/components/admin/AdminPaginator";
 import { AdminRecordCard } from "@/components/admin/AdminRecordCard";
 import { AdminRecordCollection } from "@/components/admin/AdminRecordCollection";
+import { AdminSectionHeading } from "@/components/admin/AdminSectionHeading";
 import { AdminStatusBadge } from "@/components/admin/AdminStatusBadge";
 import { AdminSelect } from "@/components/admin/AdminSelect";
 import { Button, buttonVariants } from "@/components/admin/ui/button";
@@ -36,7 +38,14 @@ export default async function AdminSupportPage({
 }) {
   const q = await searchParams;
   const page = Math.max(1, Number.parseInt(q.page ?? "1", 10) || 1);
-  const { items, total } = await listSupportTicketsAdmin({ status: q.status, page, limit: 20 });
+  const [list, openTickets, needsActionTickets, resolvedTickets] = await Promise.all([
+    listSupportTicketsAdmin({ status: q.status, page, limit: 20 }),
+    listSupportTicketsAdmin({ status: "open", page: 1, limit: 1 }),
+    listSupportTicketsAdmin({ status: "needs_action", page: 1, limit: 1 }),
+    listSupportTicketsAdmin({ status: "resolved", page: 1, limit: 1 }),
+  ]);
+  const { items, total } = list;
+  const grandTotal = openTickets.total + needsActionTickets.total + resolvedTickets.total;
 
   const dateFmt = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" });
   const totalPages = Math.max(1, Math.ceil(total / 20));
@@ -47,7 +56,53 @@ export default async function AdminSupportPage({
         title="Tiket Bantuan"
         icon={CircleHelp}
         meta={`Semua tenant · ${total} tiket cocok filter`}
-        right={
+      />
+
+      <section aria-labelledby="admin-support-metrics" className="flex flex-col gap-4">
+        <AdminSectionHeading
+          id="admin-support-metrics"
+          title="Ikhtisar"
+          description="Antrian tiket bantuan dari seluruh tenant."
+        />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <AdminMetricCard
+            accent
+            tone="amber"
+            icon={Inbox}
+            label="Tiket terbuka"
+            value={String(openTickets.total)}
+            sub="Menunggu respons admin"
+          />
+          <AdminMetricCard
+            tone="amber"
+            icon={AlertTriangle}
+            label="Butuh tindakan"
+            value={String(needsActionTickets.total)}
+            sub="Perlu eskalasi"
+          />
+          <AdminMetricCard
+            tone="emerald"
+            icon={CheckCircle2}
+            label="Selesai"
+            value={String(resolvedTickets.total)}
+            sub="Sudah ditutup"
+          />
+          <AdminMetricCard
+            tone="neutral"
+            icon={CircleHelp}
+            label="Total tiket"
+            value={String(grandTotal)}
+            sub="Seluruh status"
+          />
+        </div>
+      </section>
+
+      <AdminRecordCollection
+        storageKey="snapyos.view.admin.support"
+        label="Daftar tiket bantuan"
+        title="Daftar tiket"
+        description={`${total} tiket cocok filter${q.status ? ` · status ${q.status}` : ""}.`}
+        toolbar={
           <AdminFilterForm action="/admin/support" className="flex flex-wrap items-end gap-3">
             <AdminSelect
               name="status"
@@ -62,116 +117,120 @@ export default async function AdminSupportPage({
               <Filter className="size-4" aria-hidden="true" />
               Terapkan
             </Button>
-          </AdminFilterForm>
-        }
-      />
-
-      {items.length === 0 ? (
-        <AdminEmptyState
-          heading="Tidak ada tiket"
-          icon={CircleHelp}
-          action={
-            q.status ? (
+            {q.status ? (
               <Link
                 href="/admin/support"
-                className={buttonVariants({ variant: "outline", size: "sm" })}
+                className={buttonVariants({ variant: "ghost", size: "sm" })}
               >
                 Hapus filter
               </Link>
-            ) : null
-          }
-        >
-          {q.status
-            ? "Belum ada tiket dengan status ini. Hapus filter untuk melihat seluruh antrian."
-            : "Belum ada tiket masuk. Tiket muncul di sini setelah owner mengirim laporan dari dashboard."}
-        </AdminEmptyState>
-      ) : (
-        <AdminRecordCollection
-          storageKey="snapyos.view.admin.support"
-          label="Daftar tiket bantuan"
-          list={
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Subjek</TableHead>
-                  <TableHead className="hidden md:table-cell">Bisnis</TableHead>
-                  <TableHead className="hidden lg:table-cell">Kategori · Area</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="hidden lg:table-cell">Waktu</TableHead>
-                  <TableHead>Aksi</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {items.map((t) => (
-                  <TableRow key={t.id}>
-                    <TableCell className="max-w-[280px] font-medium">{t.subject}</TableCell>
-                    <TableCell className="hidden md:table-cell">{t.business_name}</TableCell>
-                    <TableCell className="hidden text-xs text-muted-foreground lg:table-cell">
-                      {t.category} · {t.area}
-                    </TableCell>
-                    <TableCell>
-                      <AdminStatusBadge status={t.status} label={STATUS_LABEL[t.status]} />
-                    </TableCell>
-                    <TableCell className="hidden text-muted-foreground lg:table-cell">
-                      {dateFmt.format(new Date(t.created_at))}
-                    </TableCell>
-                    <TableCell>
-                      <AdminActionForm
-                        action={updateSupportTicketStatusAction}
-                        hidden={{ ticketId: t.id }}
-                        submitLabel="Simpan"
-                        className="flex flex-wrap items-center gap-2"
-                      >
-                        <AdminSelect
-                          name="status"
-                          defaultValue={t.status}
-                          aria-label={`Status tiket: ${t.subject}`}
-                          options={STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label }))}
-                        />
-                      </AdminActionForm>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          }
-          grid={
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+            ) : null}
+          </AdminFilterForm>
+        }
+        empty={
+          items.length === 0 ? (
+            <AdminEmptyState
+              heading="Tidak ada tiket"
+              icon={CircleHelp}
+              action={
+                q.status ? (
+                  <Link
+                    href="/admin/support"
+                    className={buttonVariants({ variant: "outline", size: "sm" })}
+                  >
+                    Hapus filter
+                  </Link>
+                ) : null
+              }
+            >
+              {q.status
+                ? "Belum ada tiket dengan status ini. Hapus filter untuk melihat seluruh antrian."
+                : "Belum ada tiket masuk. Tiket muncul di sini setelah owner mengirim laporan dari dashboard."}
+            </AdminEmptyState>
+          ) : undefined
+        }
+        list={
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Subjek</TableHead>
+                <TableHead className="hidden md:table-cell">Bisnis</TableHead>
+                <TableHead className="hidden lg:table-cell">Kategori · Area</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="hidden lg:table-cell">Waktu</TableHead>
+                <TableHead>Aksi</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {items.map((t) => (
-                <AdminRecordCard
-                  key={t.id}
-                  title={t.subject}
-                  subtitle={`${t.category} · ${t.area}`}
-                  badge={<AdminStatusBadge status={t.status} label={STATUS_LABEL[t.status]} />}
-                  meta={[
-                    { label: "Bisnis", value: t.business_name },
-                    { label: "Waktu", value: dateFmt.format(new Date(t.created_at)) },
-                  ]}
-                  actions={
+                <TableRow key={t.id}>
+                  <TableCell className="max-w-[280px] font-medium">{t.subject}</TableCell>
+                  <TableCell className="hidden md:table-cell">{t.business_name}</TableCell>
+                  <TableCell className="hidden text-xs text-muted-foreground lg:table-cell">
+                    {t.category} · {t.area}
+                  </TableCell>
+                  <TableCell>
+                    <AdminStatusBadge status={t.status} label={STATUS_LABEL[t.status]} />
+                  </TableCell>
+                  <TableCell className="hidden text-muted-foreground lg:table-cell">
+                    {dateFmt.format(new Date(t.created_at))}
+                  </TableCell>
+                  <TableCell>
                     <AdminActionForm
                       action={updateSupportTicketStatusAction}
                       hidden={{ ticketId: t.id }}
-                      submitLabel="Simpan status tiket"
-                      icon="check"
-                      iconOnly
-                      className="flex w-full items-end gap-2"
+                      submitLabel="Simpan"
+                      className="flex flex-wrap items-center gap-2"
                     >
                       <AdminSelect
-                        id={`status-grid-${t.id}`}
                         name="status"
                         defaultValue={t.status}
                         aria-label={`Status tiket: ${t.subject}`}
                         options={STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label }))}
-                        wrapperClassName="min-w-0 flex-1"
                       />
                     </AdminActionForm>
-                  }
-                />
+                  </TableCell>
+                </TableRow>
               ))}
-            </div>
-          }
-        />
-      )}
+            </TableBody>
+          </Table>
+        }
+        grid={
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {items.map((t) => (
+              <AdminRecordCard
+                key={t.id}
+                title={t.subject}
+                subtitle={`${t.category} · ${t.area}`}
+                badge={<AdminStatusBadge status={t.status} label={STATUS_LABEL[t.status]} />}
+                meta={[
+                  { label: "Bisnis", value: t.business_name },
+                  { label: "Waktu", value: dateFmt.format(new Date(t.created_at)) },
+                ]}
+                actions={
+                  <AdminActionForm
+                    action={updateSupportTicketStatusAction}
+                    hidden={{ ticketId: t.id }}
+                    submitLabel="Simpan status tiket"
+                    icon="check"
+                    iconOnly
+                    className="flex w-full items-end gap-2"
+                  >
+                    <AdminSelect
+                      id={`status-grid-${t.id}`}
+                      name="status"
+                      defaultValue={t.status}
+                      aria-label={`Status tiket: ${t.subject}`}
+                      options={STATUS_OPTIONS.map((s) => ({ value: s.value, label: s.label }))}
+                      wrapperClassName="min-w-0 flex-1"
+                    />
+                  </AdminActionForm>
+                }
+              />
+            ))}
+          </div>
+        }
+      />
 
       <AdminPaginator
         basePath="/admin/support"
