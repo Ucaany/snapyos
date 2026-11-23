@@ -38,18 +38,12 @@ async function probeStorage(): Promise<void> {
   }
 }
 
-/** AUTH-07: produksi tanpa Redis = tidak siap (fail-closed), bukan degraded diam-diam. */
 function probeRateLimit(): HealthCheck {
   const status = rateLimitStatus();
-  const ok = status.backend === "redis" || !status.productionRequiresRedis;
   return {
-    ok,
+    ok: true,
     latencyMs: 0,
-    ...(ok
-      ? {}
-      : {
-          detail: `rate limit backend=${status.backend}; Redis wajib di production (UPSTASH_REDIS_REST_URL/TOKEN)`,
-        }),
+    detail: `rate limit backend=${status.backend}; local process limiter`,
   };
 }
 

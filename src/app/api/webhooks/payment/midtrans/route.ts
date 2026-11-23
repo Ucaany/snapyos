@@ -10,7 +10,7 @@ const MAX_WEBHOOK_BYTES = 64 * 1024;
 /** Midtrans requires a quick acknowledgement; details stay in server webhook logs. */
 export async function POST(request: Request) {
   const ip = getClientIp(request.headers);
-  const rl = await rateLimit(`webhook:midtrans:${ip}`, 120, 60_000, { failOpen: true });
+  const rl = await rateLimit(`webhook:midtrans:${ip}`, 120, 60_000);
   if (!rl.ok) {
     return NextResponse.json(
       { received: false },

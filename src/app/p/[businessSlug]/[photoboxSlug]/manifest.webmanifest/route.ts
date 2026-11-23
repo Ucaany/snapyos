@@ -28,7 +28,7 @@ export async function GET(_request: Request, { params }: Props) {
     description: "Kiosk photobox SnapyOS: pilih paket, bayar, ambil foto, dan unduh hasil.",
     id: kioskPath,
     start_url: kioskPath,
-    scope: `${kioskPath}/`,
+    scope: kioskPath,
     display: "standalone",
     display_override: ["standalone", "fullscreen"],
     orientation: "any",

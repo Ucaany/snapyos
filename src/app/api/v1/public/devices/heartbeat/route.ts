@@ -8,7 +8,7 @@ import { deviceHeartbeatSchema } from "@/lib/validators";
 
 export async function POST(request: Request) {
   try {
-    const rl = await rateLimit(`device-heartbeat:${getClientIp(request.headers)}`, 30, 60_000, { failOpen: true });
+    const rl = await rateLimit(`device-heartbeat:${getClientIp(request.headers)}`, 30, 60_000);
     if (!rl.ok)
       return NextResponse.json(
         {

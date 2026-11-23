@@ -35,28 +35,42 @@ async function parse<T>(res: Response): Promise<T> {
  */
 const REQUEST_TIMEOUT_MS = 15_000;
 
+type TimeoutSignal = { signal: AbortSignal | undefined; cleanup: () => void };
+
 function timeoutSignal(
   existing?: AbortSignal,
   timeoutMs = REQUEST_TIMEOUT_MS
-): AbortSignal | undefined {
-  if (typeof AbortSignal === "undefined" || !("timeout" in AbortSignal)) {
-    return existing; // browser kiosk lama tanpa AbortSignal.timeout: tanpa timeout
+): TimeoutSignal {
+  if (typeof AbortSignal === "undefined") {
+    return { signal: existing, cleanup: () => undefined };
   }
-  if (!existing) return AbortSignal.timeout(timeoutMs);
+  if (!("timeout" in AbortSignal)) {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), timeoutMs);
+    const cleanup = () => clearTimeout(t);
+    existing?.addEventListener("abort", () => {
+      cleanup();
+      controller.abort(existing.reason);
+    });
+    return { signal: controller.signal, cleanup };
+  }
+  if (!existing) return { signal: AbortSignal.timeout(timeoutMs), cleanup: () => undefined };
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), timeoutMs);
+  const cleanup = () => clearTimeout(t);
   existing.addEventListener("abort", () => {
-    clearTimeout(t);
+    cleanup();
     controller.abort(existing.reason);
   });
-  return controller.signal;
+  return { signal: controller.signal, cleanup };
 }
 
 /** Timeout/abort → KioskError dengan pesan jelas (bukan diam). */
 async function request<T>(url: string, init: RequestInit, timeoutMs?: number): Promise<T> {
+  const timeout = timeoutSignal(init.signal ?? undefined, timeoutMs);
   try {
     return parse<T>(
-      await fetch(url, { ...init, signal: timeoutSignal(init.signal ?? undefined, timeoutMs) })
+      await fetch(url, { ...init, signal: timeout.signal })
     );
   } catch (e) {
     if (e instanceof KioskError) throw e;
@@ -74,6 +88,8 @@ async function request<T>(url: string, init: RequestInit, timeoutMs?: number): P
       );
     }
     throw e;
+  } finally {
+    timeout.cleanup();
   }
 }
 

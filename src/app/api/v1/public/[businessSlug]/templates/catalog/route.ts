@@ -62,7 +62,7 @@ async function frameManifest(
 export async function GET(request: Request, { params }: Params) {
   try {
     const ip = getClientIp(request.headers);
-    const rl = await rateLimit(`template-catalog:${ip}`, 30, 60_000, { failOpen: true });
+    const rl = await rateLimit(`template-catalog:${ip}`, 30, 60_000);
     if (!rl.ok) {
       return NextResponse.json(
         { error: "Too many requests" },

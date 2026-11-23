@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createHash } from "node:crypto";
 import { ApiError } from "@/lib/api-errors";
 import { toErrorResponse } from "@/lib/api-route";
 import { rateLimit } from "@/lib/rate-limit";
@@ -18,7 +19,7 @@ type Params = { params: Promise<{ resultToken: string }> };
 export async function GET(request: Request, { params }: Params) {
   try {
     const ip = getClientIp(request.headers);
-    const rl = await rateLimit(`result-zip:${ip}`, 10, 60_000, { failOpen: true });
+    const rl = await rateLimit(`result-zip:${ip}`, 10, 60_000);
     if (!rl.ok) {
       return NextResponse.json(
         {
@@ -33,6 +34,20 @@ export async function GET(request: Request, { params }: Params) {
     }
 
     const { resultToken } = await params;
+    const tokenKey = createHash("sha256").update(resultToken).digest("hex").slice(0, 24);
+    const tokenRl = await rateLimit(`result-zip-token:${tokenKey}`, 20, 60_000);
+    if (!tokenRl.ok) {
+      return NextResponse.json(
+        {
+          error: {
+            code: "RATE_LIMITED",
+            message: "Terlalu banyak unduhan untuk hasil ini. Coba lagi nanti.",
+            details: { retry_after: tokenRl.retryAfterSec },
+          },
+        },
+        { status: 429, headers: { "Retry-After": String(tokenRl.retryAfterSec) } }
+      );
+    }
     const result = await getResult(resultToken);
     const processGifUrl = result.gif_download_url ?? result.gif_url;
     const photosGifUrl = result.photos_gif_download_url ?? result.photos_gif_url;

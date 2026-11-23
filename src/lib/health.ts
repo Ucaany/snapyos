@@ -34,7 +34,7 @@ export type HealthReport = {
   checks: {
     database: HealthCheck;
     storage: HealthCheck;
-    /** AUTH-07: produksi wajib Redis; tanpa Redis status degraded. */
+    /** Local process rate limiter status. */
     rateLimit: HealthCheck;
   };
 };

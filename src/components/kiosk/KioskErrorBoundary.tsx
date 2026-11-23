@@ -1,6 +1,7 @@
 "use client";
 
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { KioskAction } from "@/components/kiosk/ui";
 
 type Props = { children: ReactNode };
 type State = { error: Error | null; retrying: boolean };
@@ -35,13 +36,13 @@ export class KioskErrorBoundary extends Component<Props, State> {
         <p className="max-w-[52ch] text-sm leading-relaxed text-muted-foreground">
           Terjadi kesalahan tak terduga. Muat ulang untuk memulihkan sesi yang tersimpan.
         </p>
-        <button
-          type="button"
+        <KioskAction
+          tone="primary"
+          size="lg"
           onClick={() => window.location.reload()}
-          className="min-h-14 border-2 border-ink bg-accent px-6 py-3 font-display text-base font-bold uppercase tracking-[-0.01em] shadow-hard transition-transform active:translate-y-[2px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
         >
           Muat ulang sekarang
-        </button>
+        </KioskAction>
       </div>
     );
   }
