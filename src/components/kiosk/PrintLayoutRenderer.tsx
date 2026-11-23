@@ -28,11 +28,18 @@ type Props = {
   jobId?: string;
   /** true = cetak ulang eksplisit; lewati claim auto-print. */
   reprint?: boolean;
+  qrPending?: boolean;
   /** success=true → permintaan print dikirim; browser tidak memberi status fisik. */
   onDone: (success: boolean) => void;
 };
 
-type PrintState = "loading" | "ready" | "printing" | "done" | "error";
+type PrintState =
+  | "loading"
+  | "ready"
+  | "printing"
+  | "awaiting-confirm"
+  | "done"
+  | "error";
 
 function waitForImg(img: HTMLImageElement): Promise<void> {
   if (img.complete && img.naturalWidth > 0) return Promise.resolve();
@@ -65,6 +72,7 @@ function PrintLayoutRendererInner({
   canvasAspect = null,
   jobId,
   reprint = false,
+  qrPending = false,
   onDone,
 }: Props) {
   const [state, setState] = useState<PrintState>("loading");
@@ -155,7 +163,13 @@ function PrintLayoutRendererInner({
           setErrorMsg("Dialog cetak tidak selesai. Coba lagi atau lanjut tanpa cetak.");
         }
       };
-      const handleAfterPrint = () => finish(true);
+       const handleAfterPrint = () => {
+         if (cancelled || doneRef.current) return;
+         if (timeout) clearTimeout(timeout);
+         window.removeEventListener("afterprint", handleAfterPrint);
+         printingRef.current = false;
+         setState("awaiting-confirm");
+       };
       window.addEventListener("afterprint", handleAfterPrint);
       timeout = setTimeout(() => finish(false), 15_000);
       printCleanupRef.current = () => {
@@ -273,6 +287,13 @@ function PrintLayoutRendererInner({
     printFnRef.current?.();
   }
 
+  function handleConfirmPrinted() {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    setState("done");
+    onDone(true);
+  }
+
   function handleSkip() {
     // Jangan biarkan customer melewati saat cetak sedang berjalan — kalau tidak,
     // hasil bisa keluar setelah sesi sudah di-reset untuk customer berikutnya.
@@ -300,6 +321,32 @@ function PrintLayoutRendererInner({
               </Button>
               <Button size="lg" className="bg-accent" onClick={handleSkip}>
                 Lanjut
+              </Button>
+            </div>
+          </>
+        ) : state === "awaiting-confirm" ? (
+          <>
+            <Check className="size-10 shrink-0 text-accent-3" aria-hidden />
+            <p className="font-display text-xl uppercase leading-none tracking-[-0.02em] md:text-2xl">
+              Periksa kertas
+            </p>
+            <p className="max-w-[44ch] text-sm leading-relaxed text-muted-foreground">
+              Perintah cetak sudah dikirim. Konfirmasi hanya setelah kertas benar-benar keluar.
+            </p>
+            {qrPending && (
+              <p className="max-w-[44ch] border-2 border-ink bg-accent-2 px-3 py-2 text-[10px] font-bold uppercase leading-relaxed tracking-[0.08em]">
+                Hasil belum tersinkron. Lembar ini tanpa QR. Cetak ulang setelah QR tersedia.
+              </p>
+            )}
+            <div className="flex flex-wrap justify-center gap-2.5">
+              <Button size="lg" className="bg-accent" onClick={handleConfirmPrinted}>
+                <Check className="size-5" aria-hidden /> Kertas keluar
+              </Button>
+              <Button size="lg" variant="neutral" onClick={handleRetry}>
+                <Printer className="size-5" aria-hidden /> Cetak ulang
+              </Button>
+              <Button size="lg" variant="neutral" onClick={handleSkip}>
+                Lanjut tanpa cetak
               </Button>
             </div>
           </>

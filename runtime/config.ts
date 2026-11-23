@@ -195,6 +195,21 @@ export function loadConfig(env: EnvLike): RuntimeConfig {
     .map((value) => value.trim())
     .filter(Boolean);
 
+  const cloudUrl = (env.SNAPYOS_CLOUD_URL?.trim() || "").replace(/\/+$/, "");
+  if (cloudUrl) {
+    let cloudOrigin: string;
+    try {
+      cloudOrigin = new URL(cloudUrl).origin;
+    } catch {
+      throw new ConfigError("SNAPYOS_CLOUD_URL harus URL http(s) yang valid.");
+    }
+    if (!origins.includes(cloudOrigin)) {
+      throw new ConfigError(
+        `PHOTOBOOTH_BRIDGE_ORIGINS harus memuat origin SNAPYOS_CLOUD_URL: ${cloudOrigin}`
+      );
+    }
+  }
+
   if (env.GPHOTO2_TIMEOUT_MS && !Number.isFinite(Number(env.GPHOTO2_TIMEOUT_MS))) {
     throw new ConfigError("GPHOTO2_TIMEOUT_MS harus angka (milidetik).");
   }
@@ -248,7 +263,7 @@ export function loadConfig(env: EnvLike): RuntimeConfig {
     ),
     // Cap body PDF/base64: 50 lembar × 8 foto tetap jauh di bawah ini.
     maxBodyBytes: 60 * 1024 * 1024,
-    cloudUrl: (env.SNAPYOS_CLOUD_URL?.trim() || "").replace(/\/+$/, ""),
+    cloudUrl,
     deviceToken: env.SNAPYOS_DEVICE_TOKEN?.trim() || "",
     runtimeVersion: env.SNAPYOS_RUNTIME_VERSION?.trim() || "0.1.0",
   };

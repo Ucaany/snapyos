@@ -50,6 +50,23 @@ kamera sebelum token diisi.
 
 ## Instalasi per OS
 
+### Profil produksi Linux cloud + bridge
+
+Untuk booth Linux yang menjalankan aplikasi cloud di Chrome, gunakan profil yang sudah
+disediakan:
+
+```bash
+sudo deploy/kiosk/install.sh
+sudoedit /etc/snapyos/bridge.env
+sudo systemctl restart snapyos-bridge
+PHOTOBOOTH_BRIDGE_TOKEN="$(grep '^PHOTOBOOTH_BRIDGE_TOKEN=' /etc/snapyos/bridge.env | cut -d= -f2-)" \
+  deploy/kiosk/doctor.sh
+```
+
+Isi `PHOTOBOOTH_BRIDGE_ORIGINS` dengan origin cloud yang sama persis dengan
+`SNAPYOS_CLOUD_URL`. Runtime menolak start bila keduanya tidak cocok. Jalankan Chrome
+dengan `deploy/kiosk/chrome-kiosk.sh` setelah mengisi `SNAPYOS_KIOSK_URL`.
+
 Ringkasan:
 
 | OS      | Instalasi bridge                                   | Adapter printer | Service manager            |

@@ -185,14 +185,24 @@ export function buildFinalizeForm(input: {
  * Kirim satu item antrian ke endpoint finalize; sukses → hapus dari antrian.
  * `deviceToken` diambil dari live state kiosk (BUKAN dipersist).
  */
-export async function syncOne(item: QueuedFinalize, deviceToken: string | null): Promise<boolean> {
+export type SyncResult = {
+  sessionId: string;
+  synced: boolean;
+  resultToken?: string | null;
+  expiresAt?: string | null;
+};
+
+export async function syncOne(
+  item: QueuedFinalize,
+  deviceToken: string | null
+): Promise<SyncResult> {
   // Sesi runtime lokal disinkronkan oleh worker runtime (Phase 7), bukan lewat
   // endpoint cloud — membuangnya di sini akan menghilangkan fotonya.
-  if (item.sessionId.startsWith("local_")) return false;
+  if (item.sessionId.startsWith("local_")) return { sessionId: item.sessionId, synced: false };
   if (!deviceToken) {
     // Token hilang (reload penuh): biarkan di antrian. `purgeOrphaned` yang
     // memutuskan setelah grace habis — bukan jalur cepat yang menghapus foto.
-    return false;
+    return { sessionId: item.sessionId, synced: false };
   }
   try {
     const res = await fetch(
@@ -215,22 +225,30 @@ export async function syncOne(item: QueuedFinalize, deviceToken: string | null):
       if (res.status === 410 || json?.error?.code === "SESSION_EXPIRED") {
         await removeQueued(item.sessionId);
       }
-      return false;
+      return { sessionId: item.sessionId, synced: false };
     }
+    const json = (await res.json().catch(() => null)) as {
+      data?: { result_token?: string | null; expires_at?: string | null };
+    } | null;
     await removeQueued(item.sessionId);
-    return true;
+    return {
+      sessionId: item.sessionId,
+      synced: true,
+      resultToken: json?.data?.result_token ?? null,
+      expiresAt: json?.data?.expires_at ?? null,
+    };
   } catch {
     // Network error (koneksi flap) → tetap di antrian, retry berikutnya.
-    return false;
+    return { sessionId: item.sessionId, synced: false };
   }
 }
 
 /** Drain semua antrian berurutan (per-item catch — item gagal tidak memutus loop). */
-export async function drainQueue(deviceToken: string | null): Promise<number> {
+export async function drainQueue(deviceToken: string | null): Promise<SyncResult[]> {
   const items = await listQueued();
-  let synced = 0;
+  const results: SyncResult[] = [];
   for (const item of items) {
-    if (await syncOne(item, deviceToken)) synced += 1;
+    results.push(await syncOne(item, deviceToken));
   }
-  return synced;
+  return results;
 }

@@ -65,6 +65,8 @@ type SyncSessionRow = {
   client_created_at: string;
   state: string;
   synced_at: string | null;
+  result_token: string | null;
+  result_expires_at: string | null;
 };
 
 type QueueRow = {
@@ -149,7 +151,7 @@ function loadSession(db: DatabaseSync, id: string): SyncSessionRow | null {
     (db
       .prepare(
         `select id, cloud_id, business_slug, photobox_slug, package_id, template_id,
-                retake_count, client_created_at, state, synced_at
+         retake_count, client_created_at, state, synced_at, result_token, result_expires_at
            from sessions where id = ?`
       )
       .get(id) as SyncSessionRow | undefined) ?? null
@@ -353,8 +355,16 @@ export async function syncSession(ctx: SyncContext, queue: QueueRow): Promise<Se
 
   const at = nowIso(ctx);
   ctx.db
-    .prepare("update sessions set synced_at = ?, updated_at = ? where id = ?")
-    .run(at, at, session.id);
+    .prepare(
+      "update sessions set synced_at = ?, result_token = ?, result_expires_at = ?, updated_at = ? where id = ?"
+    )
+    .run(
+      at,
+      typeof finalized.data?.result_token === "string" ? finalized.data.result_token : null,
+      typeof finalized.data?.expires_at === "string" ? finalized.data.expires_at : null,
+      at,
+      session.id
+    );
   ctx.db
     .prepare("update finalize_queue set attempts = 0, last_error = null where session_id = ?")
     .run(session.id);

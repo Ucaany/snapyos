@@ -90,6 +90,16 @@ export function isPrintPathEnabled(
   purpose: PrintPurpose
 ): boolean {
   if (settings?.enabled === false) return false;
+  if (
+    !settings ||
+    (settings.enabled === undefined &&
+      settings.mode === undefined &&
+      settings.photo === undefined &&
+      settings.thermal === undefined &&
+      settings.receipt === undefined)
+  ) {
+    return false;
+  }
   if (purpose === "receipt") return settings?.receipt?.enabled !== false;
   if (purpose === "photo") {
     if (settings?.photo) return settings.photo.enabled !== false;

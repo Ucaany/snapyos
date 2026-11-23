@@ -42,6 +42,8 @@ type SessionRow = {
   payment_method: string | null;
   client_created_at: string;
   synced_at: string | null;
+  result_token: string | null;
+  result_expires_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -90,6 +92,8 @@ function present(row: SessionRow, captures: CaptureRow[] = []) {
     payment_method: row.payment_method,
     client_created_at: row.client_created_at,
     synced_at: row.synced_at,
+    result_token: row.result_token,
+    result_expires_at: row.result_expires_at,
     created_at: row.created_at,
     updated_at: row.updated_at,
     captures: captures.map((capture) => ({

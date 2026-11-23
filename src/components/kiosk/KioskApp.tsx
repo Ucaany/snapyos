@@ -21,6 +21,7 @@ import {
   abortLocalSession,
   createLocalSession,
   fetchDeviceSettings,
+  fetchLocalSession,
   fetchRuntimeStatus,
   finalizeLocalSession,
   saveDeviceSettings,
@@ -212,6 +213,7 @@ export function KioskApp({
   const [selectedPackage, setSelectedPackage] = useState<PublicPackage | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<PublicTemplate | null>(null);
   const [session, setSession] = useState<SessionInfo | null>(null);
+  const sessionRef = useRef<SessionInfo | null>(null);
   const [photos, setPhotos] = useState<CapturePhoto[]>([]);
   const [retakeCount, setRetakeCount] = useState(0);
   // Filter live dipilih di kamera dan menjadi nilai awal editor (per foto).
@@ -245,6 +247,10 @@ export function KioskApp({
   const [syncing, setSyncing] = useState(false);
   const syncingRef = useRef(false);
   const paidHandledRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
 
   // Fullscreen kiosk lock — aktif dari setup sampai akhir flow (semua step
   // pasca-aktivasi). Keluar hanya via PIN petugas (server-verified, diatur
@@ -451,13 +457,33 @@ export function KioskApp({
       // Token diambil dari live state (localStorage), BUKAN dari IndexedDB —
       // antrian tidak menyimpan bearer credential (lihat offline-queue.ts).
       const token = localStorage.getItem(TOKEN_KEY);
-      const synced = await drainQueue(token);
+      const syncResults = await drainQueue(token);
+      const synced = syncResults.filter((item) => item.synced).length;
       // Sapu item yatim HANYA setelah drain selesai (C4): tanpa token, item
       // yang gagal tersinkron memang tak akan pernah terkirim.
       await purgeOrphaned(token);
+      const activeSync = sessionRef.current?.session_id
+        ? syncResults.find(
+            (item) => item.sessionId === sessionRef.current?.session_id && item.synced
+          )
+        : null;
+      if (activeSync?.resultToken) {
+        setResult((prev) =>
+          prev?.pendingSync
+            ? {
+                ...prev,
+                result_token: activeSync.resultToken ?? null,
+                expires_at: activeSync.expiresAt ?? prev.expires_at,
+                pendingSync: false,
+              }
+            : prev
+        );
+      }
       if (synced > 0) {
         setNotice(`${synced} sesi offline berhasil disinkronkan.`);
-        setResult((prev) => (prev?.pendingSync ? { ...prev, pendingSync: false } : prev));
+        setResult((prev) =>
+          prev?.pendingSync && !activeSync?.resultToken ? { ...prev, pendingSync: false } : prev
+        );
       }
     } finally {
       syncingRef.current = false;
@@ -505,6 +531,36 @@ export function KioskApp({
     void warmTemplateCache(businessSlug, { signal: ac.signal });
     return () => ac.abort();
   }, [mediaBusy, online, businessSlug]);
+
+  // Runtime lokal mengembalikan result token setelah worker selesai sync.
+  // Poll hanya selama layar result menunggu, supaya tidak menambah trafik sesi normal.
+  useEffect(() => {
+    if (!result?.pendingSync || !session?.session_id.startsWith("local_")) return;
+    let cancelled = false;
+    const check = async () => {
+      const local = await fetchLocalSession(
+        session.session_id,
+        currentPhotobox.camera_settings.bridge_url
+      );
+      if (cancelled || !local?.result_token) return;
+      setResult((prev) =>
+        prev?.pendingSync
+          ? {
+              ...prev,
+              result_token: local.result_token ?? null,
+              expires_at: local.result_expires_at ?? prev.expires_at,
+              pendingSync: false,
+            }
+          : prev
+      );
+    };
+    void check();
+    const timer = setInterval(() => void check(), 15_000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [currentPhotobox.camera_settings.bridge_url, result?.pendingSync, session?.session_id]);
 
   function handleActivated(token: string) {
     localStorage.setItem(TOKEN_KEY, token);
@@ -1133,6 +1189,7 @@ export function KioskApp({
             printSettings={currentPhotobox.print_settings}
             purpose="photo"
             resultUrl={resultUrlForQr}
+            qrPending={result?.pendingSync === true}
             jobId={session?.session_id ?? result?.result_token ?? undefined}
             reprint={reprintRequested}
             framed={Boolean(selectedTemplate)}

@@ -38,6 +38,8 @@ type Props = {
   canvasAspect?: number | null;
   /** URL hasil (`/r/[token]`) yang dicetak sebagai QR di lembar foto. */
   resultUrl?: string | null;
+  /** true bila hasil offline belum punya token cloud; cetak tetap boleh tanpa QR. */
+  qrPending?: boolean;
   /** success=true → permintaan cetak terkirim (browser tidak memberi status fisik). */
   onDone: (success: boolean) => void;
 };
@@ -66,6 +68,7 @@ export function PrintFlow({
   framed = false,
   canvasAspect = null,
   resultUrl = null,
+  qrPending = false,
   onDone,
 }: Props) {
   const [forceBrowser, setForceBrowser] = useState(false);
@@ -157,6 +160,7 @@ export function PrintFlow({
         jobId={jobId}
         reprint={reprint}
         onDone={onDone}
+        qrPending={qrPending}
         onUseBrowserPrint={() => setForceBrowser(true)}
       />
     );
@@ -173,6 +177,7 @@ export function PrintFlow({
         framed={framed}
         canvasAspect={canvasAspect}
         onDone={onDone}
+        qrPending={qrPending}
       />
     );
   }
@@ -187,6 +192,7 @@ export function PrintFlow({
       framed={framed}
       canvasAspect={canvasAspect}
       onDone={onDone}
+      qrPending={qrPending}
     />
   );
 }

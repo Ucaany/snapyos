@@ -10,7 +10,7 @@
 import type { DatabaseSync } from "node:sqlite";
 
 /** Versi skema saat ini. Naikkan saat ada migrasi baru. */
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 /** Tabel yang ikut export/import setelan. PIN darurat sengaja TIDAK di sini. */
 const MIGRATION_1 = `
@@ -131,8 +131,20 @@ alter table print_jobs add column failure_kind text;
 create index if not exists idx_print_jobs_retry on print_jobs (next_retry_at);
 `;
 
+/** Phase 5: hasil cloud untuk sesi lokal yang sudah tersinkron. */
+const MIGRATION_5 = `
+alter table sessions add column result_token text;
+alter table sessions add column result_expires_at text;
+`;
+
 /** Migrasi berurutan; indeks array + 1 = versi skema. */
-const MIGRATIONS: readonly string[] = [MIGRATION_1, MIGRATION_2, MIGRATION_3, MIGRATION_4];
+const MIGRATIONS: readonly string[] = [
+  MIGRATION_1,
+  MIGRATION_2,
+  MIGRATION_3,
+  MIGRATION_4,
+  MIGRATION_5,
+];
 
 export function readVersion(db: DatabaseSync): number {
   const row = db.prepare("pragma user_version").get() as { user_version?: number } | undefined;

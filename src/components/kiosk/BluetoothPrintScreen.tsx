@@ -32,13 +32,21 @@ type Props = {
   jobId?: string;
   /** true = cetak ulang eksplisit; lewati claim auto-print. */
   reprint?: boolean;
+  qrPending?: boolean;
   /** success=true → job terkirim penuh ke printer (bukan konfirmasi fisik). */
   onDone: (success: boolean) => void;
   /** Printer bukan ESC/POS: pindah ke dialog OS tanpa mengulang sesi. */
   onUseBrowserPrint: () => void;
 };
 
-type State = "idle" | "connecting" | "preparing" | "printing" | "done" | "error";
+type State =
+  | "idle"
+  | "connecting"
+  | "preparing"
+  | "printing"
+  | "awaiting-confirm"
+  | "done"
+  | "error";
 
 /**
  * Cetak thermal ESC/POS lewat Web Bluetooth.
@@ -54,6 +62,7 @@ export function BluetoothPrintScreen({
   printSettings,
   jobId,
   reprint = false,
+  qrPending = false,
   onDone,
   onUseBrowserPrint,
 }: Props) {
@@ -116,8 +125,7 @@ export function BluetoothPrintScreen({
         if (controller.signal.aborted) return;
         setState("printing");
         await link.write(job, { signal: controller.signal });
-        setState("done");
-        setTimeout(() => finish(true), 600);
+        setState("awaiting-confirm");
       } catch (error) {
         if (controller.signal.aborted) return;
         const reason =
@@ -132,7 +140,7 @@ export function BluetoothPrintScreen({
         abortRef.current = null;
       }
     },
-    [buildJob, finish]
+    [buildJob]
   );
 
   const connectAndPrint = useCallback(
@@ -172,8 +180,7 @@ export function BluetoothPrintScreen({
       setState("printing");
       await writeEscPosSerial(job);
       setPrinterName((current) => current ?? "Printer serial (SPP)");
-      setState("done");
-      setTimeout(() => finish(true), 600);
+       setState("awaiting-confirm");
     } catch (error) {
       if (error instanceof SerialPrintError && error.code === "NO_PORT") {
         setState("idle");
@@ -186,7 +193,7 @@ export function BluetoothPrintScreen({
       );
       setState("error");
     }
-  }, [buildJob, finish]);
+  }, [buildJob]);
 
   /** Auto-print SPP: pakai port yang sudah diizinkan, tanpa chooser. */
   const autoPrintSerial = useCallback(async () => {
@@ -201,8 +208,7 @@ export function BluetoothPrintScreen({
         return;
       }
       setPrinterName((current) => current ?? "Printer serial (SPP)");
-      setState("done");
-      setTimeout(() => finish(true), 600);
+       setState("awaiting-confirm");
     } catch (error) {
       if (error instanceof SerialPrintError && error.code === "NO_PORT") {
         setState("idle");
@@ -215,7 +221,7 @@ export function BluetoothPrintScreen({
       );
       setState("error");
     }
-  }, [buildJob, finish]);
+  }, [buildJob]);
 
   const retry = useCallback(async () => {
     const link = linkRef.current;
@@ -292,6 +298,10 @@ export function BluetoothPrintScreen({
     finish(success);
   }
 
+  function confirmPrinted() {
+    finish(true);
+  }
+
   const busy = state === "connecting" || state === "preparing" || state === "printing";
 
   return (
@@ -312,6 +322,32 @@ export function BluetoothPrintScreen({
             </Button>
             <Button size="lg" className="bg-accent" onClick={() => leave(false)}>
               Lanjut
+            </Button>
+          </div>
+        </>
+      ) : state === "awaiting-confirm" ? (
+        <>
+          <Check className="size-10 shrink-0 text-accent-3" aria-hidden />
+          <p className="font-display text-xl uppercase leading-none tracking-[-0.02em] md:text-2xl">
+            Periksa kertas
+          </p>
+          <p className="max-w-[46ch] text-sm leading-relaxed text-muted-foreground">
+            Perintah thermal sudah dikirim. Konfirmasi hanya setelah kertas benar-benar keluar.
+          </p>
+          {qrPending && (
+            <p className="max-w-[46ch] border-2 border-ink bg-accent-2 px-3 py-2 text-[10px] font-bold uppercase leading-relaxed tracking-[0.08em]">
+              Hasil belum tersinkron. Lembar ini tanpa QR. Cetak ulang setelah QR tersedia.
+            </p>
+          )}
+          <div className="flex flex-wrap justify-center gap-3">
+            <Button size="lg" className="bg-accent" onClick={confirmPrinted}>
+              <Check className="size-5" aria-hidden /> Kertas keluar
+            </Button>
+            <Button size="lg" variant="neutral" onClick={() => void retry()}>
+              <Printer className="size-5" aria-hidden /> Cetak ulang
+            </Button>
+            <Button size="lg" variant="neutral" onClick={() => leave(false)}>
+              Lanjut tanpa cetak
             </Button>
           </div>
         </>

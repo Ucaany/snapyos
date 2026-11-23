@@ -143,8 +143,8 @@ export function insertSession(db: DatabaseSync, input: NewSession, now = Date.no
     `insert into sessions (
        id, cloud_id, business_slug, photobox_slug, package_id, template_id, state,
        expires_at, retake_count, package_snapshot_json, payment_method,
-       client_created_at, synced_at, created_at, updated_at
-     ) values (?, null, ?, ?, ?, ?, 'active', ?, 0, ?, ?, ?, null, ?, ?)`
+       client_created_at, synced_at, result_token, result_expires_at, created_at, updated_at
+      ) values (?, null, ?, ?, ?, ?, 'active', ?, 0, ?, ?, ?, null, null, null, ?, ?)`
   ).run(
     input.id,
     input.businessSlug,

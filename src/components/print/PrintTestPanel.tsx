@@ -178,11 +178,11 @@ export function PrintTestPanel({
     const cleanup = () => {
       style.remove();
       window.removeEventListener("afterprint", cleanup);
+      setPhase("sent");
     };
     window.addEventListener("afterprint", cleanup);
     try {
       window.print();
-      setPhase("sent");
     } catch {
       cleanup();
       setPhase("error");

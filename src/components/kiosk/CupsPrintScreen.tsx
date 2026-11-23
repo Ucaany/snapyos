@@ -1,10 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, Loader2, Printer, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { buttonVariants } from "@/components/ui/button-variants";
 import type { PrintPlan, PrintSettingsInput } from "@/lib/print-layout";
 import {
   printCopies,
@@ -34,6 +32,7 @@ type Props = {
   /** Rasio kanvas untuk orientation=auto. */
   canvasAspect?: number | null;
   reprint?: boolean;
+  qrPending?: boolean;
   onDone: (success: boolean) => void;
 };
 
@@ -47,6 +46,7 @@ export function CupsPrintScreen({
   framed = false,
   canvasAspect = null,
   reprint = false,
+  qrPending = false,
   onDone,
 }: Props) {
   const [state, setState] = useState<State>("loading");
@@ -280,12 +280,10 @@ export function CupsPrintScreen({
                 <li>3. Klik Coba lagi.</li>
                 <li>4. Buka panduan bila masih gagal.</li>
               </ol>
-              <Link
-                href="/docs/perangkat"
-                className={`${buttonVariants({ variant: "neutral", size: "lg" })} w-fit underline decoration-2 underline-offset-4`}
-              >
-                Buka panduan perangkat
-              </Link>
+              <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.06em] text-muted-foreground">
+                Panduan perangkat tersedia untuk petugas melalui dashboard. Jangan meninggalkan layar
+                kiosk saat sesi pelanggan masih aktif.
+              </p>
             </div>
             <div className="flex flex-wrap justify-center gap-3">
               <Button size="lg" variant="neutral" onClick={retry}>
@@ -312,6 +310,11 @@ export function CupsPrintScreen({
                   ? "Mencetak."
                   : "Menunggu kertas keluar. Konfirmasi setelah kertas benar-benar keluar."}
             </p>
+            {qrPending && (
+              <p className="max-w-[44ch] border-2 border-ink bg-accent-2 px-3 py-2 text-[10px] font-bold uppercase leading-relaxed tracking-[0.08em]">
+                Hasil belum tersinkron. Lembar ini tanpa QR. Cetak ulang setelah QR tersedia.
+              </p>
+            )}
             <div className="flex flex-wrap justify-center gap-2.5">
               <Button
                 size="lg"

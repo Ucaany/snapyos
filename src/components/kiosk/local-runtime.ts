@@ -251,6 +251,8 @@ export type LocalSession = {
   expires_at: string;
   package_id: string;
   state: string;
+  result_token?: string | null;
+  result_expires_at?: string | null;
 };
 
 /**
@@ -327,4 +329,12 @@ export async function abortLocalSession(
   bridgeUrl?: string | null
 ): Promise<void> {
   await bridgePost(`/v1/sessions/${encodeURIComponent(sessionId)}/abort`, {}, bridgeUrl);
+}
+
+/** Baca hasil sesi lokal setelah sync worker selesai mengunggah ke cloud. */
+export async function fetchLocalSession(
+  sessionId: string,
+  bridgeUrl?: string | null
+): Promise<LocalSession | null> {
+  return bridgeGet<LocalSession>(`/v1/sessions/${encodeURIComponent(sessionId)}`, bridgeUrl);
 }
