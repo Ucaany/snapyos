@@ -441,17 +441,27 @@ export async function sendBroadcast(
   if (error || !data) throw new ApiError("NOT_FOUND", "Broadcast tidak ditemukan");
   const campaign = data as AdminBroadcastRow;
 
-  // Kirim penuh hanya untuk draft (atau sisa status "sending"). Kampanye yang
+  // Kirim penuh hanya untuk draft. Status sending berarti request lain sedang
+  // memproses campaign dan tidak boleh dikirim ulang secara paralel.
   // sudah terminal (sent/partial/failed) tidak boleh di-relaunch penuh lewat
   // tombol ini — itu menghapus riwayat & melewati batas resend.
-  if (campaign.status !== "draft" && campaign.status !== "sending") {
+  if (campaign.status !== "draft") {
     throw new ApiError(
       "VALIDATION_ERROR",
       "Broadcast sudah pernah dikirim. Gunakan Kirim Ulang untuk penerima yang gagal."
     );
   }
 
-  await supabase.from("broadcast_campaigns").update({ status: "sending" }).eq("id", campaignId);
+  const { data: claimed, error: claimError } = await supabase
+    .from("broadcast_campaigns")
+    .update({ status: "sending" })
+    .eq("id", campaignId)
+    .eq("status", "draft")
+    .select("id")
+    .maybeSingle();
+  if (claimError || !claimed) {
+    throw new ApiError("CONFLICT", "Broadcast sedang diproses admin lain");
+  }
 
   let result: { sent: number; failed: number; total: number };
   try {
@@ -505,7 +515,16 @@ export async function resendBroadcast(
     );
   }
 
-  await supabase.from("broadcast_campaigns").update({ status: "sending" }).eq("id", campaignId);
+  const { data: claimed, error: claimError } = await supabase
+    .from("broadcast_campaigns")
+    .update({ status: "sending" })
+    .eq("id", campaignId)
+    .in("status", ["partial", "failed"])
+    .select("id")
+    .maybeSingle();
+  if (claimError || !claimed) {
+    throw new ApiError("CONFLICT", "Broadcast sedang diproses admin lain");
+  }
 
   let result: { sent: number; failed: number; total: number };
   try {

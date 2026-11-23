@@ -45,10 +45,11 @@ export function AdminPaginator({
       <PaginationContent>
         <PaginationItem>
           <PaginationPrevious
-            href={href(Math.max(1, page - 1))}
+            href={page > 1 ? href(page - 1) : undefined}
             text="Sebelumnya"
             aria-label="Halaman sebelumnya"
             aria-disabled={page <= 1}
+            tabIndex={page <= 1 ? -1 : undefined}
             className={page <= 1 ? "pointer-events-none opacity-50" : undefined}
           />
         </PaginationItem>
@@ -93,10 +94,11 @@ export function AdminPaginator({
 
         <PaginationItem>
           <PaginationNext
-            href={href(Math.min(totalPages, page + 1))}
+            href={page < totalPages ? href(page + 1) : undefined}
             text="Berikutnya"
             aria-label="Halaman berikutnya"
             aria-disabled={page >= totalPages}
+            tabIndex={page >= totalPages ? -1 : undefined}
             className={page >= totalPages ? "pointer-events-none opacity-50" : undefined}
           />
         </PaginationItem>

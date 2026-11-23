@@ -229,7 +229,8 @@ async function transitionFailure(input: {
     .eq("id", input.failureId)
     .maybeSingle();
   if (loadErr) {
-    throw new ApiError("INTERNAL", `Gagal memuat kasus: ${loadErr.message}`);
+    console.error("[admin/subscription-failures] load failed:", loadErr.message);
+    throw new ApiError("INTERNAL", "Gagal memuat kasus");
   }
   if (!current) {
     throw new ApiError("NOT_FOUND", "Kasus tidak ditemukan");
@@ -255,7 +256,8 @@ async function transitionFailure(input: {
     .select("id, status")
     .maybeSingle();
   if (updateErr) {
-    throw new ApiError("INTERNAL", `Gagal update kasus: ${updateErr.message}`);
+    console.error("[admin/subscription-failures] update failed:", updateErr.message);
+    throw new ApiError("INTERNAL", "Gagal memperbarui kasus");
   }
   if (!updated) {
     throw new ApiError("VALIDATION_ERROR", "Kasus baru saja diubah admin lain: refresh halaman");

@@ -498,7 +498,13 @@ export async function deleteGlobalTemplate(templateId: string) {
     oldThumbnail: r.thumbnail_url,
   });
   const storageKeys = storageKeysOnly(keys);
-  if (storageKeys.length > 0) await removeResolved("business-assets", storageKeys);
+  if (storageKeys.length > 0) {
+    const cleanupError = await removeResolved("business-assets", storageKeys);
+    if (cleanupError) {
+      console.error("[admin/templates] cleanup failed:", cleanupError.message);
+      throw new ApiError("INTERNAL", "Template terhapus, tetapi cleanup storage gagal. Coba cleanup ulang.");
+    }
+  }
 
   await audit(admin.id, "admin.template.delete", templateId, {
     name: (row as { name: string }).name,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { Badge } from "@/components/admin/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/admin/ui/tabs";
@@ -19,12 +19,18 @@ export function AdminStatusTabs({
   basePath: string;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   return (
     <Tabs
       value={active}
       onValueChange={(value) => {
-        if (typeof value === "string") router.push(`${basePath}?status=${value}`);
+        if (typeof value === "string") {
+          const params = new URLSearchParams(searchParams.toString());
+          params.set("status", value);
+          params.delete("page");
+          router.push(`${basePath}?${params.toString()}`);
+        }
       }}
     >
       <TabsList variant="line" className="w-full justify-start overflow-x-auto">

@@ -97,6 +97,8 @@ export default async function AdminSettingsPage() {
             <AdminActionForm
               action={updateSettingsAction}
               submitLabel="Simpan pengaturan global"
+              confirm="Pengaturan ini mencakup maintenance mode. Perubahan dapat langsung memblokir visitor non-admin. Lanjutkan?"
+              confirmTitle="Konfirmasi pengaturan global"
               className="grid grid-cols-1 gap-4 md:grid-cols-3"
             >
               <div className="flex flex-col gap-1">

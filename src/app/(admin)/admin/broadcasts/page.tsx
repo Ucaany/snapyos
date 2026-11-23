@@ -254,6 +254,8 @@ export default async function AdminBroadcastsPage() {
                               hidden={{ campaignId: b.id }}
                               submitLabel="Kirim Sekarang"
                               pendingLabel="Mengirim…"
+                              confirm="Kampanye ini akan dikirim ke seluruh penerima yang cocok. Lanjutkan?"
+                              confirmTitle="Konfirmasi kirim broadcast"
                               submitClassName="min-h-11"
                             />
                           )}
@@ -263,6 +265,8 @@ export default async function AdminBroadcastsPage() {
                               hidden={{ campaignId: b.id }}
                               submitLabel={`Kirim Ulang Gagal (${resendLeft} tersisa)`}
                               pendingLabel="Mengirim ulang…"
+                              confirm="Kirim ulang hanya ke penerima yang gagal. Lanjutkan?"
+                              confirmTitle="Konfirmasi kirim ulang"
                               variant="neutral"
                               submitClassName="min-h-11"
                             />

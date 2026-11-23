@@ -125,11 +125,15 @@ export function AdminActionForm({
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const submittedRef = useRef(false);
+  const errorSummaryRef = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
     if (!submittedRef.current) return;
     submittedRef.current = false;
-    if (state.error) return;
+    if (state.error || Object.keys(state.fieldErrors ?? {}).length > 0) {
+      errorSummaryRef.current?.focus();
+      return;
+    }
     toast.success(state.success ?? "Perubahan disimpan.");
   }, [state]);
   const confirmedRef = useRef(false);
@@ -160,13 +164,13 @@ export function AdminActionForm({
         ))}
         {children}
         {state.error ? (
-          <p role="alert" className="text-xs text-destructive">
+          <p ref={errorSummaryRef} id="admin-action-error" role="alert" tabIndex={-1} className="text-xs text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             {state.error}
           </p>
         ) : null}
         {Object.entries(state.fieldErrors ?? {}).map(([field, errors]) =>
           errors?.[0] ? (
-            <p key={field} role="alert" className="text-xs text-destructive">
+            <p key={field} id={`admin-action-error-${field}`} role="alert" tabIndex={-1} className="text-xs text-destructive">
               {errors[0]}
             </p>
           ) : null

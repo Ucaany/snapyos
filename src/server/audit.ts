@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createServerClient } from "@/lib/supabase/server";
+import { ApiError } from "@/lib/api-errors";
 
 /**
  * Audit log terpusat — docs/09 (audit semua aksi finansial/admin),
@@ -22,5 +23,8 @@ export async function insertAudit(input: {
     target: input.target ?? null,
     meta: input.meta ?? {},
   });
-  if (error) console.error("[audit] gagal menulis audit_logs:", error.message);
+  if (error) {
+    console.error("[audit] gagal menulis audit_logs:", error.message);
+    throw new ApiError("INTERNAL", "Gagal mencatat audit aksi admin");
+  }
 }

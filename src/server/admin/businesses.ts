@@ -726,6 +726,9 @@ async function purgeBusinessStorage(
           if (items.length < 1000) break;
         }
       }
+      if (stack.length > 0) {
+        throw new ApiError("INTERNAL", "Sweep storage melewati batas. Coba lagi.");
+      }
       if (keys.length > 0) {
         const { error } = await provider.remove(bucket, keys);
         if (error) {

@@ -51,7 +51,7 @@ export function AdminLiveRefresh({
 
   return (
     <div className={cn("flex items-center gap-2 text-xs text-muted-foreground", className)}>
-      <span aria-live="polite" className="tabular-nums">
+      <span className="tabular-nums">
         {label} · {secondsAgo}s lalu
       </span>
       <Button

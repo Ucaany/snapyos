@@ -24,10 +24,15 @@ export const PATCH = adminRawRoute<{ id: string }>(async ({ request, params }) =
  */
 export const DELETE = adminRawRoute<{ id: string }>(async ({ request, params }) => {
   const linkId = parseUuidParam(params.id, "id");
-  const body = await request.json().catch(() => ({}));
+  let body: { mode?: string; manual_cancel_reason?: string };
+  try {
+    body = (await request.json()) as { mode?: string; manual_cancel_reason?: string };
+  } catch {
+    throw new ApiError("VALIDATION_ERROR", "Body JSON tidak valid");
+  }
   const data = await cancelSubscriptionAddOn(linkId, {
-    mode: (body as { mode?: string }).mode,
-    manual_cancel_reason: (body as { manual_cancel_reason?: string }).manual_cancel_reason,
+    mode: body.mode,
+    manual_cancel_reason: body.manual_cancel_reason,
   });
   return NextResponse.json(dataEnvelope(data));
 });

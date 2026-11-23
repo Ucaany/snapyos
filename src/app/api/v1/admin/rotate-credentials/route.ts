@@ -12,7 +12,12 @@ import { audit } from "@/server/admin/guard";
  * Admin-only; hasil dicatat di audit_logs.
  */
 export const POST = adminRawRoute(async ({ admin, request }) => {
-  const body = (await request.json().catch(() => ({}))) as { business_id?: string };
+  let body: { business_id?: string; confirm_all?: boolean };
+  try {
+    body = (await request.json()) as { business_id?: string; confirm_all?: boolean };
+  } catch {
+    throw new ApiError("VALIDATION_ERROR", "Body JSON tidak valid");
+  }
   const businessId = typeof body.business_id === "string" ? body.business_id.trim() : null;
 
   if (businessId && !/^[0-9a-f-]{36}$/i.test(businessId)) {
@@ -31,6 +36,9 @@ export const POST = adminRawRoute(async ({ admin, request }) => {
     return NextResponse.json(dataEnvelope(result), { status: result.errors > 0 ? 409 : 200 });
   }
 
+  if (body.confirm_all !== true) {
+    throw new ApiError("VALIDATION_ERROR", "Rotasi semua credential membutuhkan confirm_all=true");
+  }
   const result = await rotateAllCredentials();
   await audit(admin.id, "rotate_credentials_all", null, {
     businesses: result.businesses,
