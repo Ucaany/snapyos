@@ -1,11 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { LogOut } from "lucide-react";
 
 import { logoutAction } from "@/server/auth-actions";
 import { buttonVariants } from "@/components/ui/button-variants";
-import { IconButton } from "@/components/ui/icon-button";
+import { LogoutButton } from "@/components/dashboard/LogoutButton";
 import { MobileNav } from "@/components/dashboard/MobileNav";
 import { StorageIndicator } from "@/components/dashboard/StorageIndicator";
 
@@ -104,9 +103,7 @@ export function Topbar({
             </p>
           </div>
           <form action={logoutAction}>
-            <IconButton type="submit" label="Keluar" variant="neutral">
-              <LogOut className="size-4" aria-hidden="true" />
-            </IconButton>
+            <LogoutButton />
           </form>
         </div>
       </div>

@@ -495,7 +495,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         code: {
           label: "Endpoint device (owner dan publik)",
           lang: "text",
-          code: "GET /api/v1/business/:businessId/photoboxes/:id/activation\nPOST /api/v1/public/devices/activate\nPOST /api/v1/public/devices/verify\nDELETE /api/v1/business/:businessId/devices/:id",
+          code: "POST /api/v1/business/:businessId/photoboxes/:id/activation\nPOST /api/v1/public/devices/activate\nPOST /api/v1/public/devices/verify\nDELETE /api/v1/business/:businessId/devices/:id",
         },
       },
       {

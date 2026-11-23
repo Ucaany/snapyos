@@ -30,7 +30,7 @@ export function PaymentMethodSelector({ provider, selected, disabled, onChange }
   };
 
   return (
-    <fieldset disabled={disabled} className="border-2 border-ink bg-muted p-3">
+    <fieldset disabled={disabled} aria-describedby="enabled-methods-error" className="border-2 border-ink bg-muted p-3">
       <legend className="px-1 font-mono text-[10px] font-bold uppercase tracking-[0.14em]">
         [ METODE TERSEDIA ] MIN. 1
       </legend>

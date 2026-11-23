@@ -1,8 +1,8 @@
 import { authRoute, parseUuidParam } from "@/lib/api-route";
 import { generateActivation } from "@/server/devices";
 
-/** GET /api/v1/business/:businessId/photoboxes/:id/activation (docs/08 §8.5). */
-export const GET = authRoute<
+/** POST /api/v1/business/:businessId/photoboxes/:id/activation (docs/08 §8.5). */
+export const POST = authRoute<
   Awaited<ReturnType<typeof generateActivation>>,
   { businessId: string; id: string }
 >(async ({ user, params }) => {

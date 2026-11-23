@@ -175,7 +175,8 @@ export function DeviceDialog({
     setError(null);
     try {
       const res = await fetch(
-        `/api/v1/business/${businessId}/photoboxes/${photobox.id}/activation`
+        `/api/v1/business/${businessId}/photoboxes/${photobox.id}/activation`,
+        { method: "POST" }
       );
       if (!res.ok) throw new Error(await readErrorMessage(res, "Gagal membuat kode"));
       const parsed = activationResponse.safeParse(await res.json());

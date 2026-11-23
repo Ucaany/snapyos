@@ -22,6 +22,8 @@ export function InstallPWA() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [dismissed, setDismissed] = useState(false);
   const [installed, setInstalled] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const mounted = useSyncExternalStore(
     () => () => undefined,
     () => true,
@@ -47,15 +49,25 @@ export function InstallPWA() {
 
   const profile = getDeviceProfile();
   const showIosGuide = !deferred && profile.isIos && !profile.isPwaInstalled;
-  if (!deferred && !showIosGuide) return null;
+  if (!deferred && !showIosGuide && !error) return null;
 
   async function install() {
     const ev = deferred;
     if (!ev) return;
+    setPending(true);
+    setError(null);
     setDeferred(null);
-    await ev.prompt();
-    const choice = await ev.userChoice;
-    if (choice.outcome === "accepted") setInstalled(true);
+    try {
+      await ev.prompt();
+      const choice = await ev.userChoice;
+      if (choice.outcome === "accepted") setInstalled(true);
+      else setDeferred(ev);
+    } catch {
+      setDeferred(ev);
+      setError("Instalasi gagal. Coba lagi.");
+    } finally {
+      setPending(false);
+    }
   }
 
   return (
@@ -82,10 +94,11 @@ export function InstallPWA() {
         </IconButton>
       </div>
       {showIosGuide ? null : (
-        <Button size="sm" className="self-start" onClick={() => void install()}>
+        <Button size="sm" className="self-start" disabled={pending} onClick={() => void install()}>
           <Download className="size-4" aria-hidden /> Pasang Aplikasi
         </Button>
       )}
+      {error && <p role="alert" className="font-mono text-xs text-destructive">{error}</p>}
     </div>
   );
 }

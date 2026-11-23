@@ -24,6 +24,7 @@ const POLL_MS = 5000;
 export function CashPaymentNotifier({ businessId }: { businessId: string }) {
   const [items, setItems] = useState<PendingItem[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [pollingError, setPollingError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   // Ref pembayaran yang sudah di-dismiss. Notifier tampil lagi hanya bila ada
   // ref baru di luar snapshot ini. Disimpan di state agar ikut render.
@@ -35,7 +36,10 @@ export function CashPaymentNotifier({ businessId }: { businessId: string }) {
       const res = await fetch(`/api/v1/business/${businessId}/cash-payments`, {
         cache: "no-store",
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        setPollingError("Status pembayaran tunai tidak tersedia. Mencoba lagi.");
+        return;
+      }
       const json = (await res.json()) as { data?: PendingItem[] };
       const next = json.data ?? [];
       // Buang ref yang sudah tidak pending supaya pembayaran baru berikutnya
@@ -46,8 +50,9 @@ export function CashPaymentNotifier({ businessId }: { businessId: string }) {
         return kept.size === prev.size ? prev : kept;
       });
       setItems(next);
+      setPollingError(null);
     } catch {
-      /* network error — retry next poll */
+      setPollingError("Koneksi status pembayaran terganggu. Mencoba lagi.");
     }
   }, [businessId]);
 
@@ -94,14 +99,10 @@ export function CashPaymentNotifier({ businessId }: { businessId: string }) {
     }
   }
 
-  if (visible.length === 0) return null;
+  if (visible.length === 0 && !error && !pollingError) return null;
 
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      className="fixed bottom-4 right-4 z-50 w-[min(360px,calc(100vw-2rem))] border-2 border-ink bg-accent shadow-hard-lg"
-    >
+    <div className="fixed bottom-4 right-4 z-50 w-[min(360px,calc(100vw-2rem))] border-2 border-ink bg-accent shadow-hard-lg">
       <header className="flex items-center justify-between gap-2 border-b-2 border-ink bg-ink px-3 py-2 text-bg">
         <span className="flex items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-[0.18em]">
           <Banknote className="size-4" aria-hidden />[ BAYAR DI KASIR ] {visible.length}
@@ -144,11 +145,14 @@ export function CashPaymentNotifier({ businessId }: { businessId: string }) {
         ))}
       </ol>
 
-      {error && (
-        <p className="border-t-2 border-ink bg-destructive px-3 py-2 font-mono text-[11px] font-bold uppercase text-bg">
-          {error}
+      {(error || pollingError) && (
+        <p role="alert" className="border-t-2 border-ink bg-destructive px-3 py-2 font-mono text-[11px] font-bold uppercase text-bg">
+          {error ?? pollingError}
         </p>
       )}
+      <span role="status" aria-live="polite" className="sr-only">
+        {visible.length > 0 ? `${visible.length} pembayaran tunai menunggu konfirmasi` : pollingError}
+      </span>
     </div>
   );
 }

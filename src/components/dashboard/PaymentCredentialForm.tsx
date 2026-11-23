@@ -164,7 +164,7 @@ export function PaymentCredentialForm({
 
   const fieldError = (name: string) =>
     fieldErrors[name]?.[0] ? (
-      <p role="alert" className="font-mono text-xs normal-case tracking-normal text-destructive">
+      <p id={`${name}-error`} role="alert" className="font-mono text-xs normal-case tracking-normal text-destructive">
         {fieldErrors[name][0]}
       </p>
     ) : null;
@@ -177,6 +177,7 @@ export function PaymentCredentialForm({
       <label key={field} className="grid gap-1 font-mono text-xs uppercase tracking-[0.08em]">
         {label}
         <Input
+          id={`payment-${field}`}
           name={field}
           defaultValue={field === "merchant_id" ? (credential?.merchant_id ?? "") : undefined}
           required={
@@ -188,6 +189,8 @@ export function PaymentCredentialForm({
           maxLength={field === "merchant_id" ? 160 : 4000}
           placeholder={keepHint}
           disabled={pending}
+          aria-invalid={Boolean(fieldErrors[field]?.length)}
+          aria-describedby={fieldErrors[field]?.length ? `${field}-error` : undefined}
         />
         {fieldError(field)}
       </label>
@@ -243,11 +246,14 @@ export function PaymentCredentialForm({
       <label className="grid gap-1 font-mono text-xs uppercase tracking-[0.08em]">
         Label
         <Input
+          id="payment-label"
           name="label"
           defaultValue={credential?.label ?? ""}
           maxLength={80}
           placeholder={`${providerLabels[provider]} utama`}
           disabled={pending}
+          aria-invalid={Boolean(fieldErrors.label?.length)}
+          aria-describedby={fieldErrors.label?.length ? "label-error" : undefined}
         />
         {fieldError("label")}
       </label>
@@ -265,7 +271,7 @@ export function PaymentCredentialForm({
         disabled={pending}
         onChange={setMethods}
       />
-      {fieldError("enabled_methods")}
+      <div id="enabled-methods-error">{fieldError("enabled_methods")}</div>
 
       {webhook && (
         <div className="grid gap-2 border-2 border-ink bg-muted p-3">

@@ -11,6 +11,7 @@ import { revalidatePath } from "next/cache";
 
 import { toFormState } from "@/lib/form-state";
 import { getActiveBusiness, requireUser } from "@/lib/tenant";
+import { rateLimit } from "@/lib/rate-limit";
 import type { PaymentCredentialEnvironment } from "@/lib/payment-credentials";
 import {
   createCredential as createCredentialServer,
@@ -129,6 +130,8 @@ export async function testCredentialAction(
 ): Promise<{ ok: true; provider: string; environment: string } | { error: string }> {
   const ctx = await ownerContext();
   if (!ctx) return { error: "Tidak punya izin untuk mengelola payment gateway" };
+  const limit = await rateLimit(`payment-credential-test:${ctx.userId}:${ctx.businessId}`, 3, 15 * 60_000);
+  if (!limit.ok) return { error: "Terlalu banyak pengujian credential. Coba lagi nanti." };
   try {
     const result = await testCredentialServer(ctx.userId, ctx.businessId, credentialId);
     return { ok: true, provider: result.provider, environment: result.environment };

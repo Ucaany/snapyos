@@ -445,7 +445,7 @@ export async function createManualTransaction(
     businessId,
     action: "transaction.manual_create",
     target: data.id,
-    meta: { number: data.number, method: parsed.payment_method, amount: data.final_amount },
+    meta: { number: data.number, method: "manual", amount: data.final_amount },
   });
   return data;
 }

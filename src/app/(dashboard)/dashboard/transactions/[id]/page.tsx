@@ -154,29 +154,34 @@ export default async function TransactionDetailPage({
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {tx.photos.map((photo) => (
               <li key={photo.id} className="min-w-0">
-                <a
-                  href={photo.url ?? "#"}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="block border-2 border-ink bg-surface p-1 shadow-hard-sm hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
-                >
-                  {photo.url ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- signed URL dinamis, bukan aset statis
+                {photo.url ? (
+                  <a
+                    href={photo.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block border-2 border-ink bg-surface p-1 shadow-hard-sm hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- signed URL dinamis, bukan aset statis */}
                     <img
                       src={photo.url}
                       alt={`Foto ${photo.order_index + 1}`}
                       className="aspect-[3/4] w-full object-cover"
                       loading="lazy"
                     />
-                  ) : (
-                    <span className="flex aspect-[3/4] w-full items-center justify-center font-mono text-[11px] text-muted-foreground">
-                      URL tidak tersedia
-                    </span>
-                  )}
                   <span className="mt-1 block px-1 font-mono text-[10px] uppercase tracking-[0.08em]">
                     Foto {photo.order_index + 1}
                   </span>
-                </a>
+                  </a>
+                ) : (
+                  <div className="border-2 border-ink bg-surface p-1 shadow-hard-sm">
+                    <span className="flex aspect-[3/4] w-full items-center justify-center font-mono text-[11px] text-muted-foreground">
+                      URL tidak tersedia
+                    </span>
+                    <span className="mt-1 block px-1 font-mono text-[10px] uppercase tracking-[0.08em]">
+                      Foto {photo.order_index + 1}
+                    </span>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
