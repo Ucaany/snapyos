@@ -1,7 +1,7 @@
 // Verifikasi konfigurasi Cloudflare untuk card "Cloudflare Edge" di /admin.
 // Usage:
 //   node scripts/cloudflare-check.mjs
-//   CLOUDFLARE_ZONE_NAME=snapyos.biz.id node scripts/cloudflare-check.mjs
+//   CLOUDFLARE_ZONE_NAME=snapyos.site node scripts/cloudflare-check.mjs
 //
 // Membaca .env.local (bila ada) + process.env. Tidak pernah mencetak token.
 import { readFile } from "node:fs/promises";

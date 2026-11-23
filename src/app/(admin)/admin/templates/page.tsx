@@ -247,7 +247,7 @@ export default async function AdminTemplatesPage() {
                   <Input
                     id="tpl-file-url"
                     name="file_url"
-                    placeholder="https://cdn.snapyos.biz.id/templates/frame-wedding.png"
+                    placeholder="https://cdn.snapyos.site/templates/frame-wedding.png"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
@@ -257,7 +257,7 @@ export default async function AdminTemplatesPage() {
                   <Input
                     id="tpl-thumb"
                     name="thumbnail_url"
-                    placeholder="https://cdn.snapyos.biz.id/templates/thumb.jpg"
+                    placeholder="https://cdn.snapyos.site/templates/thumb.jpg"
                     aria-describedby="tpl-thumb-help"
                   />
                   <p id="tpl-thumb-help" className="text-xs leading-snug text-muted-foreground">

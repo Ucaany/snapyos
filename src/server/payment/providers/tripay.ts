@@ -76,7 +76,7 @@ export function createTripayGateway(credential: GatewayCredential): PaymentGatew
         merchant_ref: input.orderId,
         amount: input.amount,
         customer_name: input.customerName ?? "Customer",
-        customer_email: input.customerEmail ?? "customer@snapyos.biz.id",
+        customer_email: input.customerEmail ?? "customer@snapyos.site",
         order_items: [
           {
             name: input.description,

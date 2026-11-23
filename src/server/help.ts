@@ -1869,7 +1869,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         heading: "Saluran bantuan",
         steps: [
           "Chat WhatsApp ke +62 898 3704 013 untuk respon cepat booth yang sedang live.",
-          "Email ke support@snapyos.biz.id dengan slug business, nama photobox, dan tangkapan layar.",
+          "Email ke support@snapyos.site dengan slug business, nama photobox, dan tangkapan layar.",
           "Buat tiket dari dashboard Support untuk pantau status terbuka, butuh tindakan, atau selesai.",
           "Buka halaman supported devices sebelum lapor masalah hardware agar seri kamera dan printer jelas.",
         ],
@@ -1877,7 +1877,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
           head: ["Saluran", "Alamat", "Cocok untuk"],
           rows: [
             ["WhatsApp", "+62 898 3704 013", "Booth live, respon cepat"],
-            ["Email", "support@snapyos.biz.id", "Detail lengkap plus screenshot"],
+            ["Email", "support@snapyos.site", "Detail lengkap plus screenshot"],
             ["Tiket dashboard", "/dashboard/support", "Pantau status tiket"],
           ],
         },

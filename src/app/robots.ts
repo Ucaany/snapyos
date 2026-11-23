@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 
 const BASE_URL =
-  process.env.SnapyOS_PUBLIC_BASE_URL?.replace(/\/$/, "") ?? "https://snapyos.biz.id";
+  process.env.SnapyOS_PUBLIC_BASE_URL?.replace(/\/$/, "") ?? "https://snapyos.site";
 
 export default function robots(): MetadataRoute.Robots {
   return {

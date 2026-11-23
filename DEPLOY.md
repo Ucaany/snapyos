@@ -42,7 +42,7 @@ Nilai yang wajib benar di production:
 | ----------------------------------------------------- | ----------------------------------------------- |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`           | kunci server, jangan sampai ke klien            |
 | `AUTH_SECRET`                                         | `openssl rand -base64 32`                       |
-| `AUTH_URL`, `SnapyOS_PUBLIC_BASE_URL`                 | `https://test.snapyos.biz.id`                   |
+| `AUTH_URL`, `SnapyOS_PUBLIC_BASE_URL`                 | `https://snapyos.site`                          |
 | `CRON_SECRET`                                         | `openssl rand -hex 32`                          |
 | `PAYMENT_ENCRYPTION_KEY`                              | `openssl rand -hex 32`, beda dari `AUTH_SECRET` |
 | `TURNSTILE_SECRET_KEY`, `TURNSTILE_ALLOWED_HOSTNAMES` | wajib; tanpa ini login ditolak                  |
@@ -79,7 +79,7 @@ dan menambah redirect dari port 80:
 
 ```bash
 sudo apt-get install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d test.snapyos.biz.id
+sudo certbot --nginx -d snapyos.site
 ```
 
 ## Cron

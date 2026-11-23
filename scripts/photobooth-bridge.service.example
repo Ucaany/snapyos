@@ -12,7 +12,7 @@ EnvironmentFile=-/etc/snapyos/bridge.env
 Environment=NODE_ENV=production
 Environment=PHOTOBOOTH_BRIDGE_HOST=127.0.0.1
 Environment=PHOTOBOOTH_BRIDGE_PORT=17777
-Environment=PHOTOBOOTH_BRIDGE_ORIGINS=https://snapyos.example
+Environment=PHOTOBOOTH_BRIDGE_ORIGINS=https://snapyos.site
 Environment=GPHOTO2_BIN=/usr/bin/gphoto2
 ExecStart=/usr/bin/node /opt/snapyos/scripts/photobooth-bridge.mjs
 Restart=on-failure
