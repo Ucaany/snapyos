@@ -168,9 +168,10 @@ create table plans (
   id uuid primary key default gen_random_uuid(),
   code text not null unique,
   name text not null,
-  price_monthly integer not null check (price_monthly >= 0),
-  price_yearly integer check (price_yearly >= 0),
-  billing_cycle text not null default 'monthly' check (billing_cycle in ('monthly', 'yearly')),
+  -- Harga per siklus billing (bukan selalu per bulan) — 0093.
+  price integer not null check (price >= 0),
+  billing_cycle text not null default 'monthly'
+    check (billing_cycle in ('daily', 'weekly', 'monthly', 'yearly')),
   max_businesses integer not null default 1,
   max_outlets integer not null default 1,
   max_photoboxes integer not null default 1,
@@ -198,6 +199,9 @@ create table subscriptions (
   trial_ends_at timestamptz,
   current_period_start timestamptz,
   current_period_end timestamptz,
+  -- Snapshot siklus saat aktivasi (0093) — edit plan tidak mengubah periode berjalan.
+  billing_cycle text not null default 'monthly'
+    check (billing_cycle in ('daily', 'weekly', 'monthly', 'yearly')),
   cancel_at_period_end boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -227,6 +231,10 @@ create table add_ons (
   code text not null unique,
   name text not null,
   price_monthly integer not null check (price_monthly >= 0),
+  -- Harga per siklus (0093); NULL = add-on tidak dijual untuk siklus itu.
+  price_daily integer check (price_daily is null or price_daily >= 0),
+  price_weekly integer check (price_weekly is null or price_weekly >= 0),
+  price_yearly integer check (price_yearly is null or price_yearly >= 0),
   unit text not null default 'session',
   storage_mb integer check (storage_mb is null or storage_mb > 0),  -- add-on storage (0053)
   is_active boolean not null default true,
@@ -1223,12 +1231,12 @@ create index idx_lifecycle_emails_ref on lifecycle_emails (kind, ref);
 -- Model perangkat = add-on (docs/02 §2.2): SEMUA plan base 1 outlet /
 -- 1 photobox / 1 perangkat online; tambahan perangkat via add-on.
 -- Yang membedakan plan hanyalah fitur (features jsonb).
-insert into plans (code, name, price_monthly, price_yearly, billing_cycle, max_businesses, max_outlets, max_photoboxes, max_concurrent_sessions, max_staff, storage_limit_mb, platform_fee_percent, platform_fee_flat, features) values
-  ('starter', 'Starter', 99000, 990000, 'monthly', 1, 1, 1, 1, 0, 1024, 0, 0,
+insert into plans (code, name, price, billing_cycle, max_businesses, max_outlets, max_photoboxes, max_concurrent_sessions, max_staff, storage_limit_mb, platform_fee_percent, platform_fee_flat, features) values
+  ('starter', 'Starter', 99000, 'monthly', 1, 1, 1, 1, 0, 1024, 0, 0,
    '{"voucher": false, "finance": false, "reports": false, "custom_domain": false, "white_label": false, "staff": false, "event_mode": false, "booking": false, "qr_delivery": true, "direct_payment": false, "storage": false, "cash_payment": false}'::jsonb),
-  ('growth', 'Growth', 249000, 2490000, 'monthly', 1, 1, 1, 1, 5, 5120, 0, 0,
+  ('growth', 'Growth', 249000, 'monthly', 1, 1, 1, 1, 5, 5120, 0, 0,
    '{"voucher": false, "finance": true, "reports": false, "custom_domain": false, "white_label": false, "staff": true, "event_mode": false, "booking": true, "qr_delivery": true, "direct_payment": true, "storage": false, "cash_payment": true}'::jsonb),
-  ('business', 'Business', 499000, 4990000, 'monthly', 1, 1, 1, 1, 20, 20480, 0, 0,
+  ('business', 'Business', 499000, 'monthly', 1, 1, 1, 1, 20, 20480, 0, 0,
    '{"voucher": true, "finance": true, "reports": true, "custom_domain": true, "white_label": true, "staff": true, "event_mode": true, "booking": true, "qr_delivery": true, "direct_payment": true, "storage": true, "cash_payment": true}'::jsonb)
 on conflict (code) do nothing;
 

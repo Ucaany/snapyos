@@ -19,6 +19,7 @@ import {
 } from "@/components/admin/ui/card";
 import { Input } from "@/components/admin/ui/input";
 import { formatIDR } from "@/lib/dashboard-math";
+import { cycleLabel, cycleUnit, monthlyEquivalent } from "@/lib/subscription-math";
 import { createPlanAction, updatePlanAction } from "@/server/admin-actions";
 import { listPlans } from "@/server/admin";
 import { Label } from "@/components/admin/ui/label";
@@ -117,7 +118,9 @@ export default async function AdminPlansPage() {
   const plans = await listPlans();
   const featureKeys = featureKeysFrom(plans);
   const activePlans = plans.filter((plan) => plan.is_active).length;
-  const minPrice = plans.length ? Math.min(...plans.map((plan) => plan.price_monthly)) : 0;
+  const minPrice = plans.length
+    ? Math.min(...plans.map((plan) => monthlyEquivalent(plan.price, plan.billing_cycle)))
+    : 0;
   const avgFee = plans.length
     ? plans.reduce((total, plan) => total + plan.platform_fee_percent, 0) / plans.length
     : 0;
@@ -157,7 +160,7 @@ export default async function AdminPlansPage() {
             icon={Wallet}
             label="Harga terendah"
             value={formatIDR(minPrice)}
-            sub="Per bulan"
+            sub="Per bulan (setara)"
           />
           <AdminMetricCard
             tone="amber"
@@ -187,17 +190,10 @@ export default async function AdminPlansPage() {
             <Field id="new-name" label="Nama" name="name" placeholder="Starter" />
             <Field
               id="new-price"
-              label="Harga / bln (IDR)"
-              name="price_monthly"
+              label="Harga / siklus (IDR)"
+              name="price"
               type="number"
               defaultValue={99000}
-            />
-            <Field
-              id="new-price-yearly"
-              label="Harga / thn (IDR)"
-              name="price_yearly"
-              type="number"
-              defaultValue={990000}
             />
             <Field
               id="new-biz"
@@ -276,6 +272,8 @@ export default async function AdminPlansPage() {
               label="Siklus Billing"
               defaultValue="monthly"
               options={[
+                { value: "daily", label: "Harian" },
+                { value: "weekly", label: "Mingguan" },
                 { value: "monthly", label: "Bulanan" },
                 { value: "yearly", label: "Tahunan" },
               ]}
@@ -317,8 +315,8 @@ export default async function AdminPlansPage() {
               <CardHeader>
                 <CardTitle>{p.name}</CardTitle>
                 <CardDescription>
-                  {p.code.toUpperCase()} · {p.billing_cycle === "yearly" ? "Tahunan" : "Bulanan"} ·{" "}
-                  {formatIDR(p.price_monthly)}/bln
+                  {p.code.toUpperCase()} · {cycleLabel(p.billing_cycle)} ·{" "}
+                  {formatIDR(p.price)}/{cycleUnit(p.billing_cycle)}
                 </CardDescription>
                 <CardAction>
                   <AdminStatusBadge status={p.is_active ? "active" : "inactive"} />
@@ -328,12 +326,12 @@ export default async function AdminPlansPage() {
                 <AdminStatGrid
                   items={[
                     {
-                      label: "Harga tahunan",
-                      value: p.price_yearly != null ? formatIDR(p.price_yearly) : "-",
+                      label: "Harga per siklus",
+                      value: `${formatIDR(p.price)}/${cycleUnit(p.billing_cycle)}`,
                     },
                     {
                       label: "Siklus billing",
-                      value: p.billing_cycle === "yearly" ? "Tahunan" : "Bulanan",
+                      value: cycleLabel(p.billing_cycle),
                     },
                     { label: "Sesi konkuren", value: String(p.max_concurrent_sessions) },
                     {
@@ -364,17 +362,10 @@ export default async function AdminPlansPage() {
                     <Field id={`name-${p.id}`} label="Nama" name="name" defaultValue={p.name} />
                     <Field
                       id={`price-${p.id}`}
-                      label="Harga / bln"
-                      name="price_monthly"
+                      label="Harga / siklus"
+                      name="price"
                       type="number"
-                      defaultValue={p.price_monthly}
-                    />
-                    <Field
-                      id={`price-yearly-${p.id}`}
-                      label="Harga / thn"
-                      name="price_yearly"
-                      type="number"
-                      defaultValue={p.price_yearly ?? ""}
+                      defaultValue={p.price}
                     />
                     <Field
                       id={`biz-${p.id}`}
@@ -453,6 +444,8 @@ export default async function AdminPlansPage() {
                       label="Siklus Billing"
                       defaultValue={p.billing_cycle}
                       options={[
+                        { value: "daily", label: "Harian" },
+                        { value: "weekly", label: "Mingguan" },
                         { value: "monthly", label: "Bulanan" },
                         { value: "yearly", label: "Tahunan" },
                       ]}

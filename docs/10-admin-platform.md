@@ -64,8 +64,8 @@ Admin SnapyOS memiliki dashboard terpisah untuk mengelola platform.
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Users                  | list, detail, suspend/reactivate, ubah role admin, **create/delete** (pendaftaran mandiri publik ditutup)                                                     |
 | Businesses             | list, detail, suspend/reactivate, lihat subscription & usage                                                                                                  |
-| Plans                  | create/edit price, billing cycle, limits (incl. `max_concurrent_sessions`), **feature flags + is_active langsung saat create**, platform fee, active/inactive |
-| Add-ons                | create/edit add-on (harga, unit), active/inactive                                                                                                             |
+| Plans                  | create/edit `price` (harga per siklus), billing cycle (`daily`/`weekly`/`monthly`/`yearly`), limits (incl. `max_concurrent_sessions`), **feature flags + is_active langsung saat create**, platform fee, active/inactive |
+| Add-ons                | create/edit add-on (harga per siklus: harian/mingguan/bulanan/tahunan, unit), active/inactive                                                              |
 | Promos                 | create/edit `subscription_promos` (kode diskon plan-level, %/fixed, jadwal, batas pemakaian)                                                                  |
 | Subscriptions          | list (detail periode/trial/invoice), ubah status, perpanjang, cancel, kelola add-on aktif                                                                     |
 | Templates & Categories | kelola template global (`business_id NULL`) + upload URL frame/thumbnail/video + FK `category_id` + **harga/premium (jualan)**                                |

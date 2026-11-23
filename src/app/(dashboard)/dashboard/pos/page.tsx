@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { cn } from "@/lib/utils";
 import { formatIDR } from "@/lib/dashboard-math";
+import { cycleUnit } from "@/lib/subscription-math";
 import { can } from "@/lib/rbac";
 import { getActiveBusinessForRoles, requireUser } from "@/lib/tenant";
 import { getPosAddOnInfo, hasPosEntitlement } from "@/server/pos-entitlement";
@@ -47,7 +48,7 @@ export default async function PosManagementPage({
 
   const entitled = await hasPosEntitlement(active.business.id);
   if (!entitled) {
-    const addOn = await getPosAddOnInfo();
+    const addOn = await getPosAddOnInfo(active.business.id);
     return (
       <PageShell>
         <PageHeader
@@ -60,8 +61,8 @@ export default async function PosManagementPage({
           eyebrow="POS belum aktif"
           title={`Aktifkan add-on POS untuk ${active.business.name}`}
           body={
-            addOn
-              ? `Aktifkan lewat halaman subscription. Harga: ${formatIDR(addOn.priceMonthly)}/bulan untuk 1 booth aktif.`
+            addOn && addOn.price !== null
+              ? `Aktifkan lewat halaman subscription. Harga: ${formatIDR(addOn.price)}/${cycleUnit(addOn.billingCycle)} untuk 1 booth aktif.`
               : "Hubungi admin platform untuk harga add-on POS."
           }
           cta={

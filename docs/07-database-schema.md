@@ -113,9 +113,8 @@ Tidak dipakai (JWT strategy + `auth_sessions` di atas); `users` tetap source of 
 | id                      | uuid PK     |                                                                    |
 | code                    | text unique | `starter`/`growth`/`business`                                      |
 | name                    | text        |                                                                    |
-| price_monthly           | integer     |                                                                    |
-| price_yearly            | integer     | nullable                                                           |
-| billing_cycle           | text        | `monthly`/`yearly`                                                 |
+| price                   | integer     | harga per siklus billing (0093)                                    |
+| billing_cycle           | text        | `daily`/`weekly`/`monthly`/`yearly`                                |
 | max_businesses          | integer     |                                                                    |
 | max_outlets             | integer     |                                                                    |
 | max_photoboxes          | integer     |                                                                    |
@@ -138,6 +137,7 @@ Tidak dipakai (JWT strategy + `auth_sessions` di atas); `users` tetap source of 
 | status                     | text                 | `trial`/`active`/`past_due`/`cancelled`/`expired` |
 | trial_ends_at              | timestamptz          | nullable                                          |
 | current_period_start / end | timestamptz          |                                                   |
+| billing_cycle              | text                 | snapshot siklus aktivasi (0093)                   |
 | cancel_at_period_end       | boolean              |                                                   |
 | created_at / updated_at    | timestamptz          |                                                   |
 
@@ -166,7 +166,10 @@ Tidak dipakai (JWT strategy + `auth_sessions` di atas); `users` tetap source of 
 | id                      | uuid PK     |                                               |
 | code                    | text unique | `extra_session`, `pos` (unit `feature`, 0019) |
 | name                    | text        | "Add-on +1 Sesi" / "POS Kasir"                |
-| price_monthly           | integer     |                                               |
+| price_monthly           | integer     | harga siklus bulanan (wajib, legacy)          |
+| price_daily             | integer     | nullable — `NULL` = tidak dijual harian (0093) |
+| price_weekly            | integer     | nullable — `NULL` = tidak dijual mingguan      |
+| price_yearly            | integer     | nullable — `NULL` = tidak dijual tahunan       |
 | unit                    | text        | `session` / `feature` (default `session`)     |
 | is_active               | boolean     |                                               |
 | created_at / updated_at | timestamptz |                                               |

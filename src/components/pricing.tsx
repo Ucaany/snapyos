@@ -9,6 +9,7 @@ import { fancyButtonVariants } from "@/components/ui/pricing-9-utils/fancy-butto
 import { SectionHeader } from "@/components/section-header";
 import { ArrowUpRightIcon, CheckIcon, PlusIcon } from "lucide-react";
 import type { PublicPlan, PublicAddOn } from "@/server/catalog";
+import { addOnPriceForCycle, cycleUnit, normalizeCycle } from "@/lib/subscription-math";
 
 const animVariant: Variants = {
   initial: { opacity: 0, y: 10, filter: "blur(4px)", scale: 0.98 },
@@ -60,10 +61,14 @@ export function Pricing({ plans, addOns }: { plans: PublicPlan[]; addOns: Public
   const [selectedAddOns, setSelectedAddOns] = useState<Set<string>>(new Set());
 
   const selectedPlan = plans.find((p) => p.code === selectedPlanCode) ?? plans[0];
+  const cycle = normalizeCycle(selectedPlan?.billing_cycle);
+  const unit = cycleUnit(cycle);
+  const availableAddOns = addOns.filter((a) => addOnPriceForCycle(a, cycle) !== null);
+  const selectedAddOnList = availableAddOns.filter((a) => selectedAddOns.has(a.code));
 
   const totalPrice =
-    (selectedPlan?.price_monthly ?? 0) +
-    addOns.filter((a) => selectedAddOns.has(a.code)).reduce((sum, a) => sum + a.price_monthly, 0);
+    (selectedPlan?.price ?? 0) +
+    selectedAddOnList.reduce((sum, a) => sum + (addOnPriceForCycle(a, cycle) ?? 0), 0);
 
   const toggleAddOn = (code: string) => {
     setSelectedAddOns((prev) => {
@@ -76,9 +81,11 @@ export function Pricing({ plans, addOns }: { plans: PublicPlan[]; addOns: Public
 
   const subscribeHref =
     `/subscribe?plan=${encodeURIComponent(selectedPlan?.code ?? "")}` +
-    (selectedAddOns.size ? `&addons=${encodeURIComponent([...selectedAddOns].join(","))}` : "");
+    (selectedAddOnList.length
+      ? `&addons=${encodeURIComponent(selectedAddOnList.map((a) => a.code).join(","))}`
+      : "");
 
-  const basePrice = selectedPlan?.price_monthly ?? 0;
+  const basePrice = selectedPlan?.price ?? 0;
 
   if (plans.length === 0) {
     return (
@@ -138,7 +145,7 @@ export function Pricing({ plans, addOns }: { plans: PublicPlan[]; addOns: Public
                     <div className="flex flex-col gap-0.5">
                       <span className="text-sm font-medium text-foreground">{plan.name}</span>
                       <span className="text-xs text-muted-foreground">
-                        {formatRupiah(plan.price_monthly)}/bulan
+                        {formatRupiah(plan.price)}/{cycleUnit(plan.billing_cycle)}
                       </span>
                     </div>
                     <span
@@ -153,13 +160,13 @@ export function Pricing({ plans, addOns }: { plans: PublicPlan[]; addOns: Public
               })}
             </div>
 
-            {addOns.length > 0 && (
+            {availableAddOns.length > 0 && (
               <div className="flex flex-col gap-2">
                 <h3 className="font-mono text-xs font-bold uppercase tracking-[0.1em] text-foreground">
                   Modul add-on
                 </h3>
                 <div className="flex flex-col gap-2">
-                  {addOns.map((addOn) => {
+                  {availableAddOns.map((addOn) => {
                     const enabled = selectedAddOns.has(addOn.code);
                     return (
                       <div
@@ -187,7 +194,7 @@ export function Pricing({ plans, addOns }: { plans: PublicPlan[]; addOns: Public
                                 {addOn.name}
                               </span>
                               <span className="text-start text-xs text-muted-foreground">
-                                +{formatRupiah(addOn.price_monthly)}/bulan
+                                +{formatRupiah(addOnPriceForCycle(addOn, cycle) ?? 0)}/{unit}
                               </span>
                             </div>
                           </div>
@@ -228,7 +235,7 @@ export function Pricing({ plans, addOns }: { plans: PublicPlan[]; addOns: Public
                   {formatRupiah(totalPrice)}
                 </motion.span>
                 <span key="period" className="text-sm text-muted-foreground sm:text-base">
-                  /bulan
+                  /{unit}
                 </span>
               </div>
               <p className="text-sm text-muted-foreground">

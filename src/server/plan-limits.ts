@@ -20,7 +20,7 @@ export async function requirePlanLimits(businessId: string): Promise<PlanLimits>
   const { data, error } = await supabase
     .from("subscriptions")
     .select(
-      "status, trial_ends_at, current_period_end, plans ( max_outlets, max_photoboxes, max_concurrent_sessions, max_staff, max_packages, max_templates )"
+      "status, trial_ends_at, current_period_end, billing_cycle, plans ( max_outlets, max_photoboxes, max_concurrent_sessions, max_staff, max_packages, max_templates )"
     )
     .eq("business_id", businessId)
     .in("status", ["trial", "active", "past_due"])
@@ -35,6 +35,7 @@ export async function requirePlanLimits(businessId: string): Promise<PlanLimits>
     status: string;
     trial_ends_at: string | null;
     current_period_end: string | null;
+    billing_cycle: string | null;
     plans:
       | {
           max_outlets: number;
@@ -55,7 +56,16 @@ export async function requirePlanLimits(businessId: string): Promise<PlanLimits>
       | null;
   } | null;
 
-  if (!row || !isSubscriptionEffective(row.status, row.trial_ends_at, row.current_period_end)) {
+  if (
+    !row ||
+    !isSubscriptionEffective(
+      row.status,
+      row.trial_ends_at,
+      row.current_period_end,
+      new Date(),
+      row.billing_cycle
+    )
+  ) {
     throw new ApiError(
       "SUBSCRIPTION_EXPIRED",
       "Langganan bisnis ini sudah kedaluwarsa. Perpanjang langganan untuk melanjutkan."
@@ -89,9 +99,9 @@ export async function getPlanLimits(businessId: string): Promise<PlanLimits> {
   const supabase = createServerClient();
   const { data } = await supabase
     .from("subscriptions")
-    .select(
-      "id, status, trial_ends_at, current_period_end, plans ( max_outlets, max_photoboxes, max_concurrent_sessions, max_staff, max_packages, max_templates )"
-    )
+      .select(
+        "id, status, trial_ends_at, current_period_end, billing_cycle, plans ( max_outlets, max_photoboxes, max_concurrent_sessions, max_staff, max_packages, max_templates )"
+      )
     .eq("business_id", businessId)
     .in("status", ["trial", "active", "past_due"])
     .order("created_at", { ascending: false })
@@ -103,6 +113,7 @@ export async function getPlanLimits(businessId: string): Promise<PlanLimits> {
     status: string;
     trial_ends_at: string | null;
     current_period_end: string | null;
+    billing_cycle: string | null;
     plans:
       | {
           max_outlets: number;
@@ -124,7 +135,16 @@ export async function getPlanLimits(businessId: string): Promise<PlanLimits> {
   } | null;
 
   // Date check: status string saja tidak cukup (AGENTS.md §Resolusi Konflik).
-  if (!row || !isSubscriptionEffective(row.status, row.trial_ends_at, row.current_period_end)) {
+  if (
+    !row ||
+    !isSubscriptionEffective(
+      row.status,
+      row.trial_ends_at,
+      row.current_period_end,
+      new Date(),
+      row.billing_cycle
+    )
+  ) {
     return DEFAULT_PLAN_LIMITS;
   }
 

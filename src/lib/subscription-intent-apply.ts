@@ -14,7 +14,7 @@
  */
 
 import { ApiError } from "./api-errors.ts";
-import { nextPeriod } from "./subscription-math.ts";
+import { cyclePeriod, normalizeCycle, type BillingCycle } from "./subscription-math.ts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -35,6 +35,12 @@ export type InvoiceIntentItem = {
    * self-service (past_due/expired) yang tetap memuat plan_change.
    */
   new_period?: boolean;
+  /**
+   * Snapshot siklus yang dibeli (0093). Aktivasi memakai panjang periode
+   * ini, bukan default 30 hari; intent lama tanpa nilai jatuh ke siklus
+   * subscription saat ini.
+   */
+  billing_cycle?: BillingCycle;
 };
 
 export type IntentShape = {
@@ -560,11 +566,12 @@ export async function applyInvoiceIntentWithDeps(
       plan_id: string | null;
       status: string;
       current_period_end: string | null;
+      billing_cycle: string | null;
     } | null = null;
     if (needsSubscription) {
       const { data: subSel } = await db
         .from("subscriptions")
-        .select("id, plan_id, status, current_period_end")
+        .select("id, plan_id, status, current_period_end, billing_cycle")
         .eq("id", invoice.subscription_id ?? "")
         .in("status", ["trial", "active", "past_due", "expired"])
         .maybeSingle();
@@ -573,6 +580,7 @@ export async function applyInvoiceIntentWithDeps(
         plan_id: string | null;
         status: string;
         current_period_end: string | null;
+        billing_cycle: string | null;
       } | null;
       if (!currentSubRow) {
         // Kasus klasik docs/02 §2.4b: owner cancel → cron flip ke
@@ -608,21 +616,26 @@ export async function applyInvoiceIntentWithDeps(
         periodEndMs > nowMs;
 
       let period: { start: Date; end: Date } | null = null;
+      // Siklus yang dibeli (snapshot intent) menentukan panjang periode;
+      // legacy intent tanpa nilai memakai snapshot subscription.
+      const targetCycle = normalizeCycle(
+        planItem.billing_cycle ?? currentSubRow.billing_cycle
+      );
       if (isActualPlanChange) {
         // Plan beda (atau recovery: invoice recovery memakai plan_id baru)
         // → periode baru penuh dari now().
-        period = nextPeriod(new Date());
+        period = cyclePeriod(new Date(), targetCycle);
       } else if (!alreadyApplied) {
         if (planItem.new_period) {
           // Renewal self-service (past_due/expired): periode BARU dari now(),
           // bukan extend dari periode lama (docs/02 §2.4 recovery semantics).
-          period = nextPeriod(new Date());
+          period = cyclePeriod(new Date(), targetCycle);
         } else {
           const periodEnd = Number.isFinite(periodEndMs) ? new Date(periodEndMs) : null;
           const base = periodEnd && periodEnd.getTime() > nowMs ? periodEnd : new Date(nowMs);
           // Sub expired → periodEnd lampau → base = now: periode baru dari
           // now(), BUKAN extend dari periode yang sudah mati (docs/02 §2.4).
-          period = nextPeriod(base);
+          period = cyclePeriod(base, targetCycle);
         }
       }
 
@@ -633,6 +646,7 @@ export async function applyInvoiceIntentWithDeps(
             plan_id: planItem.plan_id,
             status: "active",
             cancel_at_period_end: false,
+            billing_cycle: targetCycle,
             current_period_start: period.start.toISOString(),
             current_period_end: period.end.toISOString(),
           })
@@ -674,6 +688,20 @@ export async function applyInvoiceIntentWithDeps(
               err instanceof Error ? err.message : String(err)
             );
           }
+        }
+      }
+
+      // Pindah siklus: add-on yang sudah dijadwalkan batal tidak boleh
+      // terbawa ke periode baru (harga siklus barunya belum tentu ada).
+      if (normalizeCycle(currentSub.billing_cycle) !== targetCycle) {
+        const { error: cancelError } = await db
+          .from("subscription_add_ons")
+          .update({ status: "cancelled", cancel_at_period_end: false })
+          .eq("subscription_id", currentSub.id)
+          .eq("status", "active")
+          .eq("cancel_at_period_end", true);
+        if (cancelError) {
+          throw new ApiError("INTERNAL", "Gagal membatalkan add-on yang dijadwalkan");
         }
       }
     }

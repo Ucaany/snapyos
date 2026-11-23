@@ -18,6 +18,7 @@ import {
 } from "@/components/admin/ui/card";
 import { Input } from "@/components/admin/ui/input";
 import { formatIDR } from "@/lib/dashboard-math";
+import { addOnPriceForCycle, BILLING_CYCLES, cycleUnit } from "@/lib/subscription-math";
 import { storageAddOnDisplayName } from "@/lib/storage-units";
 import { createAddOnAction, updateAddOnAction } from "@/server/admin-actions";
 import { listAddOns } from "@/server/admin";
@@ -114,6 +115,48 @@ export default async function AdminAddOnsPage() {
               <Input id="addon-price" name="price_monthly" type="number" defaultValue={49000} />
             </div>
             <div className="flex flex-col gap-1">
+              <Label
+                htmlFor="addon-price-daily"
+                className="text-xs font-medium text-muted-foreground"
+              >
+                Harga / hari (IDR)
+              </Label>
+              <Input
+                id="addon-price-daily"
+                name="price_daily"
+                type="number"
+                placeholder="kosong = tidak dijual harian"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label
+                htmlFor="addon-price-weekly"
+                className="text-xs font-medium text-muted-foreground"
+              >
+                Harga / minggu (IDR)
+              </Label>
+              <Input
+                id="addon-price-weekly"
+                name="price_weekly"
+                type="number"
+                placeholder="kosong = tidak dijual mingguan"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label
+                htmlFor="addon-price-yearly"
+                className="text-xs font-medium text-muted-foreground"
+              >
+                Harga / tahun (IDR)
+              </Label>
+              <Input
+                id="addon-price-yearly"
+                name="price_yearly"
+                type="number"
+                placeholder="kosong = tidak dijual tahunan"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
               <Label htmlFor="addon-unit" className="text-xs font-medium text-muted-foreground">
                 Unit
               </Label>
@@ -164,7 +207,14 @@ export default async function AdminAddOnsPage() {
                   <CardAction>
                     <span className="flex items-center gap-3">
                       <span className="text-sm font-semibold tabular-nums">
-                        {formatIDR(a.price_monthly)}/bln
+                        {BILLING_CYCLES.map((cycle) => {
+                          const price = addOnPriceForCycle(a, cycle);
+                          return price === null
+                            ? null
+                            : `${formatIDR(price)}/${cycleUnit(cycle)}`;
+                        })
+                          .filter(Boolean)
+                          .join(" · ")}
                       </span>
                       <AdminStatusBadge status={a.is_active ? "active" : "inactive"} />
                     </span>
@@ -172,7 +222,7 @@ export default async function AdminAddOnsPage() {
                 </CardHeader>
                 <CardContent>
                   <AdminDisclosure
-                    key={`${a.id}:${a.name}:${a.price_monthly}:${a.unit}:${a.storage_mb ?? ""}:${a.is_active}`}
+                    key={`${a.id}:${a.name}:${a.price_monthly}:${a.price_daily ?? ""}:${a.price_weekly ?? ""}:${a.price_yearly ?? ""}:${a.unit}:${a.storage_mb ?? ""}:${a.is_active}`}
                     className="border-t pt-3"
                     triggerClassName="min-h-11 text-xs font-medium text-muted-foreground hover:text-foreground"
                     trigger={<span>Edit add-on</span>}
@@ -212,6 +262,48 @@ export default async function AdminAddOnsPage() {
                           name="price_monthly"
                           type="number"
                           defaultValue={a.price_monthly}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <Label
+                          htmlFor={`price-daily-${a.id}`}
+                          className="text-xs font-medium text-muted-foreground"
+                        >
+                          Harga / hari
+                        </Label>
+                        <Input
+                          id={`price-daily-${a.id}`}
+                          name="price_daily"
+                          type="number"
+                          defaultValue={a.price_daily ?? ""}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <Label
+                          htmlFor={`price-weekly-${a.id}`}
+                          className="text-xs font-medium text-muted-foreground"
+                        >
+                          Harga / minggu
+                        </Label>
+                        <Input
+                          id={`price-weekly-${a.id}`}
+                          name="price_weekly"
+                          type="number"
+                          defaultValue={a.price_weekly ?? ""}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <Label
+                          htmlFor={`price-yearly-${a.id}`}
+                          className="text-xs font-medium text-muted-foreground"
+                        >
+                          Harga / tahun
+                        </Label>
+                        <Input
+                          id={`price-yearly-${a.id}`}
+                          name="price_yearly"
+                          type="number"
+                          defaultValue={a.price_yearly ?? ""}
                         />
                       </div>
                       <div className="flex flex-col gap-1">

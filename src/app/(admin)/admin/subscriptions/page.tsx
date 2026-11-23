@@ -33,6 +33,7 @@ import {
   listSubscriptions,
 } from "@/server/admin";
 import { Label } from "@/components/admin/ui/label";
+import { cycleLabel } from "@/lib/subscription-math";
 
 /**
  * Admin subscriptions - list, ubah status, perpanjang, cancel, kelola add-on
@@ -158,7 +159,8 @@ export default async function AdminSubscriptionsPage({
                 <CardHeader>
                   <CardTitle>{s.business_name}</CardTitle>
                   <CardDescription>
-                    PLAN {s.plan_name} ({s.plan_code.toUpperCase()}) ·{" "}
+                    PLAN {s.plan_name} ({s.plan_code.toUpperCase()}) · {cycleLabel(s.billing_cycle)}{" "}
+                    ·{" "}
                     {s.current_period_end
                       ? `s/d ${dateFmt.format(new Date(s.current_period_end))}`
                       : "tanpa periode"}
@@ -182,6 +184,10 @@ export default async function AdminSubscriptionsPage({
                         value: s.current_period_end
                           ? dateFmt.format(new Date(s.current_period_end))
                           : "-",
+                      },
+                      {
+                        label: "Siklus",
+                        value: cycleLabel(s.billing_cycle),
                       },
                       {
                         label: "Trial s/d",

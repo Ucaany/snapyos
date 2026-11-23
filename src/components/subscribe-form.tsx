@@ -13,6 +13,7 @@ import { DecorIcon } from "@/components/decor-icon";
 import { ACQUISITION_SOURCES, ACQUISITION_SOURCE_LABELS } from "@/lib/validators";
 import { submitSubscribeAction, type SubscribeState } from "@/server/subscribe-action";
 import type { PublicPlan, PublicAddOn } from "@/server/catalog";
+import { addOnPriceForCycle, cycleUnit } from "@/lib/subscription-math";
 
 const formatRupiah = (n: number) => `Rp ${n.toLocaleString("id-ID")}`;
 
@@ -88,10 +89,13 @@ export function SubscribeForm({
   }
 
   const fieldErrors = state.fieldErrors ?? {};
+  const cycle = plan?.billing_cycle ?? "monthly";
+  const unit = cycleUnit(cycle);
+  const availableAddOns = addOns.filter((a) => addOnPriceForCycle(a, cycle) !== null);
 
-  const planLabel = plan ? `${plan.name} (${formatRupiah(plan.price_monthly)}/bulan)` : "";
-  const addonsLabel = addOns
-    .map((a) => `${a.name} (${formatRupiah(a.price_monthly)}/bulan)`)
+  const planLabel = plan ? `${plan.name} (${formatRupiah(plan.price)}/${unit})` : "";
+  const addonsLabel = availableAddOns
+    .map((a) => `${a.name} (${formatRupiah(addOnPriceForCycle(a, cycle) ?? 0)}/${unit})`)
     .join(", ");
 
   return (
@@ -138,7 +142,7 @@ export function SubscribeForm({
             </div>
           )}
 
-          {(plan || addOns.length > 0) && (
+          {(plan || availableAddOns.length > 0) && (
             <div className="border-2 border-ink bg-surface p-5 shadow-[4px_4px_0_0_#111111]">
               <p className="font-mono text-xs font-bold uppercase tracking-[0.08em] text-ink">
                 Paket dipilih
@@ -147,16 +151,16 @@ export function SubscribeForm({
                 {plan && (
                   <li className="flex items-center gap-2 text-sm text-muted-foreground">
                     <CheckIcon className="size-4 text-accent-3-strong" />
-                    {plan.name} ({formatRupiah(plan.price_monthly)}/bulan)
+                    {plan.name} ({formatRupiah(plan.price)}/{unit})
                   </li>
                 )}
-                {addOns.map((a) => (
+                {availableAddOns.map((a) => (
                   <li
                     key={a.code}
                     className="flex items-center gap-2 text-sm text-muted-foreground"
                   >
                     <CheckIcon className="size-4 text-accent-3-strong" />
-                    {a.name} ({formatRupiah(a.price_monthly)}/bulan)
+                    {a.name} ({formatRupiah(addOnPriceForCycle(a, cycle) ?? 0)}/{unit})
                   </li>
                 ))}
               </ul>

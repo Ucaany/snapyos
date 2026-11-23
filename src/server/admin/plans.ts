@@ -11,6 +11,7 @@ import {
   type AdminPlanCreateInput,
   type AdminPlanUpdateInput,
 } from "@/lib/validators";
+import type { BillingCycle } from "@/lib/subscription-math";
 import { requireAdmin, audit } from "./guard";
 
 // ---------------------------------------------------------------------------
@@ -21,9 +22,8 @@ export type AdminPlanRow = {
   id: string;
   code: string;
   name: string;
-  price_monthly: number;
-  price_yearly: number | null;
-  billing_cycle: "monthly" | "yearly";
+  price: number;
+  billing_cycle: BillingCycle;
   max_businesses: number;
   max_outlets: number;
   max_photoboxes: number;
@@ -39,7 +39,7 @@ export type AdminPlanRow = {
 };
 
 const PLAN_COLUMNS =
-  "id, code, name, price_monthly, price_yearly, billing_cycle, max_businesses, max_outlets, max_photoboxes, max_concurrent_sessions, max_staff, max_packages, max_templates, storage_limit_mb, platform_fee_percent, platform_fee_flat, features, is_active";
+  "id, code, name, price, billing_cycle, max_businesses, max_outlets, max_photoboxes, max_concurrent_sessions, max_staff, max_packages, max_templates, storage_limit_mb, platform_fee_percent, platform_fee_flat, features, is_active";
 
 // ---------------------------------------------------------------------------
 // Queries
@@ -51,7 +51,7 @@ export async function listPlans(): Promise<AdminPlanRow[]> {
   const { data, error } = await supabase
     .from("plans")
     .select(PLAN_COLUMNS)
-    .order("price_monthly", { ascending: true });
+    .order("price", { ascending: true });
   if (error) throw new ApiError("INTERNAL", "Gagal memuat plans");
   return (data ?? []) as AdminPlanRow[];
 }

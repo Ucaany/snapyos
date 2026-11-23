@@ -51,6 +51,8 @@ type Props = {
   className?: string;
   disabled?: boolean;
   recovery?: boolean;
+  renewal?: boolean;
+  currentBillingCycle?: string;
 };
 
 export function SubscriptionCheckoutTrigger({
@@ -66,6 +68,8 @@ export function SubscriptionCheckoutTrigger({
   className,
   disabled = false,
   recovery = false,
+  renewal = false,
+  currentBillingCycle,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [hasOpened, setHasOpened] = useState(false);
@@ -93,6 +97,8 @@ export function SubscriptionCheckoutTrigger({
           initialPlanCode={defaultPlanCode}
           initialAddOnId={defaultAddOnId}
           recovery={recovery}
+          renewal={renewal}
+          currentBillingCycle={currentBillingCycle}
           open={open}
           onClose={() => setOpen(false)}
         />

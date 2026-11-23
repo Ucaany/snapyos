@@ -12,7 +12,7 @@ import { ApiError } from "@/lib/api-errors";
 import { can } from "@/lib/rbac";
 import { getMembership, type Membership } from "@/lib/tenant";
 import { evaluatePosEntitlement, type PosEntitlementAddOnRow } from "@/lib/pos-entitlement";
-import { isSubscriptionEffective } from "@/lib/subscription-math";
+import { addOnPriceForCycle, isSubscriptionEffective, normalizeCycle, type BillingCycle } from "@/lib/subscription-math";
 
 export const hasPosEntitlement = cache(async (businessId: string): Promise<boolean> => {
   const supabase = createServerClient();
@@ -20,7 +20,7 @@ export const hasPosEntitlement = cache(async (businessId: string): Promise<boole
   // Subscription aktif terbaru (trial/active/past_due) — pola loadActiveSubscription.
   const { data: sub, error: subError } = await supabase
     .from("subscriptions")
-    .select("id, status, trial_ends_at, current_period_end")
+    .select("id, status, trial_ends_at, current_period_end, billing_cycle")
     .eq("business_id", businessId)
     .in("status", ["trial", "active", "past_due"])
     .order("created_at", { ascending: false })
@@ -34,10 +34,19 @@ export const hasPosEntitlement = cache(async (businessId: string): Promise<boole
     status: string;
     trial_ends_at: string | null;
     current_period_end: string | null;
+    billing_cycle: string | null;
   };
 
   // Date check: status string saja tidak cukup (AGENTS.md §Resolusi Konflik).
-  if (!isSubscriptionEffective(subRow.status, subRow.trial_ends_at, subRow.current_period_end)) {
+  if (
+    !isSubscriptionEffective(
+      subRow.status,
+      subRow.trial_ends_at,
+      subRow.current_period_end,
+      new Date(),
+      subRow.billing_cycle
+    )
+  ) {
     return false;
   }
 
@@ -62,22 +71,45 @@ export const hasPosEntitlement = cache(async (businessId: string): Promise<boole
 
 /**
  * Info add-on POS untuk halaman aktivasi — harga dari DB (admin-configurable),
- * frontend tidak pernah hardcode harga (docs/pos/02 §6).
+ * frontend tidak pernah hardcode harga (docs/pos/02 §6). Harga mengikuti
+ * siklus subscription business; null = admin belum set harga siklus itu.
  */
-export async function getPosAddOnInfo(): Promise<{
-  priceMonthly: number;
+export async function getPosAddOnInfo(businessId: string): Promise<{
+  price: number | null;
+  billingCycle: BillingCycle;
   isActive: boolean;
 } | null> {
   const supabase = createServerClient();
-  const { data, error } = await supabase
-    .from("add_ons")
-    .select("price_monthly, is_active")
-    .eq("code", "pos")
-    .maybeSingle();
+  const [{ data: sub }, { data, error }] = await Promise.all([
+    supabase
+      .from("subscriptions")
+      .select("billing_cycle")
+      .eq("business_id", businessId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("add_ons")
+      .select("price_daily, price_weekly, price_monthly, price_yearly, is_active")
+      .eq("code", "pos")
+      .maybeSingle(),
+  ]);
   if (error) throw new ApiError("INTERNAL", "Gagal memuat harga add-on POS");
   if (!data) return null;
+  const billingCycle = normalizeCycle(
+    (sub as { billing_cycle?: string | null } | null)?.billing_cycle
+  );
   return {
-    priceMonthly: (data as { price_monthly: number }).price_monthly,
+    price: addOnPriceForCycle(
+      data as {
+        price_daily: number | null;
+        price_weekly: number | null;
+        price_monthly: number | null;
+        price_yearly: number | null;
+      },
+      billingCycle
+    ),
+    billingCycle,
     isActive: (data as { is_active: boolean }).is_active,
   };
 }

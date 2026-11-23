@@ -10,7 +10,7 @@ import { ApiError } from "@/lib/api-errors";
 import { can } from "@/lib/rbac";
 import { getMembership, getUserMemberships, type Membership } from "@/lib/tenant";
 import { isValidSlug, slugify } from "@/lib/slug";
-import { isSubscriptionEffective, nextPeriod } from "@/lib/subscription-math";
+import { cyclePeriod, isSubscriptionEffective, nextPeriod } from "@/lib/subscription-math";
 import { requirePlanLimits } from "@/server/plan-limits";
 import { brandingCacheTag } from "@/server/branding";
 import { invalidatePublicConfig } from "@/server/public-config";
@@ -245,7 +245,7 @@ export async function createBusiness(userId: string, input: BusinessCreateInput)
   // Trial subscription (docs/02 §2.4) — plan starter + trial_days dari platform_settings.
   const { data: plan } = await supabase
     .from("plans")
-    .select("id")
+    .select("id, billing_cycle")
     .eq("code", "starter")
     .eq("is_active", true)
     .maybeSingle();
@@ -262,7 +262,7 @@ export async function createBusiness(userId: string, input: BusinessCreateInput)
 
     const now = new Date();
     const trialEnd = nextPeriod(now, trialDays).end;
-    const period = nextPeriod(now);
+    const period = cyclePeriod(now, plan.billing_cycle);
     const { error: subError } = await supabase.from("subscriptions").insert({
       business_id: business.id,
       plan_id: plan.id,
@@ -270,6 +270,7 @@ export async function createBusiness(userId: string, input: BusinessCreateInput)
       trial_ends_at: trialEnd,
       current_period_start: period.start,
       current_period_end: period.end,
+      billing_cycle: plan.billing_cycle ?? "monthly",
     });
     // Tanpa subscription, tenant tidak punya entitlement: gagalkan + rollback
     // daripada membiarkan workspace yang tidak bisa dipakai.
@@ -463,7 +464,7 @@ export async function getActiveSubscription(businessId: string) {
   const supabase = createServerClient();
   const { data } = await supabase
     .from("subscriptions")
-    .select("status, trial_ends_at, current_period_end, plans ( code, name )")
+    .select("status, trial_ends_at, current_period_end, billing_cycle, plans ( code, name )")
     .eq("business_id", businessId)
     .in("status", ["trial", "active", "past_due"])
     .order("created_at", { ascending: false })
@@ -475,6 +476,7 @@ export async function getActiveSubscription(businessId: string) {
     status: string;
     trial_ends_at: string | null;
     current_period_end: string | null;
+    billing_cycle: string | null;
     plans: { code: string; name: string } | { code: string; name: string }[] | null;
   };
   const plan = Array.isArray(row.plans) ? null : row.plans;
@@ -482,8 +484,15 @@ export async function getActiveSubscription(businessId: string) {
     status: row.status,
     trial_ends_at: row.trial_ends_at,
     current_period_end: row.current_period_end,
+    billing_cycle: row.billing_cycle ?? "monthly",
     plan: plan ? { code: plan.code, name: plan.name } : null,
     /** Date-aware effectiveness — false = subscription sudah expired secara waktu meski status belum ter-transisi oleh cron. */
-    isEffective: isSubscriptionEffective(row.status, row.trial_ends_at, row.current_period_end),
+    isEffective: isSubscriptionEffective(
+      row.status,
+      row.trial_ends_at,
+      row.current_period_end,
+      new Date(),
+      row.billing_cycle
+    ),
   };
 }

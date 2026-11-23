@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Loader2, Minus, Plus, TicketPercent } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { formatIDR } from "@/lib/dashboard-math";
+import { cycleUnit, normalizeCycle } from "@/lib/subscription-math";
 import type { AddOnCard, PlanCard } from "@/server/subscription";
 import {
   confirmSubscriptionCheckoutAction,
@@ -22,6 +23,8 @@ type Props = {
   open: boolean;
   onClose: () => void;
   recovery?: boolean;
+  renewal?: boolean;
+  currentBillingCycle?: string;
 };
 
 /**
@@ -39,6 +42,8 @@ export function SubscriptionCheckout({
   open,
   onClose,
   recovery = false,
+  renewal = false,
+  currentBillingCycle,
 }: Props) {
   const router = useRouter();
   const [planCode, setPlanCode] = useState(initialPlanCode);
@@ -53,18 +58,26 @@ export function SubscriptionCheckout({
   const [busy, setBusy] = useState(false);
 
   const plan = plans.find((p) => p.code === planCode) ?? null;
-  // Recovery (expired): plan lama dianggap "plan change" — server selalu
-  // menerbitkan plan_change item (periode baru), preview harga harus match.
-  const isActualPlanChange = recovery || planCode !== currentPlanCode;
+  // Recovery (expired) / renewal (past_due): plan lama dianggap "plan change" —
+  // server selalu menerbitkan plan_change item (periode baru), preview harga
+  // harus match.
+  const isActualPlanChange = recovery || renewal || planCode !== currentPlanCode;
+  // Add-on-only memakai snapshot siklus subscription; plan change memakai
+  // siklus plan tujuan (sama dengan logika server).
+  const targetCycle = isActualPlanChange
+    ? normalizeCycle(plan?.billingCycle)
+    : normalizeCycle(currentBillingCycle ?? plan?.billingCycle);
+  const unit = cycleUnit(targetCycle);
 
-  const addOnLines = useMemo(
-    () => addOns.map((a) => ({ addOn: a, qty: qtyById[a.id] ?? 0 })).filter((l) => l.qty > 0),
-    [addOns, qtyById]
-  );
+  // Add-on hanya yang punya harga pada siklus billing target.
+  const availableAddOns = addOns.filter((a) => a.prices[targetCycle] !== null);
+  const addOnLines = availableAddOns
+    .map((a) => ({ addOn: a, qty: qtyById[a.id] ?? 0, price: a.prices[targetCycle] ?? 0 }))
+    .filter((l) => l.qty > 0);
   // Match server logic: plan price only charged on actual plan change.
   const gross =
-    (isActualPlanChange ? (plan?.priceMonthly ?? 0) : 0) +
-    addOnLines.reduce((s, l) => s + l.addOn.priceMonthly * l.qty, 0);
+    (isActualPlanChange ? (plan?.price ?? 0) : 0) +
+    addOnLines.reduce((s, l) => s + l.price * l.qty, 0);
   const total = Math.max(0, gross - (promo?.discount ?? 0));
 
   function setQty(id: string, qty: number) {
@@ -157,25 +170,38 @@ export function SubscriptionCheckout({
                   size="sm"
                   onClick={() => {
                     setPlanCode(p.code);
+                    const nextCycle =
+                      p.code === currentPlanCode && !recovery && !renewal
+                        ? normalizeCycle(currentBillingCycle ?? p.billingCycle)
+                        : normalizeCycle(p.billingCycle);
+                    setQtyById((prev) =>
+                      Object.fromEntries(
+                        Object.entries(prev).filter(
+                          ([id, qty]) =>
+                            qty > 0 &&
+                            (addOns.find((a) => a.id === id)?.prices[nextCycle] ?? null) !== null
+                        )
+                      )
+                    );
                     setPromo(null);
                     setPromoError(null);
                   }}
                   aria-pressed={p.code === planCode}
                 >
-                  {p.name} · {formatIDR(p.priceMonthly)}
+                  {p.name} · {formatIDR(p.price)}/{cycleUnit(p.billingCycle)}
                   {p.code === currentPlanCode ? (recovery ? " (sebelumnya)" : " (aktif)") : ""}
                 </Button>
               ))}
             </div>
           </section>
 
-          {addOns.length > 0 && (
+          {availableAddOns.length > 0 && (
             <section>
               <p className="mb-2 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
                 {"02. ADD-ON: ATUR JUMLAH SENDIRI"}
               </p>
               <ul className="flex flex-col gap-2">
-                {addOns.map((a) => {
+                {availableAddOns.map((a) => {
                   const qty = qtyById[a.id] ?? 0;
                   return (
                     <li
@@ -189,7 +215,7 @@ export function SubscriptionCheckout({
                           {a.name}
                         </span>
                         <span className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
-                          +{formatIDR(a.priceMonthly)} /bulan per unit
+                          +{formatIDR(a.prices[targetCycle] ?? 0)} /{unit} per unit
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -227,6 +253,11 @@ export function SubscriptionCheckout({
                   );
                 })}
               </ul>
+              {availableAddOns.length < addOns.length && (
+                <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
+                  Add-on tanpa harga untuk siklus {unit} tidak ditampilkan.
+                </p>
+              )}
             </section>
           )}
 
@@ -282,21 +313,23 @@ export function SubscriptionCheckout({
               {"04. HARGA FIX"}
             </p>
             <dl className="flex flex-col gap-1 text-sm">
-              <div className="flex justify-between">
-                <dt className="font-mono text-xs uppercase tracking-[0.05em] text-muted-foreground">
-                  Plan {plan?.name ?? "-"}
-                </dt>
-                <dd className="font-mono font-bold tabular-nums">
-                  {formatIDR(plan?.priceMonthly ?? 0)}
-                </dd>
-              </div>
+              {isActualPlanChange && (
+                <div className="flex justify-between">
+                  <dt className="font-mono text-xs uppercase tracking-[0.05em] text-muted-foreground">
+                    Plan {plan?.name ?? "-"} /{unit}
+                  </dt>
+                  <dd className="font-mono font-bold tabular-nums">
+                    {formatIDR(plan?.price ?? 0)}
+                  </dd>
+                </div>
+              )}
               {addOnLines.map((l) => (
                 <div key={l.addOn.id} className="flex justify-between">
                   <dt className="font-mono text-xs uppercase tracking-[0.05em] text-muted-foreground">
-                    {l.addOn.name} ×{l.qty}
+                    {l.addOn.name} ×{l.qty} /{unit}
                   </dt>
                   <dd className="font-mono font-bold tabular-nums">
-                    {formatIDR(l.addOn.priceMonthly * l.qty)}
+                    {formatIDR(l.price * l.qty)}
                   </dd>
                 </div>
               ))}
@@ -310,7 +343,7 @@ export function SubscriptionCheckout({
               )}
               <div className="mt-1 flex items-baseline justify-between gap-4 border-t-2 border-ink pt-3">
                 <dt className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                  Total
+                  Total /{unit}
                 </dt>
                 <dd className="font-display text-4xl uppercase tracking-tight tabular-nums">
                   {formatIDR(total)}

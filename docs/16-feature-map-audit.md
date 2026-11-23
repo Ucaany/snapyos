@@ -153,7 +153,7 @@
 - **Metrik (8)**: total businesses, active subscribers, total subscriptions, MRR, total outlets, total photoboxes, total sessions, total transactions.
 - **UI**: `MetricCard`, `AdminTrendChart`, `RevenueChart`, `BreakdownChart`; kartu "Kesehatan Database", "Rincian User", "Monitoring Pembayaran", "Pembayaran per Provider", "Revenue Harian", "Transaksi & Sesi".
 - **DB**: `businesses, subscriptions, plans, outlets, photoboxes, sessions, transactions, payments, payment_webhooks, subscription_intent_failures, users`.
-- **Dampak**: MRR dihitung dari snapshot `plans.price_monthly` subscription `status='active'` (dokumentasi `ponytail:` — upgrade saat invoice history dipakai). Banner maintenance aktif bila `platform_settings.maintenance_mode`.
+- **Dampak**: MRR dihitung dari snapshot `plans.price` + `plans.billing_cycle` (setara bulanan) subscription efektif (dokumentasi `ponytail:` — upgrade saat invoice history dipakai). Banner maintenance aktif bila `platform_settings.maintenance_mode`.
 
 ### A2. Users Management
 
@@ -188,7 +188,7 @@
 - **Page**: `/admin/add-ons` (`ADMIN - ADD-ONS`).
 - **Actions**: `createAddOnAction`, `updateAddOnAction`. **Data**: `listAddOns`, `createAddOn`, `updateAddOn`.
 - **API**: `GET/POST /api/v1/admin/add-ons`, `PATCH /api/v1/admin/add-ons/[id]`.
-- **Field**: kode, nama, `price_monthly`, `unit` (session/feature/…), `storage_mb`, is_active.
+- **Field**: kode, nama, harga per siklus (`price_monthly`, `price_daily`, `price_weekly`, `price_yearly`), `unit` (session/feature/…), `storage_mb`, is_active.
 - **DB**: `add_ons, subscription_add_ons`.
 - **Dampak**: `add_ons.code='pos'` → entitlement POS; `unit='session'` + `quantity` → tambah `max_concurrent_sessions`; `storage_mb` → kuota storage. Harga dari DB (tanpa hardcode di frontend).
 

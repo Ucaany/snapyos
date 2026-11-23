@@ -22,7 +22,7 @@ import {
   ResumeSubscriptionForm,
 } from "@/components/dashboard/SubscriptionActions";
 import { formatIDR } from "@/lib/dashboard-math";
-import { usagePercent } from "@/lib/subscription-math";
+import { cycleUnit, normalizeCycle, usagePercent } from "@/lib/subscription-math";
 import type {
   ActiveAddOn,
   AddOnCard,
@@ -180,12 +180,12 @@ function PlanCardBlock({
           )}
         </div>
         <CardDescription>
-          <data value={plan.priceMonthly} className="font-mono text-lg font-bold tabular-nums">
-            {formatIDR(plan.priceMonthly)}
+          <data value={plan.price} className="font-mono text-lg font-bold tabular-nums">
+            {formatIDR(plan.price)}
           </data>
           <span className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
             {" "}
-            /bulan
+            /{cycleUnit(plan.billingCycle)}
           </span>
         </CardDescription>
       </CardHeader>
@@ -245,12 +245,15 @@ function AddOnCardBlock({
   active,
   trigger,
   canWrite,
+  cycle,
 }: {
   addOn: AddOnCard;
   active: ActiveAddOn | null;
   trigger?: ReactNode;
   canWrite: boolean;
+  cycle: string;
 }) {
+  const price = addOn.prices[normalizeCycle(cycle)] ?? null;
   return (
     <Card className="h-full">
       <CardHeader>
@@ -265,13 +268,21 @@ function AddOnCardBlock({
           )}
         </div>
         <CardDescription>
-          <data value={addOn.priceMonthly} className="font-mono text-base font-bold tabular-nums">
-            {formatIDR(addOn.priceMonthly)}
-          </data>
-          <span className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
-            {" "}
-            /bulan
-          </span>
+          {price === null ? (
+            <span className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
+              Belum ada harga untuk siklus ini
+            </span>
+          ) : (
+            <>
+              <data value={price} className="font-mono text-base font-bold tabular-nums">
+                {formatIDR(price)}
+              </data>
+              <span className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
+                {" "}
+                /{cycleUnit(cycle)}
+              </span>
+            </>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col gap-3">
@@ -279,7 +290,7 @@ function AddOnCardBlock({
           {addOnCopy(addOn.unit).detail}
         </p>
         <div className="mt-auto flex flex-wrap items-start gap-2">
-          {trigger}
+          {price === null ? null : trigger}
           {active && !active.cancelAtPeriodEnd && canWrite && (
             <CancelAddOnButton addOnId={addOn.id} />
           )}
@@ -310,8 +321,10 @@ export function SubscriptionPanel({
   const isCancelledStatus =
     subscription?.status === "cancelled" || subscription?.status === "canceled";
   const canChangePlan = canWrite && !isCancelledStatus;
-  const addOnTotal = activeAddOns.reduce((sum, a) => sum + a.priceMonthly * a.quantity, 0);
-  const monthlyTotal = (plan?.priceMonthly ?? 0) + addOnTotal;
+  const cycle = subscription?.billingCycle ?? plan?.billingCycle ?? "monthly";
+  const isRenewal = subscription?.status === "past_due";
+  const addOnTotal = activeAddOns.reduce((sum, a) => sum + (a.price ?? 0) * a.quantity, 0);
+  const periodTotal = (plan?.price ?? 0) + addOnTotal;
 
   return (
     <div className="flex flex-col gap-8">
@@ -366,10 +379,10 @@ export function SubscriptionPanel({
               <dl className="grid grid-cols-1 gap-[2px] border-2 border-ink bg-ink sm:grid-cols-3">
                 <div className="flex flex-col gap-1 bg-surface p-3">
                   <dt className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-                    Tagihan /bulan
+                    Tagihan /{cycleUnit(cycle)}
                   </dt>
                   <dd className="font-mono text-lg font-bold tabular-nums">
-                    {formatIDR(monthlyTotal)}
+                    {formatIDR(periodTotal)}
                   </dd>
                 </div>
                 <div className="flex flex-col gap-1 bg-surface p-3">
@@ -377,7 +390,7 @@ export function SubscriptionPanel({
                     Paket
                   </dt>
                   <dd className="font-mono text-lg font-bold tabular-nums">
-                    {formatIDR(plan?.priceMonthly ?? 0)}
+                    {formatIDR(plan?.price ?? 0)}
                   </dd>
                 </div>
                 <div className="flex flex-col gap-1 bg-surface p-3">
@@ -400,8 +413,21 @@ export function SubscriptionPanel({
                   defaultPlanCode={plan?.code ?? plans[0]?.code ?? ""}
                   canWrite={canWrite}
                   recovery
+                  currentBillingCycle={cycle}
                   className="w-fit"
                   label="Aktifkan Kembali"
+                />
+              ) : isRenewal ? (
+                <SubscriptionCheckoutTrigger
+                  plans={plans}
+                  addOns={addOns}
+                  currentPlanCode={currentPlanCode}
+                  defaultPlanCode={plan?.code ?? plans[0]?.code ?? ""}
+                  canWrite={canWrite}
+                  renewal
+                  currentBillingCycle={cycle}
+                  className="w-fit"
+                  label="Perpanjang sekarang"
                 />
               ) : isCancelled ? (
                 <ResumeSubscriptionForm />
@@ -461,8 +487,10 @@ export function SubscriptionPanel({
                   defaultPlanCode={p.code}
                   canWrite={canChangePlan}
                   recovery={isExpired}
+                  renewal={isRenewal}
+                  currentBillingCycle={cycle}
                   className="mt-auto w-full"
-                  label={p.priceMonthly > 0 ? "Pilih & atur add-on" : "Turunkan plan"}
+                  label={p.price > 0 ? "Pilih & atur add-on" : "Turunkan plan"}
                 />
               }
             />
@@ -509,6 +537,7 @@ export function SubscriptionPanel({
                 addOn={a}
                 active={activeAddOns.find((x) => x.addOnId === a.id) ?? null}
                 canWrite={canChangePlan}
+                cycle={cycle}
                 trigger={
                   <SubscriptionCheckoutTrigger
                     plans={plans}
@@ -518,6 +547,8 @@ export function SubscriptionPanel({
                     defaultAddOnId={a.id}
                     canWrite={canChangePlan}
                     recovery={isExpired}
+                    renewal={isRenewal}
+                    currentBillingCycle={cycle}
                     size="sm"
                     label={
                       <>

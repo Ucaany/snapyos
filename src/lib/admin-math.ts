@@ -4,19 +4,21 @@
  */
 
 import { computePlatformFee } from "./checkout-math.ts";
+import { monthlyEquivalent as monthlyEquivalentForCycle } from "./subscription-math.ts";
 
 export type PlanPrice = {
-  price_monthly: number;
+  price: number;
+  billing_cycle: string;
 };
 
 export type MrrItem = { plan: PlanPrice | null };
 
-/** Harga setara bulanan — monthly-only (yearly billing dihapus dari runtime). */
+/** Harga setara bulanan — dinormalisasi dari siklus plan (0093). */
 export function monthlyEquivalent(plan: PlanPrice): number {
-  return plan.price_monthly;
+  return monthlyEquivalentForCycle(plan.price, plan.billing_cycle);
 }
 
-/** MRR = Σ price_monthly plan dari subscription aktif (docs/10 §10.1). */
+/** MRR = Σ setara bulanan dari plan subscription aktif (docs/10 §10.1). */
 export function sumMrr(items: MrrItem[]): number {
   return items.reduce((sum, item) => (item.plan ? sum + monthlyEquivalent(item.plan) : sum), 0);
 }

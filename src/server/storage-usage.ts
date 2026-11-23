@@ -194,7 +194,9 @@ export async function getStorageLimit(businessId: string): Promise<StorageLimit>
   const supabase = createServerClient();
   const { data } = await supabase
     .from("subscriptions")
-    .select("id, status, trial_ends_at, current_period_end, plans ( storage_limit_mb, features )")
+    .select(
+      "id, status, trial_ends_at, current_period_end, billing_cycle, plans ( storage_limit_mb, features )"
+    )
     .eq("business_id", businessId)
     .in("status", ["trial", "active", "past_due"])
     .order("created_at", { ascending: false })
@@ -207,13 +209,21 @@ export async function getStorageLimit(businessId: string): Promise<StorageLimit>
     status: string;
     trial_ends_at: string | null;
     current_period_end: string | null;
+    billing_cycle: string | null;
     plans: PlanRef | PlanRef[] | null;
   } | null;
 
   // Fail-closed: kuota (plan + add-on) hanya dihitung bila subscription masih
   // efektif secara WAKTU. past_due lewat grace / expired → 0.
   const subscriptionEffective = Boolean(
-    row && isSubscriptionEffective(row.status, row.trial_ends_at, row.current_period_end)
+    row &&
+    isSubscriptionEffective(
+      row.status,
+      row.trial_ends_at,
+      row.current_period_end,
+      new Date(),
+      row.billing_cycle
+    )
   );
 
   let planMb = 0;
@@ -312,7 +322,7 @@ export async function getStorageUsageBatch(
     supabase
       .from("subscriptions")
       .select(
-        "id, business_id, status, trial_ends_at, current_period_end, plans ( storage_limit_mb, features )"
+        "id, business_id, status, trial_ends_at, current_period_end, billing_cycle, plans ( storage_limit_mb, features )"
       )
       .in("business_id", ids)
       .in("status", ["trial", "active", "past_due"])
@@ -333,6 +343,7 @@ export async function getStorageUsageBatch(
     status: string;
     trial_ends_at: string | null;
     current_period_end: string | null;
+    billing_cycle: string | null;
     plans: PlanRef | PlanRef[] | null;
   };
   const latestSub = new Map<string, SubRow>();
@@ -367,7 +378,14 @@ export async function getStorageUsageBatch(
     // Fail-closed: plan DAN add-on hanya dihitung bila subscription efektif
     // secara waktu; expired/past-grace → 0 untuk keduanya.
     const subscriptionEffective = Boolean(
-      sub && isSubscriptionEffective(sub.status, sub.trial_ends_at, sub.current_period_end)
+      sub &&
+      isSubscriptionEffective(
+        sub.status,
+        sub.trial_ends_at,
+        sub.current_period_end,
+        new Date(),
+        sub.billing_cycle
+      )
     );
     let planMb = 0;
     if (subscriptionEffective && sub) {

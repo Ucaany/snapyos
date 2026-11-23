@@ -18,6 +18,7 @@ import {
   buildSettingsPayload,
 } from "@/lib/form-state";
 import type { AdminSettingsUpdateInput } from "@/lib/validators";
+import { isBillingCycle, type BillingCycle } from "@/lib/subscription-math";
 import { isAllowedFrameTarget } from "@/lib/frame-proxy";
 import { removeResolved } from "@/server/storage";
 import { extractGlobalFrameChromaSlots } from "@/server/template-chroma";
@@ -158,9 +159,10 @@ export async function createPlanAction(_prev: FormState, formData: FormData): Pr
     await createPlan({
       code: str(formData, "code"),
       name: str(formData, "name"),
-      price_monthly: num(formData, "price_monthly"),
-      price_yearly: str(formData, "price_yearly") ? num(formData, "price_yearly") : null,
-      billing_cycle: str(formData, "billing_cycle") === "yearly" ? "yearly" : "monthly",
+      price: num(formData, "price"),
+      billing_cycle: (isBillingCycle(str(formData, "billing_cycle"))
+        ? str(formData, "billing_cycle")
+        : "monthly") as BillingCycle,
       max_businesses: str(formData, "max_businesses") ? num(formData, "max_businesses") : undefined,
       max_outlets: num(formData, "max_outlets"),
       max_photoboxes: num(formData, "max_photoboxes"),
@@ -205,12 +207,9 @@ export async function updatePlanAction(_prev: FormState, formData: FormData): Pr
     }
     await updatePlan(planId, {
       name: str(formData, "name") || undefined,
-      price_monthly: str(formData, "price_monthly") ? num(formData, "price_monthly") : undefined,
-      price_yearly: str(formData, "price_yearly") ? num(formData, "price_yearly") : null,
-      billing_cycle: str(formData, "billing_cycle")
-        ? str(formData, "billing_cycle") === "yearly"
-          ? "yearly"
-          : "monthly"
+      price: str(formData, "price") ? num(formData, "price") : undefined,
+      billing_cycle: isBillingCycle(str(formData, "billing_cycle"))
+        ? (str(formData, "billing_cycle") as BillingCycle)
         : undefined,
       max_businesses: str(formData, "max_businesses") ? num(formData, "max_businesses") : undefined,
       max_outlets: str(formData, "max_outlets") ? num(formData, "max_outlets") : undefined,
@@ -251,6 +250,9 @@ export async function createAddOnAction(_prev: FormState, formData: FormData): P
       code: str(formData, "code"),
       name: str(formData, "name"),
       price_monthly: num(formData, "price_monthly"),
+      price_daily: intOrNull(formData, "price_daily"),
+      price_weekly: intOrNull(formData, "price_weekly"),
+      price_yearly: intOrNull(formData, "price_yearly"),
       unit: str(formData, "unit") || undefined,
       storage_mb: intOrNull(formData, "storage_mb"),
     });
@@ -266,6 +268,9 @@ export async function updateAddOnAction(_prev: FormState, formData: FormData): P
     await updateAddOn(str(formData, "addOnId"), {
       name: str(formData, "name") || undefined,
       price_monthly: str(formData, "price_monthly") ? num(formData, "price_monthly") : undefined,
+      price_daily: intOrNull(formData, "price_daily"),
+      price_weekly: intOrNull(formData, "price_weekly"),
+      price_yearly: intOrNull(formData, "price_yearly"),
       unit: str(formData, "unit") || undefined,
       storage_mb: intOrNull(formData, "storage_mb"),
       // Checkbox + hidden "false" (unchecked tetap terkirim) — H2 audit.

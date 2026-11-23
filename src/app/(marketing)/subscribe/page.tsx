@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { SubscribeForm } from "@/components/subscribe-form";
 import { getPublicPlans, getPublicAddOns } from "@/server/catalog";
+import { addOnPriceForCycle } from "@/lib/subscription-math";
 
 export const metadata: Metadata = {
   title: "Berlangganan | SnapyOS",
@@ -20,7 +21,11 @@ export default async function SubscribePage({
   const addOnCodes = (params.addons ?? "").split(",").filter(Boolean);
 
   const plan = plans.find((p) => p.code === planCode) ?? null;
-  const selectedAddOns = addOns.filter((a) => addOnCodes.includes(a.code));
+  const selectedAddOns = addOns.filter(
+    (a) =>
+      addOnCodes.includes(a.code) &&
+      addOnPriceForCycle(a, plan?.billing_cycle ?? "monthly") !== null
+  );
   const planRequested = planCode !== "";
 
   return (

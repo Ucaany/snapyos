@@ -2,7 +2,7 @@
 
 ## 2.1 Business Model
 
-SnapyOS menggunakan model **SaaS subscription**. Owner membayar subscription bulanan untuk menggunakan SnapyOS. Harga default di bawah adalah **placeholder** dan harus **configurable** melalui admin dashboard (bukan hardcode).
+SnapyOS menggunakan model **SaaS subscription**. Owner membayar subscription per siklus (harian, mingguan, bulanan, atau tahunan) untuk menggunakan SnapyOS. Harga default di bawah adalah **placeholder** dan harus **configurable** melalui admin dashboard (bukan hardcode).
 
 Admin dapat mengubah: price, billing cycle, feature limits, outlet limit, **concurrent session limit**, user/staff limit, storage limit.
 
@@ -73,9 +73,8 @@ Field pada `plans`:
 | ------------------------- | ----------------------- | --------------------------------------------------------------------------------- |
 | `code`                    | text unique             | `starter`, `growth`, `business`                                                   |
 | `name`                    | text                    | `STARTER`                                                                         |
-| `price_monthly`           | integer (IDR)           | `99000`                                                                           |
-| `price_yearly`            | integer (IDR, nullable) | `990000`                                                                          |
-| `billing_cycle`           | enum                    | `monthly`, `yearly`                                                               |
+| `price`                   | integer (IDR)           | `99000` — harga **per siklus** (0093)                                             |
+| `billing_cycle`           | enum                    | `daily`, `weekly`, `monthly`, `yearly`                                            |
 | `max_businesses`          | integer                 | `1`                                                                               |
 | `max_outlets`             | integer                 | `1` (base; tambah via add-on)                                                     |
 | `max_photoboxes`          | integer                 | `1` (base; tambah via add-on)                                                     |
@@ -86,6 +85,13 @@ Field pada `plans`:
 | `platform_fee_flat`       | integer                 | `0`                                                                               |
 | `features`                | jsonb                   | list fitur & flag (voucher, reports, custom_domain, white_label, event_mode, ...) |
 | `is_active`               | boolean                 | `true`                                                                            |
+
+> **Siklus billing (0093):** satu plan = satu siklus. Panjang periode fixed
+> dalam hari: `daily=1`, `weekly=7`, `monthly=30`, `yearly=365`. Harga plan
+> adalah harga per siklus tersebut; tidak ada kolom harga terpisah per siklus.
+> `subscriptions.billing_cycle` menyimpan **snapshot** siklus saat aktivasi,
+> sehingga admin mengubah siklus/harga plan tidak mengubah periode yang sudah
+> dibayar.
 
 ## 2.4 Subscription Lifecycle
 
@@ -104,12 +110,15 @@ Transisi:
 ```
 Expired ──(owner klik "Aktifkan Kembali" di /dashboard/subscription)──▶ invoice
       pending (plan_change, harga plan penuh, periode baru)──(bayar QRIS)──▶ Active
-      (current_period_start = now(), current_period_end = nextPeriod(now()))
+      (current_period_start = now(), current_period_end = cyclePeriod(now(), billing_cycle))
 ```
 
-- Hanya `expired` (sudah lewat grace period 7 hari) yang dapat recovery
-  self-service. **`past_due` dalam grace TIDAK menembus jalur ini** —
+- Hanya `expired` (sudah lewat grace `min(7 hari, panjang siklus)`) yang dapat
+  recovery self-service. **`past_due` dalam grace TIDAK menembus jalur ini** —
   periode tetap extend dari `current_period_end` lama (pro-rated cycle).
+- **Grace `past_due` (0093):** `min(7 hari, panjang periode)`. Plan harian
+  mendapat grace 1 hari, mingguan/bulanan/tahunan 7 hari. Cron lifecycle
+  memakai cutoff per siklus.
 - Recovery memakai `status='expired'` yang diterima di `createSubscriptionInvoice`
   dan `applyInvoiceIntent` (`src/lib/subscription-intent-apply.ts`): invoice
   recovery **selalu memuat `plan_change`** (reactivasi plan lama maupun ganti
@@ -291,14 +300,21 @@ SnapyOS mengenakan **platform fee** configurable per plan (default 0). Field: `p
 
 **Purpose:** Menambah limit perangkat online (seat) tanpa upgrade plan penuh.
 
-- Add-on dijual **bulanan** (berulang), harga configurable di admin.
-- Contoh: `Add-on +1 Sesi — Rp49.000/bulan`.
+- Add-on dijual berulang mengikuti siklus plan, dengan harga terpisah per
+  siklus: `price_daily`, `price_weekly`, `price_monthly`, `price_yearly`
+  (0093). `NULL` = add-on tidak dijual untuk siklus itu.
+- Contoh: `Add-on +1 Sesi — Rp49.000/bulan`, `Rp10.000/hari`.
+- Checkout hanya menampilkan/menagih add-on yang punya harga untuk siklus plan
+  yang dipilih. Plan change/renewal ditolak bila add-on aktif (yang tidak
+  dijadwalkan batal) tidak punya harga untuk siklus tujuan; owner harus
+  membatalkan add-on itu dulu. Add-on yang sudah `cancel_at_period_end`
+  otomatis di-`cancelled` saat pindah siklus agar tidak terbawa gratis.
 - Masing-masing add-on menambah `+1` ke `max_concurrent_sessions` efektif (= seat / device online).
 - `max_concurrent_sessions` efektif = `plans.max_concurrent_sessions + sum(add-ons aktif)`.
 
 **Entity:**
 
-- `add_ons` — `{ id, code, name, price_monthly, unit (session), is_active }`
+- `add_ons` — `{ id, code, name, price_monthly, price_daily, price_weekly, price_yearly, unit (session), is_active }`
 - `subscription_add_ons` — m2m `{ subscription_id, add_on_id, quantity, status }`
 
 **Flow:**

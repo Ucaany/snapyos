@@ -10,6 +10,10 @@ import {
   effectiveSessions,
   sessionAddOnQuantities,
   addOnQuantityAllowed,
+  addOnPriceForCycle,
+  normalizeCycle,
+  type BillingCycle,
+  type CyclePrices,
 } from "@/lib/subscription-math";
 import { countOnline } from "@/lib/device-online";
 import { insertAudit } from "@/server/audit";
@@ -28,7 +32,9 @@ export type PlanCard = {
   id: string;
   code: string;
   name: string;
-  priceMonthly: number;
+  /** Harga per siklus plan — IDR integer. */
+  price: number;
+  billingCycle: BillingCycle;
   maxOutlets: number;
   maxPhotoboxes: number;
   maxConcurrentSessions: number;
@@ -86,7 +92,8 @@ export type AddOnCard = {
   id: string;
   code: string;
   name: string;
-  priceMonthly: number;
+  /** Harga per siklus; null = tidak dijual untuk siklus itu. */
+  prices: Record<BillingCycle, number | null>;
   unit: string;
 };
 
@@ -94,10 +101,41 @@ export type ActiveAddOn = {
   addOnId: string;
   code: string;
   name: string;
-  priceMonthly: number;
+  /** Harga pada siklus subscription saat ini; null = admin belum set harga. */
+  price: number | null;
   quantity: number;
   cancelAtPeriodEnd: boolean;
 };
+
+type AddOnJoinRow = {
+  code: string;
+  name: string;
+  unit: string;
+  storage_mb: number | null;
+  price_daily: number | null;
+  price_weekly: number | null;
+  price_monthly: number | null;
+  price_yearly: number | null;
+};
+
+/** Harga add-on per siklus dari baris DB (null = tidak dijual siklus itu). */
+function toAddOnPrices(a: AddOnJoinRow | null): Record<BillingCycle, number | null> {
+  return {
+    daily: a?.price_daily ?? null,
+    weekly: a?.price_weekly ?? null,
+    monthly: a?.price_monthly ?? null,
+    yearly: a?.price_yearly ?? null,
+  };
+}
+
+function toCyclePrices(a: AddOnJoinRow | null): CyclePrices {
+  return {
+    price_daily: a?.price_daily ?? null,
+    price_weekly: a?.price_weekly ?? null,
+    price_monthly: a?.price_monthly ?? null,
+    price_yearly: a?.price_yearly ?? null,
+  };
+}
 
 export type SubscriptionOverview = {
   subscription: {
@@ -106,6 +144,7 @@ export type SubscriptionOverview = {
     cancelAtPeriodEnd: boolean;
     trialEndsAt: string | null;
     currentPeriodEnd: string | null;
+    billingCycle: BillingCycle;
     plan: PlanCard | null;
     addOns: ActiveAddOn[];
   } | null;
@@ -194,7 +233,7 @@ export async function getSubscriptionOverview(
       supabase
         .from("subscriptions")
         .select(
-          "id, status, cancel_at_period_end, trial_ends_at, current_period_end, plans ( id, code, name, price_monthly, max_outlets, max_photoboxes, max_concurrent_sessions, max_staff, features )"
+          "id, status, cancel_at_period_end, trial_ends_at, current_period_end, billing_cycle, plans ( id, code, name, price, billing_cycle, max_outlets, max_photoboxes, max_concurrent_sessions, max_staff, features )"
         )
         .eq("business_id", businessId)
         // Overview juga menampilkan subscription `cancelled` agar owner bisa
@@ -207,10 +246,10 @@ export async function getSubscriptionOverview(
       supabase
         .from("plans")
         .select(
-          "id, code, name, price_monthly, max_outlets, max_photoboxes, max_concurrent_sessions, max_staff, features"
+          "id, code, name, price, billing_cycle, max_outlets, max_photoboxes, max_concurrent_sessions, max_staff, features"
         )
         .eq("is_active", true)
-        .order("price_monthly", { ascending: true }),
+        .order("price", { ascending: true }),
       supabase
         .from("invoices")
         .select("id, number, amount, status, paid_at, created_at, intent")
@@ -219,7 +258,9 @@ export async function getSubscriptionOverview(
         .limit(20),
       supabase
         .from("add_ons")
-        .select("id, code, name, price_monthly, unit, storage_mb")
+        .select(
+          "id, code, name, price_daily, price_weekly, price_monthly, price_yearly, unit, storage_mb"
+        )
         .eq("is_active", true)
         .order("price_monthly", { ascending: true }),
       supabase
@@ -244,7 +285,8 @@ export async function getSubscriptionOverview(
     id: string;
     code: string;
     name: string;
-    price_monthly: number;
+    price: number;
+    billing_cycle: string | null;
     max_outlets: number;
     max_photoboxes: number;
     max_concurrent_sessions: number;
@@ -258,6 +300,7 @@ export async function getSubscriptionOverview(
     cancel_at_period_end: boolean;
     trial_ends_at: string | null;
     current_period_end: string | null;
+    billing_cycle: string | null;
     plans: PlanJoin | PlanJoin[] | null;
   } | null;
 
@@ -267,7 +310,8 @@ export async function getSubscriptionOverview(
       id: p.id,
       code: p.code,
       name: p.name,
-      priceMonthly: p.price_monthly,
+      price: p.price,
+      billingCycle: normalizeCycle(p.billing_cycle),
       maxOutlets: p.max_outlets,
       maxPhotoboxes: p.max_photoboxes,
       maxConcurrentSessions: p.max_concurrent_sessions,
@@ -281,32 +325,18 @@ export async function getSubscriptionOverview(
     ? await supabase
         .from("subscription_add_ons")
         .select(
-          "add_on_id, quantity, cancel_at_period_end, add_ons ( code, name, price_monthly, unit, storage_mb )"
+          "add_on_id, quantity, cancel_at_period_end, add_ons ( code, name, price_daily, price_weekly, price_monthly, price_yearly, unit, storage_mb )"
         )
         .eq("subscription_id", subRow.id)
         .eq("status", "active")
     : { data: null };
+  const activeCycle = normalizeCycle(subRow?.billing_cycle);
   const activeAddOns = (
     (activeAddOnRows ?? []) as unknown as {
       add_on_id: string;
       quantity: number;
       cancel_at_period_end: boolean;
-      add_ons:
-        | {
-            code: string;
-            name: string;
-            price_monthly: number;
-            unit: string;
-            storage_mb: number | null;
-          }
-        | {
-            code: string;
-            name: string;
-            price_monthly: number;
-            unit: string;
-            storage_mb: number | null;
-          }[]
-        | null;
+      add_ons: AddOnJoinRow | AddOnJoinRow[] | null;
     }[]
   ).map((r) => {
     const a = r.add_ons && !Array.isArray(r.add_ons) ? r.add_ons : null;
@@ -320,7 +350,7 @@ export async function getSubscriptionOverview(
             storageMb: a.storage_mb,
           })
         : "",
-      priceMonthly: a?.price_monthly ?? 0,
+      price: addOnPriceForCycle(toCyclePrices(a), activeCycle),
       quantity: r.quantity,
       cancelAtPeriodEnd: r.cancel_at_period_end ?? false,
     };
@@ -342,6 +372,7 @@ export async function getSubscriptionOverview(
           cancelAtPeriodEnd: subRow.cancel_at_period_end,
           trialEndsAt: subRow.trial_ends_at,
           currentPeriodEnd: subRow.current_period_end,
+          billingCycle: normalizeCycle(subRow.billing_cycle),
           plan,
           addOns: activeAddOns,
         }
@@ -377,7 +408,8 @@ export async function getSubscriptionOverview(
       id: p.id,
       code: p.code,
       name: p.name,
-      priceMonthly: p.price_monthly,
+      price: p.price,
+      billingCycle: normalizeCycle(p.billing_cycle),
       maxOutlets: p.max_outlets,
       maxPhotoboxes: p.max_photoboxes,
       maxConcurrentSessions: p.max_concurrent_sessions,
@@ -385,14 +417,7 @@ export async function getSubscriptionOverview(
       features: (p.features as Record<string, boolean>) ?? {},
     })),
     addOns: (
-      (addOnRes.data ?? []) as unknown as {
-        id: string;
-        code: string;
-        name: string;
-        price_monthly: number;
-        unit: string;
-        storage_mb: number | null;
-      }[]
+      (addOnRes.data ?? []) as unknown as ({ id: string } & AddOnJoinRow)[]
     ).map((a) => ({
       id: a.id,
       code: a.code,
@@ -401,7 +426,7 @@ export async function getSubscriptionOverview(
         unit: a.unit,
         storageMb: a.storage_mb,
       }),
-      priceMonthly: a.price_monthly,
+      prices: toAddOnPrices(a),
       unit: a.unit,
     })),
   };
@@ -424,7 +449,7 @@ export async function createSubscriptionInvoice(
   const supabase = createServerClient();
   const { data: current } = await supabase
     .from("subscriptions")
-    .select("id, status, plans ( id, code, name, price_monthly )")
+    .select("id, status, billing_cycle, plans ( id, code, name, price, billing_cycle )")
     .eq("business_id", businessId)
     .in("status", ["trial", "active", "past_due", "expired"])
     .order("created_at", { ascending: false })
@@ -433,7 +458,14 @@ export async function createSubscriptionInvoice(
   const currentRow = current as {
     id: string;
     status: string;
-    plans: { id: string; code: string; name: string; price_monthly: number } | null;
+    billing_cycle: string | null;
+    plans: {
+      id: string;
+      code: string;
+      name: string;
+      price: number;
+      billing_cycle: string | null;
+    } | null;
   } | null;
   if (!currentRow) throw new ApiError("NOT_FOUND", "Subscription tidak ditemukan");
   // Self-service recovery (docs/02 §2.4): owner expired boleh checkout lagi
@@ -452,7 +484,8 @@ export async function createSubscriptionInvoice(
     id: string;
     code: string;
     name: string;
-    price_monthly: number;
+    price: number;
+    billing_cycle: string | null;
     is_active: boolean;
     max_outlets: number;
     max_photoboxes: number;
@@ -464,7 +497,7 @@ export async function createSubscriptionInvoice(
     const { data: plan } = await supabase
       .from("plans")
       .select(
-        "id, code, name, price_monthly, is_active, max_outlets, max_photoboxes, max_staff, max_packages, max_templates"
+        "id, code, name, price, billing_cycle, is_active, max_outlets, max_photoboxes, max_staff, max_packages, max_templates"
       )
       .eq("code", input.planCode)
       .maybeSingle();
@@ -536,7 +569,8 @@ export async function createSubscriptionInvoice(
       id: currentPlan.id,
       code: currentPlan.code,
       name: currentPlan.name,
-      price_monthly: currentPlan.price_monthly,
+      price: currentPlan.price,
+      billing_cycle: currentPlan.billing_cycle,
       is_active: true,
       max_outlets: 0,
       max_photoboxes: 0,
@@ -544,6 +578,50 @@ export async function createSubscriptionInvoice(
       max_packages: 0,
       max_templates: 0,
     };
+  }
+
+  // Fix: only include plan_change item when plan actually changes.
+  // Add-on-only checkout (no planCode or same plan) must NOT charge plan price.
+  // Exception: recovery (expired) SELALU menyertakan plan_change — renew
+  // plan lama/baru = aktivasi ulang, periode baru dari now() (docs/02 §2.4).
+  const isActualPlanChange =
+    isRecovery || isRenewal || (Boolean(input.planCode) && input.planCode !== currentPlan?.code);
+
+  // Add-on-only memakai snapshot siklus subscription (plan bisa saja sudah
+  // diedit admin); plan change/renewal memakai siklus plan tujuan.
+  const targetCycle = normalizeCycle(
+    isActualPlanChange ? planRow.billing_cycle : currentRow.billing_cycle
+  );
+
+  // Plan change/renewal ke siklus baru: add-on aktif yang tidak punya harga
+  // untuk siklus tujuan akan membuat tagihan tidak valid → require cancel dulu
+  // (pola sama dengan validasi downgrade kuota).
+  if (isActualPlanChange) {
+    const { data: activeLinks } = await supabase
+      .from("subscription_add_ons")
+      .select(
+        "cancel_at_period_end, add_ons ( code, name, price_daily, price_weekly, price_monthly, price_yearly )"
+      )
+      .eq("subscription_id", currentRow.id)
+      .eq("status", "active");
+    const blocked = (
+      (activeLinks ?? []) as unknown as {
+        cancel_at_period_end: boolean;
+        add_ons: AddOnJoinRow | AddOnJoinRow[] | null;
+      }[]
+    )
+      // Add-on yang sudah dijadwalkan batal tidak akan terbawa ke periode baru.
+      .filter((l) => !l.cancel_at_period_end)
+      .map((l) => (l.add_ons && !Array.isArray(l.add_ons) ? l.add_ons : null))
+      .filter((a): a is AddOnJoinRow => Boolean(a))
+      .filter((a) => addOnPriceForCycle(toCyclePrices(a), targetCycle) === null)
+      .map((a) => a.name);
+    if (blocked.length > 0) {
+      throw new ApiError(
+        "VALIDATION_ERROR",
+        `Batalkan add-on berikut dulu karena tidak tersedia untuk siklus ${targetCycle}: ${blocked.join(", ")}.`
+      );
+    }
   }
 
   // Add-on custom qty — merge duplikat id, qty 1..99.
@@ -561,17 +639,14 @@ export async function createSubscriptionInvoice(
   if (qtyById.size > 0) {
     const { data: addOnRows } = await supabase
       .from("add_ons")
-      .select("id, code, name, price_monthly, is_active, unit, storage_mb")
+      .select(
+        "id, code, name, price_daily, price_weekly, price_monthly, price_yearly, is_active, unit, storage_mb"
+      )
       .in("id", [...qtyById.keys()]);
-    for (const raw of (addOnRows ?? []) as {
+    for (const raw of (addOnRows ?? []) as ({
       id: string;
-      code: string;
-      name: string;
-      price_monthly: number;
       is_active: boolean;
-      unit: string;
-      storage_mb: number | null;
-    }[]) {
+    } & AddOnJoinRow)[]) {
       if (!raw.is_active) continue;
       const qty = qtyById.get(raw.id) ?? 0;
       // Add-on ber-unit `feature` (mis. POS) = entitlement biner; qty > 1
@@ -583,6 +658,13 @@ export async function createSubscriptionInvoice(
           `Add-on ${raw.code} tidak dapat dibeli lebih dari 1`
         );
       }
+      const price = addOnPriceForCycle(toCyclePrices(raw), targetCycle);
+      if (price === null) {
+        throw new ApiError(
+          "VALIDATION_ERROR",
+          `Add-on ${raw.code} tidak tersedia untuk siklus ${targetCycle}`
+        );
+      }
       addOnItems.push({
         addOnId: raw.id,
         code: raw.code,
@@ -591,7 +673,7 @@ export async function createSubscriptionInvoice(
           unit: raw.unit,
           storageMb: raw.storage_mb,
         }),
-        price: raw.price_monthly,
+        price,
         qty,
       });
     }
@@ -600,12 +682,6 @@ export async function createSubscriptionInvoice(
     }
   }
 
-  // Fix: only include plan_change item when plan actually changes.
-  // Add-on-only checkout (no planCode or same plan) must NOT charge plan price.
-  // Exception: recovery (expired) SELALU menyertakan plan_change — renew
-  // plan lama/baru = aktivasi ulang, periode baru dari now() (docs/02 §2.4).
-  const isActualPlanChange =
-    isRecovery || isRenewal || (Boolean(input.planCode) && input.planCode !== currentPlan?.code);
   const items: InvoiceIntentItem[] = [
     ...(isActualPlanChange
       ? [
@@ -614,8 +690,9 @@ export async function createSubscriptionInvoice(
             plan_id: planRow.id,
             code: planRow.code,
             name: planRow.name,
-            amount: planRow.price_monthly,
+            amount: planRow.price,
             qty: 1,
+            billing_cycle: targetCycle,
             // Renewal/pemulihan (past_due/expired) → periode BARU dari now()
             // saat apply, bukan extend periode lama (docs/02 §2.4).
             ...(isRenewal ? { new_period: true } : {}),

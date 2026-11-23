@@ -1,11 +1,105 @@
 /**
  * Perhitungan murni subscription — docs/02 (billing), docs/12 Phase 10.
- * Uang integer IDR; periode 30 hari (monthly, MVP tanpa proration).
+ * Uang integer IDR; periode fixed days per siklus (0093).
  */
 
 export const PERIOD_DAYS = 30;
 
-/** Periode baru: start = now, end = now + 30 hari (cycle monthly MVP). */
+/**
+ * Siklus billing plan (0093). `monthly` = 30 hari (perilaku lama), `yearly`
+ * = 365 hari; `daily`/`weekly` untuk langganan jangka pendek.
+ */
+export type BillingCycle = "daily" | "weekly" | "monthly" | "yearly";
+
+export const BILLING_CYCLES: readonly BillingCycle[] = [
+  "daily",
+  "weekly",
+  "monthly",
+  "yearly",
+];
+
+const CYCLE_DAYS: Record<BillingCycle, number> = {
+  daily: 1,
+  weekly: 7,
+  monthly: PERIOD_DAYS,
+  yearly: 365,
+};
+
+const CYCLE_UNIT: Record<BillingCycle, string> = {
+  daily: "hari",
+  weekly: "minggu",
+  monthly: "bulan",
+  yearly: "tahun",
+};
+
+const CYCLE_LABEL: Record<BillingCycle, string> = {
+  daily: "Harian",
+  weekly: "Mingguan",
+  monthly: "Bulanan",
+  yearly: "Tahunan",
+};
+
+export function isBillingCycle(value: unknown): value is BillingCycle {
+  return typeof value === "string" && Object.hasOwn(CYCLE_DAYS, value);
+}
+
+/** Normalisasi nilai DB/intent lama: tidak dikenal → `monthly` (fail-safe). */
+export function normalizeCycle(value: string | null | undefined): BillingCycle {
+  return isBillingCycle(value) ? value : "monthly";
+}
+
+export function cycleDays(cycle: string | null | undefined): number {
+  return CYCLE_DAYS[normalizeCycle(cycle)];
+}
+
+/** Unit harga untuk copy UI: "hari" | "minggu" | "bulan" | "tahun". */
+export function cycleUnit(cycle: string | null | undefined): string {
+  return CYCLE_UNIT[normalizeCycle(cycle)];
+}
+
+/** Label admin: "Harian" | "Mingguan" | "Bulanan" | "Tahunan". */
+export function cycleLabel(cycle: string | null | undefined): string {
+  return CYCLE_LABEL[normalizeCycle(cycle)];
+}
+
+/** Periode baru untuk siklus tertentu. */
+export function cyclePeriod(
+  now: Date,
+  cycle: string | null | undefined
+): { start: Date; end: Date } {
+  return nextPeriod(now, cycleDays(cycle));
+}
+
+export type CyclePrices = {
+  price_daily: number | null;
+  price_weekly: number | null;
+  price_monthly: number | null;
+  price_yearly: number | null;
+};
+
+const CYCLE_PRICE_KEY: Record<BillingCycle, keyof CyclePrices> = {
+  daily: "price_daily",
+  weekly: "price_weekly",
+  monthly: "price_monthly",
+  yearly: "price_yearly",
+};
+
+/** Harga add-on untuk siklus; null = add-on tidak dijual untuk siklus itu. */
+export function addOnPriceForCycle(
+  prices: CyclePrices,
+  cycle: string | null | undefined
+): number | null {
+  const value = prices[CYCLE_PRICE_KEY[normalizeCycle(cycle)]];
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+/** Setara bulanan (30 hari) untuk MRR/hero — selalu integer IDR. */
+export function monthlyEquivalent(price: number, cycle: string | null | undefined): number {
+  if (!Number.isFinite(price) || price < 0) return 0;
+  return Math.round((price * PERIOD_DAYS) / cycleDays(cycle));
+}
+
+/** Periode baru: start = now, end = now + days (default 30 hari). */
 export function nextPeriod(now: Date, days: number = PERIOD_DAYS): { start: Date; end: Date } {
   const ms = now.getTime();
   if (!Number.isFinite(ms)) {
@@ -70,9 +164,15 @@ export function addOnQuantityAllowed(unit: string | null | undefined, qty: numbe
 
 /**
  * Grace period past_due sebelum akses dicabut (docs/02 §2.4).
- * Configurable via platform_settings; default 7 hari.
+ * Configurable via platform_settings; default 7 hari. Untuk siklus pendek
+ * (harian) grace dibatasi panjang periode agar tidak memberi akses gratis
+ * berlipat (0093).
  */
 export const PAST_DUE_GRACE_DAYS = 7;
+
+export function pastDueGraceDays(cycle: string | null | undefined): number {
+  return Math.min(PAST_DUE_GRACE_DAYS, cycleDays(cycle));
+}
 
 /**
  * Cek apakah subscription masih efektif secara waktu.
@@ -80,13 +180,17 @@ export const PAST_DUE_GRACE_DAYS = 7;
  * Status string saja TIDAK cukup — trial/past_due bisa expired secara waktu
  * sebelum cron sempat mentransisi status di DB.
  *
+ * `billingCycle` menentukan grace `past_due` (min 7 hari / panjang periode);
+ * nilai lama/tidak dikenal jatuh ke `monthly` (30 hari).
+ *
  * Dipakai oleh: getPlanLimits, hasPosEntitlement, getActiveSubscription, dan cron lifecycle.
  */
 export function isSubscriptionEffective(
   status: string,
   trialEndsAt: string | null,
   currentPeriodEnd: string | null,
-  now: Date = new Date()
+  now: Date = new Date(),
+  billingCycle: string | null = "monthly"
 ): boolean {
   if (status === "cancelled" || status === "expired") return false;
 
@@ -109,7 +213,7 @@ export function isSubscriptionEffective(
     if (!currentPeriodEnd) return false;
     const p = new Date(currentPeriodEnd).getTime();
     if (!Number.isFinite(p)) return false;
-    const graceMs = PAST_DUE_GRACE_DAYS * 86_400_000;
+    const graceMs = pastDueGraceDays(billingCycle) * 86_400_000;
     return nowMs <= p + graceMs;
   }
 

@@ -27,7 +27,7 @@ values ('11111111-1111-4111-8111-111111111111',
         'verify-biz', 'Verify Biz', 'active')
 on conflict (id) do nothing;
 
-insert into plans (id, code, name, price_monthly, billing_cycle,
+insert into plans (id, code, name, price, billing_cycle,
                    max_businesses, max_outlets, max_photoboxes,
                    max_concurrent_sessions, max_staff, max_packages,
                    max_templates, storage_limit_mb, features)

@@ -1606,9 +1606,9 @@ export const adminPlanCreateSchema = z.object({
     .max(32)
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Kode hanya huruf kecil, angka, dan tanda hubung"),
   name: z.string().trim().min(2, "Nama plan minimal 2 karakter").max(80),
-  price_monthly: priceIdr,
-  price_yearly: priceIdr.nullable().optional(),
-  billing_cycle: z.enum(["monthly", "yearly"]).optional(),
+  /** Harga per siklus billing (0093) — integer IDR. */
+  price: priceIdr,
+  billing_cycle: z.enum(["daily", "weekly", "monthly", "yearly"]).optional(),
   max_businesses: z.number().int().min(1).max(1000).optional(),
   max_outlets: z.number().int().min(1).max(1000).optional(),
   max_photoboxes: z.number().int().min(1).max(1000).optional(),
@@ -1638,6 +1638,10 @@ export const adminAddOnCreateSchema = z.object({
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Kode hanya huruf kecil, angka, dan tanda hubung"),
   name: z.string().trim().min(2, "Nama add-on minimal 2 karakter").max(80),
   price_monthly: priceIdr,
+  /** Harga per siklus lain (0093); null/kosong = tidak dijual siklus itu. */
+  price_daily: priceIdr.nullable().optional(),
+  price_weekly: priceIdr.nullable().optional(),
+  price_yearly: priceIdr.nullable().optional(),
   unit: z.string().trim().min(1, "Unit wajib diisi").max(32).optional(),
   storage_mb: z
     .number()

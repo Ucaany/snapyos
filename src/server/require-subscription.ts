@@ -23,6 +23,7 @@ type EffectiveSubscription = {
   status: string;
   trialEndsAt: string | null;
   currentPeriodEnd: string | null;
+  billingCycle: string;
 };
 
 /**
@@ -36,7 +37,7 @@ export const getEffectiveSubscriptionRow = cache(
     const supabase = createServerClient();
     const { data } = await supabase
       .from("subscriptions")
-      .select("id, status, trial_ends_at, current_period_end")
+      .select("id, status, trial_ends_at, current_period_end, billing_cycle")
       .eq("business_id", businessId)
       .in("status", ["trial", "active", "past_due"])
       .order("created_at", { ascending: false })
@@ -48,6 +49,7 @@ export const getEffectiveSubscriptionRow = cache(
       status: string;
       trial_ends_at: string | null;
       current_period_end: string | null;
+      billing_cycle: string | null;
     } | null;
     if (!row) return null;
     return {
@@ -55,6 +57,7 @@ export const getEffectiveSubscriptionRow = cache(
       status: row.status,
       trialEndsAt: row.trial_ends_at,
       currentPeriodEnd: row.current_period_end,
+      billingCycle: row.billing_cycle ?? "monthly",
     };
   }
 );
@@ -74,7 +77,16 @@ export async function requireEffectiveSubscription(
   _mode: "read" | "write" = "read"
 ): Promise<EffectiveSubscription> {
   const row = await getEffectiveSubscriptionRow(businessId);
-  if (!row || !isSubscriptionEffective(row.status, row.trialEndsAt, row.currentPeriodEnd)) {
+  if (
+    !row ||
+    !isSubscriptionEffective(
+      row.status,
+      row.trialEndsAt,
+      row.currentPeriodEnd,
+      new Date(),
+      row.billingCycle
+    )
+  ) {
     throw new ApiError(
       "SUBSCRIPTION_EXPIRED",
       "Langganan bisnis ini sudah kedaluwarsa. Perpanjang langganan untuk melanjutkan."

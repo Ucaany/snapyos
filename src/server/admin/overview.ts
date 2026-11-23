@@ -6,7 +6,7 @@ import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
 import { paymentSummary, sumMrr, type FeePolicy } from "@/lib/admin-math";
-import { isSubscriptionEffective } from "@/lib/subscription-math";
+import { isSubscriptionEffective, monthlyEquivalent } from "@/lib/subscription-math";
 import { requireAdmin } from "./guard";
 import { getUserStats } from "./users";
 
@@ -34,7 +34,7 @@ export async function getAdminOverviewGuarded(): Promise<AdminOverview> {
       supabase.from("businesses").select("id", { count: "exact", head: true }),
       supabase
         .from("subscriptions")
-        .select("status, trial_ends_at, current_period_end, plans ( price_monthly )"),
+        .select("status, trial_ends_at, current_period_end, billing_cycle, plans ( price, billing_cycle )"),
       supabase.from("outlets").select("id", { count: "exact", head: true }),
       supabase.from("photoboxes").select("id", { count: "exact", head: true }),
       supabase.from("sessions").select("id", { count: "exact", head: true }),
@@ -54,12 +54,19 @@ export async function getAdminOverviewGuarded(): Promise<AdminOverview> {
     status: string;
     trial_ends_at: string | null;
     current_period_end: string | null;
-    plans: { price_monthly: number } | null;
+    billing_cycle: string | null;
+    plans: { price: number; billing_cycle: string } | null;
   };
   const subs = (subscriptions.data ?? []) as unknown as SubRow[];
   // A-001: status `active` saja tidak cukup — periode harus masih berlaku.
   const active = subs.filter((s) =>
-    isSubscriptionEffective(s.status, s.trial_ends_at, s.current_period_end)
+    isSubscriptionEffective(
+      s.status,
+      s.trial_ends_at,
+      s.current_period_end,
+      new Date(),
+      s.billing_cycle
+    )
   );
   return {
     totalBusinesses: businesses.count ?? 0,
@@ -99,14 +106,17 @@ export async function getSubscriptionStats(): Promise<AdminSubscriptionStats> {
   const supabase = createServerClient();
   const { data, error } = await supabase
     .from("subscriptions")
-    .select("status, trial_ends_at, current_period_end, plans ( name, price_monthly )");
+    .select(
+      "status, trial_ends_at, current_period_end, billing_cycle, plans ( name, price, billing_cycle )"
+    );
   if (error) throw new ApiError("INTERNAL", "Gagal memuat statistik langganan");
 
   type Row = {
     status: string;
     trial_ends_at: string | null;
     current_period_end: string | null;
-    plans: { name: string; price_monthly: number } | null;
+    billing_cycle: string | null;
+    plans: { name: string; price: number; billing_cycle: string } | null;
   };
   const rows = (data ?? []) as unknown as Row[];
   const now = Date.now();
@@ -130,7 +140,9 @@ export async function getSubscriptionStats(): Promise<AdminSubscriptionStats> {
     const effective = isSubscriptionEffective(
       row.status,
       row.trial_ends_at,
-      row.current_period_end
+      row.current_period_end,
+      new Date(),
+      row.billing_cycle
     );
 
     if (effective) {
@@ -138,7 +150,9 @@ export async function getSubscriptionStats(): Promise<AdminSubscriptionStats> {
       const name = row.plans?.name ?? "Tanpa paket";
       const current = plans.get(name) ?? { count: 0, mrr: 0 };
       current.count += 1;
-      current.mrr += row.plans?.price_monthly ?? 0;
+      current.mrr += row.plans
+        ? monthlyEquivalent(row.plans.price, row.plans.billing_cycle)
+        : 0;
       plans.set(name, current);
     }
 
@@ -238,7 +252,7 @@ async function feeByBusinessMap(): Promise<Map<string, FeePolicy>> {
   const { data } = await supabase
     .from("subscriptions")
     .select(
-      "business_id, status, trial_ends_at, current_period_end, plans ( platform_fee_percent, platform_fee_flat )"
+      "business_id, status, trial_ends_at, current_period_end, billing_cycle, plans ( platform_fee_percent, platform_fee_flat )"
     )
     .in("status", ["trial", "active", "past_due"])
     .order("created_at", { ascending: false });
@@ -247,12 +261,22 @@ async function feeByBusinessMap(): Promise<Map<string, FeePolicy>> {
     status: string;
     trial_ends_at: string | null;
     current_period_end: string | null;
+    billing_cycle: string | null;
     plans: { platform_fee_percent: number; platform_fee_flat: number } | null;
   };
   const map = new Map<string, FeePolicy>();
   for (const row of (data ?? []) as unknown as Row[]) {
     // A-017: fee hanya berlaku bila periode subscription masih efektif.
-    if (!isSubscriptionEffective(row.status, row.trial_ends_at, row.current_period_end)) continue;
+    if (
+      !isSubscriptionEffective(
+        row.status,
+        row.trial_ends_at,
+        row.current_period_end,
+        new Date(),
+        row.billing_cycle
+      )
+    )
+      continue;
     if (!map.has(row.business_id) && row.plans) {
       map.set(row.business_id, {
         percent: row.plans.platform_fee_percent,

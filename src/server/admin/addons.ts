@@ -23,6 +23,9 @@ export type AdminAddOnRow = {
   code: string;
   name: string;
   price_monthly: number;
+  price_daily: number | null;
+  price_weekly: number | null;
+  price_yearly: number | null;
   unit: string;
   storage_mb: number | null;
   is_active: boolean;
@@ -37,17 +40,25 @@ export async function listAddOns(): Promise<AdminAddOnRow[]> {
   const supabase = createServerClient();
   const { data, error } = await supabase
     .from("add_ons")
-    .select("id, code, name, price_monthly, unit, storage_mb, is_active")
+    .select(
+      "id, code, name, price_monthly, price_daily, price_weekly, price_yearly, unit, storage_mb, is_active"
+    )
     .order("created_at", { ascending: true });
   if (error && !isMissingRelation(error)) throw new ApiError("INTERNAL", "Gagal memuat add-ons");
   if (error) {
-    // storage_mb belum ada (migration 0053) → fallback tanpa kolom storage.
+    // storage_mb/harga per siklus belum ada (0053/0093) → fallback kolom lama.
     const { data: base, error: baseError } = await supabase
       .from("add_ons")
       .select("id, code, name, price_monthly, unit, is_active")
       .order("created_at", { ascending: true });
     if (baseError) throw new ApiError("INTERNAL", "Gagal memuat add-ons");
-    return ((base ?? []) as AdminAddOnRow[]).map((r) => ({ ...r, storage_mb: null }));
+    return ((base ?? []) as AdminAddOnRow[]).map((r) => ({
+      ...r,
+      price_daily: null,
+      price_weekly: null,
+      price_yearly: null,
+      storage_mb: null,
+    }));
   }
   return (data ?? []) as AdminAddOnRow[];
 }
@@ -59,7 +70,9 @@ export async function createAddOn(input: AdminAddOnCreateInput): Promise<AdminAd
   const { data, error } = await supabase
     .from("add_ons")
     .insert(parsed)
-    .select("id, code, name, price_monthly, unit, storage_mb, is_active")
+    .select(
+      "id, code, name, price_monthly, price_daily, price_weekly, price_yearly, unit, storage_mb, is_active"
+    )
     .single();
   if (error) {
     if (error.code === "23505") throw new ApiError("VALIDATION_ERROR", "Kode add-on sudah dipakai");
@@ -77,7 +90,9 @@ export async function updateAddOn(addOnId: string, input: AdminAddOnUpdateInput)
     .from("add_ons")
     .update(parsed)
     .eq("id", addOnId)
-    .select("id, code, name, price_monthly, unit, storage_mb, is_active")
+    .select(
+      "id, code, name, price_monthly, price_daily, price_weekly, price_yearly, unit, storage_mb, is_active"
+    )
     .maybeSingle();
   if (error) throw new ApiError("INTERNAL", "Gagal memperbarui add-on");
   if (!data) throw new ApiError("NOT_FOUND", "Add-on tidak ditemukan");

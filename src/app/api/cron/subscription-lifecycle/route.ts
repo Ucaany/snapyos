@@ -1,6 +1,6 @@
 import { createServerClient } from "@/lib/supabase/server";
 import { bearerMatches } from "@/lib/cron-auth";
-import { PAST_DUE_GRACE_DAYS } from "@/lib/subscription-math";
+import { BILLING_CYCLES, pastDueGraceDays } from "@/lib/subscription-math";
 
 /**
  * Cron subscription lifecycle — docs/02 §2.4.
@@ -12,7 +12,10 @@ import { PAST_DUE_GRACE_DAYS } from "@/lib/subscription-math";
  *   trial   + trial_ends_at < now                           → expired
  *   active  + cancel_at_period_end + current_period_end < now → cancelled
  *   active  + current_period_end < now (tanpa cancel flag)  → past_due
- *   past_due + current_period_end + grace < now             → expired
+ *   past_due + current_period_end + grace(cycle) < now      → expired
+ *
+ * Grace per siklus (0093): min(7 hari, panjang periode) — plan harian
+ * kedaluwarsa setelah 1 hari, bukan 7.
  */
 
 export const dynamic = "force-dynamic";
@@ -45,7 +48,6 @@ export async function GET(request: Request) {
 
   const supabase = createServerClient();
   const now = new Date().toISOString();
-  const graceDate = new Date(Date.now() - PAST_DUE_GRACE_DAYS * 86_400_000).toISOString();
 
   let trialExpired = 0;
   let cancelledAtEnd = 0;
@@ -91,18 +93,24 @@ export async function GET(request: Request) {
     activeToPastDue = data?.length ?? 0;
   }
 
-  // 4. past_due + current_period_end + grace < now → expired
-  //    graceDate = now - PAST_DUE_GRACE_DAYS; rows with period_end < graceDate
-  //    are past the grace window.
+  // 4. past_due + current_period_end + grace(cycle) < now → expired
+  //    Cutoff = now - grace, dihitung per siklus (0093). Baris tanpa siklus
+  //    dikenal jatuh ke grace monthly (7 hari) lewat normalizeCycle.
   {
-    const { data, error } = await supabase
-      .from("subscriptions")
-      .update({ status: "expired" })
-      .eq("status", "past_due")
-      .lt("current_period_end", graceDate)
-      .select("id");
-    if (error) failures.push(`past_due_expired: ${error.message}`);
-    pastDueExpired = data?.length ?? 0;
+    for (const cycle of BILLING_CYCLES) {
+      const graceDate = new Date(
+        Date.now() - pastDueGraceDays(cycle) * 86_400_000
+      ).toISOString();
+      const { data, error } = await supabase
+        .from("subscriptions")
+        .update({ status: "expired" })
+        .eq("status", "past_due")
+        .eq("billing_cycle", cycle)
+        .lt("current_period_end", graceDate)
+        .select("id");
+      if (error) failures.push(`past_due_expired_${cycle}: ${error.message}`);
+      pastDueExpired += data?.length ?? 0;
+    }
   }
 
   // 5. Cancel add-ons marked cancel_at_period_end on subscriptions whose

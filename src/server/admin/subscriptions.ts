@@ -16,7 +16,7 @@ import {
   type AdminSubscriptionUpdateInput,
 } from "@/lib/validators";
 import { decideAttach, planCancelAddOn } from "@/lib/admin-addon-ops";
-import { addOnQuantityAllowed, nextPeriod } from "@/lib/subscription-math";
+import { addOnQuantityAllowed, cycleDays, nextPeriod, normalizeCycle } from "@/lib/subscription-math";
 import { requireAdmin, audit } from "./guard";
 
 // ---------------------------------------------------------------------------
@@ -29,6 +29,7 @@ export type AdminSubscriptionRow = {
   business_name: string;
   plan_name: string;
   plan_code: string;
+  billing_cycle: string;
   status: string;
   trial_ends_at: string | null;
   current_period_start: string | null;
@@ -45,12 +46,13 @@ export type AdminSubscriptionRow = {
 
 /** Kolom subscription yang dipilih (list + detail) — satu source of truth. */
 const SUBSCRIPTION_SELECT =
-  "id, business_id, status, trial_ends_at, current_period_start, current_period_end, cancel_at_period_end, businesses ( name ), plans ( name, code )";
+  "id, business_id, status, billing_cycle, trial_ends_at, current_period_start, current_period_end, cancel_at_period_end, businesses ( name ), plans ( name, code )";
 
 type SubscriptionBaseRow = {
   id: string;
   business_id: string;
   status: string;
+  billing_cycle: string | null;
   trial_ends_at: string | null;
   current_period_start: string | null;
   current_period_end: string | null;
@@ -134,6 +136,7 @@ async function enrichSubscriptionRows(
       business_name: business?.name ?? "-",
       plan_name: plan?.name ?? "-",
       plan_code: plan?.code ?? "-",
+      billing_cycle: normalizeCycle(row.billing_cycle),
       status: row.status,
       trial_ends_at: row.trial_ends_at,
       current_period_start: row.current_period_start,
@@ -215,7 +218,7 @@ export async function updateSubscription(
 
   const { data: current } = await supabase
     .from("subscriptions")
-    .select("id, business_id, current_period_end")
+    .select("id, business_id, current_period_end, billing_cycle")
     .eq("id", subscriptionId)
     .maybeSingle();
   if (!current) throw new ApiError("NOT_FOUND", "Subscription tidak ditemukan");
@@ -231,7 +234,11 @@ export async function updateSubscription(
   if (parsed.status === "active") {
     const periodEnd = (patch.current_period_end as string | undefined) ?? current.current_period_end;
     if (!periodEnd || new Date(periodEnd).getTime() <= Date.now()) {
-      patch.current_period_end = nextPeriod(new Date()).end.toISOString();
+      const currentRow = current as { billing_cycle?: string | null };
+      patch.current_period_end = nextPeriod(
+        new Date(),
+        cycleDays(currentRow.billing_cycle)
+      ).end.toISOString();
     }
   }
   if (Object.keys(patch).length === 0) {

@@ -107,7 +107,7 @@
 
 **Server Actions**: `src/server/admin-actions.ts`
 
-- `createPlanAction` — buat plan baru (price_monthly/yearly, limits, features, platform_fee, is_active)
+- `createPlanAction` — buat plan baru (`price` per siklus, `billing_cycle` harian/mingguan/bulanan/tahunan, limits, features, platform_fee, is_active)
 - `updatePlanAction` — ubah price, limits, features, active/inactive
 
 **API**:
@@ -160,14 +160,14 @@
 **Features**:
 
 - List add-ons (`extra_session`, `pos`)
-- Create add-on: code (unique), name, description, price_monthly (int IDR), unit (`session`/`feature`), is_active
+- Create add-on: code (unique), name, description, harga per siklus (`price_monthly` wajib; `price_daily`/`price_weekly`/`price_yearly` opsional, null = tidak dijual), unit (`session`/`feature`), is_active
 - Update price/name/description/active kapan saja (tanpa deploy)
 - Active/inactive toggle
 
 **Add-on Types**:
 
-- **Quantity-based** (`unit='session'`): `extra_session` (quantity × price_monthly)
-- **Feature-based** (`unit='feature'`): `pos` (enable/disable; quantity diabaikan, harga flat per bulan)
+- **Quantity-based** (`unit='session'`): `extra_session` (quantity × harga siklus plan)
+- **Feature-based** (`unit='feature'`): `pos` (enable/disable; quantity diabaikan, harga flat per siklus plan)
 
 **Entitlement**:
 

@@ -979,7 +979,7 @@ Owner klik [ TAMBAH ADD-ON ]
    ↓ Dialog pilih add-on + quantity (jika quantity-based)
    ↓ submit → createSubscriptionInvoice(businessId, { addOnCode, quantity })
       ↓ fetch add_on by code (harga dari DB, admin-configurable)
-      ↓ compute amount = add_on.price_monthly * quantity (atau price flat jika feature)
+      ↓ compute amount = add_on.price_<siklus> * quantity (atau price flat per siklus jika feature)
       ↓ insert invoices (status='pending', intent={ type:'add_on', add_on_id, quantity })
       ↓ create invoice_payments QRIS (Pakasir aggregator platform)
       ↓ return { invoice_id, qr_string, total_amount, expires_at }
