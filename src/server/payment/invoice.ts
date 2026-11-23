@@ -24,7 +24,7 @@ import {
   recordLatePaymentVoidInvoice,
   type IntentDb,
 } from "@/server/subscription";
-import { resolveGatewayByCredential } from "@/server/payment/providers/registry";
+import { resolveGatewayByCredential, isProviderGloballyEnabled } from "@/server/payment/providers/registry";
 import { resolveGatewayFromCredential } from "@/server/payment/providers/gateway-factory";
 import {
   logPaymentWebhook,
@@ -46,7 +46,7 @@ type InvoiceRow = {
   status: string;
 };
 
-type InvoicePaymentRow = {
+export type InvoicePaymentRow = {
   id: string;
   business_id: string;
   invoice_id: string;
@@ -93,8 +93,16 @@ async function loadInvoice(businessId: string, invoiceId: string): Promise<Invoi
  * credential tenant — kalau fallback, tenant bisa menyelesaikan tagihannya
  * sendiri di akun merchant-nya dan platform tidak menerima dana.
  */
-async function resolvePaymentGateway(payment: { provider: string; credential_id: string | null }) {
+export async function resolvePaymentGateway(payment: {
+  provider: string;
+  credential_id: string | null;
+}) {
   if (!payment.credential_id) {
+    // Invoice subscription selalu gateway platform (Tripay env). Toggle admin
+    // wajib berlaku: nonaktif → gagal eksplisit, jangan fallback provider lain.
+    if (!(await isProviderGloballyEnabled("tripay"))) {
+      throw new ApiError("INTERNAL", "Gateway pembayaran platform dinonaktifkan admin");
+    }
     const aggregator = resolveGatewayFromCredential(null);
     if (aggregator.provider !== payment.provider) {
       throw new ApiError("INTERNAL", "Provider pembayaran invoice tidak cocok");
@@ -210,7 +218,7 @@ export async function getInvoiceReceipt(userId: string, invoiceId: string) {
 }
 
 /** Invoice pending → paid; late payment invoice void TIDAK auto-reactivate. */
-async function markInvoicePaid(payment: InvoicePaymentRow) {
+export async function markInvoicePaid(payment: InvoicePaymentRow) {
   const supabase = createServerClient();
   const { data: currentData } = await supabase
     .from("invoices")
@@ -358,7 +366,10 @@ export async function createInvoiceQris(
   // Invoice langganan = tagihan PLATFORM. Selalu pakai gateway platform
   // (Tripay env TRIPAY_*), bukan credential merchant tenant: kalau memakai
   // credential tenant, pembayaran masuk ke akun tenant dan tenant sendiri yang
-  // memegang kunci verifikasi status.
+  // memegang kunci verifikasi status. Toggle admin = fail-closed.
+  if (!(await isProviderGloballyEnabled("tripay"))) {
+    throw new ApiError("INTERNAL", "Gateway pembayaran platform dinonaktifkan admin");
+  }
   const gateway = resolveGatewayFromCredential(null);
 
   // Validate callback URL BEFORE reserving a row — tanpa callback aman,

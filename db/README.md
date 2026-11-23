@@ -29,6 +29,15 @@ psql -f db/schema.sql
 psql -f db/seed-dev.sql
 ```
 
+## Urutan Deploy Wajib — Siklus Billing (0093–0095)
+
+1. Jalankan `0093_subscription_billing_cycles.sql`.
+2. Deploy kode (kode baru query `plans.price`, `add_ons.price_*`, `subscriptions.billing_cycle`) lalu verifikasi.
+3. `0094_remove_pakasir.sql` HANYA setelah backup tabel keuangan; rollback memulihkan struktur, data tidak kembali.
+4. `0095_backfill_addon_cycle_prices.sql` additive & idempoten — isi harga siklus add-on yang masih null. Aman dijalankan setelah 0093.
+
+Rollback 0093 menghapus snapshot siklus pada subscription; jangan rollback setelah kode baru berjalan tanpa rollback kode lebih dulu.
+
 ## Migrasi Database Existing
 
 ```bash

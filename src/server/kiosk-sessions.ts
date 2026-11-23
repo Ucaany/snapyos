@@ -223,6 +223,10 @@ export async function createSession(
   } else if (parsed.package_id) {
     const devBypass = devSkipPayment();
     // Mode offline (docs/05): sesi tanpa QRIS bila owner mengaktifkannya.
+    // KEPUTUSAN SENGAJA: sengaja TIDAK digate subscription — transaksi offline
+    // non-withdrawable (tidak masuk saldo owner), jadi tidak bisa dipakai untuk
+    // memonetisasi akses platform. Jangan tambahkan cek subscription di sini
+    // tanpa keputusan bisnis baru (lihat laporan audit P2-19).
     offlineMode = !devBypass && (await getOfflineEnabled(businessId));
     if (!devBypass && !offlineMode) {
       throw new ApiError("VALIDATION_ERROR", "Pembayaran wajib sebelum sesi foto (pay-first)");

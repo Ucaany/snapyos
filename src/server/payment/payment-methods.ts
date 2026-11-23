@@ -11,6 +11,10 @@ import {
 } from "@/server/payment/kiosk-payment";
 import { createServerClient } from "@/lib/supabase/server";
 import { hasFeature } from "@/server/feature-gate";
+import {
+  credentialDecryptable,
+  providerEnabledMap,
+} from "@/server/payment/providers/registry";
 
 export type KioskCredential = {
   id: string;
@@ -33,15 +37,32 @@ function kioskSupported(
 }
 
 export async function listKioskCredentials(businessId: string): Promise<KioskCredential[]> {
-  const { data } = await createServerClient()
-    .from("payment_credentials")
-    .select("id, provider, metadata")
-    .eq("business_id", businessId)
-    .eq("is_active", true)
-    .eq("environment", gatewayEnvironment())
-    .in("provider", ["midtrans", "tripay"]);
-  return (data ?? []).flatMap((row) => {
+  const [credentialsRes, enabledByProvider] = await Promise.all([
+    createServerClient()
+      .from("payment_credentials")
+      .select("id, provider, server_key_encrypted, metadata")
+      .eq("business_id", businessId)
+      .eq("is_active", true)
+      .eq("environment", gatewayEnvironment())
+      .in("provider", ["midtrans", "tripay"]),
+    providerEnabledMap(["midtrans", "tripay"]),
+  ]);
+  return (credentialsRes.data ?? []).flatMap((row) => {
     if (row.provider !== "midtrans" && row.provider !== "tripay") return [];
+    // Provider dinonaktifkan admin platform → jangan tawarkan metodenya.
+    if (!enabledByProvider[row.provider]) return [];
+    // Credential rusak (key dirotasi/payload korup) → jangan tawarkan; metode
+    // tunai/voucher tetap jalan dan checkout tidak gagal setelah dipilih.
+    if (
+      !credentialDecryptable({
+        id: row.id,
+        provider: row.provider,
+        server_key_encrypted: row.server_key_encrypted as string,
+        metadata: (row.metadata ?? null) as Record<string, unknown> | null,
+      })
+    ) {
+      return [];
+    }
     // Semua provider direct merchant butuh URL webhook yang aman.
     if (!paymentWebhookUrl(row.provider)) return [];
     const raw = (row.metadata as { enabled_methods?: unknown } | null)?.enabled_methods;

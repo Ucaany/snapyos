@@ -73,7 +73,7 @@ export async function GET(request: Request) {
   //    H6: filter transaction_id is null (hanya yang belum settled) + jendela
   //    paid_at — tanpa ini query selalu mengambil 200 tertua & kasus baru
   //    tak tersentuh (starvation). Jendela 7 hari = jauh lebih panjang dari
-  //    retensi operasional; recovery berjalan tiap 10 menit.
+  //    retensi operasional; cron berjalan harian (0 21 * * * UTC).
   // -------------------------------------------------------------------------
   const settledWindowStart = new Date(now.getTime() - 7 * 86_400_000).toISOString();
   const { data: paidRows, error: paidError } = await supabase

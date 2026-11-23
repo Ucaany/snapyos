@@ -83,8 +83,10 @@ export async function getPosAddOnInfo(businessId: string): Promise<{
   const [{ data: sub }, { data, error }] = await Promise.all([
     supabase
       .from("subscriptions")
-      .select("billing_cycle")
+      .select("status, trial_ends_at, current_period_end, billing_cycle")
       .eq("business_id", businessId)
+      // Snapshot expired/cancelled tidak boleh memberi harga POS.
+      .in("status", ["trial", "active", "past_due"])
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
@@ -96,9 +98,26 @@ export async function getPosAddOnInfo(businessId: string): Promise<{
   ]);
   if (error) throw new ApiError("INTERNAL", "Gagal memuat harga add-on POS");
   if (!data) return null;
-  const billingCycle = normalizeCycle(
-    (sub as { billing_cycle?: string | null } | null)?.billing_cycle
-  );
+  const subRow = (sub ?? null) as {
+    status: string;
+    trial_ends_at: string | null;
+    current_period_end: string | null;
+    billing_cycle: string | null;
+  } | null;
+  // Konsisten dengan hasPosEntitlement: status string saja tidak cukup.
+  if (
+    !subRow ||
+    !isSubscriptionEffective(
+      subRow.status,
+      subRow.trial_ends_at,
+      subRow.current_period_end,
+      new Date(),
+      subRow.billing_cycle
+    )
+  ) {
+    return null;
+  }
+  const billingCycle = normalizeCycle(subRow.billing_cycle);
   return {
     price: addOnPriceForCycle(
       data as {

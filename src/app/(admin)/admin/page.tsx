@@ -118,7 +118,7 @@ export default async function AdminOverviewPage() {
   const webhookTotal = payments.webhookIntegrity.total;
   const invalidSignature = payments.webhookIntegrity.invalidSignature;
   const webhookErrors = payments.webhookIntegrity.errors;
-  const webhookValid = Math.max(0, webhookTotal - invalidSignature);
+  const webhookValid = payments.webhookIntegrity.validSignature;
   const validPct = webhookTotal ? Math.round((webhookValid / webhookTotal) * 100) : 0;
   const webhookIssues = invalidSignature > 0 || webhookErrors > 0;
 
@@ -214,9 +214,9 @@ export default async function AdminOverviewPage() {
     },
     {
       label: "Webhook sukses",
-      value: `${numberFormat.format(webhookValid)} (${(100 - webhookErrorRate).toFixed(2).replace(".", ",")}%)`,
-      state: webhookErrorRate < 1 ? "ok" : webhookErrorRate < 5 ? "warn" : "bad",
-      note: "Diproses tanpa error",
+      value: `${numberFormat.format(webhookValid)} (${validPct.toFixed(2).replace(".", ",")}%)`,
+      state: validPct >= 99 ? "ok" : validPct >= 95 ? "warn" : "bad",
+      note: "Signature valid",
     },
   ] as const;
   const apiStatus = apiChecks.some((check) => check.state === "bad")

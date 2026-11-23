@@ -18,7 +18,7 @@ import {
 } from "@/components/admin/ui/card";
 import { Input } from "@/components/admin/ui/input";
 import { formatIDR } from "@/lib/dashboard-math";
-import { addOnPriceForCycle, BILLING_CYCLES, cycleUnit } from "@/lib/subscription-math";
+import { addOnPriceForCycle, BILLING_CYCLES, cycleLabel, cycleUnit } from "@/lib/subscription-math";
 import { storageAddOnDisplayName } from "@/lib/storage-units";
 import { createAddOnAction, updateAddOnAction } from "@/server/admin-actions";
 import { listAddOns } from "@/server/admin";
@@ -76,9 +76,9 @@ export default async function AdminAddOnsPage() {
           <AdminMetricCard
             tone="amber"
             icon={Wallet}
-            label="Harga rata-rata"
+            label="Rata-rata harga bulanan"
             value={formatIDR(averagePrice)}
-            sub="Per bulan"
+            sub="Setara 30 hari"
           />
         </div>
       </section>
@@ -203,7 +203,19 @@ export default async function AdminAddOnsPage() {
                   <CardDescription>
                     {a.code.toUpperCase()} · unit {a.unit}
                     {a.storage_mb ? ` · +${a.storage_mb} MB` : ""}
+                    {BILLING_CYCLES.some((cycle) => addOnPriceForCycle(a, cycle) === null) && (
+                      <span className="mt-1 block text-xs text-amber-600">
+                        Harga belum diset:{" "}
+                        {BILLING_CYCLES.filter(
+                          (cycle) => addOnPriceForCycle(a, cycle) === null
+                        )
+                          .map(cycleLabel)
+                          .join(", ")}
+                        .
+                      </span>
+                    )}
                   </CardDescription>
+
                   <CardAction>
                     <span className="flex items-center gap-3">
                       <span className="text-sm font-semibold tabular-nums">

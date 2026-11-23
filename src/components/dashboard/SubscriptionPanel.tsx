@@ -290,7 +290,16 @@ function AddOnCardBlock({
           {addOnCopy(addOn.unit).detail}
         </p>
         <div className="mt-auto flex flex-wrap items-start gap-2">
-          {price === null ? null : trigger}
+          {price === null
+            ? null
+            : active && addOn.unit === "feature" && !active.cancelAtPeriodEnd
+              ? null
+              : trigger}
+          {active && addOn.unit === "feature" && !active.cancelAtPeriodEnd && (
+            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.05em] text-muted-foreground">
+              Fitur aktif: tidak bisa dibeli ulang
+            </span>
+          )}
           {active && !active.cancelAtPeriodEnd && canWrite && (
             <CancelAddOnButton addOnId={addOn.id} />
           )}
@@ -325,6 +334,9 @@ export function SubscriptionPanel({
   const isRenewal = subscription?.status === "past_due";
   const addOnTotal = activeAddOns.reduce((sum, a) => sum + (a.price ?? 0) * a.quantity, 0);
   const periodTotal = (plan?.price ?? 0) + addOnTotal;
+  // Add-on aktif tanpa harga siklus: total tidak boleh tampil lebih rendah
+  // dari tagihan sebenarnya (jangan diam-diam menghitung 0).
+  const hasUnknownAddOnPrice = activeAddOns.some((a) => a.price === null && a.quantity > 0);
 
   return (
     <div className="flex flex-col gap-8">
@@ -382,7 +394,7 @@ export function SubscriptionPanel({
                     Tagihan /{cycleUnit(cycle)}
                   </dt>
                   <dd className="font-mono text-lg font-bold tabular-nums">
-                    {formatIDR(periodTotal)}
+                    {hasUnknownAddOnPrice ? "—" : formatIDR(periodTotal)}
                   </dd>
                 </div>
                 <div className="flex flex-col gap-1 bg-surface p-3">
@@ -398,10 +410,16 @@ export function SubscriptionPanel({
                     Add-on aktif
                   </dt>
                   <dd className="font-mono text-lg font-bold tabular-nums">
-                    {formatIDR(addOnTotal)}
+                    {hasUnknownAddOnPrice ? "—" : formatIDR(addOnTotal)}
                   </dd>
                 </div>
               </dl>
+            )}
+            {subscription && !isExpired && hasUnknownAddOnPrice && (
+              <p className="font-mono text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
+                Sebagian add-on aktif belum punya harga untuk siklus ini; total tagihan tidak
+                ditampilkan.
+              </p>
             )}
 
             {subscription && canWrite ? (

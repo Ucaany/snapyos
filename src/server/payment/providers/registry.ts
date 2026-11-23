@@ -15,14 +15,10 @@
 import "server-only";
 import { createServerClient } from "@/lib/supabase/server";
 import { gatewayEnvironment } from "@/lib/payment-credentials";
+import { GATEWAY_ENABLED_KEY, gatewayEnabledFromSettings } from "@/lib/payment-gateway-flags";
 import { decrypt } from "./encrypt";
 import { resolveGatewayFromCredential } from "./gateway-factory";
 import type { GatewayCredential, PaymentGateway } from "./types";
-
-const GLOBAL_ENABLED_KEY: Record<string, string> = {
-  midtrans: "gateway_midtrans_enabled",
-  tripay: "gateway_tripay_enabled",
-};
 
 /**
  * Dekripsi server key credential. Credential yang tidak bisa didekripsi (key
@@ -46,21 +42,61 @@ function tryDecrypt(payload: string, context: string): string | null {
 }
 
 /**
- * Cek apakah provider di-enable global oleh admin platform.
- * Default true (enabled) bila key belum ada — backward compatible.
+ * Toggle global per provider dalam SATU query (hindari N+1 di kiosk).
+ * Query error → semua dianggap enabled (perilaku lama).
  */
-async function isProviderGloballyEnabled(provider: string): Promise<boolean> {
-  const key = GLOBAL_ENABLED_KEY[provider];
-  if (!key) return true;
+export async function providerEnabledMap(
+  providers: readonly string[]
+): Promise<Record<string, boolean>> {
+  const wanted = [...new Set(providers)];
+  const keys = wanted.flatMap((p) => {
+    const key = GATEWAY_ENABLED_KEY[p as keyof typeof GATEWAY_ENABLED_KEY];
+    return key ? [key] : [];
+  });
+  if (keys.length === 0) return Object.fromEntries(wanted.map((p) => [p, true]));
   const supabase = createServerClient();
   const { data, error } = await supabase
     .from("platform_settings")
-    .select("value")
-    .eq("key", key)
-    .maybeSingle();
-  if (error) return true;
-  const v = (data as { value?: unknown } | null)?.value;
-  return v === undefined ? true : v === true;
+    .select("key, value")
+    .in("key", keys);
+  const settings = error ? [] : ((data ?? []) as { key: string; value: unknown }[]);
+  return Object.fromEntries(wanted.map((p) => [p, gatewayEnabledFromSettings(settings, p)]));
+}
+
+export async function isProviderGloballyEnabled(provider: string): Promise<boolean> {
+  const map = await providerEnabledMap([provider]);
+  return map[provider] ?? true;
+}
+
+/**
+ * Credential bisa dipakai? Server key (dan private key Tripay) harus bisa
+ * didekripsi. Dipakai kiosk agar metode dari credential rusak tidak ditawarkan.
+ */
+export function credentialDecryptable(row: {
+  id?: string;
+  provider: string;
+  server_key_encrypted: string;
+  metadata: Record<string, unknown> | null;
+}): boolean {
+  if (
+    tryDecrypt(row.server_key_encrypted, `cek ${row.provider} ${row.id ?? "?"}`) === null
+  ) {
+    return false;
+  }
+  const metadata = row.metadata ?? {};
+  if (
+    row.provider === "tripay" &&
+    typeof metadata.private_key_encrypted === "string" &&
+    metadata.private_key_encrypted
+  ) {
+    return (
+      tryDecrypt(
+        metadata.private_key_encrypted as string,
+        `tripay private_key ${row.id ?? "?"}`
+      ) !== null
+    );
+  }
+  return true;
 }
 
 /**

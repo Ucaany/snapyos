@@ -14,7 +14,7 @@
  */
 
 import { ApiError } from "./api-errors.ts";
-import { cyclePeriod, normalizeCycle, type BillingCycle } from "./subscription-math.ts";
+import { cyclePeriod, normalizeCycle, addOnQuantityAllowed, type BillingCycle } from "./subscription-math.ts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -640,6 +640,20 @@ export async function applyInvoiceIntentWithDeps(
       }
 
       if (period) {
+        // Eksekusi pembatalan add-on yang dijadwalkan SEBELUM menulis periode
+        // baru: renewal/upgrade menggeser periode ke depan, jadi menunggu cron
+        // berarti add-on batal tetap aktif (dan tertagih) di periode baru.
+        // Add-on yang dibeli pada invoice ini di-apply setelah blok ini.
+        const { error: cancelError } = await db
+          .from("subscription_add_ons")
+          .update({ status: "cancelled", cancel_at_period_end: false })
+          .eq("subscription_id", currentSub.id)
+          .eq("status", "active")
+          .eq("cancel_at_period_end", true);
+        if (cancelError) {
+          throw new ApiError("INTERNAL", "Gagal membatalkan add-on yang dijadwalkan");
+        }
+
         const { data: sub } = await db
           .from("subscriptions")
           .update({
@@ -691,19 +705,6 @@ export async function applyInvoiceIntentWithDeps(
         }
       }
 
-      // Pindah siklus: add-on yang sudah dijadwalkan batal tidak boleh
-      // terbawa ke periode baru (harga siklus barunya belum tentu ada).
-      if (normalizeCycle(currentSub.billing_cycle) !== targetCycle) {
-        const { error: cancelError } = await db
-          .from("subscription_add_ons")
-          .update({ status: "cancelled", cancel_at_period_end: false })
-          .eq("subscription_id", currentSub.id)
-          .eq("status", "active")
-          .eq("cancel_at_period_end", true);
-        if (cancelError) {
-          throw new ApiError("INTERNAL", "Gagal membatalkan add-on yang dijadwalkan");
-        }
-      }
     }
 
     if (invoice.subscription_id) {
@@ -715,22 +716,39 @@ export async function applyInvoiceIntentWithDeps(
         const qty = item.qty || 1;
         const { data: existing } = await db
           .from("subscription_add_ons")
-          .select("id, quantity")
+          .select("id, quantity, add_ons ( unit )")
           .eq("subscription_id", invoice.subscription_id)
           .eq("add_on_id", item.add_on_id)
           .maybeSingle();
         const existingRow = (existing ?? null) as {
           id: string;
           quantity: number;
+          add_ons: { unit: string | null } | { unit: string | null }[] | null;
         } | null;
 
         if (existingRow) {
+          // Pertahanan terakhir: add-on `feature` (POS) biner — jangan pernah
+          // menaikkan quantity di atas 1 walau validasi checkout lolos/retry.
+          const joined = existingRow.add_ons;
+          const unit = joined && !Array.isArray(joined) ? joined.unit : null;
+          const nextQty = addOnQuantityAllowed(unit, existingRow.quantity + qty)
+            ? existingRow.quantity + qty
+            : 1;
+          if (nextQty !== existingRow.quantity + qty) {
+            await audit({
+              actorId: null,
+              businessId,
+              action: "subscription.add_on.quantity_capped",
+              target: existingRow.id,
+              meta: { add_on: item.code, attempted: existingRow.quantity + qty, capped: nextQty },
+            });
+          }
           // Re-buy/reactivation add-on WAJIB membatalkan jadwal cancel dan
           // mengaktifkan kembali baris yang mungkin sudah non-aktif.
           const { error } = await db
             .from("subscription_add_ons")
             .update({
-              quantity: existingRow.quantity + qty,
+              quantity: nextQty,
               status: "active",
               cancel_at_period_end: false,
             })

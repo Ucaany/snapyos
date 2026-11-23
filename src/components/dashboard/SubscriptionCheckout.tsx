@@ -58,6 +58,10 @@ export function SubscriptionCheckout({
   const [busy, setBusy] = useState(false);
 
   const plan = plans.find((p) => p.code === planCode) ?? null;
+  // Plan awal bisa tidak ada di daftar (admin menonaktifkannya). Jangan kirim
+  // planCode yang tidak dikenal dan jangan tampilkan total 0 yang menyesatkan.
+  const planMissing = !plan;
+  const confirmPlanCode = plan ? planCode : undefined;
   // Recovery (expired) / renewal (past_due): plan lama dianggap "plan change" —
   // server selalu menerbitkan plan_change item (periode baru), preview harga
   // harus match.
@@ -79,11 +83,17 @@ export function SubscriptionCheckout({
     (isActualPlanChange ? (plan?.price ?? 0) : 0) +
     addOnLines.reduce((s, l) => s + l.price * l.qty, 0);
   const total = Math.max(0, gross - (promo?.discount ?? 0));
+  // Tanpa plan dikenal, checkout hanya boleh lanjut bila ada add-on (add-on
+  // saja memakai plan aktif di server).
+  const canConfirm = Boolean(plan) || addOnLines.length > 0;
+  const totalLabel = planMissing && addOnLines.length === 0 ? "—" : formatIDR(total);
 
   function setQty(id: string, qty: number) {
     setQtyById((prev) => {
       const next = { ...prev };
-      const q = Math.max(0, Math.min(99, Math.floor(qty) || 0));
+      // Add-on `feature` (POS) biner — maksimum 1.
+      const cap = addOns.find((a) => a.id === id)?.unit === "feature" ? 1 : 99;
+      const q = Math.max(0, Math.min(cap, Math.floor(qty) || 0));
       if (q === 0) delete next[id];
       else next[id] = q;
       return next;
@@ -118,7 +128,7 @@ export function SubscriptionCheckout({
     setError(null);
     try {
       const res = await confirmSubscriptionCheckoutAction({
-        planCode,
+        planCode: confirmPlanCode,
         addOns: addOnLines.map((l) => ({ id: l.addOn.id, qty: l.qty })),
         promoCode: promo?.code,
       });
@@ -193,6 +203,14 @@ export function SubscriptionCheckout({
                 </Button>
               ))}
             </div>
+            {planMissing && (
+              <p
+                role="alert"
+                className="mt-2 border-2 border-destructive bg-destructive/10 px-3 py-2 font-mono text-xs uppercase tracking-[0.05em] text-destructive"
+              >
+                Plan ini tidak tersedia lagi. Pilih plan lain untuk melanjutkan.
+              </p>
+            )}
           </section>
 
           {availableAddOns.length > 0 && (
@@ -232,7 +250,7 @@ export function SubscriptionCheckout({
                         <input
                           type="number"
                           min={0}
-                          max={99}
+                          max={a.unit === "feature" ? 1 : 99}
                           value={qty}
                           onChange={(e) => setQty(a.id, Number(e.target.value))}
                           aria-label={`Jumlah ${a.name}`}
@@ -243,7 +261,7 @@ export function SubscriptionCheckout({
                           variant="neutral"
                           size="icon-sm"
                           onClick={() => setQty(a.id, qty + 1)}
-                          disabled={qty >= 99}
+                          disabled={qty >= (a.unit === "feature" ? 1 : 99)}
                           aria-label={`Tambah ${a.name}`}
                         >
                           <Plus className="size-4" aria-hidden />
@@ -313,7 +331,7 @@ export function SubscriptionCheckout({
               {"04. HARGA FIX"}
             </p>
             <dl className="flex flex-col gap-1 text-sm">
-              {isActualPlanChange && (
+              {isActualPlanChange && plan && (
                 <div className="flex justify-between">
                   <dt className="font-mono text-xs uppercase tracking-[0.05em] text-muted-foreground">
                     Plan {plan?.name ?? "-"} /{unit}
@@ -346,7 +364,7 @@ export function SubscriptionCheckout({
                   Total /{unit}
                 </dt>
                 <dd className="font-display text-4xl uppercase tracking-tight tabular-nums">
-                  {formatIDR(total)}
+                  {totalLabel}
                 </dd>
               </div>
             </dl>
@@ -358,9 +376,9 @@ export function SubscriptionCheckout({
             Konfirmasi → invoice terbit → bayar QRIS. QR hanya dibuat setelah Anda menekan tombol
             bayar.
           </p>
-          <Button type="button" onClick={() => void confirm()} disabled={busy || !plan}>
+          <Button type="button" onClick={() => void confirm()} disabled={busy || !canConfirm}>
             {busy && <Loader2 className="size-4 animate-spin" aria-hidden />}
-            Konfirmasi & lanjut bayar: {formatIDR(total)}
+            Konfirmasi & lanjut bayar: {totalLabel}
           </Button>
         </div>
       </DialogContent>

@@ -149,10 +149,27 @@ export async function sendExpiryReminderEmail(input: {
       })
     : input.expiresAt;
 
+  // Satu pengingat per periode (bukan per business). Unique index hanya
+  // berlaku untuk status 'pending', jadi cek baris 'sent' eksplisit agar
+  // window H-3 berjalan harian tidak mengirim email yang sama tiap hari.
+  const ref = `${input.businessId}:${input.expiresAt}`;
+  const supabase = createServerClient();
+  const { data: already } = await supabase
+    .from("lifecycle_emails")
+    .select("id")
+    .eq("email", input.email.toLowerCase())
+    .eq("kind", "expiry_reminder")
+    .eq("ref", ref)
+    .eq("status", "sent")
+    .limit(1)
+    .maybeSingle();
+  if (already) return "skipped";
+
   return deliverOnce({
     email: input.email,
     kind: "expiry_reminder",
-    ref: input.businessId,
+    // ref per periode menggantikan business_id (lihat cek 'sent' di atas).
+    ref,
     template: {
       kind: "expiry_reminder",
       subject: "Masa berlangganan Anda hampir habis",

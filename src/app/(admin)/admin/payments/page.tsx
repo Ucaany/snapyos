@@ -94,7 +94,7 @@ export default async function AdminPaymentsPage({
   const webhookTotal = summary.webhookIntegrity.total;
   const invalidSignature = summary.webhookIntegrity.invalidSignature;
   const webhookErrors = summary.webhookIntegrity.errors;
-  const webhookValid = Math.max(0, webhookTotal - invalidSignature);
+  const webhookValid = summary.webhookIntegrity.validSignature;
   const validPct = webhookTotal ? Math.round((webhookValid / webhookTotal) * 100) : 0;
   const webhookIssues = invalidSignature > 0 || webhookErrors > 0;
 

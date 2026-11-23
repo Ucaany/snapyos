@@ -31,8 +31,30 @@ create temp table tmp_pakasir_invoice_payments on commit drop as
     from invoice_payments
    where provider = 'pakasir';
 
+-- Hanya invoice yang SELURUH payment-nya Pakasir. Invoice campuran (punya
+-- payment Tripay/Midtrans juga) TIDAK dihapus: bukti settlement provider lain
+-- harus tetap ada. Baris invoice_payments Pakasir pada invoice campuran tetap
+-- dihapus di langkah 3.
 create temp table tmp_pakasir_invoice_ids on commit drop as
-  select distinct invoice_id as id from tmp_pakasir_invoice_payments;
+  select distinct ip.invoice_id as id
+    from invoice_payments ip
+   where ip.provider = 'pakasir'
+     and not exists (
+       select 1 from invoice_payments x
+        where x.invoice_id = ip.invoice_id
+          and x.provider <> 'pakasir'
+     );
+
+-- Invoice campuran: invoice dipertahankan, hanya baris Pakasir yang dibuang.
+create temp table tmp_mixed_invoice_ids on commit drop as
+  select distinct ip.invoice_id as id
+    from invoice_payments ip
+   where ip.provider = 'pakasir'
+     and exists (
+       select 1 from invoice_payments x
+        where x.invoice_id = ip.invoice_id
+          and x.provider <> 'pakasir'
+     );
 
 create temp table tmp_pakasir_tx_ids on commit drop as
   select id from transactions
@@ -48,14 +70,16 @@ declare
   n_pay bigint;
   n_invpay bigint;
   n_inv bigint;
+  n_mixed bigint;
   n_tx bigint;
 begin
   select count(*) into n_pay from tmp_pakasir_payments;
   select count(*) into n_invpay from tmp_pakasir_invoice_payments;
   select count(*) into n_inv from tmp_pakasir_invoice_ids;
+  select count(*) into n_mixed from tmp_mixed_invoice_ids;
   select count(*) into n_tx from tmp_pakasir_tx_ids;
-  raise notice '0094: purge Pakasir — payments=%, invoice_payments=%, invoices=%, transactions=%',
-    n_pay, n_invpay, n_inv, n_tx;
+  raise notice '0094: purge Pakasir — payments=%, invoice_payments=%, invoices=%, transactions=%, mixed_invoices_skipped=%',
+    n_pay, n_invpay, n_inv, n_tx, n_mixed;
 end;
 $$;
 
@@ -95,8 +119,9 @@ delete from invoice_payments ip
  using tmp_pakasir_invoice_payments x
  where ip.id = x.id;
 
--- invoices: cascade subscription_intent_failures; business_template_purchases
--- .invoice_id menjadi NULL (entitlement tetap).
+-- invoices: HANYA invoice yang seluruh payment-nya Pakasir. Invoice campuran
+-- dipertahankan (lihat tmp_mixed_invoice_ids). Cascade subscription_intent_failures;
+-- business_template_purchases.invoice_id menjadi NULL (entitlement tetap).
 delete from invoices i
  using tmp_pakasir_invoice_ids x
  where i.id = x.id;
@@ -149,7 +174,16 @@ alter table payment_credentials add constraint payment_credentials_provider_chec
 do $$
 declare
   sisa text;
+  mixed_missing bigint;
 begin
+  -- Invoice campuran WAJIB masih ada (bukti settlement provider lain).
+  select count(*) into mixed_missing
+    from tmp_mixed_invoice_ids m
+   where not exists (select 1 from invoices i where i.id = m.id);
+  if mixed_missing > 0 then
+    raise exception '0094 gagal: % invoice campuran ikut terhapus', mixed_missing;
+  end if;
+
   select string_agg(source || '=' || n, ', ')
     into sisa
     from (

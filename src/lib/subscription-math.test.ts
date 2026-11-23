@@ -3,6 +3,7 @@ import { test } from "node:test";
 
 import {
   addOnPriceForCycle,
+  addOnQuantityAllowed,
   cycleDays,
   cyclePeriod,
   isSubscriptionEffective,
@@ -74,4 +75,29 @@ void test("isSubscriptionEffective menghormati grace siklus harian", () => {
     ),
     false
   );
+});
+
+void test("add-on feature biner: total quantity setelah merge tidak boleh > 1", () => {
+  assert.equal(addOnQuantityAllowed("feature", 1), true);
+  assert.equal(addOnQuantityAllowed("feature", 2), false);
+  // existing aktif 1 + beli 1 = 2 → ditolak
+  const existing = 1;
+  const requested = 1;
+  assert.equal(addOnQuantityAllowed("feature", existing + requested), false);
+  assert.equal(addOnQuantityAllowed("session", existing + requested), true);
+  assert.equal(addOnQuantityAllowed("storage", 99), true);
+});
+
+void test("harga backfill 0095 proporsional terbaca per siklus", () => {
+  const monthly = 49_000;
+  const prices = {
+    price_daily: Math.round((monthly / 30) * 1),
+    price_weekly: Math.round((monthly / 30) * 7),
+    price_monthly: monthly,
+    price_yearly: Math.round((monthly / 30) * 365),
+  };
+  assert.equal(addOnPriceForCycle(prices, "daily"), 1_633);
+  assert.equal(addOnPriceForCycle(prices, "weekly"), 11_433);
+  assert.equal(addOnPriceForCycle(prices, "monthly"), 49_000);
+  assert.equal(addOnPriceForCycle(prices, "yearly"), 596_167);
 });

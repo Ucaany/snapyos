@@ -113,9 +113,10 @@ export async function GET(request: Request) {
     }
   }
 
-  // 5. Cancel add-ons marked cancel_at_period_end on subscriptions whose
-  //    period has ended (active→past_due or cancelled/expired already transitioned).
-  //    We match subscriptions where current_period_end < now.
+  // 5. Add-on ber-`cancel_at_period_end` pada subscription yang periodenya
+  //    sudah habis. Ini fallback: renewal/upgrade mengeksekusi pembatalan di
+  //    applyInvoiceIntent sebelum menulis periode baru, sehingga add-on tidak
+  //    terbawa ke periode berikutnya.
   let addOnsCancelled = 0;
   {
     // Get subscriptions whose period has ended and have add-ons pending cancel.

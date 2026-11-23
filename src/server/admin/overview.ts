@@ -72,9 +72,16 @@ export async function getAdminOverviewGuarded(): Promise<AdminOverview> {
     totalBusinesses: businesses.count ?? 0,
     activeSubscribers: active.length,
     totalSubscriptions: subs.length,
-    // ponytail: MRR dari snapshot plan saat ini — upgrade ke kolom snapshot
-    // harga per subscription saat invoice history dipakai (Phase 10 invoice).
-    mrr: sumMrr(active.map((s) => ({ plan: s.plans }))),
+    // MRR dinormalisasi dengan SNAPSHOT siklus subscription (0093), bukan
+    // siklus plan terkini — admin bisa mengubah plan tanpa mengubah tagihan
+    // periode yang sudah dibeli.
+    mrr: sumMrr(
+      active.map((s) => ({
+        plan: s.plans
+          ? { price: s.plans.price, billing_cycle: s.billing_cycle ?? s.plans.billing_cycle }
+          : null,
+      }))
+    ),
     totalOutlets: outlets.count ?? 0,
     totalPhotoboxes: photoboxes.count ?? 0,
     totalSessions: sessions.count ?? 0,
@@ -150,9 +157,14 @@ export async function getSubscriptionStats(): Promise<AdminSubscriptionStats> {
       const name = row.plans?.name ?? "Tanpa paket";
       const current = plans.get(name) ?? { count: 0, mrr: 0 };
       current.count += 1;
-      current.mrr += row.plans
-        ? monthlyEquivalent(row.plans.price, row.plans.billing_cycle)
-        : 0;
+      // Snapshot siklus subscription menang atas siklus plan terkini.
+      current.mrr +=
+        row.plans && typeof row.plans.price === "number"
+          ? monthlyEquivalent(
+              row.plans.price,
+              row.billing_cycle ?? row.plans.billing_cycle
+            )
+          : 0;
       plans.set(name, current);
     }
 
@@ -162,8 +174,14 @@ export async function getSubscriptionStats(): Promise<AdminSubscriptionStats> {
     }
 
     const periodEnd = row.current_period_end ? new Date(row.current_period_end).getTime() : null;
-    if (row.status === "active" && periodEnd && periodEnd >= now && periodEnd <= in7Days) {
-      renewalsDueSoon += 1;
+    if (effective && (row.status === "active" || row.status === "past_due")) {
+      // past_due dalam grace juga butuh perpanjangan (periodenya sudah lewat);
+      // active dihitung bila periodenya habis dalam 7 hari.
+      if (row.status === "past_due") {
+        renewalsDueSoon += 1;
+      } else if (periodEnd && periodEnd >= now && periodEnd <= in7Days) {
+        renewalsDueSoon += 1;
+      }
     }
   }
 
@@ -243,7 +261,12 @@ export async function listPayments(query: AdminPaymentQuery): Promise<{
 
 export type AdminPaymentSummary = ReturnType<typeof paymentSummary> & {
   range: { from: string | null; to: string | null };
-  webhookIntegrity: { total: number; invalidSignature: number; errors: number };
+  webhookIntegrity: {
+    total: number;
+    validSignature: number;
+    invalidSignature: number;
+    errors: number;
+  };
 };
 
 /** Fee policy per business: subscription aktif terakhir → plan fee (docs/06 §6.6). */
@@ -453,6 +476,7 @@ export async function getPaymentsSummary(query: {
     range: { from: query.from ?? null, to: query.to ?? null },
     webhookIntegrity: {
       total: hookRows.length,
+      validSignature: hookRows.filter((h) => h.signature_valid === true).length,
       invalidSignature: hookRows.filter((h) => h.signature_valid === false).length,
       errors: hookRows.filter((h) => h.status === "error").length,
     },

@@ -503,6 +503,12 @@ export async function createSubscriptionInvoice(
       .maybeSingle();
     planRow = (plan ?? null) as typeof planRow;
     if (!planRow) throw new ApiError("NOT_FOUND", "Plan tidak ditemukan");
+    // Plan nonaktif tidak boleh dibeli — termasuk jalur renewal/recovery yang
+    // sebelumnya melewati planChangeAllowed (owner expired bisa ditagih plan
+    // yang sudah dinonaktifkan admin).
+    if (!planRow.is_active) {
+      throw new ApiError("VALIDATION_ERROR", "Plan tidak tersedia");
+    }
     // Recovery (expired) mengecualikan guard "plan sama" — renew plan lama
     // adalah jalur self-service yang sah (docs/02 §2.4).
     if (
@@ -637,6 +643,25 @@ export async function createSubscriptionInvoice(
   const addOnItems: { addOnId: string; code: string; name: string; price: number; qty: number }[] =
     [];
   if (qtyById.size > 0) {
+    // Total setelah merge add-on yang SUDAH aktif: add-on feature (POS) tidak
+    // boleh dibeli dua kali / qty>1 — cek qty yang dibeli saja tidak cukup.
+    const { data: existingRows, error: existingError } = await supabase
+      .from("subscription_add_ons")
+      .select("add_on_id, quantity")
+      .eq("subscription_id", currentRow.id)
+      .eq("status", "active")
+      // Add-on yang sudah dijadwalkan batal tidak dihitung: membeli lagi =
+      // membatalkan jadwal (reactivation), bukan duplikasi.
+      .eq("cancel_at_period_end", false);
+    if (existingError) throw new ApiError("INTERNAL", "Gagal memeriksa add-on aktif");
+    const existingActiveQty = new Map<string, number>();
+    for (const row of (existingRows ?? []) as { add_on_id: string; quantity: number }[]) {
+      existingActiveQty.set(
+        row.add_on_id,
+        (existingActiveQty.get(row.add_on_id) ?? 0) + row.quantity
+      );
+    }
+
     const { data: addOnRows } = await supabase
       .from("add_ons")
       .select(
@@ -652,7 +677,7 @@ export async function createSubscriptionInvoice(
       // Add-on ber-unit `feature` (mis. POS) = entitlement biner; qty > 1
       // menagih berkali-kali tanpa menambah hak → tolak (anti overcharge).
       // Unit session/storage tetap boleh > 1.
-      if (!addOnQuantityAllowed(raw.unit, qty)) {
+      if (!addOnQuantityAllowed(raw.unit, (existingActiveQty.get(raw.id) ?? 0) + qty)) {
         throw new ApiError(
           "VALIDATION_ERROR",
           `Add-on ${raw.code} tidak dapat dibeli lebih dari 1`
@@ -880,7 +905,9 @@ export async function cancelAddOn(userId: string, businessId: string, addOnId: s
   if (!subscription) throw new ApiError("NOT_FOUND", "Subscription tidak ditemukan");
 
   // Mark for end-of-period cancellation (consistent with plan cancel behavior).
-  // Add-on stays active until cron transitions it at period end.
+  // Eksekusi: renewal/upgrade (applyInvoiceIntent) menjalankan pembatalan
+  // sebelum menulis periode baru; cron lifecycle hanya fallback bila periode
+  // habis tanpa renewal.
   const { data } = await supabase
     .from("subscription_add_ons")
     .update({ cancel_at_period_end: true })

@@ -6,6 +6,12 @@ Last updated: 2026-11-09
 Last verified: 2026-11-11
 Source of truth: `src/`, `runtime/`, `db/schema.sql`, `README.md`
 
+## Deploy order (billing cycles)
+
+- `0093_subscription_billing_cycles.sql` → deploy kode → verifikasi (plan/add-on per siklus, subscription snapshot).
+- `0094_remove_pakasir.sql` hanya setelah backup tabel keuangan; rollback memulihkan struktur, bukan data.
+- `0095_backfill_addon_cycle_prices.sql` additive/idempoten (isi harga siklus yang masih null), aman setelah 0093.
+
 ## Active
 
 | Area                                    | Status                                                                                                                                                        | Canonical source                                                                                                                                                                           |

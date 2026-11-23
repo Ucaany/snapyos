@@ -450,6 +450,11 @@ export default async function AdminPlansPage() {
                         { value: "yearly", label: "Tahunan" },
                       ]}
                     />
+                    <p className="col-span-1 text-xs text-muted-foreground sm:col-span-2 md:col-span-4">
+                      Mengubah siklus hanya berlaku untuk pembelian baru; subscription lama
+                      memakai snapshot siklusnya. Pastikan harga sesuai siklus baru sebelum
+                      menyimpan.
+                    </p>
                     <div className="col-span-1 flex flex-col gap-2 sm:col-span-2 md:col-span-4">
                       <fieldset className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                         <legend className="mb-2 w-full text-xs font-medium text-muted-foreground">

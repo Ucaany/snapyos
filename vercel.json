@@ -26,6 +26,10 @@
       "schedule": "0 21 * * *"
     },
     {
+      "path": "/api/cron/invoice-recovery",
+      "schedule": "0 21 * * *"
+    },
+    {
       "path": "/api/cron/device-cleanup",
       "schedule": "0 3 * * *"
     },

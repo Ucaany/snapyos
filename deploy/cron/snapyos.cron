@@ -28,6 +28,9 @@ CRON_SECRET_FILE=/var/www/snapyos/.cron-secret
 # Pemulihan pembayaran menggantung. 21:00 UTC = 04:00 WIB.
 0 21 * * * root . "$CRON_SECRET_FILE" 2>/dev/null; curl -fsS -m 300 -H "Authorization: Bearer $CRON_SECRET" http://127.0.0.1:3000/api/cron/payment-recovery > /dev/null 2>&1
 
+# Pemulihan invoice subscription menggantung (invoice_payments/invoices). 21:00 UTC = 04:00 WIB.
+0 21 * * * root . "$CRON_SECRET_FILE" 2>/dev/null; curl -fsS -m 300 -H "Authorization: Bearer $CRON_SECRET" http://127.0.0.1:3000/api/cron/invoice-recovery > /dev/null 2>&1
+
 # Pembersihan perangkat kiosk basi. 03:00 UTC = 10:00 WIB.
 0 3 * * * root . "$CRON_SECRET_FILE" 2>/dev/null; curl -fsS -m 300 -H "Authorization: Bearer $CRON_SECRET" http://127.0.0.1:3000/api/cron/device-cleanup > /dev/null 2>&1
 

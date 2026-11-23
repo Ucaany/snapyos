@@ -3,12 +3,12 @@ import { bearerMatches } from "@/lib/cron-auth";
 import { sendExpiryReminderEmail } from "@/server/lifecycle-email";
 
 /**
- * Cron pengingat masa habis berlangganan — H-3 sebelum current_period_end.
+ * Cron pengingat masa habis berlangganan — H-3.
+ * Trial memakai `trial_ends_at`; active memakai `current_period_end`.
  * Dijalankan harian (vercel.json cron). Autentikasi: Bearer CRON_SECRET.
  *
- * Menjangkau subscription active/trial yang current_period_end berada dalam
- * window [now, now+3 hari). Idempoten via lifecycle_emails (email, kind,
- * ref=business_id) sehingga pengiriman harian tidak menduplikasi email.
+ * Window [now, now+3 hari). Idempoten via lifecycle_emails
+ * (email, kind, ref=business_id:expires_at) — satu email per periode.
  */
 
 export const dynamic = "force-dynamic";
@@ -45,14 +45,23 @@ export async function GET(request: Request) {
   const nowIso = now.toISOString();
   const windowEndIso = windowEnd.toISOString();
 
-  // Subscription aktif (active/trial) yang akan habis dalam <3 hari.
-  const { data: subs, error } = await supabase
-    .from("subscriptions")
-    .select("business_id, current_period_end, businesses ( owner_id )")
-    .in("status", ["active", "trial"])
-    .gte("current_period_end", nowIso)
-    .lt("current_period_end", windowEndIso);
-
+  // Trial: pengingat berbasis `trial_ends_at` (periode trial berbeda dari
+  // siklus plan). Active: berbasis `current_period_end`.
+  const [trialRes, activeRes] = await Promise.all([
+    supabase
+      .from("subscriptions")
+      .select("business_id, trial_ends_at, businesses ( owner_id )")
+      .eq("status", "trial")
+      .gte("trial_ends_at", nowIso)
+      .lt("trial_ends_at", windowEndIso),
+    supabase
+      .from("subscriptions")
+      .select("business_id, current_period_end, businesses ( owner_id )")
+      .eq("status", "active")
+      .gte("current_period_end", nowIso)
+      .lt("current_period_end", windowEndIso),
+  ]);
+  const error = trialRes.error ?? activeRes.error;
   if (error) {
     console.error("[cron/subscription-expiry-reminder] query failed: %s", error.message);
     return Response.json(
@@ -61,13 +70,39 @@ export async function GET(request: Request) {
     );
   }
 
-  let sent = 0;
-  for (const sub of (subs ?? []) as {
+  type Row = {
     business_id: string;
-    current_period_end: string | null;
+    expires_at: string | null;
     businesses: { owner_id: string } | { owner_id: string }[] | null;
-  }[]) {
-    if (!sub.current_period_end) continue;
+  };
+  const subs: Row[] = [
+    ...((
+      trialRes.data ?? []
+    ) as unknown as {
+      business_id: string;
+      trial_ends_at: string | null;
+      businesses: { owner_id: string } | { owner_id: string }[] | null;
+    }[]).map((s) => ({
+      business_id: s.business_id,
+      expires_at: s.trial_ends_at,
+      businesses: s.businesses,
+    })),
+    ...((
+      activeRes.data ?? []
+    ) as unknown as {
+      business_id: string;
+      current_period_end: string | null;
+      businesses: { owner_id: string } | { owner_id: string }[] | null;
+    }[]).map((s) => ({
+      business_id: s.business_id,
+      expires_at: s.current_period_end,
+      businesses: s.businesses,
+    })),
+  ];
+
+  let sent = 0;
+  for (const sub of subs) {
+    if (!sub.expires_at) continue;
     const business = sub.businesses && !Array.isArray(sub.businesses) ? sub.businesses : null;
     if (!business?.owner_id) continue;
 
@@ -83,7 +118,7 @@ export async function GET(request: Request) {
       email: ownerRow.email,
       name: ownerRow.name ?? ownerRow.email,
       businessId: sub.business_id,
-      expiresAt: sub.current_period_end,
+      expiresAt: sub.expires_at,
     });
     if (result === "sent") sent += 1;
   }
