@@ -21,7 +21,7 @@ export type KioskPaymentMethod = {
   kind: KioskPaymentKind;
   display: KioskPaymentDisplay;
   label: string;
-  provider: "midtrans" | "tripay" | "pakasir" | null;
+  provider: "midtrans" | "tripay" | null;
   method: string | null;
   hint: string | null;
 };

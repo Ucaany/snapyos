@@ -2,8 +2,9 @@
 
 > **SUPERSEDED (2026-09-30) — migration 0044.** Seluruh flow penarikan saldo owner
 > (`withdrawals`/`balances`/`balance_ledger`) dihapus. Owner kini connect payment
-> gateway direct (Pakasir/Midtrans/Tripay) atau pakai voucher — bukan tarik saldo.
+> gateway direct (Tripay/Midtrans) atau pakai voucher — bukan tarik saldo.
 > Dokumen ini dipertahankan sebagai referensi historis; lihat `docs/README.md` v1.8.
+> Pakasir (yang disebut di bagian historis) sudah dihapus total 2026-11-23.
 
 ## Status Implementasi (audit 2026-08-30)
 
@@ -16,7 +17,7 @@ LEBIH KETAT / tak terdokumentasi:
 - **Jadwal hari** penarikan (`platform_settings.withdrawal_days`) + **SLA** (`withdrawal_sla_hours`).
 - Path recovery settlement: `src/server/payment/settlement-recovery.ts` (dipindah pada Fase 5 untuk menegaskan boundary server-only).
 
-Model dana SnapyOS adalah **aggregator / marketplace**: dana customer masuk ke **akun utama SnapyOS** (In-House QRIS Pakasir), lalu owner UMKM menarik dana (penarikan/withdrawal) ke rekeningnya. Alur ini **terdeteksi di dashboard** (owner & admin).
+Model dana SnapyOS adalah **aggregator / marketplace** (historis, sudah dihapus): dana customer masuk ke **akun utama SnapyOS**, lalu owner UMKM menarik dana (penarikan/withdrawal) ke rekeningnya. Alur ini **dihapus 2026-09-30**; kini dana masuk langsung ke merchant owner via credential Tripay/Midtrans.
 
 ---
 
@@ -25,7 +26,7 @@ Model dana SnapyOS adalah **aggregator / marketplace**: dana customer masuk ke *
 ```
 Customer bayar QRIS
    ↓ (dana masuk akun utama SnapyOS)
-Pakasir — In-House QRIS (api_key + project milik SnapyOS)
+QRIS aggregator platform (historis, sudah dihapus 2026-11-23)
    ↓ webhook PAID
 Payment (paid) + Transaction (paid)
    ↓ sistem kredit saldo owner

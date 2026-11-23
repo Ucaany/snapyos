@@ -20,10 +20,10 @@ const ENVIRONMENTS: readonly Environment[] = ["sandbox", "production"];
 
 const PROVIDERS: { id: GatewayProvider; name: string; description: string }[] = [
   {
-    id: "pakasir",
-    name: "PAKASIR",
+    id: "tripay",
+    name: "TRIPAY",
     description:
-      "QRIS project merchant owner. Verifikasi server-to-server + header X-Secret; dana ditarik dari dashboard Pakasir.",
+      "Channel pembayaran merchant owner (gateway utama). Butuh private key untuk signature; webhook wajib terdaftar.",
   },
   {
     id: "midtrans",
@@ -31,17 +31,11 @@ const PROVIDERS: { id: GatewayProvider; name: string; description: string }[] = 
     description:
       "Snap/QRIS merchant owner. Tes sandbox membuat transaksi uji; production hanya verifikasi kredensial.",
   },
-  {
-    id: "tripay",
-    name: "TRIPAY",
-    description:
-      "Channel pembayaran merchant owner. Butuh private key untuk signature; webhook wajib terdaftar.",
-  },
 ];
 
 /**
  * PaymentGatewaySettings — shell dashboard/payment (owner-only).
- * Direct merchant model: credential pakasir/midtrans/tripay owner, dana langsung
+ * Direct merchant model: credential tripay/midtrans owner, dana langsung
  * ke rekening owner. Metode kiosk dibangun dari credential aktif (docs/06 §6.5).
  * Satu provider bisa punya credential sandbox DAN production sekaligus
  * (unique business_id+provider+environment).

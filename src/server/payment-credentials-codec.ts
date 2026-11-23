@@ -7,7 +7,6 @@ export function credentialMetadata(
     provider: GatewayProvider;
     enabled_methods?: string[];
     private_key?: string;
-    webhook_secret?: string;
   },
   current?: Record<string, unknown> | null
 ): Record<string, unknown> {
@@ -18,10 +17,6 @@ export function credentialMetadata(
   if (input.provider === "tripay" && input.private_key !== undefined) {
     next.private_key_encrypted = encrypt(input.private_key);
   }
-  if (input.provider === "pakasir" && input.webhook_secret !== undefined) {
-    next.webhook_secret_encrypted = encrypt(input.webhook_secret);
-  }
   delete next.private_key;
-  delete next.webhook_secret;
   return next;
 }

@@ -201,7 +201,7 @@ baris pending invoice tersebut otomatis di-`dismissed`
 4. Admin memilih resolusi:
    - **AKTIVASI MANUAL** — perbaiki entitlement via `/admin/subscriptions`
      atau langsung, lalu tutup tiket (`status='activated'`).
-   - **MARK REFUNDED** — issue refund via dashboard Pakasir (out-of-band),
+   - **MARK REFUNDED** — issue refund via dashboard Tripay (out-of-band),
      lalu tutup tiket (`status='refunded'`); invoice tetap `paid` sebagai
      fakta historis.
    - **DISMISS** — false alarm/duplikat/teratasi retry (`status='dismissed'`).
@@ -248,7 +248,7 @@ Komponen:
 - `invoice` — tagihan per periode (MVP: record, bukan PDF formal)
 - `billing` — integrasi provider subscription (future)
 
-Karena MVP online payment fokus pada QRIS (Pakasir) yang transaksional, **renewal subscription** pada MVP awal dapat menggunakan:
+Karena MVP online payment fokus pada QRIS (Tripay) yang transaksional, **renewal subscription** pada MVP awal dapat menggunakan:
 
 1. **Manual renewal** — owner membayar QRIS invoice tiap periode (paling sederhana, realistis untuk MVP).
 2. **Auto-debit** — future enhancement saat provider subscription tersedia.

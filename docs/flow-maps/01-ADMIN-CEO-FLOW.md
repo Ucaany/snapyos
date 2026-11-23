@@ -326,7 +326,7 @@
 
 - List payments semua tenant + pagination
 - Filter by status (`pending`/`paid`/`expired`/`failed`/`cancelled`/`refunded`)
-- Filter by provider (`pakasir`/`midtrans`/`tripay`/`voucher`/`offline`)
+- Filter by provider (`midtrans`/`tripay`/`voucher`/`offline`)
 - Filter by date range
 - Summary metrics:
   - Total payment volume

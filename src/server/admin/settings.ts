@@ -20,7 +20,6 @@ export type PlatformSettings = {
   trial_days?: number;
   maintenance_mode?: boolean;
   maintenance_message?: string;
-  gateway_pakasir_enabled?: boolean;
   gateway_midtrans_enabled?: boolean;
   gateway_tripay_enabled?: boolean;
 };
@@ -41,7 +40,6 @@ export async function getPlatformSettings(): Promise<PlatformSettings> {
     trial_days: undefined,
     maintenance_mode: undefined,
     maintenance_message: undefined,
-    gateway_pakasir_enabled: undefined,
     gateway_midtrans_enabled: undefined,
     gateway_tripay_enabled: undefined,
   };

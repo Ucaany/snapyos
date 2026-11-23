@@ -11,7 +11,7 @@
 | Data client   | `@supabase/supabase-js` server-only (service-role)                                                                                                 |
 | Auth          | **Auth.js v5 (NextAuth)** — credential email/password, **JWT + DB revocation** (`auth_sessions`, lihat §3.6)                                       |
 | Camera        | MediaDevices API (`getUserMedia`), Canvas API — kamera internal perangkat (kiosk PWA)                                                              |
-| Payment       | Direct merchant owner-first: Pakasir, Midtrans, atau Tripay melalui credential business. Pakasir platform hanya untuk invoice subscription SnapyOS |
+| Payment       | Direct merchant owner-first: Tripay atau Midtrans melalui credential business. Tripay platform (env `TRIPAY_*`) untuk invoice subscription SnapyOS |
 | QR render     | `qrcode` / `qrcode.react`                                                                                                                          |
 | Export        | CSV (bawaan), XLSX (`exceljs`/`xlsx`), PDF (future)                                                                                                |
 | Deploy        | **Vercel**                                                                                                                                         |
@@ -50,7 +50,7 @@ Rate limit publik: `GET /api/v1/public/:slug/templates` 120/menit/IP, `GET /api/
                                |                      |
                       +---------v--------+   +---------v---------+
                         |  Supabase        |   | Merchant gateways |
-                        |  (Postgres/      |   | Pakasir, Midtrans,|
+                        |   Storage)       |   | Tripay, Midtrans  |
                         |   Storage)       |   | Tripay            |
                         +------------------+   +-------------------+
 ```
@@ -183,7 +183,7 @@ src/
     r/[token]/              # "/r/..." result online page
     api/
       auth/[...nextauth]/
-      webhooks/payment/pakasir/
+      webhooks/payment/tripay/
       v1/                   # REST API (owner/admin)
   components/
     ui/                     # shadcn/ui (neo-brutalism)
@@ -195,7 +195,7 @@ src/
     supabase/server.ts      # service-role client (server-only)
     tenant.ts               # scoping helpers + RBAC
     rbac.ts
-    payment/                # PaymentService abstraction + PakasirProvider
+    payment/                # PaymentService abstraction + TripayProvider
     qr.ts
     storage.ts
   server/                   # server actions & business logic

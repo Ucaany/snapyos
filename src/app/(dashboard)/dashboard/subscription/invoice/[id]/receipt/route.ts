@@ -35,7 +35,7 @@ function fmtDate(iso: string | null): string {
 
 function providerLabel(provider: string | null): string {
   if (!provider) return "QRIS";
-  const name = { pakasir: "Pakasir", midtrans: "Midtrans", tripay: "Tripay" }[provider];
+  const name = { midtrans: "Midtrans", tripay: "Tripay" }[provider];
   return name ? `QRIS (${name})` : "QRIS";
 }
 

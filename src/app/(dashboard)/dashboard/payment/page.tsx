@@ -18,8 +18,8 @@ export const metadata: Metadata = { title: "Payment Gateway | SnapyOS" };
 
 /**
  * /dashboard/payment — credential merchant owner (direct merchant).
- * Dana transaksi masuk rekening owner via merchant key sendiri; aggregator Pakasir
- * platform dihapus (docs/06 §6.5, 2026-09-18). Owner-only.
+ * Dana transaksi masuk rekening owner via merchant key sendiri (Tripay/Midtrans).
+ * Owner-only.
  */
 export default async function PaymentGatewayPage({
   searchParams,
@@ -52,7 +52,6 @@ export default async function PaymentGatewayPage({
     : [];
 
   const webhookUrls = {
-    pakasir: paymentWebhookStatus("pakasir"),
     midtrans: paymentWebhookStatus("midtrans"),
     tripay: paymentWebhookStatus("tripay"),
   };
@@ -62,8 +61,8 @@ export default async function PaymentGatewayPage({
       <PageHeader
         eyebrow="KEUANGAN / PAYMENT GATEWAY"
         title="Pembayaran"
-        description="Credential merchant terenkripsi (Pakasir / Midtrans / Tripay). Dana pembayaran masuk rekening owner langsung, bukan platform. Secret tidak pernah ditampilkan kembali setelah tersimpan."
-        meta="[ DIRECT MERCHANT ] PAKASIR · MIDTRANS · TRIPAY"
+        description="Credential merchant terenkripsi (Tripay / Midtrans). Dana pembayaran masuk rekening owner langsung, bukan platform. Secret tidak pernah ditampilkan kembali setelah tersimpan."
+        meta="[ DIRECT MERCHANT ] TRIPAY · MIDTRANS"
       />
       <PaymentGatewaySettings initialCredentials={credentials} webhookUrls={webhookUrls} />
       <KioskPaymentPreview

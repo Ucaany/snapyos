@@ -8,7 +8,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
 import { computeFinalAmount } from "@/lib/checkout-math";
 import { assertSessionCapacity } from "@/server/session-capacity";
-import { resolveGateway, resolveGatewayByCredential } from "@/server/payment/providers/registry";
+import { resolveGatewayByCredential } from "@/server/payment/providers/registry";
 import { checkoutApplyVoucherSchema, checkoutCreateSchema } from "@/lib/validators";
 import type { CheckoutApplyVoucherInput, CheckoutCreateInput } from "@/lib/validators";
 import type { PaymentRow } from "./checkout-shared";
@@ -32,7 +32,7 @@ import { listKioskPaymentMethods } from "./payment-methods";
  * Anti money-loss: payment pending yang masih dalam masa berlaku dicek dulu ke
  * provider — bila ternyata sudah dibayar (webhook in-flight), transisi ke paid
  * + side effects, bukan di-void. Payment yang sudah lewat expiry di-void saja
- * (webhook `paid` tetap bisa merecovery expired → paid, lihat handlePakasirWebhook).
+ * (webhook `paid` tetap bisa merecovery expired → paid, lihat handleTripayWebhook).
  */
 export async function expireStaleCheckoutsForPhotobox(photoboxId: string) {
   const supabase = createServerClient();
@@ -60,11 +60,11 @@ export async function expireStaleCheckoutsForPhotobox(photoboxId: string) {
       // bisa didekripsi → JANGAN pindah ke credential lain milik business yang
       // sama: status akan dibaca dari akun merchant berbeda dan payment bisa
       // di-settle padahal uangnya masuk ke akun lain (fail-closed, sama dengan
-      // registry.ts/payment-create.ts/qris.ts). Keluar tanpa void: payment
-      // mungkin masih hidup di provider, biar webhook/recovery yang memutuskan.
+      // registry.ts/payment-create.ts/qris.ts). Payment tanpa credential tidak
+      // lagi didukung (aggregator kiosk sudah dihapus).
       const gateway = row.credential_id
         ? await resolveGatewayByCredential(row.credential_id)
-        : await resolveGateway(row.business_id);
+        : null;
       if (!gateway) return;
       const providerStatus = await gateway.getStatus(
         row.order_id,

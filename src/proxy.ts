@@ -34,7 +34,7 @@ const ALWAYS_ALLOWED_PREFIXES = [
   "/login",
   "/api/health",
   "/api/auth", // NextAuth callback
-  "/api/webhooks", // provider webhooks (Pakasir): jangan blokir settlement in-flight
+  "/api/webhooks", // provider webhooks (Tripay/Midtrans): jangan blokir settlement in-flight
   "/_next",
   "/favicon.ico",
   // Aset root yang dibutuhkan halaman maintenance / ikon PWA. Daftar ini

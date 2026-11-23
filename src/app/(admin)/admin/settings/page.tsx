@@ -217,14 +217,8 @@ export default async function AdminSettingsPage() {
             <AdminActionForm
               action={updateSettingsAction}
               submitLabel="Simpan gateway global"
-              className="grid grid-cols-1 gap-4 md:grid-cols-3"
+              className="grid grid-cols-1 gap-4 md:grid-cols-2"
             >
-              <AdminCheckbox
-                name="gateway_pakasir_enabled"
-                label="Pakasir"
-                description="Direct merchant owner."
-                defaultChecked={s.gateway_pakasir_enabled !== false}
-              />
               <AdminCheckbox
                 name="gateway_midtrans_enabled"
                 label="Midtrans"

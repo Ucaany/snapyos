@@ -16,7 +16,7 @@ Dokumen ini adalah hasil audit lengkap struktur routing, API, server actions, da
 | 03  | `03-STAFF-FLOW.md`                | ✅ ada      | Alur Staff (read-only shell)                                                                  |
 | 04  | `04-KIOSK-CUSTOMER-FLOW.md`       | ⛔ backlog  | Alur customer kiosk (pay-first, device activation, capture, result)                           |
 | 05  | `05-POS-TERMINAL-FLOW.md`         | ⛔ backlog  | Alur POS terminal (add-on, offline cash, product management)                                  |
-| 06  | `06-PAYMENT-INTEGRATION.md`       | ⛔ backlog  | Payment gateway integration (Pakasir/Midtrans/Tripay, webhook, polling)                       |
+| 06  | `06-PAYMENT-INTEGRATION.md`       | ⛔ backlog  | Payment gateway integration (Tripay/Midtrans, webhook, polling)                               |
 | 07  | `07-SUBSCRIPTION-LIFECYCLE.md`    | ⛔ backlog  | Subscription, invoice, add-on, promo, entitlement                                             |
 | 08  | `08-DATABASE-MIGRATIONS.md`       | ⛔ backlog  | Inventaris migrasi lengkap & changelog schema                                                 |
 | 09  | `09-API-ROUTING-MAP.md`           | ⛔ backlog  | Map lengkap API endpoints (63 routes) + HTTP methods                                          |
@@ -66,7 +66,7 @@ Dokumen ini adalah hasil audit lengkap struktur routing, API, server actions, da
 - Owner dashboard (branding, outlets, photoboxes, packages, templates, vouchers, staff, transactions, analytics, subscription, reports)
 - Template Builder (Phase 12)
 - POS add-on (Phase 2/3/5/7/8 — offline cash, per-booth toggle, staff permission)
-- Payment gateway (Pakasir/Midtrans/Tripay direct merchant + webhook + polling + recovery)
+- Payment gateway (Tripay/Midtrans direct merchant + webhook + polling + recovery)
 - Kiosk customer (pay-first: package → payment → template → capture → edit → finalize → print → result online)
 - Device activation (pairing + setup wizard)
 - Subscription lifecycle (trial, active, past_due, cancelled, expired + add-on attach/cancel)
@@ -103,7 +103,7 @@ Konflik? Lihat `AGENTS.md` §Resolusi Konflik.
 - **Frontend**: Next.js 16 (App Router), TypeScript, Tailwind CSS v4, shadcn/ui (base-nova), Lucide Icons
 - **Backend**: Supabase (PostgreSQL + Storage), service-role client
 - **Auth**: Auth.js v5 (NextAuth) — JWT + DB revocation (`auth_sessions`)
-- **Payment**: Pakasir (aggregator invoice subscription) + direct merchant Pakasir/Midtrans/Tripay (owner credential)
+- **Payment**: Tripay (platform invoice subscription) + direct merchant Tripay/Midtrans (owner credential)
 - **Visual**: Neo-Brutalism full stack (marketing, auth, dashboard, kiosk, POS, result page)
 - **Testing**: Node native test runner (`node --test`)
 

@@ -981,7 +981,7 @@ Owner klik [ TAMBAH ADD-ON ]
       ↓ fetch add_on by code (harga dari DB, admin-configurable)
       ↓ compute amount = add_on.price_<siklus> * quantity (atau price flat per siklus jika feature)
       ↓ insert invoices (status='pending', intent={ type:'add_on', add_on_id, quantity })
-      ↓ create invoice_payments QRIS (Pakasir aggregator platform)
+      ↓ create invoice_payments QRIS (Tripay platform)
       ↓ return { invoice_id, qr_string, total_amount, expires_at }
    ↓ redirect ke /dashboard/subscription/invoice/[id] (display QR)
    ↓ polling status atau webhook paid
@@ -1277,7 +1277,7 @@ Owner upload logo → uploadLogo(businessId, file)
 
 **Page**: `/dashboard/settings/payment` → `src/app/(dashboard)/dashboard/settings/payment/page.tsx`
 
-**Purpose**: Owner memasukkan credential payment gateway sendiri (Pakasir/Midtrans/Tripay) — direct merchant integration (dana masuk rekening owner, bukan platform). Tanpa credential aktif, kiosk hanya menawarkan voucher + tunai.
+**Purpose**: Owner memasukkan credential payment gateway sendiri (Tripay/Midtrans) — direct merchant integration (dana masuk rekening owner, bukan platform). Tanpa credential aktif, kiosk hanya menawarkan voucher + tunai.
 
 **Server Actions**: `src/server/payment-credential-actions.ts`
 
@@ -1285,7 +1285,7 @@ Owner upload logo → uploadLogo(businessId, file)
 
 **Providers**:
 
-- Pakasir: `merchant_id`, `server_key` (encrypted), environment (sandbox/production)
+- Tripay: `merchant_code`, `api_key` (encrypted), `private_key` (encrypted), environment
 - Midtrans: `merchant_id`, `server_key` (encrypted), `client_key`, environment
 - Tripay: `merchant_code`, `api_key` (encrypted), `private_key` (encrypted), environment
 
@@ -1343,14 +1343,14 @@ Delete credential → deletePaymentCredential(businessId, credentialId)
 **Registry (Payment Provider Selection)**:
 
 - Kiosk `POST /api/v1/public/:businessSlug/payments/create` → pilih provider dari credential aktif business
-- Priority: credential aktif terbaru per provider + environment; fallback QRIS Pakasir aggregator platform (env `PAKASIR_*`)
+- Priority: credential aktif terbaru per provider + environment. Invoice subscription memakai gateway platform Tripay (env `TRIPAY_*`).
 - Tanpa credential direct aktif → kiosk hanya voucher + tunai
 
 **Webhook** (direct merchant):
 
 - `POST /api/webhooks/payment/midtrans` — validasi SHA512
 - `POST /api/webhooks/payment/tripay` — validasi HMAC-SHA256
-- `POST /api/webhooks/payment/pakasir` — aggregator + direct
+- `POST /api/webhooks/payment/tripay` — signature HMAC-SHA256 + server-to-server
 
 **Components**: `DataTable` credential list, `Dialog` form, `Select` provider/environment, `Button` test, `Switch` active.
 
@@ -1364,7 +1364,7 @@ Delete credential → deletePaymentCredential(businessId, credentialId)
 
 - Page: `src/app/(dashboard)/dashboard/settings/payment/page.tsx`
 - Server: `src/server/payment-credential-actions.ts`, `src/server/payment-credentials.ts`
-- Providers: `src/server/payment/providers/midtrans.ts`, `src/server/payment/providers/tripay.ts`, `src/server/payment/providers/pakasir.ts`
+- Providers: `src/server/payment/providers/midtrans.ts`, `src/server/payment/providers/tripay.ts`
 
 **Acceptance**: owner tambah/test/toggle/delete credential; kiosk pakai credential direct; webhook berfungsi; tanpa credential aktif = voucher+tunai only.
 

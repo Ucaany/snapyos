@@ -172,16 +172,13 @@ export async function updateCredential(
       ...(parsed.server_key !== undefined
         ? { server_key_encrypted: encryptCredential(parsed.server_key) }
         : {}),
-      ...(parsed.enabled_methods !== undefined ||
-      parsed.private_key !== undefined ||
-      parsed.webhook_secret !== undefined
+      ...(parsed.enabled_methods !== undefined || parsed.private_key !== undefined
         ? {
             metadata: credentialMetadata(
               {
                 provider,
                 enabled_methods: parsed.enabled_methods,
                 private_key: parsed.private_key,
-                webhook_secret: parsed.webhook_secret,
               },
               existing.metadata
             ),
@@ -235,7 +232,7 @@ export async function testCredential(userId: string, businessId: string, credent
     );
   }
   const gateway = resolveGatewayFromCredential(gatewayCredential(stored));
-  // Probe non-destruktif untuk Pakasir/Tripay: `probeCredential` memeriksa
+  // Probe non-destruktif untuk Tripay: `probeCredential` memeriksa
   // status HTTP auth (getStatus menyamarkan 401/403 jadi "pending", sehingga
   // key salah akan tampak sukses). Tanpa transaksi yatim. Midtrans memakai
   // create + cancel (di bawah).

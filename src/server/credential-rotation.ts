@@ -59,18 +59,6 @@ export async function rotateCredentials(
       }
     }
 
-    if (
-      patchedMetadata &&
-      typeof patchedMetadata.webhook_secret_encrypted === "string" &&
-      patchedMetadata.webhook_secret_encrypted
-    ) {
-      const ws = reEncrypt(patchedMetadata.webhook_secret_encrypted as string);
-      if (ws.rotated) {
-        patchedMetadata.webhook_secret_encrypted = ws.payload;
-        metadataChanged = true;
-      }
-    }
-
     if (!serverKey.rotated && !metadataChanged) continue;
 
     const patch: Record<string, unknown> = {};

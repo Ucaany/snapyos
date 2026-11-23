@@ -131,11 +131,7 @@ export function buildSettingsPayload(formData: FormData): Record<string, unknown
   if (formData.has("maintenance_message")) {
     out.maintenance_message = str(formData, "maintenance_message") || undefined;
   }
-  for (const key of [
-    "gateway_pakasir_enabled",
-    "gateway_midtrans_enabled",
-    "gateway_tripay_enabled",
-  ]) {
+  for (const key of ["gateway_midtrans_enabled", "gateway_tripay_enabled"]) {
     if (formData.has(key)) {
       out[key] = formData.getAll(key).includes("true");
     }

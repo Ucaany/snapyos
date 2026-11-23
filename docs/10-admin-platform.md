@@ -95,7 +95,7 @@ Rincian **per tenant** tersedia: tabel `Gross / Fee / Net per Tenant` menghitung
 fee per bisnis sesuai policy fee plan aktif, lalu net = gross − fee.
 
 **API:** `GET /api/v1/admin/payments?status=&provider=&from=&to=` + summary endpoint.
-`provider` menerima `pakasir`, `midtrans`, `tripay` (direct merchant + aggregator).
+`provider` menerima `midtrans`, `tripay` (direct merchant).
 
 **Data:** agregasi `payments` (semua tenant) + `payment_webhooks` untuk integritas.
 
@@ -125,7 +125,6 @@ Contoh key di `platform_settings`:
   "min_withdrawal_amount": 10000,
   "withdrawal_days": [0, 1, 2, 3, 4, 5, 6],
   "withdrawal_sla_hours": 24,
-  "gateway_pakasir_enabled": true,
   "gateway_midtrans_enabled": true,
   "gateway_tripay_enabled": true
 }

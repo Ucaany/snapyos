@@ -1,6 +1,7 @@
 /**
  * Pure QRIS helpers (shared provider utilities) — docs/06 §6.3/§6.7.
- * Provider aktif: Pakasir (pakasir.com/p/docs) — lihat src/server/payment/pakasir.ts.
+ * Provider aktif: Tripay/Midtrans. Helper order ID + parsing nominal/status
+ * dipakai adapter gateway dan webhook.
  * Berisi helpers umum (parseProviderAmount, buildOrderId, dll.).
  * Tanpa import server agar bisa di-unit-test.
  * Provider mengirim nominal sebagai string desimal ("1016.00") → integer IDR.
@@ -30,7 +31,7 @@ export function buildOrderId(rand: string): string {
   return `SnapyOS-${rand.toUpperCase()}`;
 }
 
-/** Pakasir datetime → ISO. Offset eksplisit dipertahankan; format tanpa offset = WIB. */
+/** Datetime provider → ISO. Offset eksplisit dipertahankan; format tanpa offset = WIB. */
 export function parseProviderDateTime(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const raw = value.trim();

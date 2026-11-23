@@ -185,9 +185,8 @@ export async function createPayment(
       "VALIDATION_ERROR",
       "Metode pembayaran tidak valid untuk credential gateway ini"
     );
-  const resolvedCallbackUrl =
-    gateway.provider === "pakasir" ? "" : paymentWebhookUrl(gateway.provider);
-  if (gateway.provider !== "pakasir" && !resolvedCallbackUrl)
+  const resolvedCallbackUrl = paymentWebhookUrl(gateway.provider);
+  if (!resolvedCallbackUrl)
     throw new ApiError("INTERNAL", "URL callback gateway belum dikonfigurasi aman");
 
   // Claim sebelum request provider. Tanpa ini dua POST paralel sama-sama dapat

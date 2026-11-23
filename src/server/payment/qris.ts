@@ -2,7 +2,6 @@ import "server-only";
 import { ApiError } from "@/lib/api-errors";
 import { needsSettlementRecovery } from "@/server/payment/settlement-recovery";
 import { createServerClient } from "@/lib/supabase/server";
-import { resolveGatewayFromCredential } from "./providers/gateway-factory";
 import { resolveGatewayByCredential } from "./providers/registry";
 import {
   loadCheckout,
@@ -43,15 +42,11 @@ export async function getPaymentStatus(
     try {
       const gateway = payment.credential_id
         ? // Credential rusak (tak bisa didekripsi) → null → status tetap pending.
-          // JANGAN fallback ke aggregator/provider lain: pembayaran ini dicatat
-          // milik credential direct, settle lewat akun berbeda = dana salah.
+          // JANGAN fallback ke provider lain: pembayaran ini dicatat milik
+          // credential direct, settle lewat akun berbeda = dana salah.
           // Owner harus memperbaiki credential; poll berikutnya akan recover.
           await resolveGatewayByCredential(payment.credential_id)
-        : // Aggregator env sudah tidak dipakai kiosk sejak 2026-09-18; cabang ini
-          // hanya untuk payment legacy in-flight yang masih pending.
-          payment.provider === "pakasir"
-          ? resolveGatewayFromCredential(null)
-          : null;
+        : null;
       const status = gateway
         ? await gateway.getStatus(payment.order_id, payment.final_amount, payment.provider_ref)
         : "pending";

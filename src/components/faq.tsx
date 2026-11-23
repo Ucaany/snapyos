@@ -22,7 +22,7 @@ const faqs = [
   },
   {
     q: "Metode pembayaran apa saja yang didukung?",
-    a: "QRIS lewat gateway merchant Anda sendiri (Pakasir, Midtrans, atau Tripay), voucher, dan tunai. QRIS dan tunai aktif di paket Growth ke atas; voucher di paket Business. Tanpa credential gateway yang aktif, kiosk hanya menawarkan voucher dan tunai. Dana masuk langsung ke rekening Anda sebagai pemilik bisnis, bukan lewat rekening SnapyOS. Mode offline tunai juga tersedia bila opsi itu diaktifkan untuk bisnis Anda.",
+    a: "QRIS lewat gateway merchant Anda sendiri (Tripay atau Midtrans), voucher, dan tunai. QRIS dan tunai aktif di paket Growth ke atas; voucher di paket Business. Tanpa credential gateway yang aktif, kiosk hanya menawarkan voucher dan tunai. Dana masuk langsung ke rekening Anda sebagai pemilik bisnis, bukan lewat rekening SnapyOS. Mode offline tunai juga tersedia bila opsi itu diaktifkan untuk bisnis Anda.",
   },
   {
     q: "Bagaimana customer menerima hasil fotonya?",

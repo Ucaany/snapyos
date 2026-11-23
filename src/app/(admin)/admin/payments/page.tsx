@@ -47,8 +47,8 @@ import { Label } from "@/components/admin/ui/label";
  */
 
 const PAYMENT_STATUSES = ["paid", "pending", "failed", "expired", "cancelled", "refunded"] as const;
-// Direct merchant owner: pakasir, midtrans, tripay (docs/06 §6.7).
-const PAYMENT_PROVIDERS = ["pakasir", "midtrans", "tripay"] as const;
+// Direct merchant owner: midtrans, tripay (docs/06 §6.7).
+const PAYMENT_PROVIDERS = ["midtrans", "tripay"] as const;
 
 export default async function AdminPaymentsPage({
   searchParams,

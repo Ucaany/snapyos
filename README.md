@@ -14,7 +14,7 @@ PRD dan dokumentasi teknis ada di [`docs/`](./docs/README.md). Panduan developme
 - **Backend:** Next.js Route Handlers + Server Actions
 - **Data:** Supabase (PostgreSQL + Storage; Realtime tidak dipakai — status payment via polling 3s), server-only service-role client
 - **Auth:** Auth.js v5 (NextAuth) — credential email/password, argon2id, JWT + DB revocation (`auth_sessions`)
-- **Payment:** Pakasir (pakasir.com — QRIS aggregator)
+- **Payment:** Tripay (gateway platform untuk invoice subscription) + Tripay/Midtrans direct merchant untuk kiosk
 - **Visual:** Full Neo-Brutalism (single aesthetic lock — satu dashboard brutalist)
 - **Kiosk:** PWA browser untuk tablet/phone; kamera, printer, dan sesi memakai bridge lokal opsional (`runtime/`, Node.js, cross-platform). Tidak ada aplikasi Windows native — adapter printer Windows hanya salah satu backend bridge
 
@@ -174,7 +174,7 @@ curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/rete
 
 ## Status Fase (docs/12-roadmap-mvp.md — update 2026-08-30)
 
-- **Phase 0–12: SELESAI.** Auth + multi-tenant, dashboard, photobox builder, kiosk pay-first, checkout + voucher, Pakasir QRIS (webhook + polling + recovery), transactions/finance, reports/analytics, staff multi-outlet, subscription (+ promos), polish/security (audit log, retention cron, e2e script ringan), Template & Frame Builder (`composeFrame`, layout slot).
+- **Phase 0–12: SELESAI.** Auth + multi-tenant, dashboard, photobox builder, kiosk pay-first, checkout + voucher, Tripay QRIS (webhook + polling + recovery), transactions/finance, reports/analytics, staff multi-outlet, subscription (+ promos), polish/security (audit log, retention cron, e2e script ringan), Template & Frame Builder (`composeFrame`, layout slot).
 - **POS add-on: SELESAI** (`docs/pos/`) — kasir offline-only (cash/bank_transfer/other) per booth (`photoboxes.pos_enabled`), dipakai staff tanpa role baru; tanpa QRIS; migration `0019`.
 - **Sisa backlog (jujur):** bookings UI, event mode, refund state machine, e2e Playwright formal, load test, REST subscription/addons.
 

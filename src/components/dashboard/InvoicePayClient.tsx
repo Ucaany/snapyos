@@ -120,7 +120,7 @@ export function InvoicePayClient({
     }
   }, [busy, createQris]);
 
-  // Pakasir mengirim payload QRIS mentah (EMVCo string, mis. `0002010102...`)
+  // Provider dapat mengirim payload QRIS mentah (EMVCo string, mis. `0002010102...`)
   // pada `qr_image`; render ke data URI PNG di client agar bisa dipakai
   // langsung sebagai `<img src>`. `qr_url` (bila ada) dipakai apa adanya.
   const rawQr = payment?.qr_image ?? payment?.qr_url ?? null;
@@ -305,7 +305,7 @@ export function InvoicePayClient({
           </div>
         )}
 
-        {phase === "qr" && payment?.payment_url && (
+        {phase === "qr" && payment?.payment_url && !qrSrc && !qrEncoding && (
           <div className="flex w-full flex-col items-start gap-3">
             <p className="font-mono text-xs uppercase tracking-[0.1em]">
               Lanjutkan pembayaran di gateway
@@ -327,7 +327,7 @@ export function InvoicePayClient({
           </div>
         )}
 
-        {phase === "qr" && payment?.va_number && (
+        {phase === "qr" && payment?.va_number && !qrSrc && !qrEncoding && (
           <div className="flex w-full flex-col items-start gap-3">
             <p className="font-mono text-xs uppercase tracking-[0.1em]">Nomor Virtual Account</p>
             <p className="flex items-center gap-2 font-mono text-3xl font-bold tabular-nums">
@@ -344,7 +344,9 @@ export function InvoicePayClient({
           </div>
         )}
 
-        {phase === "qr" && payment && !payment.payment_url && !payment.va_number && (
+        {phase === "qr" &&
+          payment &&
+          (qrSrc || qrEncoding || (!payment.payment_url && !payment.va_number)) && (
           <>
             {qrSrc ? (
               // eslint-disable-next-line @next/next/no-img-element

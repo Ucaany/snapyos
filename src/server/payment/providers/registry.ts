@@ -6,7 +6,7 @@
  *   1. SELECT payment_credentials WHERE business_id AND is_active AND environment match
  *   2. Decrypt server_key (+ metadata.private_key_encrypted untuk Tripay)
  *   3. Instantiate adapter
- *   4. Tidak ada credential aktif → return null → caller fallback aggregator
+ *   4. Tidak ada credential aktif → return null → metode online tidak tersedia
  *
  * Tidak ada cross-request cache (staleness credential = risiko security).
  * Server key TIDAK dikembalikan ke caller; hanya diteruskan ke adapter factory.
@@ -20,7 +20,6 @@ import { resolveGatewayFromCredential } from "./gateway-factory";
 import type { GatewayCredential, PaymentGateway } from "./types";
 
 const GLOBAL_ENABLED_KEY: Record<string, string> = {
-  pakasir: "gateway_pakasir_enabled",
   midtrans: "gateway_midtrans_enabled",
   tripay: "gateway_tripay_enabled",
 };
@@ -96,8 +95,8 @@ export async function resolveCredential(businessId: string): Promise<GatewayCred
     environment: string;
     metadata: Record<string, unknown>;
   };
-  // Global provider toggle: nonaktif → anggap tak ada credential (fallback
-  // aggregator), sehingga checkout tetap berjalan tanpa provider ini.
+  // Global provider toggle: nonaktif → anggap tak ada credential, sehingga
+  // kiosk tidak menawarkan metode online provider ini.
   if (!(await isProviderGloballyEnabled(row.provider))) return null;
   const serverKey = tryDecrypt(
     row.server_key_encrypted,
@@ -128,16 +127,6 @@ export async function resolveCredential(businessId: string): Promise<GatewayCred
     environment: row.environment as GatewayCredential["environment"],
     metadata,
   };
-}
-
-/**
- * Resolve PaymentGateway dari business_id.
- * Credential aktif → direct merchant adapter.
- * Tidak ada credential → Pakasir aggregator (env var fallback).
- */
-export async function resolveGateway(businessId: string): Promise<PaymentGateway> {
-  const credential = await resolveCredential(businessId);
-  return resolveGatewayFromCredential(credential);
 }
 
 /**
@@ -172,7 +161,7 @@ export async function resolveGatewayByCredential(
   );
   // Undecryptable (key dirotasi / payload rusak) → null, sesuai kontrak fungsi.
   // Caller (payment-create / qris) gagal eksplisit untuk metode ini — JANGAN
-  // fallback ke resolveGateway(businessId): provider bisa berbeda → dana salah.
+  // fallback ke credential lain: provider bisa berbeda → dana salah.
   if (serverKey === null) return null;
   const metadata = { ...row.metadata };
   if (

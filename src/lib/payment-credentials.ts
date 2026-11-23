@@ -55,12 +55,11 @@ export type PaymentCredentialPublic = {
 /**
  * Satu-satunya daftar metode per provider — UI editor, validasi, dan kiosk
  * membaca dari sini. Hanya kanal yang benar-benar diimplementasikan adapter
- * (midtrans: qris/e-wallet/VA bank, tripay: closed payment, pakasir: qris).
+ * (midtrans: qris/e-wallet/VA bank, tripay: closed payment).
  */
 export const PAYMENT_METHODS = {
   midtrans: ["qris", "gopay", "shopeepay", "bca", "bni", "bri", "permata"],
   tripay: ["QRIS", "BCAVA", "BNIVA", "BRIVA", "MANDIRIVA", "PERMATAVA", "ALFAMART", "INDOMARET"],
-  pakasir: ["qris"],
 } as const satisfies Record<GatewayProvider, readonly string[]>;
 
 /** Kode metode literal per provider — dasar peta tampilan yang ekshaustif. */
@@ -102,16 +101,16 @@ export function paymentWebhookUrl(provider: GatewayProvider): string | null {
 
 /**
  * Semua provider dapat dites koneksi: Midtrans memakai create+cancel (adapter
- * verified), Pakasir & Tripay memakai probe status non-destruktif (getStatus
- * dengan reference dummy) yang tidak membuat transaksi yatim.
+ * verified), Tripay memakai probe status non-destruktif (getStatus dengan
+ * reference dummy) yang tidak membuat transaksi yatim.
  */
 export function canTestPaymentCredential(provider: GatewayProvider): boolean {
-  return provider === "midtrans" || provider === "pakasir" || provider === "tripay";
+  return provider === "midtrans" || provider === "tripay";
 }
 
 /**
  * Midtrans test membuat transaksi nyata lalu membatalkannya — hanya aman di
- * sandbox. Pakasir/Tripay hanya membaca status, jadi aman di environment apa pun.
+ * sandbox. Tripay hanya membaca status, jadi aman di environment apa pun.
  */
 export function canTestCredentialInEnvironment(
   provider: GatewayProvider,
@@ -122,33 +121,23 @@ export function canTestCredentialInEnvironment(
 }
 
 /** Label field per provider — satu sumber untuk form dan pesan validasi. */
-export type PaymentCredentialField =
-  "merchant_id" | "server_key" | "client_key" | "private_key" | "webhook_secret";
+export type PaymentCredentialField = "merchant_id" | "server_key" | "client_key" | "private_key";
 
 export const PAYMENT_FIELD_LABELS: Record<
   GatewayProvider,
   Record<PaymentCredentialField, string | null>
 > = {
-  pakasir: {
-    merchant_id: "Project Slug",
-    server_key: "API Key",
-    client_key: null,
-    private_key: null,
-    webhook_secret: "Webhook Secret",
-  },
   midtrans: {
     merchant_id: "Merchant ID",
     server_key: "Server Key",
     client_key: "Client Key",
     private_key: null,
-    webhook_secret: null,
   },
   tripay: {
     merchant_id: "Merchant Code",
     server_key: "API Key",
     client_key: null,
     private_key: "Private Key",
-    webhook_secret: null,
   },
 };
 
@@ -156,12 +145,6 @@ const FIELD_RULES: Record<
   GatewayProvider,
   Partial<Record<PaymentCredentialField, { pattern: RegExp; message: string }>>
 > = {
-  pakasir: {
-    merchant_id: {
-      pattern: /^[a-z0-9][a-z0-9-]{1,58}$/,
-      message: "Project Slug Pakasir hanya huruf kecil, angka, dan tanda hubung",
-    },
-  },
   midtrans: {
     server_key: {
       pattern: /^(SB-Mid-server-|Mid-server-)/,

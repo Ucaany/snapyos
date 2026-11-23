@@ -22,25 +22,23 @@ import {
 import type { GatewayProvider } from "@/server/payment/providers/types";
 
 const providerLabels: Record<GatewayProvider, string> = {
-  pakasir: "Pakasir",
-  midtrans: "Midtrans",
   tripay: "Tripay",
+  midtrans: "Midtrans",
 };
 
 /** Field rahasia yang hanya diisi saat create (edit: kosong = pertahankan). */
-const SECRET_FIELDS = ["server_key", "client_key", "private_key", "webhook_secret"] as const;
+const SECRET_FIELDS = ["server_key", "client_key", "private_key"] as const;
 type SecretField = (typeof SECRET_FIELDS)[number];
 
 /** Kewajiban field rahasia saat create — harus sama dengan schema zod server. */
 const REQUIRED_ON_CREATE: Partial<Record<GatewayProvider, readonly SecretField[]>> = {
-  pakasir: ["server_key", "webhook_secret"],
   midtrans: ["server_key"],
   tripay: ["server_key", "private_key"],
 };
 
 type Props = {
   credential?: PaymentCredentialPublic;
-  /** Provider awal untuk form tambah; default "pakasir". */
+  /** Provider awal untuk form tambah; default "tripay". */
   initialProvider?: GatewayProvider;
   /** Lingkungan awal untuk form tambah; default "sandbox". */
   initialEnvironment?: "sandbox" | "production";
@@ -52,8 +50,7 @@ type Props = {
 
 /**
  * PaymentCredentialForm — tambah/ubah credential merchant owner (direct merchant).
- * Dana transaksi masuk rekening owner via merchant key sendiri (aggregaat Pakasir
- * platform dihapus 2026-09-18). Secret terenkripsi app-layer; never ditampilkan.
+ * Dana transaksi masuk rekening owner via merchant key sendiri (direct merchant).
  * Field dinamis per provider + validasi format; minimal satu metode wajib dipilih.
  */
 export function PaymentCredentialForm({
@@ -66,7 +63,7 @@ export function PaymentCredentialForm({
 }: Props) {
   const editing = credential !== undefined;
   const [provider, setProvider] = useState<GatewayProvider>(
-    credential?.provider ?? initialProvider ?? "pakasir"
+    credential?.provider ?? initialProvider ?? "tripay"
   );
   const [environment, setEnvironment] = useState<"sandbox" | "production">(
     credential?.environment ?? initialEnvironment ?? "sandbox"
@@ -129,7 +126,6 @@ export function PaymentCredentialForm({
       if (values.server_key) input.server_key = values.server_key;
       if (values.client_key) input.client_key = values.client_key;
       if (values.private_key) input.private_key = values.private_key;
-      if (values.webhook_secret) input.webhook_secret = values.webhook_secret;
       const result = await updateCredentialAction(credential!.id, input);
       if ("error" in result) {
         setError(result.error);
@@ -144,7 +140,6 @@ export function PaymentCredentialForm({
         server_key: values.server_key ?? "",
         client_key: values.client_key || null,
         ...(values.private_key ? { private_key: values.private_key } : {}),
-        ...(values.webhook_secret ? { webhook_secret: values.webhook_secret } : {}),
       });
       if ("error" in result) {
         setError(result.error);
@@ -262,7 +257,6 @@ export function PaymentCredentialForm({
         {textField("server_key", { secret: true })}
         {textField("client_key", { secret: true })}
         {textField("private_key", { secret: true })}
-        {textField("webhook_secret", { secret: true })}
       </div>
 
       <PaymentMethodSelector
@@ -309,13 +303,6 @@ export function PaymentCredentialForm({
         />
         Aktifkan credential
       </label>
-
-      {provider === "pakasir" && (
-        <p className="border-l-4 border-accent bg-muted p-3 font-mono text-xs">
-          Pakasir verifikasi pembayaran server-to-server + header X-Secret (webhook secret v2, ambil
-          di Detail Proyek Pakasir). Dana masuk project merchant owner, bukan rekening platform.
-        </p>
-      )}
 
       {error && (
         <p role="alert" className="font-mono text-xs text-destructive">

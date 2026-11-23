@@ -233,7 +233,7 @@
 - **Page**: `/admin/gateways` (`ADMIN - PAYMENT GATEWAYS`).
 - **Actions**: `toggleGatewayAction`. **Data**: `getGatewayState`, `setGatewayEnabled`, `GATEWAY_PROVIDERS` (`src/server/admin/gateways.ts`).
 - **API**: (via `platform_settings` + `payment_credentials`) — halaman + action.
-- **UI**: tabel credential seluruh tenant **redacted** (merchant_id saja, tanpa secret) + toggle global per provider (pakasir/midtrans/tripay).
+- **UI**: tabel credential seluruh tenant **redacted** (merchant_id saja, tanpa secret) + toggle global per provider (midtrans/tripay).
 - **DB**: `payment_credentials, platform_settings` (key `gateway_<provider>_enabled`).
 - **Dampak**: toggle → `platform_settings`; `invalidateMaintenanceCache`. Owner tetap mengelola credential sendiri; admin hanya enable/disable global + visibilitas.
 
@@ -329,8 +329,8 @@ Bootstrapping dua jalur hanya untuk baris yang sudah punya grup — baris lama t
 | Maksimum 2 credential aktif per business                                              | Aktif  | `MAX_ACTIVE_PAYMENT_CREDENTIALS`, `assertActiveCredentialLimit`           |
 | Normalisasi metode (kanonik + buang yang tak dikenal di kiosk)                        | Aktif  | `assertEnabledPaymentMethods`, `normalizePaymentMethod`, `kioskSupported` |
 | Webhook URL dihitung dari `SnapyOS_PUBLIC_BASE_URL` (HTTPS wajib)                     | Aktif  | `paymentWebhookStatus`                                                    |
-| Kiosk menyembunyikan metode online provider non-Pakasir bila URL webhook mati         | Aktif  | `listKioskCredentials`                                                    |
-| Tiga route webhook (pakasir/midtrans/tripay)                                          | Aktif  | `src/app/api/webhooks/payment/*`                                          |
+| Kiosk menyembunyikan metode online provider bila URL webhook mati             | Aktif  | `listKioskCredentials`                                                    |
+| Dua route webhook (midtrans/tripay)                                          | Aktif  | `src/app/api/webhooks/payment/*`                                          |
 
 Batasan: transisi `refund`/`failed`/`cancelled` masih backlog; `usage_per_customer` voucher
 tidak di-enforce.

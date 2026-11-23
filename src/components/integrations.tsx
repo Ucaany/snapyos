@@ -28,7 +28,7 @@ export function Integrations() {
               Hubungkan gateway Anda sendiri
             </h2>
             <p className="text-sm text-muted-foreground md:text-base">
-              Pakai kredensial Pakasir, Midtrans, atau Tripay milik Anda. Uang kiosk masuk langsung
+              Pakai kredensial Tripay atau Midtrans milik Anda. Uang kiosk masuk langsung
               ke rekening bisnis Anda, bukan lewat rekening SnapyOS. Tersedia di paket Growth ke
               atas.
             </p>
@@ -87,7 +87,7 @@ function IntegrationCard({ row, col, logo }: TileData) {
 // Gateways yang didukung kiosk SnapyOS (docs/06-checkout-payment.md).
 const tiles: TileData[] = [
   // Row 0
-  { row: 0, col: 1, logo: { src: "/payment-logos/pakasir.png", alt: "Pakasir" } },
+  { row: 0, col: 1, logo: { src: "/payment-logos/tripay.png", alt: "Tripay" } },
   { row: 0, col: 3, logo: { src: "/payment-logos/midtrans.svg", alt: "Midtrans" } },
 
   // Row 1
@@ -96,8 +96,8 @@ const tiles: TileData[] = [
   { row: 1, col: 4 },
 
   // Row 2
-  { row: 2, col: 1 },
-  { row: 2, col: 3, logo: { src: "/payment-logos/pakasir.png", alt: "Pakasir" } },
+  { row: 2, col: 1, logo: { src: "/payment-logos/midtrans.svg", alt: "Midtrans" } },
+  { row: 2, col: 3, logo: { src: "/payment-logos/tripay.png", alt: "Tripay" } },
 
   // Row 3
   { row: 3, col: 0 },
@@ -106,5 +106,5 @@ const tiles: TileData[] = [
 
   // Row 4
   { row: 4, col: 1, logo: { src: "/payment-logos/tripay.png", alt: "Tripay" } },
-  { row: 4, col: 3 },
+  { row: 4, col: 3, logo: { src: "/payment-logos/midtrans.svg", alt: "Midtrans" } },
 ];

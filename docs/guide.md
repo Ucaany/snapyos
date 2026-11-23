@@ -150,11 +150,11 @@ Package -> Checkout -> Voucher atau Payment -> PAID -> Template -> Capture -> Ed
 
 Metode yang tersedia:
 
-1. Direct merchant gateway: Pakasir, Midtrans, atau Tripay dengan credential business.
+1. Direct merchant gateway: Tripay atau Midtrans dengan credential business.
 2. Voucher 100 persen: menghasilkan paid sintetis setelah validasi server.
 3. Offline cash: pending sampai operator terautentikasi mengonfirmasi.
 
-Pakasir platform hanya dipakai untuk invoice subscription SnapyOS. Dana kiosk tidak masuk saldo aggregator SnapyOS. Flow withdrawal kiosk sudah dihapus.
+Invoice subscription platform dibayar via Tripay memakai credential platform di env `TRIPAY_*`. Dana kiosk tidak masuk saldo platform. Flow withdrawal kiosk sudah dihapus.
 
 ### Payment safety
 

@@ -16,7 +16,7 @@
  *     action out-of-band (extended period, attached add-on via existing
  *     admin UI) and is closing the ticket. This writes an audit row and
  *     flips the failure row to `activated`.
- *   - `markRefunded(failureId, ...)` — the admin issued a Pakasir refund
+ *   - `markRefunded(failureId, ...)` — the admin issued a Tripay refund
  *     (out-of-band, no API in scope yet) and is closing the ticket.
  *   - `dismiss(failureId, ...)` — false alarm / duplicate / superseded.
  *
@@ -294,7 +294,7 @@ export async function activateManually(input: unknown) {
 /**
  * Admin issued a refund out-of-band. Marks the queue row `refunded`.
  * NOTE: this does not touch the payment / invoice rows — the refund
- * itself is a Pakasir dashboard action. The invoice keeps status='paid'
+ * itself is a Tripay dashboard action. The invoice keeps status='paid'
  * as historical fact; a follow-up adjustment (credit note / reversal)
  * is out of scope for this queue.
  */

@@ -50,7 +50,7 @@ export type PaymentRow = {
   qr_string: string | null;
   expires_at: string | null;
   credential_id: string | null; // Direct Merchant credential (0027); null = aggregator
-  provider_ref: string | null; // Pakasir v2 txn_id (status lookup)
+  provider_ref: string | null; // reference provider (status lookup)
 };
 
 export type DeviceCtx = {

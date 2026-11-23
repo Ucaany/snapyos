@@ -110,7 +110,16 @@ export function createTripayGateway(credential: GatewayCredential): PaymentGatew
       if (responseMerchantRef !== input.orderId) {
         throw new Error("Respons Tripay tidak cocok dengan order server.");
       }
-      const totalAmount = data.amount === undefined ? input.amount : Number(data.amount);
+      const baseAmount = data.amount === undefined ? input.amount : Number(data.amount);
+      if (!Number.isInteger(baseAmount) || baseAmount !== input.amount) {
+        throw new Error("Nominal dasar Tripay tidak cocok dengan order server.");
+      }
+      // Tripay bisa menambahkan fee customer di atas nominal dasar. Prioritaskan
+      // `total_amount` bila ada; selain itu `amount + fee_customer`.
+      const feeCustomer = Number(data.fee_customer ?? 0);
+      const totalRaw =
+        data.total_amount ?? baseAmount + (Number.isFinite(feeCustomer) ? feeCustomer : 0);
+      const totalAmount = Number(totalRaw);
       if (!Number.isInteger(totalAmount) || totalAmount < input.amount) {
         throw new Error("Nominal total Tripay tidak valid.");
       }

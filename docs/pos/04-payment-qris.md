@@ -2,7 +2,7 @@
 
 > Status: **DIBATALKAN — 2026-08-27.**
 > Arahan owner: pembayaran POS = **offline saja** (cash/bank_transfer/other), "tidak ada kaitannya dengan pembayaran yang ada, tidak bentrok".
-> Seluruh isi dokumen v1 (integrasi Pakasir, `payments`, webhook branch, polling, `creditBalance`, `settlement-recovery`) **tidak berlaku** dan tidak boleh dieksekusi.
+> Seluruh isi dokumen v1 (integrasi gateway online, `payments`, webhook branch, polling, `creditBalance`, `settlement-recovery`) **tidak berlaku** dan tidak boleh dieksekusi.
 
 ---
 
@@ -10,7 +10,7 @@
 
 - Pembayaran POS offline diimplement di **Phase 3** (`payPosOrderManually` — lihat `docs/pos/03-pos-core.md` §4).
 - Keputusan dibekukan sebagai **A2/A3** di `docs/pos/01-architecture.md` REVISI v2:
-  - Tidak ada integrasi `payments` / `payment_webhooks` / Pakasir / polling / `creditBalance` untuk POS.
+  - Tidak ada integrasi `payments` / `payment_webhooks` / gateway online / polling / `creditBalance` untuk POS.
   - Semua payment POS → insert `transactions` (reporting only, tanpa kredit saldo).
 - Bila suatu saat pembayaran online POS dibutuhkan: buka dokumen spesifikasi baru — **jangan menghidupkan dokumen ini**.
 

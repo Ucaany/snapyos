@@ -2,7 +2,7 @@
 
 > **Status implementasi per audit 2026-08-30:** endpoint yang dijanjikan tapi belum ada ditandai **[BELUM DIIMPLEMENTASI]**; endpoint yang ada di kode tapi belum terdokumentasi tercantum di §8.20. POS add-on TIDAK punya REST — dijalankan via server actions (`src/server/pos-actions.ts`) + RPC `pos_decrement_stock` (lihat `docs/pos/`).
 >
-> **UPDATE:** owner CRUD REST telah dihapus. Owner dashboard memakai server actions eksklusif (`src/server/*`). Route REST aktif dipakai untuk device, activation, customer detail, report, public kiosk, webhook, dan admin. Payment kiosk memakai direct merchant credential business, voucher, atau offline cash. Pakasir platform hanya menangani invoice subscription SnapyOS.
+> **UPDATE:** owner CRUD REST telah dihapus. Owner dashboard memakai server actions eksklusif (`src/server/*`). Route REST aktif dipakai untuk device, activation, customer detail, report, public kiosk, webhook, dan admin. Payment kiosk memakai direct merchant credential business, voucher, atau offline cash. Tripay platform hanya menangani invoice subscription SnapyOS.
 
 ## 8.1 Konvensi
 
@@ -10,7 +10,7 @@
 - Format: JSON. Uang integer IDR.
 - Auth (owner/admin): header `Authorization: Bearer <token>` (JWT dari Auth.js) atau session cookie. MVP: session cookie dari Auth.js; API dibaca server-to-server/route handlers yang memakai sesi.
 - Public (customer app): `POST/GET /api/v1/public/:businessSlug/...` tanpa login.
-- Webhook: `POST /api/webhooks/payment/{pakasir,midtrans,tripay}`.
+- Webhook: `POST /api/webhooks/payment/{midtrans,tripay}`.
 
 ## 8.2 Response Envelope
 
@@ -86,7 +86,7 @@ Error:
 
 Template builder & marketplace didokumentasikan di §8.7a.
 
-> **REST REMOVED (Fase 5); UI RESTORED via server actions (2026-09-18):** `/api/v1/business/:businessId/payment-credentials/**` tidak kembali sebagai REST. UI `/dashboard/settings/payment` aktif kembali dengan model **direct merchant sebagai jalan utama** (credential Pakasir/Midtrans/Tripay owner; aggregator Pakasir platform dihapus dari alur kiosk; tanpa credential aktif kiosk = voucher + tunai). Wiring: `src/server/payment-credential-actions.ts` (server actions) → `src/server/payment-credentials.ts` → `src/server/payment/providers/*`; webhook `/api/webhooks/payment/{midtrans,tripay,pakasir}` aktif. Kontrak legacy di bawah tidak lagi ada sebagai REST.
+> **REST REMOVED (Fase 5); UI RESTORED via server actions (2026-09-18):** `/api/v1/business/:businessId/payment-credentials/**` tidak kembali sebagai REST. UI `/dashboard/settings/payment` aktif kembali dengan model **direct merchant sebagai jalan utama** (credential Tripay/Midtrans owner; tanpa credential aktif kiosk = voucher + tunai). Wiring: `src/server/payment-credential-actions.ts` (server actions) → `src/server/payment-credentials.ts` → `src/server/payment/providers/*`; webhook `/api/webhooks/payment/{midtrans,tripay}` aktif. Kontrak legacy di bawah tidak lagi ada sebagai REST.
 
 ## 8.7a Packages / Templates / Stickers
 
@@ -153,7 +153,7 @@ Template builder & marketplace didokumentasikan di §8.7a.
 - `POST /api/v1/public/devices/verify` — `{ device_token }` → status device (boot/reload)
 - `POST /api/v1/public/:businessSlug/checkout` — buat checkout **(v2 pay-first: SEBELUM sesi foto)** (`{ package_id, voucher_code?, device_token }`) → `{ checkout_session_id, final_amount }`. Photobox berasal dari `device_token` terverifikasi; client tidak mengirim `photobox_id`.
 - `POST /api/v1/public/:businessSlug/checkout/apply-voucher` — validasi voucher
-- `POST /api/v1/public/:businessSlug/payments/create`: buat payment ternormalisasi (`{ checkout_session_id, device_token, method_id }`). Reservation `creating` + partial unique index menjamin satu payment aktif per checkout. Metode hanya berasal dari credential aktif owner (Pakasir/Midtrans/Tripay direct merchant; tanpa credential direct tidak ada fallback aggregator; kiosk hanya menawarkan voucher + tunai); response display-only berisi `display`, QR/VA/redirect data, total integer, reference, dan expiry.
+- `POST /api/v1/public/:businessSlug/payments/create`: buat payment ternormalisasi (`{ checkout_session_id, device_token, method_id }`). Reservation `creating` + partial unique index menjamin satu payment aktif per checkout. Metode hanya berasal dari credential aktif owner (Tripay/Midtrans direct merchant; tanpa credential direct kiosk hanya menawarkan voucher + tunai); response display-only berisi `display`, QR/VA/redirect data, total integer, reference, dan expiry.
 - `POST /api/v1/public/:businessSlug/payments/cash-confirm`: konfirmasi tunai lewat API oleh operator terautentikasi dengan membership `transaction:write` (jalur staff di dashboard memakai server action dengan `payment:confirm`); body `{ payment_reference, device_token }`. Customer kiosk tidak dapat self-confirm.
 - `GET /api/v1/public/:businessSlug/payments/:paymentRef/status` — status payment (recover saat reload)
 - `POST /api/v1/public/:businessSlug/sessions` — mulai sesi (**syarat: checkout_session paid**) (`{ checkout_session_id, device_token }`) → `{ session_id, expires_at }`; semua endpoint sesi cek `expires_at` → `SESSION_EXPIRED`. Development-only: ketika `DEV_SKIP_PAYMENT` aktif, server juga menerima `{ package_id, device_token }` untuk checkout paid sintetis; jalur ini tidak aktif di production. Mode offline (`checkout.offline_enabled`) memakai `package_id` yang sama. `client_created_at` opsional (ISO 8601, tidak boleh masa depan, maksimal 24 jam lampau) hanya dipakai jalur `package_id`: sync worker runtime lokal mengirimnya supaya sesi dan transaksi offline tercatat pada waktu jual booth, bukan waktu reconnect.
@@ -163,7 +163,7 @@ Template builder & marketplace didokumentasikan di §8.7a.
 
 ## 8.15 Webhook
 
-- `POST /api/webhooks/payment/pakasir` — aggregator Pakasir, **termasuk invoice subscription**. Auth: header `X-Secret` (timing-safe). Order tenant (punya `credential_id`) WAJIB secret per-credential → tanpa itu **401** (tanpa fallback global, H2). Freshness ±24 jam. Event `paid` wajib server-to-server re-verify (C2).
+- `POST /api/webhooks/payment/tripay` — direct merchant + invoice subscription platform. Raw request body dibaca sebelum JSON parse; header `X-Callback-Signature` diverifikasi HMAC-SHA256 dengan private key credential (atau `TRIPAY_PRIVATE_KEY` platform untuk invoice). JSON wajib memuat `merchant_ref`, `status`, dan `total_amount` (fallback `amount`); lookup hanya `merchant_ref` ke `payments.order_id`/`invoice_payments.order_id`. Event `paid` wajib server-to-server re-verify.
 - `POST /api/webhooks/payment/midtrans` — direct merchant only. JSON wajib memuat `order_id`, `status_code`, `gross_amount`, `signature_key`, `transaction_status`; `fraud_status='accept'` wajib untuk `capture`/`settlement`. Server lookup hanya `payments.order_id`, lalu `payments.credential_id`; SHA512 diverifikasi dengan server key credential terdekripsi.
 - `POST /api/webhooks/payment/tripay`: direct merchant only. Raw request body dibaca sebelum JSON parse; header `X-Callback-Signature` diverifikasi HMAC-SHA256 dengan private key credential terdekripsi. JSON wajib memuat `merchant_ref`, `status`, dan `total_amount` (fallback `amount`); lookup hanya `merchant_ref` ke `payments.order_id`.
 
@@ -209,7 +209,7 @@ Prefix `/api/v1/admin` (role `admin`, guard `requireAdmin()` = role='admin' ATAU
 
 - Auth/login: ketat (misal 5/menit per IP).
 - Public checkout & apply-voucher: moderate (misal 30/menit per IP/session).
-- Webhook: tidak di-limit oleh IP, tapi diverifikasi provider-side, amount/order, serta idempotency. Pakasir tidak menyediakan signature callback; event `paid` wajib server-to-server status check sebelum settlement.
+- Webhook: tidak di-limit oleh IP, tapi diverifikasi provider-side (signature), amount/order, serta idempotency. Event `paid` wajib server-to-server status check sebelum settlement.
 - Backend limiter (`src/lib/rate-limit.ts`, interface async `rateLimit(key, limit, windowMs)`):
   counter **in-memory per proses**. Tidak ada backend shared; di deployment
   multi-instance limit efektif = limit × jumlah instance.

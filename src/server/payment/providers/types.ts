@@ -1,10 +1,10 @@
 /**
  * Payment Gateway abstraction — Phase 1 (electron-kiosk-plan §Phase 1).
- * Multi-provider interface: Midtrans Core API, Tripay Closed, Pakasir.
+ * Multi-provider interface: Midtrans Core API, Tripay Closed.
  * NO "server-only" — used by adapters + unit tests.
  */
 
-export type GatewayProvider = "midtrans" | "tripay" | "pakasir";
+export type GatewayProvider = "midtrans" | "tripay";
 
 export type GatewayStatus = "pending" | "paid" | "expired" | "failed" | "cancelled";
 
@@ -47,9 +47,9 @@ export interface PaymentGateway {
 
   /**
    * Cek status transaksi di gateway.
-   * @param orderId — ID internal; untuk Pakasir v2 ini harus txn_id (lihat providerRef).
-   * @param amount — optional, dibutuhkan Pakasir (API quirk: amount wajib di query).
-   * @param providerRef — Pakasir v2: txn_id dari create (dipakai endpoint transaction-status).
+   * @param orderId — ID internal.
+   * @param amount — optional; diverifikasi adapter bila provider mengembalikan nominal.
+   * @param providerRef — reference provider (Tripay reference) untuk lookup status.
    */
   getStatus(orderId: string, amount?: number, providerRef?: string | null): Promise<GatewayStatus>;
 

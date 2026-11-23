@@ -13,7 +13,7 @@ import { requireAdmin, audit } from "./guard";
 // Types
 // ---------------------------------------------------------------------------
 
-export const GATEWAY_PROVIDERS = ["pakasir", "midtrans", "tripay"] as const;
+export const GATEWAY_PROVIDERS = ["midtrans", "tripay"] as const;
 export type GatewayProviderKey = (typeof GATEWAY_PROVIDERS)[number];
 
 export type AdminGatewayCredentialRow = {
@@ -39,7 +39,6 @@ export type AdminGatewayState = {
 };
 
 const SETTINGS_KEY = {
-  pakasir: "gateway_pakasir_enabled",
   midtrans: "gateway_midtrans_enabled",
   tripay: "gateway_tripay_enabled",
 } as const;
@@ -177,7 +176,7 @@ export async function setGatewayEnabled(provider: string, enabled: boolean) {
     .from("platform_settings")
     .upsert({ key, value: enabled }, { onConflict: "key" });
   if (error) throw new ApiError("INTERNAL", "Gagal mengubah status provider");
-  // Gate dibaca fresh per-checkout (resolveCredential) — tidak perlu invalidasi.
+  // Gate dibaca fresh per-checkout (registry) — tidak perlu invalidasi.
   await audit(admin.id, "admin.gateway.toggle", provider, { enabled });
   return { provider, enabled };
 }

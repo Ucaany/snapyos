@@ -25,7 +25,6 @@ type Props = {
 };
 
 const providerNames: Record<string, string> = {
-  pakasir: "PAKASIR",
   midtrans: "MIDTRANS",
   tripay: "TRIPAY",
 };
@@ -135,32 +134,7 @@ export function PaymentCredentialCard({ credential, webhookUrls, onChanged }: Pr
         </div>
       </dl>
 
-      {credential.provider === "pakasir" ? (
-        <div className="grid gap-2 border-2 border-ink bg-muted p-3">
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Verifikasi pembayaran server-to-server + header X-Secret. Dana QRIS masuk project
-            merchant owner langsung (ditarik via dashboard Pakasir).
-          </p>
-          {credential.webhook_url ? (
-            <>
-              <span className="font-mono text-[10px] uppercase tracking-[0.1em]">
-                Webhook URL: daftarkan di Detail Proyek Pakasir
-              </span>
-              <code className="break-all font-mono text-xs">{credential.webhook_url}</code>
-              <IconButton
-                label="Salin webhook URL"
-                icon={Copy}
-                compact
-                onClick={() => void copyWebhookUrl()}
-              />
-            </>
-          ) : (
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              Webhook nonaktif: {credential.webhook_reason ?? "URL publik belum dikonfigurasi."}
-            </p>
-          )}
-        </div>
-      ) : credential.webhook_url ? (
+      {credential.webhook_url ? (
         <div className="grid gap-2 border-2 border-ink bg-muted p-3">
           <span className="font-mono text-[10px] uppercase tracking-[0.1em]">Webhook URL</span>
           <code className="break-all font-mono text-xs">{credential.webhook_url}</code>

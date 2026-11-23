@@ -1,7 +1,7 @@
 # POS Add-on — Phase 1: Architecture (REVISI v2)
 
 > Status: **SELESAI — dieksekusi 2026-08-28.**
-> Revisi v2 (2026-08-27) mengubah arah desain atas arahan owner: **pembayaran POS = offline-only** (tanpa integrasi `payments`/Pakasir/webhook sama sekali), **digunakan staff per booth** (photobox), tanpa role baru.
+> Revisi v2 (2026-08-27) mengubah arah desain atas arahan owner: **pembayaran POS = offline-only** (tanpa integrasi `payments`/gateway online/webhook sama sekali), **digunakan staff per booth** (photobox), tanpa role baru.
 > Prinsip: additive-only, reuse maksimal, backend = source of truth, uang integer IDR.
 
 ---
@@ -43,7 +43,7 @@ Deviasi dari peta file §4 (fungsional setara):
 | #            | Keputusan                                                                                                                                                                                                                                    | Alasan                                                                                                                                                                                                                    |
 | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | A1           | POS = add-on ber-entitlement via `add_ons` (`code='pos'`, `unit='feature'`) + `subscription_add_ons`                                                                                                                                         | Nol alur billing baru; harga dikustomisasi admin via `/admin/add-ons` existing                                                                                                                                            |
-| **A2 (v2)**  | **POS = offline-only.** Tidak ada integrasi `payments`, `payment_webhooks`, Pakasir, webhook branch, polling, `settlement-recovery`, `creditBalance`. Pembayaran = kasir menerima uang langsung → order paid server-side                     | Arahan owner: "pembayaran offline saja, tidak ada kaitannya dengan pembayaran yang ada, tidak bentrok". Menghilangkan R1, R2, R7 seluruhnya                                                                               |
+| **A2 (v2)**  | **POS = offline-only.** Tidak ada integrasi `payments`, `payment_webhooks`, gateway online, webhook branch, polling, `settlement-recovery`, `creditBalance`. Pembayaran = kasir menerima uang langsung → order paid server-side                     | Arahan owner: "pembayaran offline saja, tidak ada kaitannya dengan pembayaran yang ada, tidak bentrok". Menghilangkan R1, R2, R7 seluruhnya                                                                               |
 | **A3 (v2)**  | Semua payment POS (cash/bank_transfer/other) → insert `transactions` (paid) **tanpa** `creditBalance`                                                                                                                                        | Konsisten kebijakan migration 0016 (saldo hanya dari QRIS kiosk); kini berlaku ke SEMUA POS karena tak ada QRIS POS                                                                                                       |
 | A4           | `transactions` = tetap satu-satunya source of truth reporting; POS insert row paid dengan `pos_order_id` + `cashier_user_id`                                                                                                                 | Semua report existing otomatis menghitung POS                                                                                                                                                                             |
 | A5           | Terminal POS = route path-based `/pos/*` (route group `(pos)`), active business via cookie `snapyos_active_business`                                                                                                                         | Nol perubahan auth; konsisten pola dashboard; subdomain tetap non-goal                                                                                                                                                    |
@@ -222,7 +222,7 @@ Detail DDL penuh di `docs/pos/02-database-subscription.md`. Ringkas:
 
 ## 9. Keputusan YANG DITOLAK (non-goals v1)
 
-- ❌ **Pembayaran QRIS/online POS apa pun** — tanpa integrasi `payments`/Pakasir/webhook (v2: dibatalkan permanen; bila suatu saat dibutuhkan, buka dokumen baru, jangan revive 04).
+- ❌ **Pembayaran QRIS/online POS apa pun** — tanpa integrasi `payments`/gateway online/webhook (v2: dibatalkan permanen; bila suatu saat dibutuhkan, buka dokumen baru, jangan revive 04).
 - ❌ Role baru `cashier` / per-user permission table.
 - ❌ Katalog/ harga per booth (katalog per business; booth hanya toggle).
 - ❌ Voucher/discount di POS v1 (hook `discount=0` fixed).

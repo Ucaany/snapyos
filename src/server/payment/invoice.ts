@@ -1,7 +1,7 @@
 import "server-only";
 
 /**
- * Pembayaran invoice subscription via QRIS (Pakasir) — docs/02 §2.5, docs/06 §6.3/§6.7.
+ * Pembayaran invoice subscription via QRIS Tripay (platform) — docs/02 §2.5, docs/06 §6.3/§6.7.
  * Owner bayar invoice pending (plan change / add-on) dari halaman Subscription:
  * klik → QR tampil → polling status; webhook tetap source of truth settle.
  * Terpisah dari payments kiosk (checkout_session_id not null) → tabel sendiri.
@@ -15,18 +15,8 @@ import { can } from "@/lib/rbac";
 import { getMembership } from "@/lib/tenant";
 import { computeQrisExpiresAt } from "@/lib/session-timer";
 import { paymentWebhookUrl } from "@/lib/payment-credentials";
-import { buildOrderId } from "@/lib/qris-helpers";
+import { buildOrderId, parseProviderDateTime } from "@/lib/qris-helpers";
 import type { InvoiceQrisResult } from "@/lib/payment-contracts";
-import {
-  isInvoiceAmountValid,
-  isInvoiceSignatureValid,
-  isVerifiedPakasirPayment,
-  isWebhookEventFresh,
-  mapProviderStatus,
-  parseProviderDateTime,
-  requiresPakasirServerVerify,
-  webhookEventId,
-} from "@/server/payment/pakasir-utils";
 import { insertAudit } from "@/server/audit";
 import {
   applyInvoiceIntent,
@@ -99,7 +89,7 @@ async function loadInvoice(businessId: string, invoiceId: string): Promise<Invoi
  * Gateway untuk baris invoice_payments.
  *
  * Invoice langganan adalah tagihan PLATFORM: `credential_id` null berarti
- * charge dibuat di akun aggregator platform. Jangan pernah fallback ke
+ * charge dibuat di akun Tripay platform. Jangan pernah fallback ke
  * credential tenant — kalau fallback, tenant bisa menyelesaikan tagihannya
  * sendiri di akun merchant-nya dan platform tidak menerima dana.
  */
@@ -365,20 +355,19 @@ export async function createInvoiceQris(
     .eq("invoice_id", invoice.id)
     .eq("status", "pending");
 
-  // Invoice langganan = tagihan PLATFORM. Selalu pakai aggregator platform
-  // (env PAKASIR_*), bukan credential merchant tenant: kalau memakai credential
-  // tenant, pembayaran masuk ke akun tenant dan tenant sendiri yang memegang
-  // kunci verifikasi status.
+  // Invoice langganan = tagihan PLATFORM. Selalu pakai gateway platform
+  // (Tripay env TRIPAY_*), bukan credential merchant tenant: kalau memakai
+  // credential tenant, pembayaran masuk ke akun tenant dan tenant sendiri yang
+  // memegang kunci verifikasi status.
   const gateway = resolveGatewayFromCredential(null);
 
-  // Validate callback URL BEFORE reserving a row — direct merchant tanpa
-  // callback terkonfigurasi aman harus gagal tanpa meninggalkan reservasi
-  // `creating` yang memblokir invoice (partial unique index) sampai stale.
-  const callbackUrl =
-    gateway.provider === "pakasir" ? "" : (paymentWebhookUrl(gateway.provider) ?? "");
-  if (gateway.provider !== "pakasir" && !callbackUrl) {
+  // Validate callback URL BEFORE reserving a row — tanpa callback aman,
+  // pembayaran tidak boleh dibuat dan reservasi `creating` tidak boleh tertinggal.
+  const callbackUrl = paymentWebhookUrl(gateway.provider) ?? "";
+  if (!callbackUrl) {
     throw new ApiError("INTERNAL", "URL callback gateway belum dikonfigurasi aman");
   }
+  const returnUrl = new URL(`/dashboard/subscription/invoice/${invoice.id}`, callbackUrl).toString();
 
   const paymentReference = randomUUID().replace(/-/g, "").slice(0, 12);
   const orderId = buildOrderId(paymentReference);
@@ -409,7 +398,7 @@ export async function createInvoiceQris(
       amount: invoice.amount,
       description: `Invoice ${invoice.number}: SnapyOS`,
       callbackUrl,
-      returnUrl: callbackUrl || undefined,
+      returnUrl,
     });
     if (
       created.orderId !== orderId ||
@@ -431,14 +420,17 @@ export async function createInvoiceQris(
     if (Date.parse(expiresAt) <= Date.now()) {
       throw new ApiError("INTERNAL", "Gateway mengirim pembayaran yang sudah kedaluwarsa");
     }
-    const display: KioskPaymentPayload["display"] = created.paymentUrl
-      ? "redirect"
-      : created.vaNumber
-        ? "va"
-        : "qris";
+    // QRIS diprioritaskan bila provider mengirim payload QR (Tripay closed
+    // payment mengirim qr_string + checkout_url sekaligus).
+    const hasQr = Boolean(created.qrString || created.qrImageUrl);
+    const display: KioskPaymentPayload["display"] = hasQr
+      ? "qris"
+      : created.paymentUrl
+        ? "redirect"
+        : "va";
     const payload: KioskPaymentPayload = {
       display,
-      method: created.vaNumber ? "va" : created.paymentUrl ? "redirect" : "qris",
+      method: hasQr ? "qris" : created.vaNumber ? "va" : "redirect",
       qrString: created.qrString,
       qrImageUrl: created.qrImageUrl,
       paymentUrl: created.paymentUrl,
@@ -598,18 +590,6 @@ export async function getInvoicePaymentStatus(
   return { status: payment.status === "paid" ? "paid" : "pending" };
 }
 
-/**
- * Minimum Pakasir webhook fields needed for invoice payment matching.
- */
-export type InvoiceWebhookInput = {
-  order_id: string;
-  status: string;
-  amount?: number | null;
-  total_amount?: number | null;
-  payment_date?: string | null;
-  signature?: string | null;
-};
-
 type InvoiceWebhookResult = {
   ok: boolean;
   reason:
@@ -624,184 +604,6 @@ type InvoiceWebhookResult = {
     | "no_transition";
   retryable?: boolean;
 } | null;
-
-/**
- * Branch webhook untuk pembayaran invoice — dipanggil dari
- * handlePakasirWebhook saat order_id tidak ada
- * di `payments`. Return null bila order_id bukan invoice payment
- * (pemanggil melanjutkan).
- */
-
-export async function handleInvoiceWebhookEvent(
-  event: InvoiceWebhookInput,
-  rawPayload: unknown
-): Promise<InvoiceWebhookResult> {
-  const supabase = createServerClient();
-  const { data: row } = await supabase
-    .from("invoice_payments")
-    .select("*")
-    .eq("order_id", event.order_id)
-    .maybeSingle();
-  const payment = (row ?? null) as unknown as InvoicePaymentRow | null;
-  if (!payment) return null;
-
-  const eventId = webhookEventId(event.order_id, event.status, event.payment_date);
-  // C2 (security): JANGAN short-circuit saat provider_signature null.
-  const signatureValid = isInvoiceSignatureValid(payment.provider_signature, event.signature);
-  const amountValid = isInvoiceAmountValid(event, payment);
-
-  // H2 — freshness: tolak webhook di luar jendela (replay/clock skew).
-  if (!isWebhookEventFresh(event.payment_date, new Date(), parseProviderDateTime)) {
-    await logPaymentWebhook({
-      provider: payment.provider,
-      eventId: `${eventId}:stale`,
-      eventType: event.status,
-      payload: rawPayload,
-      signatureValid,
-      status: "error",
-      paymentId: null,
-      error: "Webhook di luar jendela freshness",
-    });
-    return { ok: false, reason: "stale" };
-  }
-
-  if (!amountValid) {
-    await logPaymentWebhook({
-      provider: payment.provider,
-      eventId,
-      eventType: event.status,
-      payload: rawPayload,
-      signatureValid,
-      status: "error",
-      paymentId: null,
-      error: "total_amount tidak cocok",
-    });
-    return { ok: false, reason: "amount_mismatch" };
-  }
-
-  if (payment.status === "paid") {
-    await logPaymentWebhook({
-      provider: payment.provider,
-      eventId,
-      eventType: event.status,
-      payload: rawPayload,
-      signatureValid: true,
-      status: "ignored",
-      paymentId: null,
-      error: "Sudah paid (duplicate webhook)",
-    });
-    // Recovery: pastikan intent (plan/add-on) benar-benar diterapkan. Panggil
-    // markInvoicePaid (bukan applyInvoiceIntent) karena crash-window bisa
-    // menyisakan payment=paid + invoice=pending — applyInvoiceIntent no-op
-    // pada invoice pending, sedangkan markInvoicePaid flip invoice lalu apply
-    // intent (idempotent penuh).
-    try {
-      await markInvoicePaid(payment);
-    } catch {
-      // Retry webhook berikutnya akan mencoba lagi.
-    }
-    return { ok: true, reason: "already_paid" };
-  }
-
-  const mapped = mapProviderStatus(event.status);
-  if (mapped === "paid") {
-    if (!requiresPakasirServerVerify(payment.provider, signatureValid)) {
-      // Provider non-Pakasir TANPA signature tepercaya → tidak ada jalur
-      // verifikasi lain → tolak (fail-closed).
-      await logPaymentWebhook({
-        provider: payment.provider,
-        eventId,
-        eventType: event.status,
-        payload: rawPayload,
-        signatureValid: false,
-        status: "error",
-        paymentId: null,
-        error: "Signature tidak cocok & provider tanpa verifikasi server-to-server",
-      });
-      return { ok: false, reason: "invalid_signature" };
-    }
-    // C2 + AGENTS.md: SEMUA invoice Pakasir wajib lulus server-to-server
-    // re-verify sebelum transitionToPaid — bukan hanya saat signature null.
-    // Webhook bukan bukti pembayaran. Signature tepercaya (legacy) pun tetap
-    // di-re-verify bila provider = pakasir.
-    const gateway = await resolvePaymentGateway(payment);
-    // M3: getStatus bisa throw (outage) → jangan 500 generik; kembalikan
-    // unverified_status retryable agar route membalas non-2xx (provider retry).
-    let providerStatus: string;
-    try {
-      providerStatus = await gateway.getStatus(
-        payment.order_id,
-        payment.amount,
-        payment.provider_ref
-      );
-    } catch (error) {
-      await logPaymentWebhook({
-        provider: payment.provider,
-        eventId: `${eventId}:unverified_error`,
-        eventType: event.status,
-        payload: rawPayload,
-        signatureValid: false,
-        status: "error",
-        paymentId: null,
-        error: `Verifikasi status provider error: ${error instanceof Error ? error.message : String(error)}`,
-      });
-      return { ok: false, reason: "unverified_status", retryable: true };
-    }
-    if (!isVerifiedPakasirPayment(event.status, providerStatus)) {
-      await logPaymentWebhook({
-        provider: payment.provider,
-        eventId: `${eventId}:unverified`,
-        eventType: event.status,
-        payload: rawPayload,
-        signatureValid: false,
-        status: "error",
-        paymentId: null,
-        error: "Status paid invoice tidak terverifikasi di Pakasir",
-      });
-      return { ok: false, reason: "unverified_status" };
-    }
-  }
-
-  // H3 — klaim `received` sebelum settle; promote `processed` setelah sukses.
-  // Redelivery event yang sebelumnya gagal (`received`/`error`) tidak diblokir;
-  // baris `processed`/`ignored` memblokir (anti double-settle). Menutup celah
-  // crash-window: persist terminal TIDAK lagi mendahului transisi settlement.
-  const claimed = await claimWebhookEvent({
-    provider: payment.provider,
-    eventId,
-    eventType: event.status,
-    payload: rawPayload,
-    signatureValid: true,
-    paymentId: null,
-  });
-  if (claimed === "duplicate") return { ok: true, reason: "duplicate_event" };
-
-  if (mapped === "paid") {
-    const { data } = await supabase
-      .from("invoice_payments")
-      .update({ status: "paid", paid_at: new Date().toISOString() })
-      .eq("id", payment.id)
-      .in("status", ["pending", "expired"])
-      .select("id")
-      .maybeSingle();
-    if (data) {
-      await markInvoicePaid(payment);
-      await promoteWebhookEvent({ eventId, status: "processed", paymentId: null });
-      return { ok: true, reason: "paid" };
-    }
-    return { ok: true, reason: "no_transition" };
-  }
-  if (mapped === "expired") {
-    await supabase
-      .from("invoice_payments")
-      .update({ status: "expired" })
-      .eq("id", payment.id)
-      .eq("status", "pending");
-    await promoteWebhookEvent({ eventId, status: "processed", paymentId: null });
-    return { ok: true, reason: "expired" };
-  }
-  return { ok: true, reason: "no_transition" };
-}
 
 /**
  * Branch webhook direct merchant (Midtrans/Tripay) untuk invoice subscription.

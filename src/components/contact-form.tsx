@@ -102,7 +102,7 @@ export function ContactForm() {
           name="message"
           required
           className="min-h-32"
-          placeholder="Contoh: booth di mal Jakarta, 1 kamera Canon, butuh QRIS Pakasir."
+          placeholder="Contoh: booth di mal Jakarta, 1 kamera Canon, butuh QRIS Tripay."
           aria-invalid={Boolean(fieldErrors.message)}
         />
         <FieldError error={fieldErrors.message} />

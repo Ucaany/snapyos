@@ -422,7 +422,7 @@ Owner mengatur booth mana yang bisa diakses staff; PK `(user_id, photobox_id)`.
 | customer_id             | uuid → customers.id           | nullable                                                                                                                                                                                                                                     |
 | package_id              | uuid → packages.id            | nullable                                                                                                                                                                                                                                     |
 | payment_method          | text                          | `qris`/`cash`/`bank_transfer`/`other`/`offline`/`manual` (`offline` = kiosk offline non-withdrawable 0016; `manual` = pencatatan manual owner non-withdrawable 0033). Enum `gateway` DIHAPUS 0036 — direct-merchant QRIS collapse ke `qris`. |
-| withdrawable            | boolean not null default true | Fase 3 STEP 4 / migrasi 0033. `manual` & `offline` → `false` (tidak masuk saldo penarikan); QRIS Pakasir → `true`. Row lama pra-0033 (`null`-legacy) diperlakukan `true` oleh loader (backward-compat).                                      |
+| withdrawable            | boolean not null default true | Fase 3 STEP 4 / migrasi 0033. `manual` & `offline` → `false` (tidak masuk saldo penarikan); QRIS gateway → `true`. Row lama pra-0033 (`null`-legacy) diperlakukan `true` oleh loader (backward-compat).                                      |
 | gross_amount            | integer                       |                                                                                                                                                                                                                                              |
 | discount_amount         | integer                       | default 0                                                                                                                                                                                                                                    |
 | final_amount            | integer                       |                                                                                                                                                                                                                                              |
@@ -434,7 +434,7 @@ Owner mengatur booth mana yang bisa diakses staff; PK `(user_id, photobox_id)`.
 | paid_at                 | timestamptz                   |                                                                                                                                                                                                                                              |
 | created_at / updated_at | timestamptz                   |                                                                                                                                                                                                                                              |
 
-> **Invarian saldo (Fase 3 → dihapus 0044):** alur saldo/penarikan (`balances`, `balance_ledger`, `withdrawals`, RPC `withdrawable_payments_sum`) **sudah dihapus** oleh migrasi `0044_drop_withdrawal_flow.sql`; tidak ada satu pun objek itu di `db/schema.sql`. Yang tersisa adalah kolom penanda `transactions.withdrawable`: `manual`/`offline` → `false` (dibuat 0033), QRIS Pakasir → `true`. Kolom itu kini **murni reporting** — ditampilkan di `/dashboard/finance` dan `TransactionsView.tsx`, tidak menggerakkan saldo apa pun. Manual/offline tetap tidak meng-insert baris `payments` (`src/server/transactions.ts` createManualTransaction; `src/server/kiosk-sessions.ts` offline insert).
+> **Invarian saldo (Fase 3 → dihapus 0044):** alur saldo/penarikan (`balances`, `balance_ledger`, `withdrawals`, RPC `withdrawable_payments_sum`) **sudah dihapus** oleh migrasi `0044_drop_withdrawal_flow.sql`; tidak ada satu pun objek itu di `db/schema.sql`. Yang tersisa adalah kolom penanda `transactions.withdrawable`: `manual`/`offline` → `false` (dibuat 0033), QRIS gateway → `true`. Kolom itu kini **murni reporting** — ditampilkan di `/dashboard/finance` dan `TransactionsView.tsx`, tidak menggerakkan saldo apa pun. Manual/offline tetap tidak meng-insert baris `payments` (`src/server/transactions.ts` createManualTransaction; `src/server/kiosk-sessions.ts` offline insert).
 
 ### payments
 
@@ -453,8 +453,8 @@ Owner mengatur booth mana yang bisa diakses staff; PK `(user_id, photobox_id)`.
 | order_id                             | text unique                   | ID dikirim ke provider                                                                                                                    |
 | amount_uniq                          | integer                       | kode unik dari provider (informasional; gate amount memakai `final_amount`/`total_amount`)                                                |
 | total_amount                         | integer                       | nominal dibayar pembeli (final + uniq)                                                                                                    |
-| provider_signature                   | text                          | signature dari create provider (dipakai `invoice_payments`; jalur kiosk tidak memakainya, Pakasir tanpa signature)                        |
-| provider                             | text                          | `pakasir`/`midtrans`/`tripay`                                                                                                             |
+| provider_signature                   | text                          | signature dari create provider (dipakai `invoice_payments`)                                                                                |
+| provider                             | text                          | `midtrans`/`tripay`                                                                                                                        |
 | payment_reference                    | text                          | unique ref dari provider                                                                                                                  |
 | status                               | text                          | `creating`/`pending`/`paid`/`failed`/`expired`/`cancelled`/`refunded`; `creating` adalah reservation singkat sebelum QR provider dibuat   |
 | qr_string                            | text                          | nullable (url/base64 QR)                                                                                                                  |
@@ -474,7 +474,7 @@ Owner mengatur booth mana yang bisa diakses staff; PK `(user_id, photobox_id)`.
 | event_id        | text unique        | idempotency key                                                                                                                                                                                 |
 | event_type      | text               |                                                                                                                                                                                                 |
 | payload         | jsonb              | payload diagnostik ter-redaksi; field secret tidak dipersist plaintext                                                                                                                          |
-| signature_valid | boolean            | `true`/`false` = provider bersignature (Midtrans/Tripay); `null` = provider tanpa signature (Pakasir)                                                                                           |
+| signature_valid | boolean            | `true`/`false` = provider bersignature (Midtrans/Tripay); `null` = event lama tanpa provider                                                                                                    |
 | status          | text               | `received`/`processed`/`ignored`/`error` (H3: `received` non-authoritative sebelum verify, dipromosikan `processed` setelah settle (migrasi 0066); default kolom `received` sejak migrasi 0070) |
 | payment_id      | uuid → payments.id | nullable                                                                                                                                                                                        |
 | error           | text               | nullable                                                                                                                                                                                        |
@@ -504,7 +504,7 @@ Kredensial payment gateway per business. Owner memasukkan merchant_id + server_k
 | -------------------- | -------------------- | ------------------------------------------------------------------ |
 | id                   | uuid PK              |                                                                    |
 | business_id          | uuid → businesses.id | on delete cascade                                                  |
-| provider             | text                 | `midtrans`/`tripay`/`pakasir`                                      |
+| provider             | text                 | `midtrans`/`tripay`                                                |
 | label                | text                 | nullable — nama tampilan ("Midtrans Prod")                         |
 | merchant_id          | text                 | merchant/client ID dari gateway                                    |
 | server_key_encrypted | text                 | AES-256-GCM encrypted server key                                   |
@@ -599,7 +599,7 @@ RPC `pos_complete_payment(p_order_id, p_business, p_method, p_cashier, p_tx_numb
 
 ### invoice_payments (0011 — pembayaran invoice subscription via QRIS)
 
-Terpisah dari `payments` (checkout kiosk); webhook Pakasir bercabang saat `order_id` bukan payment.
+Terpisah dari `payments` (checkout kiosk); webhook Tripay bercabang saat `order_id` bukan payment.
 
 | kolom                   | tipe                 | ket                         |
 | ----------------------- | -------------------- | --------------------------- |
@@ -607,10 +607,10 @@ Terpisah dari `payments` (checkout kiosk); webhook Pakasir bercabang saat `order
 | business_id             | uuid → businesses.id |                             |
 | invoice_id              | uuid → invoices.id   | on delete cascade           |
 | amount / total_amount   | integer              | nominal + nominal+kode unik |
-| order_id                | text unique          | ID ke Pakasir               |
+| order_id                | text unique          | ID ke Tripay                |
 | payment_reference       | text unique          |                             |
 | provider_signature      | text                 | validasi webhook            |
-| provider                | text                 | default `pakasir`           |
+| provider                | text                 | `midtrans`/`tripay`         |
 | status                  | text                 | `pending`/`paid`/`expired`  |
 | qr_string               | text                 | nullable                    |
 | expires_at / paid_at    | timestamptz          | nullable                    |

@@ -610,7 +610,7 @@ Contoh: `GRANDOPENING` → Usage 48, Total Discount Rp420.000, Revenue Generated
 
 - **Mulai Cepat (Quick Start):** langkah register → buat business → outlet → photobox → package → template → voucher → launch.
 - **Panduan per modul:** Dashboard, Photobox, Outlet, Template (upload & custom), Package, Voucher, Transaksi, Finance/Saldo & Penarikan, Staff, Subscription.
-- **Panduan Pembayaran QRIS (Pakasir):** cara aktifkan payment, memahami `total_amount` (kode unik), status pembayaran, penarikan dana.
+- **Panduan Pembayaran QRIS (Tripay):** cara aktifkan payment, memahami `total_amount` (termasuk admin fee), status pembayaran, dan pencairan dana merchant.
 - **FAQ:** pertanyaan umum (cara ganti warna brand, cara buat voucher, kapan saldo bisa ditarik, dst).
 - **Troubleshooting:** kamera tidak muncul, QRIS tidak tampil, webhook, download foto.
 - **Kontak support:** WhatsApp/email.

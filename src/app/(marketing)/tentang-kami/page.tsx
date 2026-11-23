@@ -27,7 +27,7 @@ const FOKUS = [
   {
     no: "03",
     title: "Dana ke merchant owner",
-    desc: "QRIS masuk langsung ke rekening merchant owner via kredensial Pakasir, Midtrans, atau Tripay.",
+    desc: "QRIS masuk langsung ke rekening merchant owner via kredensial Tripay atau Midtrans.",
   },
 ];
 

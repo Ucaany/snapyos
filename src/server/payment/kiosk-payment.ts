@@ -7,10 +7,10 @@ import { PAYMENT_METHODS, type PaymentMethodCode } from "../../lib/payment-crede
 import type { KioskPaymentDisplay, KioskPaymentMethod } from "@/lib/kiosk-types";
 
 export type { KioskPaymentDisplay, KioskPaymentKind, KioskPaymentMethod } from "@/lib/kiosk-types";
-type KioskGatewayProvider = "midtrans" | "tripay" | "pakasir";
+type KioskGatewayProvider = "midtrans" | "tripay";
 
 type DirectCredential = {
-  provider: "midtrans" | "tripay" | "pakasir";
+  provider: "midtrans" | "tripay";
   enabledMethods: readonly string[];
 };
 
@@ -44,14 +44,12 @@ const METHOD_DISPLAY: { [P in KioskGatewayProvider]: DisplayTable<P> } = {
     ALFAMART: "redirect",
     INDOMARET: "redirect",
   },
-  pakasir: { qris: "qris" },
 };
 
 /** Peta `METHOD.toUpperCase()` → ejaan kanonik `PAYMENT_METHODS` per provider. */
 const METHOD_LOOKUP: Record<KioskGatewayProvider, Map<string, string>> = {
   midtrans: new Map(PAYMENT_METHODS.midtrans.map((method) => [method.toUpperCase(), method])),
   tripay: new Map(PAYMENT_METHODS.tripay.map((method) => [method.toUpperCase(), method])),
-  pakasir: new Map(PAYMENT_METHODS.pakasir.map((method) => [method.toUpperCase(), method])),
 };
 
 /**
@@ -90,7 +88,7 @@ export function paymentDisplay(
 function paymentLabel(provider: KioskGatewayProvider, method: string): string {
   const canonical = normalizePaymentMethod(provider, method);
   if (canonical === "qris" || canonical === "QRIS") {
-    return provider === "pakasir" ? "QRIS PAKASIR" : "QRIS";
+    return "QRIS";
   }
   return canonical.toUpperCase();
 }

@@ -29,7 +29,7 @@ const uuid = z.string().guid();
 // Schema CRUD credential ada di Phase 2; cukup konstanta di sini.
 // ---------------------------------------------------------------------------
 
-export const PAYMENT_PROVIDER_CODES = ["midtrans", "tripay", "pakasir"] as const;
+export const PAYMENT_PROVIDER_CODES = ["midtrans", "tripay"] as const;
 export const PAYMENT_ENVIRONMENTS = ["sandbox", "production"] as const;
 
 const paymentMethodCodes = z
@@ -45,7 +45,6 @@ const paymentCredentialBaseSchema = z.object({
   is_active: z.boolean().optional(),
   enabled_methods: paymentMethodCodes.optional(),
   private_key: z.string().trim().min(1).max(4000).optional(),
-  webhook_secret: z.string().trim().min(1).max(4000).optional(),
 });
 
 export const paymentCredentialCreateSchema = paymentCredentialBaseSchema
@@ -56,13 +55,6 @@ export const paymentCredentialCreateSchema = paymentCredentialBaseSchema
         code: "custom",
         path: ["private_key"],
         message: "Private key Tripay wajib diisi",
-      });
-    }
-    if (value.provider === "pakasir" && !value.webhook_secret) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["webhook_secret"],
-        message: "Webhook secret Pakasir wajib diisi",
       });
     }
   });
@@ -1701,7 +1693,7 @@ export const adminSubscriptionUpdateSchema = z
 export const adminPaymentQuerySchema = stripEmptyStrings(
   z.object({
     status: z.enum(["paid", "pending", "failed", "expired", "cancelled", "refunded"]).optional(),
-    provider: z.enum(["pakasir", "midtrans", "tripay"]).optional(),
+    provider: z.enum(["midtrans", "tripay"]).optional(),
     from: isoDate.optional(),
     to: isoDate.optional(),
     page: z.coerce.number().int().min(1).optional(),
@@ -1726,7 +1718,6 @@ export const adminSettingsUpdateSchema = z
     trial_days: z.number().int().min(0).max(365).optional(),
     maintenance_mode: z.boolean().optional(),
     maintenance_message: z.string().trim().max(300, "Pesan maksimal 300 karakter").optional(),
-    gateway_pakasir_enabled: z.boolean().optional(),
     gateway_midtrans_enabled: z.boolean().optional(),
     gateway_tripay_enabled: z.boolean().optional(),
   })

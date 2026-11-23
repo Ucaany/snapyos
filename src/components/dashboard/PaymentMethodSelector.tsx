@@ -11,7 +11,6 @@ type Props = {
 };
 
 const providerHints: Record<GatewayProvider, string> = {
-  pakasir: "QRIS hanya (project merchant personal).",
   midtrans: "QRIS, e-wallet redirect, dan Virtual Account bank transfer.",
   tripay: "QRIS, gerai retail, dan Virtual Account (closed payment).",
 };

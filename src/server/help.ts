@@ -213,7 +213,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
           "Pairing memakai kode sekali pakai kedaluwarsa sekitar 5 menit. Server menerbitkan device token persisten sampai di revoke. Setup wizard (grant kamera, pilih kamera, cek resolusi, print test) berjalan sekali dan tersembunyi dari customer.",
         ],
         steps: [
-          "Buka Settings Payment, tambah credential Pakasir, Midtrans, atau Tripay milik Anda.",
+          "Buka Settings Payment, tambah credential Tripay atau Midtrans milik Anda.",
           "Tekan Test, lalu aktifkan toggle is active.",
           "Di detail photobox tekan Tampilkan Kode atau QR.",
           "Di device kiosk buka URL /p/[slug-business]/[slug-photobox], masukkan kode atau scan QR.",
@@ -925,7 +925,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         heading: "Ringkasan",
         paragraphs: [
           "Role business: owner akses penuh, manager hampir semua kecuali staff write dan billing, staff read only operasional. Permission dicek server side dengan fungsi can. Sembunyikan menu hanya UX, bukan pengaman.",
-          "POS adalah add on ber entitlement per booth dengan flag photoboxes pos enabled. Pembayaran POS offline only: cash, bank transfer, atau other. Tanpa integrasi payments, Pakasir, webhook, atau creditBalance.",
+          "POS adalah add on ber entitlement per booth dengan flag photoboxes pos enabled. Pembayaran POS offline only: cash, bank transfer, atau other. Tanpa integrasi payments, webhook provider, atau creditBalance.",
         ],
       },
       {
@@ -1160,15 +1160,15 @@ export const HELP_ARTICLES: HelpArticle[] = [
       {
         heading: "Ringkasan",
         paragraphs: [
-          "Kiosk mendukung QRIS via gateway merchant owner: Pakasir, Midtrans, atau Tripay. Dana masuk langsung ke rekening owner, bukan ke perantara. Kiosk menampilkan metode dari credential direct aktif: QRIS, VA, dan metode redirect yang didukung adapter.",
+          "Kiosk mendukung QRIS via gateway merchant owner: Tripay atau Midtrans. Dana masuk langsung ke rekening owner, bukan ke perantara. Kiosk menampilkan metode dari credential direct aktif: QRIS, VA, dan metode redirect yang didukung adapter.",
           "Bila booth belum mengaktifkan credential gateway, kiosk hanya menawarkan voucher dan tunai. Ini normal dan bukan error. Semua nominal Rupiah integer. Backend menghitung ulang total, frontend tidak pernah dipercaya untuk harga.",
         ],
       },
       {
         heading: "Bayar dengan QRIS",
         paragraphs: [
-          "Setelah tekan Bayar dengan QRIS, backend membuat transaksi provider lalu menampilkan QR beserta total yang harus dibayar. Untuk Pakasir v2: POST create transaction dengan header X Api Key, response berisi order id, txn id, amount, total payment (amount plus fee), qr string, dan expired at. Tampilkan total payment ke pembeli, bukan nominal dasar.",
-          "Verifikasi memakai webhook plus polling. Webhook Pakasir memakai header X Secret lalu status server to server sebelum paid. Kiosk polling tiap 3 detik. Satu booth hanya punya satu QR hidup: checkout baru menghanguskan checkout open plus payment creating atau pending sebelumnya. Payment pending yang masih hidup dicek dulu ke provider: bila ternyata sudah dibayar maka transisi paid, bukan di void. QR yang sudah di void tapi tetap dibayar tetap diakui paid bila amount valid.",
+          "Setelah tekan Bayar dengan QRIS, backend membuat transaksi provider lalu menampilkan QR beserta total yang harus dibayar. Tripay closed payment mengembalikan merchant ref, reference, amount, qr string, checkout URL, dan expired time. Tampilkan total yang harus dibayar ke pembeli.",
+          "Verifikasi memakai webhook plus polling. Webhook Tripay memakai signature HMAC SHA256 dari raw body dengan private key, lalu status diverifikasi server to server sebelum paid. Kiosk polling tiap 3 detik. Satu booth hanya punya satu QR hidup: checkout baru menghanguskan checkout open plus payment creating atau pending sebelumnya. Payment pending yang masih hidup dicek dulu ke provider: bila ternyata sudah dibayar maka transisi paid, bukan di void. QR yang sudah di void tapi tetap dibayar tetap diakui paid bila amount valid.",
         ],
         steps: [
           "Tekan Bayar dengan QRIS.",
@@ -1180,11 +1180,6 @@ export const HELP_ARTICLES: HelpArticle[] = [
         table: {
           head: ["Provider", "Metode kiosk", "Verifikasi webhook"],
           rows: [
-            [
-              "Pakasir",
-              "QRIS dinamis plus kode unik",
-              "Header X Secret plus status server to server",
-            ],
             [
               "Midtrans",
               "QRIS, GoPay, ShopeePay, VA",
@@ -1260,32 +1255,31 @@ export const HELP_ARTICLES: HelpArticle[] = [
     audience: "Owner",
     estimate: "10 menit",
     prerequisites: [
-      "Akun merchant Pakasir, Midtrans, atau Tripay.",
+      "Akun merchant Tripay atau Midtrans.",
       "Server key dan merchant id siap disalin.",
     ],
     sections: [
       {
         heading: "Ringkasan",
         paragraphs: [
-          "Model dana direct merchant: customer membayar ke project merchant owner. Aggregator platform untuk kiosk dihapus: tanpa credential aktif, kiosk hanya voucher dan tunai. Env Pakasir hanya untuk invoice subscription platform.",
-          "Credential disimpan di tabel payment credentials per business, bukan env. Server key dienkripsi AES 256 GCM di app layer. Webhook aktif untuk Pakasir, Midtrans, Tripay dengan verifikasi secret atau signature lalu status server to server sebelum settlement. Lookup webhook hanya memakai order id atau merchant ref terhadap payments order id: business, provider, credential, dan payment id dari webhook tidak dipercaya.",
+          "Model dana direct merchant: customer membayar ke project merchant owner. Aggregator platform untuk kiosk dihapus: tanpa credential aktif, kiosk hanya voucher dan tunai. Invoice subscription platform dibayar via Tripay memakai credential platform di env TRIPAY_*.",
+          "Credential disimpan di tabel payment credentials per business, bukan env. Server key dienkripsi AES 256 GCM di app layer. Webhook aktif untuk Midtrans dan Tripay dengan verifikasi signature lalu status server to server sebelum settlement. Lookup webhook hanya memakai order id atau merchant ref terhadap payments order id: business, provider, credential, dan payment id dari webhook tidak dipercaya.",
         ],
       },
       {
         heading: "Tambah credential",
         paragraphs: [
-          "Unique per business, provider, dan environment. Kiosk memilih provider dari credential aktif terbaru per provider plus environment. Direct merchant memakai transitionPaymentToPaid dan runPaidSideEffects: transaction payment method gateway, tanpa creditBalance, platform fee menjadi receivable idempotent. Credential null tetap aggregator mode Pakasir untuk invoice.",
+          "Unique per business, provider, dan environment. Kiosk memilih provider dari credential aktif terbaru per provider plus environment. Direct merchant memakai transitionPaymentToPaid dan runPaidSideEffects: transaction payment method qris, tanpa creditBalance, platform fee menjadi receivable idempotent. Invoice subscription memakai gateway platform Tripay, bukan credential tenant.",
         ],
         steps: [
           "Buka Settings Payment, tekan Tambah Payment Gateway.",
-          "Pilih provider Pakasir, Midtrans, atau Tripay.",
+          "Pilih provider Tripay atau Midtrans.",
           "Isi label, merchant id, server key, client key bila ada, environment sandbox atau production.",
           "Tekan Test untuk cek koneksi, lalu aktifkan toggle is active.",
         ],
         table: {
           head: ["Provider", "Field wajib", "Webhook route"],
           rows: [
-            ["Pakasir", "merchant id, server key", "POST /api/webhooks/payment/pakasir"],
             [
               "Midtrans",
               "merchant id, server key, client key",
@@ -1316,8 +1310,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
       },
       {
         gejala: "Webhook 401",
-        penyebab: "Secret tidak dikenal (fail closed)",
-        solusi: "Samakan webhook secret di provider dan metadata credential.",
+        penyebab: "Signature tidak valid (fail closed)",
+        solusi: "Samakan private key/signature di provider dan credential.",
       },
       {
         gejala: "Amount mismatch, paid ditolak",
@@ -1581,11 +1575,11 @@ export const HELP_ARTICLES: HelpArticle[] = [
     title: "Owner: Panduan Payment Gateway",
     category: "Pembayaran",
     summary:
-      "Menambah credential Pakasir, Midtrans, atau Tripay langkah demi langkah, mengatur metode, membaca tes koneksi, dan menyiapkan URL webhook.",
+      "Menambah credential Tripay atau Midtrans langkah demi langkah, mengatur metode, membaca tes koneksi, dan menyiapkan URL webhook.",
     audience: "Owner",
     estimate: "12 menit",
     prerequisites: [
-      "Akun merchant Pakasir, Midtrans, atau Tripay milik Anda sendiri.",
+      "Akun merchant Tripay atau Midtrans milik Anda sendiri.",
       "Akses dashboard owner sebagai owner; manager dan staff tidak bisa mengelola gateway.",
     ],
     sections: [
@@ -1604,7 +1598,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         steps: [
           "Buka Settings lalu Payment.",
           "Tekan Tambah Payment Gateway.",
-          "Pilih provider: Pakasir, Midtrans, atau Tripay.",
+          "Pilih provider: Tripay atau Midtrans.",
           "Pilih environment Sandbox untuk uji coba, Production untuk menerima uang nyata.",
           "Isi label, merchant, dan kunci rahasia sesuai provider.",
           "Pilih minimal satu metode pembayaran.",
@@ -1613,7 +1607,6 @@ export const HELP_ARTICLES: HelpArticle[] = [
         table: {
           head: ["Provider", "Field wajib saat membuat", "Metode yang tersedia"],
           rows: [
-            ["Pakasir", "Project Slug, API Key, Webhook Secret", "QRIS"],
             [
               "Midtrans",
               "Merchant ID, Server Key, Client Key",
@@ -1640,7 +1633,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       {
         heading: "Tes koneksi",
         paragraphs: [
-          "Tombol tes memanggil provider memakai credential yang tersimpan. Untuk Midtrans, tes membuat transaksi uji lalu membatalkannya, jadi hanya tersedia untuk sandbox. Pakasir dan Tripay hanya membaca status, jadi aman diuji di environment mana pun.",
+          "Tombol tes memanggil provider memakai credential yang tersimpan. Untuk Midtrans, tes membuat transaksi uji lalu membatalkannya, jadi hanya tersedia untuk sandbox. Tripay hanya membaca status, jadi aman diuji di environment mana pun.",
         ],
         steps: [
           "Simpan credential terlebih dahulu.",
@@ -1661,10 +1654,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
         steps: [
           "Buka kartu credential, lihat bagian Webhook URL.",
           "Bila URL tampil, tekan Salin webhook URL.",
-          "Daftarkan URL itu di dashboard provider: Pakasir di Detail Proyek beserta Webhook Secret, Midtrans di Payment Notification URL, Tripay di Callback URL.",
+          "Daftarkan URL itu di dashboard provider: Midtrans di Payment Notification URL, Tripay di Callback URL.",
           "Bila tulisan Webhook nonaktif muncul, alasan pastinya tertera di sana. Perbaiki alamat publik lebih dulu.",
         ],
-        note: "Untuk Midtrans dan Tripay, kiosk tidak menawarkan metode online selama URL webhook belum aktif. Pakasir tetap bisa karena verifikasinya dilakukan server ke server, bukan lewat URL callback.",
+        note: "Untuk Midtrans dan Tripay, kiosk tidak menawarkan metode online selama URL webhook belum aktif.",
       },
       {
         heading: "Uji dari sisi tamu",
@@ -1751,7 +1744,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       {
         heading: "Pembayaran dan perangkat",
         paragraphs: [
-          "Metode apa yang didukung? QRIS via gateway merchant Anda (Pakasir, Midtrans, Tripay), voucher, dan tunai. Dana masuk langsung ke rekening Anda.",
+          "Metode apa yang didukung? QRIS via gateway merchant Anda (Tripay atau Midtrans), voucher, dan tunai. Dana masuk langsung ke rekening Anda.",
           "Perangkat apa yang kompatibel? Tablet Android/iOS sebagai PWA dengan kamera internal. Cukup buka link kiosk lalu Add to Home Screen.",
         ],
       },

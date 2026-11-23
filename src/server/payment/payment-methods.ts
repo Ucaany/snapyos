@@ -14,13 +14,13 @@ import { hasFeature } from "@/server/feature-gate";
 
 export type KioskCredential = {
   id: string;
-  provider: "midtrans" | "tripay" | "pakasir";
+  provider: "midtrans" | "tripay";
   enabledMethods: string[];
 };
 
 /** Ejaan kanonik saja; metode tak dikenal dibuang (bukan dipaksa jadi qris). */
 function kioskSupported(
-  provider: "midtrans" | "tripay" | "pakasir",
+  provider: "midtrans" | "tripay",
   methods: readonly string[]
 ): string[] {
   return methods.flatMap((method) => {
@@ -39,12 +39,11 @@ export async function listKioskCredentials(businessId: string): Promise<KioskCre
     .eq("business_id", businessId)
     .eq("is_active", true)
     .eq("environment", gatewayEnvironment())
-    .in("provider", ["midtrans", "tripay", "pakasir"]);
+    .in("provider", ["midtrans", "tripay"]);
   return (data ?? []).flatMap((row) => {
-    if (row.provider !== "midtrans" && row.provider !== "tripay" && row.provider !== "pakasir")
-      return [];
-    // Pakasir verifikasi via server-to-server (webhook route aggregator-only); tidak butuh URL tampilan.
-    if (row.provider !== "pakasir" && !paymentWebhookUrl(row.provider)) return [];
+    if (row.provider !== "midtrans" && row.provider !== "tripay") return [];
+    // Semua provider direct merchant butuh URL webhook yang aman.
+    if (!paymentWebhookUrl(row.provider)) return [];
     const raw = (row.metadata as { enabled_methods?: unknown } | null)?.enabled_methods;
     const enabled = Array.isArray(raw)
       ? raw.filter((value): value is string => typeof value === "string")

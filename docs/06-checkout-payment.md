@@ -2,7 +2,7 @@
 
 ## Status Implementasi (audit 2026-08-30)
 
-SESUAI (inti): checkout session + voucher apply + QRIS create/poll/webhook + transitionPaymentToPaid single-winner + side effects idempotent (transaction, voucher usage TOCTOU re-check, result_token, creditBalance fee platform) + settlement recovery + Rp0 synthetic paid + duplicate-QR prevention + rate limit. **Hardening 2026-10-08:** webhook invoice Pakasir fail-closed (wajib server-to-server, C2), secret per-credential (H2), idempotency state-aware `received`→`processed` (H3), freshness ±24 jam.
+SESUAI (inti): checkout session + voucher apply + QRIS create/poll/webhook + transitionPaymentToPaid single-winner + side effects idempotent (transaction, voucher usage TOCTOU re-check, result_token, creditBalance fee platform) + settlement recovery + Rp0 synthetic paid + duplicate-QR prevention + rate limit. **Hardening:** webhook invoice Tripay fail-closed (signature + wajib server-to-server, C2), credential per-business (H2), idempotency state-aware `received`→`processed` (H3).
 
 BELUM / TIDAK SESUAI:
 
@@ -74,71 +74,66 @@ Status indicator
 
 ---
 
-## 6.3 QRIS Checkout (Pakasir)
+## 6.3 QRIS Checkout (Tripay)
 
-Sumber dokumentasi: `https://pakasir.com/p/docs` (API **v2**).
+Sumber: dokumentasi Tripay Closed Payment (`https://tripay.co.id/developer`).
 
-> **API v2 (dipakai kode saat ini).** Dokumen lama semula menuliskan v1
-> (`POST /transactioncreate/qris`, `payment_number`, auth body). Kode sudah
-> migrasi ke v2 — v2 adalah kenyataan yang diacu di bawah.
+**Model dana (direct merchant):** Customer membayar → dana masuk ke **merchant
+owner** (credential per business). Gateway platform (Tripay env `TRIPAY_*`)
+hanya dipakai untuk **invoice subscription SnapyOS**; dana langganan masuk akun
+Tripay platform, bukan akun tenant. Pakasir sudah dihapus total.
 
-**Model dana (direct merchant):** Customer membayar → dana masuk ke **project
-merchant owner** (credential per business). Aggregator platform (dana → akun
-SnapyOS → saldo owner → withdrawal) **dihapus** (docs/README v1.7/v1.8). Flow lama
-`14-settlement-withdrawal.md` historis.
-
-**Flow:** setelah `[ PAY WITH QRIS ]`, backend membuat transaksi QRIS dinamis via
-Pakasir, lalu QR ditampilkan pada halaman checkout.
+**Flow:** setelah `[ PAY WITH QRIS ]`, backend membuat transaksi Tripay closed
+payment, lalu QR ditampilkan pada halaman checkout.
 
 **Autentikasi request:**
 
-- `X-Api-Key` header — API key project Pakasir owner.
-- `project` slug — dipakai sebagai path param, bukan body.
+- Header `Authorization: Bearer {api_key}`.
+- `merchant_code` milik credential business (atau platform untuk invoice).
 
 **Base URL:**
 
-- Produksi & Sandbox: `https://app.pakasir.com` (dikonfigurasi via `PAKASIR_BASE_URL`; default tanpa `/api`).
+- Sandbox: `https://tripay.co.id/api-sandbox`
+- Production: `https://tripay.co.id/api`
 
-**1. Create Transaction — `POST /api/v2/create-transaction/{project}/{order_id}`**
+**1. Create Transaction — `POST /transaction/create`**
 
-Request header: `X-Api-Key`. Body (JSON): `{ "method": "qris", "amount": <integer> }`.
+Body (JSON): `method` (`QRIS`), `merchant_ref` (= `payments.order_id`),
+`amount`, `customer_name`, `customer_email`, `order_items`, `callback_url`,
+`return_url`, `expired_time`, dan `signature` HMAC-SHA256 dari
+`merchant_code + merchant_ref + amount` memakai private key.
 
 Response sukses:
 
-| Field           | Ket                                                                                   |
-| --------------- | ------------------------------------------------------------------------------------- |
-| `order_id`      | sama dengan request                                                                   |
-| `txn_id`        | id transaksi provider — disimpan `payments.provider_ref`, dipakai status endpoint     |
-| `amount`        | nominal diminta                                                                       |
-| `total_payment` | `amount + fee` — **TAMPILKAN ini ke pembeli** (kode menyimpan sebagai `total_amount`) |
-| `qr_string`     | string QRIS mentah — render sebagai QR code di frontend                               |
-| `expired_at`    | waktu kedaluwarsa (ISO)                                                               |
+| Field          | Ket                                                                    |
+| -------------- | ---------------------------------------------------------------------- |
+| `reference`    | id transaksi Tripay — disimpan `payments.provider_ref`                  |
+| `merchant_ref` | harus sama dengan `order_id` server                                    |
+| `amount`       | nominal dasar                                                          |
+| `qr_string`    | string QRIS mentah — render sebagai QR code                            |
+| `qr_url`       | URL gambar QR (bila ada)                                               |
+| `checkout_url` | halaman pembayaran Tripay (fallback redirect)                          |
+| `pay_code`     | nomor VA/kode bayar (bila metode VA/retail)                            |
+| `expired_time` | waktu kedaluwarsa (Unix detik)                                         |
 
-> **PENTING:** Sistem Pakasir menambahkan fee (kode unik) ke nominal. Selalu
-> gunakan `total_payment` dari response sebagai angka yang ditampilkan ke
-> pembeli. Kode menyimpan: `amount` (asli), `amount_uniq` (`total_payment −
-amount`), `total_amount` (= `total_payment`) ke table `payments`.
-
-**2. Check Status — `GET /api/v2/transaction-status/{project}/{txn_id}`** (header
-`X-Api-Key`) → response `status`: `pending` / `completed` / `canceled` (v2,
-kecil; kanonikalisasi toleran terhadap `SUCCESS`/`PAID`/`COMPLETED` legacy).
-`txn_id` diambil dari `payments.provider_ref`; fallback ke `order_id` untuk
-payment legacy in-flight. Endpoint ini dipakai verifikasi server-to-server
-sebagai pengganti validasi signature webhook.
+**2. Check Status — `GET /transaction/detail?reference=...`** (fallback
+`merchant_ref=...`) → response `status`: `UNPAID` / `PAID` / `EXPIRED` /
+`FAILED` / `REFUND`. Endpoint ini dipakai verifikasi server-to-server sebelum
+settlement; signature webhook saja tidak cukup.
 
 **3. History — riwayat transaksi untuk rekonsiliasi** tersedia di dashboard
-Pakasir (proyek owner); tidak ada endpoint history yang dipanggil aplikasi.
+Tripay merchant; aplikasi tidak memanggil endpoint history.
 
-**Webhook — `POST /api/webhooks/payment/pakasir`** (header `X-Secret`):
-verifikasi secret timing-safe terhadap `metadata.webhook_secret_encrypted` per
-credential owner, atau `PAKASIR_WEBHOOK_SECRET` env untuk invoice aggregator.
-Fail-closed: secret tidak dikenal → 401.
+**Webhook — `POST /api/webhooks/payment/tripay`** (header
+`X-Callback-Signature`): HMAC-SHA256 raw body memakai private key credential
+(atau `TRIPAY_PRIVATE_KEY` platform untuk invoice subscription). Fail-closed:
+signature tidak valid → 401.
 
 **Urutan (server-side):**
 
 1. Buat `checkout_session` (package, voucher, business/outlet/photobox).
 2. Hitung final amount backend.
-3. Kiosk memilih `method_id`; `POST /payments/create` memvalidasi metode terhadap credential direct aktif Pakasir/Midtrans/Tripay owner. **Tanpa credential aktif, metode online tidak tersedia** — kiosk hanya menawarkan voucher + tunai (fallback QRIS Pakasir aggregator platform dihapus 2026-09-18; dana transaksi masuk rekening owner, bukan platform).
+3. Kiosk memilih `method_id`; `POST /payments/create` memvalidasi metode terhadap credential direct aktif Tripay/Midtrans owner. **Tanpa credential aktif, metode online tidak tersedia** — kiosk hanya menawarkan voucher + tunai (dana transaksi masuk rekening owner, bukan platform).
 4. Untuk voucher 100%, buat payment paid sintetik. Untuk cash, buat payment `pending` menunggu operator. Untuk gateway, buat transaksi provider dan simpan data tampilan QR/VA/redirect.
 5. Simpan `payment` row dengan status, `order_id`, `payment_reference`, `total_amount`, `expires_at`, dan `credential_id` bila direct merchant. Response hanya berisi data tampilan yang aman untuk kiosk.
 
@@ -155,6 +150,7 @@ Fail-closed: secret tidak dikenal → 401.
 **UI/Components:** method picker, `QRCode` bila gateway memberi QR, VA display/copy, redirect action, voucher input, cash-waiting, `CountdownTimer` (dari `expired_at`), `PaymentStatus`.
 
 ---
+
 
 ## 6.4 Payment Status
 
@@ -216,7 +212,7 @@ QRIS transaction memiliki expiration dari payment gateway.
 2. Generate unique transaction ID
 3. Store payment reference
 4. Receive webhook/callback
-5. Verify authenticity: Pakasir memverifikasi header `X-Secret` (webhook secret v2) lalu status server-to-server via `GET /api/v2/transaction-status/{project}/{txn_id}` (tidak ada signature field — verifikasi via polling status endpoint).
+5. Verify authenticity: Tripay memakai HMAC-SHA256 `X-Callback-Signature` dari raw body + private key; Midtrans memakai SHA512 signature key. Setelah itu status diverifikasi server-to-server (`GET /transaction/detail` Tripay / status Midtrans) sebelum settle.
 6. Verify amount
 7. Verify transaction (reference cocok)
 8. Update payment status
@@ -226,17 +222,20 @@ QRIS transaction memiliki expiration dari payment gateway.
 **Webhook endpoint:**
 
 ```
-POST /api/webhooks/payment/pakasir
+POST /api/webhooks/payment/tripay
+POST /api/webhooks/payment/midtrans
 ```
 
-Webhook harus merespons **HTTP 200 OK** untuk konfirmasi penerimaan callback. Jika tidak, Pakasir mengulang pengiriman.
+Webhook harus merespons **HTTP 200 OK** untuk konfirmasi penerimaan callback. Jika tidak, provider mengulang pengiriman.
 
-**Validasi authenticity (Pakasir v2):** Pakasir **tidak** menggunakan signature field. Autentikasi memakai header `X-Secret` yang dibandingkan **timing-safe** (`timingSafeEqual`, `verifyPakasirWebhookSecret` di `src/server/payment/pakasir-utils.ts`; meniru `src/lib/cron-auth.ts`). Fail-closed: `expected` atau `received` kosong → **false**. Model secret (H2, hardening 2026-10-08):
+**Validasi authenticity (Tripay):** signature `X-Callback-Signature` = HMAC-SHA256 dari **raw body string** memakai private key credential (atau `TRIPAY_PRIVATE_KEY` platform untuk invoice subscription). Fail-closed: signature kosong/tidak valid → **401**. Jangan re-serialize JSON sebelum verifikasi.
 
-- Order **tenant** (payment punya `credential_id` = direct merchant): secret WAJIB dari `metadata.webhook_secret_encrypted` credential business. Credential tanpa secret per-credential → **401** — TIDAK ada fallback ke secret global platform.
-- Order **non-tenant** (aggregator legacy / invoice subscription platform): fallback ke env `PAKASIR_WEBHOOK_SECRET`.
+Model credential:
 
-Setelah itu, backend memverifikasi status transaksi secara server-to-server via `GET /api/v2/transaction-status/{project}/{txn_id}` sebelum memproses payment sebagai paid. `provider_signature` null (Pakasir) **TIDAK** auto-pass — verifikasi server-to-server adalah gate wajib (C2).
+- Order **tenant** (payment punya `credential_id` = direct merchant): verifikasi memakai private key credential business.
+- Order **non-tenant** (invoice subscription platform): verifikasi memakai env `TRIPAY_PRIVATE_KEY` platform. Tidak ada fallback ke credential tenant.
+
+Setelah itu, backend memverifikasi status transaksi secara server-to-server via Tripay (`GET /transaction/detail`) sebelum memproses payment sebagai paid. Signature webhook saja **tidak** cukup.
 
 ### 6.7.1 Aturan amount (`final_amount` vs `total_amount` + admin fee Tripay)
 
@@ -244,50 +243,48 @@ Nominal yang diterima webhook diverifikasi terhadap nilai yang tercatat di
 `payments` (`src/lib/direct-webhook.ts`):
 
 - `final_amount` = nominal yang diminta ke customer (dihitung ulang backend).
-- `total_amount` = `final_amount` + fee provider. Pakasir v2 mengembalikan
-  `total_payment` (`amount + fee`) saat create; **Tripay menambahkan admin fee**
-  ke nominal yang dibayar customer, sehingga `total_amount` callback Tripay
+- `total_amount` = `final_amount` + fee provider. **Tripay menambahkan admin
+  fee** ke nominal yang dibayar customer, sehingga `total_amount` callback
   (`total_amount`) bisa > `amount` yang diminta.
 - **Aturan:** nominal webhook diterima **hanya bila == `final_amount` ATAU
   == `total_amount`** (bila `total_amount` tercatat; jika null, fallback ke
   `final_amount`). Selebihnya, termasuk nominal null pada jalur direct →
   **reject `amount_mismatch`** (fail-closed). Tidak ada penerimaan rentang/ambang.
-- Field yang dibaca berbeda per provider: Midtrans `gross_amount`, Tripay
-  `total_amount` (fallback `amount`), Pakasir `amount`.
-- Settlement tetap di-gate **server-to-server re-verify** (`verifyPakasirPaid` /
-  status provider) — signature + amount body saja tidak cukup.
+- Field yang dibaca: Midtrans `gross_amount`, Tripay `total_amount` (fallback
+  `amount`).
+- Settlement tetap di-gate **server-to-server re-verify** status provider —
+  signature + amount body saja tidak cukup.
 - **Uang selalu integer IDR**; tidak ada perubahan logika uang tanpa keputusan eksplisit.
 
-**Payload callback Pakasir v2 (sample):**
+**Payload callback Tripay (sample):**
 
 ```json
 {
-  "order_id": "SnapyOS-abc123",
-  "txn_id": "vwiqpcriq",
-  "status": "completed",
-  "amount": 31500,
-  "is_sandbox": false,
-  "completed_at": "2026-08-16T21:48:01.678Z"
+  "reference": "T1234567890",
+  "merchant_ref": "SnapyOS-abc123",
+  "status": "PAID",
+  "total_amount": 31500,
+  "amount": 31000,
+  "payment_method": "QRIS",
+  "paid_at": 1786936081
 }
 ```
 
-**Schema payload webhook (field & tipe):**
+**Schema payload webhook Tripay (field & tipe):**
 
-| Field          | Tipe            | Ket                                                                                   |
-| -------------- | --------------- | ------------------------------------------------------------------------------------- |
-| `order_id`     | string          | harus cocok `payments.order_id`                                                       |
-| `txn_id`       | string?         | id transaksi provider (opsional)                                                      |
-| `status`       | string          | v2: `pending` / `completed` / `canceled` (kanonikalisasi toleran `SUCCESS`/`PAID`)    |
-| `amount`       | integer         | nominal DASAR (opsional; wajib cocok `final_amount` atau `total_amount` bila dikirim) |
-| `completed_at` | string ISO-8601 | waktu bayar v2 (opsional)                                                             |
-| `payment_date` | string datetime | waktu bayar v1/legacy (opsional; dipakai bila `completed_at` absen)                   |
+| Field          | Tipe    | Ket                                                                    |
+| -------------- | ------- | ---------------------------------------------------------------------- |
+| `merchant_ref` | string  | harus cocok `payments.order_id`                                        |
+| `reference`    | string  | id transaksi provider (disimpan `provider_ref`)                        |
+| `status`       | string  | `UNPAID` / `PAID` / `EXPIRED` / `FAILED` / `REFUND`                    |
+| `total_amount` | integer | nominal yang dibayar (termasuk fee)                                    |
+| `amount`       | integer | nominal dasar (fallback bila `total_amount` absen)                     |
 
 Webhook harus:
 
-- Verifikasi header `X-Secret` (fail-closed 401; secret per-credential untuk order tenant)
-- Verifikasi server-to-server: `GET /api/v2/transaction-status/{project}/{txn_id}` ke Pakasir (WAJIB untuk event `paid`; signature null tidak cukup)
-- Freshness: tolak bila `completed_at` (fallback `payment_date`) di luar jendela ±24 jam (anti replay/clock-skew, H2)
-- Validate `order_id` → `payments.order_id` (reference cocok)
+- Verifikasi `X-Callback-Signature` (fail-closed 401)
+- Verifikasi server-to-server: `GET /transaction/detail` ke Tripay (WAJIB untuk event `paid`)
+- Validate `merchant_ref` → `payments.order_id` (reference cocok)
 - Validate amount (cocok dengan `payments.final_amount` atau `payments.total_amount`)
 - Validate business (dari payment yang ditemukan)
 - Update payment status
@@ -295,23 +292,24 @@ Webhook harus:
 - Prevent duplicate processing (**idempotent state-aware**, H3): event diklaim `received` sebelum re-verify, dipromosikan `processed` setelah settlement sukses; `received`/`error` tidak memblokir redelivery, `processed`/`ignored` memblokir
 - Log webhook events (`payment_webhooks` table)
 
-**Idempotency (state-aware, H3):** setiap event memakai `order_id` + `status` unik. Event dicatat status `received` (non-authoritative) SEBELUM verifikasi provider; dipromosikan ke `processed` HANYA setelah `transitionPaymentToPaid` sukses. Redelivery event yang sebelumnya gagal (`received`/`error`) BOLEH diproses ulang dan settle; event yang sudah `processed`/`ignored` tidak double-settle. Recovery polling (`qris.ts`, `invoice.ts`) tetap jaring terakhir.
+**Idempotency (state-aware, H3):** setiap event memakai `merchant_ref` + `status` + reference unik. Event dicatat status `received` (non-authoritative) SEBELUM verifikasi provider; dipromosikan ke `processed` HANYA setelah `transitionPaymentToPaid` sukses. Redelivery event yang sebelumnya gagal (`received`/`error`) BOLEH diproses ulang dan settle; event yang sudah `processed`/`ignored` tidak double-settle. Recovery polling (`qris.ts`, `invoice.ts`) tetap jaring terakhir.
 
 **Acceptance:** (AC 26–28) webhook diproses, idempotent, tidak duplikat.
 
 ### Direct Merchant Webhook (Phase 3)
 
-Route global: `POST /api/webhooks/payment/midtrans`, `POST /api/webhooks/payment/tripay`, dan Pakasir aggregator (`POST /api/webhooks/payment/pakasir`).
+Route global: `POST /api/webhooks/payment/midtrans`, `POST /api/webhooks/payment/tripay`.
 
 - Midtrans: validasi JSON `order_id`, `status_code`, `gross_amount`, `signature_key`, `transaction_status`; verifikasi SHA512(`order_id + status_code + gross_amount + server_key`). Hanya `capture`/`settlement` dengan `fraud_status='accept'` menjadi paid.
 - Tripay: baca raw text sebelum parse JSON; validasi `merchant_ref`, `status`, `total_amount` (fallback `amount`); verifikasi `X-Callback-Signature` sebagai HMAC-SHA256 raw body memakai private key.
 - Lookup hanya memakai Midtrans `order_id` atau Tripay `merchant_ref` terhadap `payments.order_id`. `business_id`, provider, credential ID, payment ID dari webhook tidak dipercaya.
-- Setelah payment ditemukan, server hanya memakai `payments.credential_id`. Credential null, credential hilang, atau provider route tidak cocok ditolak. Nominal provider harus sama dengan `payments.final_amount` atau `payments.total_amount`.
+- Setelah payment ditemukan, server hanya memakai `payments.credential_id`. Credential null, credential hilang, atau provider route tidak cocok ditolak — kecuali invoice subscription platform (`invoice_payments.credential_id` null → gateway platform Tripay).
 - Event provider-prefixed di-klaim ke `payment_webhooks.event_id` (status `received`) sebelum verifikasi/re-verify, lalu dipromosikan `processed` setelah transisi sukses (H3). Replay sukses tanpa transaction, ledger, balance credit, atau audit tambahan; event gagal-verify tetap bisa di-redeliver.
-- Direct merchant memakai `transitionPaymentToPaid()` dan `runPaidSideEffects()`: transaction `payment_method='gateway'`, tanpa `creditBalance`, platform fee menjadi receivable idempotent. `credential_id IS NULL` tetap aggregator mode Pakasir.
+- Direct merchant memakai `transitionPaymentToPaid()` dan `runPaidSideEffects()`: transaction `payment_method='qris'`, tanpa `creditBalance`, platform fee menjadi receivable idempotent.
 - Respons webhook aman: hanya acknowledgement. Payload, secret, credential, tenant, dan error internal tidak dikembalikan; payload log meredaksi field secret.
 
 ---
+
 
 ## 6.8 Payment Failure Handling
 
@@ -340,8 +338,8 @@ Handle kasus:
 
 ```
 PaymentService (interface)
-  ├── PakasirProvider   (pakasir.com)
-  └── FutureProvider
+  ├── TripayProvider    (tripay.co.id)
+  └── MidtransProvider  (midtrans.com)
 ```
 
 Interface minimal (`PaymentGateway` — `src/server/payment/providers/types.ts`):
@@ -349,31 +347,30 @@ Interface minimal (`PaymentGateway` — `src/server/payment/providers/types.ts`)
 ```
 createTransaction(input): GatewayCreateResult  // { orderId, amount, totalAmount, qrString, qrImageUrl, paymentUrl, vaNumber, expiresAt, providerRef }
 getStatus(orderId, amount?, providerRef?): GatewayStatus
-verifyWebhook(payload, signature): boolean     // Midtrans SHA512 / Tripay HMAC / Pakasir true (server-to-server)
+verifyWebhook(payload, signature): boolean     // Midtrans SHA512 / Tripay HMAC
 cancelTransaction?(orderId): boolean           // hanya Midtrans (dipakai test sandbox)
 ```
 
-Business logic **tidak** tightly coupled ke implementasi provider. Provider dipilih dari credential DB (registry) atau fallback aggregator env; mudah ditambah di masa depan. Base URL diisolasi di provider config (`PAKASIR_BASE_URL`, default: `https://app.pakasir.com`).
+Business logic **tidak** tightly coupled ke implementasi provider. Provider dipilih dari credential DB (registry). Untuk invoice subscription, `credential_id` null berarti gateway platform Tripay (env `TRIPAY_*`); tidak ada fallback ke credential tenant.
 
-**Env vars (invoice subscription aggregator saja):**
+**Env vars (invoice subscription platform saja):**
 
-| Var                      | Keterangan                                                |
-| ------------------------ | --------------------------------------------------------- |
-| `PAKASIR_API_KEY`        | API key akun Pakasir SnapyOS (invoice subscription)       |
-| `PAKASIR_PROJECT_SLUG`   | Project slug Pakasir SnapyOS                              |
-| `PAKASIR_WEBHOOK_SECRET` | Webhook secret v2 (Detail Proyek Pakasir)                 |
-| `PAKASIR_BASE_URL`       | Base URL API Pakasir (default: `https://app.pakasir.com`) |
+| Var                    | Keterangan                                              |
+| ---------------------- | ------------------------------------------------------- |
+| `TRIPAY_MERCHANT_CODE` | Merchant code akun Tripay SnapyOS (invoice subscription) |
+| `TRIPAY_API_KEY`       | API key akun Tripay SnapyOS                             |
+| `TRIPAY_PRIVATE_KEY`   | Private key untuk signature create + webhook            |
 
-Credential direct merchant (Pakasir/Midtrans/Tripay per business) disimpan di
-`payment_credentials` — bukan env — dan dana masuk project owner.
+Credential direct merchant (Tripay/Midtrans per business) disimpan di
+`payment_credentials` — bukan env — dan dana masuk rekening owner.
 
 ---
 
 ## 6.10 Payment Methods
 
-Kiosk menampilkan metode yang diaktifkan owner pada credential direct Pakasir/Midtrans/Tripay: QRIS, VA, dan metode redirect yang didukung adapter. Bila tidak ada credential direct aktif, kiosk hanya menawarkan voucher + tunai (fallback aggregator dihapus 2026-09-18). Voucher 100% membuat payment paid sintetik tanpa gateway. Voucher parsial kembali ke method picker untuk melunasi sisa. Cash membuat payment `pending` dan hanya operator dengan Auth.js session + membership `payment:confirm` yang dapat mengonfirmasi; kiosk customer tidak pernah self-confirm. Cash tidak mengkredit saldo owner.
+Kiosk menampilkan metode yang diaktifkan owner pada credential direct Tripay/Midtrans: QRIS, VA, dan metode redirect yang didukung adapter. Bila tidak ada credential direct aktif, kiosk hanya menawarkan voucher + tunai. Voucher 100% membuat payment paid sintetik tanpa gateway. Voucher parsial kembali ke method picker untuk melunasi sisa. Cash membuat payment `pending` dan hanya operator dengan Auth.js session + membership `payment:confirm` yang dapat mengonfirmasi; kiosk customer tidak pernah self-confirm. Cash tidak mengkredit saldo owner.
 
-Transaction system tetap mendukung method: `qris`, `gateway`, `cash`, `bank_transfer`, `other`, `offline`.
+Transaction system tetap mendukung method: `qris`, `cash`, `bank_transfer`, `other`, `offline`, `manual`, `voucher`.
 
 ---
 
@@ -393,7 +390,7 @@ Field minimal (`payments`, detail di `07-database-schema.md`):
 - Voucher ID
 - Final amount
 - **order_id** (dikirim ke provider; format `SnapyOS-<ref>`)
-- **provider_ref** (txn_id Pakasir / transaction_id Midtrans / reference Tripay)
+- **provider_ref** (transaction_id Midtrans / reference Tripay)
 - **qr_string** (payload tampilan terenkode untuk kiosk)
 - **amount_uniq** (kode unik dari provider)
 - **total_amount** (nominal yang dibayar pembeli = final + uniq)
@@ -427,13 +424,12 @@ Transisi hanya diizinkan dalam arah valid; `paid` tidak bisa kembali ke `pending
 
 ## 6.13 Integrasi Gateway (ringkasan)
 
-Tiga provider terintegrasi penuh (create → tampil → webhook → settlement). Owner
+Dua provider terintegrasi penuh (create → tampil → webhook → settlement). Owner
 mengelola credential di `/dashboard/payment` (server actions
 `src/server/payment-credential-actions.ts`); webhook & log tercatat otomatis.
 
 | Provider     | Metode kiosk                                               | Verifikasi webhook                                                                                                 | Webhook route                         |
 | ------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------- |
-| **Pakasir**  | QRIS dinamis (+kode unik)                                  | header `X-Secret` + server-to-server `GET /api/v2/transaction-status/{project}/{txn_id}`                           | `POST /api/webhooks/payment/pakasir`  |
 | **Midtrans** | QRIS, GoPay, ShopeePay, VA (BCA/BNI/BRI/Permata)           | SHA512(`order_id`+`status_code`+`gross_amount`+`server_key`); hanya `capture`/`settlement` + `fraud_status=accept` | `POST /api/webhooks/payment/midtrans` |
 | **Tripay**   | QRIS, VA (BCA/BNI/BRI/Mandiri/Permata), Alfamart/Indomaret | HMAC-SHA256 raw body via private key (`X-Callback-Signature`)                                                      | `POST /api/webhooks/payment/tripay`   |
 
@@ -445,16 +441,16 @@ mengelola credential di `/dashboard/payment` (server actions
    `total_amount`, `credential_id`) → tampilkan QR/VA/redirect.
 3. Provider kirim webhook → server verifikasi (server-to-server/signature) → cocokkan
    `order_id`/`merchant_ref` → validasi amount → `transitionPaymentToPaid()` +
-   `runPaidSideEffects()` (transaction `payment_method='gateway'`, platform fee receivable).
+   `runPaidSideEffects()` (transaction `payment_method='qris'`, platform fee receivable).
 4. Setiap event tercatat di `payment_webhooks` (`event_id` unik, idempotent); payload
    diredaksi (`src/lib/error-redaction.ts`). Log bisa dipantau admin di `/admin/payments`.
 
-**Tanpa credential aktif:** kiosk hanya menawarkan voucher + tunai (fallback aggregator
-Pakasir dihapus 2026-09-18). Voucher 100% = payment `paid` sintetik tanpa gateway;
-tunai = payment `pending` menunggu operator (server-gated, non-withdrawable).
+**Tanpa credential aktif:** kiosk hanya menawarkan voucher + tunai. Voucher 100% =
+payment `paid` sintetik tanpa gateway; tunai = payment `pending` menunggu operator
+(server-gated, non-withdrawable).
 
-**Env (invoice subscription aggregator saja):** `PAKASIR_API_KEY`,
-`PAKASIR_PROJECT_SLUG`, `PAKASIR_WEBHOOK_SECRET`, `PAKASIR_BASE_URL`.
+**Env (invoice subscription platform saja):** `TRIPAY_MERCHANT_CODE`,
+`TRIPAY_API_KEY`, `TRIPAY_PRIVATE_KEY`.
 URL webhook yang dikirim ke provider dibangun dari `SnapyOS_PUBLIC_BASE_URL`
 (`paymentWebhookUrl()`), bukan env terpisah. Credential
 direct merchant disimpan per business, bukan env.
@@ -467,24 +463,22 @@ Halaman `/dashboard/payment` (`PaymentGatewaySettings` → `PaymentCredentialCar
 
 **Langkah wizard (satu form, field dinamis per provider):**
 
-1. **Provider** — `pakasir` | `midtrans` | `tripay`. Tidak bisa diubah saat mengedit (credential = satu provider).
+1. **Provider** — `tripay` | `midtrans`. Tidak bisa diubah saat mengedit (credential = satu provider).
 2. **Environment** — `sandbox` | `production`. Credential dipakai kiosk hanya bila `environment` = `gatewayEnvironment()` (`PAYMENT_GATEWAY_ENV`, else `NODE_ENV`).
 3. **Label** (opsional, ≤80) — nama tampilan, mis. "Gateway utama".
 4. **Field rahasia** per provider (`PAYMENT_FIELD_LABELS`) — label mengikuti provider, bukan generik:
 
-   | Provider | `merchant_id` | `server_key` | `client_key` | `private_key` | `webhook_secret` |
-   | -------- | ------------- | ------------ | ------------ | ------------- | ---------------- |
-   | Pakasir  | Project Slug  | API Key      | —            | —             | Webhook Secret   |
-   | Midtrans | Merchant ID   | Server Key   | Client Key   | —             | —                |
-   | Tripay   | Merchant Code | API Key      | —            | Private Key   | —                |
+   | Provider | `merchant_id` | `server_key` | `client_key` | `private_key` |
+   | -------- | ------------- | ------------ | ------------ | ------------- |
+   | Midtrans | Merchant ID   | Server Key   | Client Key   | —             |
+   | Tripay   | Merchant Code | API Key      | —            | Private Key   |
 
-   Kewajiban saat **create** (`REQUIRED_ON_CREATE`): Pakasir `server_key` + `webhook_secret`; Midtrans `server_key`; Tripay `server_key` + `private_key`. Saat **edit**, field rahasia kosong berarti **nilai lama dipertahankan** (tidak pernah ditampilkan kembali).
+   Kewajiban saat **create** (`REQUIRED_ON_CREATE`): Midtrans `server_key`; Tripay `server_key` + `private_key`. Saat **edit**, field rahasia kosong berarti **nilai lama dipertahankan** (tidak pernah ditampilkan kembali).
 
 5. **Metode pembayaran** (`PaymentMethodSelector`) — checkbox dari `PAYMENT_METHODS`, **minimal satu**:
 
    | Provider | Metode                                                                               |
    | -------- | ------------------------------------------------------------------------------------ |
-   | Pakasir  | `qris`                                                                               |
    | Midtrans | `qris`, `gopay`, `shopeepay`, `bca`, `bni`, `bri`, `permata`                         |
    | Tripay   | `QRIS`, `BCAVA`, `BNIVA`, `BRIVA`, `MANDIRIVA`, `PERMATAVA`, `ALFAMART`, `INDOMARET` |
 
@@ -494,7 +488,7 @@ Halaman `/dashboard/payment` (`PaymentGatewaySettings` → `PaymentCredentialCar
 **Tes koneksi** (`testCredentialAction` → `canTestCredentialInEnvironment`):
 
 - Midtrans: membuat transaksi uji lalu membatalkannya — **hanya sandbox**, tombol nonaktif di production dengan alasan eksplisit.
-- Pakasir & Tripay: probe status non-destruktif (tidak membuat transaksi yatim), aman di environment apa pun.
+- Tripay: probe status non-destruktif (tidak membuat transaksi yatim), aman di environment apa pun.
 
 **Normalisasi metode (backend sumber kebenaran):**
 
@@ -510,6 +504,6 @@ Webhook URL **tidak disimpan** di DB (`payment_credentials.webhook_url` dihapus 
 2. Nilainya **URL valid** — gagal parse → `null`, alasan "bukan URL valid".
 3. Protokolnya **HTTPS** — `http://` ditolak, alasan "webhook wajib HTTPS".
 
-Selama salah satu gagal, dashboard menampilkan `webhook_reason` dan tombol **Salin webhook URL** disembunyikan. Untuk provider selain Pakasir, kiosk juga tidak menawarkan metode online selama webhook belum aktif (`listKioskCredentials` menyaring `!paymentWebhookUrl(provider)`); Pakasir tetap ditawarkan karena verifikasinya server-to-server, bukan lewat URL callback tampilan.
+Selama salah satu gagal, dashboard menampilkan `webhook_reason` dan tombol **Salin webhook URL** disembunyikan. Kiosk juga tidak menawarkan metode online selama webhook belum aktif (`listKioskCredentials` menyaring `!paymentWebhookUrl(provider)`).
 
-**Registrasi di sisi provider:** salin URL hasil hitung ke dashboard provider (Pakasir: Detail Proyek + isi Webhook Secret v2; Midtrans: Settings → Payment Notification URL; Tripay: Callback URL). Secret/signature yang dipakai verifikasi adalah nilai yang tersimpan pada credential, bukan env platform.
+**Registrasi di sisi provider:** salin URL hasil hitung ke dashboard provider (Midtrans: Settings → Payment Notification URL; Tripay: Callback URL). Signature yang dipakai verifikasi adalah nilai yang tersimpan pada credential, bukan env platform.

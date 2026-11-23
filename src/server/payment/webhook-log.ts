@@ -9,13 +9,13 @@ import { redactWebhookPayload } from "@/lib/error-redaction";
  */
 
 export async function logPaymentWebhook(input: {
-  provider?: string;
+  provider: string;
   eventId: string;
   eventType: string | null;
   payload: unknown;
   /**
-   * true/false = provider memakai signature (Midtrans/Tripay). null = provider
-   * tanpa signature (Pakasir): "tidak berlaku", bukan "valid".
+   * true/false = provider memakai signature (Midtrans/Tripay). null hanya untuk
+   * event lama tanpa provider; tidak dipakai jalur baru.
    */
   signatureValid: boolean | null;
   status: "received" | "processed" | "ignored" | "error";
@@ -24,7 +24,7 @@ export async function logPaymentWebhook(input: {
 }): Promise<"logged" | "duplicate"> {
   const supabase = createServerClient();
   const { error } = await supabase.from("payment_webhooks").insert({
-    provider: input.provider ?? "pakasir",
+    provider: input.provider,
     event_id: input.eventId,
     event_type: input.eventType,
     payload: redactWebhookPayload(input.payload),
@@ -59,17 +59,17 @@ export async function logPaymentWebhook(input: {
  * `claim+settle` atomik bila latensi webhook jadi bottleneck.
  */
 export async function claimWebhookEvent(input: {
-  provider?: string;
+  provider: string;
   eventId: string;
   eventType: string | null;
   payload: unknown;
-  /** Lihat logPaymentWebhook: null = provider tanpa signature (Pakasir). */
+  /** true/false = provider bersignature. */
   signatureValid: boolean | null;
   paymentId: string | null;
 }): Promise<"claimed" | "duplicate" | "retryable"> {
   const supabase = createServerClient();
   const { error } = await supabase.from("payment_webhooks").insert({
-    provider: input.provider ?? "pakasir",
+    provider: input.provider,
     event_id: input.eventId,
     event_type: input.eventType,
     payload: redactWebhookPayload(input.payload),

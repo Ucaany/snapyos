@@ -853,7 +853,7 @@ create table transactions (
   discount_amount integer not null default 0 check (discount_amount >= 0),
   final_amount integer not null check (final_amount >= 0),
   voucher_id uuid,
-  -- Non-withdrawable (0033): manual & offline → false; QRIS Pakasir → true.
+  -- Non-withdrawable (0033): manual & offline → false; QRIS gateway → true.
   -- Uang manual/offline hanya reporting, TIDAK masuk saldo penarikan.
   withdrawable boolean not null default true,
   status text not null default 'pending'
@@ -921,14 +921,14 @@ create table payments (
   amount_uniq integer,
   total_amount integer check (total_amount >= 0),
   provider_signature text,
-  provider text not null default 'pakasir',
+  provider text not null,  -- tripay | midtrans | cash | voucher
   payment_reference text unique,
   status text not null default 'pending'
     check (status in ('creating', 'pending', 'paid', 'failed', 'expired', 'cancelled', 'refunded')),
   qr_string text,
   expires_at timestamptz,
   credential_id uuid,  -- Direct Merchant credential (0027); NULL = aggregator mode
-  provider_ref text,  -- Pakasir v2 txn_id (dipakai getStatus transaction-status)
+  provider_ref text,  -- reference provider (Tripay reference / Midtrans transaction_id)
   paid_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -952,7 +952,7 @@ create trigger trg_payments_updated_at before update on payments
   for each row execute function set_updated_at();
 
 -- Pembayaran invoice subscription via QRIS (0011) — terpisah dari payments
--- (checkout kiosk); webhook pakasir bercabang saat order_id bukan payment.
+-- (checkout kiosk); webhook Tripay bercabang saat order_id bukan payment.
 create table invoice_payments (
   id uuid primary key default gen_random_uuid(),
   business_id uuid not null references businesses (id) on delete cascade,
@@ -962,14 +962,15 @@ create table invoice_payments (
   order_id text unique,
   payment_reference text unique,
   provider_signature text,
-  provider text not null default 'pakasir',
+  provider text not null
+    check (provider in ('midtrans', 'tripay')),
   status text not null default 'pending'
     check (status in ('creating', 'pending', 'paid', 'expired')),
   qr_string text,
   expires_at timestamptz,
   paid_at timestamptz,
-  provider_ref text,  -- Pakasir v2 txn_id (dipakai getStatus transaction-status)
-  credential_id uuid,  -- Direct Merchant credential (0047); NULL = aggregator mode. FK menyusul (0063): payment_credentials dibuat di bawah.
+  provider_ref text,  -- reference provider (Tripay reference)
+  credential_id uuid,  -- Direct Merchant credential (0047); NULL = gateway platform. FK menyusul (0063): payment_credentials dibuat di bawah.
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -1252,7 +1253,6 @@ insert into platform_settings (key, value) values
   ('trial_days', '14'::jsonb),
   ('maintenance_mode', 'false'::jsonb),
   ('maintenance_message', '"Platform sedang perawatan sistem. Coba lagi beberapa saat."'::jsonb),
-  ('gateway_pakasir_enabled', 'true'::jsonb),
   ('gateway_midtrans_enabled', 'true'::jsonb),
   ('gateway_tripay_enabled', 'true'::jsonb)
 on conflict (key) do nothing;
@@ -1310,7 +1310,7 @@ create index idx_subscription_promos_active on subscription_promos (is_active, c
 create table payment_credentials (
   id uuid primary key default gen_random_uuid(),
   business_id uuid not null references businesses (id) on delete cascade,
-  provider text not null check (provider in ('midtrans', 'tripay', 'pakasir')),
+  provider text not null check (provider in ('midtrans', 'tripay')),
   label text,
   merchant_id text not null,
   server_key_encrypted text not null,

@@ -723,7 +723,7 @@ $ npm audit                      0 critical, 5 high, 4 moderate (semua dev-time)
 ```
 
 Jumlah tes naik dari 958 → 971 karena tiga berkas baru (§13.4). Dua tes lama
-yang gagal pada ronde sebelumnya (`pakasir-webhook-credential`, `phase3`) sudah
+yang gagal pada ronde sebelumnya (`webhook-credential`, `phase3`) sudah
 diperbaiki ke kontrak aktual — **bukan** dilonggarkan: keduanya dulu mengunci
 perilaku yang sudah sengaja diubah (jendela webhook 24 jam → 5 menit; plan
 limits 4 field → 6 field).
@@ -767,7 +767,7 @@ limits 4 field → 6 field).
 │  Next.js 16 (standalone) — control plane                                        │
 │    67 route handler · 65 page · 109 modul src/server · 78 modul src/lib         │
 │    Auth.js v5 (JWT + auth_sessions) · Supabase service-role (RLS inert)          │
-│    R2 / Supabase Storage · Pakasir/Midtrans/Tripay (AES-256-GCM)                │
+│    R2 / Supabase Storage · Tripay/Midtrans (AES-256-GCM)                        │
 │    55 tabel · 32 fungsi SQL · 114 berkas migrasi (77 forward / 35 rollback)     │
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```

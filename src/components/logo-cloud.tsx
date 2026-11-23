@@ -17,7 +17,6 @@ export function LogoCloud() {
 }
 
 const logos = [
-  { src: "/payment-logos/pakasir.png", alt: "Pakasir" },
   { src: "/payment-logos/midtrans.svg", alt: "Midtrans" },
   { src: "/payment-logos/tripay.png", alt: "Tripay" },
 ];

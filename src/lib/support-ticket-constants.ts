@@ -21,7 +21,7 @@ export const SUPPORT_TICKET_CATEGORIES = [
 
 export const SUPPORT_TICKET_AREAS = [
   "Checkout / QRIS",
-  "Gateway (Midtrans/Pakasir/Tripay)",
+  "Gateway (Midtrans/Tripay)",
   "Refund / Pengembalian dana",
   "Sesi foto / kamera",
   "Cetak / printer",

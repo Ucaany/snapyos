@@ -100,7 +100,6 @@ Possible errors: `NOT_FOUND`, `FORBIDDEN`, `SESSION_EXPIRED`, `SESSION_LIMIT_REA
 
 | Method | Route                            | Verification                                         |
 | ------ | -------------------------------- | ---------------------------------------------------- |
-| POST   | `/api/webhooks/payment/pakasir`  | Provider status check and idempotency                |
 | POST   | `/api/webhooks/payment/midtrans` | SHA-512 signature, order, amount, credential         |
 | POST   | `/api/webhooks/payment/tripay`   | HMAC-SHA256 callback signature, merchant ref, amount |
 

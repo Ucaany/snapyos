@@ -42,7 +42,7 @@ import { formatIDR } from "@/lib/dashboard-math";
  * Admin punya tiga aksi resolusi:
  *   1. AKTIVASI MANUAL - admin sudah memperbaiki entitlement lewat
  *      /admin/subscriptions atau langsung DB, hanya menutup tiket.
- *   2. REFUND - admin sudah issue refund via dashboard Pakasir,
+ *   2. REFUND - admin sudah issue refund via dashboard Tripay,
  *      hanya menutup tiket (invoice tetap paid sebagai fakta historis).
  *   3. DISMISS - false alarm / duplikat / superseded oleh retry yang berhasil.
  *
@@ -272,8 +272,8 @@ export default async function AdminSubscriptionPendingReviewPage({
                           action={refundIntentFailureAction}
                           label="Mark refunded"
                           variant="destructive"
-                          hint="Setelah issue refund via dashboard Pakasir (invoice tetap paid)."
-                          confirm="Tutup tiket sebagai REFUNDED? Pastikan refund sudah di-issue di Pakasir."
+                          hint="Setelah issue refund via dashboard Tripay (invoice tetap paid)."
+                          confirm="Tutup tiket sebagai REFUNDED? Pastikan refund sudah di-issue di Tripay."
                         />
                         <ResolveForm
                           failureId={f.id}

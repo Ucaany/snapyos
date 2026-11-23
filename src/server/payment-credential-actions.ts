@@ -4,7 +4,7 @@
  * Server actions payment gateway (owner) — docs/04 §4.9, docs/06 §6.5.
  * Wiring client → server module `src/server/payment-credentials.ts`
  * (UI dashboard payment restored 2026-09-18; direct merchant
- * midtrans/tripay/pakasir = jalan utama, dana langsung ke rekening owner).
+ * midtrans/tripay = jalan utama, dana langsung ke rekening owner).
  */
 
 import { revalidatePath } from "next/cache";
@@ -44,7 +44,6 @@ export type UpdateInput = {
   client_key?: string | null;
   server_key?: string;
   private_key?: string;
-  webhook_secret?: string;
   is_active?: boolean;
   enabled_methods?: string[];
 };

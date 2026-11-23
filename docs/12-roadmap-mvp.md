@@ -53,7 +53,7 @@
 
 **PAYMENT:**
 
-- Pakasir QRIS
+- Tripay QRIS
 - Create payment
 - QR display
 - Payment status
@@ -110,7 +110,7 @@ Legenda status:
 | 3     | Photobox Builder           | `[SELESAI]`       | committed `3765672`; outlet/photobox CRUD, branding + logo upload.                                                                                                                                                                                                                                                                                                                                        |
 | 4     | Customer Photobox          | `[SELESAI]`       | committed `3765672`,`e5a71d2`; kiosk + setup wizard + camera + editor + auto-print + GIF + `/r/[token]`. Wiring pay-first via Phase 5–6.                                                                                                                                                                                                                                                                  |
 | 5     | Checkout + Voucher         | `[SELESAI]`       | routes `checkout`, `apply-voucher`, `CheckoutScreen`, `checkout-math`, `tests/phase5`. Hardening: limit sesi dicek pre-payment (`SESSION_LIMIT_REACHED` di checkout + qris), anti double-payment (1 QR hidup/booth), expiry QR configurable default 3 mnt (`business_settings.checkout`), rate-limit retry-after lock, kiosk fit-1-layar + fullscreen lock (Ctrl+Alt+X 2 dtk) + offline sync (IndexedDB). |
-| 6     | Pakasir Payment (QRIS)     | `[SELESAI]`       | routes `payments/create`, `payments/[paymentRef]/status`, `webhooks/payment/pakasir`, `src/server/payment/pakasir-utils.ts`, `src/server/payment/pakasir.ts`, UI QRIS di `CheckoutScreen`; teruji sandbox.                                                                                                                                                                                                |
+| 6     | Tripay Payment (QRIS)      | `[SELESAI]`       | routes `payments/create`, `payments/[paymentRef]/status`, `webhooks/payment/tripay`, `src/server/payment/tripay-utils.ts`, `src/server/payment/providers/tripay.ts`, UI QRIS di `CheckoutScreen`; teruji sandbox.                                                                                                                                                                                  |
 | 7     | Transactions + Finance     | `[SELESAI]`       | committed `04d51b3`; auto-transaction, list/filter, expenses, finance summary.                                                                                                                                                                                                                                                                                                                            |
 | 8     | Reports + Analytics        | `[SELESAI]`       | committed `04d51b3`; revenue breakdown (outlet/package/photobox/method) + export CSV **& XLSX**.                                                                                                                                                                                                                                                                                                          |
 | 9     | Staff + Multi-Outlet       | `[SELESAI]`       | committed `04d51b3`; staff invite/role, RBAC matrix, outlet analytics; multi-outlet CRUD dari Phase 3.                                                                                                                                                                                                                                                                                                    |
@@ -230,14 +230,14 @@ Test: `npm run test` → **251/251 pass** (29 file; update 2026-09-14, termasuk 
 
 ---
 
-### PHASE 6 — Pakasir Payment (QRIS)
+### PHASE 6 — Tripay Payment (QRIS)
 
-> **Status (2026-08-19; path disinkronkan Fase 5 2026-09-16):** `[SELESAI]` — Backend: `POST payments/create`, `GET payments/[paymentRef]/status`, webhook `POST /api/webhooks/payment/pakasir` (`src/server/payment/pakasir-utils.ts`, `src/lib/qris-helpers.ts`). Frontend: QRIS + timer + status polling + expired/failed di `CheckoutScreen`. Paid → `sessions` unlock + timer start + `result_token` issue (wiring di Phase 4). Test: `tests/phase5.test.ts`.
+> **Status (2026-08-19; path disinkronkan Fase 5 2026-09-16; provider diganti 2026-11-23):** `[SELESAI]` — Backend: `POST payments/create`, `GET payments/[paymentRef]/status`, webhook `POST /api/webhooks/payment/tripay` (`src/server/payment/tripay-utils.ts`, `src/lib/qris-helpers.ts`). Frontend: QRIS + timer + status polling + expired/failed di `CheckoutScreen`. Paid → `sessions` unlock + timer start + `result_token` issue (wiring di Phase 4). Test: `tests/phase5.test.ts`.
 
 - **Objective:** Pembayaran QRIS nyata (sandbox).
-- **Features:** PaymentService + PakasirProvider, create QRIS, render QR, status, expiry, recovery via reference, webhook endpoint + idempotency.
+- **Features:** PaymentService + TripayProvider, create QRIS, render QR, status, expiry, recovery via reference, webhook endpoint + idempotency.
 - **Database:** `payments`, `payment_webhooks`, `payment_providers`.
-- **API:** `POST /payments/qris`, `GET /payments/:ref/status`, `POST /api/webhooks/payment/pakasir`.
+- **API:** `POST /payments/qris`, `GET /payments/:ref/status`, `POST /api/webhooks/payment/tripay`.
 - **UI:** QRIS screen (QR, harga, timer, status), hasil payment.
 - **Components:** `QrisScreen`, `CountdownTimer`, `PaymentStatus`.
 - **Acceptance:** (AC 24–30) QRIS tampil, status terverifikasi, webhook idempotent, expired/failed tertangani.
