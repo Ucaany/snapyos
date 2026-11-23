@@ -105,49 +105,23 @@ body:has(.admin-theme)::after {
   border-width: 1px;
 }
 
-/*
- * Card surface: near-opaque paper gradient, a real 1px ring, and a restrained
- * shadow, so cards separate from the page texture in both themes. No blur.
- * The ring is part of box-shadow because Tailwind's `ring-*` utility is a
- * box-shadow too; a plain box-shadow would silently erase the card border.
- */
+/* Flat surfaces keep dense admin data readable and reduce visual noise. */
 .admin-theme [data-slot="card"] {
-  background-color: transparent;
-  background-image: linear-gradient(
-    180deg,
-    rgb(255 255 255 / 99%) 0%,
-    rgb(253 253 253 / 98%) 50%,
-    rgb(250 250 250 / 98%) 100%
-  );
+  background-color: var(--card);
+  background-image: none;
   box-shadow:
     0 0 0 1px var(--border),
     0 1px 2px rgb(10 10 10 / 6%),
-    0 12px 28px -18px rgb(10 10 10 / 22%),
-    inset 0 1px 0 rgb(255 255 255 / 95%);
+    inset 0 1px 0 rgb(255 255 255 / 85%);
 }
 
 /* Elevation is reserved for the one focal card per section (the accent KPI),
    not applied to every surface (R-12). */
 .admin-theme [data-slot="card"][class*="bg-primary"] {
-  background-image: linear-gradient(160deg, #2a2a2a 0%, #171717 52%, #0b0b0b 100%);
+  background-image: none;
   box-shadow:
-    0 1px 2px rgb(10 10 10 / 18%),
-    0 18px 40px -26px rgb(10 10 10 / 55%),
-    inset 0 1px 0 rgb(255 255 255 / 8%);
-}
-
-/*
- * Guideline grid behind every admin page. It gives the white/dark page a
- * visible texture so card surfaces have something to sit above. Applied once
- * in the admin layout content wrapper, not per page.
- */
-.admin-grid-lines {
-  background-image:
-    linear-gradient(to right, rgb(10 10 10 / 3.5%) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(10 10 10 / 3.5%) 1px, transparent 1px);
-  background-size: 48px 48px;
-  background-position: center;
-  background-attachment: local;
+    0 0 0 1px color-mix(in srgb, var(--primary) 28%, transparent),
+    0 10px 24px -18px rgb(10 10 10 / 38%);
 }
 
 /*
@@ -233,30 +207,16 @@ body:has(.admin-theme.dark) {
 }
 
 .admin-theme.dark [data-slot="card"] {
-  background-image: linear-gradient(
-    180deg,
-    rgb(31 31 31 / 97%) 0%,
-    rgb(26 26 26 / 96%) 50%,
-    rgb(22 22 22 / 95%) 100%
-  );
+  background-image: none;
   box-shadow:
     0 0 0 1px var(--border),
-    0 1px 2px rgb(0 0 0 / 40%),
-    0 16px 34px -24px rgb(0 0 0 / 85%),
-    inset 0 1px 0 rgb(255 255 255 / 6%);
+    0 1px 2px rgb(0 0 0 / 38%),
+    inset 0 1px 0 rgb(255 255 255 / 5%);
 }
 
 .admin-theme.dark [data-slot="card"][class*="bg-primary"] {
-  background-image: linear-gradient(160deg, #fafafa 0%, #ededed 55%, #e2e2e2 100%);
+  background-image: none;
   box-shadow:
-    0 1px 2px rgb(0 0 0 / 35%),
-    0 18px 40px -26px rgb(0 0 0 / 70%),
-    inset 0 1px 0 rgb(255 255 255 / 90%);
-}
-
-.admin-theme.dark.admin-grid-lines,
-.admin-theme.dark .admin-grid-lines {
-  background-image:
-    linear-gradient(to right, rgb(255 255 255 / 5%) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(255 255 255 / 5%) 1px, transparent 1px);
+    0 0 0 1px color-mix(in srgb, var(--primary) 28%, transparent),
+    0 10px 24px -18px rgb(0 0 0 / 65%);
 }

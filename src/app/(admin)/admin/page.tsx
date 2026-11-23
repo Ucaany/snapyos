@@ -1227,7 +1227,7 @@ function ActivityMatrix({
         <span>{shortDate(first?.date)}</span>
         <span className="flex items-center gap-1.5">
           Sedikit
-          <span className="h-1.5 w-14 rounded-full bg-linear-to-r from-[rgba(16,185,129,0.12)] to-emerald-500 dark:from-emerald-500/20" />
+          <span className="h-1.5 w-14 rounded-full bg-emerald-500/40 dark:bg-emerald-400/40" />
           Banyak
         </span>
         <span>{shortDate(last?.date)}</span>

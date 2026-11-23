@@ -25,7 +25,7 @@ export function AdminRecordCard({
 }) {
   return (
     <Card className={cn("min-w-0", className)}>
-      <CardContent className="flex min-w-0 flex-col gap-3">
+      <CardContent className="flex min-w-0 flex-col gap-4">
         <div className="flex min-w-0 items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="min-w-0 break-words text-sm font-medium leading-tight">{title}</p>

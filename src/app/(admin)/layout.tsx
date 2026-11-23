@@ -38,7 +38,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <AppSidebar user={{ name: admin.name ?? "Admin", email: admin.email ?? "" }} />
         <SidebarInset>
           <AdminHeader dark={dark} />
-          <div className="admin-grid-lines mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-6 px-4 pb-8 pt-0 md:px-6">
+          <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-6 px-4 pb-8 pt-0 md:px-6">
             {children}
           </div>
           <AdminFooter />

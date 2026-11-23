@@ -10,11 +10,11 @@ export type AdminMetricTone = "emerald" | "sky" | "amber" | "neutral";
 // karena maknanya (Wallet uang, Server infra, ShieldCheck integritas).
 const toneStyles: Record<AdminMetricTone, string> = {
   emerald:
-    "from-emerald-50 text-emerald-600 ring-emerald-600/20 dark:from-emerald-500/20 dark:text-emerald-300 dark:ring-emerald-400/25",
-  sky: "from-sky-50 text-sky-600 ring-sky-600/20 dark:from-sky-500/20 dark:text-sky-300 dark:ring-sky-400/25",
+    "bg-emerald-50 text-emerald-600 ring-emerald-600/20 dark:bg-emerald-500/20 dark:text-emerald-300 dark:ring-emerald-400/25",
+  sky: "bg-sky-50 text-sky-600 ring-sky-600/20 dark:bg-sky-500/20 dark:text-sky-300 dark:ring-sky-400/25",
   amber:
-    "from-amber-50 text-amber-600 ring-amber-600/20 dark:from-amber-500/20 dark:text-amber-300 dark:ring-amber-400/25",
-  neutral: "from-muted text-muted-foreground ring-foreground/5 dark:from-white/10 dark:to-white/5",
+    "bg-amber-50 text-amber-600 ring-amber-600/20 dark:bg-amber-500/20 dark:text-amber-300 dark:ring-amber-400/25",
+  neutral: "bg-muted text-muted-foreground ring-foreground/5 dark:bg-white/10",
 };
 // Padding dan ukuran label seragam supaya deretan KPI sejajar.
 export function AdminMetricCard({
@@ -59,16 +59,16 @@ export function AdminMetricCard({
   return (
     <Card
       className={cn(
-        "h-full gap-0 py-0",
+        "h-full min-h-32 gap-0 py-0",
         accent && "bg-primary text-primary-foreground",
         className
       )}
     >
-      <div className="flex h-full flex-col gap-3 p-4">
+      <div className="flex h-full flex-col gap-3 p-5">
         <div className="flex items-start justify-between gap-3">
           <p
             className={cn(
-              "text-[13px] leading-snug font-medium",
+              "text-xs leading-snug font-medium",
               accent ? "text-primary-foreground/80" : "text-neutral-600 dark:text-neutral-300"
             )}
           >
@@ -78,9 +78,7 @@ export function AdminMetricCard({
             <span
               className={cn(
                 "flex size-8 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset",
-                accent
-                  ? "bg-primary-foreground/10 ring-primary-foreground/15"
-                  : `bg-linear-to-br to-white ${toneStyles[tone]}`
+                accent ? "bg-primary-foreground/10 ring-primary-foreground/15" : toneStyles[tone]
               )}
             >
               <Icon
