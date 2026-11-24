@@ -110,15 +110,30 @@ export function createTripayGateway(credential: GatewayCredential): PaymentGatew
       if (responseMerchantRef !== input.orderId) {
         throw new Error("Respons Tripay tidak cocok dengan order server.");
       }
-      const baseAmount = data.amount === undefined ? input.amount : Number(data.amount);
+      // Nominal DASAR = yang masuk ke merchant. Tripay mengisi `amount` dengan
+      // nominal yang harus DIBAYAR customer, jadi saat fee dibebankan ke
+      // customer (default QRIS produksi) `amount` = dasar + fee_customer.
+      // Sandbox tidak menambahkan fee sama sekali, sehingga perbandingan
+      // `amount === input.amount` lolos di sandbox tapi SELALU gagal di
+      // produksi (bug ini ketemu 24 Nov 2026 saat channel QRIS production
+      // diaktifkan). Prioritaskan `amount_received`; fallback: amount − fee.
+      const feeCustomer = Number(data.fee_customer ?? 0);
+      const feeCustomerSafe = Number.isFinite(feeCustomer) && feeCustomer >= 0 ? feeCustomer : 0;
+      const payableAmount = Number(data.amount);
+      const baseAmount =
+        data.amount_received !== undefined
+          ? Number(data.amount_received)
+          : Number.isFinite(payableAmount)
+            ? payableAmount - feeCustomerSafe
+            : input.amount;
       if (!Number.isInteger(baseAmount) || baseAmount !== input.amount) {
         throw new Error("Nominal dasar Tripay tidak cocok dengan order server.");
       }
-      // Tripay bisa menambahkan fee customer di atas nominal dasar. Prioritaskan
-      // `total_amount` bila ada; selain itu `amount + fee_customer`.
-      const feeCustomer = Number(data.fee_customer ?? 0);
+      // Yang ditagihkan ke customer: `total_amount` bila ada, selain itu
+      // nominal payable dari Tripay, selain itu dasar + fee customer.
       const totalRaw =
-        data.total_amount ?? baseAmount + (Number.isFinite(feeCustomer) ? feeCustomer : 0);
+        data.total_amount ??
+        (Number.isFinite(payableAmount) ? payableAmount : baseAmount + feeCustomerSafe);
       const totalAmount = Number(totalRaw);
       if (!Number.isInteger(totalAmount) || totalAmount < input.amount) {
         throw new Error("Nominal total Tripay tidak valid.");
