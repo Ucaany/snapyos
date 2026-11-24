@@ -10,6 +10,9 @@ node_modules/
 
 # --- Build output ---
 .next/
+# Snapshot build saat deploy (`cp -a .next .next.bak-<sha>`) — jangan sampai
+# `git add .` ikut men-stage ratusan MB bundle.
+.next.bak-*/
 out/
 build/
 dist-release/
@@ -64,3 +67,9 @@ hardware-agent/target/
 # Artefak audit & rilis
 .audit-out/
 .audit-security/
+
+# --- Rahasia host (jangan pernah masuk Git) ---
+.cron-secret
+
+# Backup lokal paket/manifest
+package.json.bak-*

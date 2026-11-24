@@ -1,0 +1,19 @@
+[Unit]
+Description=SnapyOS subscription and revenue Telegram notifications
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+WorkingDirectory=/var/www/snapyos
+EnvironmentFile=/var/www/snapyos/.env.production
+Environment=SNAPYOS_TELEGRAM_STATE_FILE=/var/lib/snapyos-monitor/subscription-events.json
+ExecStart=/usr/bin/node /var/www/snapyos/scripts/snapyos-subscription-monitor.mjs
+TimeoutStartSec=55
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/snapyos-monitor

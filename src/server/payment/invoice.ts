@@ -1,4 +1,6 @@
 import "server-only";
+import { notifyRevenueEvent, describeInvoiceItems } from "@/server/revenue-notify";
+import type { RevenueKind } from "@/lib/revenue-message";
 
 /**
  * Pembayaran invoice subscription via QRIS Tripay (platform) — docs/02 §2.5, docs/06 §6.3/§6.7.
@@ -266,7 +268,62 @@ async function markInvoicePaid(payment: InvoicePaymentRow) {
     target: payment.invoice_id,
     meta: { order_id: payment.order_id, amount: payment.amount },
   });
+  const { data: businessRow } = await supabase
+    .from("businesses")
+    .select("name")
+    .eq("id", payment.business_id)
+    .maybeSingle();
+  const paidSubscription = current.subscription_id
+    ? await supabase
+        .from("subscriptions")
+        .select("status, current_period_end, plans ( name )")
+        .eq("id", current.subscription_id)
+        .maybeSingle()
+    : { data: null };
+  const paidSubRow = paidSubscription.data as {
+    status: string;
+    current_period_end: string | null;
+    plans: { name: string } | { name: string }[] | null;
+  } | null;
+  const paidPlanRel = paidSubRow?.plans;
+  const paidPlan = Array.isArray(paidPlanRel) ? paidPlanRel[0] : paidPlanRel;
+  const { items, kind: itemKind } = describeInvoiceItems(current);
+  // Status subscription SEBELUM intent diterapkan menentukan jenis event:
+  // trial → langganan baru, past_due/expired → perpanjangan, selain itu → ubah paket.
+  const kind: RevenueKind =
+    itemKind !== "plan_change"
+      ? itemKind
+      : paidSubRow?.status === "trial"
+        ? "new_subscription"
+        : paidSubRow?.status === "past_due" || paidSubRow?.status === "expired"
+          ? "renewal"
+          : "plan_change";
   await applyInvoiceIntent(payment.business_id, payment.invoice_id);
+  const { data: afterSub } = current.subscription_id
+    ? await supabase
+        .from("subscriptions")
+        .select("current_period_end, plans ( name )")
+        .eq("id", current.subscription_id)
+        .maybeSingle()
+    : { data: null };
+  const afterRow = afterSub as {
+    current_period_end: string | null;
+    plans: { name: string } | { name: string }[] | null;
+  } | null;
+  const afterPlanRel = afterRow?.plans;
+  const afterPlan = Array.isArray(afterPlanRel) ? afterPlanRel[0] : afterPlanRel;
+  await notifyRevenueEvent({
+    kind,
+    businessId: payment.business_id,
+    businessName: businessRow?.name ?? undefined,
+    planName: afterPlan?.name ?? paidPlan?.name ?? null,
+    amount: payment.amount,
+    items,
+    invoiceNumber: current.number,
+    provider: payment.provider,
+    periodEnd: afterRow?.current_period_end ?? paidSubRow?.current_period_end ?? null,
+    occurredAt: new Date().toISOString(),
+  });
 }
 
 /**

@@ -20,6 +20,7 @@ import { insertAudit } from "@/server/audit";
 import { getEffectiveSubscriptionRow } from "@/server/require-subscription";
 import { consumeSubscriptionPromo, releaseSubscriptionPromo } from "@/server/subscription-promo";
 import { sendSubscriptionStartedEmail } from "@/server/lifecycle-email";
+import { notifyRevenueEvent, notifyCheckoutStarted } from "@/server/revenue-notify";
 import { storageAddOnDisplayName } from "@/lib/storage-units";
 
 /**
@@ -793,6 +794,19 @@ export async function createSubscriptionInvoice(
     },
   });
 
+  await notifyCheckoutStarted({
+    businessId,
+    planName: planRow.name,
+    amount,
+    items: items.map((item) => ({
+      label: item.name ?? item.code ?? "Langganan",
+      qty: item.qty,
+      amount: item.amount,
+    })),
+    invoiceNumber: number,
+    occurredAt: new Date().toISOString(),
+  });
+
   return { invoiceId, invoiceNumber: number, amount, promo };
 }
 
@@ -830,6 +844,12 @@ export async function cancelSubscription(userId: string, businessId: string) {
     target: data.id,
     meta: { period_end: data.current_period_end },
   });
+  await notifyRevenueEvent({
+    kind: "cancelled",
+    businessId,
+    periodEnd: (data as { current_period_end?: string | null }).current_period_end ?? null,
+    occurredAt: new Date().toISOString(),
+  });
   return { cancelAtPeriodEnd: true };
 }
 
@@ -866,6 +886,11 @@ export async function resumeSubscription(userId: string, businessId: string) {
     action: "subscription.resume",
     target: data.id,
     meta: {},
+  });
+  await notifyRevenueEvent({
+    kind: "resumed",
+    businessId,
+    occurredAt: new Date().toISOString(),
   });
   return { cancelAtPeriodEnd: false };
 }

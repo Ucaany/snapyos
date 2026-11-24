@@ -1,0 +1,21 @@
+[Unit]
+Description=SnapyOS website and VPS monitoring (6-hour reports + outage alerts)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+WorkingDirectory=/var/www/snapyos
+EnvironmentFile=/etc/snapyos-monitor.env
+Environment=MONITOR_STATE_FILE=/var/lib/snapyos-monitor/state.json
+ExecStart=/usr/bin/node /var/www/snapyos/scripts/snapyos-monitor.mjs
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/snapyos-monitor
+
+[Install]
+WantedBy=multi-user.target

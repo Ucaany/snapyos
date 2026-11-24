@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createServerClient } from "@/lib/supabase/server";
+import { sendSnapyTopicHtml } from "@/server/snapyos-telegram";
 
 /**
  * Catat percobaan login ke `public.audit_logs` (docs/09 §10).
@@ -38,6 +39,25 @@ export type LoginEventInput = {
 export const LOGIN_ACTION_OK = "auth.login";
 export const LOGIN_ACTION_FAILED = "auth.login.failed";
 
+function escapeHtml(value: string): string {
+  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+}
+
+async function notifyTelegramLogin(input: LoginEventInput): Promise<void> {
+  const text = [
+    `🔐 <b>Login ${input.ok ? "berhasil" : "gagal"}</b>`,
+    `👤 Akun: <code>${escapeHtml(input.email)}</code>`,
+    ...(input.role ? [`🪪 Role: ${escapeHtml(input.role)}`] : []),
+    `🔑 Metode: ${input.method === "pin" ? "PIN" : "password"}`,
+    `🌐 IP: <code>${escapeHtml(input.ip)}</code>`,
+    ...(input.ua ? [`💻 Browser/perangkat: ${escapeHtml(input.ua.slice(0, 180))}`] : []),
+    ...(!input.ok && input.reason ? [`⚠️ Alasan: ${escapeHtml(input.reason)}`] : []),
+    `🕒 Waktu: ${new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })}`,
+  ].join("\n");
+  // Login = informasi operasional, bukan revenue → topic information.
+  await sendSnapyTopicHtml(text, "info");
+}
+
 export async function recordLoginEvent(input: LoginEventInput): Promise<void> {
   try {
     const supabase = createServerClient();
@@ -55,6 +75,7 @@ export async function recordLoginEvent(input: LoginEventInput): Promise<void> {
         ...(input.ok ? {} : { reason: input.reason ?? "kredensial ditolak" }),
       },
     });
+    await notifyTelegramLogin(input);
     if (error) {
       console.error("[login-events] gagal menulis audit_logs:", error.message);
     }

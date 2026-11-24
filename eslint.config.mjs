@@ -34,6 +34,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Snapshot build saat deploy (`cp -a .next .next.bak-<sha>`). Namanya bukan
+    // `.next`, jadi pola di atas tidak menangkapnya dan lint memindai ribuan
+    // file bundle minified — dulu ini melaporkan >10k error palsu.
+    ".next.bak-*/**",
     // Vercel build output (generated bundles/launchers — bukan source):
     ".vercel/**",
     // Agent worktrees: salinan penuh repo (generated), bukan source app.

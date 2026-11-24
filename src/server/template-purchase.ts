@@ -13,6 +13,7 @@ import { can } from "@/lib/rbac";
 import { getMembership } from "@/lib/tenant";
 import { invoiceNumber } from "@/lib/subscription-math";
 import { insertAudit } from "@/server/audit";
+import { notifyCheckoutStarted } from "@/server/revenue-notify";
 import { signedUrlMap } from "@/server/storage";
 import { SIGNED_URL_TTL_SECONDS as SIGNED_URL_TTL } from "@/lib/constants";
 
@@ -259,6 +260,14 @@ export async function purchaseTemplate(
     action: "template.purchase_initiated",
     target: template.id,
     meta: { invoice: number, amount, template: template.name },
+  });
+
+  await notifyCheckoutStarted({
+    businessId,
+    amount,
+    items: [{ label: `${template.name} (template premium)`, qty: 1, amount }],
+    invoiceNumber: number,
+    occurredAt: new Date().toISOString(),
   });
 
   return { invoiceId, invoiceNumber: number, amount, templateName: template.name };

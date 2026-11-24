@@ -36,3 +36,6 @@ CRON_SECRET_FILE=/var/www/snapyos/.cron-secret
 
 # Sapu objek yatim generated-photos (tidak direferensikan DB, > 24 jam). 02:40 UTC = 09:40 WIB.
 40 2 * * * root . "$CRON_SECRET_FILE" 2>/dev/null; curl -fsS -m 300 -H "Authorization: Bearer $CRON_SECRET" http://127.0.0.1:3000/api/cron/orphan-sweep > /dev/null 2>&1
+
+# Rekap revenue harian ke topic Telegram. 14:00 UTC = 21:00 WIB.
+0 14 * * * root . "$CRON_SECRET_FILE" 2>/dev/null; curl -fsS -m 300 -H "Authorization: Bearer $CRON_SECRET" http://127.0.0.1:3000/api/cron/revenue-digest > /dev/null 2>&1

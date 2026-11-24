@@ -14,6 +14,7 @@ import {
 } from "@/lib/validators";
 import { likePattern } from "@/lib/postgrest-search";
 import { requireAdmin, audit } from "./guard";
+import { notifySnapyTopic } from "@/server/snapyos-telegram";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -400,6 +401,12 @@ export async function createUser(input: AdminUserCreateInput): Promise<AdminUser
     throw new ApiError("INTERNAL", "Gagal membuat user");
   }
   await audit(admin.id, "admin.user.create", data.id, { email: parsed.email, role: parsed.role });
+  void notifySnapyTopic({
+    title: "User baru ditambahkan",
+    ownerName: data.name ?? data.email,
+    status: data.role,
+    occurredAt: data.created_at,
+  });
   return data as AdminUserRow;
 }
 
