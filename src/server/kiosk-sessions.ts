@@ -421,8 +421,11 @@ export async function createSession(
     throw new ApiError("INTERNAL", "Gagal menautkan checkout ke sesi");
   }
 
-  // Mode offline (docs/05): catat transaksi utk reporting — status paid,
-  // payment_method 'offline'. BY DESIGN non-withdrawable (bukan pembayaran gateway).
+  // Mode offline (docs/05): booth menerima tunai tanpa internet, jadi server
+  // tidak punya bukti pembayaran apa pun. Transaksi dicatat **pending**, BUKAN
+  // paid (temuan M1 run-2: siapa pun pemegang device token bisa mencetak
+  // "pendapatan" palsu tanpa bayar). Staff/owner mengonfirmasi tunai lewat
+  // /dashboard/transactions (payment:confirm) sebelum masuk laporan revenue.
   if (offlineMode) {
     const { data: biz } = await supabase
       .from("businesses")
@@ -444,9 +447,9 @@ export async function createSession(
       gross_amount: packagePrice,
       discount_amount: 0,
       final_amount: packagePrice,
-      status: "paid",
+      status: "pending",
       number: formatTxNumber(todayISO(tz, soldAt), randomUUID().replace(/-/g, "").slice(0, 6)),
-      paid_at: soldAt.toISOString(),
+      paid_at: null,
       ...(parsed.client_created_at ? { created_at: soldAt.toISOString() } : {}),
     });
     if (txError) throw new ApiError("INTERNAL", "Gagal mencatat transaksi offline");

@@ -5,7 +5,8 @@ const p = await ctx.newPage();
 const errs=[]; p.on("console",m=>{if(m.type()==="error")errs.push(m.text().slice(0,200))}); p.on("pageerror",e=>errs.push("PAGEERROR "+e.message.slice(0,200)));
 await p.goto("http://localhost:3000/login");
 await p.getByRole("textbox",{name:"Email"}).fill("ucan@kenari.com");
-await p.getByRole("textbox",{name:"Password"}).fill("AuditSnapy2026!");
+// Password dari env, bukan literal (temuan M5: repo publik).
+await p.getByRole("textbox",{name:"Password"}).fill(process.env.AUDIT_PASSWORD ?? "");
 await p.getByRole("button",{name:"Masuk",exact:true}).click();
 await p.waitForTimeout(4000); console.log("URL after login:", p.url());
 

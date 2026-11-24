@@ -7,7 +7,13 @@ const BASE = process.argv.includes("--base")
   ? process.argv[process.argv.indexOf("--base") + 1]
   : "http://localhost:3000";
 const OUT = "audit-screenshots";
-const PASSWORD = "AuditSnapy2026!";
+// Kredensial audit TIDAK boleh hardcoded: repo ini publik, jadi literal di sini
+// = kebocoran kredensial (temuan M5 run-1, CWE-798). Isi lewat env:
+//   AUDIT_PASSWORD='...' node scripts/ui-audit.mjs
+const PASSWORD = process.env.AUDIT_PASSWORD ?? "";
+if (!PASSWORD) {
+  throw new Error("AUDIT_PASSWORD belum diset (jangan menaruh password di source).");
+}
 
 const ROLES = {
   owner: { email: "ucan@kenari.com", routes: [

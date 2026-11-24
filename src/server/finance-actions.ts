@@ -11,7 +11,7 @@ import { requireActiveBusiness } from "@/server/action-utils";
 import { requireEffectiveSubscription } from "@/server/require-subscription";
 import type { FormState } from "@/server/auth-actions";
 import { createExpense, deleteExpense, updateExpense } from "@/server/finance";
-import { createManualTransaction } from "@/server/transactions";
+import { createManualTransaction, confirmOfflineTransaction } from "@/server/transactions";
 import { EXPENSE_CATEGORIES } from "@/lib/validators";
 
 // --- EXPENSES (docs/04 §4.4) ---
@@ -104,4 +104,29 @@ export async function createManualTxAction(
   revalidatePath("/dashboard/transactions");
   revalidatePath("/dashboard");
   return { error: undefined };
+}
+
+/**
+ * Konfirmasi transaksi tunai booth offline (temuan M1 run-2). Sesi kiosk offline
+ * dicatat pending sampai staff/owner memastikan uang benar-benar diterima.
+ */
+export async function confirmOfflineTxAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const ctx = await requireActiveBusiness();
+  if (!ctx) return { error: "Sesi berakhir. Silakan login ulang." };
+  try {
+    await requireEffectiveSubscription(ctx.businessId, "write");
+    await confirmOfflineTransaction(
+      ctx.user.id,
+      ctx.businessId,
+      str(formData, "transaction_id")
+    );
+  } catch (error) {
+    return toFormState(error);
+  }
+  revalidatePath("/dashboard/transactions");
+  revalidatePath("/dashboard");
+  return {};
 }

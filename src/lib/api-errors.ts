@@ -45,6 +45,9 @@ export const API_ERRORS = {
   CAPTCHA_FAILED: 403,
   // Exit PIN kiosk terkunci (docs/05 §5.0) — throttle 5 gagal → 5 menit lock.
   PIN_LOCKED: 429,
+  // Booth belum punya PIN keluar: keluar mode kiosk ditolak sampai owner
+  // memasang PIN (temuan M2 run-2 — booth tanpa PIN bisa dibuka siapa pun).
+  PIN_NOT_SET: 409,
   // Maintenance mode global (docs/10 §10.4) — platform_settings.maintenance_mode=true.
   MAINTENANCE_MODE: 503,
   INTERNAL: 500,

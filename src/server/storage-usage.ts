@@ -73,7 +73,7 @@ async function reconcileUsedBytes(businessId: string): Promise<number> {
     for (const bucket of BUCKETS) {
       const objects = await collectFolderObjects(provider, bucket, businessId);
       for (const obj of objects) {
-        await accountStorageAdd(businessId, bucket, obj.key, obj.bytes);
+        await accountStorageAdd(businessId, bucket, obj.key, obj.bytes, { enforceLimit: false });
         total += obj.bytes;
       }
     }
@@ -116,22 +116,51 @@ export async function getBusinessUsedBytes(
  * Catat bytes objek yang BERHASIL diupload ke akuntansi (idempotent per key).
  * Panggil HANYA setelah `provider.upload` sukses — upload gagal tak menambah.
  * Key = object key storage (unik) → retry upload key sama tak menggandakan.
+ *
+ * `enforceLimit` (default true) memakai `storage_account_add_limited` (migration
+ * 0092) yang mengecek kuota dan menaikkan counter dalam SATU UPDATE bersyarat —
+ * upload paralel tidak bisa lagi overshoot (temuan L2 audit 24 Nov 2026). Bila
+ * fungsi itu belum ada (migration belum diapply) panggilan jatuh ke
+ * `storage_account_add` lama supaya urutan apply/deploy tidak pernah memutus
+ * upload. Rekonsiliasi/backfill memanggil dengan `enforceLimit: false` karena
+ * tugasnya mencatat apa yang SUDAH ada, bukan menolak.
  */
 export async function accountStorageAdd(
   businessId: string,
   bucket: StorageBucket,
   key: string,
-  bytes: number
-): Promise<{ ok: boolean; error?: string; missing?: boolean }> {
+  bytes: number,
+  opts: { enforceLimit?: boolean } = {}
+): Promise<{ ok: boolean; error?: string; missing?: boolean; full?: boolean }> {
   const size = Math.max(0, Math.floor(bytes));
   if (size === 0) return { ok: true };
   const supabase = createServerClient();
-  const { error } = await supabase.rpc("storage_account_add", {
-    p_business: businessId,
-    p_key: key,
-    p_bucket: bucket,
-    p_bytes: size,
-  });
+  const enforce = opts.enforceLimit !== false;
+  const limit = enforce ? await getStorageLimit(businessId) : null;
+  const limitBytes = limit && limit.totalMb > 0 ? mbToBytes(limit.totalMb) : null;
+
+  let error = (
+    await supabase.rpc("storage_account_add_limited", {
+      p_business: businessId,
+      p_key: key,
+      p_bucket: bucket,
+      p_bytes: size,
+      p_limit_bytes: limitBytes,
+    })
+  ).error;
+
+  if (error && isMissingFunction(error)) {
+    // Migration 0092 belum diapply → pakai jalur lama (tanpa predikat limit).
+    error = (
+      await supabase.rpc("storage_account_add", {
+        p_business: businessId,
+        p_key: key,
+        p_bucket: bucket,
+        p_bytes: size,
+      })
+    ).error;
+  }
+
   if (error) {
     // Accounting gagal tidak boleh menggagalkan upload yang sudah sukses —
     // log; backfill/rekonsiliasi menyusul. ponytail: retry queue bila perlu.
@@ -140,11 +169,12 @@ export async function accountStorageAdd(
     // Klasifikasi: fungsi/tabel absen = misconfig (fail-open di pemanggil);
     // selain itu transien (tahan/retry).
     const missing = isMissingFunction(error);
+    const full = /STORAGE_FULL/i.test(error.message);
     console.error(
-      `[storage-usage] account_add gagal key=${key}${missing ? " (MISCONFIG: fungsi/tabel akuntansi absen)" : ""}:`,
+      `[storage-usage] account_add gagal key=${key}${missing ? " (MISCONFIG: fungsi/tabel akuntansi absen)" : ""}${full ? " (KUOTA PENUH: ledger menolak increment)" : ""}:`,
       error.message
     );
-    return { ok: false, error: error.message, missing };
+    return { ok: false, error: error.message, missing, full };
   }
   return { ok: true };
 }
@@ -498,7 +528,9 @@ export async function reconcileBusinessStorage(businessId: string): Promise<numb
     if (plan.resize.some((r) => r.key === entry.key)) {
       await accountStorageSub(businessId, [entry.key]);
     }
-    await accountStorageAdd(businessId, entry.bucket as StorageBucket, entry.key, entry.bytes);
+    await accountStorageAdd(businessId, entry.bucket as StorageBucket, entry.key, entry.bytes, {
+      enforceLimit: false,
+    });
   }
 
   return getBusinessUsedBytes(businessId);

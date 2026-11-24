@@ -10,6 +10,7 @@ z.config(z.locales.id());
 import { layoutSchema } from "./template-layout.ts";
 import { MAX_RANGE_DAYS, rangeDays } from "./dashboard-math.ts";
 import { RETENTION_MAX_DAYS, RETENTION_MIN_DAYS } from "./retention.ts";
+
 import { isLoopbackBridgeUrl, LOOPBACK_BRIDGE_URL_MESSAGE } from "./bridge-url.ts";
 import {
   CLOUD_OWNED_SETTING_FIELDS,
@@ -20,6 +21,28 @@ import {
   SETTING_INVARIANTS,
   mergeDeviceGroup,
 } from "./device-settings-contract.ts";
+
+/**
+ * Pola PIN keluar yang mudah ditebak: digit berulang (000000, 111111) dan
+ * deret naik/turun (123456, 987654, juga 1234 yang lalu digemukkan ke 6 digit).
+ */
+const WEAK_EXIT_PIN =
+  /^(\d)\1+$|^(?:0123|1234|2345|3456|4567|5678|6789)\d*$|^(?:9876|8765|7654|6543|5432|4321|3210)\d*$/;
+
+/**
+ * PIN keluar kiosk. Minimal 6 digit (temuan M2 run-2: PIN 4 digit hanya ~10.000
+ * kombinasi, dibagikan antar-shift dan diketik di tempat publik) dan menolak
+ * pola lemah saat diset. Verifikasi tetap menerima PIN lama 4 digit supaya booth
+ * yang belum dirotasi tidak terkunci; owner diminta mengganti PIN-nya.
+ */
+export const exitPinSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{6,8}$/, "PIN keluar 6–8 digit angka")
+  .refine(
+    (value) => !WEAK_EXIT_PIN.test(value),
+    "PIN terlalu mudah ditebak (jangan 000000/111111 atau berurutan seperti 123456)"
+  );
 
 /** UUID PostgreSQL canonical: shape hex, tanpa pembatasan version/variant RFC. */
 const uuid = z.string().guid();
@@ -839,12 +862,8 @@ export const photoboxCreateSchema = z.object({
   camera_settings: cameraSettingsSchema.optional(),
   print_settings: printSettingsSchema.optional(),
   session_settings: sessionSettingsSchema.optional(),
-  /** PIN keluar kiosk 4–8 digit — opsional saat create (hash di server). */
-  exit_pin: z
-    .string()
-    .trim()
-    .regex(/^\d{4,8}$/, "PIN keluar 4–8 digit angka")
-    .optional(),
+  /** PIN keluar kiosk 6–8 digit — opsional saat create (hash di server). */
+  exit_pin: exitPinSchema.optional(),
   /** Saluran pembayaran per-booth; null/undefined = gateway + voucher. */
   payment_mode: photoboxPaymentMode.nullable().optional(),
 });
@@ -867,12 +886,8 @@ export const photoboxUpdateSchema = z.object({
   camera_settings: cameraSettingsSchema.optional(),
   print_settings: printSettingsSchema.optional(),
   session_settings: sessionSettingsSchema.optional(),
-  /** PIN keluar kiosk 4–8 digit — kosong = tidak diubah (hash di server). */
-  exit_pin: z
-    .string()
-    .trim()
-    .regex(/^\d{4,8}$/, "PIN keluar 4–8 digit angka")
-    .optional(),
+  /** PIN keluar kiosk 6–8 digit — kosong = tidak diubah (hash di server). */
+  exit_pin: exitPinSchema.optional(),
   /** Saluran pembayaran per-booth; null = gateway + voucher. */
   payment_mode: photoboxPaymentMode.nullable().optional(),
 });

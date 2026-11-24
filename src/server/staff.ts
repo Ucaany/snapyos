@@ -501,6 +501,10 @@ export async function setStaffPin(
     .eq("user_id", parsed.user_id)
     .eq("photobox_id", parsed.photobox_id);
   if (error) throw new ApiError("INTERNAL", "Gagal menyimpan PIN");
+  // PIN dibuat/diganti = sesi PIN lama milik user ini harus mati, sama seperti
+  // rotasi kredensial lain. Tanpa ini, PIN lama yang sudah tersebar antar-shift
+  // tetap hidup di sesi yang sudah terbuka.
+  await supabase.from("auth_sessions").delete().eq("user_id", parsed.user_id);
   // Jangan pernah mencatat PIN/hash ke audit — hanya fakta set/clear.
   await insertAudit({
     actorId: userId,

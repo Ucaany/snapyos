@@ -449,3 +449,70 @@ export async function createManualTransaction(
   });
   return data;
 }
+
+/**
+ * Konfirmasi transaksi tunai booth offline (temuan M1 run-2).
+ *
+ * Sesi kiosk mode offline dicatat `pending` karena server tidak punya bukti
+ * pembayaran — hanya booth yang mengaku uang tunai sudah diterima. Staff/owner
+ * dengan izin `payment:confirm` menandainya lunas; hanya setelah itu transaksi
+ * masuk laporan revenue. Tanpa langkah ini, device token yang dicuri bisa
+ * mencetak pendapatan palsu tanpa uang masuk.
+ */
+export async function confirmOfflineTransaction(
+  userId: string,
+  businessId: string,
+  transactionId: string
+) {
+  const membership = await getMembership(userId, businessId);
+  if (!membership) throw new ApiError("NOT_FOUND", "Business tidak ditemukan");
+  if (!can(membership.role, "payment:confirm")) {
+    throw new ApiError("FORBIDDEN", "Anda tidak punya izin mengonfirmasi pembayaran");
+  }
+
+  const supabase = createServerClient();
+  // Staff hanya boleh mengonfirmasi booth yang di-assign (pola cash-payment.ts).
+  if (membership.role === "staff") {
+    const assigned = await listAssignedPhotoboxIds(userId, businessId);
+    const { data: owned } = await supabase
+      .from("transactions")
+      .select("photobox_id")
+      .eq("id", transactionId)
+      .eq("business_id", businessId)
+      .maybeSingle();
+    const photoboxId = (owned as { photobox_id?: string } | null)?.photobox_id;
+    if (!assigned || !photoboxId || !assigned.includes(photoboxId)) {
+      throw new ApiError("NOT_FOUND", "Transaksi tidak ditemukan");
+    }
+  }
+
+  const { data: current } = await supabase
+    .from("transactions")
+    .select("id, status, payment_method")
+    .eq("id", transactionId)
+    .eq("business_id", businessId)
+    .maybeSingle();
+  const row = current as { id: string; status: string; payment_method: string } | null;
+  if (!row) throw new ApiError("NOT_FOUND", "Transaksi tidak ditemukan");
+  if (row.payment_method !== "offline" || row.status !== "pending") {
+    throw new ApiError(
+      "VALIDATION_ERROR",
+      "Hanya transaksi offline yang masih menunggu konfirmasi bisa dilunasi."
+    );
+  }
+
+  const { error } = await supabase
+    .from("transactions")
+    .update({ status: "paid", paid_at: new Date().toISOString() })
+    .eq("id", transactionId)
+    .eq("business_id", businessId)
+    .eq("status", "pending");
+  if (error) throw new ApiError("INTERNAL", "Gagal mengonfirmasi transaksi");
+
+  await insertAudit({
+    actorId: userId,
+    businessId,
+    action: "transaction.offline_confirm",
+    target: transactionId,
+  });
+}

@@ -15,6 +15,7 @@ import { requirePlanLimits } from "@/server/plan-limits";
 import { brandingCacheTag } from "@/server/branding";
 import { invalidatePublicConfig } from "@/server/public-config";
 import { sendWelcomeEmail } from "@/server/lifecycle-email";
+import { notifyRevenueEvent } from "@/server/revenue-notify";
 
 /** Batas workspace paket Starter (docs/02 §2.3) — dipakai saat subscription tidak efektif. */
 const STARTER_MAX_BUSINESSES = 1;
@@ -147,9 +148,7 @@ export async function createBusiness(userId: string, input: BusinessCreateInput)
       .from("subscriptions")
       .select("plans ( max_businesses )")
       .in("business_id", ownedIds)
-      .in("status", ["trial", "active", "past_due"])
-      .order("created_at", { ascending: false })
-      .limit(1);
+      .in("status", ["trial", "active", "past_due"]);
     // Query gagal ≠ "tanpa batas": dulu error diabaikan dan rows kosong
     // dianggap max=null, sehingga langganan expired/cancelled bisa membuat
     // workspace baru tanpa batas.
@@ -157,11 +156,14 @@ export async function createBusiness(userId: string, input: BusinessCreateInput)
     const rows = (data ?? []) as {
       plans: { max_businesses: number } | { max_businesses: number }[] | null;
     }[];
-    const plan = rows[0]?.plans;
-    const max =
-      plan && !Array.isArray(plan) && Number.isInteger(plan.max_businesses)
-        ? plan.max_businesses
-        : STARTER_MAX_BUSINESSES;
+    // Batas diambil dari plan AKTIF TERBAIK milik owner, bukan dari baris
+    // subscription terbaru: sebelumnya owner Business tier (jatah 5) ditolak di
+    // 3 karena subscription termuda di akunnya adalah plan Starter.
+    const limits = rows
+      .map((row) => (Array.isArray(row.plans) ? row.plans[0] : row.plans))
+      .map((plan) => plan?.max_businesses)
+      .filter((value): value is number => Number.isInteger(value) && (value as number) > 0);
+    const max = limits.length > 0 ? Math.max(...limits) : STARTER_MAX_BUSINESSES;
     if (owned >= max) {
       throw new ApiError("PLAN_LIMIT_REACHED", "Batas jumlah business untuk plan Anda tercapai");
     }
@@ -249,6 +251,8 @@ export async function createBusiness(userId: string, input: BusinessCreateInput)
     .eq("code", "starter")
     .eq("is_active", true)
     .maybeSingle();
+  let trialDaysUsed: number | null = null;
+  let trialEndsAt: string | null = null;
   if (plan) {
     const { data: setting } = await supabase
       .from("platform_settings")
@@ -259,9 +263,11 @@ export async function createBusiness(userId: string, input: BusinessCreateInput)
       setting && typeof setting.value === "number"
         ? setting.value
         : Number(setting?.value ?? TRIAL_DAYS_DEFAULT) || TRIAL_DAYS_DEFAULT;
+    trialDaysUsed = trialDays;
 
     const now = new Date();
     const trialEnd = nextPeriod(now, trialDays).end;
+    trialEndsAt = trialEnd.toISOString();
     const period = cyclePeriod(now, plan.billing_cycle);
     const { error: subError } = await supabase.from("subscriptions").insert({
       business_id: business.id,
@@ -296,6 +302,19 @@ export async function createBusiness(userId: string, input: BusinessCreateInput)
       businessId: business.id,
     });
   }
+
+  await notifyRevenueEvent({
+    kind: "trial",
+    businessId: business.id,
+    businessName: business.name,
+    ownerName: ownerRow?.name ?? undefined,
+    ownerEmail: ownerRow?.email ?? undefined,
+    planName: "Starter",
+    amount: 0,
+    trialDays: trialDaysUsed,
+    periodEnd: trialEndsAt,
+    occurredAt: new Date().toISOString(),
+  });
 
   return business;
 }

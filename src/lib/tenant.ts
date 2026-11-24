@@ -11,7 +11,7 @@ import { auth } from "@/lib/auth";
 import { createServerClient } from "@/lib/supabase/server";
 import { ApiError } from "@/lib/api-errors";
 import type { BusinessRole } from "@/lib/rbac";
-import { membershipVisibleToScope } from "@/lib/session-scope";
+import { membershipVisibleToScope, staffScopeAllowsBusiness } from "@/lib/session-scope";
 
 export const ACTIVE_BUSINESS_COOKIE = "snapyos_active_business";
 
@@ -22,6 +22,8 @@ export type AppUser = {
   role: "user" | "admin";
   /** Sesi PIN staff: tidak boleh mewarisi role owner/manager (S-001). */
   scope?: "staff";
+  /** Business penerbit PIN; sesi staff hanya sah untuk business ini. */
+  pinBusiness?: string;
 };
 
 export type Membership = {
@@ -48,6 +50,7 @@ export const requireUser = cache(async (): Promise<AppUser | null> => {
     name: session.user.name,
     role: session.user.role ?? "user",
     ...(session.user.scope ? { scope: session.user.scope } : {}),
+    ...(session.user.pinBusiness ? { pinBusiness: session.user.pinBusiness } : {}),
   };
 });
 
@@ -81,6 +84,13 @@ export const getUserMemberships = cache(async (userId: string): Promise<Membersh
     // Sesi PIN hanya melihat dan memakai membership staff. Owner/manager di
     // business lain tidak pernah masuk ke shell/token ini.
     if (!membershipVisibleToScope(role, staffScoped ? "staff" : undefined)) return [];
+    // ...dan hanya untuk business penerbit PIN itu sendiri.
+    if (
+      staffScoped &&
+      !staffScopeAllowsBusiness(true, (sessionUser as { pinBusiness?: string }).pinBusiness, business.id)
+    ) {
+      return [];
+    }
     return [{ business, role }];
   });
 });
@@ -118,6 +128,14 @@ export const getMembership = cache(
     const supabase = createServerClient();
     const sessionUser = await requireUser();
     const staffScoped = sessionUser?.scope === "staff";
+
+    // Sesi staff dari PIN hanya sah untuk business penerbit PIN (fail-closed:
+    // token lama tanpa klaim pinBusiness ditolak sampai login ulang).
+    if (staffScoped) {
+      const pinned = (sessionUser as { pinBusiness?: string } | null)?.pinBusiness;
+      if (!staffScopeAllowsBusiness(true, pinned, businessId)) return null;
+    }
+
     const { data, error } = await supabase
       .from("business_members")
       .select("role, businesses ( id, slug, name, status, timezone, currency )")

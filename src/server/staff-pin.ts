@@ -12,6 +12,14 @@ import { verifyDevicePin } from "@/lib/device-token";
 export const MAX_PIN_CANDIDATES = 10;
 
 /**
+ * Hasil verifikasi PIN: business tempat PIN itu diterbitkan, atau null bila
+ * tidak ada assignment yang cocok. Business WAJIB ikut dikembalikan — PIN yang
+ * terverifikasi harus mengikat sesi ke tenant penerbitnya, bukan sekadar
+ * menandai user sebagai "staff".
+ */
+export type StaffPinMatch = { businessId: string } | null;
+
+/**
  * Verifikasi PIN login staff TANPA mengungkap daftar booth ke browser.
  *
  * PIN hanya berlaku untuk membership ber-role `staff`. Tanpa batas ini, PIN
@@ -22,7 +30,7 @@ export const MAX_PIN_CANDIDATES = 10;
  * Assignment dicari lewat user_id (bukan email) supaya tidak butuh join users;
  * pemanggil sudah punya user.id dari lookup login.
  */
-export async function verifyStaffPin(userId: string, pin: string): Promise<boolean> {
+export async function verifyStaffPin(userId: string, pin: string): Promise<StaffPinMatch> {
   const supabase = createServerClient();
 
   // Hanya business tempat user ini benar-benar staff.
@@ -33,11 +41,11 @@ export async function verifyStaffPin(userId: string, pin: string): Promise<boole
   const staffBusinesses = ((memberships ?? []) as { business_id: string; role: string }[])
     .filter((row) => row.role === "staff")
     .map((row) => row.business_id);
-  if (staffBusinesses.length === 0) return false;
+  if (staffBusinesses.length === 0) return null;
 
   const { data } = await supabase
     .from("member_photoboxes")
-    .select("pin_hash, photobox_id")
+    .select("pin_hash, photobox_id, business_id")
     .eq("user_id", userId)
     .in("business_id", staffBusinesses)
     .not("pin_hash", "is", null)
@@ -47,13 +55,14 @@ export async function verifyStaffPin(userId: string, pin: string): Promise<boole
     .order("photobox_id", { ascending: true })
     .limit(MAX_PIN_CANDIDATES);
 
-  const hashes = ((data ?? []) as { pin_hash: string | null }[])
-    .map((row) => row.pin_hash)
-    .filter((hash): hash is string => Boolean(hash));
-  if (hashes.length === 0) return false;
+  const rows = ((data ?? []) as { pin_hash: string | null; business_id: string | null }[]).filter(
+    (row): row is { pin_hash: string; business_id: string } =>
+      Boolean(row.pin_hash) && Boolean(row.business_id)
+  );
+  if (rows.length === 0) return null;
 
-  for (const hash of hashes) {
-    if (await verifyDevicePin(pin, hash)) return true;
+  for (const row of rows) {
+    if (await verifyDevicePin(pin, row.pin_hash)) return { businessId: row.business_id };
   }
-  return false;
+  return null;
 }

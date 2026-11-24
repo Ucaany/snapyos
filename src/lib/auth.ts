@@ -43,6 +43,11 @@ const SESSION_FETCH_BACKOFF_MS = 150;
 const MAX_EMAIL_FAILURES = 5;
 const EMAIL_FAILURE_WINDOW_MS = 15 * 60_000;
 
+/** Delay progresif untuk login (bukan pemblokiran) — lihat globalFailKey. */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
  * Query baris sesi untuk revocation check, dengan retry ringan untuk error
  * transport transient ("fetch failed", ECONNRESET, ETIMEDOT, …). Blip 1 detik
@@ -185,12 +190,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const emailDayLimit = await rateLimit(`login:email:${email}`, 20, 86_400_000);
         if (!emailDayLimit.ok) return null;
 
-        // Lockout per email: 5 percobaan / 15 menit (lapis kedua di atas limit
-        // IP). Gate SEBELUM lookup user dan verifikasi argon2 supaya percobaan
-        // ke-6 tidak menyentuh DB/hash sama sekali, dan supaya email yang tidak
-        // terdaftar ikut terhitung. Direset saat login sukses (resetLimit).
-        const failKey = `login:fail:${email}`;
+        // Lockout di-key per email+IP, BUKAN per email saja: dengan key per email
+        // siapa pun yang tahu alamat korban bisa mengunci login korban dari IP
+        // mana pun (temuan run-2: targeted lockout / DoS). Penyerang kini hanya
+        // mengunci dirinya sendiri.
+        const failKey = `login:fail:${email}:${ip}`;
         if ((await failureCount(failKey)) >= MAX_EMAIL_FAILURES) return null;
+        // Counter global per email tidak pernah memblokir — hanya menambah delay
+        // progresif, supaya brute force terdistribusi (banyak IP) tetap mahal
+        // tanpa membuka pintu penguncian akun oleh pihak ketiga.
+        const globalFailKey = `login:fail:global:${email}`;
+        const globalFails = await failureCount(globalFailKey);
+        if (globalFails >= 3) await sleep(Math.min(1500, 250 * (globalFails - 2)));
 
         const supabase = createServerClient();
         const { data: user, error: userError } = await supabase
@@ -207,6 +218,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // (dihitung di cabang verifikasi di bawah); tidak ada counter terpisah
         // supaya percobaan gagal tidak dihitung dua kali.
         if (!user) {
+          // Email tak dikenal ikut membuang kuota lockout; tanpa ini email
+          // sembarang bisa dicoba tanpa batas per-key dan selisih perilakunya
+          // jadi oracle keberadaan akun.
+          await registerFailure(failKey, EMAIL_FAILURE_WINDOW_MS);
+          await registerFailure(globalFailKey, EMAIL_FAILURE_WINDOW_MS);
           // Dicatat tanpa actor_id: email yang dicoba tetap penting untuk
           // mendeteksi brute-force / salah ketik domain.
           await recordLoginEvent({
@@ -242,15 +258,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (pin) {
           // Lockout PIN per email (bukan per booth, karena booth tidak dipilih
           // pra-sesi); gate sebelum verify supaya argon2 tidak dibakar.
-          const pinKey = `login:pin:${email}`;
+          const pinKey = `login:pin:${email}:${ip}`;
           if ((await failureCount(pinKey)) >= MAX_EMAIL_FAILURES) {
             await registerFailure(failKey, EMAIL_FAILURE_WINDOW_MS);
+            await registerFailure(globalFailKey, EMAIL_FAILURE_WINDOW_MS);
             return null;
           }
-          const ok = await verifyStaffPin(user.id, pin);
-          if (!ok) {
+          const pinMatch = await verifyStaffPin(user.id, pin);
+          if (!pinMatch) {
             await registerFailure(pinKey, EMAIL_FAILURE_WINDOW_MS);
             await registerFailure(failKey, EMAIL_FAILURE_WINDOW_MS);
+            await registerFailure(globalFailKey, EMAIL_FAILURE_WINDOW_MS);
             await recordLoginEvent({
               userId: user.id,
               email,
@@ -265,6 +283,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
           await resetLimit(pinKey);
           await resetLimit(failKey);
+          await resetLimit(globalFailKey);
           await recordLoginEvent({
             userId: user.id,
             email,
@@ -280,11 +299,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             name: user.name,
             image: user.avatar_url,
             scope: "staff",
-          } as unknown as typeof user & { scope: "staff" };
+            // PIN mengikat sesi ke tenant penerbitnya (lihat verifyStaffPin).
+            pinBusiness: pinMatch.businessId,
+          } as unknown as typeof user & { scope: "staff"; pinBusiness: string };
         }
 
         if (!user.password_hash) {
           await registerFailure(failKey, EMAIL_FAILURE_WINDOW_MS);
+          await registerFailure(globalFailKey, EMAIL_FAILURE_WINDOW_MS);
           return null;
         }
         let valid = false;
@@ -298,6 +320,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           // Lockout ditegakkan sebagai gate di atas; di sini cukup mencatat
           // kegagalan. Pesan generik yang sama untuk semua sebab (anti-enumerasi).
           await registerFailure(failKey, EMAIL_FAILURE_WINDOW_MS);
+          await registerFailure(globalFailKey, EMAIL_FAILURE_WINDOW_MS);
           await recordLoginEvent({
             userId: user.id,
             email,
@@ -311,6 +334,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
         await resetLimit(failKey);
+        await resetLimit(globalFailKey);
 
         await recordLoginEvent({
           userId: user.id,
@@ -349,12 +373,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return {}; // gagal mint sesi = gagal login
         }
         const scope = (user as { scope?: "staff" }).scope;
+        const pinBusiness = (user as { pinBusiness?: string }).pinBusiness;
         return {
           ...token,
           uid: user.id,
           sid,
           lastSeen: Date.now(),
           ...(scope ? { scope } : {}),
+          ...(pinBusiness ? { pinBusiness } : {}),
         };
       }
 
@@ -395,6 +421,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (!token.uid) return session;
       session.user.id = token.uid;
       if (token.scope) session.user.scope = token.scope;
+      // Klaim tenant penerbit PIN ikut disurfacekan ke session.user supaya
+      // helper tenant bisa menolak business lain untuk sesi staff.
+      if (typeof token.pinBusiness === "string" && token.pinBusiness) {
+        session.user.pinBusiness = token.pinBusiness;
+      }
       if (token.role) {
         session.user.role = token.role;
         return session;

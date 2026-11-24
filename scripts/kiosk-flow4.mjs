@@ -50,7 +50,8 @@ const octx2 = await b.newContext({ viewport: { width: 1440, height: 900 } });
 const op2 = await octx2.newPage();
 await op2.goto("http://localhost:3000/login");
 await op2.getByRole("textbox",{name:"Email"}).fill("ucan@kenari.com");
-await op2.getByRole("textbox",{name:"Password"}).fill("AuditSnapy2026!");
+// Password dari env, bukan literal (temuan M5: repo publik).
+await op2.getByRole("textbox",{name:"Password"}).fill(process.env.AUDIT_PASSWORD ?? "");
 await op2.getByRole("button",{name:"Masuk",exact:true}).click();
 await op2.waitForURL(u=>!u.pathname.startsWith("/login"),{timeout:20000});
 await op2.goto("http://localhost:3000/dashboard",{waitUntil:"domcontentloaded"});

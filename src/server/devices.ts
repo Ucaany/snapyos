@@ -421,7 +421,16 @@ const PIN_LOCK_MS = 5 * 60 * 1000;
 
 export async function verifyDeviceExit(input: DeviceExitInput) {
   const { photobox } = await resolveActiveDevice(input.device_token);
-  if (!photobox.exit_pin_hash) return { ok: true, pin_required: false };
+  if (!photobox.exit_pin_hash) {
+    // Booth tanpa PIN = siapa pun yang berdiri di depan kiosk bisa keluar dari
+    // mode kiosk lalu mengubah setelan (temuan M2 run-2). Dulu dibiarkan demi
+    // "kompatibilitas booth lama"; sekarang fail-closed, owner wajib memasang
+    // PIN lewat Pengaturan Booth.
+    throw new ApiError(
+      "PIN_NOT_SET",
+      "PIN keluar belum dipasang di booth ini. Minta owner memasangnya di Pengaturan Booth."
+    );
+  }
 
   const supabase = createServerClient();
   const now = Date.now();

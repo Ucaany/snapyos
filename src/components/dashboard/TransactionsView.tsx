@@ -17,7 +17,7 @@ import { LABEL_CLASS as labelClass, fieldError } from "@/lib/form-ui";
 import { formatDate, formatIDR } from "@/lib/dashboard-math";
 import type { TransactionRow } from "@/server/transactions";
 import type { FormState } from "@/server/auth-actions";
-import { createManualTxAction } from "@/server/finance-actions";
+import { createManualTxAction, confirmOfflineTxAction } from "@/server/finance-actions";
 
 const initial: FormState = {};
 
@@ -47,6 +47,24 @@ const METHOD_LABEL: Record<string, string> = {
   manual: "MANUAL",
   voucher: "VOUCHER",
 };
+
+/** Tombol konfirmasi tunai untuk transaksi kiosk mode offline (status pending). */
+function ConfirmOfflineButton({ transactionId }: { transactionId: string }) {
+  const [state, formAction, pending] = useActionState(confirmOfflineTxAction, initial);
+  return (
+    <form action={formAction} className="flex flex-col items-start gap-1">
+      <input type="hidden" name="transaction_id" value={transactionId} />
+      <Button type="submit" size="sm" disabled={pending}>
+        {pending ? "Menyimpan…" : "Konfirmasi tunai"}
+      </Button>
+      {state.error && (
+        <p role="alert" className="font-mono text-[10px] text-destructive">
+          {state.error}
+        </p>
+      )}
+    </form>
+  );
+}
 
 /** TransactionsView - tabel + form catat manual (docs/04 §4.5). */
 export function TransactionsView({
@@ -163,6 +181,11 @@ export function TransactionsView({
               </td>
               <td className="px-4 py-3.5">
                 <StatusBadge status={tx.status} />
+                {canWrite && tx.status === "pending" && tx.payment_method === "offline" && (
+                  <div className="mt-1.5">
+                    <ConfirmOfflineButton transactionId={tx.id} />
+                  </div>
+                )}
               </td>
               <td className="px-4 py-3.5">
                 {tx.result_token ? (

@@ -140,7 +140,18 @@ export async function changePasswordAction(
     .eq("id", user.id);
   if (error) return { error: "Gagal menyimpan password baru." };
 
-  return { success: "Password diperbarui." };
+  // Password berubah = semua sesi lama tidak boleh hidup (sama seperti
+  // resetPasswordAction, updateStaffRole, admin user update). Tanpa ini sesi
+  // yang dicuri tetap valid setelah korban merotasi kredensialnya.
+  await supabase.from("auth_sessions").delete().eq("user_id", user.id);
+  await insertAudit({
+    actorId: user.id,
+    businessId: null,
+    action: "auth.password.change",
+    target: user.id,
+  });
+
+  return { success: "Password diperbarui. Silakan login ulang." };
 }
 
 /**
