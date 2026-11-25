@@ -61,6 +61,7 @@ export {
   listSubscriptions,
   getSubscription,
   updateSubscription,
+  deleteSubscription,
   attachSubscriptionAddOn,
   updateSubscriptionAddOn,
   cancelSubscriptionAddOn,

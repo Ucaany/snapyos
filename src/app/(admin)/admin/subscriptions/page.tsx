@@ -24,6 +24,7 @@ import { Input } from "@/components/admin/ui/input";
 import {
   attachAddOnAction,
   cancelAddOnAction,
+  deleteSubscriptionAction,
   updateSubscriptionAction,
 } from "@/server/admin-actions";
 import {
@@ -294,6 +295,16 @@ export default async function AdminSubscriptionsPage({
                         confirmTitle="Batalkan di akhir periode"
                       />
                     ) : null}
+
+                    <AdminActionButton
+                      action={deleteSubscriptionAction}
+                      hidden={{ subscriptionId: s.id }}
+                      submitLabel="Hapus langganan"
+                      icon="trash"
+                      variant="destructive"
+                      confirm={`Hapus langganan ${s.business_name} (${s.plan_name}) permanen? Aksi ini tidak dapat dibatalkan.`}
+                      confirmTitle="Hapus langganan"
+                    />
 
                     {activeAddOns.length > 0 ? (
                       <AdminActionForm

@@ -142,12 +142,10 @@ body:has(.admin-theme)::after {
  * in the admin layout content wrapper, not per page.
  */
 .admin-grid-lines {
-  background-image:
-    linear-gradient(to right, rgb(10 10 10 / 3.5%) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(10 10 10 / 3.5%) 1px, transparent 1px);
-  background-size: 48px 48px;
-  background-position: center;
-  background-attachment: local;
+  background-image: none;
+  background-size: initial;
+  background-position: initial;
+  background-attachment: initial;
 }
 
 /*
@@ -254,9 +252,11 @@ body:has(.admin-theme.dark) {
     inset 0 1px 0 rgb(255 255 255 / 90%);
 }
 
+/* Dark mode grid override removed - grid lines disabled globally */
 .admin-theme.dark.admin-grid-lines,
 .admin-theme.dark .admin-grid-lines {
-  background-image:
-    linear-gradient(to right, rgb(255 255 255 / 5%) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(255 255 255 / 5%) 1px, transparent 1px);
+  background-image: none;
+  background-size: initial;
+  background-position: initial;
+  background-attachment: initial;
 }

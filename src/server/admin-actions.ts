@@ -41,6 +41,7 @@ import {
   deleteGlobalTemplate,
   deleteTemplateCategory,
   deleteUser,
+  deleteSubscription,
   dismissFailure,
   markRefunded,
   resendBroadcast,
@@ -294,6 +295,17 @@ export async function updateSubscriptionAction(
       extend_days: str(formData, "extend_days") ? num(formData, "extend_days") : undefined,
       cancel: formData.has("cancel"),
     });
+    refresh("/admin/subscriptions", "/admin");
+    return {};
+  } catch (error) {
+    return toFormState(error);
+  }
+}
+
+export async function deleteSubscriptionAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  try {
+    const subscriptionId = str(formData, "subscriptionId");
+    await deleteSubscription(subscriptionId);
     refresh("/admin/subscriptions", "/admin");
     return {};
   } catch (error) {

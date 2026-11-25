@@ -262,6 +262,28 @@ export async function updateSubscription(
   return data;
 }
 
+/**
+ * Hapus subscription (admin). Menghapus baris subscription saja; add-on links
+ * dan invoice ikut ter-cascade oleh FK. Bisnis tetap ada — subscription bisa
+ * dibuat ulang dari dashboard bisnis.
+ */
+export async function deleteSubscription(subscriptionId: string) {
+  const admin = await requireAdmin();
+  const supabase = createServerClient();
+  const { data: current } = await supabase
+    .from("subscriptions")
+    .select("id, business_id")
+    .eq("id", subscriptionId)
+    .maybeSingle();
+  if (!current) throw new ApiError("NOT_FOUND", "Subscription tidak ditemukan");
+  const { error } = await supabase.from("subscriptions").delete().eq("id", subscriptionId);
+  if (error) throw new ApiError("INTERNAL", "Gagal menghapus subscription");
+  await audit(admin.id, "admin.subscription.delete", subscriptionId, {
+    business_id: current.business_id,
+  }, current.business_id);
+  return { id: subscriptionId };
+}
+
 export async function attachSubscriptionAddOn(input: {
   subscription_id: string;
   add_on_id: string;
